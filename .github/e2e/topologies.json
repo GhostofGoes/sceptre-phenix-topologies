@@ -33,10 +33,21 @@
     "experiment": "wind-turbine",
     "topology": "renewables/wind/turbine/phenix-configs/topology.yml",
     "scenario": "renewables/wind/turbine/phenix-configs/scenario.yml",
-    "images": ["ot-sim"],
+    "images": ["ot-sim", "grafana"],
     "apps": true,
     "lfs": "renewables/wind/turbine/phenix-injects/**",
-    "stage": [["renewables/wind/turbine/phenix-injects", "/phenix/injects/wind-turbine"]]
+    "stage": [["renewables/wind/turbine/phenix-injects", "/phenix/injects/wind-turbine"]],
+    "checks": [
+      {"name": "OT-sim CPU module running", "nodes": "^wtg-",
+       "script": "timeout 120 sh -c 'until pidof ot-sim-cpu-module >/dev/null; do sleep 2; done'; pidof ot-sim-cpu-module >/dev/null && echo running",
+       "want": "running"},
+      {"name": "Grafana serves the turbine dashboard", "nodes": "^grafana$",
+       "script": "timeout 120 sh -c 'until curl -fs -o /dev/null http://localhost:3000/api/health; do sleep 3; done'; curl -fs 'http://localhost:3000/api/search?query=Turbine' | grep -o '\"title\": *\"Turbine\"' | head -1 | tr -d ' '",
+       "want": "\"title\":\"Turbine\""},
+      {"name": "Elasticsearch has turbine ground truth", "nodes": "^grafana$",
+       "script": "timeout 240 sh -c 'until curl -fs \"http://localhost:9200/_cat/indices/wind-turbine-*?h=index\" | grep -q wind-turbine; do sleep 5; done'; curl -fs 'http://localhost:9200/_cat/indices/wind-turbine-*?h=index' | grep -q wind-turbine && echo indexed",
+       "want": "indexed", "wait": 300}
+    ]
   },
   "wind-plant-base": {
     "experiment": "wind-plant-base",

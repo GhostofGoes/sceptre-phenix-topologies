@@ -1,9 +1,12 @@
 # Runs every experiment of this repository under a real phenix and minimega
 # with QEMU/KVM guests, and records how far each gets: configs, create, start,
-# guests running, guests on C2, and stop. Nodes whose disk image no recipe in
-# sceptre-phenix-images can build stay off, and the booted guests' memory is
-# scaled to the runner; .github/e2e/run_topology.py records every such
-# adaptation with the results.
+# guests running, guests on C2, and stop. The disk images are built from
+# sceptre-phenix-images, or taken from its weekly release when a manual run
+# asks for that (an image with no release is still built, and a released one
+# gets this job's miniccc). Nodes whose image no recipe builds stay off, and
+# the booted guests' memory is scaled to the runner;
+# .github/e2e/run_topology.py records every such adaptation, and where each
+# image came from, with the results.
 name: E2E
 
 on:
@@ -15,6 +18,15 @@ on:
         description: Topologies to run (space-separated names from .github/e2e/topologies.json; empty runs all)
         type: string
         default: ''
+      images:
+        description: Build the images from IMAGES_REF, or pull sceptre-phenix-images' weekly release
+        type: choice
+        options: [built, released]
+        default: built
+      release-tag:
+        description: Release tag to pull when images is released (latest, or a date such as 20261014)
+        type: string
+        default: latest
 
 permissions:
   contents: read
@@ -31,6 +43,8 @@ env:
   APPS_REF: ci-e2e-minimega
   IMAGES_REPOSITORY: GhostofGoes/sceptre-phenix-images
   IMAGES_REF: ci-e2e-minimega
+  IMAGES_RELEASES: ghcr.io/sandialabs/sceptre-phenix-images
+  IMAGE_SOURCE: ${{ inputs.images || 'built' }}
 
 jobs:
   plan:
@@ -91,6 +105,32 @@ jobs:
           path: images
           persist-credentials: false
 
+      - name: Set up oras
+        if: env.IMAGE_SOURCE == 'released'
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+
+      # A released image is used as published; an image with no release at the
+      # tag is built like the rest.
+      - name: Pull the released image
+        id: released
+        if: env.IMAGE_SOURCE == 'released'
+        env:
+          IMAGE: ${{ matrix.image }}
+          TAG: ${{ inputs.release-tag || 'latest' }}
+        run: |
+          set -euo pipefail
+          ref="$IMAGES_RELEASES/$IMAGE.qc2:$TAG"
+          if ! desc=$(oras manifest fetch --descriptor "$ref"); then
+            echo "::notice::$ref is not published; building $IMAGE instead"
+            echo "pulled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          digest=$(python3 -c 'import json, sys; print(json.loads(sys.argv[1])["digest"])' "$desc")
+          oras pull "$ref" -o e2e-images
+          qemu-img info "e2e-images/$IMAGE.qc2" 2>/dev/null || ls -l "e2e-images/$IMAGE.qc2"
+          printf '{"source": "released", "ref": "%s", "digest": "%s"}\n' "$ref" "$digest" > "e2e-images/$IMAGE.source.json"
+          echo "pulled=true" >> "$GITHUB_OUTPUT"
+
       # The month rebuilds every image monthly against current packages.
       - name: Compute the cache key
         id: key
@@ -103,26 +143,27 @@ jobs:
 
       - name: Restore the image
         id: cache
+        if: steps.released.outputs.pulled != 'true'
         uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: e2e-images/${{ matrix.image }}.qc2
           key: ${{ steps.key.outputs.key }}
 
       - name: Set up phenix and minimega, and the image builder
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.released.outputs.pulled != 'true' && steps.cache.outputs.cache-hit != 'true'
         uses: ./phenix/.github/actions/e2e-setup
         with:
           image-builder: 'true'
           kali-keyring: ${{ startsWith(matrix.image, 'kali') }}
 
       - name: Free disk space for the build
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.released.outputs.pulled != 'true' && steps.cache.outputs.cache-hit != 'true'
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup || true
           df -h / /mnt
 
       - name: Build ${{ matrix.image }} with the images Makefile
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.released.outputs.pulled != 'true' && steps.cache.outputs.cache-hit != 'true'
         working-directory: images
         env:
           IMAGE: ${{ matrix.image }}
@@ -144,17 +185,28 @@ jobs:
           qemu-img info "../e2e-images/$IMAGE.qc2"
 
       - name: Save the image
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: steps.released.outputs.pulled != 'true' && steps.cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: e2e-images/${{ matrix.image }}.qc2
           key: ${{ steps.key.outputs.key }}
 
+      - name: Record where the image came from
+        if: steps.released.outputs.pulled != 'true'
+        env:
+          IMAGE: ${{ matrix.image }}
+          CACHED: ${{ steps.cache.outputs.cache-hit == 'true' }}
+        run: |
+          printf '{"source": "built", "ref": "%s@%s", "cached": %s}\n' \
+            "$IMAGES_REPOSITORY" "$(git -C images rev-parse --short HEAD)" "$CACHED" > "e2e-images/$IMAGE.source.json"
+
       - name: Hand the image to the topology jobs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: topo-image-${{ matrix.image }}
-          path: e2e-images/${{ matrix.image }}.qc2
+          path: |
+            e2e-images/${{ matrix.image }}.qc2
+            e2e-images/${{ matrix.image }}.source.json
           compression-level: 0
           retention-days: 3
 
@@ -252,9 +304,23 @@ jobs:
           STAGE: ${{ toJSON(matrix.topology.stage) }}
         run: |
           set -euo pipefail
-          for f in e2e-images/*.qc2; do
+          for f in e2e-images/*.qc2 e2e-images/*.source.json; do
             [ -e "$f" ] || continue
             sudo mv "$f" /phenix/images/
+          done
+          # A released image carries the miniccc its release job copied out of
+          # a minimega container; give it the static one this job's minimega
+          # built, as the built images have. VyOS keeps its own, which lives in
+          # the image's squashfs where inject-miniexe cannot reach.
+          for src in /phenix/images/*.source.json; do
+            [ -e "$src" ] || continue
+            img=$(basename "$src" .source.json)
+            grep -q '"source": "released"' "$src" && [ "$img" != vyos ] || continue
+            exe=/usr/local/bin/miniccc
+            # minirouter brings its miniccc dependency with it.
+            [ "$img" = minirouter ] && exe=/usr/local/bin/minirouter
+            sudo phenix --store.endpoint bolt:///etc/phenix/store.bdb image inject-miniexe "$exe" "/phenix/images/$img.qc2"
+            sudo python3 -c 'import json, sys; p, exe = sys.argv[1:]; d = json.load(open(p)); d["injected"] = exe; json.dump(d, open(p, "w"))' "$src" "$(basename "$exe")"
           done
           ls -lh /phenix/images
           # The scenarios name their files under /phenix/topologies/<name>.

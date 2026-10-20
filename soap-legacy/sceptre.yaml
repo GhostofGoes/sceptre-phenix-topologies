@@ -3,11 +3,11 @@ kind: Scenario
 metadata:
   name: soap-sceptre
   annotations:
-    topology: soap
+    topology: soap-legacy
 spec:
   apps:
     - name: sceptre
-      assetDir: /phenix/topologies/soap
+      assetDir: /phenix/topologies/soap-legacy
       hosts:
       - hostname: ignition
         metadata:
@@ -15,7 +15,7 @@ spec:
           - ignition
       - hostname: provider
         metadata:
-          case: /phenix/topologies/soap/injects/case300.py
+          case: /phenix/topologies/soap-legacy/injects/case300.py
           labels:
           - elk
           publish_endpoint: udp://*;239.0.0.1:40000

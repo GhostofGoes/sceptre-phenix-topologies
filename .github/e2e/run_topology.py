@@ -261,6 +261,12 @@ def attempt(run, label, fixes, patches=()):
     if lost:
         a.stage("prepare", False, f"{', '.join(lost)}, built by this workflow, did not reach the job; see its Image job")
         return a.finish("harness error: image missing")
+    origins = [json.loads((IMAGES / f"{i}.source.json").read_text()) for i in cfg.get("images") or []
+               if (IMAGES / f"{i}.source.json").exists()]
+    if origins:
+        a.note("adaptations", "images: " + "; ".join(
+            f"{x['ref']} ({x['digest'][:19]})" + (f" with this job's {x['injected']}" if x.get("injected") else "")
+            if x["source"] == "released" else f"built from {x['ref']}" for x in origins))
     failed_apps = APPS_FAILED.read_text().split() if APPS_FAILED.exists() else []
     if failed_apps and not patches:
         a.stage("prepare", False, f"the apps this repository ships did not install: {', '.join(failed_apps)}")

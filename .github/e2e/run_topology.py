@@ -18,6 +18,8 @@ stages and stops at the first that fails:
             unless its disk does not exist (an image no recipe builds)
   c2        every booted guest whose image carries miniccc registers with C2
   steady    the VMs are still running a minute later
+  checks    the per-node checks the topology lists pass, run in the guests
+            over C2 (for example that a service the topology needs is up)
   stop      phenix experiment stop
 
 When the committed experiment cannot be created and the topology lists fixes
@@ -29,6 +31,7 @@ the attempt as "cancelled", and a fault in the harness itself as "harness
 error" with its traceback.
 """
 
+import base64
 import json
 import os
 import re
@@ -72,8 +75,8 @@ def phenix_json(*args, timeout=120):
     return json.loads(p.stdout) if p.returncode == 0 else {}
 
 
-def mm(command, ns=None):
-    """Run one minimega command over its socket and return (rows as dicts, errors)."""
+def mm_resp(command, ns=None):
+    """Run one minimega command over its socket and return its responses."""
     if ns:
         command = f'namespace "{ns}" {command}'
     s = socket.socket(socket.AF_UNIX)
@@ -81,7 +84,7 @@ def mm(command, ns=None):
     s.connect(MM_SOCKET)
     s.sendall(json.dumps({"Command": command}).encode())
     dec = json.JSONDecoder()
-    buf, rows, errs, done = "", [], [], False
+    buf, resps, done = "", [], False
     while not done:
         chunk = s.recv(65536)
         if not chunk:
@@ -95,16 +98,57 @@ def mm(command, ns=None):
             buf = buf.lstrip()[end:]
             if obj.get("Status"):
                 continue
-            for r in obj.get("Resp") or []:
-                if r.get("Error"):
-                    errs.append(r["Error"])
-                hdr = r.get("Header") or []
-                rows += [dict(zip(hdr, row)) for row in r.get("Tabular") or []]
+            resps += obj.get("Resp") or []
             if not obj.get("More"):
                 done = True
                 break
     s.close()
+    return resps
+
+
+def mm(command, ns=None):
+    """Run one minimega command and return (rows as dicts, errors)."""
+    rows, errs = [], []
+    for r in mm_resp(command, ns):
+        if r.get("Error"):
+            errs.append(r["Error"])
+        hdr = r.get("Header") or []
+        rows += [dict(zip(hdr, row)) for row in r.get("Tabular") or []]
     return rows, errs
+
+
+def guest_run(exp, vm, script, wait):
+    """Run script with bash in guest vm over C2 and return its stdout, or None
+    when no answer comes within wait seconds. minimega rewrites $names, URLs
+    and # in command arguments, so the script travels base64-encoded, as
+    phenix's E2E suite sends it, between a start and an end marker: a reused
+    command ID can leave an older response in the same place."""
+    rows, _ = mm(".columns name,uuid vm info", exp)
+    uuid = next((r.get("uuid", "").lower() for r in rows if r.get("name") == vm), "")
+    if not uuid:
+        return None
+    start, end = f"@@start-{time.time_ns()}@@", f"@@end-{time.time_ns()}@@"
+    enc = base64.b64encode(f"echo {start}\n{script}\necho {end}".encode()).decode()
+    mm(f"cc filter uuid={uuid}", exp)
+    resps = mm_resp(f"cc exec bash -c 'eval \"$(echo {enc} | base64 -d)\"'", exp)
+    mm("clear cc filter", exp)
+    cid = next((r["Response"].strip() for r in resps if (r.get("Response") or "").strip()), "")
+    if not cid.isdigit():
+        return None
+    base = IMAGES / exp / "miniccc_responses" / cid
+    t0 = time.time()
+    try:
+        while time.time() - t0 < wait:
+            for d in base.glob("*") if base.is_dir() else []:
+                out = d / "stdout"
+                if d.name.lower() == uuid and out.exists():
+                    text = out.read_text(errors="replace")
+                    if text.startswith(start) and end in text:
+                        return text[len(start):].split(end)[0].strip()
+            time.sleep(3)
+        return None
+    finally:
+        mm(f"cc delete command {cid}", exp)
 
 
 def snapshot_sources(base_dir):
@@ -435,6 +479,23 @@ def attempt(run, label, fixes, patches=()):
     up = want | {h for h in extra if ran[h] == "RUNNING"}
     dropped = sorted(h for h in up if state.get(h) != "RUNNING")
     a.stage("steady", not dropped, "all still running" if not dropped else f"not running: {', '.join(dropped)}", 60)
+
+    # --- checks
+    if cfg.get("checks"):
+        t0, results = time.time(), []
+        for c in cfg["checks"]:
+            hosts = sorted(i["hostname"] for _, i in booted if re.search(c["nodes"], i["hostname"]))
+            if not hosts:
+                results.append({"check": c["name"], "node": c["nodes"], "want": c["want"], "got": "(no booted node matches)", "ok": False})
+            for h in hosts:
+                got = guest_run(exp, h, c["script"], int(c.get("wait", 240))) if h in seen else None
+                got = got if got is not None else "(not on C2)" if h not in seen else "(no answer)"
+                results.append({"check": c["name"], "node": h, "want": c["want"], "got": got, "ok": got == c["want"]})
+        a.rec["checks"] = results
+        bad = [r for r in results if not r["ok"]]
+        a.stage("checks", not bad, f"{len(results) - len(bad)}/{len(results)} passed"
+                + ("; " + "; ".join(f"{r['check']} on {r['node']}: got {r['got']!r}" for r in bad) if bad else ""),
+                round(time.time() - t0))
     a.rec["app_status"] = (phenix_json("config", "get", f"experiment/{exp}").get("status") or {}).get("apps")
     soh = (a.rec.get("app_status") or {}).get("soh") or {}
     # soh stores a reachability check under both of its hosts; count each once.

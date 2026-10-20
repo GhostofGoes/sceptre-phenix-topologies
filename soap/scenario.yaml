@@ -116,9 +116,9 @@ spec:
                     - vm_stats.jsonl
                   processors:
                     - copy_fields:
-                      fields:
-                        - from: json
-                          to: scorch.vmstats
+                        fields:
+                          - from: json
+                            to: scorch.vmstats
                     - drop_fields:
                         fields:
                           - json
@@ -139,9 +139,9 @@ spec:
                     - host_stats.jsonl
                   processors:
                     - copy_fields:
-                      fields:
-                        - from: json
-                          to: scorch.hoststats
+                        fields:
+                          - from: json
+                            to: scorch.hoststats
                     - drop_fields:
                         fields:
                           - json

@@ -1,0 +1,86 @@
+{
+  "helloworld": {
+    "experiment": "helloworld",
+    "topology": "helloworld/helloworld.yaml",
+    "images": ["e2e"],
+    "aliases": {"ubuntu.qc2": "e2e.qc2"},
+    "apps": false
+  },
+  "waterway": {
+    "experiment": "waterway",
+    "topology": "waterway/waterway-topology.yaml",
+    "scenario": "waterway/waterway-scenario.yaml",
+    "images": ["bennu", "minirouter"],
+    "apps": true
+  },
+  "soap": {
+    "experiment": "soap",
+    "topology": "soap/topology.yaml",
+    "scenario": "soap/scenario.yaml",
+    "images": ["bennu", "ubuntu-soaptools"],
+    "apps": true
+  },
+  "soap-legacy": {
+    "experiment": "soap-legacy",
+    "topology": "soap-legacy/soap-topology.yaml",
+    "scenario": "soap-legacy/soap-scenario.yaml",
+    "extra": ["soap-legacy/sceptre.yaml", "soap-legacy/soh.yaml"],
+    "images": ["bennu"],
+    "apps": true,
+    "fixes": {"controlthings_elk": "controlthings-elk"}
+  },
+  "wind-turbine": {
+    "experiment": "wind-turbine",
+    "topology": "renewables/wind/turbine/phenix-configs/topology.yml",
+    "scenario": "renewables/wind/turbine/phenix-configs/scenario.yml",
+    "images": ["ot-sim"],
+    "apps": true,
+    "lfs": "renewables/wind/turbine/phenix-injects/**",
+    "stage": [["renewables/wind/turbine/phenix-injects", "/phenix/injects/wind-turbine"]]
+  },
+  "wind-plant-base": {
+    "experiment": "wind-plant-base",
+    "topology": "renewables/wind/plant/phenix-configs/base/topology.yml",
+    "scenario": "renewables/wind/plant/phenix-configs/base/scenario.yml",
+    "images": ["vyos", "kali"],
+    "apps": true,
+    "c2_os": ["linux", "vyatta", "vyos"],
+    "lfs": "renewables/wind/plant/phenix-injects/**",
+    "stage": [["renewables/wind/plant/phenix-injects", "/phenix/injects/wind-plant"]]
+  },
+  "wind-plant-hids": {
+    "experiment": "wind-plant-hids",
+    "topology": "renewables/wind/plant/phenix-configs/hids/topology.yml",
+    "scenario": "renewables/wind/plant/phenix-configs/hids/scenario.yml",
+    "extra": ["renewables/wind/plant/phenix-configs/base/scenario.yml"],
+    "images": ["vyos", "kali"],
+    "apps": true,
+    "c2_os": ["linux", "vyatta", "vyos"],
+    "lfs": "renewables/wind/plant/phenix-injects/**",
+    "stage": [["renewables/wind/plant/phenix-injects", "/phenix/injects/wind-plant"]]
+  },
+  "wind-plant-nids": {
+    "experiment": "wind-plant-nids",
+    "topology": "renewables/wind/plant/phenix-configs/nids/topology.yml",
+    "scenario": "renewables/wind/plant/phenix-configs/nids/scenario.yml",
+    "extra": ["renewables/wind/plant/phenix-configs/base/scenario.yml"],
+    "images": ["vyos", "kali"],
+    "apps": true,
+    "c2_os": ["linux", "vyatta", "vyos"],
+    "lfs": "renewables/wind/plant/phenix-injects/**",
+    "stage": [["renewables/wind/plant/phenix-injects", "/phenix/injects/wind-plant"]]
+  },
+  "wind-plant-soar": {
+    "experiment": "wind-plant-soar",
+    "topology": "renewables/wind/plant/phenix-configs/soar/topology.yml",
+    "scenario": "renewables/wind/plant/phenix-configs/soar/scenario.yml",
+    "extra": ["renewables/wind/plant/phenix-configs/base/scenario.yml", "renewables/wind/plant/phenix-configs/nids/scenario.yml"],
+    "images": ["vyos", "kali"],
+    "apps": true,
+    "extra_apps": ["renewables/wind/plant/apps"],
+    "patches": ["patches/windy-appbase.patch"],
+    "c2_os": ["linux", "vyatta", "vyos"],
+    "lfs": "renewables/wind/plant/phenix-injects/**",
+    "stage": [["renewables/wind/plant/phenix-injects", "/phenix/injects/wind-plant"]]
+  }
+}

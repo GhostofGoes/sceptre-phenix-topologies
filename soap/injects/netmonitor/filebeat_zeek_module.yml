@@ -7,7 +7,7 @@
     var.paths: ["/opt/zeek/logs/current/capture_loss.log"]
   connection:
     enabled: true
-    var.paths: ["/opt/zeek/logs/current/connection.log"]
+    var.paths: ["/opt/zeek/logs/current/conn.log"]
   dce_rpc:
     enabled: true
     var.paths: ["/opt/zeek/logs/current/dce_rpc.log"]
@@ -58,7 +58,7 @@
     var.paths: ["/opt/zeek/logs/current/ntlm.log"]
   ocsp:
     enabled: true
-    var.paths: ["/opt/zeek/logs/current/oscp.log"]
+    var.paths: ["/opt/zeek/logs/current/ocsp.log"]
   pe:
     enabled: true
     var.paths: ["/opt/zeek/logs/current/pe.log"]

@@ -15,7 +15,8 @@ stages and stops at the first that fails:
             scale the booted guests' memory to memory_budget, keeping each
             node memory_floor names at its floor; then set the soh metadata
             soh_metadata names, and drop soh custom reachability tests whose
-            source or target stays off
+            source or target stays off and the custom tests soh_needs names
+            when a node they need stays off
   configs   phenix config create
   create    phenix experiment create
   start     phenix experiment start (configure, pre-start, launch, post-start)
@@ -325,6 +326,17 @@ def fit_soh(a, docs, scen):
             a.note("adaptations", f"soh: {len(tests) - len(keep)} of {len(tests)} custom reachability tests "
                    "dropped, their source or target stays off: " + ", ".join(
                        f"{t.get('src')} to {t.get('dst')} {t.get('proto')}/{t.get('port')}" for t in tests if t not in keep))
+        # A booted node's custom test can need nodes that stay off as well (an
+        # IPsec peer, the routers a route comes through); soh_needs names them.
+        custom, gone = md.get("hostCustomTests") or {}, []
+        for host, needs in (a.run.cfg.get("soh_needs") or {}).items():
+            for name, pat in needs.items():
+                need = sorted(h for h in off if re.search(pat, h))
+                if need and host not in off and any(t.get("name") == name for t in custom.get(host) or []):
+                    custom[host] = [t for t in custom[host] if t.get("name") != name]
+                    gone.append(f"{host} {name} (needs {', '.join(need)})")
+        if gone:
+            a.note("adaptations", f"soh: {len(gone)} custom tests dropped, nodes they need stay off: {'; '.join(gone)}")
 
 
 def attempt(run, label, fixes, patches=()):
@@ -408,10 +420,12 @@ def attempt(run, label, fixes, patches=()):
             booted.append((n, info))
             mem_total += info["memory"]
         a.rec["nodes"].append(info)
-    kept = [i["hostname"] for i in a.rec["nodes"] if i["why_off"].startswith("kept off")]
-    if kept:
-        a.note("adaptations", f"{len(kept)} nodes kept off for the runner: {', '.join(kept)} "
-               f"({next(i['why_off'] for i in a.rec['nodes'] if i['why_off'].startswith('kept off'))[10:]})")
+    kept = {}
+    for i in a.rec["nodes"]:
+        if i["why_off"].startswith("kept off: "):
+            kept.setdefault(i["why_off"][10:], []).append(i["hostname"])
+    for why, hosts in kept.items():
+        a.note("adaptations", f"{len(hosts)} nodes kept off for the runner: {', '.join(hosts)} ({why})")
     sized = [f"{i['hostname']}={i['memory_set']} MB" for i in a.rec["nodes"] if i.get("memory_set") and i["boot"]]
     if sized:
         a.note("adaptations", f"memory set before scaling: {', '.join(sized)}")

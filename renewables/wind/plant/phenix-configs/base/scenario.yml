@@ -25,16 +25,16 @@ spec:
         args: -logfile /var/log/protonuke.log -level info -http -serve
     - hostname: ws-ot
       metadata:
-        args: -logfile /var/log/protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
+        args: -logfile C:\minimega\protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
     - hostname: ws-owop
       metadata:
-        args: -logfile /var/log/protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
+        args: -logfile C:\minimega\protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
     - hostname: ws-grid
       metadata:
-        args: -logfile /var/log/protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
+        args: -logfile C:\minimega\protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
     - hostname: ws-oem
       metadata:
-        args: -logfile /var/log/protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
+        args: -logfile C:\minimega\protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
     - hostname: nuke-pns
       metadata:
         args: -logfile /var/log/protonuke.log -level info -http -https -smtp -serve
@@ -50,7 +50,8 @@ spec:
       metadata:
         ipsec:
         - local: 10.0.10.2
-          peer: 10.0.40.2
+          remote: 10.0.40.2
+          peer: rtr-site
           tunnels:
           - local: 192.168.10.0/24
             remote: 192.168.100.0/24
@@ -88,7 +89,8 @@ spec:
       metadata:
         ipsec:
         - local: 10.0.20.2
-          peer: 10.0.40.2
+          remote: 10.0.40.2
+          peer: rtr-site
           tunnels:
           - local: 192.168.20.0/24
             remote: 192.168.100.0/24
@@ -126,7 +128,8 @@ spec:
       metadata:
         ipsec:
         - local: 10.0.30.2
-          peer: 10.0.40.2
+          remote: 10.0.40.2
+          peer: rtr-site
           tunnels:
           - local: 192.168.30.0/24
             remote: 192.168.100.0/24
@@ -164,17 +167,20 @@ spec:
       metadata:
         ipsec:
         - local: 10.0.40.2
-          peer: 10.0.10.2
+          remote: 10.0.10.2
+          peer: rtr-owop
           tunnels:
           - local: 192.168.100.0/24
             remote: 192.168.10.0/24
         - local: 10.0.40.2
-          peer: 10.0.20.2
+          remote: 10.0.20.2
+          peer: rtr-grid
           tunnels:
           - local: 192.168.100.0/24
             remote: 192.168.20.0/24
         - local: 10.0.40.2
-          peer: 10.0.30.2
+          remote: 10.0.30.2
+          peer: rtr-oem
           tunnels:
           - local: 192.168.100.0/24
             remote: 192.168.30.0/24
@@ -209,6 +215,14 @@ spec:
               destination:
                 address: 192.168.100.100
               id: 105
+              protocol: all
+            - action: accept
+              description: HIDS manager in
+              source:
+                address: 192.168.60.55
+              destination:
+                address: 192.168.100.100
+              id: 106
               protocol: all
             - action: accept
               description: owop in
@@ -255,6 +269,14 @@ spec:
               destination:
                 address: 10.222.222.0/24
             - action: accept
+              description: HIDS agent out
+              id: 146
+              protocol: all
+              source:
+                address: 192.168.100.100
+              destination:
+                address: 192.168.60.55
+            - action: accept
               description: site to owop
               destination:
                 address: 192.168.10.10
@@ -299,6 +321,14 @@ spec:
               source:
                 address: 192.168.100.100
             - action: accept
+              description: HIDS agent in
+              destination:
+                address: 192.168.60.55
+              id: 206
+              protocol: all
+              source:
+                address: 192.168.100.100
+            - action: accept
               description: guard in
               destination:
                 address: 192.168.60.100
@@ -325,6 +355,14 @@ spec:
               protocol: all
               source:
                 address: 10.222.222.0/24
+            - action: accept
+              description: HIDS manager out
+              destination:
+                address: 192.168.100.100
+              id: 226
+              protocol: all
+              source:
+                address: 192.168.60.55
             - action: accept
               description: guard out
               id: 230

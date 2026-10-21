@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 REQUIRES = [
-    'phenix-apps @ git+https://github.com/sandia-minimega/phenix-apps.git@main#egg=phenix-apps&subdirectory=src/python',
+    'phenix-apps @ git+https://github.com/sandialabs/sceptre-phenix-apps.git@main#egg=phenix-apps&subdirectory=src/python',
     'minimega',
 ]
 
@@ -22,7 +22,7 @@ setup(
     classifiers          = [
         'Development Status :: 4 - Beta',
         'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.12',
     ],
     entry_points         = ENTRIES,
     packages             = find_packages(),
@@ -30,7 +30,7 @@ setup(
     include_package_data = True,
 
     package_data = {
-        # Include mako template files found in all packages.
-        "": ["*.mako"]
+        # Include the mako templates, which live in a templates directory.
+        "windy": ["templates/*.mako"]
     }
 )

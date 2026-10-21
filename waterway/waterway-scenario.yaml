@@ -83,3 +83,184 @@ spec:
           logic: uppergate.open = 1*((locksensor.direction == 1) && (locksensor.active == 1) && (lock.height >= upperwater.height - 0.1) && (lock.height <= upperwater.height + 0.1)) + 0*((uppersensor.direction == 1) && (uppersensor.active == 1)) + 1*((uppersensor.direction == -1) && (uppersensor.active == 1) && (lock.height >= upperwater.height - 0.1) && (lock.height <= upperwater.height + 0.1)) + 0*((locksensor.direction == -1) && (locksensor.active == 1) && (lock.height >= upperwater.height - 0.1) && (lock.height <= upperwater.height + 0.1)); uppervalve.open = 1*((locksensor.direction == 1) && (locksensor.active == 1) && (lock.height < upperwater.height)) + 0*((uppersensor.direction == 1) && (uppersensor.active == 1)) + 1*((uppersensor.direction == -1) && (uppersensor.active == 1) && (lock.height < upperwater.height)) + 0*((locksensor.direction == -1) && (locksensor.active == 1) && (lock.height >= upperwater.height - 0.1) && (lock.height <= upperwater.height + 0.1))
           provider: simulink-provider
           type: fd-server
+    - name: soh
+      runPeriodically: 10m # only for starts from the web UI or REST API, or with --honor-run-periodically
+      metadata:
+        # CI guests reach C2 80-160 s after launch, and their startup scripts end about 25 s later.
+        startupDelay: 4m
+        # The C2 wait, the network check window and each command's timeout; covers a Windows rename and reboot.
+        c2Timeout: 10m
+        exitOnError: false
+        testCustomReachability:
+        # field devices to the provider's server endpoint; a plain IP, as the provider is on MGMT only
+        - src: rtu-1
+          dst: 172.16.1.2
+          proto: tcp
+          port: 5555
+          wait: 10s
+        - src: rtu-2
+          dst: 172.16.1.2
+          proto: tcp
+          port: 5555
+          wait: 10s
+        # the Modbus TCP servers TOP Server on opc polls, dialed from the router's ICS address
+        - src: router
+          dst: rtu-1|IF0
+          proto: tcp
+          port: 502
+          wait: 10s
+        - src: router
+          dst: rtu-2|IF0
+          proto: tcp
+          port: 502
+          wait: 10s
+        hostFiles:
+          simulink-provider:
+          - /etc/phenix/startup/sceptre-start.sh
+          - /etc/sceptre/publishPoints.txt
+          - /etc/sceptre/main.tmpl
+          - /etc/sceptre/groundTruth.txt # written by the running solver
+          rtu-1:
+          - /etc/phenix/startup/sceptre-start.sh
+          - /etc/sceptre/config.xml
+          - /etc/sceptre/watcher.ini # written by sceptre-start.sh
+          rtu-2:
+          - /etc/phenix/startup/sceptre-start.sh
+          - /etc/sceptre/config.xml
+          - /etc/sceptre/watcher.ini
+          # minicli reads a backslash as an escape, so Windows paths double it
+          opc:
+          - 'C:\\Users\\wwuser\\Documents\\Configs\\Inject\\opc.xml'
+          - 'C:\\sceptre\\startup\\30-topserver.ps1'
+          historian:
+          - 'C:\\Users\\wwuser\\Documents\\Configs\\Inject\\historian_config.txt'
+          - 'C:\\sceptre\\startup\\30-historian.ps1'
+          hmi:
+          - 'C:\\sceptre\\startup\\30-hmi.ps1'
+          scada-server:
+          - 'C:\\Users\\wwuser\\Documents\\Configs\\Inject\\myscada.mep'
+          - 'C:\\myscada.exe'
+          - 'C:\\sceptre\\startup\\30-scada.ps1'
+        hostFilesAbsent:
+          # firmware that bennu-watcherd would load in place of the shipped field device
+          rtu-1:
+          - /home/sceptre/bennu-field-deviced.firmware
+          rtu-2:
+          - /home/sceptre/bennu-field-deviced.firmware
+        hostServices:
+          simulink-provider:
+          - ssh
+          - collectd
+          - ntp
+          - phenix # active once every startup script has finished
+          rtu-1:
+          - ssh
+          - vsftpd
+          - collectd
+          - ntp
+          - phenix
+          rtu-2:
+          - ssh
+          - vsftpd
+          - collectd
+          - ntp
+          - phenix
+          router:
+          - minirouter
+          - phenix
+          opc:
+          - TOPServerV5
+          historian:
+          - MSSQLSERVER
+        hostProcesses:
+          simulink-provider:
+          - bennu-simulink-provider
+          - simulinksolver
+          - simulinkgt
+          rtu-1:
+          - bennu-watcherd
+          - ^/usr/bin/bennu-field-deviced # the watcher's own command line names bennu-field-deviced too
+          rtu-2:
+          - bennu-watcherd
+          - ^/usr/bin/bennu-field-deviced
+          router:
+          - ^bird.-f # minirouter's OSPF daemon; a bare 'bird' also matches bird6
+          opc:
+          - server_runtime # the TOP Server runtime that historian_config.txt names
+        hostListeners:
+          simulink-provider:
+          - 172.16.1.2:5555
+          - :8080
+          - 172.16.1.2:22
+          rtu-1:
+          - 10.1.1.101:502
+          - :40000
+          - 10.1.1.101:22
+          - 172.16.1.101:22
+          - :21
+          rtu-2:
+          - 10.1.1.102:502
+          - :40000
+          - 10.1.1.102:22
+          - 172.16.1.102:22
+          - :21
+        # Custom tests run once, so each one waits for its service inside the script.
+        hostCustomTests:
+          simulink-provider:
+          - name: ground-truth-page
+            testScript: |
+              for i in $(seq 30); do
+                curl -fsS http://127.0.0.1:8080/ && break
+                sleep 2
+              done
+            testStdout: GROUND TRUTH
+          rtu-1:
+          - name: provider-multicast
+            testScript: timeout 30 tcpdump -n -l -c 1 -i any udp and dst host 239.0.0.1 and dst port 40000
+            testStdout: '> 239.0.0.1.40000:'
+          - name: provider-connection
+            testScript: |
+              for i in $(seq 30); do
+                ss -Htn state established '( dst 172.16.1.2 and dport = :5555 )' | grep -q . && break
+                sleep 2
+              done
+              ss -Htn state established '( dst 172.16.1.2 and dport = :5555 )'
+            testStdout: 172.16.1.2:5555
+          rtu-2:
+          - name: provider-multicast
+            testScript: timeout 30 tcpdump -n -l -c 1 -i any udp and dst host 239.0.0.1 and dst port 40000
+            testStdout: '> 239.0.0.1.40000:'
+          - name: provider-connection
+            testScript: |
+              for i in $(seq 30); do
+                ss -Htn state established '( dst 172.16.1.2 and dport = :5555 )' | grep -q . && break
+                sleep 2
+              done
+              ss -Htn state established '( dst 172.16.1.2 and dport = :5555 )'
+            testStdout: 172.16.1.2:5555
+          router:
+          - name: ip-forwarding
+            testScript: cat /proc/sys/net/ipv4/ip_forward
+            testStdout: '1'
+          # Modbus TCP from the SCADA VLAN to the field devices, through the router
+          opc:
+          - name: modbus-rtu-1
+            testScript: |
+              $ok = $false
+              for ($i = 0; $i -lt 10 -and -not $ok; $i++) {
+                $c = New-Object Net.Sockets.TcpClient
+                try { $c.Connect('10.1.1.101', 502); $ok = $c.Connected } catch { Start-Sleep -Seconds 3 }
+                $c.Close()
+              }
+              if ($ok) { 'connected' }
+            testStdout: connected
+          - name: modbus-rtu-2
+            testScript: |
+              $ok = $false
+              for ($i = 0; $i -lt 10 -and -not $ok; $i++) {
+                $c = New-Object Net.Sockets.TcpClient
+                try { $c.Connect('10.1.1.102', 502); $ok = $c.Connected } catch { Start-Sleep -Seconds 3 }
+                $c.Close()
+              }
+              if ($ok) { 'connected' }
+            testStdout: connected

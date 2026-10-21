@@ -236,7 +236,7 @@
     "lfs": "renewables/wind/plant/phenix-injects/**",
     "stage": [["renewables/wind/plant/phenix-injects", "/phenix/injects/wind-plant"]],
     "keep_off": {"^wtg-0[1-5]$": "protonuke servers whose only clients are the Windows workstations, which stay off"},
-    "memory_budget": 14336,
+    "memory_budget": 14848,
     "memory_floor": {"^rtr-": 768, "^wazuh-manager$": 3072, "^ids$": 1536},
     "c2_timeout": 1800,
     "memory": {"^soar$": 512},

@@ -388,23 +388,29 @@ def attempt(run, label, fixes, patches=()):
         return a.finish("nothing to boot")
     budget = int(cfg.get("memory_budget", 12288))
     if mem_total > budget:
-        # A node with a floor gets its proportional share but at least the
-        # floor (never more than it asked for); the others share what is left
-        # in proportion, down to 512 MB.
-        floors, fixed = {}, {}
+        # Every guest first gets its minimum: 512 MB, or the floor
+        # memory_floor names, but never more than it asked for. The rest of
+        # the budget is shared in proportion to what each asked above that
+        # minimum, rounded down, so the total never exceeds the budget.
+        floors, lows = {}, []
         for _, info in booted:
             f = max([int(mb) for pat, mb in (cfg.get("memory_floor") or {}).items()
                      if re.search(pat, info["hostname"] or "")] or [0])
             if f:
                 floors[info["hostname"]] = f
-                fixed[info["hostname"]] = min(info["memory"], max(f, int(info["memory"] * budget / mem_total) // 256 * 256))
-        rest_total = sum(i["memory"] for _, i in booted if i["hostname"] not in fixed) or 1
-        rest_budget = max(budget - sum(fixed.values()), 0)
-        for n, info in booted:
-            share = fixed.get(info["hostname"], int(info["memory"] * min(1, rest_budget / rest_total)) // 256 * 256)
-            info["memory_ci"] = max(512, min(info["memory"], share))
+            lows.append(min(info["memory"], max(512, f)))
+        spare = budget - sum(lows)
+        if spare < 0:
+            a.stage("prepare", False, f"the booted guests need at least {sum(lows)} MB with their floors; "
+                    f"memory_budget is {budget} MB")
+            return a.finish("harness error: memory budget too small")
+        above = mem_total - sum(lows)  # > spare >= 0, as mem_total > budget
+        for (n, info), low in zip(booted, lows):
+            info["memory_ci"] = low + int((info["memory"] - low) * spare / above) // 256 * 256
             n["hardware"]["memory"] = info["memory_ci"]
-        a.note("adaptations", f"booted guests ask for {mem_total} MB; scaled to {budget} MB for the runner"
+        scaled = sum(i["memory_ci"] for _, i in booted)
+        a.note("adaptations", f"booted guests ask for {mem_total} MB; scaled to {scaled} MB "
+               f"(memory_budget {budget} MB) for the runner"
                + (f", keeping floors {', '.join(f'{h}={mb} MB' for h, mb in floors.items())}" if floors else ""))
     big = [i for _, i in booted if i["vcpus"] > 2]
     for n, info in booted:

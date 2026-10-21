@@ -25,16 +25,16 @@ spec:
         args: -logfile /var/log/protonuke.log -level info -http -serve
     - hostname: ws-ot
       metadata:
-        args: -logfile /var/log/protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
+        args: -logfile C:\minimega\protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
     - hostname: ws-owop
       metadata:
-        args: -logfile /var/log/protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
+        args: -logfile C:\minimega\protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
     - hostname: ws-grid
       metadata:
-        args: -logfile /var/log/protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
+        args: -logfile C:\minimega\protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
     - hostname: ws-oem
       metadata:
-        args: -logfile /var/log/protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
+        args: -logfile C:\minimega\protonuke.log -level info -http 192.168.100.1,192.168.100.2,192.168.100.3,192.168.100.4,192.168.100.5
     - hostname: nuke-pns
       metadata:
         args: -logfile /var/log/protonuke.log -level info -http -https -smtp -serve
@@ -50,7 +50,8 @@ spec:
       metadata:
         ipsec:
         - local: 10.0.10.2
-          peer: 10.0.40.2
+          remote: 10.0.40.2
+          peer: rtr-site
           tunnels:
           - local: 192.168.10.0/24
             remote: 192.168.100.0/24
@@ -88,7 +89,8 @@ spec:
       metadata:
         ipsec:
         - local: 10.0.20.2
-          peer: 10.0.40.2
+          remote: 10.0.40.2
+          peer: rtr-site
           tunnels:
           - local: 192.168.20.0/24
             remote: 192.168.100.0/24
@@ -126,7 +128,8 @@ spec:
       metadata:
         ipsec:
         - local: 10.0.30.2
-          peer: 10.0.40.2
+          remote: 10.0.40.2
+          peer: rtr-site
           tunnels:
           - local: 192.168.30.0/24
             remote: 192.168.100.0/24
@@ -164,17 +167,20 @@ spec:
       metadata:
         ipsec:
         - local: 10.0.40.2
-          peer: 10.0.10.2
+          remote: 10.0.10.2
+          peer: rtr-owop
           tunnels:
           - local: 192.168.100.0/24
             remote: 192.168.10.0/24
         - local: 10.0.40.2
-          peer: 10.0.20.2
+          remote: 10.0.20.2
+          peer: rtr-grid
           tunnels:
           - local: 192.168.100.0/24
             remote: 192.168.20.0/24
         - local: 10.0.40.2
-          peer: 10.0.30.2
+          remote: 10.0.30.2
+          peer: rtr-oem
           tunnels:
           - local: 192.168.100.0/24
             remote: 192.168.30.0/24

@@ -325,7 +325,7 @@ spec:
       hostname: wtg-02
     hardware:
       drives:
-      - image: miniccc.qc2
+      - image: protonuke.qc2
       os_type: linux
     network:
       interfaces:

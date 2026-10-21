@@ -15,8 +15,9 @@ stages and stops at the first that fails:
             scale the booted guests' memory to memory_budget, keeping each
             node memory_floor names at its floor; then set the soh metadata
             soh_metadata names, and drop soh custom reachability tests whose
-            source or target stays off and the custom tests soh_needs names
-            when a node they need stays off
+            source or target stays off, the custom tests soh_needs names
+            when a node they need stays off, and its packet capture of nodes
+            that stay off
   configs   phenix config create
   create    phenix experiment create
   start     phenix experiment start (configure, pre-start, launch, post-start)
@@ -337,6 +338,14 @@ def fit_soh(a, docs, scen):
                     gone.append(f"{host} {name} (needs {', '.join(need)})")
         if gone:
             a.note("adaptations", f"soh: {len(gone)} custom tests dropped, nodes they need stay off: {'; '.join(gone)}")
+        # The phenix this job runs still launches a packet capture VM for a
+        # captured node that does not boot, and then fails the capture.
+        caps = (md.get("packetCapture") or {}).get("captureHosts") or {}
+        gone = sorted(h for h in caps if h in off)
+        for h in gone:
+            del caps[h]
+        if gone:
+            a.note("adaptations", f"soh: packet capture of {', '.join(gone)} dropped, they stay off")
 
 
 def attempt(run, label, fixes, patches=()):

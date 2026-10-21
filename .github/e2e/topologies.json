@@ -38,7 +38,7 @@
     "extra": ["soap-legacy/sceptre.yaml", "soap-legacy/soh.yaml"],
     "images": ["bennu", "elasticsearch", "packetbeat"],
     "apps": true,
-    "soh_metadata": {"startupDelay": "25m"},
+    "soh_metadata": {"startupDelay": "25m", "packetCapture": {"elasticServer": {"vcpus": 2}}},
     "checks": [
       {"name": "Elasticsearch 8.19.23 answers without credentials", "nodes": "^soh-elasticsearch-server$",
        "script": "timeout 300 sh -c 'until body=$(curl -fs --max-time 5 \"http://localhost:9200/?filter_path=version.number&pretty=false\"); do sleep 5; done; printf \"%s\\n\" \"$body\"' | sed -n 's/.*\"number\" *: *\"\\([^\"]*\\)\".*/\\1/p'",

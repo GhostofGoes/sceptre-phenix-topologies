@@ -33,7 +33,6 @@ spec:
       network:
         interfaces:
           - address: 10.117.4.70
-            gateway: 10.117.4.1
             mask: 24
             name: exp
             proto: static
@@ -62,7 +61,6 @@ spec:
       network:
         interfaces:
           - address: 10.117.4.101
-            gateway: 10.117.4.1
             mask: 24
             name: exp
             proto: static
@@ -86,7 +84,6 @@ spec:
       network:
         interfaces:
           - address: 10.117.4.102
-            gateway: 10.117.4.1
             mask: 24
             name: exp
             proto: static
@@ -110,7 +107,6 @@ spec:
       network:
         interfaces:
           - address: 10.117.4.103
-            gateway: 10.117.4.1
             mask: 24
             name: exp
             proto: static
@@ -134,7 +130,6 @@ spec:
       network:
         interfaces:
           - address: 10.117.4.104
-            gateway: 10.117.4.1
             mask: 24
             name: exp
             proto: static

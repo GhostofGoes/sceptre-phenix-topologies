@@ -218,3 +218,347 @@ spec:
                 - localhost:9200
             setup.dashboards.enabled: true
             setup.kibana.host: http://localhost:5601
+    - name: soh
+      # Run every check again on this period while the experiment runs. Only
+      # starts from the web UI or the REST API, or `phenix exp start
+      # --honor-run-periodically`, schedule it.
+      runPeriodically: 15m
+      metadata:
+        # In CI the guests register with miniccc 4.5 to 7.5 minutes after
+        # launch, and the sceptre start scripts start the field devices and
+        # the solver about 80 s after boot. The checks start at 3m and wait
+        # for each guest's C2 until 3m + 10m.
+        startupDelay: 3m
+        c2Timeout: 10m
+        exitOnError: false
+        # EXP and MGMT are flat segments with no router, so the paths the
+        # topology uses are tested below instead of pinging every address.
+        testReachability: "off"
+        testCustomReachability:
+          # attacker stands in for Ignition, which polls these DNP3
+          # outstations over EXP. The wait also holds the later checks until
+          # the field devices listen.
+          - src: attacker
+            dst: rtu-1|exp
+            proto: tcp
+            port: 20000
+            wait: 4m
+          - src: attacker
+            dst: rtu-2|exp
+            proto: tcp
+            port: 20000
+            wait: 4m
+          - src: attacker
+            dst: rtu-3|exp
+            proto: tcp
+            port: 20000
+            wait: 4m
+          - src: attacker
+            dst: rtu-4|exp
+            proto: tcp
+            port: 20000
+            wait: 4m
+          # siren's server-endpoint (injects/siren/siren.json) over MGMT. A
+          # plain IP, because soh resolves host|iface only for nodes with a
+          # non-MGMT interface.
+          - src: siren
+            dst: 172.16.1.2
+            proto: tcp
+            port: 5555
+            wait: 4m
+        hostProcesses:
+          power-provider:
+            - pybennu-power-solver
+          rtu-1:
+            # '.' matches the space before --c. A plain bennu-field-deviced
+            # also matches bennu-watcherd, whose --b argument names
+            # /home/sceptre/bennu-field-deviced.firmware.
+            - bennu-field-deviced.--c
+            - bennu-watcherd
+          rtu-2:
+            - bennu-field-deviced.--c
+            - bennu-watcherd
+          rtu-3:
+            - bennu-field-deviced.--c
+            - bennu-watcherd
+          rtu-4:
+            - bennu-field-deviced.--c
+            - bennu-watcherd
+          ignition:
+            - /usr/local/bin/ignition
+        hostListeners:
+          power-provider:
+            - 172.16.1.2:5555 # solver server-endpoint
+            - 172.16.1.2:22
+          rtu-1:
+            - 10.117.4.101:20000 # DNP3 outstation (injects/override)
+            - :40000 # provider multicast subscription
+            - :21 # vsftpd, the firmware upload path
+            - 10.117.4.101:22
+            - 172.16.1.4:22
+          rtu-2:
+            - 10.117.4.102:20000
+            - :40000
+            - :21
+            - 10.117.4.102:22
+            - 172.16.1.5:22
+          rtu-3:
+            - 10.117.4.103:20000
+            - :40000
+            - :21
+            - 10.117.4.103:22
+            - 172.16.1.6:22
+          rtu-4:
+            - 10.117.4.104:20000
+            - :40000
+            - :21
+            - 10.117.4.104:22
+            - 172.16.1.7:22
+          ignition:
+            - :22
+        hostServices:
+          # collectd: the sceptre app's elk label starts it (elk-start.sh).
+          power-provider:
+            - collectd
+          rtu-1:
+            - vsftpd
+            - collectd
+          rtu-2:
+            - vsftpd
+            - collectd
+          rtu-3:
+            - vsftpd
+            - collectd
+          rtu-4:
+            - vsftpd
+            - collectd
+          netmonitor:
+            - filebeat
+        hostFiles:
+          power-provider:
+            - /etc/sceptre/config.ini
+            - /etc/sceptre/case300.py
+          rtu-1:
+            - /etc/sceptre/config.xml
+            - /etc/sceptre/watcher.ini
+          rtu-2:
+            - /etc/sceptre/config.xml
+            - /etc/sceptre/watcher.ini
+          rtu-3:
+            - /etc/sceptre/config.xml
+            - /etc/sceptre/watcher.ini
+          rtu-4:
+            - /etc/sceptre/config.xml
+            - /etc/sceptre/watcher.ini
+          siren:
+            - /siren/siren.json
+            - /siren/s7-labjack.json
+            - /etc/phenix/startup/99_siren-start.sh
+          netmonitor:
+            - /etc/filebeat/filebeat.yml
+            - /etc/filebeat/modules.d/zeek.yml
+            - /opt/zeek/etc/node.cfg
+          attacker:
+            - /phenix/attack/plc-attack.py
+            - /opt/metasploit-framework/bin/msfconsole
+          ignition:
+            - /phenix/ignition.gwbk
+            - /var/log/gwcmd-restore.log
+        hostFilesAbsent:
+          # bennu-watcherd loads new firmware from this path. It must not
+          # exist until someone uploads firmware.
+          rtu-1:
+            - /home/sceptre/bennu-field-deviced.firmware
+          rtu-2:
+            - /home/sceptre/bennu-field-deviced.firmware
+          rtu-3:
+            - /home/sceptre/bennu-field-deviced.firmware
+          rtu-4:
+            - /home/sceptre/bennu-field-deviced.firmware
+        # Custom tests run once, with no retry, so the scripts below wait in
+        # the guest for slow starts. phenix replaces every dollar-brace
+        # reference when it loads this file, so the scripts must not use one.
+        # phenix.service is active once every startup script, the sceptre or
+        # siren start script last, has finished without error.
+        hostCustomTests:
+          power-provider:
+            - name: solver-publishes
+              testScript: |
+                timeout 30 tcpdump -n -c 1 -i any udp and dst host 239.0.0.1 and dst port 40000 2>&1
+              testStdout: 1 packet captured
+            - name: startup-complete
+              testScript: |
+                for _ in $(seq 60); do
+                  state=$(systemctl is-active phenix)
+                  [ "$state" = activating ] || break
+                  sleep 5
+                done
+                echo "phenix.service $state"
+              testStdout: phenix.service active
+          rtu-1:
+            # The start script restarts the field device 80 s after boot.
+            - name: provider-session
+              testScript: |
+                timeout 120 sh -c 'until ss -Htn state established dst 172.16.1.2:5555 | grep -q .; do sleep 2; done'
+                ss -Htn state established dst 172.16.1.2:5555
+              testStdout: 172.16.1.2:5555
+            - name: provider-data
+              testScript: |
+                timeout 30 tcpdump -n -c 1 -i any udp and src host 172.16.1.2 and dst host 239.0.0.1 and dst port 40000 2>&1
+              testStdout: 1 packet captured
+            - name: startup-complete
+              testScript: |
+                for _ in $(seq 60); do
+                  state=$(systemctl is-active phenix)
+                  [ "$state" = activating ] || break
+                  sleep 5
+                done
+                echo "phenix.service $state"
+              testStdout: phenix.service active
+          rtu-2:
+            - name: provider-session
+              testScript: |
+                timeout 120 sh -c 'until ss -Htn state established dst 172.16.1.2:5555 | grep -q .; do sleep 2; done'
+                ss -Htn state established dst 172.16.1.2:5555
+              testStdout: 172.16.1.2:5555
+            - name: provider-data
+              testScript: |
+                timeout 30 tcpdump -n -c 1 -i any udp and src host 172.16.1.2 and dst host 239.0.0.1 and dst port 40000 2>&1
+              testStdout: 1 packet captured
+            - name: startup-complete
+              testScript: |
+                for _ in $(seq 60); do
+                  state=$(systemctl is-active phenix)
+                  [ "$state" = activating ] || break
+                  sleep 5
+                done
+                echo "phenix.service $state"
+              testStdout: phenix.service active
+          rtu-3:
+            - name: provider-session
+              testScript: |
+                timeout 120 sh -c 'until ss -Htn state established dst 172.16.1.2:5555 | grep -q .; do sleep 2; done'
+                ss -Htn state established dst 172.16.1.2:5555
+              testStdout: 172.16.1.2:5555
+            - name: provider-data
+              testScript: |
+                timeout 30 tcpdump -n -c 1 -i any udp and src host 172.16.1.2 and dst host 239.0.0.1 and dst port 40000 2>&1
+              testStdout: 1 packet captured
+            - name: startup-complete
+              testScript: |
+                for _ in $(seq 60); do
+                  state=$(systemctl is-active phenix)
+                  [ "$state" = activating ] || break
+                  sleep 5
+                done
+                echo "phenix.service $state"
+              testStdout: phenix.service active
+          rtu-4:
+            - name: provider-session
+              testScript: |
+                timeout 120 sh -c 'until ss -Htn state established dst 172.16.1.2:5555 | grep -q .; do sleep 2; done'
+                ss -Htn state established dst 172.16.1.2:5555
+              testStdout: 172.16.1.2:5555
+            - name: provider-data
+              testScript: |
+                timeout 30 tcpdump -n -c 1 -i any udp and src host 172.16.1.2 and dst host 239.0.0.1 and dst port 40000 2>&1
+              testStdout: 1 packet captured
+            - name: startup-complete
+              testScript: |
+                for _ in $(seq 60); do
+                  state=$(systemctl is-active phenix)
+                  [ "$state" = activating ] || break
+                  sleep 5
+                done
+                echo "phenix.service $state"
+              testStdout: phenix.service active
+          siren:
+            # The HIL bridge to the LabJack T4 that topology.yaml passes
+            # through. Without a LabJack (virtual-only mode, and CI)
+            # pybennu-siren exits at start, so it is required only when the
+            # LabJack is attached.
+            - name: hil-bridge
+              testScript: |
+                if grep -qx 0cd5 /sys/bus/usb/devices/*/idVendor 2>/dev/null; then
+                  if pgrep -f 'pybennu-siren -c' >/dev/null; then
+                    echo 'siren ok: LabJack attached and pybennu-siren running'
+                  else
+                    echo 'LabJack attached but pybennu-siren is not running'
+                  fi
+                else
+                  echo 'siren ok: no LabJack attached (virtual-only mode)'
+                fi
+              testStdout: 'siren ok:'
+            - name: startup-complete
+              testScript: |
+                for _ in $(seq 60); do
+                  state=$(systemctl is-active phenix)
+                  [ "$state" = activating ] || break
+                  sleep 5
+                done
+                echo "phenix.service $state"
+              testStdout: phenix.service active
+          netmonitor:
+            # Zeek runs only after the SCORCH zeekctl component deploys it, so
+            # check that its sniff interface has the mirror address and that
+            # its config passes `zeekctl check`. Images keep vmdb2's
+            # net.ifnames=0, so the second NIC is eth1.
+            - name: zeek-ready
+              testScript: |
+                iface=$(sed -n 's/^interface=//p' /opt/zeek/etc/node.cfg)
+                if ! ip -o -4 addr show dev "$iface" 2>/dev/null | grep -q ' inet '; then
+                  echo "zeek interface '$iface' has no IPv4 address"
+                  exit 0
+                fi
+                if /opt/zeek/bin/zeekctl check 2>&1 | grep -q 'scripts are ok'; then
+                  echo "zeek ready on $iface"
+                fi
+              testStdout: zeek ready on
+            # filebeat reaches Elasticsearch outside the experiment through the
+            # tap app's 172.16.0.1. soh does not test MGMT gateways itself.
+            - name: mgmt-gateway
+              testScript: |
+                if ! ip route show default | grep -q 'via 172.16.0.1'; then
+                  echo 'default route is not via 172.16.0.1'
+                  exit 0
+                fi
+                if ping -c 3 -W 2 172.16.0.1 | grep -Eq ' [1-9][0-9]* received'; then
+                  echo 'tap gateway 172.16.0.1 answers'
+                fi
+              testStdout: tap gateway 172.16.0.1 answers
+          attacker:
+            # injects/attack/plc-attack.py imports snap7.
+            - name: snap7-import
+              testScript: |
+                python3 -c 'import snap7' && echo 'python-snap7 imports'
+              testStdout: python-snap7 imports
+          ignition:
+            # The gateway restores the backup and restarts once C2 is up (the
+            # node's commands in topology.yaml), so its web port 8088 can be
+            # closed when the listener checks run. Wait up to 4 min for it.
+            - name: gateway-web
+              testScript: |
+                for _ in $(seq 48); do
+                  if ss -Hltn 'sport = 8088' | grep -q .; then
+                    echo 'gateway web port 8088 open'
+                    exit 0
+                  fi
+                  sleep 5
+                done
+                echo 'nothing listens on 8088'
+              testStdout: gateway web port 8088 open
+            # The HMI holds one DNP3 session to each RTU (db_backup_sqlite.idb
+            # in the gateway backup lists 10.117.4.101-104:20000). Wait up to
+            # 5 min for them after the restart.
+            - name: dnp3-sessions
+              testScript: |
+                for _ in $(seq 60); do
+                  polled=$(ss -Htn state established '( dport = :20000 )' | grep -oE '10\.117\.4\.10[1-4]:20000' | sort -u | wc -l)
+                  if [ "$polled" -eq 4 ]; then
+                    echo 'polling all 4 rtus'
+                    exit 0
+                  fi
+                  sleep 5
+                done
+                echo "polling $polled of 4 rtus"
+              testStdout: polling all 4 rtus

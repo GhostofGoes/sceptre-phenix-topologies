@@ -183,7 +183,7 @@ jobs:
           IMAGE: ${{ matrix.image }}
         run: |
           set -euo pipefail
-          cp /usr/local/bin/miniccc /usr/local/bin/minirouter .
+          cp /usr/local/bin/miniccc /usr/local/bin/minirouter /usr/local/bin/protonuke .
           start=$(date +%s)
           if [ "$IMAGE" = vyos ]; then
             sudo -E env VYOSTMP=/mnt/vyostmp \

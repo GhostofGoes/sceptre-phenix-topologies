@@ -10,8 +10,10 @@ stages and stops at the first that fails:
 
   prepare   load the configs, check the files they name, and fit the topology
             to a CI runner: alias images, let nodes whose image no recipe
-            builds stay off (phenix does that itself for a missing image), and
-            scale the booted guests' memory to the runner
+            builds stay off (phenix does that itself for a missing image), keep
+            off the nodes keep_off names, size the nodes memory names, and
+            scale the booted guests' memory to memory_budget, keeping each
+            node memory_floor names at its floor
   configs   phenix config create
   create    phenix experiment create
   start     phenix experiment start (configure, pre-start, launch, post-start)
@@ -22,6 +24,9 @@ stages and stops at the first that fails:
   steady    the VMs are still running a minute later
   soh       for a scenario with phenix's state-of-health app, soh finished
             its checks and none failed
+  soh-flows for a topology that lists soh_flows, soh's running stage (run
+            again after the checks made traffic) found packet-capture flows
+            from each listed address
   checks    the per-node checks the topology lists pass, run in the guests
             over C2 (for example that a service the topology needs is up)
   stop      phenix experiment stop
@@ -336,10 +341,17 @@ def attempt(run, label, fixes, patches=()):
         images = [d.get("image", "") for d in hw.get("drives") or []]
         info = {"hostname": g.get("hostname"), "type": n.get("type"), "os": hw.get("os_type"), "images": images,
                 "memory": int(hw.get("memory") or 512), "vcpus": int(hw.get("vcpus") or 1), "boot": True, "why_off": ""}
+        for pat, mb in (cfg.get("memory") or {}).items():
+            if re.search(pat, info["hostname"] or ""):
+                info["memory_set"] = hw["memory"] = info["memory"] = int(mb)
         if g.get("do_not_boot"):
             info["boot"], info["why_off"] = False, "do_not_boot in the topology"
         if n.get("external"):
             info["boot"], info["why_off"] = False, "external node"
+        for pat, why in (cfg.get("keep_off") or {}).items():
+            if info["boot"] and re.search(pat, info["hostname"] or ""):
+                g["do_not_boot"] = True
+                info["boot"], info["why_off"] = False, f"kept off: {why}"
         for img in images:
             if (IMAGES / img).exists():
                 continue
@@ -355,6 +367,13 @@ def attempt(run, label, fixes, patches=()):
             booted.append((n, info))
             mem_total += info["memory"]
         a.rec["nodes"].append(info)
+    kept = [i["hostname"] for i in a.rec["nodes"] if i["why_off"].startswith("kept off")]
+    if kept:
+        a.note("adaptations", f"{len(kept)} nodes kept off for the runner: {', '.join(kept)} "
+               f"({next(i['why_off'] for i in a.rec['nodes'] if i['why_off'].startswith('kept off'))[10:]})")
+    sized = [f"{i['hostname']}={i['memory_set']} MB" for i in a.rec["nodes"] if i.get("memory_set") and i["boot"]]
+    if sized:
+        a.note("adaptations", f"memory set before scaling: {', '.join(sized)}")
     off = [i for i in a.rec["nodes"] if i["why_off"].startswith("no recipe")]
     if off:
         imgs = sorted({x for i in off for x in i["images"] if not (IMAGES / x).exists()})
@@ -369,10 +388,24 @@ def attempt(run, label, fixes, patches=()):
         return a.finish("nothing to boot")
     budget = int(cfg.get("memory_budget", 12288))
     if mem_total > budget:
+        # A node with a floor gets its proportional share but at least the
+        # floor (never more than it asked for); the others share what is left
+        # in proportion, down to 512 MB.
+        floors, fixed = {}, {}
+        for _, info in booted:
+            f = max([int(mb) for pat, mb in (cfg.get("memory_floor") or {}).items()
+                     if re.search(pat, info["hostname"] or "")] or [0])
+            if f:
+                floors[info["hostname"]] = f
+                fixed[info["hostname"]] = min(info["memory"], max(f, int(info["memory"] * budget / mem_total) // 256 * 256))
+        rest_total = sum(i["memory"] for _, i in booted if i["hostname"] not in fixed) or 1
+        rest_budget = max(budget - sum(fixed.values()), 0)
         for n, info in booted:
-            info["memory_ci"] = max(512, int(info["memory"] * budget / mem_total) // 256 * 256)
+            share = fixed.get(info["hostname"], int(info["memory"] * min(1, rest_budget / rest_total)) // 256 * 256)
+            info["memory_ci"] = max(512, min(info["memory"], share))
             n["hardware"]["memory"] = info["memory_ci"]
-        a.note("adaptations", f"booted guests ask for {mem_total} MB; scaled to {budget} MB for the runner")
+        a.note("adaptations", f"booted guests ask for {mem_total} MB; scaled to {budget} MB for the runner"
+               + (f", keeping floors {', '.join(f'{h}={mb} MB' for h, mb in floors.items())}" if floors else ""))
     big = [i for _, i in booted if i["vcpus"] > 2]
     for n, info in booted:
         if info["vcpus"] > 2:
@@ -525,6 +558,21 @@ def attempt(run, label, fixes, patches=()):
                 + f"{passed} checks passed, {len(failed)} failed"
                 + (f" ({len(timing)} before the guest's C2 was active)" if timing else "")
                 + ("; " + "; ".join(listed)[:1500] if listed else ""), 0)
+
+    # --- soh-flows: soh's running stage queries the flows its packet capture
+    # collected; the checks before it made traffic between captured hosts.
+    if cfg.get("soh_flows"):
+        ok, out, s = phenix("experiment", "trigger", "running", exp, "soh", timeout=1800)
+        pc = ((phenix_json("config", "get", f"experiment/{exp}").get("status") or {}).get("apps") or {}).get("soh") or {}
+        pc = pc.get("packetCapture") or {}
+        hosts = pc.get("hosts") or []
+        seen = set(hosts) if isinstance(hosts, list) else set(hosts or {})
+        missing = [ip for ip in cfg["soh_flows"] if ip not in seen]
+        a.rec["soh_flows"] = {"hosts": sorted(seen), "missing": missing}
+        a.stage("soh-flows", ok and not missing,
+                (f"flows from {', '.join(sorted(seen))}" if seen else "no flows")
+                + (f"; missing {', '.join(missing)}" if missing else "")
+                + ("" if ok else f"; trigger failed: {out[-600:]}"), s)
 
     # --- stop
     ok, out, s = phenix("experiment", "stop", exp, timeout=900)

@@ -41,7 +41,7 @@
     "soh_metadata": {"startupDelay": "25m"},
     "checks": [
       {"name": "Elasticsearch 8.19.23 answers without credentials", "nodes": "^soh-elasticsearch-server$",
-       "script": "timeout 300 sh -c 'until curl -fs -o /dev/null --max-time 5 http://localhost:9200/; do sleep 5; done'; curl -fs --max-time 5 'http://localhost:9200/?filter_path=version.number' | sed -n 's/.*\"number\":\"\\([^\"]*\\)\".*/\\1/p'",
+       "script": "timeout 300 sh -c 'until body=$(curl -fs --max-time 5 \"http://localhost:9200/?filter_path=version.number&pretty=false\"); do sleep 5; done; printf \"%s\\n\" \"$body\"' | sed -n 's/.*\"number\" *: *\"\\([^\"]*\\)\".*/\\1/p'",
        "want": "8.19.23", "wait": 360},
       {"name": "Kibana is available", "nodes": "^soh-elasticsearch-server$",
        "script": "timeout 300 sh -c 'until curl -fs -o /dev/null --max-time 5 http://localhost:5601/api/status; do sleep 5; done'; curl -s -o /dev/null --max-time 5 -w '%{http_code}' http://localhost:5601/api/status",
@@ -173,8 +173,8 @@
        "script": "timeout 240 sh -c 'until curl -fs \"http://127.0.0.1:9200/wazuh-alerts-4.x-*/_count\" | jq -e \".count > 0\" >/dev/null; do sleep 5; done'; curl -fs 'http://127.0.0.1:9200/wazuh-alerts-4.x-*/_count' | jq '.count > 0'",
        "want": "true", "wait": 300},
       {"name": "test harness reaches Elasticsearch on the manager", "nodes": "^kali-ot$",
-       "script": "timeout 300 sh -c 'until curl -fs -o /dev/null --max-time 5 http://172.16.60.55:9200/; do sleep 5; done'; curl -fs --max-time 5 http://172.16.60.55:9200/ | grep -o '\"number\" *: *\"[^\"]*\"' | tr -d ' '",
-       "want": "\"number\":\"8.19.23\"", "wait": 360}
+       "script": "timeout 300 sh -c 'until body=$(curl -fs --max-time 5 \"http://172.16.60.55:9200/?filter_path=version.number&pretty=false\"); do sleep 5; done; printf \"%s\\n\" \"$body\"' | sed -n 's/.*\"number\" *: *\"\\([^\"]*\\)\".*/\\1/p'",
+       "want": "8.19.23", "wait": 360}
     ]
   },
   "wind-plant-nids": {
@@ -229,8 +229,8 @@
        "script": "timeout 240 sh -c 'until curl -fs \"http://127.0.0.1:9200/wazuh-alerts-4.x-*/_count\" | jq -e \".count > 0\" >/dev/null; do sleep 5; done'; curl -fs 'http://127.0.0.1:9200/wazuh-alerts-4.x-*/_count' | jq '.count > 0'",
        "want": "true", "wait": 300},
       {"name": "test harness reaches Elasticsearch on the manager", "nodes": "^kali-ot$",
-       "script": "timeout 300 sh -c 'until curl -fs -o /dev/null --max-time 5 http://172.16.60.55:9200/; do sleep 5; done'; curl -fs --max-time 5 http://172.16.60.55:9200/ | grep -o '\"number\" *: *\"[^\"]*\"' | tr -d ' '",
-       "want": "\"number\":\"8.19.23\"", "wait": 360},
+       "script": "timeout 300 sh -c 'until body=$(curl -fs --max-time 5 \"http://172.16.60.55:9200/?filter_path=version.number&pretty=false\"); do sleep 5; done; printf \"%s\\n\" \"$body\"' | sed -n 's/.*\"number\" *: *\"\\([^\"]*\\)\".*/\\1/p'",
+       "want": "8.19.23", "wait": 360},
       {"name": "mirror app's OVS port for Zeek", "nodes": "^ids$",
        "script": "timeout 300 sh -c 'until ovs-vsctl list-ports phenix 2>/dev/null | grep -qx sniffer; do sleep 5; done'; ovs-vsctl list-ports phenix | grep -x sniffer",
        "want": "sniffer", "wait": 360},
@@ -309,8 +309,8 @@
        "script": "timeout 240 sh -c 'until curl -fs \"http://127.0.0.1:9200/wazuh-alerts-4.x-*/_count\" | jq -e \".count > 0\" >/dev/null; do sleep 5; done'; curl -fs 'http://127.0.0.1:9200/wazuh-alerts-4.x-*/_count' | jq '.count > 0'",
        "want": "true", "wait": 300},
       {"name": "test harness reaches Elasticsearch on the manager", "nodes": "^kali-ot$",
-       "script": "timeout 300 sh -c 'until curl -fs -o /dev/null --max-time 5 http://172.16.60.55:9200/; do sleep 5; done'; curl -fs --max-time 5 http://172.16.60.55:9200/ | grep -o '\"number\" *: *\"[^\"]*\"' | tr -d ' '",
-       "want": "\"number\":\"8.19.23\"", "wait": 360},
+       "script": "timeout 300 sh -c 'until body=$(curl -fs --max-time 5 \"http://172.16.60.55:9200/?filter_path=version.number&pretty=false\"); do sleep 5; done; printf \"%s\\n\" \"$body\"' | sed -n 's/.*\"number\" *: *\"\\([^\"]*\\)\".*/\\1/p'",
+       "want": "8.19.23", "wait": 360},
       {"name": "mirror app's OVS port for Zeek", "nodes": "^ids$",
        "script": "timeout 300 sh -c 'until ovs-vsctl list-ports phenix 2>/dev/null | grep -qx sniffer; do sleep 5; done'; ovs-vsctl list-ports phenix | grep -x sniffer",
        "want": "sniffer", "wait": 360},

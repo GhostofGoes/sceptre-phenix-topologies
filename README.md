@@ -24,9 +24,12 @@ Here's a simple "hello world", assuming you have phenix setup:
 
 ```shell
 cp -r ./helloworld /phenix/topologies/.
-phenix experiment create hello-world -t /phenix/topologies/helloworld/helloworld.yaml
+phenix config create /phenix/topologies/helloworld/helloworld.yaml
+phenix experiment create hello-world -t helloworld
 phenix experiment start hello-world
 ```
+
+See the [helloworld README](./helloworld/README.md) for the image it needs.
 
 ## Topologies
 

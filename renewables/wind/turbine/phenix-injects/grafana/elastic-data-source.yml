@@ -1,6 +1,7 @@
 apiVersion: 1
 datasources:
 - name: WindTurbine
+  uid: P08DA8452117F90CA
   isDefault: true
   type: elasticsearch
   access: proxy

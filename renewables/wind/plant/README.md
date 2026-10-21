@@ -87,9 +87,13 @@ more common images like `vyos.qc2`, `miniccc.qc2`, `protonuke.qc2`, and
 repository in the `phenix-images` directory and can be built with the `phenix
 image build` command. A Packer configuration is also included in the
 `phenix-images` directory and can be be built with ... wait for it ... Packer.
-phēnix comes with image configs for `miniccc`, `protonuke`, and `kali` by
-default and thus they can also be built with the `phenix image build` command.
-To build a VyOS image, clone the phēnix images repo and build from these
+phēnix comes with an image config for `kali` (`PHENIX-kali`) by default and
+thus it can also be built with the `phenix image build` command. phēnix does not
+include image configs for `miniccc` or `protonuke`, so you need to provide
+`miniccc.qc2` and `protonuke.qc2` yourself: Linux images with the minimega
+`miniccc` agent, plus `protonuke` for `protonuke.qc2`. The `protonuke` app
+injects each Linux VM's `protonuke` arguments into `/etc/default/protonuke`. To
+build a VyOS image, clone the phēnix images repo and build from these
 [instructions](https://github.com/sandialabs/sceptre-phenix-images/blob/main/scripts/vyos/README.md).
 
 > **NOTE:** the `hids`, `nids`, and `soar` experiments described above include
@@ -97,9 +101,12 @@ To build a VyOS image, clone the phēnix images repo and build from these
 > phēnix image config for `wazuh-manager`. One will be added in a future commit.
 
 To create an experiment, add a topology and scenario file from `phenix-configs`
-to the phēnix store either via the command line or the UI. Next, create an
-experiment in the phēnix UI by referring to the appropriate topology and
-scenario for the given network above.
+to the phēnix store either via the command line or the UI. The `hids`, `nids`,
+and `soar` scenarios take app settings from other scenarios (`fromScenario`), so
+also add the `base` scenario (and, for `soar`, the `nids` scenario) to the store
+before you create one of these experiments. Next, create an experiment in the
+phēnix UI by referring to the appropriate topology and scenario for the given
+network above.
 
 Once you start the experiment, you can verify it is operating as expected by
 checking the workstations on each network (e.g., `ws-ot`). They should all be

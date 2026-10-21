@@ -30,6 +30,12 @@ mkdir -p /phenix/injects/wind-turbine
 cp -a phenix-injects/* /phenix/injects/wind-turbine
 ```
 
+`wtg-1-main-controller` is on the `ot` VLAN with `grafana` and on the `turbine`
+VLAN with the other OT-sim devices, and it is the default gateway on both. The
+topology injects `main-controller/90-ip-forward.conf` to turn on its IP
+forwarding, so the ground-truth module of each OT-sim device can send its data
+to Elasticsearch on `grafana`.
+
 The phēnix topology config in this repository include VM disk references to
 `ot-sim.qc2` and `grafana.qc2`. Recipes for both images are in the
 [sceptre-phenix-images](https://github.com/sandialabs/sceptre-phenix-images)

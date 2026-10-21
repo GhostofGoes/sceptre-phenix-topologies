@@ -2,6 +2,8 @@
 """Run one topology of this repository under phenix and minimega, and record how far it gets.
 
 Usage: sudo -E python3 run_topology.py <name> <results.json>
+TOPOLOGIES_DIR names the checkout whose topologies to run (default: the one
+holding this harness).
 
 .github/e2e/topologies.json describes each topology. A run goes through these
 stages and stops at the first that fails:
@@ -45,7 +47,9 @@ from pathlib import Path
 
 import yaml
 
-REPO = Path(__file__).resolve().parents[2]
+HARNESS = Path(__file__).resolve().parents[2]
+# The topologies can come from another ref of this repository than the harness.
+REPO = Path(os.environ.get("TOPOLOGIES_DIR") or HARNESS)
 PHENIX = ["phenix", "--store.endpoint", "bolt:///etc/phenix/store.bdb"]
 IMAGES = Path("/phenix/images")
 MM_SOCKET = os.environ.get("MM_SOCKET", "/tmp/minimega/minimega")
@@ -224,10 +228,13 @@ class Attempt:
 
 class Run:
     def __init__(self, name, out):
-        self.cfg = json.loads((REPO / ".github/e2e/topologies.json").read_text())[name]
+        self.cfg = json.loads((HARNESS / ".github/e2e/topologies.json").read_text())[name]
         self.name = name
         self.out = Path(out)
-        self.res = {"name": name, "experiment": self.cfg["experiment"], "attempts": [], "result": "running"}
+        head = subprocess.run(["git", "-c", "safe.directory=*", "-C", str(REPO), "rev-parse", "HEAD"],
+                              capture_output=True, text=True, check=False).stdout.strip()
+        self.res = {"name": name, "experiment": self.cfg["experiment"], "topologies_commit": head,
+                    "attempts": [], "result": "running"}
         self.save()
 
     def save(self):
@@ -253,7 +260,7 @@ def load(cfg, fixes):
 def patch_apps(a, patches):
     """Apply patches to this repository and reinstall the apps it ships."""
     for rel in patches:
-        p = subprocess.run(["git", "-c", "safe.directory=*", "-C", str(REPO), "apply", str(REPO / ".github/e2e" / rel)],
+        p = subprocess.run(["git", "-c", "safe.directory=*", "-C", str(REPO), "apply", str(HARNESS / ".github/e2e" / rel)],
                            capture_output=True, text=True, check=False)
         if p.returncode:
             return a.stage("prepare", False, f"patch {rel} does not apply: {p.stderr}")
@@ -498,6 +505,7 @@ def attempt(run, label, fixes, patches=()):
                 + ("; " + "; ".join(f"{r['check']} on {r['node']}: got {r['got']!r}" for r in bad) if bad else ""),
                 round(time.time() - t0))
     a.rec["app_status"] = (phenix_json("config", "get", f"experiment/{exp}").get("status") or {}).get("apps")
+
     soh = (a.rec.get("app_status") or {}).get("soh") or {}
     # soh stores a reachability check under both of its hosts; count each once.
     checks = sorted({(k, json.dumps(e.get("metadata") or {"host": h.get("hostname")}, sort_keys=True), e["error"])

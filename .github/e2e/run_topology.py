@@ -20,6 +20,8 @@ stages and stops at the first that fails:
             unless its disk does not exist (an image no recipe builds)
   c2        every booted guest whose image carries miniccc registers with C2
   steady    the VMs are still running a minute later
+  soh       for a scenario with phenix's state-of-health app, soh finished
+            its checks and none failed
   checks    the per-node checks the topology lists pass, run in the guests
             over C2 (for example that a service the topology needs is up)
   stop      phenix experiment stop
@@ -506,16 +508,23 @@ def attempt(run, label, fixes, patches=()):
                 round(time.time() - t0))
     a.rec["app_status"] = (phenix_json("config", "get", f"experiment/{exp}").get("status") or {}).get("apps")
 
-    soh = (a.rec.get("app_status") or {}).get("soh") or {}
-    # soh stores a reachability check under both of its hosts; count each once.
-    checks = sorted({(k, json.dumps(e.get("metadata") or {"host": h.get("hostname")}, sort_keys=True), e["error"])
-                     for h in soh.get("hosts") or [] for k, v in h.items()
-                     if isinstance(v, list) for e in v if isinstance(e, dict) and e.get("error")})
-    if checks:
-        timing = [c for c in checks if re.search(r"c2 (client )?not active", c[2], re.I)]
-        other = [f"{k} {' '.join(f'{x}={y}' for x, y in json.loads(m).items())}: {e}" for k, m, e in checks if (k, m, e) not in timing]
-        a.note("findings", f"soh reports {len(checks)} failed checks: {len(timing)} ran before the guest's C2 was active"
-               + (f", {len(other)} other: " + "; ".join(other)[:800] if other else ""))
+    # --- soh: its checks run in its post-start stage, so they are done by now.
+    if scen and any(x.get("name") == "soh" for x in (scen.get("spec") or {}).get("apps") or []):
+        soh = (a.rec.get("app_status") or {}).get("soh") or {}
+        # soh stores a reachability check under both of its hosts; count each once.
+        failed = sorted({(k, json.dumps(e.get("metadata") or {"host": h.get("hostname")}, sort_keys=True), e["error"])
+                         for h in soh.get("hosts") or [] for k, v in h.items()
+                         if isinstance(v, list) for e in v if isinstance(e, dict) and e.get("error")})
+        passed = sum(1 for h in soh.get("hosts") or [] for v in h.values() if isinstance(v, list)
+                     for e in v if isinstance(e, dict) and not e.get("error"))
+        timing = [c for c in failed if re.search(r"c2 (client )?not active", c[2], re.I)]
+        listed = [f"{k} {' '.join(f'{x}={y}' for x, y in json.loads(m).items())}: {e}" for k, m, e in failed]
+        a.rec["soh"] = {"initialized": bool(soh.get("initialized")), "passed": passed, "failed": listed}
+        a.stage("soh", bool(soh.get("initialized")) and not failed,
+                ("not initialized; " if not soh.get("initialized") else "")
+                + f"{passed} checks passed, {len(failed)} failed"
+                + (f" ({len(timing)} before the guest's C2 was active)" if timing else "")
+                + ("; " + "; ".join(listed)[:1500] if listed else ""), 0)
 
     # --- stop
     ok, out, s = phenix("experiment", "stop", exp, timeout=900)

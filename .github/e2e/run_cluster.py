@@ -497,9 +497,11 @@ def s_parallel():
     for e, p in procs.items():
         try:
             out, _ = p.communicate(timeout=1500)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as x:
             p.kill()
-            out = "timed out"
+            p.wait()  # reap it, as subprocess.run does
+            failed.append(f"start {e}: timed out after 1500 s\n{(x.output or b'').decode(errors='replace')[-1200:]}")
+            continue
         if p.returncode:
             failed.append(f"start {e}: {(out or '')[-1200:]}")
     facts["parallel_start_seconds"] = round(time.time() - t0)

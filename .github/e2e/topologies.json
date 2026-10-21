@@ -2,6 +2,7 @@
   "helloworld": {
     "experiment": "helloworld",
     "topology": "helloworld/helloworld.yaml",
+    "scenario": "helloworld/helloworld-scenario.yaml",
     "images": ["ubuntu"],
     "apps": false,
     "checks": [
@@ -37,7 +38,7 @@
     "extra": ["soap-legacy/sceptre.yaml", "soap-legacy/soh.yaml"],
     "images": ["bennu", "elasticsearch", "packetbeat"],
     "apps": true,
-    "fixes": {"controlthings_elk": "controlthings-elk"},
+    "soh_metadata": {"startupDelay": "25m"},
     "checks": [
       {"name": "Elasticsearch 8.19.23 answers without credentials", "nodes": "^soh-elasticsearch-server$",
        "script": "timeout 300 sh -c 'until curl -fs -o /dev/null --max-time 5 http://localhost:9200/; do sleep 5; done'; curl -fs --max-time 5 'http://localhost:9200/?filter_path=version.number' | sed -n 's/.*\"number\":\"\\([^\"]*\\)\".*/\\1/p'",

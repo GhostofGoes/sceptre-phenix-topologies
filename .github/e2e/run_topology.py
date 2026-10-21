@@ -13,7 +13,9 @@ stages and stops at the first that fails:
             builds stay off (phenix does that itself for a missing image), keep
             off the nodes keep_off names, size the nodes memory names, and
             scale the booted guests' memory to memory_budget, keeping each
-            node memory_floor names at its floor
+            node memory_floor names at its floor; then set the soh metadata
+            soh_metadata names, and drop soh custom reachability tests whose
+            source or target stays off
   configs   phenix config create
   create    phenix experiment create
   start     phenix experiment start (configure, pre-start, launch, post-start)
@@ -286,6 +288,45 @@ def patch_apps(a, patches):
     return True
 
 
+def merge(dst, src):
+    """Merge mapping src into dst, key by key at every level, and yield each "path=value" set."""
+    for k, v in src.items():
+        if isinstance(v, dict) and isinstance(dst.get(k), dict):
+            yield from (f"{k}.{x}" for x in merge(dst[k], v))
+        else:
+            dst[k] = v
+            yield f"{k}={v}"
+
+
+def fit_soh(a, docs, scen):
+    """Fit the soh app the experiment runs to the runner and to the nodes that boot."""
+    scens = {d["metadata"]["name"]: d for ds in docs.values() for d in ds if d.get("kind") == "Scenario"}
+    for app in ((scen or {}).get("spec") or {}).get("apps") or []:
+        if app.get("name") != "soh":
+            continue
+        # An app with fromScenario runs as that scenario's app of the same name.
+        if app.get("fromScenario") in scens:
+            app = next((x for x in scens[app["fromScenario"]]["spec"].get("apps") or []
+                        if x.get("name") == "soh"), app)
+        md = app.get("metadata")
+        if not isinstance(md, dict):
+            continue
+        over = list(merge(md, a.run.cfg.get("soh_metadata") or {}))
+        if over:
+            a.note("adaptations", f"soh metadata for the runner: {', '.join(over)}")
+        # soh records an error for a custom reachability test whose source or
+        # target does not boot (no C2 on the source, no address for the target),
+        # while it skips the other checks of such nodes, so drop those tests too.
+        off = {i["hostname"] for i in a.rec["nodes"] if not i["boot"] and i["why_off"] != "external node"}
+        tests = md.get("testCustomReachability") or []
+        keep = [t for t in tests if not {t.get("src"), str(t.get("dst", "")).split("|")[0]} & off]
+        if len(keep) < len(tests):
+            md["testCustomReachability"] = keep
+            a.note("adaptations", f"soh: {len(tests) - len(keep)} of {len(tests)} custom reachability tests "
+                   "dropped, their source or target stays off: " + ", ".join(
+                       f"{t.get('src')} to {t.get('dst')} {t.get('proto')}/{t.get('port')}" for t in tests if t not in keep))
+
+
 def attempt(run, label, fixes, patches=()):
     a = Attempt(run, label)
     cfg = run.cfg
@@ -418,6 +459,7 @@ def attempt(run, label, fixes, patches=()):
             n["hardware"]["vcpus"] = info["vcpus_ci"] = 2
     if big:
         a.note("adaptations", f"{len(big)} guests with more than 2 vCPUs get 2 on the 4-vCPU runner")
+    fit_soh(a, docs, scen)
     files = []
     for rel, ds in docs.items():
         # Several topologies keep configs of the same file name in different

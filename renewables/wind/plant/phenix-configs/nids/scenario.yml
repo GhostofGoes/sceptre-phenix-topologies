@@ -45,49 +45,49 @@ spec:
         dst: wtg-01|IF0
         proto: tcp
         port: 80
-        wait: 1m
+        wait: 5m
       - src: ws-grid
         dst: wtg-02|IF0
         proto: tcp
         port: 80
-        wait: 1m
+        wait: 5m
       - src: ws-oem
         dst: wtg-03|IF0
         proto: tcp
         port: 80
-        wait: 1m
+        wait: 5m
       - src: ws-ot
         dst: wtg-04|IF0
         proto: tcp
         port: 80
-        wait: 1m
+        wait: 5m
       - src: ws-ot
         dst: wtg-05|IF0
         proto: tcp
         port: 80
-        wait: 1m
+        wait: 5m
       # The protonuke clients reach the Internet server through rtr-site and rtr-isp4.
       - src: nuke-pnc1
         dst: nuke-pns|IF0
         proto: tcp
         port: 80
-        wait: 1m
+        wait: 5m
       - src: nuke-pnc2
         dst: nuke-pns|IF0
         proto: tcp
         port: 80
-        wait: 1m
+        wait: 5m
       # RDP to ws-ot from the jump host through rtr-site, and from kali-ot on the ot VLAN.
       - src: guard-jh
         dst: ws-ot|IF0
         proto: tcp
         port: 3389
-        wait: 1m
+        wait: 5m
       - src: kali-ot
         dst: ws-ot|IF0
         proto: tcp
         port: 3389
-        wait: 1m
+        wait: 5m
       hostFiles:
         ws-owop:
         - 'C:/phenix/startup/90-protonuke.ps1'

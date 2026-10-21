@@ -202,8 +202,11 @@ phenix experiment start wind-hids
 ```
 
 The checks run in the post-start stage after a `startupDelay` of 10 minutes,
-and soh waits up to 15 more minutes (`c2Timeout`) for each guest's C2. Both are
-sized for a loaded host such as a CI runner. The start returns when the checks
+and soh waits up to 15 more minutes (`c2Timeout`) for each guest's C2. Each
+custom reachability test keeps retrying its connection for up to 5 minutes
+(`wait`), because the VyOS routers can take several minutes to commit their
+configuration and form OSPF adjacencies. These values are sized for a loaded
+host such as a CI runner. The start returns when the checks
 finish. A failed check is recorded, but it does not fail the start.
 To run the checks again on the running experiment:
 

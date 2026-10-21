@@ -85,3 +85,295 @@ spec:
           elastic:
             labels:
               turbine: "$1"
+  - name: soh
+    # Runs the checks again every 15 minutes on starts from the web UI or the
+    # REST API, or with phenix experiment start --honor-run-periodically.
+    runPeriodically: 15m
+    metadata:
+      # In CI the guests register with C2 4.5 to 7.5 minutes after launch. The
+      # checks start 5 minutes after the start and wait for the C2 of each
+      # guest until 5m + 10m.
+      startupDelay: 5m
+      c2Timeout: 10m
+      exitOnError: false
+      # sample and full ping every address of every VLAN. The paths the turbine
+      # uses are tested under testCustomReachability instead. Keep the quotes:
+      # YAML 1.1 parsers read a bare off as false, which soh refuses.
+      testReachability: "off"
+      testCustomReachability:
+      # The main controller polls the Modbus server of each field device.
+      - src: wtg-1-main-controller
+        dst: wtg-1-signal-converter|IF0
+        proto: tcp
+        port: 502
+        wait: 1m
+      - src: wtg-1-main-controller
+        dst: wtg-1-yaw-controller|IF0
+        proto: tcp
+        port: 502
+        wait: 1m
+      - src: wtg-1-main-controller
+        dst: wtg-1-blade-1|IF0
+        proto: tcp
+        port: 502
+        wait: 1m
+      - src: wtg-1-main-controller
+        dst: wtg-1-blade-2|IF0
+        proto: tcp
+        port: 502
+        wait: 1m
+      - src: wtg-1-main-controller
+        dst: wtg-1-blade-3|IF0
+        proto: tcp
+        port: 502
+        wait: 1m
+      # grafana stands in for a DNP3 master on the ot VLAN.
+      - src: grafana
+        dst: wtg-1-main-controller|IF0
+        proto: tcp
+        port: 20000
+        wait: 1m
+      # The ground-truth module of each OT-sim device writes to Elasticsearch
+      # on grafana. From the turbine VLAN the path goes through the main
+      # controller, which forwards between the VLANs.
+      - src: wtg-1-main-controller
+        dst: grafana|IF0
+        proto: tcp
+        port: 9200
+        wait: 1m
+      - src: wtg-1-yaw-controller
+        dst: grafana|IF0
+        proto: tcp
+        port: 9200
+        wait: 1m
+      - src: wtg-1-signal-converter
+        dst: grafana|IF0
+        proto: tcp
+        port: 9200
+        wait: 1m
+      - src: wtg-1-blade-1
+        dst: grafana|IF0
+        proto: tcp
+        port: 9200
+        wait: 1m
+      - src: wtg-1-blade-2
+        dst: grafana|IF0
+        proto: tcp
+        port: 9200
+        wait: 1m
+      - src: wtg-1-blade-3
+        dst: grafana|IF0
+        proto: tcp
+        port: 9200
+        wait: 1m
+      hostFiles:
+        grafana:
+        - /etc/elasticsearch/elasticsearch.yml
+        - /etc/grafana/grafana.ini
+        - /etc/grafana/provisioning/datasources/elastic.yml
+        - /etc/grafana/provisioning/dashboards/dashboards.yml
+        - /var/lib/grafana/dashboards/turbine-dashboard.json
+        wtg-1-main-controller:
+        - /etc/ot-sim/config.xml
+        - /etc/sysctl.d/90-ip-forward.conf
+        wtg-1-yaw-controller:
+        - /etc/ot-sim/config.xml
+        wtg-1-signal-converter:
+        - /etc/ot-sim/config.xml
+        - /etc/ot-sim/data/weather.csv
+        wtg-1-blade-1:
+        - /etc/ot-sim/config.xml
+        wtg-1-blade-2:
+        - /etc/ot-sim/config.xml
+        wtg-1-blade-3:
+        - /etc/ot-sim/config.xml
+      hostServices:
+        grafana:
+        - phenix.service
+        - elasticsearch.service
+        - grafana-server.service
+        wtg-1-main-controller:
+        - phenix.service
+        - ot-sim.service
+        wtg-1-yaw-controller:
+        - phenix.service
+        - ot-sim.service
+        wtg-1-signal-converter:
+        - phenix.service
+        - ot-sim.service
+        wtg-1-blade-1:
+        - phenix.service
+        - ot-sim.service
+        wtg-1-blade-2:
+        - phenix.service
+        - ot-sim.service
+        wtg-1-blade-3:
+        - phenix.service
+        - ot-sim.service
+      # pgrep -f patterns. The OT-sim CPU module starts one process for each
+      # module in /etc/ot-sim/config.xml. In grafana.server, the dot matches
+      # the space of "grafana server".
+      hostProcesses:
+        grafana:
+        - org.elasticsearch.bootstrap.Elasticsearch
+        - grafana.server
+        wtg-1-main-controller:
+        - ot-sim-cpu-module
+        - ot-sim-message-bus
+        - ot-sim-ground-truth-module
+        - ot-sim-wind-turbine-power-output-module
+        - ot-sim-logic-module
+        - ot-sim-modbus-module
+        - ot-sim-dnp3-module
+        wtg-1-yaw-controller:
+        - ot-sim-cpu-module
+        - ot-sim-message-bus
+        - ot-sim-ground-truth-module
+        - ot-sim-modbus-module
+        - ot-sim-logic-module
+        wtg-1-signal-converter:
+        - ot-sim-cpu-module
+        - ot-sim-message-bus
+        - ot-sim-ground-truth-module
+        - ot-sim-wind-turbine-anemometer-module
+        - ot-sim-modbus-module
+        wtg-1-blade-1:
+        - ot-sim-cpu-module
+        - ot-sim-message-bus
+        - ot-sim-ground-truth-module
+        - ot-sim-modbus-module
+        wtg-1-blade-2:
+        - ot-sim-cpu-module
+        - ot-sim-message-bus
+        - ot-sim-ground-truth-module
+        - ot-sim-modbus-module
+        wtg-1-blade-3:
+        - ot-sim-cpu-module
+        - ot-sim-message-bus
+        - ot-sim-ground-truth-module
+        - ot-sim-modbus-module
+      # A port alone where the service listens on every address, ip:port where
+      # the wind-turbine app binds one address. OT-sim ports: 9101 CPU API,
+      # 1234 and 5678 message bus, 502 Modbus, 20000 DNP3.
+      hostListeners:
+        grafana:
+        - :3000
+        - :9200
+        wtg-1-main-controller:
+        - :9101
+        - 127.0.0.1:1234
+        - 127.0.0.1:5678
+        - 192.168.100.1:20000
+        wtg-1-yaw-controller:
+        - :9101
+        - 127.0.0.1:1234
+        - 127.0.0.1:5678
+        - 1.1.1.11:502
+        wtg-1-signal-converter:
+        - :9101
+        - 127.0.0.1:1234
+        - 127.0.0.1:5678
+        - 1.1.1.21:502
+        wtg-1-blade-1:
+        - :9101
+        - 127.0.0.1:1234
+        - 127.0.0.1:5678
+        - 1.1.1.31:502
+        wtg-1-blade-2:
+        - :9101
+        - 127.0.0.1:1234
+        - 127.0.0.1:5678
+        - 1.1.1.32:502
+        wtg-1-blade-3:
+        - :9101
+        - 127.0.0.1:1234
+        - 127.0.0.1:5678
+        - 1.1.1.33:502
+      # Custom tests run once, so each script waits for what it checks. miniccc
+      # runs the commands of a guest one at a time, so each script waits at
+      # most 2 minutes and the tests of a guest end within c2Timeout.
+      hostCustomTests:
+        grafana:
+        - name: grafana-turbine-dashboard
+          testScript: |
+            # Grafana answers anonymously (grafana.ini) and lists the
+            # provisioned Turbine dashboard.
+            for _ in $(seq 24); do
+              curl -fs 'http://localhost:3000/api/search?query=Turbine' |
+                grep -Eq '"title": *"Turbine"' && echo dashboard-provisioned && exit 0
+              sleep 5
+            done
+            echo "Grafana does not list the Turbine dashboard"
+          testStdout: dashboard-provisioned
+        - name: grafana-datasource-health
+          testScript: |
+            # Grafana's health check of the WindTurbine datasource, by the uid
+            # that the dashboard's panels use, reaches Elasticsearch.
+            url=http://localhost:3000/api/datasources/uid/P08DA8452117F90CA/health
+            for _ in $(seq 24); do
+              curl -fs "$url" | grep -Eq '"status": *"OK"' && echo datasource-healthy && exit 0
+              sleep 5
+            done
+            echo "WindTurbine datasource health: $(curl -s "$url")"
+          testStdout: datasource-healthy
+        - name: elasticsearch-ground-truth
+          testScript: |
+            # The ground-truth module of each OT-sim device indexes the status
+            # points it sees in wind-turbine-*, with the device's host name as
+            # source. The yaw controller and the signal converter reach
+            # Elasticsearch through the main controller. The blades publish no
+            # status points, so they index nothing.
+            count() {
+              curl -fs -H 'Content-Type: application/json' \
+                -d "{\"query\":{\"match_phrase\":{\"source\":\"$1\"}}}" \
+                'http://localhost:9200/wind-turbine-*/_count' | grep -o '"count":[0-9]*' | cut -d: -f2
+            }
+            for _ in $(seq 24); do
+              missing=
+              for h in wtg-1-main-controller wtg-1-yaw-controller wtg-1-signal-converter; do
+                [ "$(count "$h")" -gt 0 ] 2>/dev/null || missing="$missing $h"
+              done
+              [ -z "$missing" ] && echo ground-truth-indexed && exit 0
+              sleep 5
+            done
+            echo "no ground truth in wind-turbine-* from:$missing"
+          testStdout: ground-truth-indexed
+        wtg-1-main-controller:
+        - name: ip-forwarding
+          testScript: |
+            # The injected 90-ip-forward.conf in /etc/sysctl.d turns on
+            # forwarding between the ot and turbine VLANs.
+            v=$(cat /proc/sys/net/ipv4/ip_forward)
+            [ "$v" = 1 ] && echo forwarding-on || echo "net.ipv4.ip_forward is $v"
+          testStdout: forwarding-on
+        - name: otsim-turbine-data
+          testScript: |
+            # The CPU API has the points the main controller polls over Modbus
+            # (speed.high from the signal converter, yaw.current from the yaw
+            # controller) and the output of the power output module.
+            api=http://localhost:9101/api/v1/query
+            for _ in $(seq 24); do
+              curl -fs -o /dev/null "$api/speed.high" && curl -fs -o /dev/null "$api/yaw.current" &&
+                curl -fs -o /dev/null "$api/turbine.mw-output" && echo turbine-data-flowing && exit 0
+              sleep 5
+            done
+            for t in speed.high yaw.current turbine.mw-output; do
+              curl -fs -o /dev/null "$api/$t" || echo "no $t on the CPU API"
+            done
+          testStdout: turbine-data-flowing
+        wtg-1-signal-converter:
+        - name: weather-replay
+          testScript: |
+            # weather.csv is the data, not a Git LFS pointer, and the
+            # anemometer module replays it to the CPU API.
+            if ! head -n 1 /etc/ot-sim/data/weather.csv | grep -q 'Windspeed 58.2m'; then
+              echo "weather.csv starts with: $(head -c 80 /etc/ot-sim/data/weather.csv)"
+              exit 1
+            fi
+            for _ in $(seq 24); do
+              curl -fs -o /dev/null http://localhost:9101/api/v1/query/speed.high &&
+                echo anemometer-replaying && exit 0
+              sleep 5
+            done
+            echo "speed.high never reached the CPU API"
+          testStdout: anemometer-replaying

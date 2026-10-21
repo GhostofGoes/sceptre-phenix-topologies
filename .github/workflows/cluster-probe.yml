@@ -1,0 +1,157 @@
+# Probes a three-host phenix cluster on one runner: the runner is the head
+# node, and two privileged containers are compute nodes with their own
+# hostname, network namespace, Open vSwitch and minimega.
+# .github/e2e/cluster/probe.py proves each part the cluster job depends on.
+name: Cluster probe
+
+on:
+  push:
+    branches: ['test-multinode-probe']
+  workflow_dispatch:
+    inputs:
+      image-run:
+        description: ID of an E2E run of this repository whose topo-image-e2e artifact the guests boot
+        type: string
+        default: '39516835437'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cluster-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHENIX_REPOSITORY: GhostofGoes/sceptre-phenix
+  PHENIX_REF: ci-e2e-minimega
+  IMAGE_RUN: ${{ inputs.image-run || '39516835437' }}
+
+jobs:
+  probe:
+    name: Probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - name: Check out the harness
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: harness
+          persist-credentials: false
+
+      - name: Check out phenix
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.PHENIX_REPOSITORY }}
+          ref: ${{ env.PHENIX_REF }}
+          path: phenix
+          persist-credentials: false
+
+      - name: Set up phenix and minimega (the head node)
+        uses: ./phenix/.github/actions/e2e-setup
+
+      - name: Free disk space and load the veth module
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup || true
+          sudo modprobe veth
+          df -h / /mnt
+
+      - name: Download the e2e image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: topo-image-e2e
+          path: e2e-images
+          run-id: ${{ env.IMAGE_RUN }}
+          github-token: ${{ github.token }}
+
+      - name: Install the image
+        run: |
+          sudo mv e2e-images/e2e.qc2 /phenix/images/
+          ls -lh /phenix/images
+
+      # Each node keeps its own minimega base directory (a shared one would
+      # collide on the socket and VM directories), and shares the runner's
+      # /phenix/images at the same path, so every host finds the same disks.
+      - name: Start the compute nodes
+        run: |
+          set -euo pipefail
+          docker build -q -t phenix-ci-compute harness/.github/e2e/cluster
+          docker network create --subnet 172.31.0.0/24 --gateway 172.31.0.1 phenix-ci
+          head=$(hostname)
+          for n in 1 2; do
+            c=compute$n
+            sudo mkdir -p "/mnt/mm/$c"
+            docker run -d --init --privileged --name "$c" --hostname "$c" \
+              --network phenix-ci --ip "172.31.0.1$n" --add-host "$head:172.31.0.1" \
+              --memory 4g -e "MM_BASE=/tmp/mm-$c" \
+              -v /lib/modules:/lib/modules:ro \
+              -v /usr/local/bin/minimega:/usr/local/bin/minimega:ro \
+              -v /phenix/images:/phenix/images \
+              -v "/mnt/mm/$c:/tmp/mm-$c" \
+              phenix-ci-compute
+            # The head dials the compute nodes by name for VNC and cc mounts.
+            echo "172.31.0.1$n $c" | sudo tee -a /etc/hosts
+          done
+          for c in compute1 compute2; do
+            for _ in $(seq 60); do
+              sudo test -S "/mnt/mm/$c/minimega" && break
+              sleep 1
+            done
+            if ! sudo test -S "/mnt/mm/$c/minimega"; then
+              echo "::error::$c's minimega socket never appeared"
+              docker logs "$c" || true
+              exit 1
+            fi
+          done
+          getent hosts "$head" || true
+          docker ps
+
+      - name: Probe the cluster
+        # exec: the runner signals only the step's shell on a cancel.
+        run: exec sudo -E python3 harness/.github/e2e/cluster/probe.py "$RUNNER_TEMP/probe.json"
+
+      - name: Summarize
+        if: always()
+        run: |
+          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/probe.json" 2>/dev/null || true
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          try:
+              r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "probe.json")))
+          except (OSError, ValueError):
+              print("### Cluster probe: no results"); raise SystemExit
+          print(f"### Cluster probe: {'pass' if r.get('ok') else 'fail'}\n")
+          print("| stage | ok | seconds | detail |\n|---|---|---|---|")
+          for s in r["stages"]:
+              d = s["detail"].replace("\n", "<br>").replace("|", "/")[:1500]
+              print(f"| {s['stage']} | {'yes' if s['ok'] else 'NO'} | {s['seconds']} | {d} |")
+          print(f"\n```\n{json.dumps(r['facts'], indent=1)}\n```")
+          EOF
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L="$RUNNER_TEMP/logs"
+          mkdir -p "$L"
+          sudo cp "$RUNNER_TEMP/probe.json" "$L/" 2>/dev/null || true
+          sudo cp /tmp/minimega/minimega.log /tmp/minimega/minimega.stdout "$L/" 2>/dev/null || true
+          sudo cp -r /var/log/phenix "$L/phenix" 2>/dev/null || true
+          sudo cp -r /phenix/experiments "$L/experiments" 2>/dev/null || true
+          sudo ovs-vsctl show > "$L/head-ovs.txt" 2>&1 || true
+          for c in compute1 compute2; do
+            docker logs "$c" > "$L/$c.docker.log" 2>&1 || true
+            sudo cp "/mnt/mm/$c/minimega.log" "$L/$c.minimega.log" 2>/dev/null || true
+            docker exec "$c" ovs-vsctl show > "$L/$c-ovs.txt" 2>&1 || true
+            docker cp "$c:/var/log/openvswitch" "$L/$c-ovs-logs" 2>/dev/null || true
+          done
+          sudo find "$L" \( -name '*.qc2' -o -name '*.qcow2' \) -delete || true
+          sudo chown -R "$(id -u):$(id -g)" "$L"
+
+      - name: Upload the results and logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cluster-probe
+          path: ${{ runner.temp }}/logs
+          retention-days: 14
+          if-no-files-found: ignore

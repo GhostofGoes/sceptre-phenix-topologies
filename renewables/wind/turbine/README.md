@@ -88,3 +88,100 @@ docker exec -it minimega /opt/minimega/bin/minimega -e \
 
 Then, from your local computer, browse to http://localhost:30000 to access the
 Grafana dashboard.
+
+## State of health
+
+`phenix-configs/scenario.yml` also runs the phēnix state of health (soh) app.
+Its checks, by node group:
+
+- `grafana`: its address and its gateway, the main controller, which must answer
+  ping; the five injected Elasticsearch and Grafana files; the `phenix`,
+  `elasticsearch` and `grafana-server` services and their processes; listeners
+  on 3000 (Grafana) and 9200 (Elasticsearch); a TCP connection to the DNP3
+  outstation of the main controller (192.168.100.1:20000); the Turbine
+  dashboard in Grafana's search, a passing Grafana health check of the
+  `WindTurbine` datasource, and ground-truth documents in `wind-turbine-*` from
+  the main controller, the yaw controller and the signal converter.
+- `wtg-1-main-controller`: its two addresses; `/etc/ot-sim/config.xml` and the
+  injected `90-ip-forward.conf`, and IP forwarding turned on; the `phenix` and
+  `ot-sim` services; the OT-sim CPU module and the six modules of its config;
+  listeners for the CPU API (9101), the message bus (127.0.0.1:1234 and
+  127.0.0.1:5678) and DNP3 (192.168.100.1:20000); TCP connections to the
+  Modbus server (502) of each field device and to Elasticsearch on `grafana`;
+  `speed.high`, `yaw.current` and `turbine.mw-output` on its CPU API, which
+  show that it polls the signal converter and the yaw controller over Modbus
+  and that its power output module runs.
+- `wtg-1-yaw-controller`, `wtg-1-signal-converter` and `wtg-1-blade-1` to
+  `wtg-1-blade-3`: the address and the gateway (1.1.1.254), which must answer
+  ping; `/etc/ot-sim/config.xml`; the `phenix` and `ot-sim` services; the CPU
+  module and the modules of each config; listeners for the CPU API, the message
+  bus and Modbus on the device's address; a TCP connection to Elasticsearch on
+  `grafana` through the main controller. On the signal converter also
+  `/etc/ot-sim/data/weather.csv`, which must be the data and not a Git LFS
+  pointer, and `speed.high` on its CPU API.
+
+Every guest also reports its CPU load. Creating and starting the experiment
+from the two configs runs the checks. From the command line:
+
+```
+phenix config create phenix-configs/topology.yml phenix-configs/scenario.yml
+phenix experiment create wind-turbine -t wind-turbine -s wind-turbine
+phenix experiment start wind-turbine
+```
+
+The checks run in the post-start stage after a 5 minute `startupDelay`, and
+`phenix experiment start` returns when they finish. A failed check is recorded
+but does not fail the start (`exitOnError: false`). To run the checks again on
+the running experiment:
+
+```
+phenix experiment trigger running wind-turbine soh
+```
+
+The results are in the SoH view of the phēnix web UI (the SoH button of the
+experiment), under `status.apps.soh` in the output of
+`phenix config get experiment/wind-turbine`, and at
+`GET /api/v1/experiments/wind-turbine/soh` in the REST API.
+
+`runPeriodically: 15m` runs the checks again every 15 minutes when the
+experiment is started from the web UI or the REST API, or with
+`phenix experiment start wind-turbine --honor-run-periodically`, which then
+stays in the foreground until the experiment stops. A plain
+`phenix experiment start` does not schedule them.
+
+The checks run over minimega's command and control, so each guest needs the
+`miniccc` agent, which the image recipes inject. The `weather-replay` check
+fails when `phenix-injects/weather.csv` is a Git LFS pointer: run
+`git lfs pull` in this repository before you copy the injects.
+
+### Optional packet capture
+
+soh can also capture traffic and show it in a Network Volume tab of the SoH
+view. It is not configured, because it adds an Elasticsearch and Kibana VM
+(2 vCPUs and 4096 MB in the block below) on the `MGMT` VLAN and one 512 MB
+Packetbeat VM for each captured node, and it needs `elasticsearch.qc2` and
+`packetbeat.qc2`, which the `elasticsearch` and `packetbeat` recipes of
+sceptre-phenix-images build (`make elasticsearch packetbeat`). soh mirrors only
+one interface of each captured node, so the block captures the Modbus traffic
+on the `turbine` interface of the main controller and the ground-truth traffic
+on `grafana`. To add it, paste the block under `metadata:` of the soh app in
+`phenix-configs/scenario.yml`, stop and delete the experiment, delete the
+scenario config (`phenix experiment stop wind-turbine`,
+`phenix experiment delete wind-turbine`,
+`phenix config delete scenario/wind-turbine`), and create both again.
+
+```yaml
+      packetCapture:
+        elasticImage: elasticsearch.qc2
+        packetBeatImage: packetbeat.qc2
+        elasticServer:
+          hostname: soh-elasticsearch-server
+          vcpus: 2
+          memory: 4096
+          ipAddress: 172.16.100.250/24
+        captureHosts:
+          grafana:
+          - IF0
+          wtg-1-main-controller:
+          - IF1
+```

@@ -1,0 +1,73 @@
+apiVersion: phenix.sandia.gov/v2
+kind: Scenario
+metadata:
+  name: helloworld
+  annotations:
+    topology: helloworld
+spec:
+  apps:
+    - name: soh
+      runPeriodically: 15m
+      metadata:
+        c2Timeout: 5m
+        exitOnError: false
+        hostFiles:
+          test1:
+          - /etc/phenix/startup/1_hostname-start.sh
+          - /etc/phenix/startup/2_timezone-start.sh
+          - /etc/phenix/startup/3_interfaces-start.sh
+          test2:
+          - /etc/phenix/startup/1_hostname-start.sh
+          - /etc/phenix/startup/2_timezone-start.sh
+          - /etc/phenix/startup/3_interfaces-start.sh
+        hostServices:
+          test1:
+          - phenix
+          test2:
+          - phenix
+        hostListeners:
+          test1:
+          - :22
+          test2:
+          - :22
+        hostCustomTests:
+          test1:
+          - name: timezone
+            testScript: |
+              timedatectl show -p Timezone --value
+            testStdout: Etc/UTC
+          - name: peer-sshd
+            testScript: |
+              for _ in 1 2 3 4 5 6; do
+                key=$(ssh-keyscan -T 5 -t ed25519 192.168.1.2 2>/dev/null | cut -d' ' -f2)
+                [ "$key" = ssh-ed25519 ] && break
+                sleep 5
+              done
+              echo "test2 sshd host key: $key"
+            testStdout: "test2 sshd host key: ssh-ed25519"
+          test2:
+          - name: timezone
+            testScript: |
+              timedatectl show -p Timezone --value
+            testStdout: Etc/UTC
+          - name: peer-sshd
+            testScript: |
+              for _ in 1 2 3 4 5 6; do
+                key=$(ssh-keyscan -T 5 -t ed25519 192.168.1.1 2>/dev/null | cut -d' ' -f2)
+                [ "$key" = ssh-ed25519 ] && break
+                sleep 5
+              done
+              echo "test1 sshd host key: $key"
+            testStdout: "test1 sshd host key: ssh-ed25519"
+        testReachability: full
+        testCustomReachability:
+        - src: test1
+          dst: test2|if0
+          proto: tcp
+          port: 22
+          wait: 10s
+        - src: test2
+          dst: test1|if0
+          proto: tcp
+          port: 22
+          wait: 10s

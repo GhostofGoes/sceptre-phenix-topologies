@@ -25,3 +25,561 @@ spec:
           interface: IFM
           vlans:
             - ot
+  - name: soh
+    metadata:
+      # CI runs that booted 10 guests saw them register with C2 up to about 11
+      # minutes after launch; with every Linux image built, 17 guests boot
+      # there. The checks start 10 minutes after launch and wait up to 15
+      # minutes more for each guest's C2.
+      startupDelay: 10m
+      c2Timeout: 15m
+      # The routers' ACLs and IPsec policies allow only the plant's own flows,
+      # so pings between every pair of hosts would fail by design; the flows
+      # are tested under testCustomReachability. Keep the quotes: YAML 1.1
+      # parsers read a bare off as false.
+      testReachability: "off"
+      testCustomReachability:
+      # Each site workstation reaches a WTG through its site router, the IPsec
+      # tunnel and rtr-site; ws-ot is on the WTGs' VLAN.
+      - src: ws-owop
+        dst: wtg-01|IF0
+        proto: tcp
+        port: 80
+        wait: 5m
+      - src: ws-grid
+        dst: wtg-02|IF0
+        proto: tcp
+        port: 80
+        wait: 5m
+      - src: ws-oem
+        dst: wtg-03|IF0
+        proto: tcp
+        port: 80
+        wait: 5m
+      - src: ws-ot
+        dst: wtg-04|IF0
+        proto: tcp
+        port: 80
+        wait: 5m
+      - src: ws-ot
+        dst: wtg-05|IF0
+        proto: tcp
+        port: 80
+        wait: 5m
+      # The protonuke clients reach the Internet server through rtr-site and rtr-isp4.
+      - src: nuke-pnc1
+        dst: nuke-pns|IF0
+        proto: tcp
+        port: 80
+        wait: 5m
+      - src: nuke-pnc2
+        dst: nuke-pns|IF0
+        proto: tcp
+        port: 80
+        wait: 5m
+      # RDP to ws-ot from the jump host through rtr-site, and from kali-ot on the ot VLAN.
+      - src: guard-jh
+        dst: ws-ot|IF0
+        proto: tcp
+        port: 3389
+        wait: 5m
+      - src: kali-ot
+        dst: ws-ot|IF0
+        proto: tcp
+        port: 3389
+        wait: 5m
+      hostFiles:
+        ws-owop:
+        - 'C:/phenix/startup/90-protonuke.ps1'
+        - 'C:/minimega/protonuke.log'
+        ws-grid:
+        - 'C:/phenix/startup/90-protonuke.ps1'
+        - 'C:/minimega/protonuke.log'
+        ws-oem:
+        - 'C:/phenix/startup/90-protonuke.ps1'
+        - 'C:/minimega/protonuke.log'
+        nuke-pns:
+        - /etc/default/protonuke
+        kali-inet:
+        - /root/wind-test-harness/main.sh
+        - /root/wind-test-harness/tests.csv
+        guard-cli:
+        - /etc/wireguard/wg0.conf
+        nuke-pnc1:
+        - /etc/default/protonuke
+        nuke-pnc2:
+        - /etc/default/protonuke
+        guard-jh:
+        - /etc/wireguard/wg0.conf
+        - /etc/phenix/startup/wireguard-enable.sh
+        ids:
+        - /etc/filebeat/filebeat.yml
+        - /opt/zeek/etc/networks.cfg
+        - /etc/phenix/startup/99-filebeat-start.sh
+        - /etc/phenix/startup/99-setup-ovs.sh
+        ws-ot:
+        - 'C:/phenix/startup/90-protonuke.ps1'
+        - 'C:/minimega/protonuke.log'
+        kali-ot:
+        - /root/wind-test-harness/main.sh
+        - /root/wind-test-harness/tests.csv
+        wtg-01:
+        - /etc/default/protonuke
+        wtg-02:
+        - /etc/default/protonuke
+        wtg-03:
+        - /etc/default/protonuke
+        wtg-04:
+        - /etc/default/protonuke
+        wtg-05:
+        - /etc/default/protonuke
+        rtr-owop:
+        - /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/phenix-run-flag
+        rtr-isp1:
+        - /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/phenix-run-flag
+        rtr-grid:
+        - /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/phenix-run-flag
+        rtr-isp2:
+        - /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/phenix-run-flag
+        rtr-oem:
+        - /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/phenix-run-flag
+        rtr-isp3:
+        - /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/phenix-run-flag
+        rtr-site:
+        - /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/phenix-run-flag
+        rtr-isp4:
+        - /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/phenix-run-flag
+      hostServices:
+        nuke-pns:
+        - phenix.service
+        - protonuke.service
+        kali-inet:
+        - phenix.service
+        guard-cli:
+        - phenix.service
+        nuke-pnc1:
+        - phenix.service
+        - protonuke.service
+        nuke-pnc2:
+        - phenix.service
+        - protonuke.service
+        guard-jh:
+        - phenix.service
+        - wg-quick@wg0.service
+        wazuh-manager:
+        - phenix.service
+        - wazuh-manager.service
+        - elasticsearch.service
+        - filebeat.service
+        ids:
+        - phenix.service
+        - openvswitch-switch.service
+        - zeek.service
+        - filebeat.service
+        kali-ot:
+        - phenix.service
+        wtg-01:
+        - phenix.service
+        - protonuke.service
+        wtg-02:
+        - phenix.service
+        - protonuke.service
+        wtg-03:
+        - phenix.service
+        - protonuke.service
+        wtg-04:
+        - phenix.service
+        - protonuke.service
+        wtg-05:
+        - phenix.service
+        - protonuke.service
+        rtr-owop:
+        - strongswan.service
+        rtr-grid:
+        - strongswan.service
+        rtr-oem:
+        - strongswan.service
+        rtr-site:
+        - strongswan.service
+      hostProcesses:
+        ws-owop:
+        - protonuke
+        ws-grid:
+        - protonuke
+        ws-oem:
+        - protonuke
+        ws-ot:
+        - protonuke
+      hostListeners:
+        nuke-pns:
+        - ':80'
+        - ':443'
+        - ':25'
+        guard-jh:
+        - ':51820'
+        wazuh-manager:
+        - ':1514'
+        - ':1515'
+        - ':9200'
+        wtg-01:
+        - ':80'
+        wtg-02:
+        - ':80'
+        wtg-03:
+        - ':80'
+        wtg-04:
+        - ':80'
+        wtg-05:
+        - ':80'
+      # Custom tests run once, and one at a time on each guest. Each waits at
+      # most 3 minutes for its condition, so the tests of a guest end within
+      # c2Timeout. phenix replaces every dollar-brace reference when it loads
+      # this file, so the scripts must not use one.
+      hostCustomTests:
+        nuke-pns:
+        - name: serves-plant-clients
+          testScript: |
+            # protonuke logs each HTTP and HTTPS request it serves as "<proto> <client
+            # address>:<port>". It logs SMTP only when a client sends QUIT, which its
+            # own client never does, so SMTP comes from the counters it prints.
+            for _ in $(seq 36); do
+              seen=$(grep -oE ' (http|https) 192\.168\.(40|50)\.100:' /var/log/protonuke.log 2>/dev/null | sort -u | wc -l)
+              mails=$(journalctl -u protonuke -o cat 2>/dev/null | grep -cE '^smtp[[:space:]]+[1-9]')
+              [ "$seen" -eq 4 ] && [ "$mails" -gt 0 ] && break
+              sleep 5
+            done
+            if [ "$seen" -eq 4 ] && [ "$mails" -gt 0 ]; then echo "http and https from both clients, smtp served"; else echo "$seen of 4 client protocols in protonuke.log, $mails smtp reports"; fi
+          testStdout: http and https from both clients, smtp served
+        guard-jh:
+        - name: vpn-gateway
+          testScript: |
+            for _ in $(seq 36); do
+              addr=$(ip -4 -o addr show dev wg0 2>&1)
+              fwd=$(cat /proc/sys/net/ipv4/ip_forward)
+              ok=""
+              grep -q 'inet 10.222.222.1/24' <<<"$addr" && [ "$fwd" = 1 ] && ok=1
+              [ -n "$ok" ] && break
+              sleep 5
+            done
+            [ -n "$addr" ] || addr=none
+            if [ -n "$ok" ]; then echo "wg0 up as the VPN gateway, forwarding on"; else echo "wg0: $addr; ip_forward=$fwd"; fi
+          testStdout: wg0 up as the VPN gateway, forwarding on
+        wazuh-manager:
+        - name: alerts-indexed
+          testScript: |
+            for _ in $(seq 36); do
+              n=$(curl -fs --max-time 5 'http://127.0.0.1:9200/wazuh-alerts-4.x-*/_count' | jq -r '.count // 0')
+              (( n > 0 )) && break
+              sleep 5
+            done
+            if (( n > 0 )); then echo "manager alerts indexed"; else echo "no documents in wazuh-alerts-4.x-*"; fi
+          testStdout: manager alerts indexed
+        - name: ids-events-indexed
+          testScript: |
+            # Only the ids node's Filebeat writes filebeat-*; the manager's writes
+            # wazuh-alerts-4.x-*.
+            for _ in $(seq 36); do
+              n=$(curl -fs --max-time 5 'http://127.0.0.1:9200/filebeat-*/_count' | jq -r '.count // 0')
+              (( n > 0 )) && break
+              sleep 5
+            done
+            if (( n > 0 )); then echo "ids events indexed"; else echo "no documents in filebeat-*"; fi
+          testStdout: ids events indexed
+        ids:
+        - name: mirror-traffic
+          testScript: |
+            # The mirror app copies the ot VLAN to gre_sys; kali-ot's ot-traffic
+            # test sends packets on that VLAN while this one waits.
+            for _ in $(seq 36); do
+              rx=$(cat /sys/class/net/gre_sys/statistics/rx_packets 2>/dev/null || echo 0)
+              [ "$rx" -gt 0 ] && break
+              sleep 5
+            done
+            if [ "$rx" -gt 0 ]; then echo "mirrored ot packets on gre_sys"; else echo "no packets on gre_sys"; fi
+          testStdout: mirrored ot packets on gre_sys
+        kali-ot:
+        - name: ot-traffic
+          testScript: |
+            # Ping rtr-site on the ot VLAN for 30 seconds, so the ids node's
+            # mirror sees OT traffic even when kali-ot is the only OT host that
+            # boots, as in CI.
+            out=$(ping -c 30 -i 1 -W 2 192.168.100.254 2>&1)
+            got=$(grep -oE '[0-9]+ received' <<<"$out" | cut -d' ' -f1)
+            if (( got > 0 )); then echo "rtr-site answers on the ot VLAN"; else echo "no answer from rtr-site: $(tail -n 1 <<<"$out")"; fi
+          testStdout: rtr-site answers on the ot VLAN
+        wtg-01:
+        - name: serves-workstations
+          testScript: |
+            for _ in $(seq 36); do
+              seen=$(grep -oE ' http 192\.168\.(10\.10|20\.10|30\.10|100\.100):' /var/log/protonuke.log 2>/dev/null | sort -u | wc -l)
+              [ "$seen" -eq 4 ] && break
+              sleep 5
+            done
+            if [ "$seen" -eq 4 ]; then echo "http from all four workstations"; else echo "$seen of 4 workstations in protonuke.log"; fi
+          testStdout: http from all four workstations
+        wtg-02:
+        - name: serves-workstations
+          testScript: |
+            for _ in $(seq 36); do
+              seen=$(grep -oE ' http 192\.168\.(10\.10|20\.10|30\.10|100\.100):' /var/log/protonuke.log 2>/dev/null | sort -u | wc -l)
+              [ "$seen" -eq 4 ] && break
+              sleep 5
+            done
+            if [ "$seen" -eq 4 ]; then echo "http from all four workstations"; else echo "$seen of 4 workstations in protonuke.log"; fi
+          testStdout: http from all four workstations
+        wtg-03:
+        - name: serves-workstations
+          testScript: |
+            for _ in $(seq 36); do
+              seen=$(grep -oE ' http 192\.168\.(10\.10|20\.10|30\.10|100\.100):' /var/log/protonuke.log 2>/dev/null | sort -u | wc -l)
+              [ "$seen" -eq 4 ] && break
+              sleep 5
+            done
+            if [ "$seen" -eq 4 ]; then echo "http from all four workstations"; else echo "$seen of 4 workstations in protonuke.log"; fi
+          testStdout: http from all four workstations
+        wtg-04:
+        - name: serves-workstations
+          testScript: |
+            for _ in $(seq 36); do
+              seen=$(grep -oE ' http 192\.168\.(10\.10|20\.10|30\.10|100\.100):' /var/log/protonuke.log 2>/dev/null | sort -u | wc -l)
+              [ "$seen" -eq 4 ] && break
+              sleep 5
+            done
+            if [ "$seen" -eq 4 ]; then echo "http from all four workstations"; else echo "$seen of 4 workstations in protonuke.log"; fi
+          testStdout: http from all four workstations
+        wtg-05:
+        - name: serves-workstations
+          testScript: |
+            for _ in $(seq 36); do
+              seen=$(grep -oE ' http 192\.168\.(10\.10|20\.10|30\.10|100\.100):' /var/log/protonuke.log 2>/dev/null | sort -u | wc -l)
+              [ "$seen" -eq 4 ] && break
+              sleep 5
+            done
+            if [ "$seen" -eq 4 ]; then echo "http from all four workstations"; else echo "$seen of 4 workstations in protonuke.log"; fi
+          testStdout: http from all four workstations
+        rtr-owop:
+        - name: acl-rulesets
+          testScript: |
+            # VyOS renders each firewall ruleset as the nftables chain NAME_<ruleset>,
+            # which the forward filter jumps to for the interface the vrouter app binds.
+            for _ in $(seq 36); do
+              rules=$(nft list ruleset 2>&1)
+              missing=""
+              for name in owop-in owop-out; do
+                if ! grep -qF "chain NAME_$name {" <<<"$rules" || ! grep -qE "jump NAME_$name( |\$)" <<<"$rules"; then
+                  missing="$missing $name"
+                fi
+              done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "ACL rulesets loaded and applied"; else echo "ACL rulesets not loaded or not applied:$missing"; fi
+          testStdout: ACL rulesets loaded and applied
+        - name: plant-routes
+          testScript: |
+            nets="10.0.10.0/30 10.0.20.0/30 10.0.30.0/30 10.0.40.0/30 75.75.0.0/16 192.168.10.0/24 192.168.20.0/24 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.60.0/24 192.168.100.0/24"
+            for _ in $(seq 36); do
+              missing=""
+              for net in $nets; do [ -n "$(ip -4 route show "$net")" ] || missing="$missing $net"; done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "routes to every plant network"; else echo "no route to:$missing"; fi
+          testStdout: routes to every plant network
+        - name: ipsec-sas
+          testScript: |
+            here=10.0.10.2
+            peers="10.0.40.2"
+            for _ in $(seq 36); do
+              sas=$(ip xfrm state | awk '$1 == "src" && $3 == "dst" { print $2 ">" $4 }')
+              missing=""
+              for peer in $peers; do
+                for pair in "$here>$peer" "$peer>$here"; do
+                  grep -qxF "$pair" <<<"$sas" || missing="$missing $pair"
+                done
+              done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "ESP SAs with every IPsec peer"; else echo "no ESP SA for:$missing"; fi
+          testStdout: ESP SAs with every IPsec peer
+        rtr-isp1:
+        - name: plant-routes
+          testScript: |
+            nets="10.0.10.0/30 10.0.20.0/30 10.0.30.0/30 10.0.40.0/30 75.75.0.0/16 192.168.10.0/24 192.168.20.0/24 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.60.0/24 192.168.100.0/24"
+            for _ in $(seq 36); do
+              missing=""
+              for net in $nets; do [ -n "$(ip -4 route show "$net")" ] || missing="$missing $net"; done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "routes to every plant network"; else echo "no route to:$missing"; fi
+          testStdout: routes to every plant network
+        rtr-grid:
+        - name: acl-rulesets
+          testScript: |
+            for _ in $(seq 36); do
+              rules=$(nft list ruleset 2>&1)
+              missing=""
+              for name in grid-in grid-out; do
+                if ! grep -qF "chain NAME_$name {" <<<"$rules" || ! grep -qE "jump NAME_$name( |\$)" <<<"$rules"; then
+                  missing="$missing $name"
+                fi
+              done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "ACL rulesets loaded and applied"; else echo "ACL rulesets not loaded or not applied:$missing"; fi
+          testStdout: ACL rulesets loaded and applied
+        - name: plant-routes
+          testScript: |
+            nets="10.0.10.0/30 10.0.20.0/30 10.0.30.0/30 10.0.40.0/30 75.75.0.0/16 192.168.10.0/24 192.168.20.0/24 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.60.0/24 192.168.100.0/24"
+            for _ in $(seq 36); do
+              missing=""
+              for net in $nets; do [ -n "$(ip -4 route show "$net")" ] || missing="$missing $net"; done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "routes to every plant network"; else echo "no route to:$missing"; fi
+          testStdout: routes to every plant network
+        - name: ipsec-sas
+          testScript: |
+            here=10.0.20.2
+            peers="10.0.40.2"
+            for _ in $(seq 36); do
+              sas=$(ip xfrm state | awk '$1 == "src" && $3 == "dst" { print $2 ">" $4 }')
+              missing=""
+              for peer in $peers; do
+                for pair in "$here>$peer" "$peer>$here"; do
+                  grep -qxF "$pair" <<<"$sas" || missing="$missing $pair"
+                done
+              done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "ESP SAs with every IPsec peer"; else echo "no ESP SA for:$missing"; fi
+          testStdout: ESP SAs with every IPsec peer
+        rtr-isp2:
+        - name: plant-routes
+          testScript: |
+            nets="10.0.10.0/30 10.0.20.0/30 10.0.30.0/30 10.0.40.0/30 75.75.0.0/16 192.168.10.0/24 192.168.20.0/24 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.60.0/24 192.168.100.0/24"
+            for _ in $(seq 36); do
+              missing=""
+              for net in $nets; do [ -n "$(ip -4 route show "$net")" ] || missing="$missing $net"; done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "routes to every plant network"; else echo "no route to:$missing"; fi
+          testStdout: routes to every plant network
+        rtr-oem:
+        - name: acl-rulesets
+          testScript: |
+            for _ in $(seq 36); do
+              rules=$(nft list ruleset 2>&1)
+              missing=""
+              for name in oem-in oem-out; do
+                if ! grep -qF "chain NAME_$name {" <<<"$rules" || ! grep -qE "jump NAME_$name( |\$)" <<<"$rules"; then
+                  missing="$missing $name"
+                fi
+              done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "ACL rulesets loaded and applied"; else echo "ACL rulesets not loaded or not applied:$missing"; fi
+          testStdout: ACL rulesets loaded and applied
+        - name: plant-routes
+          testScript: |
+            nets="10.0.10.0/30 10.0.20.0/30 10.0.30.0/30 10.0.40.0/30 75.75.0.0/16 192.168.10.0/24 192.168.20.0/24 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.60.0/24 192.168.100.0/24"
+            for _ in $(seq 36); do
+              missing=""
+              for net in $nets; do [ -n "$(ip -4 route show "$net")" ] || missing="$missing $net"; done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "routes to every plant network"; else echo "no route to:$missing"; fi
+          testStdout: routes to every plant network
+        - name: ipsec-sas
+          testScript: |
+            here=10.0.30.2
+            peers="10.0.40.2"
+            for _ in $(seq 36); do
+              sas=$(ip xfrm state | awk '$1 == "src" && $3 == "dst" { print $2 ">" $4 }')
+              missing=""
+              for peer in $peers; do
+                for pair in "$here>$peer" "$peer>$here"; do
+                  grep -qxF "$pair" <<<"$sas" || missing="$missing $pair"
+                done
+              done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "ESP SAs with every IPsec peer"; else echo "no ESP SA for:$missing"; fi
+          testStdout: ESP SAs with every IPsec peer
+        rtr-isp3:
+        - name: plant-routes
+          testScript: |
+            nets="10.0.10.0/30 10.0.20.0/30 10.0.30.0/30 10.0.40.0/30 75.75.0.0/16 192.168.10.0/24 192.168.20.0/24 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.60.0/24 192.168.100.0/24"
+            for _ in $(seq 36); do
+              missing=""
+              for net in $nets; do [ -n "$(ip -4 route show "$net")" ] || missing="$missing $net"; done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "routes to every plant network"; else echo "no route to:$missing"; fi
+          testStdout: routes to every plant network
+        rtr-site:
+        - name: acl-rulesets
+          testScript: |
+            for _ in $(seq 36); do
+              rules=$(nft list ruleset 2>&1)
+              missing=""
+              for name in site-in site-out jh-in jh-out pn1-in pn1-out pn2-in pn2-out; do
+                if ! grep -qF "chain NAME_$name {" <<<"$rules" || ! grep -qE "jump NAME_$name( |\$)" <<<"$rules"; then
+                  missing="$missing $name"
+                fi
+              done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "ACL rulesets loaded and applied"; else echo "ACL rulesets not loaded or not applied:$missing"; fi
+          testStdout: ACL rulesets loaded and applied
+        - name: plant-routes
+          testScript: |
+            nets="10.0.10.0/30 10.0.20.0/30 10.0.30.0/30 10.0.40.0/30 75.75.0.0/16 192.168.10.0/24 192.168.20.0/24 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.60.0/24 192.168.100.0/24 10.222.222.0/24"
+            for _ in $(seq 36); do
+              missing=""
+              for net in $nets; do [ -n "$(ip -4 route show "$net")" ] || missing="$missing $net"; done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "routes to every plant network"; else echo "no route to:$missing"; fi
+          testStdout: routes to every plant network
+        - name: ipsec-sas
+          testScript: |
+            here=10.0.40.2
+            peers="10.0.10.2 10.0.20.2 10.0.30.2"
+            for _ in $(seq 36); do
+              sas=$(ip xfrm state | awk '$1 == "src" && $3 == "dst" { print $2 ">" $4 }')
+              missing=""
+              for peer in $peers; do
+                for pair in "$here>$peer" "$peer>$here"; do
+                  grep -qxF "$pair" <<<"$sas" || missing="$missing $pair"
+                done
+              done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "ESP SAs with every IPsec peer"; else echo "no ESP SA for:$missing"; fi
+          testStdout: ESP SAs with every IPsec peer
+        rtr-isp4:
+        - name: plant-routes
+          testScript: |
+            nets="10.0.10.0/30 10.0.20.0/30 10.0.30.0/30 10.0.40.0/30 75.75.0.0/16 192.168.10.0/24 192.168.20.0/24 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.60.0/24 192.168.100.0/24"
+            for _ in $(seq 36); do
+              missing=""
+              for net in $nets; do [ -n "$(ip -4 route show "$net")" ] || missing="$missing $net"; done
+              [ -z "$missing" ] && break
+              sleep 5
+            done
+            if [ -z "$missing" ]; then echo "routes to every plant network"; else echo "no route to:$missing"; fi
+          testStdout: routes to every plant network

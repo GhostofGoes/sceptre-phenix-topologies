@@ -184,6 +184,65 @@ Check your elasticstack deployment to validate that zeek is ingesting packets pr
     ![alt text](img/kibana-packet-meta.png)
 
 
+## State of health
+`scenario.yaml` also runs the phenix state of health (soh) app. Its checks, by node group:
+
+- `power-provider`: the injected `config.ini` and `case300.py`; the `pybennu-power-solver` process and its listener on `172.16.1.2:5555`; ssh on `172.16.1.2:22`; the `collectd` service that the sceptre `elk` label starts; a published multicast packet to `239.0.0.1:40000`; the phenix startup service, which is active once the sceptre start script has finished without error.
+- `rtu-1` to `rtu-4`: the EXP address; the injected `config.xml` and the `watcher.ini` the start script writes; no uploaded `/home/sceptre/bennu-field-deviced.firmware`; the field device and `bennu-watcherd` processes; the `vsftpd` and `collectd` services; listeners for DNP3 (20000), the provider multicast (40000), FTP (21) and ssh on both addresses; an established connection to the provider on `172.16.1.2:5555`; a multicast packet from the provider; the phenix startup service.
+- `siren`: its injected files and start script; a TCP connection to the solver on `172.16.1.2:5555`; the phenix startup service; a running `pybennu-siren` when the LabJack is attached.
+- `attacker`: the EXP address; `/phenix/attack/plc-attack.py`, `msfconsole` and the `snap7` Python module; TCP connections to the DNP3 port of each RTU.
+- `netmonitor`: the mirror address; the injected Filebeat and Zeek configs; the `filebeat` service; an IPv4 address on Zeek's sniff interface and a passing `zeekctl check`; a default route through the tap at `172.16.0.1`, which answers ping.
+- `ignition`: the Ignition process; ssh on port 22; the gateway backup and its restore log; the gateway's web port 8088, waited for while the gateway restores the backup and restarts; DNP3 sessions to all four RTUs. soh skips nodes that do not boot, so these checks run only when `ignition.qc2` exists.
+
+`./expctl start` creates and starts the experiment with these checks, and so do `phenix exp create soap -t soap -s soap` and `phenix exp start soap`. The checks run in the post-start stage after a 3 minute `startupDelay`, and the start returns when they finish. A failed check is recorded but does not fail the start (`exitOnError: false`). To run the checks again on the running experiment:
+
+```bash
+phenix experiment trigger running soap soh
+```
+
+The results are in the SoH view of the phenix web UI (the SoH button of the experiment), under `status.apps.soh` in the output of `phenix config get experiment/soap`, and at `GET /api/v1/experiments/soap/soh` in the REST API.
+
+`runPeriodically: 15m` runs the checks again every 15 minutes when the experiment is started from the web UI or the REST API, or with `phenix exp start soap --honor-run-periodically`, which stays in the foreground until the experiment stops. `./expctl start` and a plain `phenix exp start` do not schedule them.
+
+The checks run over minimega's command and control, so each guest needs the miniccc agent. The bennu and ubuntu-soaptools images have it, and the ignition image is a copy of ubuntu-soaptools.
+
+### Optional checks
+With the PLC connected (see [HIL network setup](#hil-network-setup)), the S7 port of the PLC can be checked from the attacker and from Ignition. Paste this block under `testCustomReachability:` of the soh app, then run `./expctl start`, which creates the configs and the experiment again. Leave out the `ignition` entry when `ignition.qc2` does not exist: soh records `c2 not active on host` for a source that does not boot.
+
+```yaml
+          - src: attacker
+            dst: 10.117.4.110
+            proto: tcp
+            port: 102
+            wait: 10s
+          - src: ignition
+            dst: 10.117.4.110
+            proto: tcp
+            port: 102
+            wait: 10s
+```
+
+Packet capture by soh is not configured, because netmonitor already receives the EXP traffic through the mirror app. It adds an Elasticsearch and Kibana VM (4 vCPUs, 4096 MB) on the MGMT VLAN and one 512 MB Packetbeat VM for each captured node, and it needs `elasticsearch.qc2` and `packetbeat.qc2`, built by the `elasticsearch` and `packetbeat` recipes in [sceptre-phenix-images](https://github.com/sandialabs/sceptre-phenix-images). To capture the EXP traffic of the RTUs, paste this block under `metadata:` of the soh app and run `./expctl start`. The SoH view then also has a Network Volume tab.
+
+```yaml
+        packetCapture:
+          elasticImage: elasticsearch.qc2
+          packetBeatImage: packetbeat.qc2
+          elasticServer:
+            hostname: soh-elasticsearch-server
+            ipAddress: 172.16.200.1/16
+          captureHosts:
+            rtu-1:
+              - exp
+            rtu-2:
+              - exp
+            rtu-3:
+              - exp
+            rtu-4:
+              - exp
+```
+
+
 ## Experiment Diagram
 Below is a diagram of the machines in the experiment:
 

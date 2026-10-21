@@ -7,48 +7,275 @@ metadata:
 spec:
   apps:
     - name: soh
+      # Runs the checks again every 15 minutes when the experiment is started
+      # from the web UI or the REST API, or with --honor-run-periodically.
+      runPeriodically: 15m
       metadata:
-        hostListeners:
+        # The start scripts bring up the field devices and pybennu about 90
+        # seconds after a guest's C2. 8m covers guests that reach C2 within about
+        # 5 minutes. A fast host needs only 3m; a 4-vCPU CI runner, where the 11
+        # VMs reach C2 after about 14 minutes, needs 20m or more.
+        startupDelay: 8m
+        # How long soh waits for a guest's C2 and for each command, including the
+        # custom tests below that wait up to 5 minutes.
+        c2Timeout: 10m
+        # Prebuilt images that this repository does not build.
+        hostsToUseUUIDForC2Active:
+        - ignition
+        - controlthings-elk
+        # Every node that pings (the RTUs, ignition and controlthings-elk) is on
+        # both the EXP and the MGMT link.
+        testReachability: full
+        # Each field device reaches pybennu's server endpoint, its output path in
+        # config.xml. soh resolves host|interface only for hosts with a non-MGMT
+        # interface, so the provider is given by its address.
+        testCustomReachability:
+        - src: rtu-1
+          dst: 172.16.1.2
+          proto: tcp
+          port: 5555
+          wait: 10s
+        - src: rtu-2
+          dst: 172.16.1.2
+          proto: tcp
+          port: 5555
+          wait: 10s
+        - src: rtu-3
+          dst: 172.16.1.2
+          proto: tcp
+          port: 5555
+          wait: 10s
+        - src: rtu-4
+          dst: 172.16.1.2
+          proto: tcp
+          port: 5555
+          wait: 10s
+        hostFiles:
           provider:
-          - :5555
+          - /etc/sceptre/config.ini
+          - /etc/sceptre/case300.py
+          - /etc/phenix/startup/sceptre-start.sh
+          - /etc/phenix/startup/elk-start.sh
           rtu-1:
-          - :20000
+          - /etc/sceptre/config.xml
+          - /etc/sceptre/watcher.ini
+          - /home/sceptre/bennu-field-deviced
+          - /home/sceptre/config.xml
+          - /etc/phenix/startup/sceptre-start.sh
+          - /etc/phenix/startup/elk-start.sh
           rtu-2:
-          - :20000
+          - /etc/sceptre/config.xml
+          - /etc/sceptre/watcher.ini
+          - /home/sceptre/bennu-field-deviced
+          - /home/sceptre/config.xml
+          - /etc/phenix/startup/sceptre-start.sh
+          - /etc/phenix/startup/elk-start.sh
           rtu-3:
-          - :20000
+          - /etc/sceptre/config.xml
+          - /etc/sceptre/watcher.ini
+          - /home/sceptre/bennu-field-deviced
+          - /home/sceptre/config.xml
+          - /etc/phenix/startup/sceptre-start.sh
+          - /etc/phenix/startup/elk-start.sh
           rtu-4:
-          - :20000
+          - /etc/sceptre/config.xml
+          - /etc/sceptre/watcher.ini
+          - /home/sceptre/bennu-field-deviced
+          - /home/sceptre/config.xml
+          - /etc/phenix/startup/sceptre-start.sh
+          - /etc/phenix/startup/elk-start.sh
+          soh-elasticsearch-server:
+          - /usr/local/bin/query-flows.sh
+          - /etc/elasticsearch/elasticsearch.yml
+          - /etc/kibana/kibana.yml
+        # bennu-watcherd swaps a firmware file found here into the field device.
+        hostFilesAbsent:
+          rtu-1:
+          - /home/sceptre/bennu-field-deviced.firmware
+          rtu-2:
+          - /home/sceptre/bennu-field-deviced.firmware
+          rtu-3:
+          - /home/sceptre/bennu-field-deviced.firmware
+          rtu-4:
+          - /home/sceptre/bennu-field-deviced.firmware
+        # phenix is the oneshot that runs the startup scripts. It is active once
+        # they have finished and the last one, the sceptre start script, exited 0.
+        hostServices:
+          provider:
+          - miniccc
+          - phenix
+          - ssh
+          - ntp
+          - collectd
+          rtu-1:
+          - miniccc
+          - phenix
+          - ssh
+          - ntp
+          - collectd
+          - vsftpd
+          rtu-2:
+          - miniccc
+          - phenix
+          - ssh
+          - ntp
+          - collectd
+          - vsftpd
+          rtu-3:
+          - miniccc
+          - phenix
+          - ssh
+          - ntp
+          - collectd
+          - vsftpd
+          rtu-4:
+          - miniccc
+          - phenix
+          - ssh
+          - ntp
+          - collectd
+          - vsftpd
+          # Elasticsearch and Kibana are checked by the custom tests below, which
+          # wait for them: they start minutes after phenix.service, and the
+          # service and listener checks retry for only 25 seconds.
+          soh-elasticsearch-server:
+          - miniccc
+          - phenix
+        # pgrep -f patterns. The field device's is anchored because the command
+        # line of bennu-watcherd also names bennu-field-deviced (its firmware path).
         hostProcesses:
           provider:
-          - miniccc
           - pybennu-power-solver
           rtu-1:
-          - miniccc
           - bennu-watcherd
-          - bennu-field-deviced
+          - '^(/usr/bin/)?bennu-field-deviced'
           rtu-2:
-          - miniccc
           - bennu-watcherd
-          - bennu-field-deviced
+          - '^(/usr/bin/)?bennu-field-deviced'
           rtu-3:
-          - miniccc
           - bennu-watcherd
-          - bennu-field-deviced
+          - '^(/usr/bin/)?bennu-field-deviced'
           rtu-4:
-          - miniccc
           - bennu-watcherd
-          - bennu-field-deviced
+          - '^(/usr/bin/)?bennu-field-deviced'
+        hostListeners:
+          provider:
+          - 172.16.1.2:5555 # pybennu server endpoint
+          - 172.16.1.2:22
+          rtu-1:
+          - 10.117.4.101:20000 # DNP3 outstation
+          - :40000 # pybennu publish group (UDP)
+          - :21 # vsftpd, for firmware uploads
+          - 10.117.4.101:22
+          - 172.16.1.4:22
+          rtu-2:
+          - 10.117.4.102:20000
+          - :40000
+          - :21
+          - 10.117.4.102:22
+          - 172.16.1.5:22
+          rtu-3:
+          - 10.117.4.103:20000
+          - :40000
+          - :21
+          - 10.117.4.103:22
+          - 172.16.1.6:22
+          rtu-4:
+          - 10.117.4.104:20000
+          - :40000
+          - :21
+          - 10.117.4.104:22
+          - 172.16.1.7:22
+          ignition:
+          - :8088 # Ignition gateway
+        # phenix replaces every dollar-brace reference (NAME or NAME:default) when it
+        # loads a config file, so these scripts must not use one. Exit codes are
+        # ignored: each test passes only on the text it looks for.
+        hostCustomTests:
+          rtu-1:
+          - name: provider-session
+            testScript: |
+              timeout 60 sh -c 'until ss -Htn state established "( dport = :5555 )" | grep -q 172.16.1.2:5555; do sleep 2; done'
+              ss -Htn state established '( dport = :5555 )'
+            testStdout: 172.16.1.2:5555
+          - name: provider-publish
+            testScript: |
+              timeout 20 tcpdump -c 1 -ni any udp dst port 40000
+            testStderr: 1 packet captured
+          rtu-2:
+          - name: provider-session
+            testScript: |
+              timeout 60 sh -c 'until ss -Htn state established "( dport = :5555 )" | grep -q 172.16.1.2:5555; do sleep 2; done'
+              ss -Htn state established '( dport = :5555 )'
+            testStdout: 172.16.1.2:5555
+          - name: provider-publish
+            testScript: |
+              timeout 20 tcpdump -c 1 -ni any udp dst port 40000
+            testStderr: 1 packet captured
+          rtu-3:
+          - name: provider-session
+            testScript: |
+              timeout 60 sh -c 'until ss -Htn state established "( dport = :5555 )" | grep -q 172.16.1.2:5555; do sleep 2; done'
+              ss -Htn state established '( dport = :5555 )'
+            testStdout: 172.16.1.2:5555
+          - name: provider-publish
+            testScript: |
+              timeout 20 tcpdump -c 1 -ni any udp dst port 40000
+            testStderr: 1 packet captured
+          rtu-4:
+          - name: provider-session
+            testScript: |
+              timeout 60 sh -c 'until ss -Htn state established "( dport = :5555 )" | grep -q 172.16.1.2:5555; do sleep 2; done'
+              ss -Htn state established '( dport = :5555 )'
+            testStdout: 172.16.1.2:5555
+          - name: provider-publish
+            testScript: |
+              timeout 20 tcpdump -c 1 -ni any udp dst port 40000
+            testStderr: 1 packet captured
+          soh-elasticsearch-server:
+          - name: elasticsearch-health
+            testScript: |
+              for _ in $(seq 60); do
+                if curl -fs http://localhost:9200/_cluster/health | grep -Eq '"status":"(green|yellow)"'; then
+                  echo elasticsearch-ready
+                  exit 0
+                fi
+                sleep 5
+              done
+            testStdout: elasticsearch-ready
+          - name: kibana-status
+            testScript: |
+              for _ in $(seq 60); do
+                if curl -fs -o /dev/null http://localhost:5601/api/status; then
+                  echo kibana-ready
+                  exit 0
+                fi
+                sleep 5
+              done
+            testStdout: kibana-ready
+          - name: packetbeat-flows
+            testScript: |
+              for _ in $(seq 60); do
+                count=$(curl -fs 'http://localhost:9200/packetbeat-*/_count?q=type:flow' | grep -o '"count":[0-9]*' | cut -d: -f2)
+                if [ "$count" -gt 0 ] 2>/dev/null; then
+                  echo "packetbeat flows indexed: $count"
+                  exit 0
+                fi
+                sleep 5
+              done
+            testStdout: packetbeat flows indexed
         packetCapture:
           elasticImage: elasticsearch.qc2
           packetBeatImage: packetbeat.qc2
+          # soh adds this server and one Packetbeat VM per captured host on MGMT.
+          # The Packetbeat VMs take the addresses after the server's.
           elasticServer:
             hostname: soh-elasticsearch-server
-            ipAddress: 10.117.4.200/24
-            vlan: EXP
+            ipAddress: 172.16.1.200/16
+          # One end of each flow: DNP3 at the RTUs, pybennu traffic at the provider.
           captureHosts:
-            ignition:
-            - exp
+            provider:
+            - mgmt
             rtu-1:
             - exp
             rtu-2:
@@ -57,7 +284,3 @@ spec:
             - exp
             rtu-4:
             - exp
-            controlthings-elk:
-            - exp
-        startupDelay: 3m
-        testReachability: full # can be off, sample, or full

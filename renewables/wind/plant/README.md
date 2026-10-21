@@ -139,3 +139,112 @@ for `protonuke` logs on the WTGs to see that clients are connecting to them
 - The username and password for Kali VM is `root` and `toor` or `kali` and
   `kali` depending on the version of Kali that you create.
 - The username and password for the Windows 7 image is `admin` and `password`.
+
+## State of health
+
+The `base`, `hids`, `nids` and `soar` scenarios end with the phēnix state of
+health (soh) app. Its checks, by node group:
+
+- Routers (`rtr-*`): every non-MGMT address; the flag file that the VyOS image
+  writes after it runs the `vrouter` boot script; a route to every plant
+  network, and on `rtr-site` also to the VPN subnet `10.222.222.0/24`. On
+  `rtr-owop`, `rtr-grid`, `rtr-oem` and `rtr-site`: `strongswan.service`, ESP
+  security associations in both directions with each IPsec peer, and each ACL
+  ruleset of the scenario loaded in the firewall and applied to its interface.
+- WTGs (`wtg-01` to `wtg-05`): address and gateway, `phenix.service`,
+  `protonuke.service`, `/etc/default/protonuke`, port 80, and HTTP requests
+  from all four workstations in `/var/log/protonuke.log`.
+- Workstations (`ws-*`): address and gateway, the `protonuke` process, its
+  startup script and log, and a TCP connection to port 80 of one WTG each
+  (`ws-ot` to `wtg-04` and `wtg-05`). The connections from `ws-owop`, `ws-grid`
+  and `ws-oem` go through the IPsec tunnels.
+- Internet protonuke nodes: address and gateway, `phenix.service`,
+  `protonuke.service` and `/etc/default/protonuke`; ports 80, 443 and 25 on
+  `nuke-pns`; a TCP connection from `nuke-pnc1` and `nuke-pnc2` to port 80 of
+  `nuke-pns` through `rtr-site`; HTTP, HTTPS and SMTP requests from both
+  clients in the log of `nuke-pns`.
+- WireGuard nodes: `wg0.conf` on both. On `guard-jh`: `wg-quick@wg0.service`
+  and its startup script, UDP port 51820, `wg0` at `10.222.222.1/24` with IP
+  forwarding on, and RDP (TCP 3389) to `ws-ot` through `rtr-site`.
+- Kali nodes: `phenix.service` and the test harness files under
+  `/root/wind-test-harness`; RDP from `kali-ot` to `ws-ot`.
+- `wazuh-manager` (`hids`, `nids` and `soar`): the `wazuh-manager`,
+  `elasticsearch` and `filebeat` services, ports 1514, 1515 and 9200, and
+  manager alerts in the `wazuh-alerts-4.x-*` indices.
+- `hids` and `soar` also check, on `ws-ot`, the Wazuh agent service `WazuhSvc`,
+  its injected `ossec.conf` and a TCP connection to the manager's enrollment
+  port 1515, and the injected `ossec.conf` on `guard-jh`.
+- `nids` and `soar` also check, on `ids`, the injected Filebeat and Zeek configs
+  and startup scripts, the `openvswitch-switch`, `zeek` and `filebeat`
+  services, and packets on `gre_sys` from the mirror of the `ot` VLAN; on
+  `kali-ot`, 30 seconds of pings to `rtr-site` on the `ot` VLAN, which also
+  give the mirror traffic when no other OT host boots; and, on
+  `wazuh-manager`, documents from the Filebeat of `ids` in `filebeat-*`.
+- `soar` also checks, on `soar`, `phenix.service`, a TCP connection to
+  Elasticsearch on the manager, and a ping to the tap `172.16.60.51` that the
+  `windy` app creates on the phēnix host.
+
+soh does not check `pwds`, whose image this repository does not describe, or
+the Wazuh agent on `guard-jh`, which no topology starts. It skips the checks of
+nodes that do not boot, except a `testCustomReachability` test whose source or
+target does not boot: soh records that test as failed. The ICMP reachability
+test (`testReachability`) is off, because the ACLs allow only the plant's own
+flows.
+
+To create and start an experiment with the checks, add the configs to the
+store and create the experiment as described above. For example, for `hids`,
+from this directory:
+
+```
+phenix config create phenix-configs/base/scenario.yml phenix-configs/hids/topology.yml phenix-configs/hids/scenario.yml
+phenix experiment create wind-hids -t hids -s hids
+phenix experiment start wind-hids
+```
+
+The checks run in the post-start stage after a `startupDelay` of 10 minutes,
+and soh waits up to 15 more minutes (`c2Timeout`) for each guest's C2. Both are
+sized for a loaded host such as a CI runner. The start returns when the checks
+finish. A failed check is recorded, but it does not fail the start.
+To run the checks again on the running experiment:
+
+```
+phenix experiment trigger running wind-hids soh
+```
+
+The results are in the SoH view of the phēnix web UI (the SoH button of the
+experiment), under `status.apps.soh` in the output of
+`phenix config get experiment/wind-hids`, and at
+`GET /api/v1/experiments/wind-hids/soh` in the REST API.
+
+The scenarios do not set `runPeriodically`, because the checks open HTTP, RDP
+and Elasticsearch connections, which the NIDS and the HIDS would record during
+a test harness run.
+
+### Optional packet capture
+
+soh can also capture traffic and show the flows in the Network Volume tab of
+the SoH view. This adds an Elasticsearch and Kibana VM (4 vCPUs, 4096 MB) on
+MGMT and one 512 MB Packetbeat VM for each captured host. It needs the
+`elasticsearch.qc2` and `packetbeat.qc2` images (`make elasticsearch
+packetbeat` in the images repository). To capture the protonuke traffic of
+`nuke-pns` and `wtg-01`, paste this block under `metadata:` of the `soh` app
+in a scenario:
+
+```yaml
+      packetCapture:
+        elasticImage: elasticsearch.qc2
+        packetBeatImage: packetbeat.qc2
+        elasticServer:
+          hostname: soh-elasticsearch
+          ipAddress: 172.16.200.10/16
+        captureHosts:
+          nuke-pns:
+          - IF0
+          wtg-01:
+          - IF0
+```
+
+Then stop and delete the experiment (`phenix experiment stop` and
+`phenix experiment delete`), replace the stored scenario
+(`phenix config delete scenario/<name>`, then `phenix config create` with the
+file), and create the experiment again.

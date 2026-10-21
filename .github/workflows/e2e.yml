@@ -27,6 +27,10 @@ on:
         description: Release tag to pull when images is released (latest, or a date such as 20261014)
         type: string
         default: latest
+      topologies-ref:
+        description: Branch, tag or commit of this repository whose topologies to run (empty runs this commit's); the harness always comes from this commit
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -221,9 +225,16 @@ jobs:
       matrix:
         topology: ${{ fromJSON(needs.plan.outputs.topologies) }}
     steps:
+      - name: Check out the harness
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: harness
+          persist-credentials: false
+
       - name: Check out the topologies
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.topologies-ref }}
           path: topologies
           persist-credentials: false
 
@@ -335,9 +346,10 @@ jobs:
         env:
           NAME: ${{ matrix.topology.name }}
           APPS_FAILED: ${{ runner.temp }}/apps-failed
+          TOPOLOGIES_DIR: ${{ github.workspace }}/topologies
         # exec: the runner signals only the step's shell on a cancel, and sudo
         # passes that on to the driver.
-        run: exec sudo -E python3 topologies/.github/e2e/run_topology.py "$NAME" "$RUNNER_TEMP/result.json"
+        run: exec sudo -E python3 harness/.github/e2e/run_topology.py "$NAME" "$RUNNER_TEMP/result.json"
 
       - name: Summarize
         if: always()

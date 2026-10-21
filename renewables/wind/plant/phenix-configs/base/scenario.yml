@@ -217,6 +217,14 @@ spec:
               id: 105
               protocol: all
             - action: accept
+              description: HIDS manager in
+              source:
+                address: 192.168.60.55
+              destination:
+                address: 192.168.100.100
+              id: 106
+              protocol: all
+            - action: accept
               description: owop in
               destination:
                 address: 192.168.100.0/24
@@ -260,6 +268,14 @@ spec:
                 address: 192.168.100.100
               destination:
                 address: 10.222.222.0/24
+            - action: accept
+              description: HIDS agent out
+              id: 146
+              protocol: all
+              source:
+                address: 192.168.100.100
+              destination:
+                address: 192.168.60.55
             - action: accept
               description: site to owop
               destination:
@@ -305,6 +321,14 @@ spec:
               source:
                 address: 192.168.100.100
             - action: accept
+              description: HIDS agent in
+              destination:
+                address: 192.168.60.55
+              id: 206
+              protocol: all
+              source:
+                address: 192.168.100.100
+            - action: accept
               description: guard in
               destination:
                 address: 192.168.60.100
@@ -331,6 +355,14 @@ spec:
               protocol: all
               source:
                 address: 10.222.222.0/24
+            - action: accept
+              description: HIDS manager out
+              destination:
+                address: 192.168.100.100
+              id: 226
+              protocol: all
+              source:
+                address: 192.168.60.55
             - action: accept
               description: guard out
               id: 230

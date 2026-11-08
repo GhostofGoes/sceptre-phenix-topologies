@@ -36,7 +36,7 @@ rev = "v2.4.2"
 id = "codespell"
 args = [
     "--ignore-words-list",
-    "ue,ot,ues,fo,nd,ist,te,iif,iam,parm,parms,ser,bord,nin,bootup,ans,hda",
+    "ue,ot,ues,fo,nd,ist,te,iif,iam,parm,parms,ser,bord,nin,bootup,ans,hda,simpy",
 ]
 exclude = { glob = [
     "**/*.DSS",

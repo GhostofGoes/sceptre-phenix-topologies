@@ -19,7 +19,7 @@
         "drivers/virtio-win-0.1.171/NetKVM/w7/amd64/*",
         "drivers/virtio-win-0.1.171/vioserial/w7/amd64/*",
         "drivers/virtio-win-0.1.171/viostor/w7/amd64/*",
-        "answers/Autounattend.xml"
+        "answers/7/Autounattend.xml"
       ],
       "headless": "{{ user `headless` }}",
       "iso_checksum": "{{ user `iso_checksum_type` }}:{{ user `iso_checksum` }}",

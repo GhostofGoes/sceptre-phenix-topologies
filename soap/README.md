@@ -81,9 +81,9 @@ A wire kit can be found on Amazon.com [here](https://www.amazon.com/AWG-Stranded
 The following steps will setup the hardware correctly:
 
 * Follow `WIRING.md` to setup the PLC and LabJack.
-* Program the PLC with the project contained in the `satx-plc-program.zip` archive.
+* Program the PLC with the project contained in the `soap-hil-plc.tzst` archive.
 * Connect the Ethernet port on the PLC to the `eno4` interface of the SCEPTRE host.
-    * Other interfaces will also work, but the `hil_network.sh` script will need to be modified accordingly.
+    * Other interfaces will also work, but `HIL_IF` in the `expctl` script will need to be modified accordingly.
 
 ## Running the experiment
 
@@ -98,7 +98,7 @@ _Note that you will need to update the interface name in this script to match th
 The netmonitor VM (based on ubuntu-soaptools) is what allows us to ingest all experiment traffic and route it into an elastic stack.  
 To configure, edit the netmonitor configs to meet your environment:  
 - `/phenix/topologies/soap/injects/netmonitor/filebeat_zeek_module.yml` shouldn't require any changes with the base install script  
-- `/phenix/topologies/soap/injects/netmonitor/zeek_node.cfg` may require that you edit the interface that zeek is listening on, this should be the interface that is the monitoring destination in the `monitor` app in the scenario (typically `eth1` in the VM)
+- `/phenix/topologies/soap/injects/netmonitor/zeek_node.cfg` may require that you edit the interface that zeek is listening on, this should be the interface that is the monitoring destination in the `mirror` app in the scenario (typically `eth1` in the VM)
 - `/phenix/topologies/soap/injects/netmonitor/filebeat.yml` will require elasticsearch and kibana node configuration for ingestion. Update the elastic and kibana IPs in this config file to point to your server. Due to the tap interface configured in the scenario file, the VMs should be able to reach elastic and kibana running outside of the experiment network, such as an instance running on the host machine  
 
 Note: The ```filebeat -e setup``` command sometimes stalls in the scorch run (below). If this is the case, cancel the scorch run and run it manually on the VM.
@@ -130,7 +130,7 @@ The screen should now look like this:
 
 ### Running an attack scenario
 A sample 'attack' that changes setpoints on the Siemens PLC is implemented in the `plc-attack.py` script injected into the `attacker` machine.
-After launching the experiment, enter the `attacker` machine and navigate to `/phenix/`.
+After launching the experiment, enter the `attacker` machine and navigate to `/phenix/attack/`.
 The script is runnable with
 ```bash
 python3 plc-attack.py <STARTUP_DELAY_SECONDS> <NUMBER_REPEATS>

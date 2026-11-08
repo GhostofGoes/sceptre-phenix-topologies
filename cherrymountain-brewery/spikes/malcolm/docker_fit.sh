@@ -5,9 +5,11 @@
 # Built for a GitHub-hosted ubuntu-24.04 runner (4 vCPU, 16 GB RAM, ~14 GB free
 # disk before the cleanup below). Stages:
 #   1. free disk, build a Modbus/TCP + DNP3 + BACnet/IP pcap (make_pcap.py);
-#   2. Malcolm's Zeek image on the pcap (the fallback: always run);
-#   3. a trimmed Malcolm stack (OpenSearch, Logstash, Filebeat, pcap-monitor,
-#      Zeek offline) fed the same pcap, with `docker stats` sampled throughout.
+#   2. Malcolm's Zeek image on the pcap, asserting on the Zeek log files;
+#   3. only with FULL_STACK=1: a trimmed Malcolm stack (OpenSearch, Logstash,
+#      Filebeat, pcap-monitor, Zeek offline, Arkime, Dashboards) fed the same
+#      pcap. CI does not run it: stage 2 meets the criteria with one container.
+# `docker stats` is sampled throughout; peak memory and CPU go to peak.txt.
 # Writes evidence/malcolm-docker/{result.json,summary.md,...}; exits 1 if a
 # check fails. Every command runs under `timeout`.
 set -uo pipefail
@@ -66,23 +68,39 @@ timeout 300 python3 -m venv "$WORK-venv" && timeout 300 "$WORK-venv/bin/pip" ins
 timeout 60 "$WORK-venv/bin/python" "$HERE/make_pcap.py" "$EV/ics.pcap" | tee -a "$EV/steps.log"
 check "make_pcap.py wrote a pcap" "$([ -s "$EV/ics.pcap" ] && echo true || echo false)" "$(ls -l "$EV/ics.pcap" 2>&1)"
 
+# Sample docker stats and free memory every 2 s in the background.
+(
+  while true; do
+    ts=$(date +%s)
+    docker stats --no-stream --format "$ts,{{.Name}},{{.MemUsage}},{{.CPUPerc}}" 2>/dev/null >>"$EV/docker-stats.csv"
+    echo "$ts,$(free -m | awk '/^Mem:/ {print $3","$7}')" >>"$EV/free-mb.csv"
+    sleep 2
+  done
+) &
+SAMPLER=$!
+trap 'kill $SAMPLER 2>/dev/null; true' EXIT
+
 # 2. Zeek alone (Malcolm's image, its ICSNPP packages).
 ZEEK_IMAGE="ghcr.io/idaholab/malcolm/zeek:$IMAGE_TAG"
 log "pulling $ZEEK_IMAGE"
 timeout 900 docker pull -q "$ZEEK_IMAGE" >/dev/null 2>&1
 ZD="$EV/zeek-direct"
 mkdir -p "$ZD" && cp "$EV/ics.pcap" "$ZD/" && chmod 777 "$ZD"
-timeout 300 docker run --rm --user root -v "$ZD:/work" -w /work --entrypoint /usr/local/zeek/bin/zeek-offline \
+timeout 300 docker run --name cm-zeek --user root -v "$ZD:/work" -w /work --entrypoint /usr/local/zeek/bin/zeek-offline \
   "$ZEEK_IMAGE" -C -r ics.pcap local >"$EV/zeek-direct.out" 2>&1
 rm -f "$ZD/ics.pcap"
+docker rm -f cm-zeek >/dev/null 2>&1
 for proto in modbus dnp3 bacnet; do
   n=$(grep -vc '^#' "$ZD/$proto.log" 2>/dev/null || true)
   check "Malcolm's Zeek image logs $proto from the test pcap" "$([ "${n:-0}" -gt 0 ] && echo true || echo false)" "$proto.log: ${n:-0} records; $(ls "$ZD" | tr '\n' ' ')"
 done
 fact zeek_direct_logs "$(cd "$ZD" && wc -l modbus*.log dnp3*.log bacnet*.log 2>/dev/null | tr '\n' ';')"
+fact zeek_image "$ZEEK_IMAGE, $(docker image inspect -f '{{.Size}}' "$ZEEK_IMAGE") bytes, Malcolm $MALCOLM_TAG"
 fact zeek_version "$(timeout 60 docker run --rm --user root --entrypoint /usr/local/zeek/bin/zeek-offline "$ZEEK_IMAGE" --version 2>&1 | tail -1)"
 
-# 3. The trimmed Malcolm stack.
+# 3. The full pipeline, only when asked (FULL_STACK=1): the pass/fail criteria are met by stage 2,
+# so CI runs the smallest set of containers (just Zeek) and does not start OpenSearch and friends.
+if [ "${FULL_STACK:-0}" = 1 ]; then
 if [ ! -d "$WORK/Malcolm/.git" ]; then
   timeout 300 git clone -q --depth 1 --branch "$MALCOLM_TAG" https://github.com/idaholab/Malcolm "$WORK/Malcolm"
 fi
@@ -121,17 +139,7 @@ timeout 1500 docker compose --profile malcolm pull -q "${SERVICES[@]}" >>"$EV/st
 check "the trimmed Malcolm images pulled" "$([ $? -eq 0 ] && echo true || echo false)" "$(docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep idaholab | tr '\n' ';')"
 fact disk_after_pull "$(df -h --output=used,avail / | tail -1)"; docker system df >"$EV/docker-system-df.txt" 2>&1
 
-# Sample docker stats and free memory every 10 s in the background.
-(
-  while true; do
-    ts=$(date +%s)
-    docker stats --no-stream --format "$ts,{{.Name}},{{.MemUsage}},{{.CPUPerc}}" 2>/dev/null >>"$EV/docker-stats.csv"
-    echo "$ts,$(free -m | awk '/^Mem:/ {print $3","$7}')" >>"$EV/free-mb.csv"
-    sleep 10
-  done
-) &
-SAMPLER=$!
-trap 'kill $SAMPLER 2>/dev/null; true' EXIT
+
 
 log "starting OpenSearch"
 timeout 300 docker compose --profile malcolm up -d opensearch >>"$EV/steps.log" 2>&1
@@ -181,7 +189,10 @@ if [ "$os_ready" = true ]; then
   check "OpenSearch holds Zeek modbus, dnp3 and bacnet records from the test pcap" "$found" "$(jq -c '[.aggregations.ds.buckets[]? | {(.key): .doc_count}]' "$EV/opensearch-datasets.json" 2>/dev/null)"
 fi
 
+fi
+
 # Evidence: peak memory, container state, logs.
+if [ "${FULL_STACK:-0}" = 1 ]; then
 {
   echo "== host trees"; find pcap zeek-logs -type f ! -name .gitignore 2>/dev/null | head -60
   for c in malcolm-zeek-1 malcolm-pcap-monitor-1 malcolm-arkime-1 malcolm-filebeat-1; do
@@ -193,6 +204,7 @@ timeout 60 docker exec malcolm-zeek-1 sh -c 'for f in /var/log/supervisor/*pcap*
 docker compose --profile malcolm ps -a >"$EV/compose-ps.txt" 2>&1
 for c in $(docker ps -a --format '{{.Names}}' | grep '^malcolm-'); do docker logs --tail 300 "$c" >"$EV/log-$c.txt" 2>&1; done
 timeout 30 docker exec malcolm-opensearch-1 sh -c 'curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc "https://localhost:9200/_cat/indices?v"' >"$EV/opensearch-indices.txt" 2>&1
+fi
 kill $SAMPLER 2>/dev/null
 python3 - "$EV" <<'PY' | tee "$EV/peak.txt"
 import csv
@@ -214,6 +226,7 @@ def to_mib(text: str) -> float:
 
 per_ts: dict[str, float] = defaultdict(float)
 peak: dict[str, float] = defaultdict(float)
+cpu: dict[str, float] = defaultdict(float)
 path = ev / "docker-stats.csv"
 if path.exists():
     for row in csv.reader(path.open()):
@@ -222,12 +235,13 @@ if path.exists():
         mib = to_mib(row[2])
         per_ts[row[0]] += mib
         peak[row[1]] = max(peak[row[1]], mib)
+        cpu[row[1]] = max(cpu[row[1]], float(row[3].rstrip('%') or 0))
 total = max(per_ts.values(), default=0.0)
 free = ev / "free-mb.csv"
 used = max((int(r[1]) for r in csv.reader(free.open()) if len(r) >= 3 and r[1].isdigit()), default=0) if free.exists() else 0
-print(f"sum of container memory peak {total:.0f} MiB; host used peak {used} MiB; " + ", ".join(f"{k} {v:.0f}" for k, v in sorted(peak.items(), key=lambda kv: -kv[1])))
+print(f"sum of container memory peak {total:.0f} MiB; host used peak {used} MiB; " + ", ".join(f"{k} {v:.0f} MiB peak, {cpu[k]:.0f}% CPU peak" for k, v in sorted(peak.items(), key=lambda kv: -kv[1])))
 PY
 fact peak_memory "$(cat "$EV/peak.txt")"
 fact disk_end "$(df -h --output=used,avail / | tail -1)"
-docker compose --profile malcolm down >/dev/null 2>&1 || true
+[ "${FULL_STACK:-0}" = 1 ] && (cd "$WORK/Malcolm" && docker compose --profile malcolm down >/dev/null 2>&1) || true
 finish

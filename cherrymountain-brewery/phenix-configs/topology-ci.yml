@@ -1,0 +1,232 @@
+# cherrymountain-ci: the cellar slice of the CherryMountain Brewery topology
+# (DESIGN.md 11 and 15.3). Five VMs, 7 vCPUs, 8 GB:
+#   sim-ctl, sim-process (MGMT), rio-cellar (FIELD-CEL + MGMT),
+#   plc-cellar (CTRL + FIELD-CEL), scada-fuxa (CTRL).
+# scada-fuxa and plc-cellar share one flat CTRL VLAN with no firewall, and
+# there is no ot-svc, historian, or ground-truth OpenSearch. Addresses follow
+# DESIGN.md 10.2 and plant/plant.yaml (variant ci).
+# Boot order is node order plus c2 delays: sim-ctl, sim-process and rio-cellar
+# (delay on sim-ctl), plc-cellar (delay on rio-cellar), scada-fuxa (delay on
+# plc-cellar). Inject paths use /phenix/injects/${BRANCH_NAME}/.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: cherrymountain-ci
+spec:
+  nodes:
+  - general:
+      description: HELICS root broker (started by the helics app); CI has no weather, event API, or ground-truth OpenSearch
+      hostname: sim-ctl
+    annotations:
+      phenix/startup-autotunnel:
+      - "13001:3000"
+      - "18080:8080"
+      - "19200:9200"
+    labels:
+      zone: mgmt
+    hardware:
+      drives:
+      - image: cm-sim.qc2
+        inject_partition: 1
+      memory: 2048
+      os_type: linux
+      vcpus: 1
+    network:
+      interfaces:
+      - address: 172.16.10.1
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - general:
+      description: Cellar process federate (HELICS)
+      hostname: sim-process
+    annotations:
+      helics/federate:
+      - broker: sim-ctl|mgmt
+        fed-count: 1
+    labels:
+      zone: mgmt
+    delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    hardware:
+      drives:
+      - image: cm-sim.qc2
+        inject_partition: 1
+      memory: 2048
+      os_type: linux
+      vcpus: 2
+    injections:
+    - description: plantgen HELICS config for the cellar federate
+      src: /phenix/injects/${BRANCH_NAME}/sim/helics.json
+      dst: /etc/cherrymountain/helics.json
+      permissions: "0644"
+    - description: cellar federate environment
+      src: /phenix/injects/${BRANCH_NAME}/sim/cm-cellar.env
+      dst: /etc/default/cm-cellar
+      permissions: "0644"
+    - description: cellar federate systemd unit
+      src: /phenix/injects/${BRANCH_NAME}/sim/cm-cellar.service
+      dst: /etc/systemd/system/cm-cellar.service
+      permissions: "0644"
+    - description: enable the federate once the broker answers
+      src: /phenix/injects/${BRANCH_NAME}/sim/60-cm-cellar.sh
+      dst: /etc/phenix/startup/60-cm-cellar.sh
+      permissions: "0755"
+    network:
+      interfaces:
+      - address: 172.16.10.2
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - general:
+      description: Cellar remote I/O (ot-sim fd-server)
+      hostname: rio-cellar
+    labels:
+      zone: field-cel
+    delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    network:
+      interfaces:
+      - address: 10.20.12.10
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-CEL
+      - address: 172.16.20.12
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - general:
+      description: Cellar PLC (OpenPLC v4, modbus_master to rio-cellar and modbus_slave to FUXA)
+      hostname: plc-cellar
+    labels:
+      zone: ctrl
+    delay:
+      c2:
+      - hostname: rio-cellar
+        useUUID: false
+    hardware:
+      drives:
+      - image: cm-openplc.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    injections:
+    - description: OpenPLC Editor program ZIP (built by the Editor, stored in Git LFS)
+      src: /phenix/injects/${BRANCH_NAME}/openplc/plc-cellar.zip
+      dst: /opt/cherrymountain/openplc/plc-cellar.zip
+      permissions: "0644"
+    - description: plantgen modbus_master plugin config
+      src: /phenix/injects/${BRANCH_NAME}/openplc/plc-cellar/conf/modbus_master.json
+      dst: /opt/cherrymountain/openplc/conf/modbus_master.json
+      permissions: "0644"
+    - description: modbus_slave plugin config (northbound, port 502)
+      src: /phenix/injects/${BRANCH_NAME}/openplc/plc-cellar/conf/modbus_slave.json
+      dst: /opt/cherrymountain/openplc/conf/modbus_slave.json
+      permissions: "0644"
+    - description: provisioning settings
+      src: /phenix/injects/${BRANCH_NAME}/openplc/openplc.env
+      dst: /etc/default/cm-openplc
+      permissions: "0600"
+    - description: repack, upload, compile, and start the program
+      src: /phenix/injects/${BRANCH_NAME}/openplc/cm-openplc-provision.sh
+      dst: /usr/local/bin/cm-openplc-provision
+      permissions: "0755"
+    - description: provisioning unit
+      src: /phenix/injects/${BRANCH_NAME}/openplc/cm-openplc-provision.service
+      dst: /etc/systemd/system/cm-openplc-provision.service
+      permissions: "0644"
+    - description: start provisioning after the network is up
+      src: /phenix/injects/${BRANCH_NAME}/openplc/70-openplc-provision.sh
+      dst: /etc/phenix/startup/70-openplc-provision.sh
+      permissions: "0755"
+    network:
+      interfaces:
+      - address: 10.20.10.12
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: CTRL
+      - address: 10.20.12.1
+        mask: 24
+        name: IF1
+        proto: static
+        type: ethernet
+        vlan: FIELD-CEL
+    type: VirtualMachine
+  - general:
+      description: Process SCADA (FUXA); shares the flat CTRL VLAN with plc-cellar in the ci variant
+      hostname: scada-fuxa
+    annotations:
+      phenix/startup-autotunnel:
+      - "11881:1881"
+    labels:
+      zone: ctrl
+    delay:
+      c2:
+      - hostname: plc-cellar
+        useUUID: false
+    hardware:
+      drives:
+      - image: cm-fuxa.qc2
+        inject_partition: 1
+      memory: 2048
+      os_type: linux
+      vcpus: 2
+    injections:
+    - description: FUXA settings (secure mode, SQLite DAQ, no Node-RED)
+      src: /phenix/injects/${BRANCH_NAME}/fuxa/mysettings.json
+      dst: /opt/fuxa/server/_appdata/mysettings.json
+      permissions: "0600"
+    - description: FUXA project with the plc-cellar device, cellar view, and alarms
+      src: /phenix/injects/${BRANCH_NAME}/fuxa/scada-fuxa-project.json
+      dst: /etc/cherrymountain/fuxa/project.json
+      permissions: "0644"
+    - description: provisioning settings
+      src: /phenix/injects/${BRANCH_NAME}/fuxa/fuxa.env
+      dst: /etc/default/cm-fuxa
+      permissions: "0600"
+    - description: set the admin password and import the project
+      src: /phenix/injects/${BRANCH_NAME}/fuxa/cm-fuxa-provision.sh
+      dst: /usr/local/bin/cm-fuxa-provision
+      permissions: "0755"
+    - description: provisioning unit
+      src: /phenix/injects/${BRANCH_NAME}/fuxa/cm-fuxa-provision.service
+      dst: /etc/systemd/system/cm-fuxa-provision.service
+      permissions: "0644"
+    - description: start provisioning after the network is up
+      src: /phenix/injects/${BRANCH_NAME}/fuxa/70-fuxa-provision.sh
+      dst: /etc/phenix/startup/70-fuxa-provision.sh
+      permissions: "0755"
+    network:
+      interfaces:
+      - address: 10.20.10.10
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: CTRL
+    type: VirtualMachine

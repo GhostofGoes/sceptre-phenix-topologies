@@ -366,8 +366,13 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
         points = {}
         for p in plant.device_types[dtype].values():
             entry: dict[str, Any] = {"type": p.type}
-            if p.scaling is not None and is_analog(p.type):
-                entry["modbus"] = {"scaling": p.scaling}
+            if is_analog(p.type):
+                # One register per point: phenix-apps defaults analog points
+                # to int32 (two registers), which breaks the register map.
+                modbus: dict[str, Any] = {"data-type": "uint16"}
+                if p.scaling is not None:
+                    modbus["scaling"] = p.scaling
+                entry["modbus"] = modbus
             points[p.name] = entry
         infra[dtype] = points
     helics = plant.spec.helics

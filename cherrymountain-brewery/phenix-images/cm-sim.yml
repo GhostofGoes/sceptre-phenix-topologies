@@ -1,0 +1,147 @@
+# cm-sim: HELICS broker and process federates (sim-ctl, sim-process)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-sim` prints), so
+# the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-sim.yml
+#   phenix image build -o <dir> -c -x cm-sim
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-sim.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-sim
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - python3-pip
+  - python3-venv
+  - rsync
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_SIM
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_SIM: |
+      # ------------------------------------------------- cherrymountain_sim --------------------------------------------
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y --no-install-recommends python3 python3-venv python3-pip
+
+      # HELICS 3.6 ships as the `helics` wheel: pyhelics plus the helics_broker
+      # executable the helics app starts on sim-ctl. The sim package comes from this
+      # repository's archive. TODO(verify): pin CM_REF to a release tag or commit.
+      CM_REF=main
+      python3 -m venv /opt/cherrymountain/venv
+      /opt/cherrymountain/venv/bin/pip install --no-cache-dir "helics==3.6.1" "pydantic>=2.7"
+      /opt/cherrymountain/venv/bin/pip install --no-cache-dir \
+        "cherrymountain-sim @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/${CM_REF}.tar.gz#subdirectory=cherrymountain-brewery/sim"
+      # Later variants add OpenDSSDirect.py, SciPy, SimPy, PackMLpy, CoolProp, ht,
+      # and pvlib here (DESIGN.md 15.7); the cellar slice needs none of them.
+
+      for exe in helics_broker helics_app helics_player helics_recorder; do
+        ln -sf /opt/cherrymountain/venv/bin/$exe /usr/local/bin/$exe
+      done
+      /opt/cherrymountain/venv/bin/python -c "import helics, cherrymountain_sim; print(helics.helicsGetVersion())"
+      mkdir -p /etc/cherrymountain
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 8G
+  variant: minbase

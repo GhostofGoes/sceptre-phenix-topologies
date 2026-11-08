@@ -1,0 +1,17 @@
+[Unit]
+Description=CherryMountain OpenPLC v4 program provisioning
+After=openplc-runtime.service network.target
+Wants=openplc-runtime.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cm-openplc
+ExecStart=/usr/local/bin/cm-openplc-provision
+TimeoutStartSec=30min
+Restart=on-failure
+RestartSec=20
+
+[Install]
+WantedBy=multi-user.target

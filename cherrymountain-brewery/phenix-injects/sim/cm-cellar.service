@@ -1,0 +1,17 @@
+[Unit]
+Description=CherryMountain cellar HELICS federate
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+# The federate retries until the root broker (started by the helics app on
+# sim-ctl) accepts it. HELICS_BROKER_ADDRESS overrides the address in the
+# plantgen config.
+EnvironmentFile=-/etc/default/cm-cellar
+Environment=LD_LIBRARY_PATH=/usr/local/lib
+ExecStart=/opt/cherrymountain/venv/bin/python -m cherrymountain_sim --config ${CELLAR_CONFIG} --broker-address ${HELICS_BROKER_ADDRESS} --log-level ${CELLAR_LOG_LEVEL}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

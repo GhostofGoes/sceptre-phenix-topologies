@@ -1,0 +1,25 @@
+# Workflow for the ci variant (the cellar slice: sim-ctl, sim-process,
+# rio-cellar, plc-cellar, scada-fuxa). Apply with its own branch so it maps to
+# its own experiment (DESIGN.md 15.1):
+#   docker exec phenix phenix workflow apply \
+#     -b cherrymountain-ci -c phenix-ci.yml /phenix/topologies/cherrymountain-brewery
+# VLAN IDs match the full plant (DESIGN.md 10.2). The slice needs only CTRL,
+# FIELD-CEL (plc-cellar to rio-cellar), and MGMT (HELICS and NTP).
+apiVersion: phenix.sandia.gov/v0
+kind: Workflow
+metadata: {}
+spec:
+  auto:
+    create: ${BRANCH_NAME}
+    update: true
+    restart: true
+  topology: cherrymountain-ci
+  scenario: cherrymountain-ci
+  vlans:
+    CTRL: 108
+    FIELD-CEL: 110
+    MGMT: 117
+  vlanRange:
+    min: 100
+    max: 199
+  defaultBridge: cherrymtn

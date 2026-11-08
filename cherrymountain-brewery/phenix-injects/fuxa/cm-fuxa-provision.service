@@ -1,0 +1,17 @@
+[Unit]
+Description=CherryMountain FUXA project provisioning
+After=fuxa.service network.target
+Wants=fuxa.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cm-fuxa
+ExecStart=/usr/local/bin/cm-fuxa-provision
+TimeoutStartSec=10min
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

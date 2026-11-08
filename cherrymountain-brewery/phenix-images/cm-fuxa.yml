@@ -1,0 +1,167 @@
+# cm-fuxa: FUXA SCADA (scada-fuxa)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-fuxa` prints), so
+# the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-fuxa.yml
+#   phenix image build -o <dir> -c -x cm-fuxa
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-fuxa.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-fuxa
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - rsync
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_FUXA
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_FUXA: |
+      # ------------------------------------------------------ FUXA ----------------------------------------------------
+      # Node 22 and one pinned FUXA commit with the driver plugins baked in, so the
+      # range runs offline (DESIGN.md 12.2). The commit is the one the project JSON
+      # and spikes/fuxa scripts were checked against (server 1.3.6).
+      export DEBIAN_FRONTEND=noninteractive
+      NODE_VERSION=22.14.0
+      FUXA_REF=b2972583b3d59525131c44e8b3214f55b74750fe
+      apt-get update
+      apt-get install -y --no-install-recommends git xz-utils python3 build-essential libsqlite3-dev
+
+      curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+        | tar -xJ -C /usr/local --strip-components=1
+      node --version
+
+      mkdir -p /opt/fuxa
+      cd /opt/fuxa
+      git init -q
+      git remote add origin https://github.com/frangoteam/FUXA.git
+      git fetch -q --depth 1 origin "$FUXA_REF"
+      git checkout -q FETCH_HEAD
+
+      cd /opt/fuxa/server
+      npm install --no-audit --no-fund
+      npm run build
+      # Driver plugins (optional npm packages since FUXA 1.3.2) at the versions the
+      # plugin manager lists as supported.
+      npm install --no-audit --no-fund modbus-serial@8.0.19 node-opcua@2.149.0 node-snap7@1.0.9 node-bacnet@0.2.4
+      npm prune --omit=dev
+      rm -rf /opt/fuxa/.git /opt/fuxa/server/test /root/.npm
+
+      cat > /etc/systemd/system/fuxa.service <<EOF
+      [Unit]
+      Description=FUXA SCADA server
+      After=network.target
+      [Service]
+      WorkingDirectory=/opt/fuxa/server
+      ExecStart=/usr/local/bin/node /opt/fuxa/server/main.js
+      Restart=always
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants /etc/cherrymountain/fuxa
+      ln -sf /etc/systemd/system/fuxa.service /etc/systemd/system/multi-user.target.wants/fuxa.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 12G
+  variant: minbase

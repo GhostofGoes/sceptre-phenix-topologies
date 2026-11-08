@@ -1,0 +1,3651 @@
+{
+  "version": "1.01",
+  "name": "cherrymountain-ci",
+  "server": {
+    "id": "0",
+    "name": "FUXA Server",
+    "type": "FuxaServer",
+    "property": {}
+  },
+  "hmi": {
+    "layout": {
+      "start": "v_2738593f-590b-5b6c-8e90-6e3773428726",
+      "navigation": {
+        "mode": "fix",
+        "type": "inline",
+        "bkcolor": "#F4F5F7",
+        "fgcolor": "#1D1D1D",
+        "items": [
+          {
+            "icon": "dashboard",
+            "view": "v_2738593f-590b-5b6c-8e90-6e3773428726",
+            "link": "",
+            "text": "Cellar"
+          }
+        ]
+      },
+      "header": {
+        "title": "CherryMountain Brewery",
+        "alarms": "fix",
+        "infos": "hide",
+        "bkcolor": "#ffffff",
+        "fgcolor": "#000000",
+        "items": []
+      },
+      "showdev": false,
+      "zoom": "enabled"
+    },
+    "views": [
+      {
+        "id": "v_2738593f-590b-5b6c-8e90-6e3773428726",
+        "name": "Cellar",
+        "profile": {
+          "width": 1200,
+          "height": 470,
+          "bkcolor": "#f5f5f5ff",
+          "margin": 10,
+          "align": "topCenter",
+          "gridType": "fixed",
+          "viewRenderDelay": 0
+        },
+        "items": {
+          "VAL_2b4001f7-e6ec-5615-a603-ce28bff4f0cb": {
+            "id": "VAL_2b4001f7-e6ec-5615-a603-ce28bff4f0cb",
+            "type": "svg-ext-value",
+            "name": "CEL.CLK.KI01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_bccbf9fb-016d-59d9-b2a1-f8623d492141",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "h",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_e85301cb-96b9-5cf7-9c3c-8a497ffc56eb": {
+            "id": "VAL_e85301cb-96b9-5cf7-9c3c-8a497ffc56eb",
+            "type": "svg-ext-value",
+            "name": "CEL.FV101.TT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_f11a7b18-f7a0-561e-89b9-2ddd6536c4c9",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "F",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_d67d4ffb-4b73-5839-b47e-16df3ea50d05": {
+            "id": "VAL_d67d4ffb-4b73-5839-b47e-16df3ea50d05",
+            "type": "svg-ext-value",
+            "name": "CEL.FV101.TT02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_6d2cbb97-a9f8-5030-903d-9c68263e3a07",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "F",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "HXI_aaad0e72-1b1e-5bde-90f3-e1cca37c8f06": {
+            "id": "HXI_aaad0e72-1b1e-5bde-90f3-e1cca37c8f06",
+            "type": "svg-ext-html_input",
+            "name": "CEL.FV101.TT01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_03c403ce-14c3-56fe-96d0-683ad9a6a058",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ],
+              "options": {
+                "updated": true,
+                "numeric": true,
+                "min": 20,
+                "max": 90,
+                "type": "number",
+                "selectOnClick": true
+              }
+            },
+            "label": "HtmlInput"
+          },
+          "HXI_fedea1c0-7e47-5aeb-9a4b-296e8ac3772b": {
+            "id": "HXI_fedea1c0-7e47-5aeb-9a4b-296e8ac3772b",
+            "type": "svg-ext-html_input",
+            "name": "CEL.FV101.TT02.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_48a1fc09-be30-5676-b6ce-e8ab6c3f57b5",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ],
+              "options": {
+                "updated": true,
+                "numeric": true,
+                "min": 20,
+                "max": 90,
+                "type": "number",
+                "selectOnClick": true
+              }
+            },
+            "label": "HtmlInput"
+          },
+          "GSE_f1de4287-dd8f-5dbb-a1dc-2214b57c9f2a": {
+            "id": "GSE_f1de4287-dd8f-5dbb-a1dc-2214b57c9f2a",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV101.TV01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_405231fd-f204-5f0a-8f84-6283ca1982ee",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_057602a1-3adc-5d8b-9d7c-34c6fec7d3f2": {
+            "id": "GSE_057602a1-3adc-5d8b-9d7c-34c6fec7d3f2",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV101.TV02.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_2a88202b-0e60-5b95-b113-4a80f9e3be97",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_879bd2e0-ddba-5dc5-9512-835aa1dbc082": {
+            "id": "VAL_879bd2e0-ddba-5dc5-9512-835aa1dbc082",
+            "type": "svg-ext-value",
+            "name": "CEL.FV101.PT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_11abdb24-9350-5e24-99d4-51bc89259280",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "psia",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_a7b5d372-722b-50a8-b621-32d90a15a25a": {
+            "id": "VAL_a7b5d372-722b-50a8-b621-32d90a15a25a",
+            "type": "svg-ext-value",
+            "name": "CEL.FV101.PCV01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_2ff2e71c-9875-5d1c-9e99-ec99ae11f322",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "psia",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_2fc40520-d3ac-5881-bc90-b2c7849a848e": {
+            "id": "GSE_2fc40520-d3ac-5881-bc90-b2c7849a848e",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV101.ZSO01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_5edfba0d-5473-5fb0-bc83-624f090b0e91",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#fb8c00",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_ff7a23b7-16b6-54c9-80b3-6aa524b94457": {
+            "id": "VAL_ff7a23b7-16b6-54c9-80b3-6aa524b94457",
+            "type": "svg-ext-value",
+            "name": "CEL.FV101.DT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_840dcd8c-e529-5cd5-a92b-5920bcadff67",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "P",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_984cf695-cc37-5524-b6e2-eb01d640db7a": {
+            "id": "GSE_984cf695-cc37-5524-b6e2-eb01d640db7a",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV101.TT01.ALM_DEVIATION",
+            "property": {
+              "events": [],
+              "variableId": "t_06d386c1-7243-5904-b17d-6a16d7f430e6",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_d5a9e848-d5fc-5d8a-af42-4e7479824347": {
+            "id": "GSE_d5a9e848-d5fc-5d8a-af42-4e7479824347",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV101.TT01.ALM_HIGH",
+            "property": {
+              "events": [],
+              "variableId": "t_f05bed6f-8270-56c0-8eb4-d1d5729dd4f5",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_c7d59c20-d7c5-55bb-90a5-61236a60c7cf": {
+            "id": "GSE_c7d59c20-d7c5-55bb-90a5-61236a60c7cf",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV101.TT02.ALM_DEVIATION",
+            "property": {
+              "events": [],
+              "variableId": "t_1c0aaf17-bee5-52e7-92a7-b0e1e70cde42",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_7936662c-a1fe-5ac5-9af8-1ca3d2e64a0a": {
+            "id": "GSE_7936662c-a1fe-5ac5-9af8-1ca3d2e64a0a",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV101.PT01.ALM_HIGH",
+            "property": {
+              "events": [],
+              "variableId": "t_24c196a0-4d70-5e08-afc2-5bd2f61b7f1b",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_d572816f-23e4-545e-97b8-298c1aba44b5": {
+            "id": "GSE_d572816f-23e4-545e-97b8-298c1aba44b5",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV101.PT01.ALM_LOW",
+            "property": {
+              "events": [],
+              "variableId": "t_75dde3f9-65de-54b4-9ef6-81911886989a",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_d78c707e-ba03-5c4d-b478-036c70e711dc": {
+            "id": "VAL_d78c707e-ba03-5c4d-b478-036c70e711dc",
+            "type": "svg-ext-value",
+            "name": "CEL.FV102.TT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_4885454f-4f16-52dd-9dd9-fb9969d3d0ec",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "F",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_8f9e27c4-a87f-513c-a2d3-b7da79cf7d02": {
+            "id": "VAL_8f9e27c4-a87f-513c-a2d3-b7da79cf7d02",
+            "type": "svg-ext-value",
+            "name": "CEL.FV102.TT02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_afbf7ff6-7e31-5de2-8648-377e7e96c454",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "F",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "HXI_a1c1223e-9ef7-595e-b1f4-a8da0a4dc4b4": {
+            "id": "HXI_a1c1223e-9ef7-595e-b1f4-a8da0a4dc4b4",
+            "type": "svg-ext-html_input",
+            "name": "CEL.FV102.TT01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_d3d604c2-0d3b-5432-94a9-94ec4582ad75",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ],
+              "options": {
+                "updated": true,
+                "numeric": true,
+                "min": 20,
+                "max": 90,
+                "type": "number",
+                "selectOnClick": true
+              }
+            },
+            "label": "HtmlInput"
+          },
+          "HXI_33d32808-6da3-5eca-a61f-ae44e335077c": {
+            "id": "HXI_33d32808-6da3-5eca-a61f-ae44e335077c",
+            "type": "svg-ext-html_input",
+            "name": "CEL.FV102.TT02.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_e38007e2-894e-50eb-ac7c-ec60bced8a3e",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ],
+              "options": {
+                "updated": true,
+                "numeric": true,
+                "min": 20,
+                "max": 90,
+                "type": "number",
+                "selectOnClick": true
+              }
+            },
+            "label": "HtmlInput"
+          },
+          "GSE_8793f7f7-9236-5793-9847-4d4b579fa25b": {
+            "id": "GSE_8793f7f7-9236-5793-9847-4d4b579fa25b",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV102.TV01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_967e58e2-ae86-5d95-9e8e-1525be4362bf",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_af1768a6-32c4-5b13-9042-21f33610c09b": {
+            "id": "GSE_af1768a6-32c4-5b13-9042-21f33610c09b",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV102.TV02.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_e4b1fe44-4a32-5ba6-a91d-bab5d51e21a7",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_3064160d-303d-5f2a-9caa-bc726b1e9af9": {
+            "id": "VAL_3064160d-303d-5f2a-9caa-bc726b1e9af9",
+            "type": "svg-ext-value",
+            "name": "CEL.FV102.PT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_dc30aa44-6532-5d50-8b21-e562fa548fcb",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "psia",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_94fa623f-2613-50cd-ac3f-a17d054a2531": {
+            "id": "VAL_94fa623f-2613-50cd-ac3f-a17d054a2531",
+            "type": "svg-ext-value",
+            "name": "CEL.FV102.PCV01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_975901ba-39cf-5f6b-80a9-7f3ec7412e49",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "psia",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_3f2d7c91-5218-5f72-a515-0a8e6f7514e0": {
+            "id": "GSE_3f2d7c91-5218-5f72-a515-0a8e6f7514e0",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV102.ZSO01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_5b2a06cb-f673-52e0-b6bf-5b8d9ebbbfe1",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#fb8c00",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_fa75d2e5-dd38-5e17-a8d3-88ec205d6bf9": {
+            "id": "VAL_fa75d2e5-dd38-5e17-a8d3-88ec205d6bf9",
+            "type": "svg-ext-value",
+            "name": "CEL.FV102.DT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_20ee248d-00d5-5554-94e8-2d1b0842cb3d",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "P",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_f762e54e-313d-5d29-a66d-38c637475a38": {
+            "id": "GSE_f762e54e-313d-5d29-a66d-38c637475a38",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV102.TT01.ALM_DEVIATION",
+            "property": {
+              "events": [],
+              "variableId": "t_1ba55e87-8d14-50fd-af3f-17c60dc657ff",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_3d4cfd17-a878-5681-8dcd-11572f2b2e17": {
+            "id": "GSE_3d4cfd17-a878-5681-8dcd-11572f2b2e17",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV102.TT01.ALM_HIGH",
+            "property": {
+              "events": [],
+              "variableId": "t_679e34a0-1691-5b69-907e-30caca9450cf",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_2e53570b-2095-54c6-9119-6e9e5e2cf928": {
+            "id": "GSE_2e53570b-2095-54c6-9119-6e9e5e2cf928",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV102.TT02.ALM_DEVIATION",
+            "property": {
+              "events": [],
+              "variableId": "t_13e092ad-55ac-5abf-bf4e-04be6d3476d2",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_ed34831c-fffb-51a8-a1d6-3a9982788a60": {
+            "id": "GSE_ed34831c-fffb-51a8-a1d6-3a9982788a60",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV102.PT01.ALM_HIGH",
+            "property": {
+              "events": [],
+              "variableId": "t_7f4defcc-3edf-56ca-9a37-860b148e43a4",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_13e1c628-fa7d-5e82-870c-ea81375301dd": {
+            "id": "GSE_13e1c628-fa7d-5e82-870c-ea81375301dd",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV102.PT01.ALM_LOW",
+            "property": {
+              "events": [],
+              "variableId": "t_c8f76873-944f-56b2-aa8a-714ac3110b3f",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_14ff15d5-1a68-5551-a95c-7218b103cc34": {
+            "id": "VAL_14ff15d5-1a68-5551-a95c-7218b103cc34",
+            "type": "svg-ext-value",
+            "name": "CEL.FV103.TT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_f526c104-dbda-50d1-af7d-0cf946fa59fd",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "F",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_380d0e15-d00e-558c-b527-2ce2ea8b4823": {
+            "id": "VAL_380d0e15-d00e-558c-b527-2ce2ea8b4823",
+            "type": "svg-ext-value",
+            "name": "CEL.FV103.TT02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_90f4a6eb-d527-5093-b6f9-d0bf754e5936",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "F",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "HXI_78698d42-f03b-5e25-a8fa-8ba57a9cf122": {
+            "id": "HXI_78698d42-f03b-5e25-a8fa-8ba57a9cf122",
+            "type": "svg-ext-html_input",
+            "name": "CEL.FV103.TT01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_8f4bddc5-3645-57fd-8476-7e8108e3bcd0",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ],
+              "options": {
+                "updated": true,
+                "numeric": true,
+                "min": 20,
+                "max": 90,
+                "type": "number",
+                "selectOnClick": true
+              }
+            },
+            "label": "HtmlInput"
+          },
+          "HXI_55e6cdf5-4b99-5f47-a1e0-a3adb192663c": {
+            "id": "HXI_55e6cdf5-4b99-5f47-a1e0-a3adb192663c",
+            "type": "svg-ext-html_input",
+            "name": "CEL.FV103.TT02.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_b9ed331f-ff69-5222-a86f-1bf2f0aca173",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ],
+              "options": {
+                "updated": true,
+                "numeric": true,
+                "min": 20,
+                "max": 90,
+                "type": "number",
+                "selectOnClick": true
+              }
+            },
+            "label": "HtmlInput"
+          },
+          "GSE_0c05e76b-b2cb-5d54-895f-89dc5f056cba": {
+            "id": "GSE_0c05e76b-b2cb-5d54-895f-89dc5f056cba",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV103.TV01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_49c778df-fc78-50b7-9050-afb7e5b1ba4b",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_2e44673c-6bd1-5d02-9c7c-fc477d12363d": {
+            "id": "GSE_2e44673c-6bd1-5d02-9c7c-fc477d12363d",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV103.TV02.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_98c02d78-ccd9-5047-bffa-4a4d0ea17e4e",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_62c3f7f0-9645-5fd7-8d79-20e4f0feb071": {
+            "id": "VAL_62c3f7f0-9645-5fd7-8d79-20e4f0feb071",
+            "type": "svg-ext-value",
+            "name": "CEL.FV103.PT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_a335c9bb-a3d3-52b0-bc58-515a68f2b351",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "psia",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_66142b44-7042-536b-b3b2-d657d4a0e513": {
+            "id": "VAL_66142b44-7042-536b-b3b2-d657d4a0e513",
+            "type": "svg-ext-value",
+            "name": "CEL.FV103.PCV01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_daf55f5b-2d3b-5ac0-97e1-91c5611e8d51",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "psia",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_ecb205d4-4462-5a0e-a346-07e37da72b11": {
+            "id": "GSE_ecb205d4-4462-5a0e-a346-07e37da72b11",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV103.ZSO01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_899ac09c-c53e-5a9d-8623-aa7c4b32db3c",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#fb8c00",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_be9d2d64-329c-5803-9b78-91a01ca47e81": {
+            "id": "VAL_be9d2d64-329c-5803-9b78-91a01ca47e81",
+            "type": "svg-ext-value",
+            "name": "CEL.FV103.DT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_de55ff3f-6b65-515e-98e1-1225ede5af63",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "P",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_c7ac39c0-c986-58c8-a8bf-6cca7ab9d995": {
+            "id": "GSE_c7ac39c0-c986-58c8-a8bf-6cca7ab9d995",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV103.TT01.ALM_DEVIATION",
+            "property": {
+              "events": [],
+              "variableId": "t_abea36b0-be2d-5076-ae06-853abed2ceee",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_247ca719-08b2-58b4-817a-2b1deb735cff": {
+            "id": "GSE_247ca719-08b2-58b4-817a-2b1deb735cff",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV103.TT01.ALM_HIGH",
+            "property": {
+              "events": [],
+              "variableId": "t_3d332fe3-fc1c-5b85-93de-43331933cbed",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_f642a3ad-2b7c-502b-8226-1586d57a12c9": {
+            "id": "GSE_f642a3ad-2b7c-502b-8226-1586d57a12c9",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV103.TT02.ALM_DEVIATION",
+            "property": {
+              "events": [],
+              "variableId": "t_9a427b72-20cf-5c5d-8574-b2ad24614690",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_b3918439-c926-5391-8e40-12cbd05bbcf1": {
+            "id": "GSE_b3918439-c926-5391-8e40-12cbd05bbcf1",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV103.PT01.ALM_HIGH",
+            "property": {
+              "events": [],
+              "variableId": "t_2a874350-1266-5ec1-a130-1bf0a3c4d8b9",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_2f982d98-292b-5bd5-82db-987256bf8707": {
+            "id": "GSE_2f982d98-292b-5bd5-82db-987256bf8707",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV103.PT01.ALM_LOW",
+            "property": {
+              "events": [],
+              "variableId": "t_33894645-6f87-5032-b164-aaa23c512aa6",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_02831fd5-8939-51cc-93b0-059c26329eae": {
+            "id": "VAL_02831fd5-8939-51cc-93b0-059c26329eae",
+            "type": "svg-ext-value",
+            "name": "CEL.FV104.TT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_057efc8e-9943-5520-a0b1-3947daf25adb",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "F",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_d464384f-441a-5726-b064-502267a3c0ad": {
+            "id": "VAL_d464384f-441a-5726-b064-502267a3c0ad",
+            "type": "svg-ext-value",
+            "name": "CEL.FV104.TT02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_6954ca9e-4192-524b-8762-73ea90d76c90",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "F",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "HXI_607fde46-104b-57b1-8d83-51aaa752fa53": {
+            "id": "HXI_607fde46-104b-57b1-8d83-51aaa752fa53",
+            "type": "svg-ext-html_input",
+            "name": "CEL.FV104.TT01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_709e04a8-ee55-564a-b23c-065e0f4ad007",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ],
+              "options": {
+                "updated": true,
+                "numeric": true,
+                "min": 20,
+                "max": 90,
+                "type": "number",
+                "selectOnClick": true
+              }
+            },
+            "label": "HtmlInput"
+          },
+          "HXI_c170cdfe-6b24-50a5-ba09-e86307c6811c": {
+            "id": "HXI_c170cdfe-6b24-50a5-ba09-e86307c6811c",
+            "type": "svg-ext-html_input",
+            "name": "CEL.FV104.TT02.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_6a882ccb-49f8-5857-8c3c-95e9d2e5aa21",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 1
+                }
+              ],
+              "options": {
+                "updated": true,
+                "numeric": true,
+                "min": 20,
+                "max": 90,
+                "type": "number",
+                "selectOnClick": true
+              }
+            },
+            "label": "HtmlInput"
+          },
+          "GSE_b6266f44-3f9d-532e-8c0b-9e8ed2cf2fd4": {
+            "id": "GSE_b6266f44-3f9d-532e-8c0b-9e8ed2cf2fd4",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV104.TV01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_827404cf-61d7-5eb2-a1bd-81eec2e2ca83",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_eec33df1-8c67-5da1-ace7-c59b48f1bef2": {
+            "id": "GSE_eec33df1-8c67-5da1-ace7-c59b48f1bef2",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV104.TV02.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_22e8571c-b08d-59fc-8e34-eab6c1f3fdc1",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_6d77d6cf-2c7b-58ed-9c06-ef921161841d": {
+            "id": "VAL_6d77d6cf-2c7b-58ed-9c06-ef921161841d",
+            "type": "svg-ext-value",
+            "name": "CEL.FV104.PT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_34bc64d0-fa91-58a9-985d-ff3acf7ea758",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "psia",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_8da8f073-4228-5bc9-874d-008d94b2c672": {
+            "id": "VAL_8da8f073-4228-5bc9-874d-008d94b2c672",
+            "type": "svg-ext-value",
+            "name": "CEL.FV104.PCV01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_489ba25a-4a4e-50f3-bf54-41f432d0fb34",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "psia",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_fd120420-284c-5224-ad57-31a0da4ba37e": {
+            "id": "GSE_fd120420-284c-5224-ad57-31a0da4ba37e",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV104.ZSO01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_384e8f9f-9be7-55b4-b9b3-84ccc6475b6e",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#fb8c00",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_46886b90-238d-522c-beb1-e77e83e680db": {
+            "id": "VAL_46886b90-238d-522c-beb1-e77e83e680db",
+            "type": "svg-ext-value",
+            "name": "CEL.FV104.DT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_1d99b1e3-53c6-59d8-90f2-2ba5a24c28f6",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "P",
+                  "textId": "",
+                  "fractionDigits": 2
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_fcbb476b-03c4-50a6-96c8-300dc3757a79": {
+            "id": "GSE_fcbb476b-03c4-50a6-96c8-300dc3757a79",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV104.TT01.ALM_DEVIATION",
+            "property": {
+              "events": [],
+              "variableId": "t_1ba3ee07-91ef-595f-bd9f-cf28cc4b2a65",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_7b5eebd1-cba7-51c4-b395-d33330c92bd3": {
+            "id": "GSE_7b5eebd1-cba7-51c4-b395-d33330c92bd3",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV104.TT01.ALM_HIGH",
+            "property": {
+              "events": [],
+              "variableId": "t_935f7db6-0243-590b-a97c-a4ae07a51462",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_77f1b653-38c2-5484-86eb-4d32d1c61287": {
+            "id": "GSE_77f1b653-38c2-5484-86eb-4d32d1c61287",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV104.TT02.ALM_DEVIATION",
+            "property": {
+              "events": [],
+              "variableId": "t_42cc2b63-8617-5e2a-b6a4-e716dbaa65bf",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_9c3a313c-c956-5738-b72b-61b12107306c": {
+            "id": "GSE_9c3a313c-c956-5738-b72b-61b12107306c",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV104.PT01.ALM_HIGH",
+            "property": {
+              "events": [],
+              "variableId": "t_88d6a3c3-aaf3-5746-9ec1-8c77428d7cea",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_d0e24ae2-beb0-59a2-8a8e-64a1f1478205": {
+            "id": "GSE_d0e24ae2-beb0-59a2-8a8e-64a1f1478205",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.FV104.PT01.ALM_LOW",
+            "property": {
+              "events": [],
+              "variableId": "t_2f3ded00-73f3-5eb1-aee0-c8ac91ba3819",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#e53935",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          }
+        },
+        "variables": {},
+        "svgcontent": "<svg width=\"1200\" height=\"470\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\">\n <g>\n  <title>Layer 1</title>\n  <text xml:space=\"preserve\" x=\"20\" y=\"28\" font-size=\"18\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Cellar: fermenters FV-101 to FV-104</text>\n  <text xml:space=\"preserve\" x=\"1180\" y=\"28\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#212121\" stroke-width=\"0\">Sim hours</text>\n  <g id=\"VAL_2b4001f7-e6ec-5615-a603-ce28bff4f0cb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e37d74eb-7f09-5eb9-92ee-d6776aa17855\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1080\" y=\"28\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"62\" font-size=\"16\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">FV-101</text>\n  <text xml:space=\"preserve\" x=\"170\" y=\"62\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side</text>\n  <text xml:space=\"preserve\" x=\"245\" y=\"62\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Cone</text>\n  <text xml:space=\"preserve\" x=\"20\" y=\"96\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Temperature</text>\n  <g id=\"VAL_e85301cb-96b9-5cf7-9c3c-8a497ffc56eb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_f1821422-7e82-5a60-a896-0048e491d777\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"170\" y=\"96\">##.##</text></g>\n  <g id=\"VAL_d67d4ffb-4b73-5839-b47e-16df3ea50d05\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_3c6129ba-f9f7-59a0-a8ea-40ec30f6bc4e\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"245\" y=\"96\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"136\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Setpoint (F)</text>\n  <g id=\"HXI_aaad0e72-1b1e-5bde-90f3-e1cca37c8f06\" stroke=\"#000000\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_a07fd4bf-5abd-5efc-86cf-94f9f294083c\" stroke=\"null\" fill=\"#ffffff\" height=\"24\" width=\"64\" y=\"118\" x=\"138\" stroke-width=\"0\"/><foreignObject id=\"H-HXI_6182b8ad-c7e7-5a3a-b872-1d7fac759964\" width=\"64\" height=\"24\" y=\"118\" x=\"138\"><INPUT id=\"I-HXI_35ccac59-a1e5-5c7b-852c-ea9985179c20\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <g id=\"HXI_fedea1c0-7e47-5aeb-9a4b-296e8ac3772b\" stroke=\"#000000\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_c6dbdd63-3841-5350-893c-20e45301dbf2\" stroke=\"null\" fill=\"#ffffff\" height=\"24\" width=\"64\" y=\"118\" x=\"213\" stroke-width=\"0\"/><foreignObject id=\"H-HXI_31ddbe8d-c4f1-55ee-ba3a-ccfcdfc62afa\" width=\"64\" height=\"24\" y=\"118\" x=\"213\"><INPUT id=\"I-HXI_e7720d8f-b09f-57e4-8946-afe613267c8b\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"176\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Glycol valve</text>\n  <g id=\"GSE_f1de4287-dd8f-5dbb-a1dc-2214b57c9f2a\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_69825333-64b9-5e78-a87c-455c49bdca19\" cx=\"170\" cy=\"171\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <g id=\"GSE_057602a1-3adc-5d8b-9d7c-34c6fec7d3f2\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_7e400110-c474-57aa-8952-fd4e3934ca39\" cx=\"245\" cy=\"171\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"226\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Head pressure</text>\n  <g id=\"VAL_879bd2e0-ddba-5dc5-9512-835aa1dbc082\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_b2d45ffc-326d-51b9-8caf-132b38286447\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"170\" y=\"226\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"256\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Spund setpoint</text>\n  <g id=\"VAL_a7b5d372-722b-50a8-b621-32d90a15a25a\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_d0d729c8-7149-57ca-bb27-c5e4ec6feed3\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"170\" y=\"256\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"286\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Spund valve open</text>\n  <g id=\"GSE_2fc40520-d3ac-5881-bc90-b2c7849a848e\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_09570367-0bdd-5be0-8627-43e3c6edce3c\" cx=\"170\" cy=\"281\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"316\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Extract</text>\n  <g id=\"VAL_ff7a23b7-16b6-54c9-80b3-6aa524b94457\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_aadab011-fd92-51d7-81eb-2f74baea0920\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"170\" y=\"316\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"356\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Alarms</text>\n  <g id=\"GSE_984cf695-cc37-5524-b6e2-eb01d640db7a\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_f576d943-d73c-500b-a8dd-8818d2f1a5c2\" cx=\"30\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"30\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side dev</text>\n  <g id=\"GSE_d5a9e848-d5fc-5d8a-af42-4e7479824347\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_4207618c-c3ce-56b3-8ded-5679351ce93b\" cx=\"84\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"84\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side hi</text>\n  <g id=\"GSE_c7d59c20-d7c5-55bb-90a5-61236a60c7cf\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e831065a-f4a2-50e6-b483-15bcfb430af8\" cx=\"138\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"138\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Cone dev</text>\n  <g id=\"GSE_7936662c-a1fe-5ac5-9af8-1ca3d2e64a0a\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0fddea7a-b5f8-57cd-b7bd-5b1ce95a5de5\" cx=\"192\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"192\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Press hi</text>\n  <g id=\"GSE_d572816f-23e4-545e-97b8-298c1aba44b5\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0cdde866-3de7-57d1-8f44-61d2287dc9ec\" cx=\"246\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"246\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Press lo</text>\n  <line x1=\"302\" y1=\"50\" x2=\"302\" y2=\"450\" stroke=\"#9e9e9e\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"310\" y=\"62\" font-size=\"16\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">FV-102</text>\n  <text xml:space=\"preserve\" x=\"460\" y=\"62\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side</text>\n  <text xml:space=\"preserve\" x=\"535\" y=\"62\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Cone</text>\n  <text xml:space=\"preserve\" x=\"310\" y=\"96\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Temperature</text>\n  <g id=\"VAL_d78c707e-ba03-5c4d-b478-036c70e711dc\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_68964ae2-5887-5186-8058-4aeb25728a45\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"460\" y=\"96\">##.##</text></g>\n  <g id=\"VAL_8f9e27c4-a87f-513c-a2d3-b7da79cf7d02\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_0c80b4cd-2af4-5e58-a0a0-431f84d15be1\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"535\" y=\"96\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"310\" y=\"136\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Setpoint (F)</text>\n  <g id=\"HXI_a1c1223e-9ef7-595e-b1f4-a8da0a4dc4b4\" stroke=\"#000000\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_987123ec-67ee-559b-803e-716deefe09ce\" stroke=\"null\" fill=\"#ffffff\" height=\"24\" width=\"64\" y=\"118\" x=\"428\" stroke-width=\"0\"/><foreignObject id=\"H-HXI_311d4462-711d-5e35-a7c3-5214d77b5ab7\" width=\"64\" height=\"24\" y=\"118\" x=\"428\"><INPUT id=\"I-HXI_45566218-033b-5e1d-b67e-511804d7c160\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <g id=\"HXI_33d32808-6da3-5eca-a61f-ae44e335077c\" stroke=\"#000000\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_077f23de-62dd-51d6-b02d-5b056a2108ab\" stroke=\"null\" fill=\"#ffffff\" height=\"24\" width=\"64\" y=\"118\" x=\"503\" stroke-width=\"0\"/><foreignObject id=\"H-HXI_a3e01bdc-38f9-5dea-b5de-f83f0bd628fa\" width=\"64\" height=\"24\" y=\"118\" x=\"503\"><INPUT id=\"I-HXI_0fdf3ffe-75c0-5b09-b052-eb7d29e84945\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"310\" y=\"176\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Glycol valve</text>\n  <g id=\"GSE_8793f7f7-9236-5793-9847-4d4b579fa25b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_98967fd9-5634-5d35-b2ed-feb6f797c75b\" cx=\"460\" cy=\"171\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <g id=\"GSE_af1768a6-32c4-5b13-9042-21f33610c09b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_b1207144-6bce-5d78-ad2f-e4b62671aa9d\" cx=\"535\" cy=\"171\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"310\" y=\"226\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Head pressure</text>\n  <g id=\"VAL_3064160d-303d-5f2a-9caa-bc726b1e9af9\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_072bead7-129c-5008-81e0-ca3424fbf606\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"460\" y=\"226\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"310\" y=\"256\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Spund setpoint</text>\n  <g id=\"VAL_94fa623f-2613-50cd-ac3f-a17d054a2531\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_bfe40e20-afa1-5d12-b757-c4ab7cc36aef\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"460\" y=\"256\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"310\" y=\"286\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Spund valve open</text>\n  <g id=\"GSE_3f2d7c91-5218-5f72-a515-0a8e6f7514e0\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_40523440-48c5-5836-82c2-c687929f38eb\" cx=\"460\" cy=\"281\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"310\" y=\"316\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Extract</text>\n  <g id=\"VAL_fa75d2e5-dd38-5e17-a8d3-88ec205d6bf9\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_ffe580d1-ec4b-55ba-adaa-4a35f10418c0\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"460\" y=\"316\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"310\" y=\"356\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Alarms</text>\n  <g id=\"GSE_f762e54e-313d-5d29-a66d-38c637475a38\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_62496222-aefd-5e04-a877-266f86de5531\" cx=\"320\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"320\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side dev</text>\n  <g id=\"GSE_3d4cfd17-a878-5681-8dcd-11572f2b2e17\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_4f94b378-5a43-52ef-b104-005ad94ca365\" cx=\"374\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"374\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side hi</text>\n  <g id=\"GSE_2e53570b-2095-54c6-9119-6e9e5e2cf928\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_fb033c73-631f-510c-8944-689e2f2e5a8f\" cx=\"428\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"428\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Cone dev</text>\n  <g id=\"GSE_ed34831c-fffb-51a8-a1d6-3a9982788a60\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_1e2174b8-21c2-55f1-8863-f60851841cc1\" cx=\"482\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"482\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Press hi</text>\n  <g id=\"GSE_13e1c628-fa7d-5e82-870c-ea81375301dd\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_5f1dc4b9-02e2-5fc4-a42a-c2902a2eddf8\" cx=\"536\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"536\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Press lo</text>\n  <line x1=\"592\" y1=\"50\" x2=\"592\" y2=\"450\" stroke=\"#9e9e9e\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"600\" y=\"62\" font-size=\"16\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">FV-103</text>\n  <text xml:space=\"preserve\" x=\"750\" y=\"62\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side</text>\n  <text xml:space=\"preserve\" x=\"825\" y=\"62\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Cone</text>\n  <text xml:space=\"preserve\" x=\"600\" y=\"96\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Temperature</text>\n  <g id=\"VAL_14ff15d5-1a68-5551-a95c-7218b103cc34\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_5b679cbd-7e1c-5884-8706-063b31c9415b\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"750\" y=\"96\">##.##</text></g>\n  <g id=\"VAL_380d0e15-d00e-558c-b527-2ce2ea8b4823\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_10a7bc70-a559-5bb8-a7a2-bcc9337d8250\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"825\" y=\"96\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"600\" y=\"136\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Setpoint (F)</text>\n  <g id=\"HXI_78698d42-f03b-5e25-a8fa-8ba57a9cf122\" stroke=\"#000000\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_6cdfd177-c113-5a47-ae36-4e3b0db13543\" stroke=\"null\" fill=\"#ffffff\" height=\"24\" width=\"64\" y=\"118\" x=\"718\" stroke-width=\"0\"/><foreignObject id=\"H-HXI_80a369c0-88b1-5a4b-9821-3958de580722\" width=\"64\" height=\"24\" y=\"118\" x=\"718\"><INPUT id=\"I-HXI_22066c7d-5a13-5f55-b075-c757caa1ce24\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <g id=\"HXI_55e6cdf5-4b99-5f47-a1e0-a3adb192663c\" stroke=\"#000000\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_77bdca92-a604-55e6-b390-324717f541e8\" stroke=\"null\" fill=\"#ffffff\" height=\"24\" width=\"64\" y=\"118\" x=\"793\" stroke-width=\"0\"/><foreignObject id=\"H-HXI_219e1c98-f10a-5938-9aea-79b343f24383\" width=\"64\" height=\"24\" y=\"118\" x=\"793\"><INPUT id=\"I-HXI_7ba4bd93-2210-590d-a20c-f332cef37d03\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"600\" y=\"176\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Glycol valve</text>\n  <g id=\"GSE_0c05e76b-b2cb-5d54-895f-89dc5f056cba\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e03d10e6-479f-5535-aa05-a8c4e2babbdf\" cx=\"750\" cy=\"171\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <g id=\"GSE_2e44673c-6bd1-5d02-9c7c-fc477d12363d\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_c74a86f7-23a2-5636-86f7-30ad9c31a193\" cx=\"825\" cy=\"171\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"600\" y=\"226\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Head pressure</text>\n  <g id=\"VAL_62c3f7f0-9645-5fd7-8d79-20e4f0feb071\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9d72dfc1-9317-5dee-9540-daa660958cf3\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"750\" y=\"226\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"600\" y=\"256\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Spund setpoint</text>\n  <g id=\"VAL_66142b44-7042-536b-b3b2-d657d4a0e513\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a991661d-eb75-5ec0-a822-c3fbc94fd048\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"750\" y=\"256\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"600\" y=\"286\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Spund valve open</text>\n  <g id=\"GSE_ecb205d4-4462-5a0e-a346-07e37da72b11\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_5451f2c1-fe5c-553f-a295-93b349f0e50f\" cx=\"750\" cy=\"281\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"600\" y=\"316\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Extract</text>\n  <g id=\"VAL_be9d2d64-329c-5803-9b78-91a01ca47e81\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_caf414ee-ef6e-50af-bc08-fe35cc3b2863\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"750\" y=\"316\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"600\" y=\"356\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Alarms</text>\n  <g id=\"GSE_c7ac39c0-c986-58c8-a8bf-6cca7ab9d995\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6b7b6270-5a4b-5206-9d3b-c5bf7916c3bc\" cx=\"610\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"610\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side dev</text>\n  <g id=\"GSE_247ca719-08b2-58b4-817a-2b1deb735cff\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_722ca936-51a0-5931-9e17-3f9987cc6f7a\" cx=\"664\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"664\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side hi</text>\n  <g id=\"GSE_f642a3ad-2b7c-502b-8226-1586d57a12c9\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_5d78e412-8688-5d9d-9a3b-b409c03e5d2e\" cx=\"718\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"718\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Cone dev</text>\n  <g id=\"GSE_b3918439-c926-5391-8e40-12cbd05bbcf1\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_34ed31d4-15f2-5f98-ab1a-3799582b50ad\" cx=\"772\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"772\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Press hi</text>\n  <g id=\"GSE_2f982d98-292b-5bd5-82db-987256bf8707\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_fe95c71d-5313-5025-8941-48aad1d8fb68\" cx=\"826\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"826\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Press lo</text>\n  <line x1=\"882\" y1=\"50\" x2=\"882\" y2=\"450\" stroke=\"#9e9e9e\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"890\" y=\"62\" font-size=\"16\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">FV-104</text>\n  <text xml:space=\"preserve\" x=\"1040\" y=\"62\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side</text>\n  <text xml:space=\"preserve\" x=\"1115\" y=\"62\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Cone</text>\n  <text xml:space=\"preserve\" x=\"890\" y=\"96\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Temperature</text>\n  <g id=\"VAL_02831fd5-8939-51cc-93b0-059c26329eae\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_6d91ff95-6d68-5df0-a567-dbcf1a704351\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"96\">##.##</text></g>\n  <g id=\"VAL_d464384f-441a-5726-b064-502267a3c0ad\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cf462be6-0a89-5de1-a0dc-67aa7e99800b\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1115\" y=\"96\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"890\" y=\"136\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Setpoint (F)</text>\n  <g id=\"HXI_607fde46-104b-57b1-8d83-51aaa752fa53\" stroke=\"#000000\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_308f165b-9314-50ec-b145-7362c1ae322e\" stroke=\"null\" fill=\"#ffffff\" height=\"24\" width=\"64\" y=\"118\" x=\"1008\" stroke-width=\"0\"/><foreignObject id=\"H-HXI_9ec631c5-a351-5525-881b-1dc347eec357\" width=\"64\" height=\"24\" y=\"118\" x=\"1008\"><INPUT id=\"I-HXI_6a633d9f-008c-59e9-b82a-8ee47a523221\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <g id=\"HXI_c170cdfe-6b24-50a5-ba09-e86307c6811c\" stroke=\"#000000\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"14\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_42c256bd-a7eb-5bde-8c07-acc3f57734a6\" stroke=\"null\" fill=\"#ffffff\" height=\"24\" width=\"64\" y=\"118\" x=\"1083\" stroke-width=\"0\"/><foreignObject id=\"H-HXI_56bbff26-fcff-57f3-96c7-2640690b3c28\" width=\"64\" height=\"24\" y=\"118\" x=\"1083\"><INPUT id=\"I-HXI_b693931e-9505-540f-bd4d-6a364cc34f44\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0); vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"890\" y=\"176\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Glycol valve</text>\n  <g id=\"GSE_b6266f44-3f9d-532e-8c0b-9e8ed2cf2fd4\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_1429b28c-a64c-5750-a96b-80175f61ff28\" cx=\"1040\" cy=\"171\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <g id=\"GSE_eec33df1-8c67-5da1-ace7-c59b48f1bef2\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_1d641356-fe22-5f75-98cb-83e634bf6b67\" cx=\"1115\" cy=\"171\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"890\" y=\"226\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Head pressure</text>\n  <g id=\"VAL_6d77d6cf-2c7b-58ed-9c06-ef921161841d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_f14202b2-9c52-5129-96cb-9ead17b6d493\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"226\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"890\" y=\"256\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Spund setpoint</text>\n  <g id=\"VAL_8da8f073-4228-5bc9-874d-008d94b2c672\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a30f3a7e-79e3-5ab4-a3ff-64a9f71a7f38\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"256\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"890\" y=\"286\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Spund valve open</text>\n  <g id=\"GSE_fd120420-284c-5224-ad57-31a0da4ba37e\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0db4545c-afd0-5d0f-8c6c-53935744ece9\" cx=\"1040\" cy=\"281\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"890\" y=\"316\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Extract</text>\n  <g id=\"VAL_46886b90-238d-522c-beb1-e77e83e680db\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9553031f-7fd6-57f7-b2f5-80e6ed8f4dd0\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"316\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"890\" y=\"356\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Alarms</text>\n  <g id=\"GSE_fcbb476b-03c4-50a6-96c8-300dc3757a79\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_165a5aa4-494c-551f-beb6-366ec1242c29\" cx=\"900\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"900\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side dev</text>\n  <g id=\"GSE_7b5eebd1-cba7-51c4-b395-d33330c92bd3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_80a4c035-da54-5a6a-aee7-a486be66fb03\" cx=\"954\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"954\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Side hi</text>\n  <g id=\"GSE_77f1b653-38c2-5484-86eb-4d32d1c61287\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_f9f13941-d97a-5637-b25b-03ab333771bf\" cx=\"1008\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1008\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Cone dev</text>\n  <g id=\"GSE_9c3a313c-c956-5738-b72b-61b12107306c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_5e339193-ad05-5430-9e46-96be854dfffb\" cx=\"1062\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1062\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Press hi</text>\n  <g id=\"GSE_d0e24ae2-beb0-59a2-8a8e-64a1f1478205\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_ca375a44-ef08-58cc-bf7b-2e1e18618585\" cx=\"1116\" cy=\"380\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1116\" y=\"408\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#212121\" stroke-width=\"0\">Press lo</text>\n </g>\n</svg>",
+        "type": "svg"
+      }
+    ]
+  },
+  "devices": {
+    "d_fc6db910-67b0-5ed1-ab6d-73ab1afe323e": {
+      "id": "d_fc6db910-67b0-5ed1-ab6d-73ab1afe323e",
+      "name": "plc-cellar",
+      "enabled": true,
+      "property": {
+        "address": "10.20.10.12",
+        "port": "502",
+        "slaveid": "1"
+      },
+      "type": "ModbusTCP",
+      "polling": 1000,
+      "tags": {
+        "t_bccbf9fb-016d-59d9-b2a1-f8623d492141": {
+          "id": "t_bccbf9fb-016d-59d9-b2a1-f8623d492141",
+          "name": "CEL.CLK.KI01.PV",
+          "label": "Cellar simulation clock (compressed fermentation time)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "101",
+          "divisor": 10,
+          "format": 2,
+          "description": "Cellar simulation clock (compressed fermentation time)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_f11a7b18-f7a0-561e-89b9-2ddd6536c4c9": {
+          "id": "t_f11a7b18-f7a0-561e-89b9-2ddd6536c4c9",
+          "name": "CEL.FV101.TT01.PV",
+          "label": "FV-101 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "102",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-101 side temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_06d386c1-7243-5904-b17d-6a16d7f430e6": {
+          "id": "t_06d386c1-7243-5904-b17d-6a16d7f430e6",
+          "name": "CEL.FV101.TT01.ALM_DEVIATION",
+          "label": "FV-101 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "1",
+          "description": "FV-101 side temperature: deviation alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_f05bed6f-8270-56c0-8eb4-d1d5729dd4f5": {
+          "id": "t_f05bed6f-8270-56c0-8eb4-d1d5729dd4f5",
+          "name": "CEL.FV101.TT01.ALM_HIGH",
+          "label": "FV-101 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "2",
+          "description": "FV-101 side temperature: high alarm (medium)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_405231fd-f204-5f0a-8f84-6283ca1982ee": {
+          "id": "t_405231fd-f204-5f0a-8f84-6283ca1982ee",
+          "name": "CEL.FV101.TV01.CMD",
+          "label": "FV-101 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "801",
+          "description": "FV-101 side glycol valve command",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_6d2cbb97-a9f8-5030-903d-9c68263e3a07": {
+          "id": "t_6d2cbb97-a9f8-5030-903d-9c68263e3a07",
+          "name": "CEL.FV101.TT02.PV",
+          "label": "FV-101 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "103",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-101 cone temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_1c0aaf17-bee5-52e7-92a7-b0e1e70cde42": {
+          "id": "t_1c0aaf17-bee5-52e7-92a7-b0e1e70cde42",
+          "name": "CEL.FV101.TT02.ALM_DEVIATION",
+          "label": "FV-101 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "3",
+          "description": "FV-101 cone temperature: deviation alarm (medium)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_2a88202b-0e60-5b95-b113-4a80f9e3be97": {
+          "id": "t_2a88202b-0e60-5b95-b113-4a80f9e3be97",
+          "name": "CEL.FV101.TV02.CMD",
+          "label": "FV-101 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "802",
+          "description": "FV-101 cone glycol valve command",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_11abdb24-9350-5e24-99d4-51bc89259280": {
+          "id": "t_11abdb24-9350-5e24-99d4-51bc89259280",
+          "name": "CEL.FV101.PT01.PV",
+          "label": "FV-101 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "104",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-101 head pressure (absolute)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_24c196a0-4d70-5e08-afc2-5bd2f61b7f1b": {
+          "id": "t_24c196a0-4d70-5e08-afc2-5bd2f61b7f1b",
+          "name": "CEL.FV101.PT01.ALM_HIGH",
+          "label": "FV-101 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "4",
+          "description": "FV-101 head pressure (absolute): high alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_75dde3f9-65de-54b4-9ef6-81911886989a": {
+          "id": "t_75dde3f9-65de-54b4-9ef6-81911886989a",
+          "name": "CEL.FV101.PT01.ALM_LOW",
+          "label": "FV-101 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "5",
+          "description": "FV-101 head pressure (absolute): low alarm (low)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_840dcd8c-e529-5cd5-a92b-5920bcadff67": {
+          "id": "t_840dcd8c-e529-5cd5-a92b-5920bcadff67",
+          "name": "CEL.FV101.DT01.PV",
+          "label": "FV-101 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "105",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-101 apparent extract (sample-port density meter)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_2ff2e71c-9875-5d1c-9e99-ec99ae11f322": {
+          "id": "t_2ff2e71c-9875-5d1c-9e99-ec99ae11f322",
+          "name": "CEL.FV101.PCV01.SP",
+          "label": "FV-101 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "101",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-101 spunding valve setpoint (absolute)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_5edfba0d-5473-5fb0-bc83-624f090b0e91": {
+          "id": "t_5edfba0d-5473-5fb0-bc83-624f090b0e91",
+          "name": "CEL.FV101.ZSO01.PV",
+          "label": "FV-101 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "801",
+          "description": "FV-101 spunding valve open (venting)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_03c403ce-14c3-56fe-96d0-683ad9a6a058": {
+          "id": "t_03c403ce-14c3-56fe-96d0-683ad9a6a058",
+          "name": "CEL.FV101.TT01.SP",
+          "label": "FV-101 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "1025",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-101 side temperature setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_48a1fc09-be30-5676-b6ce-e8ab6c3f57b5": {
+          "id": "t_48a1fc09-be30-5676-b6ce-e8ab6c3f57b5",
+          "name": "CEL.FV101.TT02.SP",
+          "label": "FV-101 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "1026",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-101 cone temperature setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_4885454f-4f16-52dd-9dd9-fb9969d3d0ec": {
+          "id": "t_4885454f-4f16-52dd-9dd9-fb9969d3d0ec",
+          "name": "CEL.FV102.TT01.PV",
+          "label": "FV-102 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "106",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-102 side temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_1ba55e87-8d14-50fd-af3f-17c60dc657ff": {
+          "id": "t_1ba55e87-8d14-50fd-af3f-17c60dc657ff",
+          "name": "CEL.FV102.TT01.ALM_DEVIATION",
+          "label": "FV-102 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "6",
+          "description": "FV-102 side temperature: deviation alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_679e34a0-1691-5b69-907e-30caca9450cf": {
+          "id": "t_679e34a0-1691-5b69-907e-30caca9450cf",
+          "name": "CEL.FV102.TT01.ALM_HIGH",
+          "label": "FV-102 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "7",
+          "description": "FV-102 side temperature: high alarm (medium)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_967e58e2-ae86-5d95-9e8e-1525be4362bf": {
+          "id": "t_967e58e2-ae86-5d95-9e8e-1525be4362bf",
+          "name": "CEL.FV102.TV01.CMD",
+          "label": "FV-102 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "803",
+          "description": "FV-102 side glycol valve command",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_afbf7ff6-7e31-5de2-8648-377e7e96c454": {
+          "id": "t_afbf7ff6-7e31-5de2-8648-377e7e96c454",
+          "name": "CEL.FV102.TT02.PV",
+          "label": "FV-102 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "107",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-102 cone temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_13e092ad-55ac-5abf-bf4e-04be6d3476d2": {
+          "id": "t_13e092ad-55ac-5abf-bf4e-04be6d3476d2",
+          "name": "CEL.FV102.TT02.ALM_DEVIATION",
+          "label": "FV-102 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "8",
+          "description": "FV-102 cone temperature: deviation alarm (medium)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_e4b1fe44-4a32-5ba6-a91d-bab5d51e21a7": {
+          "id": "t_e4b1fe44-4a32-5ba6-a91d-bab5d51e21a7",
+          "name": "CEL.FV102.TV02.CMD",
+          "label": "FV-102 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "804",
+          "description": "FV-102 cone glycol valve command",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_dc30aa44-6532-5d50-8b21-e562fa548fcb": {
+          "id": "t_dc30aa44-6532-5d50-8b21-e562fa548fcb",
+          "name": "CEL.FV102.PT01.PV",
+          "label": "FV-102 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "108",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-102 head pressure (absolute)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_7f4defcc-3edf-56ca-9a37-860b148e43a4": {
+          "id": "t_7f4defcc-3edf-56ca-9a37-860b148e43a4",
+          "name": "CEL.FV102.PT01.ALM_HIGH",
+          "label": "FV-102 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "9",
+          "description": "FV-102 head pressure (absolute): high alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_c8f76873-944f-56b2-aa8a-714ac3110b3f": {
+          "id": "t_c8f76873-944f-56b2-aa8a-714ac3110b3f",
+          "name": "CEL.FV102.PT01.ALM_LOW",
+          "label": "FV-102 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "10",
+          "description": "FV-102 head pressure (absolute): low alarm (low)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_20ee248d-00d5-5554-94e8-2d1b0842cb3d": {
+          "id": "t_20ee248d-00d5-5554-94e8-2d1b0842cb3d",
+          "name": "CEL.FV102.DT01.PV",
+          "label": "FV-102 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "109",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-102 apparent extract (sample-port density meter)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_975901ba-39cf-5f6b-80a9-7f3ec7412e49": {
+          "id": "t_975901ba-39cf-5f6b-80a9-7f3ec7412e49",
+          "name": "CEL.FV102.PCV01.SP",
+          "label": "FV-102 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "102",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-102 spunding valve setpoint (absolute)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_5b2a06cb-f673-52e0-b6bf-5b8d9ebbbfe1": {
+          "id": "t_5b2a06cb-f673-52e0-b6bf-5b8d9ebbbfe1",
+          "name": "CEL.FV102.ZSO01.PV",
+          "label": "FV-102 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "802",
+          "description": "FV-102 spunding valve open (venting)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_d3d604c2-0d3b-5432-94a9-94ec4582ad75": {
+          "id": "t_d3d604c2-0d3b-5432-94a9-94ec4582ad75",
+          "name": "CEL.FV102.TT01.SP",
+          "label": "FV-102 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "1027",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-102 side temperature setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_e38007e2-894e-50eb-ac7c-ec60bced8a3e": {
+          "id": "t_e38007e2-894e-50eb-ac7c-ec60bced8a3e",
+          "name": "CEL.FV102.TT02.SP",
+          "label": "FV-102 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "1028",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-102 cone temperature setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_f526c104-dbda-50d1-af7d-0cf946fa59fd": {
+          "id": "t_f526c104-dbda-50d1-af7d-0cf946fa59fd",
+          "name": "CEL.FV103.TT01.PV",
+          "label": "FV-103 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "110",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-103 side temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_abea36b0-be2d-5076-ae06-853abed2ceee": {
+          "id": "t_abea36b0-be2d-5076-ae06-853abed2ceee",
+          "name": "CEL.FV103.TT01.ALM_DEVIATION",
+          "label": "FV-103 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "11",
+          "description": "FV-103 side temperature: deviation alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_3d332fe3-fc1c-5b85-93de-43331933cbed": {
+          "id": "t_3d332fe3-fc1c-5b85-93de-43331933cbed",
+          "name": "CEL.FV103.TT01.ALM_HIGH",
+          "label": "FV-103 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "12",
+          "description": "FV-103 side temperature: high alarm (medium)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_49c778df-fc78-50b7-9050-afb7e5b1ba4b": {
+          "id": "t_49c778df-fc78-50b7-9050-afb7e5b1ba4b",
+          "name": "CEL.FV103.TV01.CMD",
+          "label": "FV-103 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "805",
+          "description": "FV-103 side glycol valve command",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_90f4a6eb-d527-5093-b6f9-d0bf754e5936": {
+          "id": "t_90f4a6eb-d527-5093-b6f9-d0bf754e5936",
+          "name": "CEL.FV103.TT02.PV",
+          "label": "FV-103 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "111",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-103 cone temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_9a427b72-20cf-5c5d-8574-b2ad24614690": {
+          "id": "t_9a427b72-20cf-5c5d-8574-b2ad24614690",
+          "name": "CEL.FV103.TT02.ALM_DEVIATION",
+          "label": "FV-103 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "13",
+          "description": "FV-103 cone temperature: deviation alarm (medium)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_98c02d78-ccd9-5047-bffa-4a4d0ea17e4e": {
+          "id": "t_98c02d78-ccd9-5047-bffa-4a4d0ea17e4e",
+          "name": "CEL.FV103.TV02.CMD",
+          "label": "FV-103 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "806",
+          "description": "FV-103 cone glycol valve command",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_a335c9bb-a3d3-52b0-bc58-515a68f2b351": {
+          "id": "t_a335c9bb-a3d3-52b0-bc58-515a68f2b351",
+          "name": "CEL.FV103.PT01.PV",
+          "label": "FV-103 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "112",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-103 head pressure (absolute)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_2a874350-1266-5ec1-a130-1bf0a3c4d8b9": {
+          "id": "t_2a874350-1266-5ec1-a130-1bf0a3c4d8b9",
+          "name": "CEL.FV103.PT01.ALM_HIGH",
+          "label": "FV-103 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "14",
+          "description": "FV-103 head pressure (absolute): high alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_33894645-6f87-5032-b164-aaa23c512aa6": {
+          "id": "t_33894645-6f87-5032-b164-aaa23c512aa6",
+          "name": "CEL.FV103.PT01.ALM_LOW",
+          "label": "FV-103 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "15",
+          "description": "FV-103 head pressure (absolute): low alarm (low)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_de55ff3f-6b65-515e-98e1-1225ede5af63": {
+          "id": "t_de55ff3f-6b65-515e-98e1-1225ede5af63",
+          "name": "CEL.FV103.DT01.PV",
+          "label": "FV-103 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "113",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-103 apparent extract (sample-port density meter)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_daf55f5b-2d3b-5ac0-97e1-91c5611e8d51": {
+          "id": "t_daf55f5b-2d3b-5ac0-97e1-91c5611e8d51",
+          "name": "CEL.FV103.PCV01.SP",
+          "label": "FV-103 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "103",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-103 spunding valve setpoint (absolute)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_899ac09c-c53e-5a9d-8623-aa7c4b32db3c": {
+          "id": "t_899ac09c-c53e-5a9d-8623-aa7c4b32db3c",
+          "name": "CEL.FV103.ZSO01.PV",
+          "label": "FV-103 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "803",
+          "description": "FV-103 spunding valve open (venting)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_8f4bddc5-3645-57fd-8476-7e8108e3bcd0": {
+          "id": "t_8f4bddc5-3645-57fd-8476-7e8108e3bcd0",
+          "name": "CEL.FV103.TT01.SP",
+          "label": "FV-103 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "1029",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-103 side temperature setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_b9ed331f-ff69-5222-a86f-1bf2f0aca173": {
+          "id": "t_b9ed331f-ff69-5222-a86f-1bf2f0aca173",
+          "name": "CEL.FV103.TT02.SP",
+          "label": "FV-103 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "1030",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-103 cone temperature setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_057efc8e-9943-5520-a0b1-3947daf25adb": {
+          "id": "t_057efc8e-9943-5520-a0b1-3947daf25adb",
+          "name": "CEL.FV104.TT01.PV",
+          "label": "FV-104 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "114",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-104 side temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_1ba3ee07-91ef-595f-bd9f-cf28cc4b2a65": {
+          "id": "t_1ba3ee07-91ef-595f-bd9f-cf28cc4b2a65",
+          "name": "CEL.FV104.TT01.ALM_DEVIATION",
+          "label": "FV-104 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "16",
+          "description": "FV-104 side temperature: deviation alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_935f7db6-0243-590b-a97c-a4ae07a51462": {
+          "id": "t_935f7db6-0243-590b-a97c-a4ae07a51462",
+          "name": "CEL.FV104.TT01.ALM_HIGH",
+          "label": "FV-104 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "17",
+          "description": "FV-104 side temperature: high alarm (medium)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_827404cf-61d7-5eb2-a1bd-81eec2e2ca83": {
+          "id": "t_827404cf-61d7-5eb2-a1bd-81eec2e2ca83",
+          "name": "CEL.FV104.TV01.CMD",
+          "label": "FV-104 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "807",
+          "description": "FV-104 side glycol valve command",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_6954ca9e-4192-524b-8762-73ea90d76c90": {
+          "id": "t_6954ca9e-4192-524b-8762-73ea90d76c90",
+          "name": "CEL.FV104.TT02.PV",
+          "label": "FV-104 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "115",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-104 cone temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_42cc2b63-8617-5e2a-b6a4-e716dbaa65bf": {
+          "id": "t_42cc2b63-8617-5e2a-b6a4-e716dbaa65bf",
+          "name": "CEL.FV104.TT02.ALM_DEVIATION",
+          "label": "FV-104 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "18",
+          "description": "FV-104 cone temperature: deviation alarm (medium)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_22e8571c-b08d-59fc-8e34-eab6c1f3fdc1": {
+          "id": "t_22e8571c-b08d-59fc-8e34-eab6c1f3fdc1",
+          "name": "CEL.FV104.TV02.CMD",
+          "label": "FV-104 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "808",
+          "description": "FV-104 cone glycol valve command",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_34bc64d0-fa91-58a9-985d-ff3acf7ea758": {
+          "id": "t_34bc64d0-fa91-58a9-985d-ff3acf7ea758",
+          "name": "CEL.FV104.PT01.PV",
+          "label": "FV-104 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "116",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-104 head pressure (absolute)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_88d6a3c3-aaf3-5746-9ec1-8c77428d7cea": {
+          "id": "t_88d6a3c3-aaf3-5746-9ec1-8c77428d7cea",
+          "name": "CEL.FV104.PT01.ALM_HIGH",
+          "label": "FV-104 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "19",
+          "description": "FV-104 head pressure (absolute): high alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_2f3ded00-73f3-5eb1-aee0-c8ac91ba3819": {
+          "id": "t_2f3ded00-73f3-5eb1-aee0-c8ac91ba3819",
+          "name": "CEL.FV104.PT01.ALM_LOW",
+          "label": "FV-104 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "20",
+          "description": "FV-104 head pressure (absolute): low alarm (low)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_1d99b1e3-53c6-59d8-90f2-2ba5a24c28f6": {
+          "id": "t_1d99b1e3-53c6-59d8-90f2-2ba5a24c28f6",
+          "name": "CEL.FV104.DT01.PV",
+          "label": "FV-104 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": "117",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-104 apparent extract (sample-port density meter)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_489ba25a-4a4e-50f3-bf54-41f432d0fb34": {
+          "id": "t_489ba25a-4a4e-50f3-bf54-41f432d0fb34",
+          "name": "CEL.FV104.PCV01.SP",
+          "label": "FV-104 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "104",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-104 spunding valve setpoint (absolute)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_384e8f9f-9be7-55b4-b9b3-84ccc6475b6e": {
+          "id": "t_384e8f9f-9be7-55b4-b9b3-84ccc6475b6e",
+          "name": "CEL.FV104.ZSO01.PV",
+          "label": "FV-104 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "804",
+          "description": "FV-104 spunding valve open (venting)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_709e04a8-ee55-564a-b23c-065e0f4ad007": {
+          "id": "t_709e04a8-ee55-564a-b23c-065e0f4ad007",
+          "name": "CEL.FV104.TT01.SP",
+          "label": "FV-104 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "1031",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-104 side temperature setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_6a882ccb-49f8-5857-8c3c-95e9d2e5aa21": {
+          "id": "t_6a882ccb-49f8-5857-8c3c-95e9d2e5aa21",
+          "name": "CEL.FV104.TT02.SP",
+          "label": "FV-104 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": "1032",
+          "divisor": 100,
+          "format": 2,
+          "description": "FV-104 cone temperature setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        }
+      }
+    }
+  },
+  "alarms": [
+    {
+      "name": "CEL.FV101.TT01.ALM_DEVIATION",
+      "property": {
+        "variableId": "t_06d386c1-7243-5904-b17d-6a16d7f430e6"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-101 side temperature: deviation alarm",
+        "group": "FV-101",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV101.TT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_f05bed6f-8270-56c0-8eb4-d1d5729dd4f5"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-101 side temperature: high alarm",
+        "group": "FV-101",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV101.TT02.ALM_DEVIATION",
+      "property": {
+        "variableId": "t_1c0aaf17-bee5-52e7-92a7-b0e1e70cde42"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-101 cone temperature: deviation alarm",
+        "group": "FV-101",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV101.PT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_24c196a0-4d70-5e08-afc2-5bd2f61b7f1b"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-101 head pressure (absolute): high alarm",
+        "group": "FV-101",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV101.PT01.ALM_LOW",
+      "property": {
+        "variableId": "t_75dde3f9-65de-54b4-9ef6-81911886989a"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-101 head pressure (absolute): low alarm",
+        "group": "FV-101",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV102.TT01.ALM_DEVIATION",
+      "property": {
+        "variableId": "t_1ba55e87-8d14-50fd-af3f-17c60dc657ff"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-102 side temperature: deviation alarm",
+        "group": "FV-102",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV102.TT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_679e34a0-1691-5b69-907e-30caca9450cf"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-102 side temperature: high alarm",
+        "group": "FV-102",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV102.TT02.ALM_DEVIATION",
+      "property": {
+        "variableId": "t_13e092ad-55ac-5abf-bf4e-04be6d3476d2"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-102 cone temperature: deviation alarm",
+        "group": "FV-102",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV102.PT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_7f4defcc-3edf-56ca-9a37-860b148e43a4"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-102 head pressure (absolute): high alarm",
+        "group": "FV-102",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV102.PT01.ALM_LOW",
+      "property": {
+        "variableId": "t_c8f76873-944f-56b2-aa8a-714ac3110b3f"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-102 head pressure (absolute): low alarm",
+        "group": "FV-102",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV103.TT01.ALM_DEVIATION",
+      "property": {
+        "variableId": "t_abea36b0-be2d-5076-ae06-853abed2ceee"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-103 side temperature: deviation alarm",
+        "group": "FV-103",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV103.TT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_3d332fe3-fc1c-5b85-93de-43331933cbed"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-103 side temperature: high alarm",
+        "group": "FV-103",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV103.TT02.ALM_DEVIATION",
+      "property": {
+        "variableId": "t_9a427b72-20cf-5c5d-8574-b2ad24614690"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-103 cone temperature: deviation alarm",
+        "group": "FV-103",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV103.PT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_2a874350-1266-5ec1-a130-1bf0a3c4d8b9"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-103 head pressure (absolute): high alarm",
+        "group": "FV-103",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV103.PT01.ALM_LOW",
+      "property": {
+        "variableId": "t_33894645-6f87-5032-b164-aaa23c512aa6"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-103 head pressure (absolute): low alarm",
+        "group": "FV-103",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV104.TT01.ALM_DEVIATION",
+      "property": {
+        "variableId": "t_1ba3ee07-91ef-595f-bd9f-cf28cc4b2a65"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-104 side temperature: deviation alarm",
+        "group": "FV-104",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV104.TT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_935f7db6-0243-590b-a97c-a4ae07a51462"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-104 side temperature: high alarm",
+        "group": "FV-104",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV104.TT02.ALM_DEVIATION",
+      "property": {
+        "variableId": "t_42cc2b63-8617-5e2a-b6a4-e716dbaa65bf"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-104 cone temperature: deviation alarm",
+        "group": "FV-104",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV104.PT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_88d6a3c3-aaf3-5746-9ec1-8c77428d7cea"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-104 head pressure (absolute): high alarm",
+        "group": "FV-104",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.FV104.PT01.ALM_LOW",
+      "property": {
+        "variableId": "t_2f3ded00-73f3-5eb1-aee0-c8ac91ba3819"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-104 head pressure (absolute): low alarm",
+        "group": "FV-104",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    }
+  ],
+  "charts": [],
+  "graphs": [],
+  "recipes": [],
+  "notifications": [],
+  "scripts": [],
+  "reports": [],
+  "texts": [],
+  "plugin": [],
+  "mapsLocations": []
+}

@@ -8,11 +8,13 @@ metadata:
         sim_hours:
           type: analog-read
           modbus:
+            data-type: uint16
             scaling: 1
       fv-zone:
         temp_f:
           type: analog-read
           modbus:
+            data-type: uint16
             scaling: 2
         valve:
           type: binary-read-write
@@ -20,14 +22,17 @@ metadata:
         pressure_psia:
           type: analog-read
           modbus:
+            data-type: uint16
             scaling: 2
         gravity_plato:
           type: analog-read
           modbus:
+            data-type: uint16
             scaling: 2
         spund_sp_psia:
           type: analog-read-write
           modbus:
+            data-type: uint16
             scaling: 2
         spund_open:
           type: binary-read

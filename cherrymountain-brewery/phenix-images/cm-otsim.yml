@@ -1,0 +1,174 @@
+# cm-otsim: ot-sim field devices (rio-cellar)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-otsim` prints), so
+# the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-otsim.yml
+#   phenix image build -o <dir> -c -x cm-otsim
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-otsim.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-otsim
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - rsync
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_OTSIM
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_OTSIM: |
+      # ---------------------------------------------------- ot-sim ----------------------------------------------------
+      # Pinned patsec/ot-sim built on noble (spikes/otsim-noble/build_check.sh has the
+      # same recipe with per-step reporting). TODO(verify): pin OTSIM_REF to a
+      # commit once the noble spike has a result.
+      export DEBIAN_FRONTEND=noninteractive
+      OTSIM_REF=main
+      apt-get update
+      apt-get install -y --no-install-recommends \
+        build-essential cmake git libboost-dev libczmq-dev libxml2-dev libzmq5-dev \
+        pkg-config python3-dev python3-pip python3-venv golang-go libczmq4 libzmq5 libxml2
+
+      git clone https://github.com/patsec/ot-sim.git /usr/local/src/ot-sim
+      cd /usr/local/src/ot-sim
+      git checkout "$OTSIM_REF"
+      git submodule update --init --recursive
+      cmake -S . -B build
+      cmake --build build -j"$(nproc)" --target install
+      ldconfig
+      make -C src/go install
+
+      # noble enforces PEP 668, so the Python modules (including the io module's
+      # HELICS federate) live in a venv that the service puts first on PATH.
+      python3 -m venv /opt/otsim-venv
+      /opt/otsim-venv/bin/pip install --no-cache-dir helics==3.6.1
+      /opt/otsim-venv/bin/pip install --no-cache-dir src/python
+      cd /
+      rm -rf /usr/local/src/ot-sim /root/go /root/.cache
+      apt-get purge -y build-essential cmake git golang-go libboost-dev libczmq-dev libxml2-dev libzmq5-dev pkg-config python3-dev
+      apt-get autoremove -y
+
+      # The service starts after phenix.service, so the startup scripts (network,
+      # NTP, the helics app's wait-for-broker script) have already run. The ot-sim
+      # app injects /etc/ot-sim/config.xml; the unit stays inactive without it.
+      cat > /etc/systemd/system/ot-sim.service <<EOF
+      [Unit]
+      Description=ot-sim CPU module
+      After=network.target phenix.service
+      Wants=phenix.service
+      ConditionFileNotEmpty=/etc/ot-sim/config.xml
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      Environment=PATH=/opt/otsim-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      ExecStart=/usr/local/bin/ot-sim-cpu-module /etc/ot-sim/config.xml
+      Restart=always
+      RestartSec=5
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants /etc/ot-sim
+      ln -sf /etc/systemd/system/ot-sim.service /etc/systemd/system/multi-user.target.wants/ot-sim.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 10G
+  variant: minbase

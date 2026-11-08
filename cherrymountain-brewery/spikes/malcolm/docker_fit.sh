@@ -181,6 +181,14 @@ if [ "$os_ready" = true ]; then
 fi
 
 # Evidence: peak memory, container state, logs.
+{
+  echo "== host trees"; find pcap zeek-logs -type f ! -name .gitignore 2>/dev/null | head -60
+  for c in malcolm-zeek-1 malcolm-pcap-monitor-1 malcolm-arkime-1 malcolm-filebeat-1; do
+    echo "== $c"
+    timeout 30 docker exec "$c" sh -c 'supervisorctl status 2>&1 | head -30; ls -la /pcap/upload /pcap/processed /zeek/upload /zeek/current 2>&1 | head -40; ls /var/log /var/log/supervisor 2>&1 | head; ps aux 2>/dev/null | grep -iE "pcap|zeek|arkime" | grep -v grep | cut -c1-220 | head -12'
+  done
+} >"$EV/pipeline-diagnostics.txt" 2>&1
+timeout 60 docker exec malcolm-zeek-1 sh -c 'for f in /var/log/supervisor/*pcap* /var/log/*zeek*; do echo "-- $f"; tail -40 "$f"; done' >"$EV/zeek-processor-logs.txt" 2>&1 || true
 docker compose --profile malcolm ps -a >"$EV/compose-ps.txt" 2>&1
 for c in $(docker ps -a --format '{{.Names}}' | grep '^malcolm-'); do docker logs --tail 300 "$c" >"$EV/log-$c.txt" 2>&1; done
 timeout 30 docker exec malcolm-opensearch-1 sh -c 'curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc "https://localhost:9200/_cat/indices?v"' >"$EV/opensearch-indices.txt" 2>&1

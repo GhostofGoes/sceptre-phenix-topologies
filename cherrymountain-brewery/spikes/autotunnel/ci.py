@@ -7,6 +7,7 @@ Run as root on a runner prepared by .github/actions/cm-lab:
 
 from __future__ import annotations
 
+import base64
 import sys
 import time
 import urllib.error
@@ -183,6 +184,12 @@ def run() -> int:
             wait_for("late-vm C2", 300, 5, lambda: ("late-vm" in lab.cc_clients(), str(sorted(lab.cc_clients()))))
         except TimeoutError as exc:
             lab.fact("late_vm_c2_timeout", f"{exc}; vm info: {lab.vm_info().get('late-vm')}")
+            try:  # what the guest shows: booted, stuck in firmware, or a boot error
+                shot = lab.mm.run("vm screenshot late-vm 800", EXP)
+                data = shot[0].data if shot and shot[0].data else shot[0].response if shot else ""
+                (lab.dir / "late-vm-screenshot.png").write_bytes(base64.b64decode(str(data)))
+            except Exception as err:  # noqa: BLE001
+                lab.fact("late_vm_screenshot", f"unavailable: {err}")
             lab.check("a late-booting VM gets its tunnel, or the REST forward call creates it", False, str(exc))
             return lab.finish()
         start_stubs(lab, "late-vm", [8080])

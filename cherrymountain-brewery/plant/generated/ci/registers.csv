@@ -13,8 +13,8 @@ CEL.FV101.PT01.ALM_LOW,binary-read,,,,,,,,plc-cellar,%QX0.4,coil,1,4,000000,5,re
 CEL.FV101.DT01.PV,analog-read,degP,2,rio-cellar,input,30005,4,30005,plc-cellar,%IW104,input,4,104,300000,105,read
 CEL.FV101.PCV01.SP,analog-read-write,psia,2,rio-cellar,holding,40001,16,40001,plc-cellar,%QW100,holding,3,100,400000,101,read
 CEL.FV101.ZSO01.PV,binary-read,,,rio-cellar,discrete,10001,2,10001,plc-cellar,%IX100.0,discrete,2,800,100000,801,read
-CEL.FV101.TT01.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW0,holding,3,1024,400000,1025,read-write
-CEL.FV101.TT02.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW1,holding,3,1025,400000,1026,read-write
+CEL.FV101.TT01.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW0,holding,3,104,400000,105,read-write
+CEL.FV101.TT02.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW1,holding,3,105,400000,106,read-write
 CEL.FV102.TT01.PV,analog-read,degF,2,rio-cellar,input,30006,4,30006,plc-cellar,%IW105,input,4,105,300000,106,read
 CEL.FV102.TT01.ALM_DEVIATION,binary-read,,,,,,,,plc-cellar,%QX0.5,coil,1,5,000000,6,read
 CEL.FV102.TT01.ALM_HIGH,binary-read,,,,,,,,plc-cellar,%QX0.6,coil,1,6,000000,7,read
@@ -28,8 +28,8 @@ CEL.FV102.PT01.ALM_LOW,binary-read,,,,,,,,plc-cellar,%QX1.1,coil,1,9,000000,10,r
 CEL.FV102.DT01.PV,analog-read,degP,2,rio-cellar,input,30009,4,30009,plc-cellar,%IW108,input,4,108,300000,109,read
 CEL.FV102.PCV01.SP,analog-read-write,psia,2,rio-cellar,holding,40002,16,40002,plc-cellar,%QW101,holding,3,101,400000,102,read
 CEL.FV102.ZSO01.PV,binary-read,,,rio-cellar,discrete,10002,2,10002,plc-cellar,%IX100.1,discrete,2,801,100000,802,read
-CEL.FV102.TT01.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW2,holding,3,1026,400000,1027,read-write
-CEL.FV102.TT02.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW3,holding,3,1027,400000,1028,read-write
+CEL.FV102.TT01.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW2,holding,3,106,400000,107,read-write
+CEL.FV102.TT02.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW3,holding,3,107,400000,108,read-write
 CEL.FV103.TT01.PV,analog-read,degF,2,rio-cellar,input,30010,4,30010,plc-cellar,%IW109,input,4,109,300000,110,read
 CEL.FV103.TT01.ALM_DEVIATION,binary-read,,,,,,,,plc-cellar,%QX1.2,coil,1,10,000000,11,read
 CEL.FV103.TT01.ALM_HIGH,binary-read,,,,,,,,plc-cellar,%QX1.3,coil,1,11,000000,12,read
@@ -43,8 +43,8 @@ CEL.FV103.PT01.ALM_LOW,binary-read,,,,,,,,plc-cellar,%QX1.6,coil,1,14,000000,15,
 CEL.FV103.DT01.PV,analog-read,degP,2,rio-cellar,input,30013,4,30013,plc-cellar,%IW112,input,4,112,300000,113,read
 CEL.FV103.PCV01.SP,analog-read-write,psia,2,rio-cellar,holding,40003,16,40003,plc-cellar,%QW102,holding,3,102,400000,103,read
 CEL.FV103.ZSO01.PV,binary-read,,,rio-cellar,discrete,10003,2,10003,plc-cellar,%IX100.2,discrete,2,802,100000,803,read
-CEL.FV103.TT01.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW4,holding,3,1028,400000,1029,read-write
-CEL.FV103.TT02.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW5,holding,3,1029,400000,1030,read-write
+CEL.FV103.TT01.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW4,holding,3,108,400000,109,read-write
+CEL.FV103.TT02.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW5,holding,3,109,400000,110,read-write
 CEL.FV104.TT01.PV,analog-read,degF,2,rio-cellar,input,30014,4,30014,plc-cellar,%IW113,input,4,113,300000,114,read
 CEL.FV104.TT01.ALM_DEVIATION,binary-read,,,,,,,,plc-cellar,%QX1.7,coil,1,15,000000,16,read
 CEL.FV104.TT01.ALM_HIGH,binary-read,,,,,,,,plc-cellar,%QX2.0,coil,1,16,000000,17,read
@@ -58,5 +58,5 @@ CEL.FV104.PT01.ALM_LOW,binary-read,,,,,,,,plc-cellar,%QX2.3,coil,1,19,000000,20,
 CEL.FV104.DT01.PV,analog-read,degP,2,rio-cellar,input,30017,4,30017,plc-cellar,%IW116,input,4,116,300000,117,read
 CEL.FV104.PCV01.SP,analog-read-write,psia,2,rio-cellar,holding,40004,16,40004,plc-cellar,%QW103,holding,3,103,400000,104,read
 CEL.FV104.ZSO01.PV,binary-read,,,rio-cellar,discrete,10004,2,10004,plc-cellar,%IX100.3,discrete,2,803,100000,804,read
-CEL.FV104.TT01.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW6,holding,3,1030,400000,1031,read-write
-CEL.FV104.TT02.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW7,holding,3,1031,400000,1032,read-write
+CEL.FV104.TT01.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW6,holding,3,110,400000,111,read-write
+CEL.FV104.TT02.SP,analog-read-write,degF,2,,,,,,plc-cellar,%MW7,holding,3,111,400000,112,read-write

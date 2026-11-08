@@ -9,8 +9,9 @@
 
   Units: every analog value is a raw unsigned register, engineering value x 100
   (degF for temperatures, psia for pressures). Setpoints in %MW are written by
-  the operator (FUXA, Modbus holding registers 1024+); the PLC loads defaults
-  once at start-up and clamps them to the plant range afterwards.
+  the operator (FUXA, Modbus holding registers from qw_count, see
+  modbus_slave.json); the PLC loads defaults once at start-up and clamps them
+  to the plant range afterwards.
 
   The located variables (the %IW/%QX/%QW/%MW map) are not written here. They
   come from plant/generated/ci/openplc/plc-cellar/located_vars.st, and

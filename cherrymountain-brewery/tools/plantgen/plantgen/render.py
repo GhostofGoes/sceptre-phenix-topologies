@@ -55,6 +55,7 @@ def render_all(plant: Plant, alloc: Allocation) -> dict[str, str]:
         out[f"openplc/{plc}/modbus_master.json"] = _json(
             modbus_master(plant, alloc, plc, rios)
         )
+        out[f"openplc/{plc}/modbus_slave.json"] = _json(modbus_slave(plant, alloc, plc))
         out[f"openplc/{plc}/mbconfig.cfg"] = mbconfig(plant, alloc, plc, rios)
         out[f"openplc/{plc}/located_vars.st"] = located_vars(plant, alloc, plc)
     for scada in plant.hosts_by_role("scada"):
@@ -179,9 +180,13 @@ def registers_doc(plant: Plant, alloc: Allocation) -> dict[str, Any]:
             "(coil 1.., discrete 10001.., input 30001.., holding 40001..)",
             "master_offset": "OpenPLC modbus_master PDU offset (= otsim_register)",
             "plc_iec": "IEC 61131-3 located variable in the PLC",
-            "slave_pdu_address": "OpenPLC modbus_slave PDU address (0-based); "
-            "holding >= 1024 is %MW",
+            "slave_pdu_address": "OpenPLC v4 modbus_slave PDU address (0-based); "
+            "holding registers are %QW, then %MW (at qw_count), then %MD, then %ML "
+            "(see slave_layouts)",
             "fuxa_address": "FUXA 1-based address (FUXA subtracts 1) within memaddress",
+        },
+        "slave_layouts": {
+            plc: layout.buffer_mapping() for plc, layout in alloc.layouts.items()
         },
         "registers": rows,
     }
@@ -495,6 +500,21 @@ def modbus_master(
     return devices
 
 
+def modbus_slave(plant: Plant, alloc: Allocation, plc: str) -> dict[str, Any]:
+    """OpenPLC v4 ``modbus_slave`` plugin config with an explicit ``buffer_mapping``.
+
+    The counts are the highest located index + 1 per image table, so the v4
+    runtime clamps nothing and the segment start addresses (``%MW0`` at
+    ``qw_count``) are the ones FUXA is generated with.
+    """
+    mb = plant.hosts[plc].modbus or ModbusEndpoint()
+    return {
+        "network_configuration": {"host": "0.0.0.0", "port": mb.port},
+        "word_order": "high_word_first",
+        "buffer_mapping": alloc.layouts[plc].buffer_mapping(),
+    }
+
+
 def mbconfig(plant: Plant, alloc: Allocation, plc: str, rios: list[str]) -> str:
     """OpenPLC v3 ``mbconfig.cfg`` (fallback; same IEC map as v4)."""
     poll = plant.hosts[plc].poll_ms
@@ -551,7 +571,8 @@ def located_vars(plant: Plant, alloc: Allocation, plc: str) -> str:
         f"(* {HEADER.format(variant=plant.variant)} *)",
         "(* Analog values are raw registers: engineering value = raw / 10^scaling. *)",
         "(* RIO I/O is at %IX100.0 / %QX100.0 / %IW100 / %QW100 (v3 and v4 alike). *)",
-        "(* PLC memory: bits from %QX0.0 (coils), words from %MW0 (holding 1024+). *)",
+        "(* PLC memory: bits from %QX0.0 (coils), words from %MW0 (holding register "
+        "qw_count and up, see modbus_slave.json). *)",
         "VAR",
     ]
     for t in plant.tags:

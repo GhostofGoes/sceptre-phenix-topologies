@@ -5,8 +5,28 @@
     "otsim_register": "ot-sim literal register number; equals the PDU address (coil 1.., discrete 10001.., input 30001.., holding 40001..)",
     "master_offset": "OpenPLC modbus_master PDU offset (= otsim_register)",
     "plc_iec": "IEC 61131-3 located variable in the PLC",
-    "slave_pdu_address": "OpenPLC modbus_slave PDU address (0-based); holding >= 1024 is %MW",
+    "slave_pdu_address": "OpenPLC v4 modbus_slave PDU address (0-based); holding registers are %QW, then %MW (at qw_count), then %MD, then %ML (see slave_layouts)",
     "fuxa_address": "FUXA 1-based address (FUXA subtracts 1) within memaddress"
+  },
+  "slave_layouts": {
+    "plc-cellar": {
+      "holding_registers": {
+        "qw_count": 104,
+        "mw_count": 8,
+        "md_count": 0,
+        "ml_count": 0
+      },
+      "coils": {
+        "qx_bits": 808,
+        "mx_bits": 0
+      },
+      "discrete_inputs": {
+        "ix_bits": 808
+      },
+      "input_registers": {
+        "iw_count": 117
+      }
+    }
   },
   "registers": [
     {
@@ -289,9 +309,9 @@
       "plc_iec": "%MW0",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 1024,
+      "slave_pdu_address": 104,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 1025,
+      "fuxa_address": 105,
       "scada_access": "read-write"
     },
     {
@@ -308,9 +328,9 @@
       "plc_iec": "%MW1",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 1025,
+      "slave_pdu_address": 105,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 1026,
+      "fuxa_address": 106,
       "scada_access": "read-write"
     },
     {
@@ -574,9 +594,9 @@
       "plc_iec": "%MW2",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 1026,
+      "slave_pdu_address": 106,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 1027,
+      "fuxa_address": 107,
       "scada_access": "read-write"
     },
     {
@@ -593,9 +613,9 @@
       "plc_iec": "%MW3",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 1027,
+      "slave_pdu_address": 107,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 1028,
+      "fuxa_address": 108,
       "scada_access": "read-write"
     },
     {
@@ -859,9 +879,9 @@
       "plc_iec": "%MW4",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 1028,
+      "slave_pdu_address": 108,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 1029,
+      "fuxa_address": 109,
       "scada_access": "read-write"
     },
     {
@@ -878,9 +898,9 @@
       "plc_iec": "%MW5",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 1029,
+      "slave_pdu_address": 109,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 1030,
+      "fuxa_address": 110,
       "scada_access": "read-write"
     },
     {
@@ -1144,9 +1164,9 @@
       "plc_iec": "%MW6",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 1030,
+      "slave_pdu_address": 110,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 1031,
+      "fuxa_address": 111,
       "scada_access": "read-write"
     },
     {
@@ -1163,9 +1183,9 @@
       "plc_iec": "%MW7",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 1031,
+      "slave_pdu_address": 111,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 1032,
+      "fuxa_address": 112,
       "scada_access": "read-write"
     }
   ]

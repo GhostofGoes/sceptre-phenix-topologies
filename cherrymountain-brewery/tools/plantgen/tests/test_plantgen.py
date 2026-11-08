@@ -12,7 +12,7 @@ import pytest
 import yaml
 
 from plantgen import checks
-from plantgen.allocate import IecAddress, allocate, iec_to_slave
+from plantgen.allocate import IecAddress, SlaveLayout, allocate
 from plantgen.cli import DEFAULT_PLANT, generate, main
 from plantgen.model import Plant, PlantError, expand, load, load_file
 from plantgen.render import render_all
@@ -40,6 +40,7 @@ def test_generate_ci_is_clean() -> None:
     files = generate(DEFAULT_PLANT, "ci")
     assert "phenix/ot-sim.yaml" in files
     assert "openplc/plc-cellar/modbus_master.json" in files
+    assert "openplc/plc-cellar/modbus_slave.json" in files
     assert "fuxa/scada-fuxa-tags.json" in files
 
 
@@ -81,14 +82,124 @@ def test_modbus_master_offsets_equal_otsim_literals(plant: Plant) -> None:
     assert cfg[0]["config"]["host"] == "10.20.12.10"
 
 
-def test_slave_map_matches_openplc() -> None:
-    """%QX/%IX bits from 0; %IW/%QW words; %MW is holding 1024+."""
-    assert iec_to_slave(IecAddress.parse("%QX100.0")) == ("coil", 800)
-    assert iec_to_slave(IecAddress.parse("%IX0.7")) == ("discrete", 7)
-    assert iec_to_slave(IecAddress.parse("%IW100")) == ("input", 100)
-    assert iec_to_slave(IecAddress.parse("%QW5")) == ("holding", 5)
-    assert iec_to_slave(IecAddress.parse("%MW0")) == ("holding", 1024)
+#: The ci cellar PLC's layout: %QW0-103 (RIO outputs at %QW100), %MW0-7, %IW0-116,
+#: %QX0.0-%QX100.7 (808 bits), %IX0.0-%IX100.3 (808 bits after byte rounding).
+CELLAR_LAYOUT: SlaveLayout = SlaveLayout(
+    qw_count=104, mw_count=8, qx_bits=808, ix_bits=808, iw_count=117
+)
+
+
+def test_slave_layout_is_tight_and_v4_segmented(plant: Plant) -> None:
+    """%MW0 follows the %QW segment (v4.3.2), so it is holding 104, not 1024."""
+    alloc = allocate(plant)
+    layout = alloc.layouts["plc-cellar"]
+    assert layout == CELLAR_LAYOUT
+    assert layout.mw_start == 104
+    sp = alloc.tags["CEL.FV101.TT01.SP"]
+    assert (str(sp.plc_iec), sp.slave_space, sp.slave_address) == (
+        "%MW0",
+        "holding",
+        104,
+    )
+    assert sp.fuxa_address == 105
+    last = alloc.tags["CEL.FV104.TT02.SP"]
+    assert (str(last.plc_iec), last.slave_address) == ("%MW7", 111)
+
+
+def test_slave_map_matches_openplc_v4() -> None:
+    """%QX/%IX bits from 0; %IW words; holding is %QW then %MW then %MD then %ML."""
+    layout = CELLAR_LAYOUT
+    assert layout.to_slave(IecAddress.parse("%QX100.0")) == ("coil", 800)
+    assert layout.to_slave(IecAddress.parse("%IX0.7")) == ("discrete", 7)
+    assert layout.to_slave(IecAddress.parse("%IW100")) == ("input", 100)
+    assert layout.to_slave(IecAddress.parse("%QW5")) == ("holding", 5)
+    assert layout.to_slave(IecAddress.parse("%MW0")) == ("holding", 104)
+    assert layout.to_slave(IecAddress.parse("%MW7")) == ("holding", 111)
+    with pytest.raises(ValueError, match="not exposed"):
+        layout.to_slave(IecAddress.parse("%MW8"))  # beyond mw_count: the runtime clamps
+    with pytest.raises(ValueError, match="not exposed"):
+        layout.to_slave(IecAddress.parse("%QW104"))
     assert str(IecAddress.parse("%QX1.3")) == "%QX1.3"
+
+
+def test_layout_counts_and_mw_start_follow_the_program() -> None:
+    """Counts are highest index + 1 (bits round up to bytes); MW0 sits after %QW."""
+    iecs = [
+        IecAddress.parse(x) for x in ("%QW0", "%QW2", "%MW0", "%MW3", "%IW9", "%QX0.0")
+    ]
+    layout = SlaveLayout.from_addresses(iecs)
+    assert (layout.qw_count, layout.mw_count, layout.iw_count) == (3, 4, 10)
+    assert (layout.qx_bits, layout.ix_bits) == (8, 0)
+    assert layout.mw_start == 3
+    bigger = SlaveLayout.from_addresses([*iecs, IecAddress.parse("%QW9")])
+    assert bigger.mw_start == 10  # a new %QW pushes every %MW up one register
+    assert bigger.to_slave(IecAddress.parse("%MW0")) == ("holding", 10)
+
+
+def test_reference_resolver_inverts_every_tag(plant: Plant) -> None:
+    """Replaying the runtime's segment walk on the rendered JSON finds each tag."""
+    alloc = allocate(plant)
+    files = render_all(plant, alloc)
+    mapping = json.loads(files["openplc/plc-cellar/modbus_slave.json"])[
+        "buffer_mapping"
+    ]
+    assert mapping["holding_registers"] == {
+        "qw_count": 104,
+        "mw_count": 8,
+        "md_count": 0,
+        "ml_count": 0,
+    }
+    for a in alloc.tags.values():
+        assert checks.resolve_slave(mapping, a.slave_space, a.slave_address) == str(
+            a.plc_iec
+        )
+    # one past the last segment is outside the map
+    assert checks.resolve_slave(mapping, "holding", 112) is None
+    assert checks.resolve_slave(mapping, "holding", 1024) is None
+    assert checks.resolve_slave(mapping, "coil", 808) is None
+    assert checks.resolve_slave(mapping, "input", 117) is None
+
+
+def test_resolver_handles_md_ml_and_mx_segments() -> None:
+    """%MD takes two registers and %ML four, after %MW; %MX follows %QX."""
+    mapping = {
+        "holding_registers": {
+            "qw_count": 2,
+            "mw_count": 3,
+            "md_count": 2,
+            "ml_count": 1,
+        },
+        "coils": {"qx_bits": 16, "mx_bits": 8},
+        "discrete_inputs": {"ix_bits": 8},
+        "input_registers": {"iw_count": 4},
+    }
+    got = [checks.resolve_slave(mapping, "holding", n) for n in range(11)]
+    assert got == [
+        "%QW0",
+        "%QW1",
+        "%MW0",
+        "%MW1",
+        "%MW2",
+        "%MD0",
+        "%MD0",
+        "%MD1",
+        "%MD1",
+        "%ML0",
+        "%ML0",
+    ]
+    assert checks.resolve_slave(mapping, "holding", 12) == "%ML0"
+    assert checks.resolve_slave(mapping, "holding", 13) is None
+    assert checks.resolve_slave(mapping, "coil", 15) == "%QX1.7"
+    assert checks.resolve_slave(mapping, "coil", 16) == "%MX0.0"
+
+
+def test_modbus_slave_json_has_explicit_tight_buffer_mapping(plant: Plant) -> None:
+    """modbus_slave.json pins every segment so the runtime clamps nothing."""
+    files = render_all(plant, allocate(plant))
+    cfg = json.loads(files["openplc/plc-cellar/modbus_slave.json"])
+    assert cfg["network_configuration"] == {"host": "0.0.0.0", "port": 502}
+    assert cfg["buffer_mapping"] == CELLAR_LAYOUT.buffer_mapping()
+    assert cfg["buffer_mapping"]["coils"] == {"qx_bits": 808, "mx_bits": 0}
 
 
 def test_every_alarm_rationalized_and_bit_allocated(plant: Plant) -> None:
@@ -143,6 +254,45 @@ def test_detects_fuxa_off_by_one(plant: Plant) -> None:
     doc["devices"][0]["tags"][0]["address"] -= 1
     files[key] = json.dumps(doc)
     assert checks.fuxa_agrees(plant, alloc, files)
+
+
+def test_detects_v3_segment_math(plant: Plant) -> None:
+    """FUXA addresses computed with the v3 map (%MW0 = holding 1024) are caught."""
+    alloc = allocate(plant)
+    files = render_all(plant, alloc)
+    key = "fuxa/scada-fuxa-tags.json"
+    doc = json.loads(files[key])
+    sp = next(t for t in doc["devices"][0]["tags"] if t["name"] == "CEL.FV101.TT01.SP")
+    assert sp["address"] == 105
+    sp["address"] = 1025
+    files[key] = json.dumps(doc)
+    errs = checks.fuxa_agrees(plant, alloc, files)
+    assert any("CEL.FV101.TT01.SP" in e and "None" in e for e in errs)
+
+
+def test_detects_shifted_mw_segment(plant: Plant) -> None:
+    """Growing qw_count in modbus_slave.json moves %MW0, so the FUXA map is wrong."""
+    alloc = allocate(plant)
+    files = render_all(plant, alloc)
+    key = "openplc/plc-cellar/modbus_slave.json"
+    cfg = json.loads(files[key])
+    cfg["buffer_mapping"]["holding_registers"]["qw_count"] = 1024
+    files[key] = json.dumps(cfg)
+    assert checks.slave_agrees(plant, alloc, files)  # not the tight layout
+    assert any(
+        "CEL.FV101.TT01.SP" in e for e in checks.fuxa_agrees(plant, alloc, files)
+    )
+
+
+def test_detects_untight_buffer_mapping(plant: Plant) -> None:
+    """A count above the located variables would be clamped by the runtime."""
+    alloc = allocate(plant)
+    files = render_all(plant, alloc)
+    key = "openplc/plc-cellar/modbus_slave.json"
+    cfg = json.loads(files[key])
+    cfg["buffer_mapping"]["holding_registers"]["mw_count"] = 1024
+    files[key] = json.dumps(cfg)
+    assert any("tight" in e for e in checks.slave_agrees(plant, alloc, files))
 
 
 def test_detects_register_gap(plant: Plant) -> None:

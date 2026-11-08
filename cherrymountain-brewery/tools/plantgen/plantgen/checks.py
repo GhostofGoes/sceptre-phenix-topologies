@@ -22,7 +22,7 @@ from plantgen.allocate import (
     SPACE_FOR_TYPE,
     Allocation,
     IecAddress,
-    iec_to_slave,
+    SlaveLayout,
 )
 from plantgen.model import (
     ALARM_KINDS,
@@ -273,25 +273,108 @@ def master_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> lis
     return errs
 
 
+#: FUXA ``memaddress`` area -> Modbus space.
+FUXA_SPACE: dict[str, str] = {v: k for k, v in FUXA_MEMADDRESS.items()}
+
+
+def resolve_slave(
+    mapping: dict[str, dict[str, int]], space: str, pdu: int
+) -> str | None:
+    """The IEC location OpenPLC v4 ``modbus_slave`` serves at a PDU address.
+
+    A re-implementation of the runtime's own direction (PDU address to
+    segment, as ``OpenPLCSegmentedHoldingRegistersDataBlock._get_segment_info``
+    does at v4.3.2), written from the buffer_mapping alone. It is the inverse
+    of ``SlaveLayout.to_slave`` on purpose: a mistake in one cannot hide in the
+    other. Returns ``None`` for an address outside every segment.
+    """
+    if pdu < 0:
+        return None
+    if space == "holding":
+        hr = mapping["holding_registers"]
+        for name, width, label in (
+            ("qw_count", 1, "QW"),
+            ("mw_count", 1, "MW"),
+            ("md_count", 2, "MD"),
+            ("ml_count", 4, "ML"),
+        ):
+            span = hr[name] * width
+            if pdu < span:
+                return f"%{label}{pdu // width}"
+            pdu -= span
+        return None
+    if space in ("coil", "discrete"):
+        segments = (
+            [("qx_bits", "Q"), ("mx_bits", "M")]
+            if space == "coil"
+            else [("ix_bits", "I")]
+        )
+        section = mapping["coils" if space == "coil" else "discrete_inputs"]
+        for name, area in segments:
+            span = section.get(name, 0)
+            if pdu < span:
+                return f"%{area}X{pdu // 8}.{pdu % 8}"
+            pdu -= span
+        return None
+    if space == "input":
+        return f"%IW{pdu}" if pdu < mapping["input_registers"]["iw_count"] else None
+    return None
+
+
+def slave_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[str]:
+    """Each tag's slave address resolves, through the *rendered*
+    ``modbus_slave.json``, back to the tag's own IEC location; and the counts
+    are tight (the highest located index + 1), so the v4 runtime clamps nothing."""
+    errs: list[str] = []
+    for plc in alloc.plc_rios:
+        cfg = json.loads(files[f"openplc/{plc}/modbus_slave.json"])
+        mapping = cfg["buffer_mapping"]
+        for a in alloc.tags.values():
+            if a.tag.plc != plc:
+                continue
+            got = resolve_slave(mapping, a.slave_space, a.slave_address)
+            if got != str(a.plc_iec):
+                errs.append(
+                    f"modbus_slave {plc}: {a.tag.name} is at {a.slave_space} "
+                    f"{a.slave_address}, which the runtime serves as {got}, "
+                    f"not {a.plc_iec}"
+                )
+        want = SlaveLayout.from_addresses(
+            a.plc_iec for a in alloc.tags.values() if a.tag.plc == plc
+        )
+        if mapping != want.buffer_mapping():
+            errs.append(
+                f"modbus_slave {plc}: buffer_mapping {mapping} is not the tight "
+                f"layout {want.buffer_mapping()}"
+            )
+    return errs
+
+
 def fuxa_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[str]:
-    """FUXA (memaddress, address - 1) matches the slave map of the IEC address."""
+    """FUXA (memaddress, address - 1) resolves, through ``modbus_slave.json``,
+    to the tag's IEC location."""
     errs = []
     for name, text in files.items():
         if not name.startswith("fuxa/"):
             continue
         ids = set()
         for dev in json.loads(text)["devices"]:
+            plc = dev["name"]
+            mapping = json.loads(files[f"openplc/{plc}/modbus_slave.json"])[
+                "buffer_mapping"
+            ]
             for tag in dev["tags"]:
                 if tag["id"] in ids:
                     errs.append(f"FUXA duplicate id {tag['id']}")
                 ids.add(tag["id"])
                 a = alloc.tags[tag["name"]]
-                space, pdu = iec_to_slave(a.plc_iec)
-                want = (FUXA_MEMADDRESS[space], pdu + 1)
-                if (tag["memaddress"], tag["address"]) != want:
+                space = FUXA_SPACE.get(tag["memaddress"], "?")
+                got = resolve_slave(mapping, space, tag["address"] - 1)
+                if got != str(a.plc_iec):
                     errs.append(
                         f"FUXA {tag['name']}: {tag['memaddress']}/{tag['address']} "
-                        f"but {a.plc_iec} is {space} {pdu} -> {want}"
+                        f"is {space} {tag['address'] - 1}, served as {got}, "
+                        f"but the tag is {a.plc_iec}"
                     )
     return errs
 

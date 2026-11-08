@@ -68,9 +68,12 @@ follow the demo project (enum keys). The header `alarms: fix` and the layout
 TODO(verify): alarm records omit `permission` and `permissionRoles`. Confirm
 all signed-in users see the alarms with `secureEnabled` on.
 
-TODO(verify): writing a setpoint from the `html_input` gauge. FUXA divides on
-read and multiplies on write, and the PLC accepts writes to `%MW0` to `%MW7`
-(Modbus holding registers 1024 to 1031). The write path needs a live PLC.
+TODO(verify): writing a setpoint from the `html_input` gauge in the browser.
+The write path itself is checked: `tests/integration/ci_slice_docker.sh` calls
+FUXA's `POST /api/setTagValue` for `CEL.FV101.TT01.SP` (60.0), and FUXA multiplies
+by the divisor and writes holding register 104 (`%MW0`) on a live OpenPLC v4.3.2.
+`%MW0` to `%MW7` are holding registers 104 to 111: v4 serves `%MW` right after the
+`%QW` segment, whose length is `qw_count` in `modbus_slave.json`.
 
 TODO(verify): the `plc-cellar` tags' `access: read` in the plantgen file is
 ignored here, because FUXA does not use it.

@@ -1,0 +1,346 @@
+# CherryMountain Brewery plant tag database (DESIGN.md §12.6).
+#
+# Single source of truth for tags, I/O, alarms, HELICS keys, and the hosts
+# that own them. tools/plantgen reads this file and writes every derived
+# artifact under plant/generated/<variant>/. Edit this file, then run
+# `python -m plantgen` (see tools/plantgen) and commit both.
+#
+# Tag names follow ISA-5.1 inside the ISA-88 hierarchy (§6.4):
+#   <AREA>.<UNIT>.<LOOP><FUNC><NN>.<ATTR>, for example CEL.FV101.TT01.PV.
+#
+# Tag `type` uses the phenix ot-sim vocabulary, seen from the PLC:
+#   analog-read        AI  (RIO input register, or PLC-computed word)
+#   analog-read-write  AO  (RIO holding register, or PLC setpoint word)
+#   binary-read        DI  (RIO discrete input, or PLC-computed bit)
+#   binary-read-write  DO  (RIO coil, or PLC command bit)
+# A tag with `io: <device>.<point>` is wired to a remote I/O point and backed
+# by the owning HELICS federate. A tag without `io` lives in PLC memory.
+# Each alarm also creates a PLC alarm bit tag named
+# <AREA>.<UNIT>.<INSTR>.ALM_<KIND> (for example CEL.FV101.TT01.ALM_DEVIATION).
+#
+# Analog values are unsigned 16-bit registers holding value x 10^scaling,
+# so every range must satisfy 0 <= lo and hi x 10^scaling <= 65535.
+# Pressures are stored as absolute (psia) and displayed as gauge (§6.3).
+
+schema_version: 1
+
+site:
+  name: CherryMountain Brewery
+  elevation_ft: 5200
+  ambient_psia: 12.1
+
+# HELICS federates (DESIGN.md §9.2). Keys are <federate>/<device>.<point>;
+# writes go to the <federate>/<endpoint> endpoint.
+federates:
+  cellar:
+    host: sim-process
+    period_s: 1.0
+    endpoint: updates
+    # Federate outputs that are not remote I/O points.
+    outputs:
+      - { key: co2.vent_gps, type: double, units: g/s, desc: CO2 vented into the cellar room (to building) }
+      - { key: glycol.load_kw, type: double, units: kW, desc: Jacket heat load on the glycol loop (to utilities) }
+    # Inputs from other federates. A subscription is generated only when the
+    # source federate is part of the variant; otherwise `default` is used.
+    inputs:
+      - { key: utilities/glycol.supply_f, type: double, units: degF, default: 28.0 }
+      - { key: building/cellar.temp_f, type: double, units: degF, default: 68.0 }
+      - { key: weather/pressure.kpa, type: double, units: kPa, default: 83.4 }
+
+# ot-sim infrastructure device types (`infrastructures: brewery:` in the
+# phenix ot-sim app). Point order is register order: the app numbers
+# registers in device order, then point order, so do not reorder casually.
+device_types:
+  fv-zone:
+    temp_f: { type: analog-read, scaling: 2 }
+    valve: { type: binary-read-write }
+  fv-vessel:
+    pressure_psia: { type: analog-read, scaling: 2 }
+    gravity_plato: { type: analog-read, scaling: 2 }
+    spund_sp_psia: { type: analog-read-write, scaling: 2 }
+    spund_open: { type: binary-read }
+  sim-clock:
+    sim_hours: { type: analog-read, scaling: 1 }
+
+# Hosts that own tags or appear in generated app blocks. Interface names
+# and addresses follow DESIGN.md §10.2 (IF0, IF1, ... in zone order; the
+# MGMT NIC is `mgmt`). Variants may override interfaces.
+hosts:
+  sim-ctl:
+    role: sim
+    interfaces:
+      mgmt: { vlan: MGMT, ip: 172.16.10.1/16 }
+  sim-process:
+    role: sim
+    interfaces:
+      mgmt: { vlan: MGMT, ip: 172.16.10.2/16 }
+  rio-cellar:
+    role: rio
+    federate: cellar
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-CEL, ip: 10.20.12.10/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.12/16 }
+  plc-cellar:
+    role: plc
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    poll_ms: 100
+    interfaces:
+      IF0: { vlan: CTRL, ip: 10.20.10.12/24 }
+      IF1: { vlan: FIELD-CEL, ip: 10.20.12.1/24 }
+  scada-fuxa:
+    role: scada
+    interfaces:
+      IF0: { vlan: OPS, ip: 10.20.30.10/24 }
+  ot-svc:
+    role: service
+    interfaces:
+      IF0: { vlan: OPS, ip: 10.20.30.13/24 }
+
+# Alarm rationalization library (ISA-18.2, DESIGN.md §6.5). An alarm can
+# reference an entry with `rationale:` and override any field inline.
+# response_time is the time the operator has to act before the consequence.
+alarm_rationale:
+  fv-temp-deviation:
+    priority: high
+    cause: Glycol valve stuck or failed, glycol supply too warm, or chiller fault
+    consequence: Off-flavors (esters, fusels) or a stalled fermentation; batch loss
+    action: Check the zone glycol valve and the glycol supply temperature; put the zone in manual if needed
+    response_time: 30m
+  fv-cone-deviation:
+    priority: medium
+    cause: Cone glycol valve stuck or failed, or yeast cake insulating the cone RTD
+    consequence: Poor yeast settling and uneven crash; slower turnaround
+    action: Check the cone glycol valve and the cone RTD; compare with the side temperature
+    response_time: 60m
+  fv-temp-high:
+    priority: medium
+    cause: Runaway fermentation heat with no cooling, or the setpoint profile entered wrongly
+    consequence: Yeast stress, fusel alcohols, and diacetyl; possible blow-off
+    action: Open the side glycol valve, verify the setpoint profile, and check glycol supply
+    response_time: 20m
+  fv-pressure-high:
+    priority: high
+    cause: Spunding valve stuck closed or setpoint too high during active fermentation
+    consequence: Mechanical relief lifts at 15 psig MAWP (27.1 psia); CO2 release into the cellar
+    action: Reduce the spunding setpoint or vent manually; check the spunding valve
+    response_time: 10m
+  fv-pressure-low:
+    priority: low
+    cause: CO2 reabsorption and gas contraction during cold crash without top pressure
+    consequence: Vacuum relief admits air; oxygen pickup and staling
+    action: Apply CO2 top pressure through the blow-off arm
+    response_time: 60m
+
+areas:
+  - id: CEL
+    name: Cellar
+    plc: plc-cellar
+    rio: rio-cellar
+    federate: cellar
+    units:
+      - id: CLK
+        name: Cellar sim clock
+        model: clock
+        devices:
+          - { name: clock, type: sim-clock }
+        tags:
+          - { id: KI01.PV, desc: Cellar simulation clock (compressed fermentation time), io: clock.sim_hours, units: h, range: [0, 6553] }
+
+      - id: FV101
+        name: FV-101
+        model: fermenter
+        devices:
+          - { name: fv101-side, type: fv-zone, zone: side }
+          - { name: fv101-cone, type: fv-zone, zone: cone }
+          - { name: fv101, type: fv-vessel }
+        tags:
+          - id: TT01.PV
+            desc: FV-101 side temperature
+            io: fv101-side.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT01.SP, limit: 2.0, delay: 15m, rationale: fv-temp-deviation }
+              - { kind: high, limit: 75.0, delay: 5m, rationale: fv-temp-high }
+          - { id: TV01.CMD, desc: FV-101 side glycol valve command, io: fv101-side.valve }
+          - id: TT02.PV
+            desc: FV-101 cone temperature
+            io: fv101-cone.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT02.SP, limit: 2.0, delay: 15m, rationale: fv-cone-deviation }
+          - { id: TV02.CMD, desc: FV-101 cone glycol valve command, io: fv101-cone.valve }
+          - id: PT01.PV
+            desc: FV-101 head pressure (absolute)
+            io: fv101.pressure_psia
+            units: psia
+            range: [0, 40]
+            alarms:
+              - { kind: high, limit: 26.1, delay: 30s, rationale: fv-pressure-high }
+              - { kind: low, limit: 11.6, delay: 5m, rationale: fv-pressure-low }
+          - { id: DT01.PV, desc: FV-101 apparent extract (sample-port density meter), io: fv101.gravity_plato, units: degP, range: [0, 30] }
+          - { id: PCV01.SP, desc: FV-101 spunding valve setpoint (absolute), io: fv101.spund_sp_psia, units: psia, range: [0, 40] }
+          - { id: ZSO01.PV, desc: FV-101 spunding valve open (venting), io: fv101.spund_open }
+          - { id: TT01.SP, desc: FV-101 side temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: TT02.SP, desc: FV-101 cone temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+
+      - id: FV102
+        name: FV-102
+        model: fermenter
+        devices:
+          - { name: fv102-side, type: fv-zone, zone: side }
+          - { name: fv102-cone, type: fv-zone, zone: cone }
+          - { name: fv102, type: fv-vessel }
+        tags:
+          - id: TT01.PV
+            desc: FV-102 side temperature
+            io: fv102-side.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT01.SP, limit: 2.0, delay: 15m, rationale: fv-temp-deviation }
+              - { kind: high, limit: 75.0, delay: 5m, rationale: fv-temp-high }
+          - { id: TV01.CMD, desc: FV-102 side glycol valve command, io: fv102-side.valve }
+          - id: TT02.PV
+            desc: FV-102 cone temperature
+            io: fv102-cone.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT02.SP, limit: 2.0, delay: 15m, rationale: fv-cone-deviation }
+          - { id: TV02.CMD, desc: FV-102 cone glycol valve command, io: fv102-cone.valve }
+          - id: PT01.PV
+            desc: FV-102 head pressure (absolute)
+            io: fv102.pressure_psia
+            units: psia
+            range: [0, 40]
+            alarms:
+              - { kind: high, limit: 26.1, delay: 30s, rationale: fv-pressure-high }
+              - { kind: low, limit: 11.6, delay: 5m, rationale: fv-pressure-low }
+          - { id: DT01.PV, desc: FV-102 apparent extract (sample-port density meter), io: fv102.gravity_plato, units: degP, range: [0, 30] }
+          - { id: PCV01.SP, desc: FV-102 spunding valve setpoint (absolute), io: fv102.spund_sp_psia, units: psia, range: [0, 40] }
+          - { id: ZSO01.PV, desc: FV-102 spunding valve open (venting), io: fv102.spund_open }
+          - { id: TT01.SP, desc: FV-102 side temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: TT02.SP, desc: FV-102 cone temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+
+      - id: FV103
+        name: FV-103
+        model: fermenter
+        devices:
+          - { name: fv103-side, type: fv-zone, zone: side }
+          - { name: fv103-cone, type: fv-zone, zone: cone }
+          - { name: fv103, type: fv-vessel }
+        tags:
+          - id: TT01.PV
+            desc: FV-103 side temperature
+            io: fv103-side.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT01.SP, limit: 2.0, delay: 15m, rationale: fv-temp-deviation }
+              - { kind: high, limit: 75.0, delay: 5m, rationale: fv-temp-high }
+          - { id: TV01.CMD, desc: FV-103 side glycol valve command, io: fv103-side.valve }
+          - id: TT02.PV
+            desc: FV-103 cone temperature
+            io: fv103-cone.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT02.SP, limit: 2.0, delay: 15m, rationale: fv-cone-deviation }
+          - { id: TV02.CMD, desc: FV-103 cone glycol valve command, io: fv103-cone.valve }
+          - id: PT01.PV
+            desc: FV-103 head pressure (absolute)
+            io: fv103.pressure_psia
+            units: psia
+            range: [0, 40]
+            alarms:
+              - { kind: high, limit: 26.1, delay: 30s, rationale: fv-pressure-high }
+              - { kind: low, limit: 11.6, delay: 5m, rationale: fv-pressure-low }
+          - { id: DT01.PV, desc: FV-103 apparent extract (sample-port density meter), io: fv103.gravity_plato, units: degP, range: [0, 30] }
+          - { id: PCV01.SP, desc: FV-103 spunding valve setpoint (absolute), io: fv103.spund_sp_psia, units: psia, range: [0, 40] }
+          - { id: ZSO01.PV, desc: FV-103 spunding valve open (venting), io: fv103.spund_open }
+          - { id: TT01.SP, desc: FV-103 side temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: TT02.SP, desc: FV-103 cone temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+
+      - id: FV104
+        name: FV-104
+        model: fermenter
+        devices:
+          - { name: fv104-side, type: fv-zone, zone: side }
+          - { name: fv104-cone, type: fv-zone, zone: cone }
+          - { name: fv104, type: fv-vessel }
+        tags:
+          - id: TT01.PV
+            desc: FV-104 side temperature
+            io: fv104-side.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT01.SP, limit: 2.0, delay: 15m, rationale: fv-temp-deviation }
+              - { kind: high, limit: 75.0, delay: 5m, rationale: fv-temp-high }
+          - { id: TV01.CMD, desc: FV-104 side glycol valve command, io: fv104-side.valve }
+          - id: TT02.PV
+            desc: FV-104 cone temperature
+            io: fv104-cone.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT02.SP, limit: 2.0, delay: 15m, rationale: fv-cone-deviation }
+          - { id: TV02.CMD, desc: FV-104 cone glycol valve command, io: fv104-cone.valve }
+          - id: PT01.PV
+            desc: FV-104 head pressure (absolute)
+            io: fv104.pressure_psia
+            units: psia
+            range: [0, 40]
+            alarms:
+              - { kind: high, limit: 26.1, delay: 30s, rationale: fv-pressure-high }
+              - { kind: low, limit: 11.6, delay: 5m, rationale: fv-pressure-low }
+          - { id: DT01.PV, desc: FV-104 apparent extract (sample-port density meter), io: fv104.gravity_plato, units: degP, range: [0, 30] }
+          - { id: PCV01.SP, desc: FV-104 spunding valve setpoint (absolute), io: fv104.spund_sp_psia, units: psia, range: [0, 40] }
+          - { id: ZSO01.PV, desc: FV-104 spunding valve open (venting), io: fv104.spund_open }
+          - { id: TT01.SP, desc: FV-104 side temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: TT02.SP, desc: FV-104 cone temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+
+# Variants (DESIGN.md §11, §15.3). Each variant lists the areas, federates,
+# and hosts it contains; plantgen emits per-variant outputs.
+variants:
+  ci:
+    description: >-
+      Cellar slice for e2e CI: sim-ctl, sim-process, rio-cellar, plc-cellar,
+      scada-fuxa. scada-fuxa and plc-cellar share one flat CTRL VLAN with no
+      firewall; there is no ot-svc, weather, utilities, or building federate.
+    areas: [CEL]
+    federates: [cellar]
+    hosts: [sim-ctl, sim-process, rio-cellar, plc-cellar, scada-fuxa]
+    host_overrides:
+      scada-fuxa:
+        interfaces:
+          IF0: { vlan: CTRL, ip: 10.20.10.10/24 }
+    helics:
+      broker: { hostname: sim-ctl, interface: mgmt }
+      end_time_s: 86400
+    ground_truth: false
+    # Cellar federate settings (DESIGN.md §9.4). FV-101 starts mid-
+    # fermentation here, rather than empty as in the full plant, so its
+    # temperature and gravity move during a short CI run.
+    sim:
+      compression: 48
+      noise: true
+      seed: 101
+      initial_state:
+        FV101: { phase: fermenting, sim_hours: 20, temp_f: 66, spund_sp_psig: 1.0 }
+        FV102: { phase: fermenting, sim_hours: 48, temp_f: 66, spund_sp_psig: 1.0 }
+        FV103: { phase: fermenting, sim_hours: 120, temp_f: 68, dry_hop_lb_per_bbl: 2.0, spund_sp_psig: 12.0 }
+        FV104: { phase: fermenting, sim_hours: 264, temp_f: 50, spund_sp_psig: 12.0 }
+    # ntp app in app mode, every host listed (DESIGN.md §15.2). ci has no
+    # ot-svc, so sim-ctl serves MGMT and scada-fuxa serves the CTRL VLAN.
+    ntp:
+      default_source: { hostname: sim-ctl, interface: mgmt }
+      hosts:
+        sim-ctl: { server: chronyd }
+        scada-fuxa: { server: chronyd }
+        sim-process: { client: chrony }
+        rio-cellar: { client: chrony }
+        plc-cellar: { client: chrony, source: { hostname: scada-fuxa, interface: IF0 } }

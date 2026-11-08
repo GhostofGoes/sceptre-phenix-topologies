@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cherrymountain-sim"
+version = "0.1.0"
+description = "CherryMountain Brewery process federates (cellar slice)"
+requires-python = ">=3.12"
+license = "GPL-3.0-only"
+dependencies = ["pydantic>=2.7"]
+
+[project.optional-dependencies]
+helics = ["helics>=3.5"]
+test = ["pytest>=8", "scipy>=1.11"]
+
+[project.scripts]
+cherrymountain-cellar = "cherrymountain_sim.federate:main"
+
+[tool.setuptools]
+packages = ["cherrymountain_sim"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "PL"]
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "ANN401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cherrymountain_sim"]

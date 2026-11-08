@@ -1,0 +1,543 @@
+{
+  "generator": "plantgen",
+  "variant": "ci",
+  "broker": {
+    "host": "sim-ctl",
+    "interface": "mgmt",
+    "address": "172.16.10.1",
+    "core_type": "zmq"
+  },
+  "end_time_s": 86400,
+  "federates": {
+    "cellar": {
+      "host": "sim-process",
+      "period_s": 1.0,
+      "endpoint": "cellar/updates",
+      "accepted_updates": [
+        "fv101-side.valve",
+        "fv101-cone.valve",
+        "fv101.spund_sp_psia",
+        "fv102-side.valve",
+        "fv102-cone.valve",
+        "fv102.spund_sp_psia",
+        "fv103-side.valve",
+        "fv103-cone.valve",
+        "fv103.spund_sp_psia",
+        "fv104-side.valve",
+        "fv104-cone.valve",
+        "fv104.spund_sp_psia"
+      ],
+      "publications": [
+        {
+          "key": "cellar/clock.sim_hours",
+          "type": "double",
+          "units": "h",
+          "tag": "CEL.CLK.KI01.PV",
+          "unit": "CLK",
+          "device": "clock",
+          "device_type": "sim-clock",
+          "zone": null,
+          "point": "sim_hours"
+        },
+        {
+          "key": "cellar/fv101-side.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV101.TT01.PV",
+          "unit": "FV101",
+          "device": "fv101-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv101-side.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV101.TV01.CMD",
+          "unit": "FV101",
+          "device": "fv101-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv101-cone.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV101.TT02.PV",
+          "unit": "FV101",
+          "device": "fv101-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv101-cone.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV101.TV02.CMD",
+          "unit": "FV101",
+          "device": "fv101-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv101.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV101.PT01.PV",
+          "unit": "FV101",
+          "device": "fv101",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/fv101.gravity_plato",
+          "type": "double",
+          "units": "degP",
+          "tag": "CEL.FV101.DT01.PV",
+          "unit": "FV101",
+          "device": "fv101",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "gravity_plato"
+        },
+        {
+          "key": "cellar/fv101.spund_sp_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV101.PCV01.SP",
+          "unit": "FV101",
+          "device": "fv101",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_sp_psia"
+        },
+        {
+          "key": "cellar/fv101.spund_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV101.ZSO01.PV",
+          "unit": "FV101",
+          "device": "fv101",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_open"
+        },
+        {
+          "key": "cellar/fv102-side.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV102.TT01.PV",
+          "unit": "FV102",
+          "device": "fv102-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv102-side.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV102.TV01.CMD",
+          "unit": "FV102",
+          "device": "fv102-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv102-cone.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV102.TT02.PV",
+          "unit": "FV102",
+          "device": "fv102-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv102-cone.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV102.TV02.CMD",
+          "unit": "FV102",
+          "device": "fv102-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv102.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV102.PT01.PV",
+          "unit": "FV102",
+          "device": "fv102",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/fv102.gravity_plato",
+          "type": "double",
+          "units": "degP",
+          "tag": "CEL.FV102.DT01.PV",
+          "unit": "FV102",
+          "device": "fv102",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "gravity_plato"
+        },
+        {
+          "key": "cellar/fv102.spund_sp_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV102.PCV01.SP",
+          "unit": "FV102",
+          "device": "fv102",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_sp_psia"
+        },
+        {
+          "key": "cellar/fv102.spund_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV102.ZSO01.PV",
+          "unit": "FV102",
+          "device": "fv102",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_open"
+        },
+        {
+          "key": "cellar/fv103-side.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV103.TT01.PV",
+          "unit": "FV103",
+          "device": "fv103-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv103-side.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV103.TV01.CMD",
+          "unit": "FV103",
+          "device": "fv103-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv103-cone.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV103.TT02.PV",
+          "unit": "FV103",
+          "device": "fv103-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv103-cone.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV103.TV02.CMD",
+          "unit": "FV103",
+          "device": "fv103-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv103.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV103.PT01.PV",
+          "unit": "FV103",
+          "device": "fv103",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/fv103.gravity_plato",
+          "type": "double",
+          "units": "degP",
+          "tag": "CEL.FV103.DT01.PV",
+          "unit": "FV103",
+          "device": "fv103",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "gravity_plato"
+        },
+        {
+          "key": "cellar/fv103.spund_sp_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV103.PCV01.SP",
+          "unit": "FV103",
+          "device": "fv103",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_sp_psia"
+        },
+        {
+          "key": "cellar/fv103.spund_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV103.ZSO01.PV",
+          "unit": "FV103",
+          "device": "fv103",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_open"
+        },
+        {
+          "key": "cellar/fv104-side.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV104.TT01.PV",
+          "unit": "FV104",
+          "device": "fv104-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv104-side.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV104.TV01.CMD",
+          "unit": "FV104",
+          "device": "fv104-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv104-cone.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV104.TT02.PV",
+          "unit": "FV104",
+          "device": "fv104-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv104-cone.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV104.TV02.CMD",
+          "unit": "FV104",
+          "device": "fv104-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv104.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV104.PT01.PV",
+          "unit": "FV104",
+          "device": "fv104",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/fv104.gravity_plato",
+          "type": "double",
+          "units": "degP",
+          "tag": "CEL.FV104.DT01.PV",
+          "unit": "FV104",
+          "device": "fv104",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "gravity_plato"
+        },
+        {
+          "key": "cellar/fv104.spund_sp_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV104.PCV01.SP",
+          "unit": "FV104",
+          "device": "fv104",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_sp_psia"
+        },
+        {
+          "key": "cellar/fv104.spund_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV104.ZSO01.PV",
+          "unit": "FV104",
+          "device": "fv104",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_open"
+        },
+        {
+          "key": "cellar/co2.vent_gps",
+          "type": "double",
+          "units": "g/s",
+          "output": "co2.vent_gps"
+        },
+        {
+          "key": "cellar/glycol.load_kw",
+          "type": "double",
+          "units": "kW",
+          "output": "glycol.load_kw"
+        }
+      ],
+      "subscriptions": [],
+      "input_defaults": {
+        "utilities/glycol.supply_f": 28.0,
+        "building/cellar.temp_f": 68.0,
+        "weather/pressure.kpa": 83.4
+      },
+      "ambient_psia": 12.1,
+      "sim": {
+        "compression": 48.0,
+        "noise": true,
+        "seed": 101,
+        "initial_state": {
+          "FV101": {
+            "phase": "fermenting",
+            "sim_hours": 20.0,
+            "temp_f": 66.0,
+            "dry_hop_lb_per_bbl": 0.0,
+            "spund_sp_psig": 1.0
+          },
+          "FV102": {
+            "phase": "fermenting",
+            "sim_hours": 48.0,
+            "temp_f": 66.0,
+            "dry_hop_lb_per_bbl": 0.0,
+            "spund_sp_psig": 1.0
+          },
+          "FV103": {
+            "phase": "fermenting",
+            "sim_hours": 120.0,
+            "temp_f": 68.0,
+            "dry_hop_lb_per_bbl": 2.0,
+            "spund_sp_psig": 12.0
+          },
+          "FV104": {
+            "phase": "fermenting",
+            "sim_hours": 264.0,
+            "temp_f": 50.0,
+            "dry_hop_lb_per_bbl": 0.0,
+            "spund_sp_psig": 12.0
+          }
+        }
+      }
+    }
+  },
+  "io_federates": {
+    "rio-cellar": {
+      "federate_name": "rio-cellar",
+      "subscriptions": [
+        "cellar/clock.sim_hours",
+        "cellar/fv101-side.temp_f",
+        "cellar/fv101-side.valve",
+        "cellar/fv101-cone.temp_f",
+        "cellar/fv101-cone.valve",
+        "cellar/fv101.pressure_psia",
+        "cellar/fv101.gravity_plato",
+        "cellar/fv101.spund_sp_psia",
+        "cellar/fv101.spund_open",
+        "cellar/fv102-side.temp_f",
+        "cellar/fv102-side.valve",
+        "cellar/fv102-cone.temp_f",
+        "cellar/fv102-cone.valve",
+        "cellar/fv102.pressure_psia",
+        "cellar/fv102.gravity_plato",
+        "cellar/fv102.spund_sp_psia",
+        "cellar/fv102.spund_open",
+        "cellar/fv103-side.temp_f",
+        "cellar/fv103-side.valve",
+        "cellar/fv103-cone.temp_f",
+        "cellar/fv103-cone.valve",
+        "cellar/fv103.pressure_psia",
+        "cellar/fv103.gravity_plato",
+        "cellar/fv103.spund_sp_psia",
+        "cellar/fv103.spund_open",
+        "cellar/fv104-side.temp_f",
+        "cellar/fv104-side.valve",
+        "cellar/fv104-cone.temp_f",
+        "cellar/fv104-cone.valve",
+        "cellar/fv104.pressure_psia",
+        "cellar/fv104.gravity_plato",
+        "cellar/fv104.spund_sp_psia",
+        "cellar/fv104.spund_open"
+      ],
+      "endpoint": "rio-cellar/updates",
+      "sends": [
+        {
+          "tag": "fv101-side.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv101-cone.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv101.spund_sp_psia",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv102-side.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv102-cone.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv102.spund_sp_psia",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv103-side.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv103-cone.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv103.spund_sp_psia",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv104-side.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv104-cone.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv104.spund_sp_psia",
+          "endpoint": "cellar/updates"
+        }
+      ]
+    }
+  },
+  "federate_count": 2
+}

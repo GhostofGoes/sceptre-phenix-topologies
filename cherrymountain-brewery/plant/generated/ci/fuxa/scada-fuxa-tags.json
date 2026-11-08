@@ -1,0 +1,742 @@
+{
+  "generator": "plantgen",
+  "variant": "ci",
+  "notes": "address is 1-based (FUXA subtracts 1); value = raw / divisor",
+  "devices": [
+    {
+      "name": "plc-cellar",
+      "type": "ModbusTCP",
+      "property": {
+        "address": "10.20.10.12",
+        "port": 502,
+        "slaveid": 1
+      },
+      "polling": 1000,
+      "tags": [
+        {
+          "id": "t_bccbf9fb-016d-59d9-b2a1-f8623d492141",
+          "name": "CEL.CLK.KI01.PV",
+          "label": "Cellar simulation clock (compressed fermentation time)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 101,
+          "access": "read",
+          "divisor": 10,
+          "units": "h",
+          "range": [
+            0.0,
+            6553.0
+          ]
+        },
+        {
+          "id": "t_f11a7b18-f7a0-561e-89b9-2ddd6536c4c9",
+          "name": "CEL.FV101.TT01.PV",
+          "label": "FV-101 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 102,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_06d386c1-7243-5904-b17d-6a16d7f430e6",
+          "name": "CEL.FV101.TT01.ALM_DEVIATION",
+          "label": "FV-101 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 1,
+          "access": "read"
+        },
+        {
+          "id": "t_f05bed6f-8270-56c0-8eb4-d1d5729dd4f5",
+          "name": "CEL.FV101.TT01.ALM_HIGH",
+          "label": "FV-101 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 2,
+          "access": "read"
+        },
+        {
+          "id": "t_405231fd-f204-5f0a-8f84-6283ca1982ee",
+          "name": "CEL.FV101.TV01.CMD",
+          "label": "FV-101 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 801,
+          "access": "read"
+        },
+        {
+          "id": "t_6d2cbb97-a9f8-5030-903d-9c68263e3a07",
+          "name": "CEL.FV101.TT02.PV",
+          "label": "FV-101 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 103,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_1c0aaf17-bee5-52e7-92a7-b0e1e70cde42",
+          "name": "CEL.FV101.TT02.ALM_DEVIATION",
+          "label": "FV-101 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 3,
+          "access": "read"
+        },
+        {
+          "id": "t_2a88202b-0e60-5b95-b113-4a80f9e3be97",
+          "name": "CEL.FV101.TV02.CMD",
+          "label": "FV-101 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 802,
+          "access": "read"
+        },
+        {
+          "id": "t_11abdb24-9350-5e24-99d4-51bc89259280",
+          "name": "CEL.FV101.PT01.PV",
+          "label": "FV-101 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 104,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_24c196a0-4d70-5e08-afc2-5bd2f61b7f1b",
+          "name": "CEL.FV101.PT01.ALM_HIGH",
+          "label": "FV-101 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 4,
+          "access": "read"
+        },
+        {
+          "id": "t_75dde3f9-65de-54b4-9ef6-81911886989a",
+          "name": "CEL.FV101.PT01.ALM_LOW",
+          "label": "FV-101 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 5,
+          "access": "read"
+        },
+        {
+          "id": "t_840dcd8c-e529-5cd5-a92b-5920bcadff67",
+          "name": "CEL.FV101.DT01.PV",
+          "label": "FV-101 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 105,
+          "access": "read",
+          "divisor": 100,
+          "units": "degP",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_2ff2e71c-9875-5d1c-9e99-ec99ae11f322",
+          "name": "CEL.FV101.PCV01.SP",
+          "label": "FV-101 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 101,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_5edfba0d-5473-5fb0-bc83-624f090b0e91",
+          "name": "CEL.FV101.ZSO01.PV",
+          "label": "FV-101 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 801,
+          "access": "read"
+        },
+        {
+          "id": "t_03c403ce-14c3-56fe-96d0-683ad9a6a058",
+          "name": "CEL.FV101.TT01.SP",
+          "label": "FV-101 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 1025,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_48a1fc09-be30-5676-b6ce-e8ab6c3f57b5",
+          "name": "CEL.FV101.TT02.SP",
+          "label": "FV-101 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 1026,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_4885454f-4f16-52dd-9dd9-fb9969d3d0ec",
+          "name": "CEL.FV102.TT01.PV",
+          "label": "FV-102 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 106,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_1ba55e87-8d14-50fd-af3f-17c60dc657ff",
+          "name": "CEL.FV102.TT01.ALM_DEVIATION",
+          "label": "FV-102 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 6,
+          "access": "read"
+        },
+        {
+          "id": "t_679e34a0-1691-5b69-907e-30caca9450cf",
+          "name": "CEL.FV102.TT01.ALM_HIGH",
+          "label": "FV-102 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 7,
+          "access": "read"
+        },
+        {
+          "id": "t_967e58e2-ae86-5d95-9e8e-1525be4362bf",
+          "name": "CEL.FV102.TV01.CMD",
+          "label": "FV-102 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 803,
+          "access": "read"
+        },
+        {
+          "id": "t_afbf7ff6-7e31-5de2-8648-377e7e96c454",
+          "name": "CEL.FV102.TT02.PV",
+          "label": "FV-102 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 107,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_13e092ad-55ac-5abf-bf4e-04be6d3476d2",
+          "name": "CEL.FV102.TT02.ALM_DEVIATION",
+          "label": "FV-102 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 8,
+          "access": "read"
+        },
+        {
+          "id": "t_e4b1fe44-4a32-5ba6-a91d-bab5d51e21a7",
+          "name": "CEL.FV102.TV02.CMD",
+          "label": "FV-102 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 804,
+          "access": "read"
+        },
+        {
+          "id": "t_dc30aa44-6532-5d50-8b21-e562fa548fcb",
+          "name": "CEL.FV102.PT01.PV",
+          "label": "FV-102 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 108,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_7f4defcc-3edf-56ca-9a37-860b148e43a4",
+          "name": "CEL.FV102.PT01.ALM_HIGH",
+          "label": "FV-102 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 9,
+          "access": "read"
+        },
+        {
+          "id": "t_c8f76873-944f-56b2-aa8a-714ac3110b3f",
+          "name": "CEL.FV102.PT01.ALM_LOW",
+          "label": "FV-102 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 10,
+          "access": "read"
+        },
+        {
+          "id": "t_20ee248d-00d5-5554-94e8-2d1b0842cb3d",
+          "name": "CEL.FV102.DT01.PV",
+          "label": "FV-102 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 109,
+          "access": "read",
+          "divisor": 100,
+          "units": "degP",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_975901ba-39cf-5f6b-80a9-7f3ec7412e49",
+          "name": "CEL.FV102.PCV01.SP",
+          "label": "FV-102 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 102,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_5b2a06cb-f673-52e0-b6bf-5b8d9ebbbfe1",
+          "name": "CEL.FV102.ZSO01.PV",
+          "label": "FV-102 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 802,
+          "access": "read"
+        },
+        {
+          "id": "t_d3d604c2-0d3b-5432-94a9-94ec4582ad75",
+          "name": "CEL.FV102.TT01.SP",
+          "label": "FV-102 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 1027,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_e38007e2-894e-50eb-ac7c-ec60bced8a3e",
+          "name": "CEL.FV102.TT02.SP",
+          "label": "FV-102 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 1028,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_f526c104-dbda-50d1-af7d-0cf946fa59fd",
+          "name": "CEL.FV103.TT01.PV",
+          "label": "FV-103 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 110,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_abea36b0-be2d-5076-ae06-853abed2ceee",
+          "name": "CEL.FV103.TT01.ALM_DEVIATION",
+          "label": "FV-103 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 11,
+          "access": "read"
+        },
+        {
+          "id": "t_3d332fe3-fc1c-5b85-93de-43331933cbed",
+          "name": "CEL.FV103.TT01.ALM_HIGH",
+          "label": "FV-103 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 12,
+          "access": "read"
+        },
+        {
+          "id": "t_49c778df-fc78-50b7-9050-afb7e5b1ba4b",
+          "name": "CEL.FV103.TV01.CMD",
+          "label": "FV-103 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 805,
+          "access": "read"
+        },
+        {
+          "id": "t_90f4a6eb-d527-5093-b6f9-d0bf754e5936",
+          "name": "CEL.FV103.TT02.PV",
+          "label": "FV-103 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 111,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_9a427b72-20cf-5c5d-8574-b2ad24614690",
+          "name": "CEL.FV103.TT02.ALM_DEVIATION",
+          "label": "FV-103 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 13,
+          "access": "read"
+        },
+        {
+          "id": "t_98c02d78-ccd9-5047-bffa-4a4d0ea17e4e",
+          "name": "CEL.FV103.TV02.CMD",
+          "label": "FV-103 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 806,
+          "access": "read"
+        },
+        {
+          "id": "t_a335c9bb-a3d3-52b0-bc58-515a68f2b351",
+          "name": "CEL.FV103.PT01.PV",
+          "label": "FV-103 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 112,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_2a874350-1266-5ec1-a130-1bf0a3c4d8b9",
+          "name": "CEL.FV103.PT01.ALM_HIGH",
+          "label": "FV-103 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 14,
+          "access": "read"
+        },
+        {
+          "id": "t_33894645-6f87-5032-b164-aaa23c512aa6",
+          "name": "CEL.FV103.PT01.ALM_LOW",
+          "label": "FV-103 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 15,
+          "access": "read"
+        },
+        {
+          "id": "t_de55ff3f-6b65-515e-98e1-1225ede5af63",
+          "name": "CEL.FV103.DT01.PV",
+          "label": "FV-103 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 113,
+          "access": "read",
+          "divisor": 100,
+          "units": "degP",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_daf55f5b-2d3b-5ac0-97e1-91c5611e8d51",
+          "name": "CEL.FV103.PCV01.SP",
+          "label": "FV-103 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 103,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_899ac09c-c53e-5a9d-8623-aa7c4b32db3c",
+          "name": "CEL.FV103.ZSO01.PV",
+          "label": "FV-103 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 803,
+          "access": "read"
+        },
+        {
+          "id": "t_8f4bddc5-3645-57fd-8476-7e8108e3bcd0",
+          "name": "CEL.FV103.TT01.SP",
+          "label": "FV-103 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 1029,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_b9ed331f-ff69-5222-a86f-1bf2f0aca173",
+          "name": "CEL.FV103.TT02.SP",
+          "label": "FV-103 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 1030,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_057efc8e-9943-5520-a0b1-3947daf25adb",
+          "name": "CEL.FV104.TT01.PV",
+          "label": "FV-104 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 114,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_1ba3ee07-91ef-595f-bd9f-cf28cc4b2a65",
+          "name": "CEL.FV104.TT01.ALM_DEVIATION",
+          "label": "FV-104 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 16,
+          "access": "read"
+        },
+        {
+          "id": "t_935f7db6-0243-590b-a97c-a4ae07a51462",
+          "name": "CEL.FV104.TT01.ALM_HIGH",
+          "label": "FV-104 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 17,
+          "access": "read"
+        },
+        {
+          "id": "t_827404cf-61d7-5eb2-a1bd-81eec2e2ca83",
+          "name": "CEL.FV104.TV01.CMD",
+          "label": "FV-104 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 807,
+          "access": "read"
+        },
+        {
+          "id": "t_6954ca9e-4192-524b-8762-73ea90d76c90",
+          "name": "CEL.FV104.TT02.PV",
+          "label": "FV-104 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 115,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_42cc2b63-8617-5e2a-b6a4-e716dbaa65bf",
+          "name": "CEL.FV104.TT02.ALM_DEVIATION",
+          "label": "FV-104 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 18,
+          "access": "read"
+        },
+        {
+          "id": "t_22e8571c-b08d-59fc-8e34-eab6c1f3fdc1",
+          "name": "CEL.FV104.TV02.CMD",
+          "label": "FV-104 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 808,
+          "access": "read"
+        },
+        {
+          "id": "t_34bc64d0-fa91-58a9-985d-ff3acf7ea758",
+          "name": "CEL.FV104.PT01.PV",
+          "label": "FV-104 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 116,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_88d6a3c3-aaf3-5746-9ec1-8c77428d7cea",
+          "name": "CEL.FV104.PT01.ALM_HIGH",
+          "label": "FV-104 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 19,
+          "access": "read"
+        },
+        {
+          "id": "t_2f3ded00-73f3-5eb1-aee0-c8ac91ba3819",
+          "name": "CEL.FV104.PT01.ALM_LOW",
+          "label": "FV-104 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 20,
+          "access": "read"
+        },
+        {
+          "id": "t_1d99b1e3-53c6-59d8-90f2-2ba5a24c28f6",
+          "name": "CEL.FV104.DT01.PV",
+          "label": "FV-104 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 117,
+          "access": "read",
+          "divisor": 100,
+          "units": "degP",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_489ba25a-4a4e-50f3-bf54-41f432d0fb34",
+          "name": "CEL.FV104.PCV01.SP",
+          "label": "FV-104 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 104,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_384e8f9f-9be7-55b4-b9b3-84ccc6475b6e",
+          "name": "CEL.FV104.ZSO01.PV",
+          "label": "FV-104 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 804,
+          "access": "read"
+        },
+        {
+          "id": "t_709e04a8-ee55-564a-b23c-065e0f4ad007",
+          "name": "CEL.FV104.TT01.SP",
+          "label": "FV-104 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 1031,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_6a882ccb-49f8-5857-8c3c-95e9d2e5aa21",
+          "name": "CEL.FV104.TT02.SP",
+          "label": "FV-104 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 1032,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        }
+      ]
+    }
+  ]
+}

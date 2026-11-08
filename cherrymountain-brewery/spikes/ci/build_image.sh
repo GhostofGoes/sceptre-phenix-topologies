@@ -31,15 +31,18 @@ vyos)
   # injects miniccc through nbd, in a roomy temp directory. Microsoft's mirror
   # of the Docker Hub library images avoids the rate limits of shared runners.
   cp /usr/local/bin/miniccc /usr/local/bin/minirouter /usr/local/bin/protonuke "$images_dir/"
-  # vyos-build's rolling branch now names images vyos-999.<stamp>-qemu-amd64.qcow2
-  # (no "-rolling-<date>"), so the script's name parsing finds no boot directory.
-  # Take the directory and squashfs name from the image itself.
+  # Older images refs (before f7b2a00) cannot parse vyos-build's new rolling image names
+  # (vyos-999.<stamp>-qemu-amd64.qcow2) and still patch a NIC sort that vyos-1x dropped.
+  # Patch only a script that still has the old code; a newer ref has both fixes.
   python3 - "$images_dir/scripts/vyos/build-vyos.sh" <<'PY'
 import sys
 from pathlib import Path
 
 path = Path(sys.argv[1])
 text = path.read_text()
+if "VERSION_DIR=\\$VERSION-rolling-\\$DATESTAMP" not in text:
+    print("build-vyos.sh already handles the 999.<stamp> image names; not patching")
+    raise SystemExit(0)
 anchor = "mount /dev/nbd0p3 \\$MOUNT\n"
 fix = (
     "VERSION_DIR=\\$(basename \\$(dirname \\$(ls \\$BOOT_PATH/*/*.squashfs | head -1)))\n"
@@ -48,15 +51,13 @@ fix = (
 if text.count(anchor) != 1:
     raise SystemExit("build-vyos.sh no longer has the expected mount line; update build_image.sh")
 text = text.replace(anchor, anchor + fix)
-# Current vyos-1x orders first-boot NICs by numeric PCI address (ifname_store.py,
-# canonical_sort_key), which is the slot order the images script patches in, and
-# the old sort it patches is gone. Warn instead of failing when it is missing.
+# vyos-1x orders first-boot NICs by numeric PCI address itself; warn instead of failing.
 fail = 'so update build-vyos.sh" >&2\n    exit 1\n'
-if text.count(fail) != 1:
-    raise SystemExit("build-vyos.sh no longer has the expected resolver check; update build_image.sh")
-path.write_text(text.replace(fail, 'so update build-vyos.sh" >&2\n'))
+if text.count(fail) == 1:
+    text = text.replace(fail, 'so update build-vyos.sh" >&2\n')
+path.write_text(text)
 PY
-  grep -n 'VERSION_DIR=' "$images_dir/scripts/vyos/build-vyos.sh"
+  grep -n 'VERSION_DIR=' "$images_dir/scripts/vyos/build-vyos.sh" || true
   (cd "$images_dir" && sudo -E env VYOSTMP=/mnt/vyostmp \
     INJECT_BASE_IMAGE=mcr.microsoft.com/mirror/docker/library/ubuntu:24.04 make vyos)
   sudo mv "$images_dir/vyos.qc2" "$out/vyos.qc2"

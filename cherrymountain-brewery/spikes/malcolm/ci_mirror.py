@@ -159,10 +159,11 @@ def run() -> int:
             return loss, payload, received
 
         loss, payload, received = iperf_loss("100M", "100M")
-        lab.check("capture loss under the 100 Mbit/s iperf3 run is under 1% (payload bytes)", loss < 1.0, f"{loss:.2f}% ({payload}/{received} bytes)")
-        # Runs 6 to 8: only the first ~1.4 MB of a bulk TCP flow reaches the capture port,
-        # with segmentation offload on or off, and an MTU of 9000 on the mirror path changed
-        # nothing. Find the frame size where the capture stops, and test a small-frame flow.
+        lab.fact("capture_loss_default_mtu_100M", f"{loss:.2f}% ({payload}/{received} bytes)")
+        # Run 9 found the cut-off: ICMP payloads up to 1400 bytes are captured, 1472 (a 1500-byte
+        # IP packet) and larger are not, while a 10 Mbit/s flow of small UDP datagrams is captured
+        # completely. A full-size frame plus its 802.1Q tag (and GRE) exceeds a 1500-byte MTU
+        # somewhere on the mirror path; the `phenix` internal port is the candidate in the capture VM.
         sizes: list[int] = [64, 500, 1000, 1400, 1472, 4000]
         lab.shell("malcolm", "rm -f /tmp/ladder.pcap; (setsid nohup timeout 120 tcpdump -ni " + CAP_IF + " -U -w /tmp/ladder.pcap >/dev/null 2>&1 </dev/null &); sleep 2; echo started")
         for size in sizes:
@@ -180,6 +181,25 @@ def run() -> int:
         lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
         udp_seen: int = count(lab, "/tmp/udp.pcap", f" > {B}.5202: UDP, length 200")
         lab.fact("udp_small_frames", f"{udp_out.strip()[-300:]} | captured UDP datagrams to {B}:5202 = {udp_seen}")
+
+        def big_frames(label: str) -> None:
+            lab.shell("malcolm", "rm -f /tmp/big.pcap; (setsid nohup timeout 60 tcpdump -ni " + CAP_IF + " -U -w /tmp/big.pcap >/dev/null 2>&1 </dev/null &); sleep 2; echo started")
+            lab.shell("gen-a", f"ping -c 20 -i 0.2 -W 2 -M dont -s 1472 {B} >/dev/null 2>&1; echo done")
+            time.sleep(3)
+            lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
+            lab.fact(f"echo_1472_captured_{label}", str(count(lab, "/tmp/big.pcap", f"IP {A} > {B}: ICMP echo request, id [0-9]+, seq [0-9]+, length 1480$")) + " of 20")
+
+        lab.shell("malcolm", f"ip link set {CAP_IF} mtu 9000; ip -br link show {CAP_IF}")
+        big_frames("phenix_mtu9000")
+        route: str = sh(["ip", "route", "get", "172.30.255.254"]).stdout
+        lab.fact("host_route_to_capture_vm", route.strip().splitlines()[0] if route.strip() else "")
+        match = re.search(r"dev (\S+)", route)
+        for dev in ({match.group(1)} if match else set()) | set(lab.taps("malcolm")):
+            sh(["ip", "link", "set", dev, "mtu", "9000"])
+        lab.shell("malcolm", "ip link set eth1 mtu 9000; ip -br link show eth1")
+        big_frames("phenix_and_path_mtu9000")
+        loss, payload, received = iperf_loss("100M_mtu9000", "100M")
+        lab.check("with MTU 9000 on the capture port and the mirror path, capture loss under the 100 Mbit/s iperf3 run is under 1% (payload bytes)", loss < 1.0, f"{loss:.2f}% ({payload}/{received} bytes)")
         lab.fact("malcolm_link_stats", lab.shell("malcolm", "ip -s link"))
     finally:
         lab.collect()

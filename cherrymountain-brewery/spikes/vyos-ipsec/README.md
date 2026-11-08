@@ -64,9 +64,10 @@ utility link and record the compromise in §10.3.
 - **Decision:** **go, use phenix as is** (the pinned fork already carries the
   `ike-group` fix; no patch and no cc push needed). Two template follow-ups
   below.
-- **VyOS build:** `VyOS 999.202611081848`, release train `rolling`, flavor
+- **VyOS build:** `VyOS 999.202611082315`, release train `rolling`, flavor
   `qemu`, built in CI from `vyos-build` branch `rolling` by the images repo's
-  `scripts/vyos/build-vyos.sh` with miniccc injected. Rolling images report
+  `scripts/vyos/build-vyos.sh` (images fork commit `6f4f8f3`, which no longer
+  needs the patch in `spikes/ci/build_image.sh`) with miniccc injected. Rolling images report
   `999.<stamp>`, not `1.5`: they are the line that becomes 1.5/1.6, not a 1.5
   release. DESIGN says "VyOS 1.5"; see Follow-ups.
 - **Evidence** (run [42513925243](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42513925243), job "Spike vyos-ipsec", artifact
@@ -90,6 +91,19 @@ utility link and record the compromise in §10.3.
     `IKE-1W` with no proposal (defaults), so the stock upstream template does
     not fail the commit as this README first guessed. It is still wrong: the
     two ends would negotiate defaults, not the intended AES-256/SHA-1.
+- **Rebuilt image, NIC ordering (run [42534059315](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42534059315), phenix `041b001`):**
+  the whole path passed again on the image built without the images repo's NIC
+  sed patch (vyos-1x now orders first-boot NICs by numeric PCI address).
+  `eth0` was PCI `0000:01:01.0` and `eth1` `0000:01:02.0` on both routers, the
+  first topology interface (WAN, 203.0.113.x) was `eth0` (its host tap
+  `mega_tap0` carried the ESP), and the second (FIELD or UTIL) `eth1`. So
+  dropping the NIC patch was right. Run [42531088637](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42531088637) (the first run on
+  the rebuilt image) failed `vyos-ipsec` only because the driver looked for
+  phenix's boot config five seconds after the cc client registered, before the
+  first-boot script had committed it: the manual-set fallback then reported `already
+  exists` for every line. The driver now polls for the config. No NIC ordering
+  problem and no change in SA timing or IKE behavior were involved (SA up in
+  under 15 s, same proposal `AES_CBC_256/HMAC_SHA1_96`).
 - **Follow-ups:**
   - The IKE group has no `key-exchange`, and VyOS prints `DEPRECATION WARNING:
     IKE group "IKE-1W" has no key-exchange set and will still accept incoming

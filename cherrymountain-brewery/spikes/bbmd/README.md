@@ -77,6 +77,7 @@ foreign-device registration the driver does not do.
   - Without BBMDs, a node-bacnet-style Who-Is from ops-client finds nothing
     (only ops-bbmd, instance 9001, answers); a direct unicast ReadProperty to
     10.20.60.13 works through the ACL (`object-name = 'bas-vent'`).
+  - The final run [42534059315](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42534059315) (phenix `041b001`, VyOS `999.202611082315` rebuilt without the NIC patch) passed both jobs again with the same results.
   - Stage `bbmd-one-way` (ops-bbmd to bas-bbmd allowed) and `bbmd-both-ways`
     (plus bas-bbmd to ops-bbmd): **discovery still fails.** The VyOS counters
     show why: rule 30 (OPS BBMD to BAS BBMD) matched 1 packet (46 bytes, the

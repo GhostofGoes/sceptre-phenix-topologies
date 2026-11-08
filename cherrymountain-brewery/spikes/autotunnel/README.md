@@ -59,8 +59,7 @@ with `externalAccess` (DESIGN §15.2) and say so in §15.3.
   `evidence-autotunnel`, phenix `fa8338d5bd90c5ac7bd5a46f77a5eaa880d7e4eb` of
   GhostofGoes/sceptre-phenix `ci-e2e-minimega`, minimega 3.3.0; all checks
   PASS. The experiment was started with `POST /experiments/{exp}/start`
-  against a running `phenix ui`. The final run of this branch, [42526218495](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42526218495),
-  used the then-current fork head; see the artifact's `result.json` versions):
+  against a running `phenix ui`. The final run, [42534059315](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42534059315), passed all checks again on phenix `041b001` (the rebased fork head, same autotunnel loop):
   - Guests registered their C2 client 47 to 70 s after start; then every
     annotated tunnel existed in `cc tunnel list <vm>` and the stub banners came
     back through them (scada-fuxa:1881, sim-ctl:3000, :8080, :9200), and a POST

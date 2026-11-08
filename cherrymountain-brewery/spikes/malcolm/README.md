@@ -58,7 +58,7 @@ capture)** (`ci_mirror.py`).
   - Parsing and resource fit: **go.** Malcolm 26.10.0's own Zeek image (Zeek
     9.0.1 with the ICSNPP packages) logs Modbus/TCP, DNP3 and BACnet/IP from
     the test pcap. That one container is all the pass criteria need, and
-    its peak is ZEEKPEAK.
+    its peak on a bulk pcap is **281 MiB of memory and 118% of one core** (run [42534059315](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42534059315): 52 MB, 20000 copies of the test traffic, processed in 32 s; `docker stats` showed 200 MiB). The container image is 1.4 GB.
   - Capture through `setupOVS`: **go with two fixes.** (1) A flow in the
     capture VM that sends everything from the GRE port to the capture port;
     (2) the host's GRE tunnel needs `options:df_default=false`. Without
@@ -83,6 +83,13 @@ capture)** (`ci_mirror.py`).
   which is why Malcolm asks for 24 GB and DESIGN §11 budgets that for the VM;
   the extra services were not measured. The 8.6 GB of images and the parsing
   worked on a 16 GB runner.
+- **Resource-fit evidence for the minimal set** (run [42534059315]({R14}), same
+  job): `zeek-offline` on `ics-load.pcap` (54 660 024 bytes, 20000 repetitions
+  of the three protocols' traffic, each from its own client address) took 32
+  s, peaked at 281 MiB (cgroup `memory.peak`) and 118% CPU of one core on the
+  4 vCPU runner, and wrote 120 000 `modbus.log`, 40 000 `dnp3.log` and
+  80 000 `bacnet.log` records. The host used 1.4 GiB at its peak, with the
+  runner's own processes.
 - **Evidence, parsing** (run [42528455486](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42528455486), job "Spike malcolm (Docker on
   the runner)", artifact `evidence-malcolm-docker`): runner 4 vCPU, 15982 MB
   RAM (86 GB free on a 145 GB disk, not the ~14 GB assumed). `make_pcap.py`

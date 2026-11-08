@@ -80,7 +80,7 @@ for proto in modbus dnp3 bacnet; do
   check "Malcolm's Zeek image logs $proto from the test pcap" "$([ "${n:-0}" -gt 0 ] && echo true || echo false)" "$proto.log: ${n:-0} records; $(ls "$ZD" | tr '\n' ' ')"
 done
 fact zeek_direct_logs "$(cd "$ZD" && wc -l modbus*.log dnp3*.log bacnet*.log 2>/dev/null | tr '\n' ';')"
-fact zeek_version "$(timeout 60 docker run --rm --entrypoint /usr/local/zeek/bin/zeek "$ZEEK_IMAGE" --version 2>&1 | tail -1)"
+fact zeek_version "$(timeout 60 docker run --rm --user root --entrypoint /usr/local/zeek/bin/zeek "$ZEEK_IMAGE" --version 2>&1 | tail -1)"
 
 # 3. The trimmed Malcolm stack.
 if [ ! -d "$WORK/Malcolm/.git" ]; then
@@ -106,9 +106,10 @@ PATH="$WORK-mvenv/bin:$PATH" timeout 300 ./scripts/auth_setup --auth-noninteract
 check "auth_setup produced the credentials and certificates" "$([ -s .opensearch.primary.curlrc ] && echo true || echo false)" "$(tail -3 "$EV/auth_setup.out")"
 touch htadmin/metadata nginx/htpasswd nginx/nginx_ldap.conf .opensearch.secondary.curlrc
 mkdir -p opensearch pcap/upload pcap/processed zeek-logs/upload zeek-logs/processed zeek-logs/current zeek-logs/extract_files zeek-logs/live
-timeout 300 docker run --rm -v "$PWD/opensearch:/out" --user "$(id -u):$(id -g)" --entrypoint bash \
+timeout 300 docker run --rm -v "$PWD/opensearch:/out" --user root --entrypoint bash \
   "ghcr.io/idaholab/malcolm/opensearch:$IMAGE_TAG" -c \
   "/usr/share/opensearch/bin/opensearch-keystore create && cp /usr/share/opensearch/config/opensearch.keystore /out/" >>"$EV/steps.log" 2>&1
+sudo chown "$(id -u):$(id -g)" opensearch/opensearch.keystore 2>/dev/null || true
 chmod 600 .opensearch.*.curlrc config/*.env
 
 SERVICES=(opensearch dashboards-helper logstash filebeat pcap-monitor zeek)
@@ -133,6 +134,7 @@ log "starting OpenSearch"
 timeout 300 docker compose --profile malcolm up -d opensearch >>"$EV/steps.log" 2>&1
 os_ready=false
 for _ in $(seq 1 60); do
+  docker ps --format '{{.Names}}' | grep -q '^malcolm-opensearch-1$' || break
   if timeout 20 docker exec malcolm-opensearch-1 sh -c 'curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc "https://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"' 2>/dev/null | grep -q '"status"'; then
     os_ready=true; break
   fi

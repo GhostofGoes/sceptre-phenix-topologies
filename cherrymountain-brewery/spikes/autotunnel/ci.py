@@ -51,7 +51,11 @@ def reachable(port: int) -> tuple[bool, str]:
 
 def host_port(lab: Lab, vm: str, guest_port: int) -> int | None:
     """Host port of the minimega tunnel to guest_port of vm, from `cc tunnel list <vm>`."""
-    for row in lab.mm.table(f"cc tunnel list {vm}", EXP):
+    try:
+        rows: list[dict[str, str]] = lab.mm.table(f"cc tunnel list {vm}", EXP)
+    except RuntimeError:  # "no such client": the VM has no C2 client now
+        return None
+    for row in rows:
         if row.get("dst") == "127.0.0.1" and row.get("dst port") == str(guest_port):
             src: str = row.get("src port", "")
             return int(src) if src.isdigit() else None
@@ -70,9 +74,10 @@ def fetch_via_tunnel(lab: Lab, vm: str, guest_port: int, timeout_s: float = 120)
         return reachable(port)
 
     try:
-        return found.get("port"), wait_for(f"tunnel to {vm}:{guest_port}", timeout_s, 3, probe)
+        banner: str = wait_for(f"tunnel to {vm}:{guest_port}", timeout_s, 3, probe)
     except TimeoutError as exc:
-        return found.get("port"), f"NO REPLY ({exc})"
+        banner = f"NO REPLY ({exc})"
+    return found.get("port"), banner
 
 
 def start_stubs(lab: Lab, vm: str, ports: list[int]) -> None:

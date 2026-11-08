@@ -26,8 +26,10 @@ A, B, C = "10.20.30.30", "10.20.30.31", "10.20.40.40"
 CAP_IF: str = "phenix"  # bridge created by phenix-app-mirror's setup-ovs.sh
 
 
-def count(lab: Lab, pcap: str, expr: str) -> int:
-    out: str = lab.shell("malcolm", f"tcpdump -nn -r {pcap} {expr} 2>/dev/null | wc -l")
+def count(lab: Lab, pcap: str, regex: str) -> int:
+    """Count decoded packets matching regex. Text matching instead of a pcap filter:
+    a filter such as `icmp` does not match frames that carry a VLAN tag."""
+    out: str = lab.shell("malcolm", f"tcpdump -nn -r {pcap} 2>/dev/null | grep -cE '{regex}' || true")
     return int(out.strip().splitlines()[-1])
 
 
@@ -91,13 +93,14 @@ def run() -> int:
             time.sleep(5)
             lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
             lab.fact(f"tcpdump_{label}", lab.shell("malcolm", f"cat /tmp/tcpdump-{label}.log"))
+            lab.fact(f"decode_{label}", lab.shell("malcolm", f"tcpdump -nn -e -r {pc} 2>/dev/null | head -12"))
             result: dict[str, int] = {
-                "same_vlan_req": count(lab, pc, f"'icmp[icmptype]==8 and src host {A} and dst host {B}'"),
-                "same_vlan_rep": count(lab, pc, f"'icmp[icmptype]==0 and src host {B} and dst host {A}'"),
-                "routed_req": count(lab, pc, f"'icmp[icmptype]==8 and src host {A} and dst host {C}'"),
-                "routed_rep": count(lab, pc, f"'icmp[icmptype]==0 and src host {C} and dst host {A}'"),
-                "tcp502_syn": count(lab, pc, f"'tcp dst port 502 and tcp[tcpflags] & tcp-syn != 0 and tcp[tcpflags] & tcp-ack == 0 and dst host {B}'"),
-                "total": count(lab, pc, ""),
+                "same_vlan_req": count(lab, pc, f"IP {A} > {B}: ICMP echo request"),
+                "same_vlan_rep": count(lab, pc, f"IP {B} > {A}: ICMP echo reply"),
+                "routed_req": count(lab, pc, f"IP {A} > {C}: ICMP echo request"),
+                "routed_rep": count(lab, pc, f"IP {C} > {A}: ICMP echo reply"),
+                "tcp502_syn": count(lab, pc, f"IP {A}\\.[0-9]+ > {B}\\.502: Flags \\[S\\],"),
+                "total": count(lab, pc, "."),
             }
             lab.fact(f"capture_counts_{label}", str(result))
             return result
@@ -132,7 +135,7 @@ def run() -> int:
             time.sleep(3)
             lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
             kernel: str = lab.shell("malcolm", "cat /tmp/tcpdump-iperf.log")
-            captured: int = int(lab.shell("malcolm", f"tcpdump -nn -r /tmp/iperf.pcap 'dst host {B}' 2>/dev/null | wc -l").strip().splitlines()[-1])
+            captured: int = count(lab, "/tmp/iperf.pcap", f" > {B}\\.5201: ")
             delivered: int = rx1 - rx0
             loss: float = 100.0 * max(delivered - captured, 0) / max(delivered, 1)
             lab.fact(f"iperf_{label}", f"delivered_to_gen_b={delivered} captured={captured} loss={loss:.2f}% | {res.strip()[-200:]} | {kernel.strip()[-200:]}")

@@ -47,7 +47,14 @@ fix = (
 )
 if text.count(anchor) != 1:
     raise SystemExit("build-vyos.sh no longer has the expected mount line; update build_image.sh")
-path.write_text(text.replace(anchor, anchor + fix))
+text = text.replace(anchor, anchor + fix)
+# Current vyos-1x orders first-boot NICs by numeric PCI address (ifname_store.py,
+# canonical_sort_key), which is the slot order the images script patches in, and
+# the old sort it patches is gone. Warn instead of failing when it is missing.
+fail = 'so update build-vyos.sh" >&2\n    exit 1\n'
+if text.count(fail) != 1:
+    raise SystemExit("build-vyos.sh no longer has the expected resolver check; update build_image.sh")
+path.write_text(text.replace(fail, 'so update build-vyos.sh" >&2\n'))
 PY
   grep -n 'VERSION_DIR=' "$images_dir/scripts/vyos/build-vyos.sh"
   (cd "$images_dir" && sudo -E env VYOSTMP=/mnt/vyostmp \

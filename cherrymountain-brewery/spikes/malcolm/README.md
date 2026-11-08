@@ -83,7 +83,7 @@ capture)** (`ci_mirror.py`).
   which is why Malcolm asks for 24 GB and DESIGN §11 budgets that for the VM;
   the extra services were not measured. The 8.6 GB of images and the parsing
   worked on a 16 GB runner.
-- **Resource-fit evidence for the minimal set** (run [42534059315]({R14}), same
+- **Resource-fit evidence for the minimal set** (run [42534059315](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42534059315), same
   job): `zeek-offline` on `ics-load.pcap` (54 660 024 bytes, 20000 repetitions
   of the three protocols' traffic, each from its own client address) took 32
   s, peaked at 281 MiB (cgroup `memory.peak`) and 118% CPU of one core on the

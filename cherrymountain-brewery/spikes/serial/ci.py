@@ -78,12 +78,15 @@ def run() -> int:
         lab.check("raw echo rio-utilities -> glycol-chiller", ok1, d1)
         ok2, d2 = echo_check(lab, a, b, "hello-from-chiller")
         lab.check("raw echo glycol-chiller -> rio-utilities", ok2, d2)
+        # A leftover reader would steal the RTU frames from the pty.
+        for vm in (a, b):
+            lab.shell(vm, "pkill -x cat; sleep 1; pgrep -c -x cat || true")
 
         for vm in (a, b):
             lab.put_file(vm, "/tmp/rtu_check.py", HERE / "rtu_check.py")
         lab.shell(b, f"setsid nohup python3 /tmp/rtu_check.py server {DEV} >/tmp/rtu_server.log 2>&1 </dev/null & sleep 2; cat /tmp/rtu_server.log")
         # The bus monitor sees every frame (README step 6).
-        lab.shell("bus-monitor", "rm -f /tmp/bus.txt; (setsid nohup timeout 600 tcpdump -ni any -l 'udp port 9000' >/tmp/bus.txt 2>&1 </dev/null &); sleep 2; echo started")
+        lab.shell("bus-monitor", "rm -f /tmp/bus.txt; (setsid nohup timeout 600 tcpdump -ni eth0 -l 'udp port 9000' >/tmp/bus.txt 2>&1 </dev/null &); sleep 2; echo started")
         res = lab.shell_result(a, f"python3 /tmp/rtu_check.py client {DEV} --polls {POLLS} --interval {INTERVAL}", wait_s=POLLS * INTERVAL + 240)
         lab.save("rtu-client.txt", res.stdout)
         lab.check("RTU read round trip", "PASS: RTU read" in res.stdout, res.stdout[:300])

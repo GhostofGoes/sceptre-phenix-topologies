@@ -422,7 +422,7 @@ class Lab:
         steps: list[tuple[str, Callable[[], str]]] = [
             ("minimega-vm-info.txt", lambda: self.mm.text("vm info", self.exp)),
             ("minimega-cc-clients.txt", lambda: self.mm.text("cc clients", self.exp)),
-            ("minimega-cc-tunnels.txt", lambda: self.mm.text("cc tunnel list", self.exp)),
+            ("minimega-cc-tunnels.txt", lambda: "\n".join(f"== {vm}\n{self.mm.text(f'cc tunnel list {vm}', self.exp)}" for vm in self.vm_info())),
             ("minimega-vlans.txt", lambda: self.mm.text("vlans", self.exp)),
             ("experiment.json", lambda: self.phenix("config", "get", f"experiment/{self.exp}", "--output", "json", check=False)),
             ("ovs-show.txt", lambda: sh(["ovs-vsctl", "show"]).stdout),

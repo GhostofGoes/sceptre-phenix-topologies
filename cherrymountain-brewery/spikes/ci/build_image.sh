@@ -31,6 +31,25 @@ vyos)
   # injects miniccc through nbd, in a roomy temp directory. Microsoft's mirror
   # of the Docker Hub library images avoids the rate limits of shared runners.
   cp /usr/local/bin/miniccc /usr/local/bin/minirouter /usr/local/bin/protonuke "$images_dir/"
+  # vyos-build's rolling branch now names images vyos-999.<stamp>-qemu-amd64.qcow2
+  # (no "-rolling-<date>"), so the script's name parsing finds no boot directory.
+  # Take the directory and squashfs name from the image itself.
+  python3 - "$images_dir/scripts/vyos/build-vyos.sh" <<'PY'
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text()
+anchor = "mount /dev/nbd0p3 \\$MOUNT\n"
+fix = (
+    "VERSION_DIR=\\$(basename \\$(dirname \\$(ls \\$BOOT_PATH/*/*.squashfs | head -1)))\n"
+    "SQUASHFS=\\$(basename \\$(ls \\$BOOT_PATH/*/*.squashfs | head -1))\n"
+)
+if text.count(anchor) != 1:
+    raise SystemExit("build-vyos.sh no longer has the expected mount line; update build_image.sh")
+path.write_text(text.replace(anchor, anchor + fix))
+PY
+  grep -n 'VERSION_DIR=' "$images_dir/scripts/vyos/build-vyos.sh"
   (cd "$images_dir" && sudo -E env VYOSTMP=/mnt/vyostmp \
     INJECT_BASE_IMAGE=mcr.microsoft.com/mirror/docker/library/ubuntu:24.04 make vyos)
   sudo mv "$images_dir/vyos.qc2" "$out/vyos.qc2"

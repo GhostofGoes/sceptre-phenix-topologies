@@ -80,34 +80,45 @@ def run() -> int:
         lab.shell("gen-a", f"ping -c 2 -W 2 {B} >/dev/null 2>&1; ping -c 2 -W 2 {C} >/dev/null 2>&1; echo warm")
         lab.shell("gen-b", "setsid nohup iperf3 -s >/tmp/iperf-s.log 2>&1 </dev/null & sleep 1; echo up")
 
-        # Capture, then known traffic.
-        lab.shell("malcolm", f"rm -f /tmp/flows.pcap; (setsid nohup timeout 90 tcpdump -ni {CAP_IF} -U -w /tmp/flows.pcap >/tmp/tcpdump-flows.log 2>&1 </dev/null &); sleep 2; echo started")
-        lab.shell("gen-a", f"ping -c {PINGS} -i 0.3 -W 2 {B} | tail -2; ping -c {PINGS} -i 0.3 -W 2 {C} | tail -2; "
-                  f"for i in $(seq 1 10); do timeout 1 bash -c 'echo -n probe > /dev/tcp/{B}/502' 2>/dev/null || true; done; echo generated", wait_s=180)
-        time.sleep(5)
-        lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; cat /tmp/tcpdump-flows.log")
-        lab.fact("tcpdump_flows", lab.shell("malcolm", "cat /tmp/tcpdump-flows.log"))
+        # Capture, then known traffic. The stock setupOVS bridge floods only frames whose
+        # destination it has not learned, so run once as shipped and once with a flow that
+        # sends everything arriving on the GRE port to the capture port.
+        def capture_counts(label: str) -> dict[str, int]:
+            pc: str = f"/tmp/flows-{label}.pcap"
+            lab.shell("malcolm", f"rm -f {pc}; (setsid nohup timeout 90 tcpdump -ni {CAP_IF} -U -w {pc} >/tmp/tcpdump-{label}.log 2>&1 </dev/null &); sleep 2; echo started")
+            lab.shell("gen-a", f"ping -c {PINGS} -i 0.3 -W 2 {B} | tail -2; ping -c {PINGS} -i 0.3 -W 2 {C} | tail -2; "
+                      f"for i in $(seq 1 10); do timeout 1 bash -c 'echo -n probe > /dev/tcp/{B}/502' 2>/dev/null || true; done; echo generated", wait_s=180)
+            time.sleep(5)
+            lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
+            lab.fact(f"tcpdump_{label}", lab.shell("malcolm", f"cat /tmp/tcpdump-{label}.log"))
+            result: dict[str, int] = {
+                "same_vlan_req": count(lab, pc, f"'icmp[icmptype]==8 and src host {A} and dst host {B}'"),
+                "same_vlan_rep": count(lab, pc, f"'icmp[icmptype]==0 and src host {B} and dst host {A}'"),
+                "routed_req": count(lab, pc, f"'icmp[icmptype]==8 and src host {A} and dst host {C}'"),
+                "routed_rep": count(lab, pc, f"'icmp[icmptype]==0 and src host {C} and dst host {A}'"),
+                "tcp502_syn": count(lab, pc, f"'tcp dst port 502 and tcp[tcpflags] & tcp-syn != 0 and tcp[tcpflags] & tcp-ack == 0 and dst host {B}'"),
+                "total": count(lab, pc, ""),
+            }
+            lab.fact(f"capture_counts_{label}", str(result))
+            return result
 
-        pc: str = "/tmp/flows.pcap"
-        counts: dict[str, int] = {
-            "same_vlan_req": count(lab, pc, f"'icmp[icmptype]==8 and src host {A} and dst host {B}'"),
-            "same_vlan_rep": count(lab, pc, f"'icmp[icmptype]==0 and src host {B} and dst host {A}'"),
-            "routed_req": count(lab, pc, f"'icmp[icmptype]==8 and src host {A} and dst host {C}'"),
-            "routed_rep": count(lab, pc, f"'icmp[icmptype]==0 and src host {C} and dst host {A}'"),
-            "tcp502_syn": count(lab, pc, f"'tcp dst port 502 and tcp[tcpflags] & tcp-syn != 0 and tcp[tcpflags] & tcp-ack == 0 and dst host {B}'"),
-            "total": count(lab, pc, ""),
-        }
-        lab.fact("capture_counts", str(counts))
+        stock: dict[str, int] = capture_counts("stock")
+        stock_ok: bool = stock["same_vlan_req"] == PINGS and stock["same_vlan_rep"] == PINGS and stock["routed_req"] == PINGS
+        lab.fact("stock_setupovs_delivers_every_frame", f"{stock_ok}: {stock}")
+        lab.fact("malcolm_fdb", lab.shell("malcolm", "ovs-appctl fdb/show phenix | head -20; ovs-ofctl dump-flows phenix"))
+        flow: str = lab.shell("malcolm", f"ovs-ofctl add-flow phenix 'priority=1000,in_port=sniffer,actions=output:{CAP_IF}' && ovs-ofctl dump-flows phenix")
+        lab.fact("capture_flow", flow)
+        counts: dict[str, int] = capture_counts("flow")
         lab.check("mirrored packets are visible on the in-guest capture interface", counts["total"] > 0, str(counts))
         same_ok: bool = counts["same_vlan_req"] == PINGS and counts["same_vlan_rep"] == PINGS
         lab.check(
-            "same-VLAN flow is captured once per direction (no duplicates)",
+            "with the capture flow, same-VLAN flow is captured once per direction (no duplicates)",
             same_ok,
             f"want {PINGS}/{PINGS}, got {counts['same_vlan_req']}/{counts['same_vlan_rep']}",
         )
         routed_ok: bool = counts["routed_req"] == PINGS and counts["routed_rep"] == PINGS
         lab.check(
-            "routed flow is captured once per direction (DESIGN section 14 claim)",
+            "with the capture flow, routed flow is captured once per direction (DESIGN section 14 claim)",
             routed_ok,
             f"want {PINGS}/{PINGS}, got {counts['routed_req']}/{counts['routed_rep']}",
         )

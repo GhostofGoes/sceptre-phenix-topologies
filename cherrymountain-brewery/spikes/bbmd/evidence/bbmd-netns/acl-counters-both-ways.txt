@@ -1,0 +1,10 @@
+table inet acl {
+	chain forward {
+		type filter hook forward priority filter; policy drop;
+		ct state established,related counter packets 0 bytes 0 accept comment "est"
+		ip saddr 10.20.30.30 ip daddr 10.20.60.13 udp dport 47808 counter packets 0 bytes 0 accept comment "client-to-device"
+		ip saddr 10.20.30.5 ip daddr 10.20.60.5 udp dport 47808 counter packets 0 bytes 0 accept comment "ops-bbmd-to-bas-bbmd"
+		ip saddr 10.20.60.5 ip daddr 10.20.30.5 udp dport 47808 counter packets 0 bytes 0 accept comment "bas-bbmd-to-ops-bbmd"
+		counter packets 0 bytes 0 drop comment "default-drop"
+	}
+}

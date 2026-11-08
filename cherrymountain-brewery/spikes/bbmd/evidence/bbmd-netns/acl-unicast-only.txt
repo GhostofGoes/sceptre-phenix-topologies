@@ -1,0 +1,9 @@
+flush ruleset
+table inet acl {
+  chain forward {
+    type filter hook forward priority 0; policy drop;
+    ct state established,related counter accept comment est
+    ip saddr 10.20.30.30 ip daddr 10.20.60.13 udp dport 47808 counter accept comment client-to-device
+    counter drop comment default-drop
+  }
+}

@@ -161,31 +161,27 @@ spec:
         hostListeners:
           provider:
           - 172.16.1.2:5555 # pybennu server endpoint
-          - 172.16.1.2:22
+          - :22
           rtu-1:
           - 10.117.4.101:20000 # DNP3 outstation
           - :40000 # pybennu publish group (UDP)
           - :21 # vsftpd, for firmware uploads
-          - 10.117.4.101:22
-          - 172.16.1.4:22
+          - :22
           rtu-2:
           - 10.117.4.102:20000
           - :40000
           - :21
-          - 10.117.4.102:22
-          - 172.16.1.5:22
+          - :22
           rtu-3:
           - 10.117.4.103:20000
           - :40000
           - :21
-          - 10.117.4.103:22
-          - 172.16.1.6:22
+          - :22
           rtu-4:
           - 10.117.4.104:20000
           - :40000
           - :21
-          - 10.117.4.104:22
-          - 172.16.1.7:22
+          - :22
           ignition:
           - :8088 # Ignition gateway
         # phenix replaces every dollar-brace reference (NAME or NAME:default) when it

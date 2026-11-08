@@ -46,8 +46,8 @@ phenix exp start waterway
 
 `waterway-scenario.yaml` also runs the phenix state of health (soh) app. Its checks, by node group:
 
-- `simulink-provider`: the injected sceptre files and the `groundTruth.txt` the solver writes; the `ssh`, `collectd`, `ntp` and `phenix` services; the provider, solver and ground truth processes; listeners on `172.16.1.2:5555`, `:8080` and `172.16.1.2:22`; the ground truth web page.
-- `rtu-1` and `rtu-2`: the address and gateway of `IF0`; the injected sceptre files and `watcher.ini`; no uploaded `/home/sceptre/bennu-field-deviced.firmware`; the `ssh`, `vsftpd`, `collectd`, `ntp` and `phenix` services; `bennu-watcherd` and the field device process; listeners for Modbus (502), the provider's multicast (40000), ssh on both addresses and FTP; a provider multicast packet, an established connection to the provider, and a TCP connection to `172.16.1.2:5555`.
+- `simulink-provider`: the injected sceptre files and the `groundTruth.txt` the solver writes; the `ssh`, `collectd`, `ntp` and `phenix` services; the provider, solver and ground truth processes; listeners on `172.16.1.2:5555`, `:8080` and `:22`; the ground truth web page.
+- `rtu-1` and `rtu-2`: the address and gateway of `IF0`; the injected sceptre files and `watcher.ini`; no uploaded `/home/sceptre/bennu-field-deviced.firmware`; the `ssh`, `vsftpd`, `collectd`, `ntp` and `phenix` services; `bennu-watcherd` and the field device process; listeners for Modbus (502), the provider's multicast (40000), ssh and FTP; a provider multicast packet, an established connection to the provider, and a TCP connection to `172.16.1.2:5555`.
 - `router`: its SCADA and ICS addresses; the `minirouter` and `phenix` services; the `bird` OSPF daemon; IPv4 forwarding; TCP connections to port 502 on both RTUs.
 - `opc`: its address and gateway; `opc.xml` and the TOP Server startup script; the `TOPServerV5` service and its `server_runtime` process; Modbus TCP connections to both RTUs through the router.
 - `historian`, `hmi` and `scada-server`: their address and gateway, and the files the sceptre app injects; on `historian`, the `MSSQLSERVER` service.

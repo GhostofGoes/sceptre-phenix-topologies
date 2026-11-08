@@ -191,18 +191,16 @@ spec:
           simulink-provider:
           - 172.16.1.2:5555
           - :8080
-          - 172.16.1.2:22
+          - :22
           rtu-1:
           - 10.1.1.101:502
           - :40000
-          - 10.1.1.101:22
-          - 172.16.1.101:22
+          - :22
           - :21
           rtu-2:
           - 10.1.1.102:502
           - :40000
-          - 10.1.1.102:22
-          - 172.16.1.102:22
+          - :22
           - :21
         # Custom tests run once, so each one waits for its service inside the script.
         hostCustomTests:

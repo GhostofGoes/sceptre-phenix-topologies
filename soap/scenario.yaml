@@ -289,31 +289,27 @@ spec:
         hostListeners:
           power-provider:
             - 172.16.1.2:5555 # solver server-endpoint
-            - 172.16.1.2:22
+            - :22
           rtu-1:
             - 10.117.4.101:20000 # DNP3 outstation (injects/override)
             - :40000 # provider multicast subscription
             - :21 # vsftpd, the firmware upload path
-            - 10.117.4.101:22
-            - 172.16.1.4:22
+            - :22
           rtu-2:
             - 10.117.4.102:20000
             - :40000
             - :21
-            - 10.117.4.102:22
-            - 172.16.1.5:22
+            - :22
           rtu-3:
             - 10.117.4.103:20000
             - :40000
             - :21
-            - 10.117.4.103:22
-            - 172.16.1.6:22
+            - :22
           rtu-4:
             - 10.117.4.104:20000
             - :40000
             - :21
-            - 10.117.4.104:22
-            - 172.16.1.7:22
+            - :22
           ignition:
             - :22
         hostServices:

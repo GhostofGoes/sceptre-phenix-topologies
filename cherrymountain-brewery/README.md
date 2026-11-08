@@ -39,11 +39,13 @@ integration, new software, testing, roadmap, risks, and references.
 | `sim/` | `cherrymountain_sim`, the cellar HELICS federate |
 | `phenix-ci.yml`, `phenix-configs/{topology,scenario}-ci.yml` | Workflow, topology, and scenario for the ci variant |
 | `phenix-injects/` | Files the ci scenario injects: federate units, OpenPLC and FUXA provisioning, generated copies |
-| `phenix-images/` | Image configs for `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa` (noble) |
+| `phenix-images/` | Image configs for `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa` (noble), with [one README](phenix-images/README.md) that has a section per image |
 | `plc/plc-cellar/` | The cellar PLC program in Structured Text, and `build_zip.sh`, which builds its OpenPLC v4 ZIP |
 | `tests/integration/` | `ci_slice_docker.sh`: the cellar slice (ot-sim, OpenPLC v4.3.2, FUXA) in Docker, no KVM |
 | `fuxa/` | The generated FUXA project for scada-fuxa |
+| `tools/lint/` | Hook scripts for prek: systemd-analyze on units and shellcheck on shell in image YAML |
 | `spikes/` | Phase 0 spike kits |
+| `apps/` | Not created yet. Each phenix app will live here and ship its own `README.md` |
 
 ## The ci variant
 
@@ -106,6 +108,26 @@ that setpoints written through FUXA and Modbus land in the right `%MW` words and
 move the valves, that the alarm bits read correctly, and that the spunding outputs
 reach ot-sim. It also uploads two deliberately different `modbus_slave.json` files
 to pin down how the v4 runtime clamps and segments the holding registers.
+
+## Lint
+
+`prek run --all-files` (also run by CI) checks this directory with:
+
+- **phenix schemas:** every Topology, Scenario, Workflow, and Image config is
+  validated with the sceptre-phenix JSON Schemas, fetched from a commit-pinned
+  URL (`prek.toml` has the commit).
+- **systemd:** `systemd-analyze verify` and a hardening (exposure) limit on
+  every `.service` file and on the units that image scripts write.
+- **shell:** shellcheck at style level on scripts, including extensionless
+  ones, and on the shell embedded in `phenix-images/*.yml`.
+- **YAML:** block style for phenix YAML. Only empty `{}` and `[]` may use flow
+  syntax. JSON that phenix injects verbatim is exempt.
+- **Docker and desktop files:** hadolint, dclint, and `desktop-file-validate`
+  run when such files exist.
+
+`spikes/` and `tests/` are exempt from the stricter checks. The system tools
+that some hooks need are listed in
+[CONTRIBUTING](../.github/CONTRIBUTING.md#code-quality).
 
 ## Applying the full design
 

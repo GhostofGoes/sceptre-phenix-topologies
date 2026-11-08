@@ -68,6 +68,8 @@ def _json(doc: Any) -> str:
 
 
 def _yaml(plant: Plant, doc: Any) -> str:
+    # Block style only (`default_flow_style=False`): phenix YAML avoids `{}` and
+    # `[]` except for empty collections. prek enforces this with yamllint.
     body = yaml.safe_dump(doc, sort_keys=False, default_flow_style=False, width=1000)
     return f"# {HEADER.format(variant=plant.variant)}\n" + body
 

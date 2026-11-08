@@ -223,6 +223,18 @@ def test_ntp_lists_every_host(plant: Plant) -> None:
     }
 
 
+def test_phenix_yaml_is_block_style(plant: Plant) -> None:
+    """The generated phenix app YAML uses flow syntax only for empty collections."""
+    files = render_all(plant, allocate(plant))
+    names = [name for name in files if name.startswith("phenix/")]
+    assert names
+    for name in names:
+        events = list(yaml.parse(files[name]))
+        for event, following in zip(events, events[1:]):
+            if isinstance(event, yaml.CollectionStartEvent) and event.flow_style:
+                assert isinstance(following, yaml.CollectionEndEvent), name
+
+
 def test_helics_lists_are_closed(plant: Plant) -> None:
     """Every rio-cellar subscription is published by the cellar federate."""
     files = render_all(plant, allocate(plant))

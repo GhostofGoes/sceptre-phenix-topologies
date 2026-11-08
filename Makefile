@@ -14,7 +14,7 @@ lint:
 	@prek run --all-files
 
 install-dev:
-	@command -v prek > /dev/null || pip install 'prek>=0.4.3'
+	@command -v prek > /dev/null || pip install 'prek==0.5.10'
 	@prek install
 
 update-actions:

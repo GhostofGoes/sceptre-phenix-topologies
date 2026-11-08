@@ -154,6 +154,18 @@ make lint
 prek run --all-files
 ```
 
+prek installs the hook tools itself (Python, Node). Three hooks need something on the machine; CI installs the same:
+
+| Hook | Needs | Install |
+|---|---|---|
+| `hadolint-docker` (Dockerfiles) | Docker, which pulls the pinned hadolint image | [Docker Engine](https://docs.docker.com/engine/install/) |
+| `cm-systemd-units` (systemd units) | `systemd-analyze` | `sudo apt-get install systemd` |
+| `desktop-file-validate` (`.desktop` files) | `desktop-file-validate`, only when a `.desktop` file exists | `sudo apt-get install desktop-file-utils` |
+
+The cherrymountain-brewery hooks that check phenix configs fetch the pinned
+sceptre-phenix JSON Schemas over HTTPS on first use and cache them. See the
+comments in `prek.toml`.
+
 ## Updating Actions
 
 To update the pinned versions of Actions in the GitHub Workflows:

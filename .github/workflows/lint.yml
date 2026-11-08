@@ -20,7 +20,14 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install prek
-        run: pip install 'prek>=0.4.3'
+        # Keep this in step with minimum_prek_version in prek.toml.
+        run: pip install 'prek==0.5.10'
+      - name: Install system tools for the prek hooks
+        # systemd-analyze verifies systemd units and desktop-file-validate checks
+        # .desktop files. Docker, for the hadolint hook, is on the runner.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends systemd desktop-file-utils
       - name: Validate prek config
         run: prek validate-config prek.toml
       - name: Run prek

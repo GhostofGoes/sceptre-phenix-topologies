@@ -71,17 +71,27 @@ def run() -> int:
             version_out[:300],
         )
 
-        # Path 1: the config phenix injected and the image applied at first boot.
+        # Path 1: the config phenix injected and the image applied at first boot. The boot script
+        # runs after the cc client registers (run 13 looked 5 s too early), so poll for it.
         stock: dict[str, str] = {}
+        probe_script: str = (
+            f"cat > /tmp/op.sh <<'OPEOF'\n#!/bin/vbash\n{VBASH}\nrun show configuration commands\nOPEOF\n"
+            "chmod +x /tmp/op.sh; sg vyattacfg -c /tmp/op.sh 2>&1 | grep -c 'vpn ipsec' ; ls -l /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/ 2>&1; "
+            "journalctl -u vyos-router --no-pager 2>/dev/null | grep -iE 'vyos.script|error|commit' | tail -15"
+        )
         for vm in ROUTERS:
-            stock[vm] = lab.shell(
-                vm,
-                f"cat > /tmp/op.sh <<'OPEOF'\n#!/bin/vbash\n{VBASH}\nrun show configuration commands\nOPEOF\n"
-                "chmod +x /tmp/op.sh; sg vyattacfg -c /tmp/op.sh 2>&1 | grep -c 'vpn ipsec' ; ls -l /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/ 2>&1; "
-                "journalctl -u vyos-router --no-pager 2>/dev/null | grep -iE 'vyos.script|error|commit' | tail -15",
-                wait_s=180,
-            )
+            def applied(v: str = vm) -> tuple[bool, str]:
+                out: str = lab.shell(v, probe_script, wait_s=180)
+                return bool(re.match(r"\s*([1-9]\d*)", out)), out
+
+            try:
+                stock[vm] = wait_for(f"phenix's config on {vm}", 150, 10, applied)
+            except TimeoutError as exc:
+                stock[vm] = str(exc)
             lab.fact(f"{vm}_boot_apply", stock[vm])
+        # NIC order: eth<n> must be the n-th topology interface, in PCI slot order.
+        for vm in ROUTERS:
+            lab.fact(f"{vm}_nic_order", lab.shell(vm, "for n in eth0 eth1; do echo $n $(cat /sys/class/net/$n/address) $(basename $(readlink -f /sys/class/net/$n/device)); done; ip -br addr show eth0 eth1"))
         stock_ok: bool = all(re.match(r"\s*([1-9]\d*)", stock[vm]) for vm in ROUTERS)
         lab.check("phenix's rendered IPsec config is in the running config of both routers (committed at boot)", stock_ok, str(stock))
 

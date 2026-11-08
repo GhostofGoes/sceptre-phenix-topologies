@@ -6,7 +6,7 @@ produces logs for the plant's protocols. The traffic is hand-built, valid at
 the protocol level (full TCP sessions, DNP3 link CRCs), and fixed apart from
 timestamps.
 
-Usage: make_pcap.py OUTPUT.pcap
+Usage: make_pcap.py OUTPUT.pcap [REPEAT]
 Needs: pip install scapy pydantic
 """
 
@@ -152,29 +152,33 @@ def bacnet_datagrams() -> list[Datagram]:
     ]
 
 
-def main(out: Path) -> int:
-    a: Host = Host(ip="10.20.30.30", mac=MAC_A, port=0)
-    b: Host = Host(ip="10.20.30.31", mac=MAC_B, port=0)
+def main(out: Path, repeat: int = 1) -> int:
+    """Write the traffic once, or `repeat` times with a distinct client address per
+    repetition (a bulk load for measuring Zeek's memory and CPU)."""
     cap: Capture = Capture(out)
-    cap.tcp(TcpFlow(name="modbus", client=a.model_copy(update={"port": 40502}), server=b.model_copy(update={"port": 502}), exchanges=modbus_exchanges()))
-    cap.tcp(TcpFlow(name="dnp3", client=a.model_copy(update={"port": 40020}), server=b.model_copy(update={"port": 20000}), exchanges=dnp3_exchanges()))
-    ua: Host = a.model_copy(update={"port": 47808})
-    ub: Host = b.model_copy(update={"port": 47808})
-    bcast: Host = ub.model_copy(update={"ip": "10.20.30.255"})
-    for dg in bacnet_datagrams():
-        if dg.from_a and dg.broadcast:
-            cap.udp(ua, bcast, dg.payload, dst_mac="ff:ff:ff:ff:ff:ff")
-        elif dg.from_a:
-            cap.udp(ua, ub, dg.payload)
-        else:
-            cap.udp(ub, ua, dg.payload)
+    for i in range(repeat):
+        client_ip: str = "10.20.30.30" if repeat == 1 else f"10.{20 + i // 62500}.{100 + (i // 250) % 250}.{i % 250 + 2}"
+        a: Host = Host(ip=client_ip, mac=MAC_A, port=0)
+        b: Host = Host(ip="10.20.30.31", mac=MAC_B, port=0)
+        cap.tcp(TcpFlow(name="modbus", client=a.model_copy(update={"port": 40502}), server=b.model_copy(update={"port": 502}), exchanges=modbus_exchanges()))
+        cap.tcp(TcpFlow(name="dnp3", client=a.model_copy(update={"port": 40020}), server=b.model_copy(update={"port": 20000}), exchanges=dnp3_exchanges()))
+        ua: Host = a.model_copy(update={"port": 47808})
+        ub: Host = b.model_copy(update={"port": 47808})
+        bcast: Host = ub.model_copy(update={"ip": "10.20.30.255"})
+        for dg in bacnet_datagrams():
+            if dg.from_a and dg.broadcast:
+                cap.udp(ua, bcast, dg.payload, dst_mac="ff:ff:ff:ff:ff:ff")
+            elif dg.from_a:
+                cap.udp(ua, ub, dg.payload)
+            else:
+                cap.udp(ub, ua, dg.payload)
     cap.writer.close()
-    print(f"wrote {out} ({out.stat().st_size} bytes)")
+    print(f"wrote {out} ({out.stat().st_size} bytes, {repeat} repetition(s))")
     return 0
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3):
         print(__doc__)
         sys.exit(2)
-    sys.exit(main(Path(sys.argv[1])))
+    sys.exit(main(Path(sys.argv[1]), int(sys.argv[2]) if len(sys.argv) == 3 else 1))

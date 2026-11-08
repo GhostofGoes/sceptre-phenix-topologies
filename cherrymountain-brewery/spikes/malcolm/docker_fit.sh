@@ -66,6 +66,7 @@ fact free_disk_after_cleanup "$(df -h --output=avail / | tail -1 | tr -d ' ')"
 # pcap with Modbus/TCP, DNP3 and BACnet/IP.
 timeout 300 python3 -m venv "$WORK-venv" && timeout 300 "$WORK-venv/bin/pip" install -q scapy==2.6.1 pydantic==2.11.7
 timeout 60 "$WORK-venv/bin/python" "$HERE/make_pcap.py" "$EV/ics.pcap" | tee -a "$EV/steps.log"
+timeout 900 "$WORK-venv/bin/python" "$HERE/make_pcap.py" "$EV/ics-load.pcap" "${LOAD_REPEAT:-20000}" | tee -a "$EV/steps.log"
 check "make_pcap.py wrote a pcap" "$([ -s "$EV/ics.pcap" ] && echo true || echo false)" "$(ls -l "$EV/ics.pcap" 2>&1)"
 
 # Sample docker stats and free memory every 2 s in the background.
@@ -86,8 +87,23 @@ log "pulling $ZEEK_IMAGE"
 timeout 900 docker pull -q "$ZEEK_IMAGE" >/dev/null 2>&1
 ZD="$EV/zeek-direct"
 mkdir -p "$ZD" && cp "$EV/ics.pcap" "$ZD/" && chmod 777 "$ZD"
-docker run -d --name cm-zeek --user root -v "$ZD:/work" -w /work --entrypoint /usr/local/zeek/bin/zeek-offline \
-  "$ZEEK_IMAGE" -C -r ics.pcap local >/dev/null
+timeout 300 docker run --rm --user root -v "$ZD:/work" -w /work --entrypoint /usr/local/zeek/bin/zeek-offline \
+  "$ZEEK_IMAGE" -C -r ics.pcap local >"$EV/zeek-direct.out" 2>&1
+rm -f "$ZD/ics.pcap"
+for proto in modbus dnp3 bacnet; do
+  n=$(grep -vc '^#' "$ZD/$proto.log" 2>/dev/null || true)
+  check "Malcolm's Zeek image logs $proto from the test pcap" "$([ "${n:-0}" -gt 0 ] && echo true || echo false)" "$proto.log: ${n:-0} records; $(ls "$ZD" | tr '\n' ' ')"
+done
+fact zeek_direct_logs "$(cd "$ZD" && wc -l modbus*.log dnp3*.log bacnet*.log 2>/dev/null | tr '\n' ';')"
+fact zeek_image "$ZEEK_IMAGE, $(docker image inspect -f '{{.Size}}' "$ZEEK_IMAGE") bytes, Malcolm $MALCOLM_TAG"
+fact zeek_version "$(timeout 60 docker run --rm --user root --entrypoint /usr/local/zeek/bin/zeek-offline "$ZEEK_IMAGE" --version 2>&1 | tail -1)"
+
+# 2b. The same Zeek on a bulk pcap (LOAD_REPEAT repetitions of the traffic, each from its own client),
+# for peak memory and CPU: the resource-fit evidence.
+ZL="$EV/zeek-load"
+mkdir -p "$ZL" && cp "$EV/ics-load.pcap" "$ZL/" && chmod 777 "$ZL"
+docker run -d --name cm-zeek --user root -v "$ZL:/work" -w /work --entrypoint /usr/local/zeek/bin/zeek-offline \
+  "$ZEEK_IMAGE" -C -r ics-load.pcap local >/dev/null
 CID=$(docker inspect -f '{{.Id}}' cm-zeek)
 # Peak memory from the container's cgroup (cgroup v2 memory.peak) and CPU from docker stats, once a second.
 PEAK_FILE=$(ls /sys/fs/cgroup/system.slice/docker-"$CID".scope/memory.peak 2>/dev/null || true)
@@ -100,17 +116,11 @@ for _ in $(seq 1 300); do
   sleep 1
 done
 docker wait cm-zeek >/dev/null 2>&1
-docker logs cm-zeek >"$EV/zeek-direct.out" 2>&1
+docker logs cm-zeek >"$EV/zeek-load.out" 2>&1
 fact zeek_peak "memory $((ZEEK_PEAK / 1048576)) MiB (cgroup memory.peak), CPU peak ${ZEEK_CPU}% of one core, run took $(docker inspect -f '{{.State.StartedAt}} to {{.State.FinishedAt}}' cm-zeek)"
-rm -f "$ZD/ics.pcap"
 docker rm -f cm-zeek >/dev/null 2>&1
-for proto in modbus dnp3 bacnet; do
-  n=$(grep -vc '^#' "$ZD/$proto.log" 2>/dev/null || true)
-  check "Malcolm's Zeek image logs $proto from the test pcap" "$([ "${n:-0}" -gt 0 ] && echo true || echo false)" "$proto.log: ${n:-0} records; $(ls "$ZD" | tr '\n' ' ')"
-done
-fact zeek_direct_logs "$(cd "$ZD" && wc -l modbus*.log dnp3*.log bacnet*.log 2>/dev/null | tr '\n' ';')"
-fact zeek_image "$ZEEK_IMAGE, $(docker image inspect -f '{{.Size}}' "$ZEEK_IMAGE") bytes, Malcolm $MALCOLM_TAG"
-fact zeek_version "$(timeout 60 docker run --rm --user root --entrypoint /usr/local/zeek/bin/zeek-offline "$ZEEK_IMAGE" --version 2>&1 | tail -1)"
+fact zeek_load "$(du -h "$EV/ics-load.pcap" | cut -f1) pcap; modbus.log $(grep -vc '^#' "$ZL/modbus.log") records, dnp3.log $(grep -vc '^#' "$ZL/dnp3.log"), bacnet.log $(grep -vc '^#' "$ZL/bacnet.log")"
+rm -rf "$ZL"
 
 # 3. The full pipeline, only when asked (FULL_STACK=1): the pass/fail criteria are met by stage 2,
 # so CI runs the smallest set of containers (just Zeek) and does not start OpenSearch and friends.

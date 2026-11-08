@@ -94,7 +94,8 @@ for f in config/*.env.example; do cp "$f" "${f%.example}"; done
 sed -i "s/^PUID=.*/PUID=$(id -u)/; s/^PGID=.*/PGID=$(id -g)/" config/process.env
 sed -i "s/-Xmx[0-9]*[gm] -Xms[0-9]*[gm]/-Xmx$OS_HEAP -Xms$OS_HEAP/" config/opensearch.env
 sed -i "s/-Xmx[0-9]*[gm] -Xms[0-9]*[gm]/-Xmx$LS_HEAP -Xms$LS_HEAP/" config/logstash.env
-echo "PCAP_PIPELINE_VERBOSITY=-v" >>config/process.env
+# The file has no trailing newline; the processors buffer stdout unless Python is unbuffered.
+printf '\nPCAP_PIPELINE_VERBOSITY=-vv\nPYTHONUNBUFFERED=1\n' >>config/process.env
 grep -h "JAVA_OPTS" config/opensearch.env config/logstash.env >"$EV/heap-settings.txt"
 
 timeout 300 python3 -m venv "$WORK-mvenv" && timeout 300 "$WORK-mvenv/bin/pip" install -q ruamel.yaml python-dotenv kubernetes requests pyyaml
@@ -165,8 +166,8 @@ if [ "$os_ready" = true ]; then
   if [ "$found" != true ]; then
     # Fall back to feeding the Zeek logs from stage 2 to Filebeat's upload directory.
     log "pipeline did not deliver; feeding stage-2 Zeek logs to filebeat through zeek-logs/upload"
-    mkdir -p zeek-logs/upload/cherrymountain-fallback
-    cp "$ZD"/*.log zeek-logs/upload/cherrymountain-fallback/ 2>/dev/null || true
+    # Filebeat's upload watcher unpacks archives, not loose logs.
+    (cd "$ZD" && tar -czf "$WORK/Malcolm/zeek-logs/upload/cherrymountain-ics.tar.gz" ./*.log)
     for _ in $(seq 1 36); do
       out=$(timeout 30 docker exec malcolm-opensearch-1 sh -c "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_search' -d '$q'" 2>/dev/null || true)
       echo "$out" >"$EV/opensearch-datasets-fallback.json"

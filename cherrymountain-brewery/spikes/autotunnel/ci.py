@@ -7,7 +7,6 @@ Run as root on a runner prepared by .github/actions/cm-lab:
 
 from __future__ import annotations
 
-import base64
 import sys
 import time
 import urllib.error
@@ -31,8 +30,6 @@ PLAN: dict[tuple[str, int], int] = {
     ("sim-ctl", 8080): 18080,
     ("sim-ctl", 9200): 19200,
 }
-LATE_SPORT: int = 14001
-LATE_GAVE_UP: str = "startup autotunnel not created: waiting for the C2 client"
 
 
 def http(method: str, port: int, body: str | None = None) -> str:
@@ -140,68 +137,48 @@ def run() -> int:
         ui_code, _ = lab.api("GET", "/experiments")
         lab.check("phenix ui still answers while tunnels are open", ui_code == 200, str(ui_code))
 
-        # Restart a tunnelled VM: does its tunnel survive?
-        before_restart: int | None = ports[("sim-ctl", 3000)]
+        # phenix at fa8338d re-creates forwards that drop, once C2 returns (a 5 s loop in phenix ui).
+        def tunnel_back(vm: str, gport: int, banner: str, what: str, timeout_s: float = 240) -> None:
+            port, got = fetch_via_tunnel(lab, vm, gport, timeout_s)
+            lab.fact(f"{what}_tunnel", f"port {port}: {got}")
+            lab.check(f"{what}: phenix re-creates the tunnel to {vm}:{gport} by itself", got == banner, f"port {port}: {got}")
+
+        # vm kill / vm start
         lab.mm.run("vm kill sim-ctl", EXP)
         time.sleep(3)
-        lab.fact("after_vm_kill", f"tunnel port {host_port(lab, 'sim-ctl', 3000)}: {reachable(before_restart or 0)}")
+        lab.fact("after_vm_kill", f"tunnel port {host_port(lab, 'sim-ctl', 3000)}")
         lab.mm.run("vm start sim-ctl", EXP)
         time.sleep(20)
         wait_for("sim-ctl C2 after restart", 300, 5, lambda: ("sim-ctl" in lab.cc_clients(), str(sorted(lab.cc_clients()))))
         start_stubs(lab, "sim-ctl", [3000, 8080, 9200])
-        port_after: int | None = host_port(lab, "sim-ctl", 3000)
-        survived: bool = False
-        detail: str = ""
-        if port_after is not None:
-            try:
-                detail = wait_for("tunnel after restart", 60, 3, lambda: reachable(port_after))
-                survived = detail == "stub sim-ctl:3000"
-            except TimeoutError as exc:
-                detail = str(exc)
-        lab.fact("tunnel_survives_vm_restart", f"{survived}: tunnel port before {before_restart}, after {port_after}: {detail}")
+        tunnel_back("sim-ctl", 3000, "stub sim-ctl:3000", "vm_restart")
         lab.save("tunnels-after-restart.txt", lab.mm.text("cc tunnel list sim-ctl", EXP))
-        if not survived:
-            # A new forward for the restarted VM (same key first: it may still exist).
-            code, body = lab.api("POST", f"/experiments/{EXP}/vms/sim-ctl/forwards?src=13002&host=127.0.0.1&dst=3000")
-            lab.fact("recreate_forward_after_restart", f"{code} {body}")
-            port2, banner2 = fetch_via_tunnel(lab, "sim-ctl", 3000, 60)
-            lab.check("a restarted VM's tunnel can be re-created with the REST forward call", banner2 == "stub sim-ctl:3000", f"port {port2}: {banner2}")
 
-        # Late-booting VM: phenix gives up on a tunnel whose VM has no C2 client in 5 minutes.
-        def gave_up() -> tuple[bool, str]:
-            log_text: str = (lab.dir / "phenix-ui.log").read_text(errors="replace")
-            lines: list[str] = [ln for ln in log_text.splitlines() if LATE_GAVE_UP in ln and "late-vm" in ln]
-            return bool(lines), f"{len(lines)} lines"
+        # Guest reboot
+        lab.shell("scada-fuxa", "(sleep 2; reboot) >/dev/null 2>&1 & echo rebooting")
+        time.sleep(15)
+        wait_for("scada-fuxa C2 after reboot", 300, 5, lambda: ("scada-fuxa" in lab.cc_clients(), str(sorted(lab.cc_clients()))))
+        start_stubs(lab, "scada-fuxa", [1881])
+        tunnel_back("scada-fuxa", 1881, "stub scada-fuxa:1881", "guest_reboot")
 
-        try:
-            wait_for("phenix to give up on late-vm's tunnel", 420, 10, gave_up)
-            lab.fact("late_vm_gave_up_logged", "yes, after the 5 minute C2 wait")
-        except TimeoutError as exc:
-            lab.fact("late_vm_gave_up_logged", f"no: {exc}")
+        # Late VM: paused since start, so its C2 client is more than the old 5 minutes late.
+        time.sleep(310)
         lab.fact("late_vm_state_before_resume", str(lab.vm_info().get("late-vm", {}).get("state")))
+        ui_log: str = (lab.dir / "phenix-ui.log").read_text(errors="replace")
+        lab.fact("late_vm_logs_before_resume", "\n".join(ln for ln in ui_log.splitlines() if "late-vm" in ln)[-1500:])
+        lab.check("a paused VM has no tunnel while it has no C2 client", host_port(lab, "late-vm", 8080) is None)
         lab.mm.run("vm start late-vm", EXP)
         try:
             wait_for("late-vm C2", 300, 5, lambda: ("late-vm" in lab.cc_clients(), str(sorted(lab.cc_clients()))))
         except TimeoutError as exc:
             lab.fact("late_vm_c2_timeout", f"{exc}; vm info: {lab.vm_info().get('late-vm')}")
-            try:  # what the guest shows: booted, stuck in firmware, or a boot error
-                shot = lab.mm.run("vm screenshot late-vm 800", EXP)
-                data = shot[0].data if shot and shot[0].data else shot[0].response if shot else ""
-                (lab.dir / "late-vm-screenshot.png").write_bytes(base64.b64decode(str(data)))
-            except Exception as err:  # noqa: BLE001
-                lab.fact("late_vm_screenshot", f"unavailable: {err}")
-            lab.check("a late-booting VM gets its tunnel, or the REST forward call creates it", False, str(exc))
+            lab.check("a late VM (C2 after more than 5 minutes) gets its tunnel by itself", False, str(exc))
             return lab.finish()
         start_stubs(lab, "late-vm", [8080])
-        time.sleep(5)
-        auto_port: int | None = host_port(lab, "late-vm", 8080)
-        lab.fact("late_vm_gets_autotunnel", f"{auto_port is not None}: tunnel port {auto_port}")
-        if auto_port is None:
-            code, body = lab.api("POST", f"/experiments/{EXP}/vms/late-vm/forwards?src={LATE_SPORT}&host=127.0.0.1&dst=8080")
-            lab.fact("recreate_forward_for_late_vm", f"{code} {body}")
-        port3, banner3 = fetch_via_tunnel(lab, "late-vm", 8080, 60)
-        lab.check("a late-booting VM gets its tunnel, or the REST forward call creates it", banner3 == "stub late-vm:8080", f"port {port3}: {banner3}")
+        tunnel_back("late-vm", 8080, "stub late-vm:8080", "late_vm")
         lab.save("tunnels-after-late-boot.txt", lab.mm.text("cc tunnel list late-vm", EXP))
+        ui_log = (lab.dir / "phenix-ui.log").read_text(errors="replace")
+        lab.save("phenix-ui-autotunnel-lines.txt", "\n".join(ln for ln in ui_log.splitlines() if "tunnel" in ln.lower()))
     finally:
         lab.collect()
         lab.stop_experiment()

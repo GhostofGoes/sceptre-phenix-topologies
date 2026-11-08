@@ -158,9 +158,22 @@ def run() -> int:
             )
             return loss, payload, received
 
-        loss, payload, received = iperf_loss("100M", "100M")
-        lab.check("capture loss under the 100 Mbit/s iperf3 run is under 1% (payload bytes)", loss < 1.0, f"{loss:.2f}% ({payload}/{received} bytes)")
-        iperf_loss("unlimited", "0")
+        loss, payload, received = iperf_loss("offload_on_100M", "100M")
+        lab.fact("capture_loss_offload_on_100M", f"{loss:.2f}% ({payload}/{received} bytes)")
+        # Suspect: segments larger than the mirror path's MTU are dropped. Turn off TCP
+        # segmentation offload on the traffic guests and the host taps, and measure again.
+        for vm in ("gen-a", "gen-b"):
+            lab.fact(f"ethtool_{vm}", lab.shell(vm, "ethtool -K eth0 tso off gso off gro off 2>&1 | tail -3; ethtool -k eth0 | grep -E 'tcp-segmentation|generic-segmentation|generic-receive'"))
+        for vm in ("gen-a", "gen-b", "malcolm"):
+            for tap in lab.taps(vm):
+                sh(["ethtool", "-K", tap, "tso", "off", "gso", "off", "gro", "off"])
+        loss, payload, received = iperf_loss("offload_off_100M", "100M")
+        lab.check(
+            "with segmentation offload off on the traffic guests, capture loss under the 100 Mbit/s iperf3 run is under 1% (payload bytes)",
+            loss < 1.0,
+            f"{loss:.2f}% ({payload}/{received} bytes)",
+        )
+        iperf_loss("offload_off_unlimited", "0")
         lab.fact("malcolm_link_stats", lab.shell("malcolm", "ip -s link"))
     finally:
         lab.collect()

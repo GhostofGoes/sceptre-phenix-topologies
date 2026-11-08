@@ -50,6 +50,59 @@ with `externalAccess` (DESIGN §15.2) and say so in §15.3.
 
 ## Result
 
-- **Decision:** go / go with boot-order rule / no-go
-- **Evidence:** (check_ports output, late-boot behavior)
-- **Follow-ups:** (how to re-create tunnels, whether SoH should wait for C2)
+- **Decision:** **go with two rules: discover the host port, and re-create
+  forwards after a VM restart or a late boot.** The unique "sport" plan of
+  DESIGN §15.3 does not work as written: the annotation's first number is not
+  the port the host listens on.
+- **Evidence** (run [42518460185](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42518460185), job "Spike autotunnel", artifact
+  `evidence-autotunnel`; phenix `984869d` from GhostofGoes/sceptre-phenix
+  `ci-e2e-minimega`, minimega 3.3.0; the experiment was started with the REST
+  call `POST /experiments/{exp}/start` against a running `phenix ui`, the only
+  way autotunnels are created, not with the CLI):
+  - Guests registered their C2 client about 50 to 70 s after start. Every
+    annotated tunnel then existed: `cc tunnel list <vm>` showed one per
+    annotation and the stub banners came back through them (scada-fuxa:1881,
+    sim-ctl:3000, :8080, :9200), and a POST to the sim-ctl event API stand-in
+    worked from the host.
+  - **Host ports are random.** The tunnels listened on 55421, 63542, 53917 and
+    54020 (127.0.0.1, range 50000-64999 from `forwardPortBase` in
+    `web/forward/forward.go`), not on the annotated 11881, 13001, 18080, 19200;
+    nothing answered on those. The annotation's first number is only the key of
+    the forward. Find the host port with `cc tunnel list <vm>` (row `dst
+    127.0.0.1`, `dst port <guest port>`, column `src port`) or
+    `GET /experiments/{exp}/vms/{vm}/forwards`.
+  - phenix ui kept answering (HTTP 200) with the tunnels open.
+  - **Restart:** after `vm kill` the tunnel was gone, and after `vm start` and
+    C2 re-registration it was not re-created (no tunnel in `cc tunnel list`).
+    `POST /experiments/{exp}/vms/sim-ctl/forwards?src=13002&host=127.0.0.1&dst=3000`
+    (HTTP 204) created a working tunnel (new random host port).
+  - **Late VM (case: C2 later than 5 minutes):** late-vm was paused before its
+    C2 client could register. phenix ui logged `startup autotunnel not created:
+    waiting for the C2 client` after the 5 minute C2 wait and made no tunnel.
+    After the VM was resumed and registered (state `PAUSED` before, C2 up
+    afterwards), still no autotunnel (`late_vm_gets_autotunnel False`); the REST
+    forward call (204) gave a working tunnel. The other case (C2 within 5
+    minutes) is what happened to the other guests: the tunnel appears once C2
+    is up, there is no need to start the VM after phenix.
+  - The behavior read from the fork's `app/startup.go`: autotunnels are
+    published only to a running `phenix ui` (a CLI `experiment start` logs
+    `autotunnels are created only for experiments started through phenix ui`
+    and makes none), each waits for the VM's C2 client for up to
+    `DefaultC2Timeout` (5 min, poll every 2 s) and then gives up with no later
+    retry, and `VNC` tunnels skip the wait. Upstream sandialabs `main`, as the
+    coordinator reports it (not re-checked here), instead makes one
+    `IsC2ClientActive` check per tunnel and drops it silently on failure, so
+    on upstream a VM that boots after PostStart gets no tunnel and no log line.
+- **Follow-ups:**
+  - Rewrite DESIGN §15.3 and the plantevent/SOCS tooling that assume
+    `localhost:19200` and the like: tools must look up the port (the cherrymountain
+    app or SCORCH can run `cc tunnel list` or call the forwards API) or the
+    design needs fixed ports from another mechanism (for example a forward
+    created through the REST call with a chosen `src` that a local tunneler
+    listens on, or a host-side `socat` to the discovered port).
+  - Start the range through `phenix ui` (`workflow apply` against the UI API),
+    never through a separate CLI process.
+  - Add a SoH step or a scenario hook that re-creates forwards after any VM
+    restart, and note that a VM whose C2 takes over 5 minutes needs it too.
+  - The late-VM case uses a pause, not a kill: a VM killed three seconds into
+    boot did not boot again in earlier runs.

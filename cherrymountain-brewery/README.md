@@ -1,10 +1,14 @@
 # CherryMountain Brewery
 
-> **Status:** in progress. The design is complete, the tag database,
-> generator, and cellar simulation exist, and the **ci variant** (the cellar
-> slice, five VMs) is implemented but has not run on a phenix host yet. The
-> full and lite variants are still design only. See
-> [DESIGN.md](DESIGN.md#18-implementation-roadmap) for the phases.
+> **Status:** in progress. The design is complete and the Phase 0 spikes are
+> done (all nine are go; the decisions are folded into
+> [DESIGN.md](DESIGN.md#18-implementation-roadmap)). The **ci variant** (the
+> cellar slice, five VMs) exists: the tag database, plantgen, the cellar
+> simulation, the PLC program and its OpenPLC v4 ZIP, the FUXA project, the four
+> image configs, and the topology, scenario, and workflow. Its integration test
+> passes in Docker (ot-sim, OpenPLC, FUXA), but the slice has not run on a phenix
+> host yet. The full and lite variants, the `cherrymountain` app, and the BACnet
+> and BBMD pieces are still design only.
 
 The CherryMountain Brewery topology models a notional SCADA system for a
 Colorado microbrewery and taproom. Its flagship West Coast IPA is "Fire of the
@@ -44,7 +48,7 @@ integration, new software, testing, roadmap, risks, and references.
 | `tests/integration/` | `ci_slice_docker.sh`: the cellar slice (ot-sim, OpenPLC v4.3.2, FUXA) in Docker, no KVM |
 | `fuxa/` | The generated FUXA project for scada-fuxa |
 | `tools/lint/` | Hook scripts for prek: systemd-analyze on units and shellcheck on shell in image YAML |
-| `spikes/` | Phase 0 spike kits |
+| `spikes/` | Phase 0 spike kits, each with its go/no-go result ([summary](spikes/README.md)) |
 | `apps/` | Not created yet. Each phenix app will live here and ship its own `README.md` |
 
 ## The ci variant

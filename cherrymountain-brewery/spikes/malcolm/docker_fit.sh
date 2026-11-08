@@ -86,8 +86,22 @@ log "pulling $ZEEK_IMAGE"
 timeout 900 docker pull -q "$ZEEK_IMAGE" >/dev/null 2>&1
 ZD="$EV/zeek-direct"
 mkdir -p "$ZD" && cp "$EV/ics.pcap" "$ZD/" && chmod 777 "$ZD"
-timeout 300 docker run --name cm-zeek --user root -v "$ZD:/work" -w /work --entrypoint /usr/local/zeek/bin/zeek-offline \
-  "$ZEEK_IMAGE" -C -r ics.pcap local >"$EV/zeek-direct.out" 2>&1
+docker run -d --name cm-zeek --user root -v "$ZD:/work" -w /work --entrypoint /usr/local/zeek/bin/zeek-offline \
+  "$ZEEK_IMAGE" -C -r ics.pcap local >/dev/null
+CID=$(docker inspect -f '{{.Id}}' cm-zeek)
+# Peak memory from the container's cgroup (cgroup v2 memory.peak) and CPU from docker stats, once a second.
+PEAK_FILE=$(ls /sys/fs/cgroup/system.slice/docker-"$CID".scope/memory.peak 2>/dev/null || true)
+ZEEK_PEAK=0; ZEEK_CPU=0
+for _ in $(seq 1 300); do
+  [ "$(docker inspect -f '{{.State.Running}}' cm-zeek 2>/dev/null)" = true ] || break
+  if [ -n "$PEAK_FILE" ]; then v=$(cat "$PEAK_FILE" 2>/dev/null || echo 0); [ "${v:-0}" -gt "$ZEEK_PEAK" ] && ZEEK_PEAK=$v; fi
+  c=$(docker stats --no-stream --format '{{.CPUPerc}}' cm-zeek 2>/dev/null | tr -d '%'); echo "$(date +%s),cm-zeek,$c" >>"$EV/zeek-cpu.csv"
+  if [ -n "$c" ] && awk -v a="$c" -v b="$ZEEK_CPU" 'BEGIN { exit !(a > b) }'; then ZEEK_CPU=$c; fi
+  sleep 1
+done
+docker wait cm-zeek >/dev/null 2>&1
+docker logs cm-zeek >"$EV/zeek-direct.out" 2>&1
+fact zeek_peak "memory $((ZEEK_PEAK / 1048576)) MiB (cgroup memory.peak), CPU peak ${ZEEK_CPU}% of one core, run took $(docker inspect -f '{{.State.StartedAt}} to {{.State.FinishedAt}}' cm-zeek)"
 rm -f "$ZD/ics.pcap"
 docker rm -f cm-zeek >/dev/null 2>&1
 for proto in modbus dnp3 bacnet; do

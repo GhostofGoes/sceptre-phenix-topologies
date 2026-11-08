@@ -69,12 +69,20 @@ def verify(analyze: str, unit: Path) -> list[str]:
         text=True,
         check=False,
     )
+    # systemd-analyze also loads every unit on the machine and complains about
+    # those (the runner's xfs_scrub and walinuxagent units, for example). Keep
+    # only the findings about this unit.
     lines: list[str] = [
         line.replace(str(unit), unit.name)
         for line in (proc.stdout + proc.stderr).splitlines()
-        if line.strip() and not _MISSING_BINARY.search(line)
     ]
-    return list(dict.fromkeys(lines))
+    return list(
+        dict.fromkeys(
+            line
+            for line in lines
+            if line.startswith(unit.name) and not _MISSING_BINARY.search(line)
+        )
+    )
 
 
 def security(analyze: str, unit: Path, threshold: float) -> list[str]:

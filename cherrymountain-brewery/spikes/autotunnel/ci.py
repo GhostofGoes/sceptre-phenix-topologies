@@ -155,8 +155,13 @@ def run() -> int:
         lab.save("tunnels-after-restart.txt", lab.mm.text("cc tunnel list sim-ctl", EXP))
 
         # Guest reboot
-        lab.shell("scada-fuxa", "(sleep 2; reboot) >/dev/null 2>&1 & echo rebooting")
-        time.sleep(15)
+        # The reboot is delayed so the cc answer reaches the host first.
+        lab.shell("scada-fuxa", "setsid nohup sh -c 'sleep 15; reboot' >/dev/null 2>&1 </dev/null & echo rebooting")
+        try:
+            wait_for("scada-fuxa C2 to drop", 120, 3, lambda: ("scada-fuxa" not in lab.cc_clients(), str(sorted(lab.cc_clients()))))
+        except TimeoutError as exc:
+            lab.fact("guest_reboot_c2_drop", f"C2 entry never dropped: {exc}")
+        time.sleep(10)
         wait_for("scada-fuxa C2 after reboot", 300, 5, lambda: ("scada-fuxa" in lab.cc_clients(), str(sorted(lab.cc_clients()))))
         start_stubs(lab, "scada-fuxa", [1881])
         tunnel_back("scada-fuxa", 1881, "stub scada-fuxa:1881", "guest_reboot")

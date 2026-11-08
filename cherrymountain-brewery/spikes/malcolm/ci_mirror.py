@@ -158,22 +158,28 @@ def run() -> int:
             )
             return loss, payload, received
 
-        loss, payload, received = iperf_loss("offload_on_100M", "100M")
-        lab.fact("capture_loss_offload_on_100M", f"{loss:.2f}% ({payload}/{received} bytes)")
-        # Suspect: segments larger than the mirror path's MTU are dropped. Turn off TCP
-        # segmentation offload on the traffic guests and the host taps, and measure again.
-        for vm in ("gen-a", "gen-b"):
-            lab.fact(f"ethtool_{vm}", lab.shell(vm, "ethtool -K eth0 tso off gso off gro off 2>&1 | tail -3; ethtool -k eth0 | grep -E 'tcp-segmentation|generic-segmentation|generic-receive'"))
-        for vm in ("gen-a", "gen-b", "malcolm"):
-            for tap in lab.taps(vm):
-                sh(["ethtool", "-K", tap, "tso", "off", "gso", "off", "gro", "off"])
-        loss, payload, received = iperf_loss("offload_off_100M", "100M")
-        lab.check(
-            "with segmentation offload off on the traffic guests, capture loss under the 100 Mbit/s iperf3 run is under 1% (payload bytes)",
-            loss < 1.0,
-            f"{loss:.2f}% ({payload}/{received} bytes)",
-        )
-        iperf_loss("offload_off_unlimited", "0")
+        loss, payload, received = iperf_loss("100M", "100M")
+        lab.check("capture loss under the 100 Mbit/s iperf3 run is under 1% (payload bytes)", loss < 1.0, f"{loss:.2f}% ({payload}/{received} bytes)")
+        # Runs 6 to 8: only the first ~1.4 MB of a bulk TCP flow reaches the capture port,
+        # with segmentation offload on or off, and an MTU of 9000 on the mirror path changed
+        # nothing. Find the frame size where the capture stops, and test a small-frame flow.
+        sizes: list[int] = [64, 500, 1000, 1400, 1472, 4000]
+        lab.shell("malcolm", "rm -f /tmp/ladder.pcap; (setsid nohup timeout 120 tcpdump -ni " + CAP_IF + " -U -w /tmp/ladder.pcap >/dev/null 2>&1 </dev/null &); sleep 2; echo started")
+        for size in sizes:
+            lab.shell("gen-a", f"ping -c 20 -i 0.2 -W 2 -M dont -s {size} {B} >/dev/null 2>&1; echo done")
+        time.sleep(3)
+        lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
+        seen: dict[int, int] = {}
+        for size in sizes:
+            seen[size] = count(lab, "/tmp/ladder.pcap", f"IP {A} > {B}: ICMP echo request, id [0-9]+, seq [0-9]+, length {size + 8}$")
+        lab.fact("ping_size_ladder", f"echo requests captured out of 20 per ICMP payload size: {seen}")
+        lab.shell("malcolm", "rm -f /tmp/udp.pcap; (setsid nohup timeout 120 tcpdump -ni " + CAP_IF + " -U -w /tmp/udp.pcap >/dev/null 2>&1 </dev/null &); sleep 2; echo started")
+        lab.shell("gen-b", "setsid nohup iperf3 -s -p 5202 >/tmp/iperf-udp.log 2>&1 </dev/null & sleep 1; echo up")
+        udp_out: str = lab.shell("gen-a", f"iperf3 -c {B} -p 5202 -u -l 200 -b 10M -t 10 2>&1 | tail -4", wait_s=90)
+        time.sleep(3)
+        lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
+        udp_seen: int = count(lab, "/tmp/udp.pcap", f" > {B}.5202: UDP, length 200")
+        lab.fact("udp_small_frames", f"{udp_out.strip()[-300:]} | captured UDP datagrams to {B}:5202 = {udp_seen}")
         lab.fact("malcolm_link_stats", lab.shell("malcolm", "ip -s link"))
     finally:
         lab.collect()

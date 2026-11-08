@@ -72,13 +72,13 @@ spec:
       node --version
 
       mkdir -p /opt/fuxa
-      cd /opt/fuxa
+      cd /opt/fuxa || exit 1
       git init -q
       git remote add origin https://github.com/frangoteam/FUXA.git
       git fetch -q --depth 1 origin "$FUXA_REF"
       git checkout -q FETCH_HEAD
 
-      cd /opt/fuxa/server
+      cd /opt/fuxa/server || exit 1
       npm install --no-audit --no-fund
       npm run build
       # Driver plugins (optional npm packages since FUXA 1.3.2) at the versions the
@@ -92,10 +92,36 @@ spec:
       Description=FUXA SCADA server
       After=network.target
       [Service]
+      Type=exec
       WorkingDirectory=/opt/fuxa/server
       ExecStart=/usr/local/bin/node /opt/fuxa/server/main.js
       Restart=always
       RestartSec=5
+      # Hardening. FUXA writes only under /opt/fuxa (_appdata, _logs, _images).
+      # MemoryDenyWriteExecute stays off because V8 needs executable memory.
+      # AF_NETLINK is for os.networkInterfaces().
+      NoNewPrivileges=yes
+      PrivateTmp=yes
+      PrivateDevices=yes
+      ProtectSystem=strict
+      ReadWritePaths=/opt/fuxa
+      ProtectHome=yes
+      ProtectProc=invisible
+      ProcSubset=pid
+      ProtectKernelTunables=yes
+      ProtectKernelModules=yes
+      ProtectKernelLogs=yes
+      ProtectControlGroups=yes
+      ProtectClock=yes
+      ProtectHostname=yes
+      RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+      RestrictNamespaces=yes
+      RestrictRealtime=yes
+      RestrictSUIDSGID=yes
+      LockPersonality=yes
+      SystemCallArchitectures=native
+      CapabilityBoundingSet=
+      UMask=0077
       [Install]
       WantedBy=multi-user.target
       EOF

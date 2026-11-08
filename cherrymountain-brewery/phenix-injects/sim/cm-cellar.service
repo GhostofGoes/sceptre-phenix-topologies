@@ -1,17 +1,49 @@
 [Unit]
 Description=CherryMountain cellar HELICS federate
+# phenix startup scripts, not systemd, configure the network, so
+# network-online.target would not mean anything here. The federate retries
+# until the root broker (started by the helics app on sim-ctl) accepts it.
 After=network.target
+# Never give up: the broker may start late or restart.
 StartLimitIntervalSec=0
 
 [Service]
-# The federate retries until the root broker (started by the helics app on
-# sim-ctl) accepts it. HELICS_BROKER_ADDRESS overrides the address in the
-# plantgen config.
+Type=exec
+# HELICS_BROKER_ADDRESS overrides the address in the plantgen config.
 EnvironmentFile=-/etc/default/cm-cellar
 Environment=LD_LIBRARY_PATH=/usr/local/lib
+Environment=PYTHONDONTWRITEBYTECODE=1
 ExecStart=/opt/cherrymountain/venv/bin/python -m cherrymountain_sim --config ${CELLAR_CONFIG} --broker-address ${HELICS_BROKER_ADDRESS} --log-level ${CELLAR_LOG_LEVEL}
 Restart=always
 RestartSec=5
+
+# Hardening. The federate only reads its config and talks to the broker over
+# TCP. MemoryDenyWriteExecute is left off because the HELICS library is loaded
+# through ctypes, which can need executable memory.
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

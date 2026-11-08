@@ -72,7 +72,7 @@ spec:
       apt-get install -y --no-install-recommends git zip unzip
 
       git clone --depth 1 --branch "$OPENPLC_REF" https://github.com/Autonomy-Logic/openplc-runtime.git /opt/openplc-runtime
-      cd /opt/openplc-runtime
+      cd /opt/openplc-runtime || exit 1
       # install.sh creates this directory only when systemd is running, which it is
       # not in a chroot. It holds the user database and .env across reboots.
       mkdir -p /var/lib/openplc-runtime /var/run/runtime

@@ -40,7 +40,8 @@ integration, new software, testing, roadmap, risks, and references.
 | `phenix-ci.yml`, `phenix-configs/{topology,scenario}-ci.yml` | Workflow, topology, and scenario for the ci variant |
 | `phenix-injects/` | Files the ci scenario injects: federate units, OpenPLC and FUXA provisioning, generated copies |
 | `phenix-images/` | Image configs for `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa` (noble) |
-| `plc/plc-cellar/` | The cellar PLC program in Structured Text, and how to build the Editor ZIP |
+| `plc/plc-cellar/` | The cellar PLC program in Structured Text, and `build_zip.sh`, which builds its OpenPLC v4 ZIP |
+| `tests/integration/` | `ci_slice_docker.sh`: the cellar slice (ot-sim, OpenPLC v4.3.2, FUXA) in Docker, no KVM |
 | `fuxa/` | The generated FUXA project for scada-fuxa |
 | `spikes/` | Phase 0 spike kits |
 
@@ -52,10 +53,10 @@ program ZIP must exist first:
 
 1. Build the four images from `phenix-images/` (each file's header has the
    commands), then add miniccc with `phenix image inject-miniexe`.
-2. Build the OpenPLC Editor ZIP as described in
-   [plc/plc-cellar/README.md](plc/plc-cellar/README.md) and commit it as
-   `phenix-injects/openplc/plc-cellar.zip` (Git LFS). The topology injects that
-   path.
+2. The OpenPLC program ZIP is `phenix-injects/openplc/plc-cellar.zip` (Git
+   LFS), built headless by `plc/plc-cellar/build_zip.sh` (see
+   [plc/plc-cellar/README.md](plc/plc-cellar/README.md)). The topology injects
+   that path; rebuild it after any change to the plant or the program.
 3. Apply the variant with its own workflow branch, from outside the directory:
 
 ```shell
@@ -72,7 +73,9 @@ Run these from this directory after changing `plant/plant.yaml`:
 ```shell
 (cd tools/plantgen && python -m plantgen)          # rewrite plant/generated/*
 python sync_ci.py                                    # copy generated files into phenix-injects/
-python fuxa/build_project.py                         # rebuild the FUXA project (then sync_ci.py)
+python fuxa/build_project.py                         # rebuild the FUXA project
+python sync_ci.py                                    # ... and copy it (run again after build_project.py)
+plc/plc-cellar/build_zip.sh                          # rebuild the OpenPLC program ZIP (needs Node 22+)
 ```
 
 Checks (all must pass; `prek run --all-files` covers lint and hygiene):
@@ -83,9 +86,26 @@ Checks (all must pass; `prek run --all-files` covers lint and hygiene):
 python sync_ci.py --check                            # injects and scenario match plantgen output
 python fuxa/build_project.py --check                 # FUXA project is current
 python plc/plc-cellar/assemble.py                    # PLC program matches alarms.json and the I/O map
+plc/plc-cellar/build_zip.sh --check                  # the committed ZIP is a fresh build (needs Node 22+)
+(cd tests/integration && python -m pytest)           # ot-sim hand-render equals the phenix app
 ```
 
 `assemble.py --iec2c <path>` also compiles the PLC program with matiec.
+
+The integration test runs the slice in Docker (about 10 minutes the first time, for
+the image builds; see the header of the script for its environment variables):
+
+```shell
+tests/integration/ci_slice_docker.sh
+```
+
+It starts ot-sim (`rio-cellar`) with the real `cherrymountain_sim` federate and a
+HELICS broker, OpenPLC v4.3.2 running `plc-cellar.zip`, and FUXA 1.3.5 provisioned
+with the generated project, then asserts the values flow ot-sim to PLC to FUXA,
+that setpoints written through FUXA and Modbus land in the right `%MW` words and
+move the valves, that the alarm bits read correctly, and that the spunding outputs
+reach ot-sim. It also uploads two deliberately different `modbus_slave.json` files
+to pin down how the v4 runtime clamps and segments the holding registers.
 
 ## Applying the full design
 

@@ -3,7 +3,8 @@
 #   create-user -> login -> upload-file -> poll compilation-status -> start-plc
 # Usage: PLC=10.20.40.10 ZIP=./prog.zip ./provision.sh
 # Env: PLC (required), ZIP (required), PORT=8443, USER_NAME=admin,
-#      USER_PASS=cm-spike-pass, TIMEOUT=600 (compile timeout, seconds)
+#      USER_PASS=cm-spike-pass, TIMEOUT=600 (compile timeout, seconds),
+#      CLEAN=0 (set 1 to force a full rebuild: upload-file?clean=1)
 # The runtime serves a self-signed certificate, so curl runs with -k.
 set -euo pipefail
 
@@ -13,6 +14,7 @@ PORT="${PORT:-8443}"
 USER_NAME="${USER_NAME:-admin}"
 USER_PASS="${USER_PASS:-cm-spike-pass}"
 TIMEOUT="${TIMEOUT:-600}"
+CLEAN="${CLEAN:-0}"
 BASE="https://${PLC}:${PORT}/api"
 
 api() { curl -ksS --max-time 60 "$@"; }
@@ -37,9 +39,12 @@ AUTH="Authorization: Bearer ${TOKEN}"
 echo "token acquired (${#TOKEN} chars)"
 
 echo "== upload-file"
-# TODO(verify): the multipart field name is "file" per the upstream OpenAPI
-# docstring; the handler may also want extra fields (e.g. a project snapshot).
-api -H "${AUTH}" -F "file=@${ZIP}" "${BASE}/upload-file"; echo
+# Verified at v4.3.2: the multipart field is "file" (webserver/app.py
+# _handle_upload_file reads flask.request.files["file"]); no other field is
+# required. The reply is JSON; UploadFileFail must be empty.
+up=$(api -H "${AUTH}" -F "file=@${ZIP}" "${BASE}/upload-file?clean=${CLEAN}")
+echo "${up}"
+case "${up}" in *'"UploadFileFail":""'*) ;; *) echo "FAIL: upload rejected"; exit 1 ;; esac
 
 echo "== poll compilation-status (timeout ${TIMEOUT}s)"
 start=$(now)
@@ -60,5 +65,9 @@ echo "== start-plc"
 api -H "${AUTH}" "${BASE}/start-plc"; echo
 sleep 3
 echo "== status (include_stats)"
-api -H "${AUTH}" "${BASE}/status?include_stats=true"; echo
+st=$(api -H "${AUTH}" "${BASE}/status?include_stats=true")
+echo "${st}"
+# START:OK only means the request was accepted; a program that fails to load
+# (for example a ZIP built without generated_debug.cpp) leaves STATUS:EMPTY.
+case "${st}" in *STATUS:RUNNING*) ;; *) echo "FAIL: PLC is not RUNNING (see runtime-logs)"; api -H "${AUTH}" "${BASE}/runtime-logs" | tail -c 1500; exit 1 ;; esac
 echo "PASS: unattended upload, compile, and start completed"

@@ -3,19 +3,26 @@
 
 Usage: modbus_read.py HOST [--port 502] [--addr 0] [--count 4] [--unit 1]
 Install: pip install pymodbus
+Verified with pymodbus 3.16.2 (`device_id=` keyword) against OpenPLC v4.3.2
+`modbus_slave`. A read past the registers the program's image exposes returns
+Exception 2 (Illegal Data Address), so keep --count within the located
+variables (`%QW` count plus `%MW` count, ...).
 """
 import argparse
 import sys
 
 from pymodbus.client import ModbusTcpClient
 
+DEFAULT_PORT: int = 502
+DEFAULT_COUNT: int = 4
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("host")
-    ap.add_argument("--port", type=int, default=502)
+    ap.add_argument("--port", type=int, default=DEFAULT_PORT)
     ap.add_argument("--addr", type=int, default=0)
-    ap.add_argument("--count", type=int, default=4)
+    ap.add_argument("--count", type=int, default=DEFAULT_COUNT)
     ap.add_argument("--unit", type=int, default=1)
     a = ap.parse_args()
 

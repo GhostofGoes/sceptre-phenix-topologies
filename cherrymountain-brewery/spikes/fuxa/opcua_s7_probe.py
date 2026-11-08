@@ -1,59 +1,67 @@
 #!/usr/bin/env python3
-"""Probe the OpenPLC v4 opcua and s7comm plugins with the same stacks FUXA uses.
+"""Probe the OpenPLC v4 opcua and s7comm plugins with Python stand-ins for the
+stacks FUXA uses (node-opcua, node-snap7).
 
-Usage: opcua_s7_probe.py PLC_HOST [--opcua-port 4840] [--s7-port 102]
-Install: pip install asyncua python-snap7
-FUXA uses node-opcua and node-snap7; these Python clients are stand-ins that
-show the plugins answer (browse root, read one S7 DB). The decisive test is
-still FUXA's own device connection (README step 4).
+Usage: opcua_s7_probe.py PLC_HOST [--opcua-port 4840] [--opcua-path /openplc/opcua]
+                         [--s7-port 102] [--s7-db 1]
+Install: pip install asyncua python-snap7 pydantic
+Verified with asyncua 2.1.0 and python-snap7 3.4.0 against OpenPLC v4.3.2.
+The OPC UA server also answers on the bare URL (no path). The s7comm plugin
+exposes only the DB numbers listed in conf/s7comm.json (fixture: DB1 = %QW,
+DB2 = %IW). The decisive test is still FUXA's own device connection.
 """
 import argparse
 import asyncio
 import sys
 
+from asyncua import Client
+from pydantic import BaseModel
 
-async def opcua(host: str, port: int) -> bool:
-    from asyncua import Client
 
-    url = f"opc.tcp://{host}:{port}"
-    # TODO(verify): the plugin's real endpoint path (template default is
-    # opc.tcp://localhost:4840/...); append it here if the server requires it.
+class ProbeResult(BaseModel):
+    protocol: str
+    ok: bool
+    detail: str
+
+
+async def opcua(host: str, port: int, path: str) -> ProbeResult:
+    url = f"opc.tcp://{host}:{port}{path}"
     try:
         async with Client(url=url, timeout=5) as c:
             kids = await c.nodes.objects.get_children()
-            print(f"OPC UA ok at {url}: {len(kids)} children under Objects")
-            return True
+            names = [(await k.read_browse_name()).Name for k in kids]
+            return ProbeResult(protocol="opcua", ok=True, detail=f"{url}: Objects children {names}")
     except Exception as exc:  # noqa: BLE001
-        print(f"OPC UA FAIL at {url}: {exc!r}")
-        return False
+        return ProbeResult(protocol="opcua", ok=False, detail=f"{url}: {exc!r}")
 
 
-def s7(host: str, port: int) -> bool:
+def s7(host: str, port: int, db: int) -> ProbeResult:
     try:
         import snap7
 
         cl = snap7.client.Client()
         cl.connect(host, 0, 1, port)  # rack 0, slot 1
-        # TODO(verify): which DB number/size the s7comm plugin exposes.
-        data = cl.db_read(1, 0, 4)
-        print(f"S7 ok at {host}:{port}: DB1[0:4]={bytes(data).hex()}")
+        data = cl.db_read(db, 0, 4)
         cl.disconnect()
-        return True
+        return ProbeResult(protocol="s7", ok=True, detail=f"{host}:{port} DB{db}[0:4]={bytes(data).hex()}")
     except Exception as exc:  # noqa: BLE001
-        print(f"S7 FAIL at {host}:{port}: {exc!r}")
-        return False
+        return ProbeResult(protocol="s7", ok=False, detail=f"{host}:{port}: {exc!r}")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("host")
     ap.add_argument("--opcua-port", type=int, default=4840)
+    ap.add_argument("--opcua-path", default="/openplc/opcua")
     ap.add_argument("--s7-port", type=int, default=102)
+    ap.add_argument("--s7-db", type=int, default=1)
     a = ap.parse_args()
-    ok1 = asyncio.run(opcua(a.host, a.opcua_port))
-    ok2 = s7(a.host, a.s7_port)
-    print("PASS" if ok1 and ok2 else "FAIL")
-    return 0 if ok1 and ok2 else 1
+    results = [asyncio.run(opcua(a.host, a.opcua_port, a.opcua_path)), s7(a.host, a.s7_port, a.s7_db)]
+    for r in results:
+        print(("ok   " if r.ok else "FAIL ") + r.protocol, r.detail)
+    ok = all(r.ok for r in results)
+    print("PASS" if ok else "FAIL")
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

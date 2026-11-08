@@ -1,0 +1,71 @@
+[
+  {
+    "name": "opcua_server",
+    "protocol": "OPC-UA",
+    "config": {
+      "server": {
+        "name": "OpenPLC OPC UA Server",
+        "application_uri": "urn:freeopcua:python:server",
+        "product_uri": "urn:openplc:runtime:product",
+        "endpoint_url": "opc.tcp://0.0.0.0:4840/openplc/opcua",
+        "security_profiles": [
+          {
+            "name": "insecure",
+            "enabled": true,
+            "security_policy": "None",
+            "security_mode": "None",
+            "auth_methods": [
+              "Anonymous"
+            ]
+          }
+        ]
+      },
+      "security": {
+        "server_certificate_strategy": "auto_self_signed",
+        "server_certificate_custom": null,
+        "server_private_key_custom": null,
+        "trusted_client_certificates": []
+      },
+      "users": [],
+      "cycle_time_ms": 100,
+      "address_space": {
+        "namespace_uri": "urn:openplc:opcua:namespace",
+        "variables": [
+          {
+            "node_id": "PLC.cnt",
+            "browse_name": "cnt",
+            "display_name": "cnt",
+            "datatype": "INT",
+            "description": "",
+            "arr": 0,
+            "elem": 0,
+            "permissions": {
+              "viewer": "rw",
+              "operator": "rw",
+              "engineer": "rw"
+            },
+            "size": 2
+          },
+          {
+            "node_id": "PLC.inp",
+            "browse_name": "inp",
+            "display_name": "inp",
+            "datatype": "INT",
+            "description": "",
+            "arr": 0,
+            "elem": 1,
+            "permissions": {
+              "viewer": "rw",
+              "operator": "rw",
+              "engineer": "rw"
+            },
+            "size": 2
+          }
+        ],
+        "structures": [],
+        "arrays": []
+      },
+      "format_version": 2
+    }
+  }
+]

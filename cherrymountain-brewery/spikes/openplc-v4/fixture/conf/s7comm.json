@@ -1,0 +1,27 @@
+{
+  "server": {
+    "enabled": true,
+    "bind_address": "0.0.0.0",
+    "port": 102
+  },
+  "data_blocks": [
+    {
+      "db_number": 1,
+      "description": "QW",
+      "size_bytes": 16,
+      "mapping": {
+        "type": "int_output",
+        "start_buffer": 0
+      }
+    },
+    {
+      "db_number": 2,
+      "description": "IW",
+      "size_bytes": 16,
+      "mapping": {
+        "type": "int_input",
+        "start_buffer": 0
+      }
+    }
+  ]
+}

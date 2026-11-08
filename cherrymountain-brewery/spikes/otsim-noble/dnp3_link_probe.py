@@ -6,12 +6,21 @@ proves the DNP3 module is listening and framing correctly; it does not prove
 an application-layer integrity poll (use the upstream master for that, see
 README step 5). Also usable for the IPsec spike (vyos-ipsec).
 
-Usage: dnp3_link_probe.py HOST [--port 20000] [--dest 10] [--src 1]
+Usage: dnp3_link_probe.py HOST [--port 20000] [--dest 1024] [--src 1]
+Defaults match ot-sim's example configs (outstation local-address 1024, master
+remote-address 1). Verified against ot-sim-dnp3-module on Ubuntu 24.04: the
+LINK_STATUS reply arrives only when --dest equals the outstation's configured
+local-address; any other address (for example 10) gets no reply.
 """
 import argparse
 import socket
 import struct
 import sys
+
+
+DEFAULT_PORT: int = 20000
+DEFAULT_DEST: int = 1024
+DEFAULT_SRC: int = 1
 
 
 def crc16_dnp(data: bytes) -> int:
@@ -32,9 +41,9 @@ def frame(dest: int, src: int) -> bytes:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("host")
-    ap.add_argument("--port", type=int, default=20000)
-    ap.add_argument("--dest", type=int, default=10, help="outstation link address")
-    ap.add_argument("--src", type=int, default=1, help="master link address")
+    ap.add_argument("--port", type=int, default=DEFAULT_PORT)
+    ap.add_argument("--dest", type=int, default=DEFAULT_DEST, help="outstation link address")
+    ap.add_argument("--src", type=int, default=DEFAULT_SRC, help="master link address")
     a = ap.parse_args()
     try:
         with socket.create_connection((a.host, a.port), timeout=5) as s:
@@ -46,8 +55,6 @@ def main() -> int:
         return 1
     print("reply:", resp.hex())
     ok = len(resp) >= 10 and resp[:2] == b"\x05\x64" and (resp[3] & 0x0F) == 0x0B
-    # TODO(verify): some outstations ignore link status when the link
-    # addresses do not match config.xml; set --dest/--src from the config.
     print("PASS: LINK_STATUS received" if ok else "FAIL: no LINK_STATUS reply")
     return 0 if ok else 1
 

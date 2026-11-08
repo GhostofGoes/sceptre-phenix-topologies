@@ -3,8 +3,12 @@
 # step 3). Usage: ./repack_zip.sh in.zip out.zip conf_dir [member_dir]
 #   conf_dir   directory with plugin JSON files, e.g. opcua.json modbus_master.json
 #   member_dir directory inside the ZIP that holds plugin configs (default: conf)
-# TODO(verify): the in-ZIP location of plugin configs. Build a project with
-# plugins enabled in the Editor, `unzip -l` it, and set member_dir to match.
+# Verified at v4.3.2: configs live in conf/ inside the ZIP and the file name
+# (without .json) must equal the plugin name in plugins.conf (opcua,
+# modbus_slave, modbus_master, s7comm). webserver/plcapp_management.py
+# update_plugin_configurations() scans core/generated/conf/*.json, copies each
+# match to the plugin directory, and DISABLES every plugin with no file; a ZIP
+# with no conf/ directory disables all plugins.
 set -euo pipefail
 
 in="${1:?input zip}"

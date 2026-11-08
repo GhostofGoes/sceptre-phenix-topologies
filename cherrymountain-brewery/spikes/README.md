@@ -2,22 +2,24 @@
 
 Runnable checks for the eight Phase 0 spikes in
 [DESIGN.md §18](../DESIGN.md). Run them on your own phenix/minimega host (or
-a scratch Ubuntu noble VM where noted). Nothing here has been run against
-real VMs; every guess about an upstream API is marked `TODO(verify):`.
+a scratch Ubuntu noble VM where noted). The openplc-v4, fuxa, otsim-noble
+and bacnet kits were run in Docker containers on a no-KVM host (see their
+Result sections); nothing here has been run against real VMs. Every
+remaining guess about an upstream API is marked `TODO(verify):`.
 
 Each spike writes a go/no-go decision into the **Result** section of its own
 README. Phase 1 should not start until the "blocking" spikes have a decision.
 
 | Spike | Question | Unblocks | Est. time | Status |
 |---|---|---|---|---|
-| [openplc-v4](openplc-v4/README.md) | Can OpenPLC v4 be provisioned unattended (ZIP upload, plugin configs, OPC UA rebind) within the RAM budget? | v4 vs v3 decision (§12.1) | 3-4 h | not run |
-| [fuxa](fuxa/README.md) | Do offline plugins load, and does the secure sign-in, password, `/api/project` flow work? Do FUXA OPC UA and S7 clients talk to the v4 plugins? | FUXA image and boot script (§12.2) | 3 h | not run |
-| [otsim-noble](otsim-noble/README.md) | Does ot-sim run on noble: Python HELICS federate and C++ DNP3 master/outstation? | `cm-otsim` base image or focal fallback for DNP3 nodes (§12.3) | 3-4 h | not run |
-| [bacnet](bacnet/README.md) | Can a BACnet device answer ReadProperty on device 3003 and be read by FUXA `node-bacnet`? | BACnet module scope or bennu `hvac` fallback (§8.1, §15.2) | 4-6 h | not run |
-| [malcolm](malcolm/README.md) | Does Malcolm fit on the host, and does it capture through the mirror app's `setupOVS`? | Malcolm profile and `lite` variant (§14) | 3-4 h | not run |
-| [vyos-ipsec](vyos-ipsec/README.md) | Does phenix's `vyatta.tmpl` IPsec block commit on VyOS 1.5, and does DNP3 cross the tunnel? | Patch phenix or push IPsec via cc (§10.3, §19) | 2-3 h | not run |
-| [autotunnel](autotunnel/README.md) | Can the host reach white-cell services through `phenix/startup-autotunnel` with the unique port plan? | Annotations in §15.3 | 1-2 h | not run |
-| [serial](serial/README.md) (stretch) | Does ot-sim Modbus RTU work over minimega serial? | `serial` app scope (§15.2) | 2-3 h | not run |
+| [openplc-v4](openplc-v4/README.md) | Can OpenPLC v4 be provisioned unattended (ZIP upload, plugin configs, OPC UA rebind) within the RAM budget? | v4 vs v3 decision (§12.1) | 3-4 h | partial |
+| [fuxa](fuxa/README.md) | Do offline plugins load, and does the secure sign-in, password, `/api/project` flow work? Do FUXA OPC UA and S7 clients talk to the v4 plugins? | FUXA image and boot script (§12.2) | 3 h | partial |
+| [otsim-noble](otsim-noble/README.md) | Does ot-sim run on noble: Python HELICS federate and C++ DNP3 master/outstation? | `cm-otsim` base image or focal fallback for DNP3 nodes (§12.3) | 3-4 h | pass |
+| [bacnet](bacnet/README.md) | Can a BACnet device answer ReadProperty on device 3003 and be read by FUXA `node-bacnet`? | BACnet module scope or bennu `hvac` fallback (§8.1, §15.2) | 4-6 h | pass |
+| [malcolm](malcolm/README.md) | Does Malcolm fit on the host, and does it capture through the mirror app's `setupOVS`? | Malcolm profile and `lite` variant (§14) | 3-4 h | needs VM |
+| [vyos-ipsec](vyos-ipsec/README.md) | Does phenix's `vyatta.tmpl` IPsec block commit on VyOS 1.5, and does DNP3 cross the tunnel? | Patch phenix or push IPsec via cc (§10.3, §19) | 2-3 h | needs VM |
+| [autotunnel](autotunnel/README.md) | Can the host reach white-cell services through `phenix/startup-autotunnel` with the unique port plan? | Annotations in §15.3 | 1-2 h | needs VM |
+| [serial](serial/README.md) (stretch) | Does ot-sim Modbus RTU work over minimega serial? | `serial` app scope (§15.2) | 2-3 h | needs VM |
 
 ## Conventions
 

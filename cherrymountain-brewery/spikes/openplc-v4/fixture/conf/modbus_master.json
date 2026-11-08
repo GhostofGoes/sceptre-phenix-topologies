@@ -1,0 +1,21 @@
+[
+  {
+    "name": "self",
+    "protocol": "MODBUS",
+    "config": {
+      "type": "SLAVE",
+      "host": "127.0.0.1",
+      "port": 502,
+      "cycle_time_ms": 100,
+      "timeout_ms": 1000,
+      "io_points": [
+        {
+          "fc": 3,
+          "offset": "0",
+          "iec_location": "%IW0",
+          "len": 1
+        }
+      ]
+    }
+  }
+]

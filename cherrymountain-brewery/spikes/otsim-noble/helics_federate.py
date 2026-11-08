@@ -35,7 +35,7 @@ def main() -> int:
         h.helicsFederateEnterExecutingMode(f)
         h.helicsPublicationPublishDouble(pub, 42.5)
         h.helicsFederateRequestTime(f, 2.0)
-        h.helicsFederateFinalize(f)
+        h.helicsFederateDisconnect(f)
 
     def fed_b() -> None:
         f = make_fed("fedB")
@@ -44,7 +44,7 @@ def main() -> int:
         t = h.helicsFederateRequestTime(f, 2.0)
         got["v"] = h.helicsInputGetDouble(sub)
         got["t"] = t
-        h.helicsFederateFinalize(f)
+        h.helicsFederateDisconnect(f)
 
     ts = [threading.Thread(target=fed_a), threading.Thread(target=fed_b)]
     for t in ts:

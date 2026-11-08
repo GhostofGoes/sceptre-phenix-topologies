@@ -60,7 +60,78 @@ foreign-device registration the driver does not do.
 
 ## Result
 
-- **Decision:** (filled in after the runs)
-- **Router:**
-- **Evidence:**
+- **Decision:** **go, with a BBMD on each side and more than the ACL the
+  question assumed.** FUXA on OPS discovers BAS device 3003 across the
+  firewall, and ReadProperty works. A stateful ACL that only allows "UDP 47808
+  between the BBMDs and replies" is **not enough**: the device answers the
+  Who-Is with a *new* BAS-to-OPS flow (see the rules below).
+- **Router:** both a VyOS VM (the primary result) and a Linux router (network
+  namespaces, nftables) gave identical results. VyOS was
+  `VyOS 999.202611081848` (rolling, flavor `qemu`; see the vyos-ipsec spike for
+  why rolling is not "1.5"), with `firewall ipv4 forward filter`, default
+  action `drop`.
+- **Evidence** (run [42513925243](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42513925243), jobs "Spike bbmd (VyOS router)" and
+  "Spike bbmd (Linux router, network namespaces)", artifacts
+  `evidence-bbmd-vyos` and `evidence-bbmd-netns`; BACpypes3 0.0.110; all
+  checks PASS on both):
+  - Without BBMDs, a node-bacnet-style Who-Is from ops-client finds nothing
+    (only ops-bbmd, instance 9001, answers); a direct unicast ReadProperty to
+    10.20.60.13 works through the ACL (`object-name = 'bas-vent'`).
+  - Stage `bbmd-one-way` (ops-bbmd to bas-bbmd allowed) and `bbmd-both-ways`
+    (plus bas-bbmd to ops-bbmd): **discovery still fails.** The VyOS counters
+    show why: rule 30 (OPS BBMD to BAS BBMD) matched 1 packet (46 bytes, the
+    Forwarded-NPDU) and the default drop matched 2 (98 bytes): the device's
+    I-Am.
+  - Stage `bbmd-both-ways-device-replies` (adds rule 50, device 3003 to
+    ops-client, UDP 47808): the Who-Is finds 3003 at 10.20.60.13 (the I-Am
+    arrives from the device itself, not through a BBMD) and ReadProperty
+    returns `bas-vent`. Counters: rule 30 1 packet, rule 50 1 packet (49 bytes),
+    rule 10 (established) 2 packets, rule 40 (BAS BBMD to OPS BBMD) **0**.
+  - Back to the unicast-only ACL: discovery fails again.
+  - Why the device's reply is a new flow: BACpypes3 answers a Who-Is with a
+    *unicast* I-Am to the request's source address. A BBMD forwards the Who-Is
+    as a Forwarded-NPDU that carries the original sender's address, so the
+    device replies straight to ops-client:47808 across the router. That is a
+    BAS-to-OPS flow no BBMD-to-BBMD rule covers. (Devices that broadcast their
+    I-Am would instead go through rule 40; not tested because the available
+    stack does not do it.)
+- **ACL rules the design needs** (replacing "scada-fuxa to BAS devices UDP
+  47808" in DESIGN §10.3; all stateful, return traffic by established/related):
+  1. `ops-bbmd` to `bas-bbmd`, UDP 47808 (Forwarded-NPDU, BDT and foreign
+     device management).
+  2. `bas-bbmd` to `ops-bbmd`, UDP 47808 (for devices that broadcast their
+     I-Am). Not exercised by 3003 (0 packets); recommended, untested.
+  3. BAS devices to the FUXA host (and the EWS), UDP 47808 (unicast I-Am,
+     and COV or any device-initiated message).
+  4. FUXA host (and the EWS) to BAS devices, UDP 47808 (ReadProperty,
+     ReadPropertyMultiple, WriteProperty). Rule 20 matched 0 packets in the run
+     because the I-Am's connection-tracking entry (same port pair, reversed)
+     already covered the read; keep the rule for reads after that entry
+     expires (not tested).
+- **Other findings:**
+  - A BACpypes3 node only listens for broadcasts on its subnet's directed
+    broadcast address. FUXA's limited broadcast (255.255.255.255) is not heard
+    by a BBMD started with a normal `/24` address: in a local namespace run the
+    Who-Is found nothing. Start the OPS-side BBMD with a `/0` prefix
+    (`--address 10.20.30.5/0:47808`), so its "broadcast address" is
+    255.255.255.255. CI uses `/0` throughout; the `/24` failure is from a local
+    run only, not CI.
+  - BDT entries without a mask (`10.20.60.5:47808`) give two-hop delivery:
+    the sending BBMD unicasts to the peer, which rebroadcasts locally. That is
+    the mode that crosses a router that does not forward directed broadcasts.
+  - A client bound to 0.0.0.0 and one bound to its own address both worked
+    here (`client_bound_0000_result`), so the node-bacnet `interface` setting
+    does not change the outcome.
+  - The BBMD cannot run on the FUXA host: node-bacnet binds UDP 47808 there. Use
+    separate BBMD nodes (a small Linux guest each, or a BBMD on `ot-svc` and on
+    a BAS host).
+  - VyOS 1.5-style syntax `state established` and `state related` (valueless)
+    commits on the rolling build.
 - **Follow-ups:**
+  - Add the four rules and the two BBMD nodes (with BDTs listing both) to
+    DESIGN §10.3, §11 and the BAS module; the `bacnet` spike's follow-up (FUXA
+    connect needs a Who-Is broadcast) is resolved by this design.
+  - Test real FUXA (node-bacnet 0.2.4 inside the FUXA container) against the
+    BBMD instead of the socket stand-in, and a device that broadcasts its I-Am.
+  - Decide whether Wazuh should alert on UDP 47808 between zones other than
+    those four paths (BBMD traffic is a new lateral path).

@@ -80,7 +80,7 @@ for proto in modbus dnp3 bacnet; do
   check "Malcolm's Zeek image logs $proto from the test pcap" "$([ "${n:-0}" -gt 0 ] && echo true || echo false)" "$proto.log: ${n:-0} records; $(ls "$ZD" | tr '\n' ' ')"
 done
 fact zeek_direct_logs "$(cd "$ZD" && wc -l modbus*.log dnp3*.log bacnet*.log 2>/dev/null | tr '\n' ';')"
-fact zeek_version "$(timeout 60 docker run --rm --user root --entrypoint /usr/local/zeek/bin/zeek "$ZEEK_IMAGE" --version 2>&1 | tail -1)"
+fact zeek_version "$(timeout 60 docker run --rm --user root --entrypoint /usr/local/zeek/bin/zeek-offline "$ZEEK_IMAGE" --version 2>&1 | tail -1)"
 
 # 3. The trimmed Malcolm stack.
 if [ ! -d "$WORK/Malcolm/.git" ]; then
@@ -112,8 +112,9 @@ timeout 300 docker run --rm -v "$PWD/opensearch:/out" --user root --entrypoint b
 sudo chown "$(id -u):$(id -g)" opensearch/opensearch.keystore 2>/dev/null || true
 chmod 600 .opensearch.*.curlrc config/*.env
 
-# dashboards-helper creates the index templates Logstash waits for, but only once Dashboards answers.
-SERVICES=(opensearch dashboards-helper dashboards logstash filebeat pcap-monitor zeek)
+# Logstash waits for the malcolm_template index template. dashboards-helper creates it, but only after
+# Dashboards answers and Arkime has created arkime_sessions3_template (run 4 stuck on that).
+SERVICES=(opensearch dashboards-helper dashboards arkime logstash filebeat pcap-monitor zeek)
 log "pulling ${SERVICES[*]}"
 timeout 1500 docker compose --profile malcolm pull -q "${SERVICES[@]}" >>"$EV/steps.log" 2>&1
 check "the trimmed Malcolm images pulled" "$([ $? -eq 0 ] && echo true || echo false)" "$(docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep idaholab | tr '\n' ';')"

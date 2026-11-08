@@ -98,10 +98,11 @@ def run() -> int:
         started: float = time.monotonic()
         lab.start_rest()
         lab.wait_running("sim-ctl", "scada-fuxa", "late-vm")
-        # Kill late-vm before its C2 client can register: phenix waits for the
-        # client for DefaultC2Timeout (5 min) and then gives up on the tunnel.
-        lab.mm.run("vm kill late-vm", EXP)
-        log("late-vm killed before C2 registration")
+        # Pause late-vm before its C2 client can register: phenix waits for the client for
+        # DefaultC2Timeout (5 min) and then gives up on the tunnel. (A VM killed this early
+        # did not boot again in run 4, so it is paused, not killed.)
+        lab.mm.run("vm stop late-vm", EXP)
+        log("late-vm paused before C2 registration")
 
         lab.wait_cc("sim-ctl", "scada-fuxa")
         lab.fact("c2_registered_after_s", f"{time.monotonic() - started:.0f}")
@@ -176,7 +177,7 @@ def run() -> int:
             lab.fact("late_vm_gave_up_logged", "yes, after the 5 minute C2 wait")
         except TimeoutError as exc:
             lab.fact("late_vm_gave_up_logged", f"no: {exc}")
-        lab.fact("late_vm_before_start", str(lab.vm_info().get("late-vm", {}).get("state")))
+        lab.fact("late_vm_state_before_resume", str(lab.vm_info().get("late-vm", {}).get("state")))
         lab.mm.run("vm start late-vm", EXP)
         try:
             wait_for("late-vm C2", 300, 5, lambda: ("late-vm" in lab.cc_clients(), str(sorted(lab.cc_clients()))))

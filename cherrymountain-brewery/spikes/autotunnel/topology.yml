@@ -33,7 +33,7 @@ spec:
       network:
         interfaces:
           - {name: IF0, vlan: MGMT, address: 172.16.10.11, mask: 16, proto: static, type: ethernet}
-    # Started, then killed before its C2 client registers, to learn what a VM
+    # Started, then paused before its C2 client registers, to learn what a VM
     # that boots after phenix gave up on its tunnel gets (ci.py).
     - type: VirtualMachine
       general: {hostname: late-vm}

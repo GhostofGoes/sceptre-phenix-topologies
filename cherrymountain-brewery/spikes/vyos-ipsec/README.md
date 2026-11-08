@@ -61,7 +61,46 @@ utility link and record the compromise in §10.3.
 
 ## Result
 
-- **Decision:** as-is / patch phenix / push via cc / no-go
-- **VyOS build:**
-- **Evidence:** (first failing command, commit output, `show vpn ipsec sa`)
-- **Follow-ups:** (upstream phenix PR for the ike-group line; other template issues)
+- **Decision:** **go, use phenix as is** (the pinned fork already carries the
+  `ike-group` fix; no patch and no cc push needed). Two template follow-ups
+  below.
+- **VyOS build:** `VyOS 999.202611081848`, release train `rolling`, flavor
+  `qemu`, built in CI from `vyos-build` branch `rolling` by the images repo's
+  `scripts/vyos/build-vyos.sh` with miniccc injected. Rolling images report
+  `999.<stamp>`, not `1.5`: they are the line that becomes 1.5/1.6, not a 1.5
+  release. DESIGN says "VyOS 1.5"; see Follow-ups.
+- **Evidence** (run [42513925243](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42513925243), job "Spike vyos-ipsec", artifact
+  `evidence-vyos-ipsec`; phenix `984869d` of GhostofGoes/sceptre-phenix
+  `ci-e2e-minimega`, minimega 3.3.0):
+  - phenix rendered `rtr-edge.boot` and `rtr-util.boot`; the image applied them
+    at first boot and both routers logged `Successful change to active
+    configuration`. The rendered IPsec block has `ike-group IKE-1W proposal 1
+    encryption aes256` / `hash sha1` (the upstream bug is not in this phenix).
+  - `show vpn ipsec sa` on both routers: `rtr-util-tunnel-0  up
+    AES_CBC_256/HMAC_SHA1_96`.
+  - From utility-derms (192.0.2.10): ICMP to rtu-der (10.20.15.10) 0% loss,
+    TCP 20000 open, and `dnp3_link.py` got a valid DNP3 link-status frame (dest
+    3, src 4).
+  - A capture on the host tap of rtr-edge's WAN NIC (outside the VM) showed 28
+    ESP packets and no cleartext ICMP or TCP 20000. A capture inside the router
+    is not evidence: the router's own tap also shows the decrypted copy of every
+    inbound packet (run 3 counted 5 ICMP and 10 TCP/20000 lines that way).
+  - Reproduction of the upstream bug (`esp-group IKE-1W proposal` lines instead
+    of `ike-group`, applied on rtr-util): VyOS rolling **commits it**, leaving
+    `IKE-1W` with no proposal (defaults), so the stock upstream template does
+    not fail the commit as this README first guessed. It is still wrong: the
+    two ends would negotiate defaults, not the intended AES-256/SHA-1.
+- **Follow-ups:**
+  - The IKE group has no `key-exchange`, and VyOS prints `DEPRECATION WARNING:
+    IKE group "IKE-1W" has no key-exchange set and will still accept incoming
+    deprecated IKEv1 connections`. Send `set vpn ipsec ike-group IKE-1W
+    key-exchange ikev2` upstream (`commit_check.sh --manual` already uses it).
+  - Upstream PR for the `ike-group` line in sandialabs/sceptre-phenix
+    `vyatta.tmpl` (if `main` still has it); `patches/vyatta-ike-group.patch`
+    remains the diff.
+  - Pin or document the VyOS build: `rolling` moves daily. The images repo's
+    `build-vyos.sh` needed two fixes in CI (its image-name parsing and its NIC
+    ordering patch no longer match vyos-build and vyos-1x); `spikes/ci/build_image.sh`
+    works around both and should be upstreamed to sceptre-phenix-images.
+  - Run the path again with ot-sim DNP3 instead of the link-layer stub once the
+    ot-sim image exists (the otsim-noble spike covers DNP3 itself).

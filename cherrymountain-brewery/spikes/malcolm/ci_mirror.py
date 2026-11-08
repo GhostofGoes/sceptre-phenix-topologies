@@ -127,10 +127,13 @@ def run() -> int:
         )
 
         # Capture loss under iperf3: packets delivered to gen-b vs packets captured for gen-b.
-        for label, rate in (("100M", "100M"), ("unlimited", "0")):
+        # GRE adds 42 bytes to every mirrored frame, so full-size frames need an underlay MTU
+        # above 1500 (the tunnel does not fragment): run once as is, once with MTU 9000 on the
+        # host path to the capture VM and on the VM's mirror NIC.
+        def iperf_loss(label: str, rate: str) -> tuple[float, int, int]:
             lab.shell("malcolm", f"rm -f /tmp/iperf.pcap; (setsid nohup timeout 120 tcpdump -ni {CAP_IF} -U -s 96 -w /tmp/iperf.pcap >/tmp/tcpdump-iperf.log 2>&1 </dev/null &); sleep 2; echo started")
             rx0: int = iface_stats(lab, "gen-b", "eth0")
-            res = lab.shell("gen-a", f"iperf3 -c {B} -t 20 -b {rate} 2>&1 | tail -6", wait_s=120)
+            res: str = lab.shell("gen-a", f"iperf3 -c {B} -t 20 -b {rate} 2>&1 | tail -6", wait_s=120)
             rx1: int = iface_stats(lab, "gen-b", "eth0")
             time.sleep(3)
             lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
@@ -138,12 +141,22 @@ def run() -> int:
             captured: int = count(lab, "/tmp/iperf.pcap", f" > {B}\\.5201: ")
             delivered: int = rx1 - rx0
             loss: float = 100.0 * max(delivered - captured, 0) / max(delivered, 1)
-            lab.fact(f"iperf_{label}", f"delivered_to_gen_b={delivered} captured={captured} loss={loss:.2f}% | {res.strip()[-200:]} | {kernel.strip()[-200:]}")
-            if label == "100M":
-                lab.check("capture loss under the 100 Mbit/s iperf3 run is under 1%", loss < 1.0, f"{loss:.2f}% ({captured}/{delivered})")
-            else:
-                m = re.search(r"(\d+) packets dropped by kernel", kernel)
-                lab.fact("iperf_unlimited_note", f"line-rate loss {loss:.2f}%; tcpdump kernel drops {m.group(1) if m else 'n/a'}")
+            m = re.search(r"(\d+) packets dropped by kernel", kernel)
+            lab.fact(f"iperf_{label}", f"delivered_to_gen_b={delivered} captured={captured} loss={loss:.2f}% tcpdump_kernel_drops={m.group(1) if m else 'n/a'} | {res.strip()[-160:]}")
+            return loss, captured, delivered
+
+        loss, captured, delivered = iperf_loss("mtu1500_100M", "100M")
+        lab.fact("capture_loss_mtu1500_100M", f"{loss:.2f}% ({captured}/{delivered})")
+        route: str = sh(["ip", "route", "get", "172.30.255.254"]).stdout
+        lab.fact("host_route_to_capture_vm", route.strip())
+        match = re.search(r"dev (\S+)", route)
+        for dev in ({match.group(1)} if match else set()) | set(lab.taps("malcolm")):
+            sh(["ip", "link", "set", dev, "mtu", "9000"])
+        lab.shell("malcolm", "ip link set eth1 mtu 9000; ip -br link show eth1")
+        lab.fact("mtu_after", sh(["ip", "-br", "link"]).stdout + lab.shell("malcolm", "ip -br link"))
+        loss, captured, delivered = iperf_loss("mtu9000_100M", "100M")
+        lab.check("with MTU 9000 on the mirror path, capture loss under the 100 Mbit/s iperf3 run is under 1%", loss < 1.0, f"{loss:.2f}% ({captured}/{delivered})")
+        iperf_loss("mtu9000_unlimited", "0")
         lab.fact("malcolm_link_stats", lab.shell("malcolm", "ip -s link"))
     finally:
         lab.collect()

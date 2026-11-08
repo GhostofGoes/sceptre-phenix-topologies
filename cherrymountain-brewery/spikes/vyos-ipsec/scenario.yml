@@ -1,0 +1,28 @@
+# vrouter app with the IPsec block shape phenix reads (see the wind plant
+# base scenario for a working v1 example). No `secret`: phenix generates a PSK.
+apiVersion: phenix.sandia.gov/v2
+kind: Scenario
+metadata:
+  name: spike-ipsec
+  annotations:
+    topology: spike-ipsec
+spec:
+  apps:
+    - name: vrouter
+      hosts:
+        - hostname: rtr-edge
+          metadata:
+            ipsec:
+              - local: 203.0.113.2
+                peer: 203.0.113.3
+                tunnels:
+                  - local: 10.20.15.0/24
+                    remote: 192.0.2.0/24
+        - hostname: rtr-util
+          metadata:
+            ipsec:
+              - local: 203.0.113.3
+                peer: 203.0.113.2
+                tunnels:
+                  - local: 192.0.2.0/24
+                    remote: 10.20.15.0/24

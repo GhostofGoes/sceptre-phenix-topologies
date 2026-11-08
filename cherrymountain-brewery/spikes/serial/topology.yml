@@ -1,0 +1,35 @@
+# Serial fixture: two Linux VMs joined by a phenix `serial` interface
+# (DESIGN §15.2). phenix's serial app runs socat in the guest to bridge a pty
+# to UDP multicast on a VLAN; it is not a minimega serial port.
+# TODO(verify): the interface keys for type: serial (the app template reads
+# Address, Device, BaudRate, UDPPort, LinkAddress). Copy the exact YAML key
+# names from the phenix docs or schema (kind: Topology, interface section);
+# the names below are guesses and will not validate if wrong.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-serial
+spec:
+  nodes:
+    - type: VirtualMachine
+      general: {hostname: rio-utilities}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-otsim-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.20.10, mask: 16, proto: static, type: ethernet}
+          - {name: S0, vlan: SERIAL, address: 10.99.0.1, mask: 24, proto: static, type: serial, device: /dev/ttyS10, baud_rate: 9600, udp_port: 9000, link_address: 10.99.0.0/24}
+    - type: VirtualMachine
+      general: {hostname: glycol-chiller}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-otsim-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.20.11, mask: 16, proto: static, type: ethernet}
+          - {name: S0, vlan: SERIAL, address: 10.99.0.2, mask: 24, proto: static, type: serial, device: /dev/ttyS10, baud_rate: 9600, udp_port: 9000, link_address: 10.99.0.0/24}

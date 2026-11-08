@@ -1,0 +1,35 @@
+# Autotunnel fixture: one VM that serves HTTP on 3000, 8080, and 9200 stand-ins
+# (see serve_stubs.sh) with the DESIGN §15.3 annotation style. The VM image
+# must run miniccc: phenix only creates non-VNC tunnels when the C2 client is
+# already active at PostStart.
+# TODO(verify): image name; it needs miniccc and python3.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-autotunnel
+spec:
+  nodes:
+    - type: VirtualMachine
+      general: {hostname: sim-ctl}
+      annotations:
+        phenix/startup-autotunnel: ["13001:3000", "18080:8080", "19200:9200"]
+      hardware:
+        os_type: linux
+        drives: [{image: ubuntu-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.10.10, mask: 16, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: scada-fuxa}
+      annotations:
+        phenix/startup-autotunnel: ["11881:1881"]
+      hardware:
+        os_type: linux
+        drives: [{image: ubuntu-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.10.11, mask: 16, proto: static, type: ethernet}

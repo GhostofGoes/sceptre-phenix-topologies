@@ -1,0 +1,13 @@
+# Optional: repeatable noble build of ot-sim for the spike (docker build).
+# TODO(verify): upstream's Dockerfile targets Bookworm; this is a noble port
+# of its build stage, not a tested image.
+FROM ubuntu:24.04
+ARG OTSIM_REF=main
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git wget ca-certificates libboost-dev libczmq-dev \
+    libxml2-dev libzmq5-dev pkg-config python3-dev python3-pip python3-venv \
+    golang-go && rm -rf /var/lib/apt/lists/*
+COPY build_check.sh /usr/local/bin/build_check.sh
+RUN OTSIM_REF=${OTSIM_REF} bash /usr/local/bin/build_check.sh || true
+CMD ["bash"]

@@ -1,0 +1,51 @@
+# Utility IPsec fixture (DESIGN §10.3): rtr-edge <-> rtr-util over a WAN link,
+# DNP3 master behind rtr-util, outstation behind rtr-edge.
+# TODO(verify): vyos and linux image names; VyOS must be 1.5 (check `show version`).
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-ipsec
+spec:
+  nodes:
+    - type: Router
+      general: {hostname: rtr-edge}
+      hardware:
+        os_type: vyos
+        drives: [{image: vyos.qc2}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: WAN, address: 203.0.113.2, mask: 29, proto: static, type: ethernet}
+          - {name: IF1, vlan: FIELD, address: 10.20.15.1, mask: 24, proto: static, type: ethernet}
+    - type: Router
+      general: {hostname: rtr-util}
+      hardware:
+        os_type: vyos
+        drives: [{image: vyos.qc2}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: WAN, address: 203.0.113.3, mask: 29, proto: static, type: ethernet}
+          - {name: IF1, vlan: UTIL, address: 192.0.2.1, mask: 24, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: rtu-der}
+      hardware:
+        os_type: linux
+        drives: [{image: ubuntu-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: FIELD, address: 10.20.15.10, mask: 24, gateway: 10.20.15.1, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: utility-derms}
+      hardware:
+        os_type: linux
+        drives: [{image: ubuntu-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: UTIL, address: 192.0.2.10, mask: 24, gateway: 192.0.2.1, proto: static, type: ethernet}

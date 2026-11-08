@@ -1,0 +1,40 @@
+# Malcolm capture fixture: two traffic hosts on OPS and CTRL, plus malcolm
+# with a mirror NIC. Add a router (vyos) between VLANs if you want routed flows.
+# TODO(verify): malcolm image name and its disk/inject partition.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-malcolm
+spec:
+  nodes:
+    - type: VirtualMachine
+      general: {hostname: gen-a}
+      hardware:
+        os_type: linux
+        drives: [{image: ubuntu-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: OPS, address: 10.20.30.30, mask: 24, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: gen-b}
+      hardware:
+        os_type: linux
+        drives: [{image: ubuntu-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: OPS, address: 10.20.30.31, mask: 24, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: malcolm}
+      hardware:
+        os_type: linux
+        drives: [{image: malcolm.qc2, inject_partition: 1}]
+        memory: 24576
+        vcpus: 8
+      network:
+        interfaces:
+          - {name: IF0, vlan: SOC, address: 10.20.80.10, mask: 24, proto: static, type: ethernet}
+          - {name: IFM, vlan: MIRROR, proto: dhcp, type: ethernet}

@@ -198,8 +198,25 @@ def run() -> int:
             sh(["ip", "link", "set", dev, "mtu", "9000"])
         lab.shell("malcolm", "ip link set eth1 mtu 9000; ip -br link show eth1")
         big_frames("phenix_and_path_mtu9000")
-        loss, payload, received = iperf_loss("100M_mtu9000", "100M")
-        lab.check("with MTU 9000 on the capture port and the mirror path, capture loss under the 100 Mbit/s iperf3 run is under 1% (payload bytes)", loss < 1.0, f"{loss:.2f}% ({payload}/{received} bytes)")
+        # Run 10: MTU 9000 on the capture port, the capture VM's mirror NIC, its tap and the host
+        # route device changed nothing (1472-byte pings still 0 of 20). Look at the host's GRE port
+        # for drops, then turn off the don't-fragment bit of the tunnel.
+        def gre_ports() -> list[str]:
+            out: str = sh(["ovs-vsctl", "--format=csv", "--no-heading", "--columns=name,type", "list", "interface"]).stdout
+            return [ln.split(",")[0].strip('"') for ln in out.splitlines() if ln.split(",")[-1].strip('"') == "gre"]
+
+        ports: list[str] = gre_ports()
+        lab.fact("host_gre_ports", str(ports))
+        for port in ports:
+            lab.fact(f"gre_port_{port}_before", sh(["ovs-vsctl", "--columns=statistics,status,options", "list", "interface", port]).stdout)
+        big_frames("before_df_off")
+        for port in ports:
+            lab.fact(f"gre_port_{port}_after_big_pings", sh(["ovs-vsctl", "--columns=statistics,status", "list", "interface", port]).stdout)
+            sh(["ovs-vsctl", "set", "interface", port, "options:df_default=false"])
+        lab.fact("host_ip_mtu_all", sh(["ip", "-br", "link"]).stdout)
+        big_frames("df_off")
+        loss, payload, received = iperf_loss("100M_df_off", "100M")
+        lab.check("with the GRE don't-fragment bit off, capture loss under the 100 Mbit/s iperf3 run is under 1% (payload bytes)", loss < 1.0, f"{loss:.2f}% ({payload}/{received} bytes)")
         lab.fact("malcolm_link_stats", lab.shell("malcolm", "ip -s link"))
     finally:
         lab.collect()

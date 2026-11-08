@@ -1,6 +1,11 @@
-# Malcolm capture fixture: two traffic hosts on OPS and CTRL, plus malcolm
-# with a mirror NIC. Add a router (vyos) between VLANs if you want routed flows.
-# TODO(verify): malcolm image name and its disk/inject partition.
+# Mirror capture fixture: traffic hosts on OPS and CTRL, a router between them,
+# and a malcolm stand-in with a mirror NIC (DESIGN §14). The CI run boots the
+# cm-spike image as the stand-in (it has openvswitch and tcpdump); the real
+# range boots cm-malcolm at 24576 MB. Malcolm's own resource fit is checked in
+# Docker on the runner (docker_fit.sh), not here.
+# `phenix experiment create -b cherrymtn` sets the default bridge, which the
+# scenario's mirrorBridge must match: the mirror app adds its mirror to that
+# bridge and selects the VM taps on it.
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
 metadata:
@@ -11,30 +16,59 @@ spec:
       general: {hostname: gen-a}
       hardware:
         os_type: linux
-        drives: [{image: ubuntu-noble.qc2, inject_partition: 1}]
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
         memory: 1024
         vcpus: 1
       network:
         interfaces:
           - {name: IF0, vlan: OPS, address: 10.20.30.30, mask: 24, proto: static, type: ethernet}
+        routes:
+          - {destination: 10.20.40.0/24, next: 10.20.30.1}
     - type: VirtualMachine
       general: {hostname: gen-b}
       hardware:
         os_type: linux
-        drives: [{image: ubuntu-noble.qc2, inject_partition: 1}]
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
         memory: 1024
         vcpus: 1
       network:
         interfaces:
           - {name: IF0, vlan: OPS, address: 10.20.30.31, mask: 24, proto: static, type: ethernet}
     - type: VirtualMachine
+      general: {hostname: gen-c}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: CTRL, address: 10.20.40.40, mask: 24, gateway: 10.20.40.1, proto: static, type: ethernet}
+    # A Router-type node (the mirror app leaves these out when more than one
+    # VLAN is mirrored). Default apps are off, so phenix does not configure it;
+    # ci.py sets its addresses and forwarding through cc. The real range uses
+    # a VyOS router.
+    - type: Router
+      general: {hostname: rtr}
+      annotations:
+        phenix/default-apps: false
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: OPS, address: 10.20.30.1, mask: 24, proto: static, type: ethernet}
+          - {name: IF1, vlan: CTRL, address: 10.20.40.1, mask: 24, proto: static, type: ethernet}
+    - type: VirtualMachine
       general: {hostname: malcolm}
       hardware:
         os_type: linux
-        drives: [{image: malcolm.qc2, inject_partition: 1}]
-        memory: 24576
-        vcpus: 8
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 2048
+        vcpus: 2
       network:
         interfaces:
           - {name: IF0, vlan: SOC, address: 10.20.80.10, mask: 24, proto: static, type: ethernet}
-          - {name: IFM, vlan: MIRROR, proto: dhcp, type: ethernet}
+          - {name: IFM, vlan: MIRROR, proto: static, address: 172.30.255.254, mask: 16, type: ethernet}

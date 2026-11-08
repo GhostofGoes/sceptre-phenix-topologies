@@ -1,4 +1,5 @@
-# Mirror app block from DESIGN §14, reduced to the fixture VLANs.
+# Mirror app block from DESIGN §14, reduced to the fixture VLANs (more than one,
+# so the mirror app leaves router taps out).
 apiVersion: phenix.sandia.gov/v2
 kind: Scenario
 metadata:
@@ -18,4 +19,4 @@ spec:
           metadata:
             interface: IFM
             setupOVS: true
-            vlans: [OPS]
+            vlans: [OPS, CTRL]

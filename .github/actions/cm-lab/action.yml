@@ -1,0 +1,93 @@
+name: Set up a Cherry Mountain VM spike runner
+description: >-
+  Checks out phenix at ./phenix, builds phenix and a pinned minimega through
+  phenix's own e2e-setup action, installs the spike images built by the
+  workflow's image jobs, and optionally the phenix user apps. The repository
+  under test must already be checked out at the workspace root.
+
+inputs:
+  phenix-repository:
+    description: Repository of phenix (owner/name)
+    required: true
+  phenix-ref:
+    description: Commit of phenix
+    required: true
+  images:
+    description: Images to install, separated by | (artifact names cm-image-<name>)
+    required: false
+    default: ''
+  apps-repository:
+    description: Repository of the phenix apps (owner/name); empty skips the apps
+    required: false
+    default: ''
+  apps-ref:
+    description: Commit of the phenix apps
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Check out phenix
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: ${{ inputs.phenix-repository }}
+        ref: ${{ inputs.phenix-ref }}
+        path: phenix
+        persist-credentials: false
+
+    - name: Set up phenix and minimega
+      uses: ./phenix/.github/actions/e2e-setup
+
+    - name: Download the images
+      if: inputs.images != ''
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      with:
+        pattern: cm-image-@(${{ inputs.images }})
+        path: cm-images
+        merge-multiple: true
+
+    - name: Install the images
+      if: inputs.images != ''
+      shell: bash
+      env:
+        IMAGES: ${{ inputs.images }}
+      run: |
+        set -euo pipefail
+        for image in ${IMAGES//|/ }; do
+          if [ ! -f "cm-images/$image.qc2" ]; then
+            echo "::error::image $image was not handed on; see its Image job"
+            exit 1
+          fi
+          sudo mv "cm-images/$image.qc2" "/phenix/images/$image.qc2"
+        done
+        rm -rf cm-images
+        ls -lh /phenix/images
+
+    - name: Install the spike driver's Python dependencies
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo python3 -m venv /opt/cm-spike-venv
+        sudo /opt/cm-spike-venv/bin/pip install --quiet pydantic==2.11.7
+        sudo modprobe ip_gre || true
+
+    - name: Check out the phenix apps
+      if: inputs.apps-repository != ''
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: ${{ inputs.apps-repository }}
+        ref: ${{ inputs.apps-ref }}
+        path: apps
+        persist-credentials: false
+
+    - name: Build and install the phenix Go apps
+      if: inputs.apps-repository != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+        (cd apps/src/go && ./build.sh)
+        for b in apps/src/go/bin/phenix-app-*; do
+          sudo install -m 0755 "$b" "/usr/local/bin/$(basename "$b")"
+        done
+        sudo phenix --store.endpoint bolt:///etc/phenix/store.bdb experiment apps

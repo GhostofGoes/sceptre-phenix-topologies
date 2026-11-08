@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""CI driver for the Malcolm spike's capture half: the mirror app with setupOVS.
+
+Boots generators, a router and a capture VM, lets phenix-app-mirror mirror the
+OPS and CTRL VLANs over GRE into the capture VM's OVS bridge, and counts what
+arrives, per direction. Run as root on a runner prepared by
+.github/actions/cm-lab (with the apps):
+  sudo -E /opt/cm-spike-venv/bin/python ci_mirror.py
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+import time
+from pathlib import Path
+
+HERE: Path = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent / "ci"))
+
+from vmlab import Lab, log, main_guard, sh, wait_for  # noqa: E402
+
+EXP: str = "spike-malcolm"
+PINGS: int = 20
+A, B, C = "10.20.30.30", "10.20.30.31", "10.20.40.40"
+CAP_IF: str = "phenix"  # bridge created by phenix-app-mirror's setup-ovs.sh
+
+
+def count(lab: Lab, pcap: str, expr: str) -> int:
+    out: str = lab.shell("malcolm", f"tcpdump -nn -r {pcap} {expr} 2>/dev/null | wc -l")
+    return int(out.strip().splitlines()[-1])
+
+
+def iface_stats(lab: Lab, vm: str, dev: str) -> int:
+    out: str = lab.shell(vm, f"cat /sys/class/net/{dev}/statistics/rx_packets")
+    return int(out.strip().splitlines()[-1])
+
+
+def run() -> int:
+    lab: Lab = Lab("malcolm-mirror", EXP)
+    lab.versions()
+    try:
+        lab.create_experiment(HERE / "topology.yml", HERE / "scenario.yml", default_bridge="cherrymtn")
+        out: str = lab.start_cli()
+        lab.check("experiment start reports the mirror app ran", "mirror" in out and "post-start" in out, out[-500:])
+        lab.wait_running("gen-a", "gen-b", "gen-c", "rtr", "malcolm")
+        lab.wait_cc("gen-a", "gen-b", "gen-c", "malcolm")
+        lab.wait_cc_vm("rtr")
+
+        # Host side: what the mirror app built.
+        host_mirrors: str = sh(["ovs-vsctl", "list", "mirror"]).stdout
+        lab.save("host-ovs-mirrors.txt", host_mirrors)
+        lab.check("host OVS has a mirror and a GRE port from the mirror app", "select_dst_port" in host_mirrors and "gre" in sh(["ovs-vsctl", "show"]).stdout, host_mirrors[:400])
+
+        # Router: addresses and forwarding through cc.
+        lab.shell(
+            "rtr",
+            "ip -br link; ip addr add 10.20.30.1/24 dev eth0; ip addr add 10.20.40.1/24 dev eth1; "
+            "ip link set eth0 up; ip link set eth1 up; sysctl -w net.ipv4.ip_forward=1; ip -br addr",
+        )
+        lab.fact("rtr_addresses", lab.shell("rtr", "ip -br addr"))
+
+        # setupOVS: the bridge and sniffer port exist in the guest, the way the mirror app promises.
+        def ovs_ready() -> tuple[bool, str]:
+            shown: str = lab.shell("malcolm", "ovs-vsctl show 2>&1; ip -br link")
+            return "sniffer" in shown, shown
+
+        try:
+            shown: str = wait_for("malcolm's OVS bridge and sniffer port", 120, 5, ovs_ready)
+            lab.check("setupOVS creates the in-guest bridge and GRE sniffer port at boot", True, shown)
+        except TimeoutError as exc:
+            lab.check("setupOVS creates the in-guest bridge and GRE sniffer port at boot", False, str(exc))
+            lab.fact("startup_logs", lab.shell("malcolm", "ls -l /etc/phenix/startup; journalctl -u phenix --no-pager | tail -40; systemctl status openvswitch-switch --no-pager | head -20"))
+            return lab.finish()
+        lab.fact("malcolm_ovs", lab.shell("malcolm", "ovs-vsctl show; ovs-vsctl list-ports phenix; ip -br addr"))
+        lab.fact("malcolm_phenix_link_before", lab.shell("malcolm", f"ip -br link show {CAP_IF}"))
+        # The script does not bring the bridge's internal port up; capture needs it.
+        lab.shell("malcolm", f"ip link set {CAP_IF} up; ip -br link show {CAP_IF}")
+
+        lab.shell("gen-a", f"ping -c 2 -W 2 {B} >/dev/null 2>&1; ping -c 2 -W 2 {C} >/dev/null 2>&1; echo warm")
+        lab.shell("gen-b", "setsid nohup iperf3 -s >/tmp/iperf-s.log 2>&1 </dev/null & sleep 1; echo up")
+
+        # Capture, then known traffic.
+        lab.shell("malcolm", f"rm -f /tmp/flows.pcap; (setsid nohup timeout 90 tcpdump -ni {CAP_IF} -U -w /tmp/flows.pcap >/tmp/tcpdump-flows.log 2>&1 </dev/null &); sleep 2; echo started")
+        lab.shell("gen-a", f"ping -c {PINGS} -i 0.3 -W 2 {B} | tail -2; ping -c {PINGS} -i 0.3 -W 2 {C} | tail -2; "
+                  f"for i in $(seq 1 10); do timeout 1 bash -c 'echo -n probe > /dev/tcp/{B}/502' 2>/dev/null || true; done; echo generated", wait_s=180)
+        time.sleep(5)
+        lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; cat /tmp/tcpdump-flows.log")
+        lab.fact("tcpdump_flows", lab.shell("malcolm", "cat /tmp/tcpdump-flows.log"))
+
+        pc: str = "/tmp/flows.pcap"
+        counts: dict[str, int] = {
+            "same_vlan_req": count(lab, pc, f"'icmp[icmptype]==8 and src host {A} and dst host {B}'"),
+            "same_vlan_rep": count(lab, pc, f"'icmp[icmptype]==0 and src host {B} and dst host {A}'"),
+            "routed_req": count(lab, pc, f"'icmp[icmptype]==8 and src host {A} and dst host {C}'"),
+            "routed_rep": count(lab, pc, f"'icmp[icmptype]==0 and src host {C} and dst host {A}'"),
+            "tcp502_syn": count(lab, pc, f"'tcp dst port 502 and tcp[tcpflags] & tcp-syn != 0 and tcp[tcpflags] & tcp-ack == 0 and dst host {B}'"),
+            "total": count(lab, pc, ""),
+        }
+        lab.fact("capture_counts", str(counts))
+        lab.check("mirrored packets are visible on the in-guest capture interface", counts["total"] > 0, str(counts))
+        same_ok: bool = counts["same_vlan_req"] == PINGS and counts["same_vlan_rep"] == PINGS
+        lab.check(
+            "same-VLAN flow is captured once per direction (no duplicates)",
+            same_ok,
+            f"want {PINGS}/{PINGS}, got {counts['same_vlan_req']}/{counts['same_vlan_rep']}",
+        )
+        routed_ok: bool = counts["routed_req"] == PINGS and counts["routed_rep"] == PINGS
+        lab.check(
+            "routed flow is captured once per direction (DESIGN section 14 claim)",
+            routed_ok,
+            f"want {PINGS}/{PINGS}, got {counts['routed_req']}/{counts['routed_rep']}",
+        )
+
+        # Capture loss under iperf3: packets delivered to gen-b vs packets captured for gen-b.
+        for label, rate in (("100M", "100M"), ("unlimited", "0")):
+            lab.shell("malcolm", f"rm -f /tmp/iperf.pcap; (setsid nohup timeout 120 tcpdump -ni {CAP_IF} -U -s 96 -w /tmp/iperf.pcap 'tcp port 5201' >/tmp/tcpdump-iperf.log 2>&1 </dev/null &); sleep 2; echo started")
+            rx0: int = iface_stats(lab, "gen-b", "eth0")
+            res = lab.shell("gen-a", f"iperf3 -c {B} -t 20 -b {rate} 2>&1 | tail -6", wait_s=120)
+            rx1: int = iface_stats(lab, "gen-b", "eth0")
+            time.sleep(3)
+            lab.shell("malcolm", "pkill -INT tcpdump; sleep 2; echo stopped")
+            kernel: str = lab.shell("malcolm", "cat /tmp/tcpdump-iperf.log")
+            captured: int = int(lab.shell("malcolm", f"tcpdump -nn -r /tmp/iperf.pcap 'dst host {B}' 2>/dev/null | wc -l").strip().splitlines()[-1])
+            delivered: int = rx1 - rx0
+            loss: float = 100.0 * max(delivered - captured, 0) / max(delivered, 1)
+            lab.fact(f"iperf_{label}", f"delivered_to_gen_b={delivered} captured={captured} loss={loss:.2f}% | {res.strip()[-200:]} | {kernel.strip()[-200:]}")
+            if label == "100M":
+                lab.check("capture loss under the 100 Mbit/s iperf3 run is under 1%", loss < 1.0, f"{loss:.2f}% ({captured}/{delivered})")
+            else:
+                m = re.search(r"(\d+) packets dropped by kernel", kernel)
+                lab.fact("iperf_unlimited_note", f"line-rate loss {loss:.2f}%; tcpdump kernel drops {m.group(1) if m else 'n/a'}")
+        lab.fact("malcolm_link_stats", lab.shell("malcolm", "ip -s link"))
+    finally:
+        lab.collect()
+        lab.stop_experiment()
+        for name in ("topology.yml", "scenario.yml"):
+            sh(["cp", "-f", str(HERE / name), str(lab.dir / name)])
+    log("done")
+    return lab.finish()
+
+
+if __name__ == "__main__":
+    main_guard(run)

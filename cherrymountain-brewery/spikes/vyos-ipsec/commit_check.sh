@@ -10,7 +10,8 @@
 # (look under /opt/vyatta/etc/config/scripts/ or the phenix startup directory).
 # TODO(verify): whether 1.5 needs `ike-group ... key-exchange ikev2` and
 # `esp-group ... pfs` spelled as in manual_cmds below.
-set -euo pipefail
+# VyOS's script-template is not safe under -e or -u, so only pipefail here.
+set -o pipefail
 
 # shellcheck disable=SC1091
 source /opt/vyatta/etc/functions/script-template

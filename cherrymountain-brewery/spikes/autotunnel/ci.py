@@ -176,8 +176,14 @@ def run() -> int:
             lab.fact("late_vm_gave_up_logged", "yes, after the 5 minute C2 wait")
         except TimeoutError as exc:
             lab.fact("late_vm_gave_up_logged", f"no: {exc}")
+        lab.fact("late_vm_before_start", str(lab.vm_info().get("late-vm", {}).get("state")))
         lab.mm.run("vm start late-vm", EXP)
-        wait_for("late-vm C2", 300, 5, lambda: ("late-vm" in lab.cc_clients(), str(sorted(lab.cc_clients()))))
+        try:
+            wait_for("late-vm C2", 300, 5, lambda: ("late-vm" in lab.cc_clients(), str(sorted(lab.cc_clients()))))
+        except TimeoutError as exc:
+            lab.fact("late_vm_c2_timeout", f"{exc}; vm info: {lab.vm_info().get('late-vm')}")
+            lab.check("a late-booting VM gets its tunnel, or the REST forward call creates it", False, str(exc))
+            return lab.finish()
         start_stubs(lab, "late-vm", [8080])
         time.sleep(5)
         auto_port: int | None = host_port(lab, "late-vm", 8080)

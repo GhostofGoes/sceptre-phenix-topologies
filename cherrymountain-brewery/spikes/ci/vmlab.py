@@ -13,6 +13,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import secrets
 import socket
 import subprocess
@@ -318,6 +319,10 @@ class Lab:
     def vm_info(self) -> dict[str, dict[str, str]]:
         return {row["name"]: row for row in self.mm.table("vm info", self.exp)}
 
+    def taps(self, vm: str) -> list[str]:
+        """Host tap names of vm's interfaces, in interface order (minimega's `vm info` tap column)."""
+        return re.findall(r"[A-Za-z0-9_\-]+", self.vm_info()[vm].get("tap", ""))
+
     def wait_running(self, *vms: str, timeout_s: float = 120) -> None:
         def probe() -> tuple[bool, str]:
             info: dict[str, dict[str, str]] = self.vm_info()
@@ -419,8 +424,10 @@ class Lab:
 
     def collect(self) -> None:
         """Copy minimega, phenix and experiment state into the evidence directory."""
+        # A spike that dies on an exception still leaves what it recorded so far.
+        self.save("result.json", self.evidence.model_dump_json(indent=2))
         steps: list[tuple[str, Callable[[], str]]] = [
-            ("minimega-vm-info.txt", lambda: self.mm.text("vm info", self.exp)),
+            ("minimega-vm-info.txt", lambda: json.dumps(self.vm_info(), indent=1)),
             ("minimega-cc-clients.txt", lambda: self.mm.text("cc clients", self.exp)),
             ("minimega-cc-tunnels.txt", lambda: "\n".join(f"== {vm}\n{self.mm.text(f'cc tunnel list {vm}', self.exp)}" for vm in self.vm_info())),
             ("minimega-vlans.txt", lambda: self.mm.text("vlans", self.exp)),

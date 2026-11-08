@@ -112,7 +112,8 @@ timeout 300 docker run --rm -v "$PWD/opensearch:/out" --user root --entrypoint b
 sudo chown "$(id -u):$(id -g)" opensearch/opensearch.keystore 2>/dev/null || true
 chmod 600 .opensearch.*.curlrc config/*.env
 
-SERVICES=(opensearch dashboards-helper logstash filebeat pcap-monitor zeek)
+# dashboards-helper creates the index templates Logstash waits for, but only once Dashboards answers.
+SERVICES=(opensearch dashboards-helper dashboards logstash filebeat pcap-monitor zeek)
 log "pulling ${SERVICES[*]}"
 timeout 1500 docker compose --profile malcolm pull -q "${SERVICES[@]}" >>"$EV/steps.log" 2>&1
 check "the trimmed Malcolm images pulled" "$([ $? -eq 0 ] && echo true || echo false)" "$(docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep idaholab | tr '\n' ';')"
@@ -148,10 +149,10 @@ if [ "$os_ready" = true ]; then
   sleep 60
   cp "$EV/ics.pcap" pcap/upload/cherrymountain-ics.pcap
   log "pcap dropped into pcap/upload"
-  # Wait for Zeek records of the three protocols in OpenSearch (up to 8 minutes).
+  # Wait for Zeek records of the three protocols in OpenSearch (up to 12 minutes).
   q='{"size":0,"query":{"match_all":{}},"aggs":{"ds":{"terms":{"field":"event.dataset","size":100}}}}'
   found=false
-  for _ in $(seq 1 48); do
+  for _ in $(seq 1 72); do
     out=$(timeout 30 docker exec malcolm-opensearch-1 sh -c "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_search' -d '$q'" 2>/dev/null || true)
     echo "$out" >"$EV/opensearch-datasets.json"
     if echo "$out" | jq -e '[.aggregations.ds.buckets[].key] | (index("modbus") != null) and (index("dnp3") != null) and (index("bacnet") != null)' >/dev/null 2>&1; then

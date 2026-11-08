@@ -13,6 +13,9 @@
 # VyOS's script-template is not safe under -e or -u, so only pipefail here.
 set -o pipefail
 
+# VyOS's script-template resets the positional parameters, so keep them first.
+ARGS=("$@")
+
 # shellcheck disable=SC1091
 source /opt/vyatta/etc/functions/script-template
 
@@ -45,12 +48,12 @@ set vpn ipsec site-to-site peer ${p} tunnel 0 remote prefix ${rn}
 CMDS
 }
 
-if [ "${1:-}" = "--manual" ]; then
-  [ $# -eq 6 ] || { echo "usage: --manual LOCAL PEER LOCAL_NET REMOTE_NET PSK"; exit 2; }
-  cmds=$(manual_cmds "$2" "$3" "$4" "$5" "$6")
+if [ "${ARGS[0]:-}" = "--manual" ]; then
+  [ "${#ARGS[@]}" -eq 6 ] || { echo "usage: --manual LOCAL PEER LOCAL_NET REMOTE_NET PSK"; exit 2; }
+  cmds=$(manual_cmds "${ARGS[1]}" "${ARGS[2]}" "${ARGS[3]}" "${ARGS[4]}" "${ARGS[5]}")
 else
-  [ -r "${1:?generated script or --manual}" ] || { echo "cannot read $1"; exit 2; }
-  cmds=$(grep -E '^(set|delete) ' "$1")
+  [ -r "${ARGS[0]:?generated script or --manual}" ] || { echo "cannot read ${ARGS[0]}"; exit 2; }
+  cmds=$(grep -E '^(set|delete) ' "${ARGS[0]}")
 fi
 
 configure

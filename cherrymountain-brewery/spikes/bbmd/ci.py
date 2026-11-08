@@ -143,7 +143,11 @@ def run() -> int:
         )
         lab.fact("router", f"VyOS VM fw-ot: {version.strip()[:300]}")
         lab.fact("router_interfaces", lab.shell("fw-ot", "ip -br addr"))
-        lab.check("fw-ot is VyOS 1.5", "1.5" in version, version[:200])
+        lab.check(
+            "fw-ot is a VyOS rolling build (the 1.5 line; rolling images report 999.<stamp>)",
+            "VyOS" in version and ("rolling" in version or "1.5" in version),
+            version[:200],
+        )
         lab.fact("bacpypes3_in_guest", lab.shell("bas-dev", "/opt/bacnet/bin/pip show bacpypes3 | head -2"))
         run_scenario(runner, lab)
         runner.stop_daemons()

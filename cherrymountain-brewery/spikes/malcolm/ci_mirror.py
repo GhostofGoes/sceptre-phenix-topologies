@@ -128,7 +128,7 @@ def run() -> int:
 
         # Capture loss under iperf3: packets delivered to gen-b vs packets captured for gen-b.
         for label, rate in (("100M", "100M"), ("unlimited", "0")):
-            lab.shell("malcolm", f"rm -f /tmp/iperf.pcap; (setsid nohup timeout 120 tcpdump -ni {CAP_IF} -U -s 96 -w /tmp/iperf.pcap 'tcp port 5201' >/tmp/tcpdump-iperf.log 2>&1 </dev/null &); sleep 2; echo started")
+            lab.shell("malcolm", f"rm -f /tmp/iperf.pcap; (setsid nohup timeout 120 tcpdump -ni {CAP_IF} -U -s 96 -w /tmp/iperf.pcap >/tmp/tcpdump-iperf.log 2>&1 </dev/null &); sleep 2; echo started")
             rx0: int = iface_stats(lab, "gen-b", "eth0")
             res = lab.shell("gen-a", f"iperf3 -c {B} -t 20 -b {rate} 2>&1 | tail -6", wait_s=120)
             rx1: int = iface_stats(lab, "gen-b", "eth0")

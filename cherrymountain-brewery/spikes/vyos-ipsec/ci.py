@@ -17,6 +17,7 @@ Paths tested, in order:
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -64,7 +65,11 @@ def run() -> int:
         version_out: str = vyos_op(lab, "rtr-edge", "show version")
         lab.fact("rtr-edge show version", version_out)
         lab.fact("rtr-util show version", vyos_op(lab, "rtr-util", "show version"))
-        lab.check("rtr-edge is VyOS 1.5", bool(re.search(r"Version:\s+VyOS\s+1\.5", version_out)) or "1.5" in version_out, version_out[:300])
+        lab.check(
+            "rtr-edge is a VyOS rolling build (the 1.5 line; rolling images report 999.<stamp>)",
+            "VyOS" in version_out and ("rolling" in version_out or "1.5" in version_out),
+            version_out[:300],
+        )
 
         # Path 1: the config phenix injected and the image applied at first boot.
         stock: dict[str, str] = {}
@@ -111,7 +116,15 @@ def run() -> int:
         for vm in ("rtu-der", "utility-derms"):
             lab.put_file(vm, "/tmp/dnp3_link.py", HERE / "dnp3_link.py")
         lab.shell("rtu-der", "setsid nohup python3 /tmp/dnp3_link.py serve 20000 >/tmp/dnp3.log 2>&1 </dev/null & sleep 1; echo up")
-        lab.shell("rtr-edge", "rm -f /tmp/wan.txt; (setsid nohup timeout 45 tcpdump -ni eth0 -l -c 400 >/tmp/wan.txt 2>&1 </dev/null &); sleep 2; echo started")
+        # Capture on the host tap of rtr-edge's WAN interface: a capture inside the router also
+        # shows the decrypted copy of every inbound packet, which is not what is on the wire.
+        wan_tap: str = lab.taps("rtr-edge")[0]
+        wan_file: Path = lab.dir / "wan-capture.txt"
+        wan_cap: subprocess.Popen[bytes] = subprocess.Popen(  # noqa: S603
+            ["timeout", "90", "tcpdump", "-ni", wan_tap, "-l", "-c", "600"],  # noqa: S607
+            stdout=wan_file.open("wb"), stderr=subprocess.STDOUT,
+        )  # fmt: skip
+        time.sleep(3)
         icmp: str = lab.shell("utility-derms", "ping -c 5 -W 2 10.20.15.10 2>&1 | tail -3")
         lab.check("ICMP crosses the tunnel", " 0% packet loss" in icmp, icmp)
         tcp: str = lab.shell("utility-derms", "timeout 5 bash -c 'exec 3<>/dev/tcp/10.20.15.10/20000' && echo open || echo closed")
@@ -119,13 +132,20 @@ def run() -> int:
         dnp3: str = lab.shell("utility-derms", "python3 /tmp/dnp3_link.py probe 10.20.15.10 2>&1")
         lab.check("DNP3 link status crosses the tunnel", "PASS: DNP3 link status" in dnp3, dnp3)
         time.sleep(5)
-        wan: str = lab.shell("rtr-edge", "pkill tcpdump; sleep 1; cp /tmp/wan.txt /tmp/wan.cp; echo esp=$(grep -c ESP /tmp/wan.cp) icmp=$(grep -cE 'ICMP echo' /tmp/wan.cp) dnp3=$(grep -c '\\.20000' /tmp/wan.cp); head -12 /tmp/wan.cp")
-        lab.save("wan-capture.txt", wan)
-        m = re.search(r"esp=(\d+) icmp=(\d+) dnp3=(\d+)", wan)
+        wan_cap.terminate()
+        wan_cap.wait(timeout=15)
+        wan: str = wan_file.read_text(errors="replace")
+        counts: dict[str, int] = {
+            "esp": len(re.findall(r"\bESP\(", wan)),
+            "icmp": len(re.findall(r"ICMP echo", wan)),
+            "dnp3": len(re.findall(r"\.20000\b", wan)),
+            "ike": len(re.findall(r"\.(?:500|4500):", wan)),
+        }
+        lab.fact("wan_capture_counts", f"tap {wan_tap}: {counts}")
         lab.check(
-            "tcpdump on the WAN link shows ESP only (no cleartext ICMP or TCP 20000)",
-            bool(m) and int(m.group(1)) > 0 and int(m.group(2)) == 0 and int(m.group(3)) == 0,
-            wan[:500],
+            "a capture of the WAN link outside the router shows ESP only (no cleartext ICMP or TCP 20000)",
+            counts["esp"] > 0 and counts["icmp"] == 0 and counts["dnp3"] == 0,
+            f"{counts}\n{wan[:500]}",
         )
 
         # Path 4: reproduce the upstream template bug on rtr-util and see it rejected.

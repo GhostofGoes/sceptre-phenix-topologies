@@ -1,0 +1,540 @@
+# Runs every experiment of this repository under a real phenix and minimega
+# with QEMU/KVM guests, and records how far each gets: configs, create, start,
+# guests running, guests on C2, and stop. The disk images are built from
+# sceptre-phenix-images, or taken from its weekly release when a manual run
+# asks for that (an image with no release is still built, and a released one
+# gets this job's miniccc). Nodes whose image no recipe builds stay off, and
+# the booted guests' memory is scaled to the runner;
+# .github/e2e/run_topology.py records every such adaptation, and where each
+# image came from, with the results. The cluster job runs three experiments
+# at once on a head node and two compute nodes (.github/e2e/run_cluster.py).
+name: E2E
+
+on:
+  push:
+    branches: ['ci-e2e-minimega']
+  workflow_dispatch:
+    inputs:
+      topologies:
+        description: Topologies to run (space-separated names from .github/e2e/topologies.json; empty runs all)
+        type: string
+        default: ''
+      images:
+        description: Build the images from IMAGES_REF, or pull sceptre-phenix-images' weekly release
+        type: choice
+        options: [built, released]
+        default: built
+      release-tag:
+        description: Release tag to pull when images is released (latest, or a date such as 20261014)
+        type: string
+        default: latest
+      topologies-ref:
+        description: Branch, tag or commit of this repository whose topologies to run (empty runs this commit's); the harness always comes from this commit
+        type: string
+        default: ''
+      cluster:
+        description: Also run three experiments at once on a three-host cluster
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# A push cancels the branch's older push run; each dispatch runs on its own.
+concurrency:
+  group: e2e-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'push' }}
+  cancel-in-progress: true
+
+env:
+  PHENIX_REPOSITORY: GhostofGoes/sceptre-phenix
+  PHENIX_REF: ci-e2e-minimega
+  APPS_REPOSITORY: GhostofGoes/sceptre-phenix-apps
+  APPS_REF: ci-e2e-minimega
+  IMAGES_REPOSITORY: GhostofGoes/sceptre-phenix-images
+  IMAGES_REF: ci-e2e-minimega
+  IMAGES_RELEASES: ghcr.io/sandialabs/sceptre-phenix-images
+  IMAGE_SOURCE: ${{ inputs.images || 'built' }}
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      topologies: ${{ steps.plan.outputs.topologies }}
+      images: ${{ steps.plan.outputs.images }}
+      cluster: ${{ steps.plan.outputs.cluster }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Select topologies and images
+        id: plan
+        env:
+          WANT: ${{ inputs.topologies }}
+          CLUSTER: ${{ github.event_name != 'workflow_dispatch' || inputs.cluster }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+          cfg = json.load(open(".github/e2e/topologies.json"))
+          want = os.environ.get("WANT", "").split() or list(cfg)
+          unknown = [n for n in want if n not in cfg]
+          if unknown:
+              raise SystemExit(f"unknown topologies: {unknown}")
+          tops = [{"name": n, **{k: cfg[n].get(k) for k in ("images", "apps", "lfs", "stage", "extra_apps")}} for n in want]
+          cluster = os.environ["CLUSTER"] == "true"
+          # The cluster job's guests boot the e2e image.
+          images = sorted({i for t in tops for i in t["images"] or []} | ({"e2e"} if cluster else set()))
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"topologies={json.dumps(tops)}\n")
+              f.write(f"images={json.dumps(images)}\n")
+              f.write(f"cluster={'true' if cluster else 'false'}\n")
+          print(json.dumps(tops, indent=1), images, "cluster:", cluster)
+          EOF
+
+  images:
+    name: Image ${{ matrix.image }}
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.plan.outputs.images) }}
+    steps:
+      - name: Check out phenix
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.PHENIX_REPOSITORY }}
+          ref: ${{ env.PHENIX_REF }}
+          path: phenix
+          persist-credentials: false
+
+      - name: Check out the image recipes
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.IMAGES_REPOSITORY }}
+          ref: ${{ env.IMAGES_REF }}
+          path: images
+          persist-credentials: false
+
+      - name: Set up oras
+        if: env.IMAGE_SOURCE == 'released'
+        uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+
+      # A released image is used as published; an image with no release at the
+      # tag is built like the rest.
+      - name: Pull the released image
+        id: released
+        if: env.IMAGE_SOURCE == 'released'
+        env:
+          IMAGE: ${{ matrix.image }}
+          TAG: ${{ inputs.release-tag || 'latest' }}
+        run: |
+          set -euo pipefail
+          ref="$IMAGES_RELEASES/$IMAGE.qc2:$TAG"
+          if ! desc=$(oras manifest fetch --descriptor "$ref"); then
+            echo "::notice::$ref is not published; building $IMAGE instead"
+            echo "pulled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          digest=$(python3 -c 'import json, sys; print(json.loads(sys.argv[1])["digest"])' "$desc")
+          oras pull "$ref" -o e2e-images
+          qemu-img info "e2e-images/$IMAGE.qc2" 2>/dev/null || ls -l "e2e-images/$IMAGE.qc2"
+          printf '{"source": "released", "ref": "%s", "digest": "%s"}\n' "$ref" "$digest" > "e2e-images/$IMAGE.source.json"
+          echo "pulled=true" >> "$GITHUB_OUTPUT"
+
+      # The month rebuilds every image monthly against current packages.
+      - name: Compute the cache key
+        id: key
+        env:
+          IMAGE: ${{ matrix.image }}
+          RECIPES: ${{ hashFiles('images/Makefile', 'images/overlays/**', 'images/scripts/**') }}
+          # The same builder inputs as phenix's own image cache key.
+          BUILDER: ${{ hashFiles('phenix/src/go/api/image/**', 'phenix/src/go/cmd/image.go', 'phenix/src/go/types/version/v1/image.go', 'phenix/src/go/tmpl/templates/vmdb.tmpl', 'phenix/src/go/tmpl/templates/miniccc/**', 'phenix/src/go/tmpl/templates/minirouter/**', 'phenix/src/go/tmpl/templates/protonuke/**', 'phenix/src/go/tmpl/tmpl.go', 'phenix/src/go/util/mm/mmcli/**', 'phenix/src/go/util/shell/**', 'phenix/.github/e2e/minimega.ref', 'phenix/.github/e2e/vmdb2.ref', 'phenix/.github/actions/minimega/action.yml', 'phenix/.github/actions/e2e-setup/action.yml', '!phenix/src/go/**/*_test.go') }}
+        run: echo "key=topo-image-$IMAGE-$(date -u +%Y-%m)-${RECIPES:0:16}-${BUILDER:0:16}" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Restore the image
+        id: cache
+        if: steps.released.outputs.pulled != 'true'
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: e2e-images/${{ matrix.image }}.qc2
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Set up phenix and minimega, and the image builder
+        if: steps.released.outputs.pulled != 'true' && steps.cache.outputs.cache-hit != 'true'
+        uses: ./phenix/.github/actions/e2e-setup
+        with:
+          image-builder: 'true'
+          kali-keyring: ${{ startsWith(matrix.image, 'kali') }}
+
+      - name: Free disk space for the build
+        if: steps.released.outputs.pulled != 'true' && steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup || true
+          df -h / /mnt
+
+      - name: Build ${{ matrix.image }} with the images Makefile
+        if: steps.released.outputs.pulled != 'true' && steps.cache.outputs.cache-hit != 'true'
+        working-directory: images
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          cp /usr/local/bin/miniccc /usr/local/bin/minirouter /usr/local/bin/protonuke .
+          start=$(date +%s)
+          if [ "$IMAGE" = vyos ]; then
+            sudo -E env VYOSTMP=/mnt/vyostmp \
+              INJECT_BASE_IMAGE=mcr.microsoft.com/mirror/docker/library/ubuntu:24.04 \
+              make vyos
+          else
+            make "$IMAGE" PHENIX="sudo /usr/local/bin/phenix --store.endpoint bolt:///etc/phenix/store.bdb"
+          fi
+          echo "built $IMAGE in $(( $(date +%s) - start )) s"
+          mkdir -p ../e2e-images
+          sudo mv "$IMAGE.qc2" "../e2e-images/$IMAGE.qc2"
+          sudo chown "$(id -u):$(id -g)" "../e2e-images/$IMAGE.qc2"
+          qemu-img info "../e2e-images/$IMAGE.qc2"
+
+      - name: Save the image
+        if: steps.released.outputs.pulled != 'true' && steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: e2e-images/${{ matrix.image }}.qc2
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Record where the image came from
+        if: steps.released.outputs.pulled != 'true'
+        env:
+          IMAGE: ${{ matrix.image }}
+          CACHED: ${{ steps.cache.outputs.cache-hit == 'true' }}
+        run: |
+          printf '{"source": "built", "ref": "%s@%s", "cached": %s}\n' \
+            "$IMAGES_REPOSITORY" "$(git -C images rev-parse --short HEAD)" "$CACHED" > "e2e-images/$IMAGE.source.json"
+
+      - name: Hand the image to the topology jobs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: topo-image-${{ matrix.image }}
+          path: |
+            e2e-images/${{ matrix.image }}.qc2
+            e2e-images/${{ matrix.image }}.source.json
+          compression-level: 0
+          retention-days: 3
+
+  topology:
+    name: Topology ${{ matrix.topology.name }}
+    needs: [plan, images]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        topology: ${{ fromJSON(needs.plan.outputs.topologies) }}
+    steps:
+      - name: Check out the harness
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: harness
+          persist-credentials: false
+
+      - name: Check out the topologies
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.topologies-ref }}
+          path: topologies
+          persist-credentials: false
+
+      # Only the Git LFS files this topology injects; a failure is recorded by
+      # the run as an LFS pointer where the file should be.
+      - name: Fetch its Git LFS files
+        if: matrix.topology.lfs
+        continue-on-error: true
+        working-directory: topologies
+        env:
+          LFS: ${{ matrix.topology.lfs }}
+        run: git lfs pull --include "$LFS"
+
+      - name: Check out phenix
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.PHENIX_REPOSITORY }}
+          ref: ${{ env.PHENIX_REF }}
+          path: phenix
+          persist-credentials: false
+
+      - name: Check out the phenix apps
+        if: matrix.topology.apps
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.APPS_REPOSITORY }}
+          ref: ${{ env.APPS_REF }}
+          path: apps
+          persist-credentials: false
+
+      - name: Set up phenix and minimega
+        id: setup
+        uses: ./phenix/.github/actions/e2e-setup
+
+      - name: Free disk space for the images
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup || true
+          sudo apt-get install -y -q python3-yaml
+          df -h / /mnt
+
+      - name: Install the phenix apps
+        if: matrix.topology.apps
+        env:
+          MM_PYTHON: ${{ steps.setup.outputs.minimega-python }}
+          EXTRA_APPS: ${{ join(matrix.topology.extra_apps, ' ') }}
+        run: |
+          set -euo pipefail
+          sudo python3 -m venv /opt/phenix-apps
+          sudo /opt/phenix-apps/bin/pip install --quiet "$MM_PYTHON" ./apps/src/python
+          for extra in $EXTRA_APPS; do
+            # Apps this repository ships; a broken one is part of the results.
+            # --no-deps keeps their phenix-apps requirement, a Git URL, from
+            # replacing the apps under test when the two versions differ.
+            if ! sudo /opt/phenix-apps/bin/pip install --quiet --no-deps "./topologies/$extra"; then
+              echo "::warning::installing $extra failed"
+              echo "$extra" >> "$RUNNER_TEMP/apps-failed"
+            fi
+          done
+          for s in /opt/phenix-apps/bin/phenix-app-* /opt/phenix-apps/bin/phenix-scorch-* /opt/phenix-apps/bin/phenix-scheduler-*; do
+            [ -e "$s" ] || continue
+            sudo ln -sf "$s" "/usr/local/bin/$(basename "$s")"
+          done
+          (cd apps/src/go && ./build.sh)
+          for b in apps/src/go/bin/phenix-app-*; do
+            sudo install -m 0755 "$b" "/usr/local/bin/$(basename "$b")"
+          done
+          sudo phenix --store.endpoint bolt:///etc/phenix/store.bdb experiment apps
+
+      - name: Download the images
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: topo-image-@(${{ join(matrix.topology.images, '|') }})
+          path: e2e-images
+          merge-multiple: true
+
+      - name: Install the images and stage the topology's files
+        env:
+          STAGE: ${{ toJSON(matrix.topology.stage) }}
+        run: |
+          set -euo pipefail
+          for f in e2e-images/*.qc2 e2e-images/*.source.json; do
+            [ -e "$f" ] || continue
+            sudo mv "$f" /phenix/images/
+          done
+          # A released image carries the miniccc its release job copied out of
+          # a minimega container; give it the static one this job's minimega
+          # built, as the built images have. VyOS keeps its own, which lives in
+          # the image's squashfs where inject-miniexe cannot reach.
+          for src in /phenix/images/*.source.json; do
+            [ -e "$src" ] || continue
+            img=$(basename "$src" .source.json)
+            grep -q '"source": "released"' "$src" && [ "$img" != vyos ] || continue
+            exe=/usr/local/bin/miniccc
+            # minirouter brings its miniccc dependency with it.
+            [ "$img" = minirouter ] && exe=/usr/local/bin/minirouter
+            sudo phenix --store.endpoint bolt:///etc/phenix/store.bdb image inject-miniexe "$exe" "/phenix/images/$img.qc2"
+            sudo python3 -c 'import json, sys; p, exe = sys.argv[1:]; d = json.load(open(p)); d["injected"] = exe; json.dump(d, open(p, "w"))' "$src" "$(basename "$exe")"
+          done
+          ls -lh /phenix/images
+          # The scenarios name their files under /phenix/topologies/<name>.
+          sudo ln -sfn "$GITHUB_WORKSPACE/topologies" /phenix/topologies
+          python3 -c 'import json, os; [print(s, d) for s, d in (json.loads(os.environ["STAGE"]) or [])]' |
+          while read -r src dst; do
+            sudo mkdir -p "$(dirname "$dst")"
+            sudo cp -r "topologies/$src" "$dst"
+          done
+
+      - name: Run ${{ matrix.topology.name }}
+        env:
+          NAME: ${{ matrix.topology.name }}
+          APPS_FAILED: ${{ runner.temp }}/apps-failed
+          TOPOLOGIES_DIR: ${{ github.workspace }}/topologies
+        # exec: the runner signals only the step's shell on a cancel, and sudo
+        # passes that on to the driver.
+        run: exec sudo -E python3 harness/.github/e2e/run_topology.py "$NAME" "$RUNNER_TEMP/result.json"
+
+      - name: Summarize
+        if: always()
+        env:
+          NAME: ${{ matrix.topology.name }}
+        run: |
+          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/result.json" 2>/dev/null || true
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          path = os.path.join(os.environ["RUNNER_TEMP"], "result.json")
+          try:
+              r = json.load(open(path))
+          except (OSError, ValueError):
+              print(f"### {os.environ['NAME']}: no results"); raise SystemExit
+          fixed = f" ({r['result_with_fixes']} with fixes)" if r.get("result_with_fixes") else ""
+          print(f"### {r['name']}: {r['result']}{fixed}")
+          for a in r["attempts"]:
+              print(f"\n**{a['label']}**: {a['result']}\n")
+              for x in a["adaptations"]:
+                  print(f"- adaptation: {x}")
+              for x in a["findings"]:
+                  print(f"- finding: {x}")
+              print("\n| stage | ok | seconds | detail |\n|---|---|---|---|")
+              for s in a["stages"]:
+                  d = s["detail"].replace("\n", " ").replace("|", "/")[:300]
+                  print(f"| {s['stage']} | {'yes' if s['ok'] else 'NO'} | {s['seconds']} | {d} |")
+          EOF
+
+      - name: Collect logs
+        if: always()
+        env:
+          NAME: ${{ matrix.topology.name }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          sudo cp "$RUNNER_TEMP/result.json" "$RUNNER_TEMP/logs/" 2>/dev/null || true
+          sudo cp -r /tmp/topo-ci "$RUNNER_TEMP/logs/configs" 2>/dev/null || true
+          sudo cp -r /phenix/experiments "$RUNNER_TEMP/logs/experiments" 2>/dev/null || true
+          sudo cp /tmp/minimega/minimega.log /tmp/minimega/minimega.stdout "$RUNNER_TEMP/logs/" 2>/dev/null || true
+          sudo cp -r /var/log/phenix "$RUNNER_TEMP/logs/phenix" 2>/dev/null || true
+          sudo find "$RUNNER_TEMP/logs" \( -name '*.qc2' -o -name '*.qcow2' -o -name '*.iso' \) -delete || true
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/logs"
+
+      - name: Upload the results and logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: topo-result-${{ matrix.topology.name }}
+          path: ${{ runner.temp }}/logs
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  cluster:
+    name: Cluster (3 hosts, 3 experiments)
+    needs: [plan, images]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.cluster == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Check out the harness
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: harness
+          persist-credentials: false
+
+      - name: Check out phenix
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.PHENIX_REPOSITORY }}
+          ref: ${{ env.PHENIX_REF }}
+          path: phenix
+          persist-credentials: false
+
+      - name: Set up phenix and minimega (the head node)
+        uses: ./phenix/.github/actions/e2e-setup
+
+      - name: Free disk space and load the veth module
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup || true
+          sudo modprobe veth
+          df -h / /mnt
+
+      - name: Download the e2e image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: topo-image-e2e
+          path: e2e-images
+
+      - name: Install the image
+        run: |
+          sudo mv e2e-images/e2e.qc2 e2e-images/e2e.source.json /phenix/images/
+          ls -lh /phenix/images
+
+      # Each node keeps its own minimega base directory (a shared one would
+      # collide on the socket and the VM directories) and shares the runner's
+      # /phenix/images at the same path, so every host finds the same disks.
+      - name: Start the compute nodes
+        run: |
+          set -euo pipefail
+          docker build -q -t phenix-ci-compute harness/.github/e2e/cluster
+          docker network create --subnet 172.31.0.0/24 --gateway 172.31.0.1 phenix-ci
+          head=$(hostname)
+          for n in 1 2; do
+            c=compute$n
+            sudo mkdir -p "/mnt/mm/$c"
+            docker run -d --init --privileged --name "$c" --hostname "$c" \
+              --network phenix-ci --ip "172.31.0.1$n" --add-host "$head:172.31.0.1" \
+              --memory 4g -e "MM_BASE=/tmp/mm-$c" \
+              -v /lib/modules:/lib/modules:ro \
+              -v /usr/local/bin/minimega:/usr/local/bin/minimega:ro \
+              -v /phenix/images:/phenix/images \
+              -v "/mnt/mm/$c:/tmp/mm-$c" \
+              phenix-ci-compute
+            # The head dials the compute nodes by name for VNC and cc mounts.
+            echo "172.31.0.1$n $c" | sudo tee -a /etc/hosts
+          done
+          for c in compute1 compute2; do
+            for _ in $(seq 60); do
+              sudo test -S "/mnt/mm/$c/minimega" && break
+              sleep 1
+            done
+            if ! sudo test -S "/mnt/mm/$c/minimega"; then
+              echo "::error::$c's minimega socket never appeared"
+              docker logs "$c" || true
+              exit 1
+            fi
+          done
+          docker ps
+
+      - name: Run the experiments on the cluster
+        # exec: the runner signals only the step's shell on a cancel.
+        run: exec sudo -E python3 harness/.github/e2e/run_cluster.py "$RUNNER_TEMP/cluster.json"
+
+      - name: Summarize
+        if: always()
+        run: |
+          sudo chown "$(id -u):$(id -g)" "$RUNNER_TEMP/cluster.json" 2>/dev/null || true
+          python3 - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          try:
+              r = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "cluster.json")))
+          except (OSError, ValueError):
+              print("### Cluster: no results"); raise SystemExit
+          print(f"### Cluster: {r.get('result', 'incomplete')}\n")
+          print("| stage | ok | seconds | detail |\n|---|---|---|---|")
+          for s in r["stages"]:
+              d = s["detail"].replace("\n", "<br>").replace("|", "/")[:2000]
+              print(f"| {s['stage']} | {'yes' if s['ok'] else 'NO'} | {s['seconds']} | {d} |")
+          print(f"\n```\n{json.dumps(r['facts'], indent=1)}\n```")
+          EOF
+
+      - name: Collect logs
+        if: always()
+        run: |
+          L="$RUNNER_TEMP/logs"
+          mkdir -p "$L"
+          sudo cp "$RUNNER_TEMP/cluster.json" "$L/" 2>/dev/null || true
+          sudo cp /tmp/minimega/minimega.log /tmp/minimega/minimega.stdout "$L/" 2>/dev/null || true
+          sudo cp -r /var/log/phenix "$L/phenix" 2>/dev/null || true
+          sudo cp -r /phenix/experiments "$L/experiments" 2>/dev/null || true
+          sudo ovs-vsctl show > "$L/head-ovs.txt" 2>&1 || true
+          for c in compute1 compute2; do
+            docker logs "$c" > "$L/$c.docker.log" 2>&1 || true
+            sudo cp "/mnt/mm/$c/minimega.log" "$L/$c.minimega.log" 2>/dev/null || true
+            docker exec "$c" ovs-vsctl show > "$L/$c-ovs.txt" 2>&1 || true
+          done
+          sudo find "$L" \( -name '*.qc2' -o -name '*.qcow2' \) -delete || true
+          sudo chown -R "$(id -u):$(id -g)" "$L"
+
+      - name: Upload the results and logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: topo-result-cluster
+          path: ${{ runner.temp }}/logs
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true

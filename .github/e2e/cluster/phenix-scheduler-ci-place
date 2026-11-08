@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""phenix user scheduler for the cluster job: places each VM on the host that
+/etc/phenix-ci/placement.json names for its experiment ("head" is this host).
+
+phenix passes {spec, hosts} on stdin and reads the document back from stdout.
+Its host list leaves out the head node, so the head's name is added here. The
+hosts phenix passed are saved to /etc/phenix-ci/hosts-<experiment>.json for the
+job's checks."""
+
+import json
+import socket
+import sys
+
+doc = json.load(sys.stdin)
+exp = doc["spec"]["experimentName"]
+want = json.load(open("/etc/phenix-ci/placement.json"))[exp]
+head = socket.gethostname()
+names = {h["name"] for h in doc["hosts"] or []}
+with open(f"/etc/phenix-ci/hosts-{exp}.json", "w") as f:
+    json.dump(doc["hosts"], f)
+sched = {vm: head if host == "head" else host for vm, host in want.items()}
+bad = sorted({h for h in sched.values() if h != head and h not in names})
+if bad:
+    sys.exit(f"ci-place: {bad} are not cluster hosts {sorted(names)}")
+doc["spec"]["schedules"] = sched
+json.dump(doc, sys.stdout)

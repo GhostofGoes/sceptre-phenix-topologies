@@ -12,6 +12,10 @@ inputs:
   phenix-ref:
     description: Commit of phenix
     required: true
+  image-builder:
+    description: Also install the phenix image builder (true/false), for the image jobs
+    required: false
+    default: 'false'
   images:
     description: Images to install, separated by | (artifact names cm-image-<name>)
     required: false
@@ -38,6 +42,8 @@ runs:
 
     - name: Set up phenix and minimega
       uses: ./phenix/.github/actions/e2e-setup
+      with:
+        image-builder: ${{ inputs.image-builder }}
 
     - name: Download the images
       if: inputs.images != ''

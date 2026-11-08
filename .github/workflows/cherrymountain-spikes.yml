@@ -1,0 +1,570 @@
+# Runs the CherryMountain Brewery Phase 0 spikes that need real VMs (or more
+# memory than a laptop has) on GitHub-hosted ubuntu-24.04 runners, which have
+# /dev/kvm. The technique comes from the phenix fork's E2E workflow
+# (GhostofGoes/sceptre-phenix, branch ci-e2e-minimega): a real phenix and a
+# pinned minimega boot guests built from the images repository's recipes.
+#
+# One job per spike. Evidence (result.json, summary.md, logs) goes to the
+# `evidence-<spike>` artifact; the spike READMEs record the verdicts.
+name: CherryMountain spikes
+
+on:
+  push:
+    branches: ['feat-secret-topo']
+    paths:
+      - 'cherrymountain-brewery/spikes/**'
+      - '.github/actions/cm-lab/**'
+      - '.github/workflows/cherrymountain-spikes.yml'
+  workflow_dispatch:
+    inputs:
+      spikes:
+        description: >-
+          Spikes to run, space-separated (empty runs all): vyos-ipsec bbmd-netns
+          bbmd-vyos autotunnel serial malcolm-docker malcolm-mirror
+        type: string
+        default: ''
+      phenix-ref:
+        description: Ref of GhostofGoes/sceptre-phenix
+        type: string
+        default: ci-e2e-minimega
+      images-ref:
+        description: Ref of GhostofGoes/sceptre-phenix-images
+        type: string
+        default: ci-e2e-minimega
+      apps-ref:
+        description: Ref of GhostofGoes/sceptre-phenix-apps
+        type: string
+        default: ci-e2e-minimega
+
+permissions: {}
+
+# A newer push supersedes the run in progress for the same ref.
+concurrency:
+  group: cherrymountain-spikes-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PHENIX_REPOSITORY: GhostofGoes/sceptre-phenix
+  IMAGES_REPOSITORY: GhostofGoes/sceptre-phenix-images
+  APPS_REPOSITORY: GhostofGoes/sceptre-phenix-apps
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      phenix-ref: ${{ steps.refs.outputs.phenix-ref }}
+      images-ref: ${{ steps.refs.outputs.images-ref }}
+      apps-ref: ${{ steps.refs.outputs.apps-ref }}
+      spikes: ${{ steps.select.outputs.spikes }}
+    steps:
+      - name: Resolve the companion refs to commits
+        id: refs
+        env:
+          IN_PHENIX_REF: ${{ inputs.phenix-ref || 'ci-e2e-minimega' }}
+          IN_IMAGES_REF: ${{ inputs.images-ref || 'ci-e2e-minimega' }}
+          IN_APPS_REF: ${{ inputs.apps-ref || 'ci-e2e-minimega' }}
+        run: |
+          set -euo pipefail
+          # One commit per repository for every job of the run (and a re-run).
+          resolve() { # repository ref
+            if [[ $2 =~ ^[0-9a-f]{40}$ ]]; then
+              echo "$2"
+              return
+            fi
+            local sha
+            sha=$(git ls-remote "$GITHUB_SERVER_URL/$1" "refs/heads/$2" "refs/tags/$2^{}" "refs/tags/$2" | awk 'NR == 1 { print $1 }')
+            if [ -z "$sha" ]; then
+              echo "::error::$1 has no branch or tag $2" >&2
+              return 1
+            fi
+            echo "$sha"
+          }
+          {
+            echo "phenix-ref=$(resolve "$PHENIX_REPOSITORY" "$IN_PHENIX_REF")"
+            echo "images-ref=$(resolve "$IMAGES_REPOSITORY" "$IN_IMAGES_REF")"
+            echo "apps-ref=$(resolve "$APPS_REPOSITORY" "$IN_APPS_REF")"
+          } | tee -a "$GITHUB_OUTPUT"
+
+      - name: Select the spikes
+        id: select
+        env:
+          SPIKES: ${{ inputs.spikes }}
+        run: |
+          set -euo pipefail
+          all='vyos-ipsec bbmd-netns bbmd-vyos autotunnel serial malcolm-docker malcolm-mirror'
+          read -r -a want <<<"${SPIKES:-$all}"
+          for n in "${want[@]}"; do
+            [[ " $all " == *" $n "* ]] || { echo "::error::unknown spike '$n'"; exit 1; }
+          done
+          # Padded with spaces so a job can test ' name ' with contains().
+          echo "spikes= ${want[*]} " | tee -a "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
+  # Images. Built once, cached, and handed to the spike jobs as artifacts.
+  # ---------------------------------------------------------------------------
+
+  image-cm-spike:
+    name: Image cm-spike
+    needs: plan
+    if: >-
+      contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
+      || contains(needs.plan.outputs.spikes, ' autotunnel ') || contains(needs.plan.outputs.spikes, ' serial ')
+      || contains(needs.plan.outputs.spikes, ' malcolm-mirror ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Restore the image
+        id: cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: out/cm-spike.qc2
+          key: cm-image-cm-spike-${{ hashFiles('cherrymountain-brewery/spikes/ci/build_image.sh', 'cherrymountain-brewery/spikes/ci/images/**') }}-${{ needs.plan.outputs.phenix-ref }}
+
+      - name: Set up phenix, minimega and the image builder
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          image-builder: 'true'
+
+      - name: Build the image
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          # build_image.sh needs the images checkout only for VyOS.
+          IMAGES_DIR: ${{ github.workspace }}
+          OUT_DIR: ${{ github.workspace }}/out
+        run: bash cherrymountain-brewery/spikes/ci/build_image.sh cm-spike
+
+      - name: Save the image
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: out/cm-spike.qc2
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Hand the image to the spike jobs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cm-image-cm-spike
+          path: out/cm-spike.qc2
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+          overwrite: true
+
+  image-vyos:
+    name: Image vyos
+    needs: plan
+    if: contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Restore the image
+        id: cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: out/vyos.qc2
+          # The month rebuilds the rolling release monthly.
+          key: cm-image-vyos-${{ hashFiles('cherrymountain-brewery/spikes/ci/build_image.sh') }}-${{ needs.plan.outputs.images-ref }}-${{ needs.plan.outputs.phenix-ref }}
+
+      - name: Check out the image recipes
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ env.IMAGES_REPOSITORY }}
+          ref: ${{ needs.plan.outputs.images-ref }}
+          path: images
+          persist-credentials: false
+
+      - name: Set up phenix and minimega
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+
+      - name: Free disk space for the build
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup || true
+          sudo modprobe nbd max_part=8 || true
+          df -h /
+
+      - name: Build the image
+        if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          IMAGES_DIR: ${{ github.workspace }}/images
+          OUT_DIR: ${{ github.workspace }}/out
+        run: bash cherrymountain-brewery/spikes/ci/build_image.sh vyos
+
+      - name: Save the image
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: out/vyos.qc2
+          key: ${{ steps.cache.outputs.cache-primary-key }}
+
+      - name: Hand the image to the spike jobs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cm-image-vyos
+          path: out/vyos.qc2
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Upload the build logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: image-vyos-buildlog
+          path: images/**/*.log
+          if-no-files-found: ignore
+          overwrite: true
+
+  # ---------------------------------------------------------------------------
+  # Spikes that boot guests under phenix and minimega.
+  # ---------------------------------------------------------------------------
+
+  vyos-ipsec:
+    name: Spike vyos-ipsec
+    needs: [plan, image-cm-spike, image-vyos]
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' vyos-ipsec ') && needs.image-cm-spike.result == 'success' && needs.image-vyos.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
+      CM_IMAGES_REF: ${{ needs.plan.outputs.images-ref }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Set up the lab
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          images: cm-spike|vyos
+
+      - name: Run the spike
+        run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/vyos-ipsec/ci.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" evidence || true
+          find evidence -type f -size +50M -delete 2>/dev/null || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-vyos-ipsec
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  bbmd-vyos:
+    name: Spike bbmd (VyOS router)
+    needs: [plan, image-cm-spike, image-vyos]
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' bbmd-vyos ') && needs.image-cm-spike.result == 'success' && needs.image-vyos.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
+      CM_IMAGES_REF: ${{ needs.plan.outputs.images-ref }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Set up the lab
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          images: cm-spike|vyos
+
+      - name: Run the spike
+        run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/bbmd/ci.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" evidence || true
+          find evidence -type f -size +50M -delete 2>/dev/null || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-bbmd-vyos
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  autotunnel:
+    name: Spike autotunnel
+    needs: [plan, image-cm-spike]
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' autotunnel ') && needs.image-cm-spike.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Set up the lab
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          images: cm-spike
+
+      - name: Run the spike
+        run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/autotunnel/ci.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" evidence || true
+          find evidence -type f -size +50M -delete 2>/dev/null || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-autotunnel
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  serial:
+    name: Spike serial
+    needs: [plan, image-cm-spike]
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' serial ') && needs.image-cm-spike.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Set up the lab
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          images: cm-spike
+
+      - name: Run the spike
+        run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/serial/ci.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" evidence || true
+          find evidence -type f -size +50M -delete 2>/dev/null || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-serial
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  malcolm-mirror:
+    name: Spike malcolm (mirror capture)
+    needs: [plan, image-cm-spike]
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' malcolm-mirror ') && needs.image-cm-spike.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
+      CM_APPS_REF: ${{ needs.plan.outputs.apps-ref }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Set up the lab and the phenix apps
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          images: cm-spike
+          apps-repository: ${{ env.APPS_REPOSITORY }}
+          apps-ref: ${{ needs.plan.outputs.apps-ref }}
+
+      - name: Run the spike
+        run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/malcolm/ci_mirror.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" evidence || true
+          find evidence -type f -size +50M -delete 2>/dev/null || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-malcolm-mirror
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  # ---------------------------------------------------------------------------
+  # Spikes that need no guests.
+  # ---------------------------------------------------------------------------
+
+  bbmd-netns:
+    name: Spike bbmd (Linux router, network namespaces)
+    needs: plan
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' bbmd-netns ') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Install the tools
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -euo pipefail
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends iproute2 nftables tcpdump
+          python3 -m venv "$RUNNER_TEMP/bbmd-venv"
+          "$RUNNER_TEMP/bbmd-venv/bin/pip" install --quiet bacpypes3==0.0.110 pydantic==2.11.7
+
+      - name: Run the spike
+        run: sudo -E "$RUNNER_TEMP/bbmd-venv/bin/python" cherrymountain-brewery/spikes/bbmd/netns_lab.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" evidence || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-bbmd-netns
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  malcolm-docker:
+    name: Spike malcolm (Docker on the runner)
+    needs: plan
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' malcolm-docker ') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      - name: Run the spike
+        run: bash cherrymountain-brewery/spikes/malcolm/docker_fit.sh
+
+      - name: Prepare the evidence
+        if: always()
+        run: sudo chown -R "$(id -u):$(id -g)" evidence || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-malcolm-docker
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true

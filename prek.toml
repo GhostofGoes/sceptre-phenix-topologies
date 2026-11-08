@@ -87,6 +87,7 @@ stages = ["commit-msg"]
 args = [
     "feat",
     "fix",
+    "ci",
     "docs",
     "style",
     "refactor",

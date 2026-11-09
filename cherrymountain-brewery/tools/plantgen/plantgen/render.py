@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import csv
+import fnmatch
 import io
+import ipaddress
 import json
 import uuid
 from typing import Any
@@ -12,16 +14,29 @@ import yaml
 from pydantic import BaseModel
 
 from plantgen.allocate import (
-    MASTER_FC,
-    OTSIM_BASE,
     READ_FC,
+    READ_HOLDING_FC,
     Allocation,
-    IecAddress,
+    BacnetObject,
+    MasterBlock,
     TagAddress,
     access,
+    master_blocks,
     rio_devices,
 )
-from plantgen.model import ModbusEndpoint, Plant, Tag, is_analog, is_writable
+from plantgen.model import (
+    IO_ROLES,
+    MODBUS_IO_ROLES,
+    BacnetEndpoint,
+    Dnp3Endpoint,
+    Host,
+    ModbusEndpoint,
+    Plant,
+    PlantError,
+    Tag,
+    is_analog,
+    is_writable,
+)
 
 GENERATOR: str = "plantgen"
 HEADER: str = (
@@ -31,6 +46,10 @@ HEADER: str = (
 FUXA_NAMESPACE: uuid.UUID = uuid.uuid5(
     uuid.NAMESPACE_DNS, "fuxa.cherrymountain.example"
 )
+#: PLC northbound ports (DESIGN.md §10.4).
+NORTHBOUND_PORT: dict[str, int] = {"modbus": 502, "opcua": 4840, "s7comm": 102}
+#: The federate whose sim settings are the variant's ``sim`` block.
+CELLAR: str = "cellar"
 #: FUXA alarm severities for ISA-18.2 priorities.
 FUXA_SEVERITY: dict[str, str] = {
     "critical": "highhigh",
@@ -42,6 +61,9 @@ FUXA_SEVERITY: dict[str, str] = {
 
 def render_all(plant: Plant, alloc: Allocation) -> dict[str, str]:
     """Every output file for the variant."""
+    # Imported here: apps.py renders through this module's helpers.
+    from plantgen import apps  # noqa: PLC0415
+
     out = {
         "tags.json": _json(tags_doc(plant, alloc)),
         "registers.json": _json(registers_doc(plant, alloc)),
@@ -51,15 +73,28 @@ def render_all(plant: Plant, alloc: Allocation) -> dict[str, str]:
         "phenix/ot-sim.yaml": _yaml(plant, otsim_app(plant)),
         "phenix/ntp.yaml": _yaml(plant, ntp_app(plant)),
     }
+    if plant.spec.soh:
+        out["phenix/soh.yaml"] = _yaml(plant, apps.soh_app(plant, alloc))
+    if plant.spec.wireguard:
+        out["phenix/wireguard.yaml"] = _yaml(plant, apps.wireguard_app(plant))
+    if plant.spec.scorch:
+        out["scorch/pcap.yaml"] = _yaml(plant, apps.scorch_captures(plant))
     for plc, rios in alloc.plc_rios.items():
         out[f"openplc/{plc}/modbus_master.json"] = _json(
             modbus_master(plant, alloc, plc, rios)
         )
-        out[f"openplc/{plc}/modbus_slave.json"] = _json(modbus_slave(plant, alloc, plc))
+        if plant.hosts[plc].northbound == "modbus":
+            out[f"openplc/{plc}/modbus_slave.json"] = _json(
+                modbus_slave(plant, alloc, plc)
+            )
         out[f"openplc/{plc}/mbconfig.cfg"] = mbconfig(plant, alloc, plc, rios)
         out[f"openplc/{plc}/located_vars.st"] = located_vars(plant, alloc, plc)
+    for host in alloc.bacnet:
+        out[f"bacnet/{host}.json"] = _json(bacnet_doc(plant, alloc, host))
+    for fep in plant.hosts_by_role("fep"):
+        out[f"dnp3/{fep.name}.json"] = _json(dnp3_doc(plant, alloc, fep))
     for scada in plant.hosts_by_role("scada"):
-        out[f"fuxa/{scada.name}-tags.json"] = _json(fuxa_doc(plant, alloc))
+        out[f"fuxa/{scada.name}-tags.json"] = _json(fuxa_doc(plant, alloc, scada))
     return out
 
 
@@ -112,6 +147,14 @@ def tags_doc(plant: Plant, alloc: Allocation) -> dict[str, Any]:
                     "helics_key": t.helics_key,
                 }
             )
+        if t.plc is None:
+            d["owner"] = t.owner
+        if t.signed:
+            d["signed"] = True
+        if t.written_by:
+            d["written_by"] = t.written_by
+        if t.bacnet:
+            d["bacnet"] = t.bacnet.model_dump(exclude_none=True)
         if t.generated:
             d["generated"] = True
         if t.alarms:
@@ -167,8 +210,8 @@ class RegisterRow(BaseModel):
 
 
 def register_rows(plant: Plant, alloc: Allocation) -> list[RegisterRow]:
-    """Register rows in tag order."""
-    return [RegisterRow.of(alloc.tags[t.name]) for t in plant.tags]
+    """Register rows in tag order (PLC tags only; BACnet points have none)."""
+    return [RegisterRow.of(alloc.tags[t.name]) for t in plant.tags if t.plc]
 
 
 def registers_doc(plant: Plant, alloc: Allocation) -> dict[str, Any]:
@@ -191,6 +234,33 @@ def registers_doc(plant: Plant, alloc: Allocation) -> dict[str, Any]:
             plc: layout.buffer_mapping() for plc, layout in alloc.layouts.items()
         },
         "registers": rows,
+    } | _extra_registers(plant, alloc)
+
+
+def _extra_registers(plant: Plant, alloc: Allocation) -> dict[str, Any]:
+    """Sections that only variants with such devices have."""
+    extra: dict[str, Any] = {}
+    northbound = {plc: plant.hosts[plc].northbound for plc in alloc.plc_rios}
+    if set(northbound.values()) != {"modbus"}:
+        extra["northbound"] = northbound
+    if alloc.bacnet:
+        extra["bacnet_objects"] = [
+            _bacnet_row(plant, o) for objs in alloc.bacnet.values() for o in objs
+        ]
+    return extra
+
+
+def _bacnet_row(plant: Plant, o: BacnetObject) -> dict[str, Any]:
+    ep = plant.hosts[o.host].bacnet
+    return {
+        "tag": o.tag.name if o.tag else None,
+        "host": o.host,
+        "device_instance": ep.instance if ep else None,
+        "object_type": o.object_type,
+        "object_type_number": o.type_number,
+        "instance": o.instance,
+        "fuxa_address": o.fuxa_address,
+        "helics_key": f"{o.device.topic}.{o.point}",
     }
 
 
@@ -218,29 +288,33 @@ def alarms_doc(plant: Plant, alloc: Allocation) -> dict[str, Any]:
     """Rationalized alarms for the PLC program and FUXA alarm definitions."""
     alarms = []
     for a in plant.alarms:
-        bit = alloc.tags[a.name]
         src = plant.tag(a.source)
-        alarms.append(
-            {
-                "name": a.name,
-                "source": a.source,
-                "kind": a.kind,
-                "limit": a.limit,
-                "units": src.units,
-                "setpoint": a.setpoint,
-                "delay_s": a.delay_s,
-                "priority": a.priority,
-                "fuxa_severity": FUXA_SEVERITY[a.priority],
-                "cause": a.cause,
-                "consequence": a.consequence,
-                "action": a.action,
-                "response_time_s": a.response_time_s,
-                "plc": src.plc,
-                "plc_iec": str(bit.plc_iec),
-                "fuxa_tag_id": fuxa_id(a.name),
-                "text": f"{src.desc}: {a.kind} alarm",
-            }
-        )
+        entry: dict[str, Any] = {
+            "name": a.name,
+            "source": a.source,
+            "kind": a.kind,
+            "limit": a.limit,
+            "units": src.units,
+            "setpoint": a.setpoint,
+            "delay_s": a.delay_s,
+            "priority": a.priority,
+            "fuxa_severity": FUXA_SEVERITY[a.priority],
+            "cause": a.cause,
+            "consequence": a.consequence,
+            "action": a.action,
+            "response_time_s": a.response_time_s,
+            "plc": src.plc,
+            "plc_iec": str(alloc.tags[a.name].plc_iec) if a.has_bit else None,
+            # PLC alarms: the alarm bit's tag; FUXA-evaluated: the source tag.
+            "fuxa_tag_id": fuxa_id(a.name if a.has_bit else a.source),
+            "text": f"{src.desc}: {a.kind} alarm",
+        }
+        if not a.has_bit:
+            entry["evaluator"] = "fuxa"
+            entry["owner"] = src.owner
+        if a.suppress:
+            entry["suppress"] = a.suppress
+        alarms.append(entry)
     return {"generator": GENERATOR, "variant": plant.variant, "alarms": alarms}
 
 
@@ -263,9 +337,17 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
             "core_type": "zmq",
         },
         "end_time_s": plant.spec.helics.end_time_s,
-        "federates": {},
-        "io_federates": {},
     }
+    if plant.spec.clock:
+        doc["clock"] = plant.spec.clock.model_dump()
+    if plant.spec.ground_truth:
+        doc["ground_truth"] = {
+            "endpoint": f"http://{plant.hosts['sim-ctl'].ip('mgmt')}:9200",
+            "index_base": "cherrymountain-truth",
+        }
+    doc["federates"] = {}
+    doc["io_federates"] = {}
+    loads = plant.file.loads
     for fname, fed in plant.federates.items():
         pubs = []
         writes = []
@@ -290,6 +372,8 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
                 if is_writable(point.type):
                     writes.append(f"{dev.name}.{point.name}")
         for out in fed.outputs:
+            if out.variants is not None and plant.variant not in out.variants:
+                continue
             pubs.append(
                 {
                     "key": f"{fname}/{out.key}",
@@ -298,16 +382,33 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
                     "output": out.key,
                 }
             )
-        subs = []
-        defaults = {}
+        subs: list[dict[str, Any]] = []
+        defaults: dict[str, float] = {}
+        subscribe = _Subscriber(feds, subs, defaults)
+
         for inp in fed.inputs:
-            source = inp.key.split("/")[0]
-            if source in feds:
-                subs.append({"key": inp.key, "type": inp.type, "units": inp.units})
-            else:
-                defaults[inp.key] = inp.default
+            if inp.variants is not None and plant.variant not in inp.variants:
+                continue
+            subscribe(inp.key, inp.type, inp.units, inp.default)
+        # Electrical loads (DESIGN.md §9.2): publishers publish their kW and
+        # follow their bus; the power federate subscribes to every load.
+        buses: list[str] = []
+        for load in loads:
+            if load.federate == fname:
+                pubs.append(
+                    {
+                        "key": f"{fname}/load.{load.name}.kw",
+                        "type": "double",
+                        "units": "kW",
+                        "output": f"load.{load.name}.kw",
+                    }
+                )
+                if load.bus not in buses:
+                    buses.append(load.bus)
+        for bus in buses:
+            subscribe(f"power/bus.{bus}.energized", "boolean", None, 1.0)
         sim = plant.spec.sim
-        doc["federates"][fname] = {
+        entry: dict[str, Any] = {
             "host": fed.host,
             "period_s": fed.period_s,
             "endpoint": f"{fname}/{fed.endpoint}",
@@ -316,7 +417,32 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
             "subscriptions": subs,
             "input_defaults": defaults,
             "ambient_psia": plant.file.site.ambient_psia,
-            "sim": {
+        }
+        if fname == "power":
+            entry["loads"] = []
+            for load in loads:
+                key = f"{load.federate}/load.{load.name}.kw"
+                subscribe(key, "double", "kW", load.default_kw)
+                entry["loads"].append(
+                    {
+                        "name": load.name,
+                        "bus": load.bus,
+                        "rated_kw": load.rated_kw,
+                        "key": key,
+                        "desc": load.desc,
+                    }
+                )
+            for bus in dict.fromkeys(load.bus for load in loads):
+                pubs.append(
+                    {
+                        "key": f"power/bus.{bus}.energized",
+                        "type": "boolean",
+                        "units": None,
+                        "output": f"bus.{bus}.energized",
+                    }
+                )
+        if fname == CELLAR:
+            entry["sim"] = {
                 "compression": sim.compression,
                 "noise": sim.noise,
                 "seed": sim.seed,
@@ -324,10 +450,14 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
                     unit: st.model_dump(exclude_none=True)
                     for unit, st in sim.initial_state.items()
                 },
-            },
-        }
-    for rio in plant.hosts_by_role("rio"):
+            }
+        else:
+            entry["sim"] = plant.spec.federate_sim.get(fname, {})
+        doc["federates"][fname] = entry
+    for rio in plant.hosts_by_role(*IO_ROLES):
         devs = rio_devices(plant, rio.name)
+        if not devs:
+            continue
         subs = []
         sends = []
         for dev in devs:
@@ -350,6 +480,28 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
     return doc
 
 
+class _Subscriber:
+    """Adds a subscription when the source federate is in the variant, else
+    records the input's default."""
+
+    feds: list[str]
+    subs: list[dict[str, Any]]
+    defaults: dict[str, float]
+
+    def __init__(
+        self, feds: list[str], subs: list[dict[str, Any]], defaults: dict[str, float]
+    ) -> None:
+        self.feds = feds
+        self.subs = subs
+        self.defaults = defaults
+
+    def __call__(self, key: str, typ: str, units: str | None, default: float) -> None:
+        if key.split("/", maxsplit=1)[0] in self.feds:
+            self.subs.append({"key": key, "type": typ, "units": units})
+        else:
+            self.defaults[key] = default
+
+
 def _bound_tag(plant: Plant, device: str, point: str) -> Tag | None:
     for t in plant.tags:
         if t.device and t.device.name == device and t.point == point:
@@ -363,7 +515,12 @@ def _bound_tag(plant: Plant, device: str, point: str) -> Tag | None:
 
 
 def otsim_app(plant: Plant) -> dict[str, Any]:
-    """Scenario ``ot-sim`` app block (DESIGN.md §15.2 shape)."""
+    """Scenario ``ot-sim`` app block (DESIGN.md §15.2 shape).
+
+    BACnet controllers use the proposed ``bacnet`` host metadata and
+    ``bacnet`` point attributes of the upstream ot-sim app extension
+    (DESIGN.md §16; documented in tools/plantgen/README.md).
+    """
     used = []
     for d in plant.devices:
         if d.type not in used:
@@ -373,10 +530,21 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
         points = {}
         for p in plant.device_types[dtype].values():
             entry: dict[str, Any] = {"type": p.type}
-            if is_analog(p.type):
+            if p.bacnet is not None:
+                bac: dict[str, Any] = {"object-type": p.bacnet.object_type}
+                if p.bacnet.units:
+                    bac["units"] = p.bacnet.units
+                if p.bacnet.states:
+                    bac["states"] = list(p.bacnet.states)
+                if p.bacnet.commandable:
+                    bac["commandable"] = True
+                entry["bacnet"] = bac
+            elif is_analog(p.type):
                 # One register per point: phenix-apps defaults analog points
                 # to int32 (two registers), which breaks the register map.
-                modbus: dict[str, Any] = {"data-type": "uint16"}
+                modbus: dict[str, Any] = {
+                    "data-type": "int16" if p.signed else "uint16"
+                }
                 if p.scaling is not None:
                     modbus["scaling"] = p.scaling
                 entry["modbus"] = modbus
@@ -384,13 +552,16 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
         infra[dtype] = points
     helics = plant.spec.helics
     broker = helics.broker
-    feds = list(plant.federates)
+    # The app's default federate: the first one that owns field devices.
+    with_devices = {d.federate for d in plant.devices}
+    feds = [f for f in plant.federates if f in with_devices] or list(plant.federates)
+    default_fed = feds[0] if feds else CELLAR
     md: dict[str, Any] = {
         "infrastructure": "brewery",
         "infrastructures": {"brewery": infra},
         "helics": {
             "broker": {"hostname": f"{broker.hostname}|{broker.interface}"},
-            "federate": feds[0] if feds else "cellar",
+            "federate": default_fed,
             "endpoint": "updates",
             "end-time": helics.end_time_s,
         },
@@ -403,8 +574,22 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
                 "index-base-name": "cherrymountain-truth",
             }
         }
+
+    def devices(host: str) -> list[dict[str, Any]]:
+        out = []
+        for d in rio_devices(plant, host):
+            entry: dict[str, Any] = {"name": d.topic, "type": d.type}
+            if d.federate != default_fed:
+                # The app's default endpoint is <default federate>/updates; a
+                # bare name resolves against the device's own federate.
+                entry["endpoint"] = "updates"
+            out.append(entry)
+        return out
+
     hosts = []
-    for rio in plant.hosts_by_role("rio"):
+    for rio in plant.hosts_by_role(*MODBUS_IO_ROLES):
+        if not rio_devices(plant, rio.name):
+            continue
         mb = rio.modbus or ModbusEndpoint()
         hosts.append(
             {
@@ -413,11 +598,49 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
                     "type": "fd-server",
                     "modbus": {
                         "interface": f"{mb.interface}:{mb.port}",
-                        "devices": [
-                            {"name": d.topic, "type": d.type}
-                            for d in rio_devices(plant, rio.name)
-                        ],
+                        "devices": devices(rio.name),
                     },
+                },
+            }
+        )
+    for bas in plant.hosts_by_role("bas"):
+        ep = bas.bacnet
+        if ep is None or not rio_devices(plant, bas.name):
+            continue
+        hosts.append(
+            {
+                "hostname": bas.name,
+                "metadata": {
+                    "type": "fd-server",
+                    "bacnet": {
+                        "interface": f"{ep.interface}:{ep.port}",
+                        "instance": ep.instance,
+                        "name": ep.name,
+                        "devices": devices(bas.name),
+                    },
+                },
+            }
+        )
+    for fep in plant.hosts_by_role("fep"):
+        dnp = fep.dnp3 or Dnp3Endpoint()
+        hosts.append(
+            {
+                "hostname": fep.name,
+                "metadata": {
+                    "type": "fep",
+                    "upstream": [u for u in fep.upstream if u in plant.hosts],
+                    "downstream": "dnp3",
+                    "dnp3": {"interface": f"{dnp.interface}:{dnp.port}"},
+                },
+            }
+        )
+    for client in plant.hosts_by_role("dnp3-master"):
+        hosts.append(
+            {
+                "hostname": client.name,
+                "metadata": {
+                    "type": "fd-client",
+                    "connected_rtus": [u for u in client.upstream if u in plant.hosts],
                 },
             }
         )
@@ -429,7 +652,10 @@ def ntp_app(plant: Plant) -> dict[str, Any]:
     ntp = plant.spec.ntp
     hosts = []
     for name in plant.spec.hosts:
-        md = ntp.hosts[name].model_dump(exclude_none=True)
+        entry = plant.ntp_entry(name)
+        if entry is None:
+            raise PlantError(f"ntp: no entry for {name}")
+        md = entry.model_dump(exclude_none=True)
         hosts.append({"hostname": name, "metadata": md})
     return {
         "name": "ntp",
@@ -443,22 +669,6 @@ def ntp_app(plant: Plant) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _rio_blocks(alloc: Allocation, rio: str) -> dict[str, tuple[int, int]]:
-    """Per space: (first ot-sim register, count)."""
-    blocks: dict[str, tuple[int, int]] = {}
-    for space in OTSIM_BASE:
-        addrs = [r.address for r in alloc.rio_registers[rio] if r.space == space]
-        if addrs:
-            blocks[space] = (min(addrs), len(addrs))
-    return blocks
-
-
-def _iec_start(alloc: Allocation, rio: str, space: str) -> IecAddress:
-    regs = [r for r in alloc.rio_registers[rio] if r.space == space and r.tag]
-    first = min(regs, key=lambda r: r.address)
-    return alloc.tags[first.tag.name].plc_iec  # type: ignore[union-attr]
-
-
 def modbus_master(
     plant: Plant, alloc: Allocation, plc: str, rios: list[str]
 ) -> list[dict[str, Any]]:
@@ -468,22 +678,17 @@ def modbus_master(
     for rio in rios:
         host = plant.hosts[rio]
         mb = host.modbus or ModbusEndpoint()
-        points = []
-        for space in ("discrete", "input", "coil", "holding"):
-            block = _rio_blocks(alloc, rio).get(space)
-            if not block:
-                continue
-            start, count = block
-            points.append(
-                {
-                    "fc": MASTER_FC[space],
-                    "offset": str(start),
-                    "iec_location": str(_iec_start(alloc, rio, space)),
-                    "len": count,
-                    "cycle_time_ms": poll,
-                    "error_handling": "keep-last-value",
-                }
-            )
+        points = [
+            {
+                "fc": b.fc,
+                "offset": str(b.start),
+                "iec_location": str(b.iec),
+                "len": b.count,
+                "cycle_time_ms": poll,
+                "error_handling": "keep-last-value",
+            }
+            for b in master_blocks(alloc, rio)
+        ]
         devices.append(
             {
                 "name": rio,
@@ -500,6 +705,14 @@ def modbus_master(
             }
         )
     return devices
+
+
+def _v3_block(blocks: list[MasterBlock], fc: int, rio: str) -> tuple[int, int]:
+    """(start, size) of the one block with ``fc``; v3 has one per kind."""
+    found = [b for b in blocks if b.fc == fc]
+    if len(found) > 1:
+        raise PlantError(f"{rio}: OpenPLC v3 allows one FC{fc} block, not {len(found)}")
+    return (found[0].start, found[0].count) if found else (0, 0)
 
 
 def modbus_slave(plant: Plant, alloc: Allocation, plc: str) -> dict[str, Any]:
@@ -531,10 +744,9 @@ def mbconfig(plant: Plant, alloc: Allocation, plc: str, rios: list[str]) -> str:
     for i, rio in enumerate(rios):
         host = plant.hosts[rio]
         mb = host.modbus or ModbusEndpoint()
-        blocks = _rio_blocks(alloc, rio)
-        di, co, ir, hr = (
-            blocks.get(space, (0, 0))
-            for space in ("discrete", "coil", "input", "holding")
+        blocks = master_blocks(alloc, rio)
+        di, co, ir, hr, hrr = (
+            _v3_block(blocks, fc, rio) for fc in (2, 15, 4, 16, READ_HOLDING_FC)
         )
         p = f"device{i}"
         lines += [
@@ -554,8 +766,8 @@ def mbconfig(plant: Plant, alloc: Allocation, plc: str, rios: list[str]) -> str:
             f'{p}.Coils_Size = "{co[1]}"',
             f'{p}.Input_Registers_Start = "{ir[0]}"',
             f'{p}.Input_Registers_Size = "{ir[1]}"',
-            f'{p}.Holding_Registers_Read_Start = "0"',
-            f'{p}.Holding_Registers_Read_Size = "0"',
+            f'{p}.Holding_Registers_Read_Start = "{hrr[0]}"',
+            f'{p}.Holding_Registers_Read_Size = "{hrr[1]}"',
             f'{p}.Holding_Registers_Start = "{hr[0]}"',
             f'{p}.Holding_Registers_Size = "{hr[1]}"',
         ]
@@ -581,7 +793,7 @@ def located_vars(plant: Plant, alloc: Allocation, plc: str) -> str:
         if t.plc != plc:
             continue
         a = alloc.tags[t.name]
-        iec_type = "UINT" if is_analog(t.type) else "BOOL"
+        iec_type = ("INT" if t.signed else "UINT") if is_analog(t.type) else "BOOL"
         note = t.desc
         if is_analog(t.type):
             note += f", {t.units}, x{10**t.scaling}"
@@ -595,42 +807,137 @@ def located_vars(plant: Plant, alloc: Allocation, plc: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def fuxa_doc(plant: Plant, alloc: Allocation) -> dict[str, Any]:
-    """FUXA Modbus TCP device and tag list for each PLC with tags."""
+def fuxa_sources(plant: Plant, scada: Host) -> list[tuple[str, list[str]]]:
+    """(host, tag patterns) a FUXA instance polls; default: every PLC."""
+    if scada.fuxa is None:
+        return [(plc, ["*"]) for plc in plant.plcs]
+    return [(s.host, s.tags) for s in scada.fuxa if s.host in plant.hosts]
+
+
+def _selected(tags: list[Tag], patterns: list[str]) -> list[Tag]:
+    return [t for t in tags if any(fnmatch.fnmatchcase(t.name, p) for p in patterns)]
+
+
+def _fuxa_analog(entry: dict[str, Any], t: Tag, divisor: bool = True) -> None:
+    if is_analog(t.type):
+        if divisor:
+            entry["divisor"] = 10**t.scaling
+        entry["units"] = t.units
+        entry["range"] = list(t.range) if t.range else None
+
+
+def fuxa_doc(plant: Plant, alloc: Allocation, scada: Host) -> dict[str, Any]:
+    """FUXA devices and tags for one FUXA instance.
+
+    Modbus TCP PLCs carry final addresses. OPC UA and S7 PLCs carry each
+    tag's IEC location and ST variable; the ``cherrymountain`` app resolves
+    their node ids and DB offsets from the compiled program (DESIGN.md
+    §12.1), so ``address`` is null. BACnet controllers share one FUXA BACnet
+    client device, whose tags address ``<type>-<instance>`` with
+    ``memaddress`` = the remote device instance.
+    """
     devices = []
-    for plc in alloc.plc_rios:
-        host = plant.hosts[plc]
+    bacnet_tags: list[dict[str, Any]] = []
+    by_owner: dict[str, list[Tag]] = {}
+    for t in plant.tags:
+        if t.owner:
+            by_owner.setdefault(t.owner, []).append(t)
+    for host_name, patterns in fuxa_sources(plant, scada):
+        host = plant.hosts[host_name]
+        tags = _selected(by_owner.get(host_name, []), patterns)
+        if host.role == "bas":
+            objects = {o.tag.name: o for o in alloc.bacnet.get(host_name, []) if o.tag}
+            ep = host.bacnet
+            for t in tags:
+                o = objects[t.name]
+                entry: dict[str, Any] = {
+                    "id": fuxa_id(t.name),
+                    "name": t.name,
+                    "label": t.desc,
+                    "type": "Real" if is_analog(t.type) else "Bool",
+                    "memaddress": str(ep.instance if ep else ""),
+                    "address": o.fuxa_address,
+                    "access": access(t),
+                    "object_type": o.object_type,
+                    "remote_device": host_name,
+                }
+                _fuxa_analog(entry, t, divisor=False)
+                bacnet_tags.append(entry)
+            continue
+        if host.role != "plc":
+            raise PlantError(f"{scada.name}: FUXA source {host_name} is not a PLC")
+        northbound = host.northbound
         mb = host.modbus or ModbusEndpoint()
-        tags = []
-        for t in plant.tags:
-            if t.plc != plc:
-                continue
+        ip = host.ip(mb.interface)
+        out_tags = []
+        for t in tags:
             a = alloc.tags[t.name]
-            entry: dict[str, Any] = {
-                "id": fuxa_id(t.name),
-                "name": t.name,
-                "label": t.desc,
-                "type": "UInt16" if is_analog(t.type) else "Bool",
-                "memaddress": a.fuxa_memaddress,
-                "address": a.fuxa_address,
-                "access": access(t),
-            }
             if is_analog(t.type):
-                entry["divisor"] = 10**t.scaling
-                entry["units"] = t.units
-                entry["range"] = list(t.range) if t.range else None
-            tags.append(entry)
+                ttype = "Int16" if t.signed else "UInt16"
+            else:
+                ttype = "Bool"
+            entry = {"id": fuxa_id(t.name), "name": t.name, "label": t.desc}
+            if northbound == "modbus":
+                entry |= {
+                    "type": ttype,
+                    "memaddress": a.fuxa_memaddress,
+                    "address": a.fuxa_address,
+                    "access": access(t),
+                }
+            else:
+                entry |= {
+                    "type": ttype,
+                    "address": None,
+                    "variable": st_name(t.name),
+                    "plc_iec": str(a.plc_iec),
+                    "access": access(t),
+                }
+            _fuxa_analog(entry, t)
+            out_tags.append(entry)
+        if northbound == "modbus":
+            prop: dict[str, Any] = {
+                "address": ip,
+                "port": mb.port,
+                "slaveid": mb.unit_id,
+            }
+            dtype = "ModbusTCP"
+        elif northbound == "opcua":
+            prop = {
+                "address": f"opc.tcp://{ip}:{NORTHBOUND_PORT['opcua']}/openplc/opcua"
+            }
+            dtype = "OPCUA"
+        else:
+            prop = {
+                "address": ip,
+                "port": NORTHBOUND_PORT["s7comm"],
+                "rack": 0,
+                "slot": 1,
+            }
+            dtype = "SiemensS7"
         devices.append(
             {
-                "name": plc,
-                "type": "ModbusTCP",
+                "name": host_name,
+                "type": dtype,
+                "property": prop,
+                "polling": 1000,
+                "tags": out_tags,
+            }
+        )
+    if bacnet_tags:
+        iface = next(iter(scada.interfaces.values()))
+        net = ipaddress.ip_interface(iface.ip).network
+        devices.append(
+            {
+                "name": f"{scada.name}-bacnet",
+                "type": "BACnet",
                 "property": {
-                    "address": host.ip(mb.interface),
-                    "port": mb.port,
-                    "slaveid": mb.unit_id,
+                    # FUXA binds its BACnet client to an address on its own
+                    # host (DESIGN.md §12.2), not to the remote device.
+                    "address": iface.ip.split("/")[0],
+                    "broadcastAddress": str(net.broadcast_address),
                 },
                 "polling": 1000,
-                "tags": tags,
+                "tags": bacnet_tags,
             }
         )
     return {
@@ -638,4 +945,106 @@ def fuxa_doc(plant: Plant, alloc: Allocation) -> dict[str, Any]:
         "variant": plant.variant,
         "notes": "address is 1-based (FUXA subtracts 1); value = raw / divisor",
         "devices": devices,
+    }
+
+
+# ---------------------------------------------------------------------------
+# BACnet and DNP3 point maps
+# ---------------------------------------------------------------------------
+
+
+def bacnet_doc(plant: Plant, alloc: Allocation, host: str) -> dict[str, Any]:
+    """Resolved object table of one BACnet controller (ot-sim BACnet module).
+
+    This is the information the proposed module config carries (DESIGN.md
+    §16 sketch): the device object, then one object per point with its type,
+    instance, name, units, and the message-bus tag it maps to.
+    """
+    h = plant.hosts[host]
+    ep: BacnetEndpoint | None = h.bacnet
+    if ep is None:
+        raise PlantError(f"{host}: BACnet points but no bacnet endpoint")
+    objects = []
+    for o in alloc.bacnet[host]:
+        t = o.tag
+        spec = plant.device_types[o.device.type][o.point].bacnet
+        entry: dict[str, Any] = {
+            "object_type": o.object_type,
+            "instance": o.instance,
+            "name": t.name if t else f"{o.device.name}.{o.point}",
+            "description": t.desc if t else "",
+            "tag": f"{o.device.name}.{o.point}",
+            "helics_key": f"{o.device.topic}.{o.point}",
+            "commandable": bool(spec and spec.commandable),
+        }
+        if spec and spec.units:
+            entry["units"] = spec.units
+        if spec and spec.states:
+            entry["states"] = list(spec.states)
+        if t and t.range:
+            entry["range"] = list(t.range)
+        objects.append(entry)
+    return {
+        "generator": GENERATOR,
+        "variant": plant.variant,
+        "host": host,
+        "endpoint": {
+            "interface": ep.interface,
+            "address": h.ip(ep.interface),
+            "prefix": int(h.interfaces[ep.interface].ip.split("/")[1]),
+            "port": ep.port,
+        },
+        "device": {"instance": ep.instance, "name": ep.name},
+        "objects": objects,
+    }
+
+
+#: phenix ot-sim app DNP3 point kinds (protocols.dnp3.POINT_KINDS).
+DNP3_KIND: dict[str, str] = {
+    "analog-read": "ai",
+    "analog-read-write": "ao",
+    "binary-read": "bi",
+    "binary-read-write": "bo",
+}
+
+
+def dnp3_doc(plant: Plant, alloc: Allocation, fep: Host) -> dict[str, Any]:
+    """DNP3 points an ot-sim FEP serves, numbered the way the phenix app does.
+
+    The FEP serves every register of its upstream devices, in upstream order
+    then device and point order, numbered from 0 per kind (ai, ao, bi, bo).
+    """
+    counters = dict.fromkeys(DNP3_KIND.values(), 0)
+    points = []
+    for up in fep.upstream:
+        if up not in plant.hosts:
+            continue
+        for dev in rio_devices(plant, up):
+            for point in plant.device_types[dev.type].values():
+                kind = DNP3_KIND[point.type]
+                tag = _bound_tag(plant, dev.name, point.name)
+                points.append(
+                    {
+                        "kind": kind,
+                        "index": counters[kind],
+                        "tag": f"{dev.name}.{point.name}",
+                        "plant_tag": tag.name if tag else None,
+                        "upstream": up,
+                        "scaling": point.scaling,
+                    }
+                )
+                counters[kind] += 1
+    dnp = fep.dnp3 or Dnp3Endpoint()
+    return {
+        "generator": GENERATOR,
+        "variant": plant.variant,
+        "host": fep.name,
+        "endpoint": {
+            "interface": dnp.interface,
+            "address": fep.ip(dnp.interface),
+            "port": dnp.port,
+        },
+        "outstation_address": 1024,
+        "master_address": 1,
+        "points": points,
     }

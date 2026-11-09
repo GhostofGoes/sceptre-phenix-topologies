@@ -1,0 +1,7145 @@
+{
+  "generator": "plantgen",
+  "variant": "lite",
+  "tags": [
+    {
+      "name": "BH.MILL.LT01.PV",
+      "desc": "Grain silo level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MILL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mill",
+      "device_type": "mill",
+      "point": "silo_level_pct",
+      "helics_key": "brewhouse/mill.silo_level_pct"
+    },
+    {
+      "name": "BH.MILL.SI01.PV",
+      "desc": "Mill VFD speed",
+      "type": "analog-read",
+      "units": "Hz",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MILL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mill",
+      "device_type": "mill",
+      "point": "speed_hz",
+      "helics_key": "brewhouse/mill.speed_hz"
+    },
+    {
+      "name": "BH.MILL.YS01.PV",
+      "desc": "Mill running",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "MILL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mill",
+      "device_type": "mill",
+      "point": "running",
+      "helics_key": "brewhouse/mill.running"
+    },
+    {
+      "name": "BH.MILL.HS01.CMD",
+      "desc": "Mill run command",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "MILL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mill",
+      "device_type": "mill",
+      "point": "run",
+      "helics_key": "brewhouse/mill.run"
+    },
+    {
+      "name": "BH.MILL.HS02.CMD",
+      "desc": "Grain auger run command",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "MILL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mill",
+      "device_type": "mill",
+      "point": "auger_run",
+      "helics_key": "brewhouse/mill.auger_run"
+    },
+    {
+      "name": "BH.MILL.SC01.SP",
+      "desc": "Mill VFD speed reference",
+      "type": "analog-read-write",
+      "units": "Hz",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MILL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mill",
+      "device_type": "mill",
+      "point": "speed_sp_hz",
+      "helics_key": "brewhouse/mill.speed_sp_hz"
+    },
+    {
+      "name": "BH.CLT.LT01.PV",
+      "desc": "CLT level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "CLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "clt",
+      "device_type": "liquor-tank",
+      "point": "level_pct",
+      "helics_key": "brewhouse/clt.level_pct"
+    },
+    {
+      "name": "BH.CLT.TT01.PV",
+      "desc": "CLT temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        32.0,
+        212.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "CLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "clt",
+      "device_type": "liquor-tank",
+      "point": "temp_f",
+      "helics_key": "brewhouse/clt.temp_f"
+    },
+    {
+      "name": "BH.CLT.LSH01.PV",
+      "desc": "CLT high-level switch",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "CLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "clt",
+      "device_type": "liquor-tank",
+      "point": "high_level",
+      "helics_key": "brewhouse/clt.high_level"
+    },
+    {
+      "name": "BH.CLT.XV01.CMD",
+      "desc": "CLT fill valve (RO permeate)",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "CLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "clt",
+      "device_type": "liquor-tank",
+      "point": "fill_valve",
+      "helics_key": "brewhouse/clt.fill_valve"
+    },
+    {
+      "name": "BH.HLT.LT01.PV",
+      "desc": "HLT level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "HLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "hlt",
+      "device_type": "hot-liquor-tank",
+      "point": "level_pct",
+      "helics_key": "brewhouse/hlt.level_pct",
+      "alarms": [
+        "BH.HLT.LT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "BH.HLT.LT01.ALM_LOW",
+      "desc": "HLT level: low alarm (low)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "HLT",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
+      "name": "BH.HLT.TT01.PV",
+      "desc": "HLT temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        32.0,
+        212.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "HLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "hlt",
+      "device_type": "hot-liquor-tank",
+      "point": "temp_f",
+      "helics_key": "brewhouse/hlt.temp_f",
+      "alarms": [
+        "BH.HLT.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "BH.HLT.TT01.ALM_HIGH",
+      "desc": "HLT temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "HLT",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
+      "name": "BH.HLT.LSL01.PV",
+      "desc": "HLT low-level switch (jacket covered)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "HLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "hlt",
+      "device_type": "hot-liquor-tank",
+      "point": "low_level",
+      "helics_key": "brewhouse/hlt.low_level"
+    },
+    {
+      "name": "BH.HLT.XV01.CMD",
+      "desc": "HLT fill valve (from the CLT)",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "HLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "hlt",
+      "device_type": "hot-liquor-tank",
+      "point": "fill_valve",
+      "helics_key": "brewhouse/hlt.fill_valve"
+    },
+    {
+      "name": "BH.HLT.TV01.OUT",
+      "desc": "HLT steam valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "HLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "hlt",
+      "device_type": "hot-liquor-tank",
+      "point": "steam_valve_pct",
+      "helics_key": "brewhouse/hlt.steam_valve_pct"
+    },
+    {
+      "name": "BH.HLT.TT01.SP",
+      "desc": "HLT temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        32.0,
+        212.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "HLT",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.MLT.TT01.PV",
+      "desc": "MLT mash temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        32.0,
+        212.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "temp_f",
+      "helics_key": "brewhouse/mlt.temp_f",
+      "alarms": [
+        "BH.MLT.TT01.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "BH.MLT.TT01.ALM_DEVIATION",
+      "desc": "MLT mash temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "MLT",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
+      "name": "BH.MLT.LT01.PV",
+      "desc": "MLT level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "level_pct",
+      "helics_key": "brewhouse/mlt.level_pct"
+    },
+    {
+      "name": "BH.MLT.PDT01.PV",
+      "desc": "MLT false-bottom differential pressure",
+      "type": "analog-read",
+      "units": "psi",
+      "range": [
+        0.0,
+        10.0
+      ],
+      "scaling": 2,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "bed_dp_psi",
+      "helics_key": "brewhouse/mlt.bed_dp_psi",
+      "alarms": [
+        "BH.MLT.PDT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "BH.MLT.PDT01.ALM_HIGH",
+      "desc": "MLT false-bottom differential pressure: high alarm (medium)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "MLT",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
+      "name": "BH.MLT.FT01.PV",
+      "desc": "Lauter runoff flow",
+      "type": "analog-read",
+      "units": "gal/min",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "runoff_gpm",
+      "helics_key": "brewhouse/mlt.runoff_gpm"
+    },
+    {
+      "name": "BH.MLT.FT02.PV",
+      "desc": "Sparge flow",
+      "type": "analog-read",
+      "units": "gal/min",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "sparge_gpm",
+      "helics_key": "brewhouse/mlt.sparge_gpm"
+    },
+    {
+      "name": "BH.MLT.ZT01.PV",
+      "desc": "Rake height above the false bottom",
+      "type": "analog-read",
+      "units": "in",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "rake_height_in",
+      "helics_key": "brewhouse/mlt.rake_height_in"
+    },
+    {
+      "name": "BH.MLT.YS01.PV",
+      "desc": "Rake running",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "rake_running",
+      "helics_key": "brewhouse/mlt.rake_running"
+    },
+    {
+      "name": "BH.MLT.XV01.CMD",
+      "desc": "Strike water valve (from the HLT)",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "strike_valve",
+      "helics_key": "brewhouse/mlt.strike_valve"
+    },
+    {
+      "name": "BH.MLT.HS01.CMD",
+      "desc": "Rake run command",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "rake_run",
+      "helics_key": "brewhouse/mlt.rake_run"
+    },
+    {
+      "name": "BH.MLT.TV01.OUT",
+      "desc": "MLT jacket steam valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "steam_valve_pct",
+      "helics_key": "brewhouse/mlt.steam_valve_pct"
+    },
+    {
+      "name": "BH.MLT.FV01.OUT",
+      "desc": "Runoff valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "runoff_valve_pct",
+      "helics_key": "brewhouse/mlt.runoff_valve_pct"
+    },
+    {
+      "name": "BH.MLT.FV02.OUT",
+      "desc": "Sparge valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "sparge_valve_pct",
+      "helics_key": "brewhouse/mlt.sparge_valve_pct"
+    },
+    {
+      "name": "BH.MLT.SC01.OUT",
+      "desc": "Rake speed reference",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "mlt",
+      "device_type": "mash-tun",
+      "point": "rake_speed_pct",
+      "helics_key": "brewhouse/mlt.rake_speed_pct"
+    },
+    {
+      "name": "BH.MLT.TT01.SP",
+      "desc": "Mash step temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        32.0,
+        212.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "MLT",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.MLT.XS01.ACTIVE",
+      "desc": "Mash step holding (deviation alarm enabled)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "MLT",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.KTL.TT01.PV",
+      "desc": "Kettle temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        32.0,
+        230.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KTL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "kettle",
+      "device_type": "kettle",
+      "point": "temp_f",
+      "helics_key": "brewhouse/kettle.temp_f"
+    },
+    {
+      "name": "BH.KTL.LT01.PV",
+      "desc": "Kettle level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KTL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "kettle",
+      "device_type": "kettle",
+      "point": "level_pct",
+      "helics_key": "brewhouse/kettle.level_pct",
+      "alarms": [
+        "BH.KTL.LT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "BH.KTL.LT01.ALM_HIGH",
+      "desc": "Kettle level: high alarm (high)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "KTL",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
+      "name": "BH.KTL.PT01.PV",
+      "desc": "Ambient (barometric) pressure for boil detection",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        20.0
+      ],
+      "scaling": 2,
+      "area": "BH",
+      "unit": "KTL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "kettle",
+      "device_type": "kettle",
+      "point": "ambient_psia",
+      "helics_key": "brewhouse/kettle.ambient_psia"
+    },
+    {
+      "name": "BH.KTL.LSH01.PV",
+      "desc": "Kettle high-level switch (boil-over)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "KTL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "kettle",
+      "device_type": "kettle",
+      "point": "high_level",
+      "helics_key": "brewhouse/kettle.high_level"
+    },
+    {
+      "name": "BH.KTL.XV01.CMD",
+      "desc": "Whirlpool tangential inlet valve",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "KTL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "kettle",
+      "device_type": "kettle",
+      "point": "whirlpool_valve",
+      "helics_key": "brewhouse/kettle.whirlpool_valve"
+    },
+    {
+      "name": "BH.KTL.XV02.CMD",
+      "desc": "Whirlpool hop doser",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "KTL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "kettle",
+      "device_type": "kettle",
+      "point": "hop_doser",
+      "helics_key": "brewhouse/kettle.hop_doser"
+    },
+    {
+      "name": "BH.KTL.TV01.OUT",
+      "desc": "Kettle jacket steam valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KTL",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "kettle",
+      "device_type": "kettle",
+      "point": "steam_valve_pct",
+      "helics_key": "brewhouse/kettle.steam_valve_pct"
+    },
+    {
+      "name": "BH.KTL.TB01.PV",
+      "desc": "Computed local wort boiling point",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        180.0,
+        230.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KTL",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.KTL.KI01.PV",
+      "desc": "Boil time elapsed",
+      "type": "analog-read",
+      "units": "min",
+      "range": [
+        0.0,
+        600.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KTL",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.KTL.XS01.BOIL",
+      "desc": "Boil detected (within 0.5 degF of the boiling point)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "KTL",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.KO.FT01.PV",
+      "desc": "Wort flow to the fermenter",
+      "type": "analog-read",
+      "units": "gal/min",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "wort_gpm",
+      "helics_key": "brewhouse/knockout.wort_gpm"
+    },
+    {
+      "name": "BH.KO.TT01.PV",
+      "desc": "HX stage-1 wort outlet temperature (CLT water side)",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        32.0,
+        230.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "stage1_out_f",
+      "helics_key": "brewhouse/knockout.stage1_out_f"
+    },
+    {
+      "name": "BH.KO.TT02.PV",
+      "desc": "Knockout wort temperature (after stage 2)",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        32.0,
+        230.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "wort_out_f",
+      "helics_key": "brewhouse/knockout.wort_out_f",
+      "alarms": [
+        "BH.KO.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "BH.KO.TT02.ALM_DEVIATION",
+      "desc": "Knockout wort temperature (after stage 2): deviation alarm (high)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "KO",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
+      "name": "BH.KO.FT02.PV",
+      "desc": "Inline O2 flow",
+      "type": "analog-read",
+      "units": "L/min",
+      "range": [
+        0.0,
+        20.0
+      ],
+      "scaling": 2,
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "o2_slpm",
+      "helics_key": "brewhouse/knockout.o2_slpm"
+    },
+    {
+      "name": "BH.KO.AT01.PV",
+      "desc": "Wort dissolved oxygen",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        20.0
+      ],
+      "scaling": 2,
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "do_ppm",
+      "helics_key": "brewhouse/knockout.do_ppm",
+      "alarms": [
+        "BH.KO.AT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "BH.KO.AT01.ALM_LOW",
+      "desc": "Wort dissolved oxygen: low alarm (low)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "KO",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
+      "name": "BH.KO.YS01.PV",
+      "desc": "Wort pump running",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "pump_running",
+      "helics_key": "brewhouse/knockout.pump_running"
+    },
+    {
+      "name": "BH.KO.HS01.CMD",
+      "desc": "Wort pump run command",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "pump_run",
+      "helics_key": "brewhouse/knockout.pump_run"
+    },
+    {
+      "name": "BH.KO.XV01.CMD",
+      "desc": "Knockout valve to the fermenter header",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "to_fv_valve",
+      "helics_key": "brewhouse/knockout.to_fv_valve"
+    },
+    {
+      "name": "BH.KO.SC01.OUT",
+      "desc": "Wort pump VFD speed reference",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "pump_speed_pct",
+      "helics_key": "brewhouse/knockout.pump_speed_pct"
+    },
+    {
+      "name": "BH.KO.TV01.OUT",
+      "desc": "HX stage-2 glycol valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "glycol_valve_pct",
+      "helics_key": "brewhouse/knockout.glycol_valve_pct"
+    },
+    {
+      "name": "BH.KO.FC01.SP",
+      "desc": "Inline O2 mass-flow setpoint",
+      "type": "analog-read-write",
+      "units": "L/min",
+      "range": [
+        0.0,
+        20.0
+      ],
+      "scaling": 2,
+      "area": "BH",
+      "unit": "KO",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "knockout",
+      "device_type": "knockout",
+      "point": "o2_sp_slpm",
+      "helics_key": "brewhouse/knockout.o2_sp_slpm"
+    },
+    {
+      "name": "BH.KO.TT02.SP",
+      "desc": "Knockout temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        32.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "BH",
+      "unit": "KO",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.BATCH.XC01.PHASE",
+      "desc": "Phase selected by the batch engine",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        10.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.BATCH.XC01.CMD",
+      "desc": "Phase command",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        5.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.BATCH.XS01.STATE",
+      "desc": "Phase state",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        6.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.BATCH.XS01.STEP",
+      "desc": "Phase step number",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.BATCH.XI01.BATCH",
+      "desc": "Batch number (low 16 bits)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "CEL.CLK.KI01.PV",
+      "desc": "Cellar simulation clock (compressed fermentation time)",
+      "type": "analog-read",
+      "units": "h",
+      "range": [
+        0.0,
+        6553.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "CLK",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "clock",
+      "device_type": "sim-clock",
+      "point": "sim_hours",
+      "helics_key": "cellar/clock.sim_hours"
+    },
+    {
+      "name": "CEL.FV101.TT01.PV",
+      "desc": "FV-101 side temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-side",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv101-side.temp_f",
+      "alarms": [
+        "CEL.FV101.TT01.ALM_DEVIATION",
+        "CEL.FV101.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.FV101.TT01.ALM_DEVIATION",
+      "desc": "FV-101 side temperature: deviation alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.TT01.ALM_HIGH",
+      "desc": "FV-101 side temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.TV01.CMD",
+      "desc": "FV-101 side glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-side",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv101-side.valve"
+    },
+    {
+      "name": "CEL.FV101.TT02.PV",
+      "desc": "FV-101 cone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-cone",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv101-cone.temp_f",
+      "alarms": [
+        "CEL.FV101.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.FV101.TT02.ALM_DEVIATION",
+      "desc": "FV-101 cone temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.TV02.CMD",
+      "desc": "FV-101 cone glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-cone",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv101-cone.valve"
+    },
+    {
+      "name": "CEL.FV101.PT01.PV",
+      "desc": "FV-101 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101",
+      "device_type": "fv-vessel",
+      "point": "pressure_psia",
+      "helics_key": "cellar/fv101.pressure_psia",
+      "alarms": [
+        "CEL.FV101.PT01.ALM_HIGH",
+        "CEL.FV101.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "CEL.FV101.PT01.ALM_HIGH",
+      "desc": "FV-101 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.PT01.ALM_LOW",
+      "desc": "FV-101 head pressure (absolute): low alarm (low)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.DT01.PV",
+      "desc": "FV-101 apparent extract (sample-port density meter)",
+      "type": "analog-read",
+      "units": "degP",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101",
+      "device_type": "fv-vessel",
+      "point": "gravity_plato",
+      "helics_key": "cellar/fv101.gravity_plato"
+    },
+    {
+      "name": "CEL.FV101.PCV01.SP",
+      "desc": "FV-101 spunding valve setpoint (absolute)",
+      "type": "analog-read-write",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101",
+      "device_type": "fv-vessel",
+      "point": "spund_sp_psia",
+      "helics_key": "cellar/fv101.spund_sp_psia"
+    },
+    {
+      "name": "CEL.FV101.ZSO01.PV",
+      "desc": "FV-101 spunding valve open (venting)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101",
+      "device_type": "fv-vessel",
+      "point": "spund_open",
+      "helics_key": "cellar/fv101.spund_open"
+    },
+    {
+      "name": "CEL.FV101.TT01.SP",
+      "desc": "FV-101 side temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV101.TT02.SP",
+      "desc": "FV-101 cone temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV102.TT01.PV",
+      "desc": "FV-102 side temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-side",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv102-side.temp_f",
+      "alarms": [
+        "CEL.FV102.TT01.ALM_DEVIATION",
+        "CEL.FV102.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.FV102.TT01.ALM_DEVIATION",
+      "desc": "FV-102 side temperature: deviation alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.TT01.ALM_HIGH",
+      "desc": "FV-102 side temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.TV01.CMD",
+      "desc": "FV-102 side glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-side",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv102-side.valve"
+    },
+    {
+      "name": "CEL.FV102.TT02.PV",
+      "desc": "FV-102 cone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-cone",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv102-cone.temp_f",
+      "alarms": [
+        "CEL.FV102.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.FV102.TT02.ALM_DEVIATION",
+      "desc": "FV-102 cone temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.TV02.CMD",
+      "desc": "FV-102 cone glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-cone",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv102-cone.valve"
+    },
+    {
+      "name": "CEL.FV102.PT01.PV",
+      "desc": "FV-102 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102",
+      "device_type": "fv-vessel",
+      "point": "pressure_psia",
+      "helics_key": "cellar/fv102.pressure_psia",
+      "alarms": [
+        "CEL.FV102.PT01.ALM_HIGH",
+        "CEL.FV102.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "CEL.FV102.PT01.ALM_HIGH",
+      "desc": "FV-102 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.PT01.ALM_LOW",
+      "desc": "FV-102 head pressure (absolute): low alarm (low)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.DT01.PV",
+      "desc": "FV-102 apparent extract (sample-port density meter)",
+      "type": "analog-read",
+      "units": "degP",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102",
+      "device_type": "fv-vessel",
+      "point": "gravity_plato",
+      "helics_key": "cellar/fv102.gravity_plato"
+    },
+    {
+      "name": "CEL.FV102.PCV01.SP",
+      "desc": "FV-102 spunding valve setpoint (absolute)",
+      "type": "analog-read-write",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102",
+      "device_type": "fv-vessel",
+      "point": "spund_sp_psia",
+      "helics_key": "cellar/fv102.spund_sp_psia"
+    },
+    {
+      "name": "CEL.FV102.ZSO01.PV",
+      "desc": "FV-102 spunding valve open (venting)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102",
+      "device_type": "fv-vessel",
+      "point": "spund_open",
+      "helics_key": "cellar/fv102.spund_open"
+    },
+    {
+      "name": "CEL.FV102.TT01.SP",
+      "desc": "FV-102 side temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV102.TT02.SP",
+      "desc": "FV-102 cone temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV103.TT01.PV",
+      "desc": "FV-103 side temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-side",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv103-side.temp_f",
+      "alarms": [
+        "CEL.FV103.TT01.ALM_DEVIATION",
+        "CEL.FV103.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.FV103.TT01.ALM_DEVIATION",
+      "desc": "FV-103 side temperature: deviation alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.TT01.ALM_HIGH",
+      "desc": "FV-103 side temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.TV01.CMD",
+      "desc": "FV-103 side glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-side",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv103-side.valve"
+    },
+    {
+      "name": "CEL.FV103.TT02.PV",
+      "desc": "FV-103 cone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-cone",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv103-cone.temp_f",
+      "alarms": [
+        "CEL.FV103.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.FV103.TT02.ALM_DEVIATION",
+      "desc": "FV-103 cone temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.TV02.CMD",
+      "desc": "FV-103 cone glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-cone",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv103-cone.valve"
+    },
+    {
+      "name": "CEL.FV103.PT01.PV",
+      "desc": "FV-103 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103",
+      "device_type": "fv-vessel",
+      "point": "pressure_psia",
+      "helics_key": "cellar/fv103.pressure_psia",
+      "alarms": [
+        "CEL.FV103.PT01.ALM_HIGH",
+        "CEL.FV103.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "CEL.FV103.PT01.ALM_HIGH",
+      "desc": "FV-103 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.PT01.ALM_LOW",
+      "desc": "FV-103 head pressure (absolute): low alarm (low)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.DT01.PV",
+      "desc": "FV-103 apparent extract (sample-port density meter)",
+      "type": "analog-read",
+      "units": "degP",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103",
+      "device_type": "fv-vessel",
+      "point": "gravity_plato",
+      "helics_key": "cellar/fv103.gravity_plato"
+    },
+    {
+      "name": "CEL.FV103.PCV01.SP",
+      "desc": "FV-103 spunding valve setpoint (absolute)",
+      "type": "analog-read-write",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103",
+      "device_type": "fv-vessel",
+      "point": "spund_sp_psia",
+      "helics_key": "cellar/fv103.spund_sp_psia"
+    },
+    {
+      "name": "CEL.FV103.ZSO01.PV",
+      "desc": "FV-103 spunding valve open (venting)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103",
+      "device_type": "fv-vessel",
+      "point": "spund_open",
+      "helics_key": "cellar/fv103.spund_open"
+    },
+    {
+      "name": "CEL.FV103.TT01.SP",
+      "desc": "FV-103 side temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV103.TT02.SP",
+      "desc": "FV-103 cone temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV104.TT01.PV",
+      "desc": "FV-104 side temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-side",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv104-side.temp_f",
+      "alarms": [
+        "CEL.FV104.TT01.ALM_DEVIATION",
+        "CEL.FV104.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.FV104.TT01.ALM_DEVIATION",
+      "desc": "FV-104 side temperature: deviation alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.TT01.ALM_HIGH",
+      "desc": "FV-104 side temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.TV01.CMD",
+      "desc": "FV-104 side glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-side",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv104-side.valve"
+    },
+    {
+      "name": "CEL.FV104.TT02.PV",
+      "desc": "FV-104 cone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-cone",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv104-cone.temp_f",
+      "alarms": [
+        "CEL.FV104.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.FV104.TT02.ALM_DEVIATION",
+      "desc": "FV-104 cone temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.TV02.CMD",
+      "desc": "FV-104 cone glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-cone",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv104-cone.valve"
+    },
+    {
+      "name": "CEL.FV104.PT01.PV",
+      "desc": "FV-104 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104",
+      "device_type": "fv-vessel",
+      "point": "pressure_psia",
+      "helics_key": "cellar/fv104.pressure_psia",
+      "alarms": [
+        "CEL.FV104.PT01.ALM_HIGH",
+        "CEL.FV104.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "CEL.FV104.PT01.ALM_HIGH",
+      "desc": "FV-104 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.PT01.ALM_LOW",
+      "desc": "FV-104 head pressure (absolute): low alarm (low)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.DT01.PV",
+      "desc": "FV-104 apparent extract (sample-port density meter)",
+      "type": "analog-read",
+      "units": "degP",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104",
+      "device_type": "fv-vessel",
+      "point": "gravity_plato",
+      "helics_key": "cellar/fv104.gravity_plato"
+    },
+    {
+      "name": "CEL.FV104.PCV01.SP",
+      "desc": "FV-104 spunding valve setpoint (absolute)",
+      "type": "analog-read-write",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104",
+      "device_type": "fv-vessel",
+      "point": "spund_sp_psia",
+      "helics_key": "cellar/fv104.spund_sp_psia"
+    },
+    {
+      "name": "CEL.FV104.ZSO01.PV",
+      "desc": "FV-104 spunding valve open (venting)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104",
+      "device_type": "fv-vessel",
+      "point": "spund_open",
+      "helics_key": "cellar/fv104.spund_open"
+    },
+    {
+      "name": "CEL.FV104.TT01.SP",
+      "desc": "FV-104 side temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV104.TT02.SP",
+      "desc": "FV-104 cone temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.BBT201.TT01.PV",
+      "desc": "BBT-201 temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201",
+      "device_type": "bbt",
+      "point": "temp_f",
+      "helics_key": "cellar/bbt201.temp_f",
+      "alarms": [
+        "CEL.BBT201.TT01.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.BBT201.TT01.ALM_DEVIATION",
+      "desc": "BBT-201 temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.BBT201.PT01.PV",
+      "desc": "BBT-201 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201",
+      "device_type": "bbt",
+      "point": "pressure_psia",
+      "helics_key": "cellar/bbt201.pressure_psia",
+      "alarms": [
+        "CEL.BBT201.PT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.BBT201.PT01.ALM_HIGH",
+      "desc": "BBT-201 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.BBT201.LT01.PV",
+      "desc": "BBT-201 level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201",
+      "device_type": "bbt",
+      "point": "level_pct",
+      "helics_key": "cellar/bbt201.level_pct"
+    },
+    {
+      "name": "CEL.BBT201.AT01.PV",
+      "desc": "BBT-201 dissolved CO2 (inline meter)",
+      "type": "analog-read",
+      "units": "vol",
+      "range": [
+        0.0,
+        5.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201",
+      "device_type": "bbt",
+      "point": "co2_vol",
+      "helics_key": "cellar/bbt201.co2_vol"
+    },
+    {
+      "name": "CEL.BBT201.FT01.PV",
+      "desc": "BBT-201 carbonation stone CO2 flow",
+      "type": "analog-read",
+      "units": "L/min",
+      "range": [
+        0.0,
+        200.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201",
+      "device_type": "bbt",
+      "point": "co2_slpm",
+      "helics_key": "cellar/bbt201.co2_slpm"
+    },
+    {
+      "name": "CEL.BBT201.TV01.CMD",
+      "desc": "BBT-201 jacket glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201",
+      "device_type": "bbt",
+      "point": "valve",
+      "helics_key": "cellar/bbt201.valve"
+    },
+    {
+      "name": "CEL.BBT201.XV01.CMD",
+      "desc": "BBT-201 outlet valve (to packaging)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201",
+      "device_type": "bbt",
+      "point": "outlet_valve",
+      "helics_key": "cellar/bbt201.outlet_valve"
+    },
+    {
+      "name": "CEL.BBT201.FCV01.OUT",
+      "desc": "BBT-201 carbonation CO2 flow valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201",
+      "device_type": "bbt",
+      "point": "co2_valve_pct",
+      "helics_key": "cellar/bbt201.co2_valve_pct"
+    },
+    {
+      "name": "CEL.BBT201.TT01.SP",
+      "desc": "BBT-201 temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.BBT201.AT01.SP",
+      "desc": "BBT-201 carbonation target",
+      "type": "analog-read-write",
+      "units": "vol",
+      "range": [
+        0.0,
+        5.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.BBT201.PT01.SP",
+      "desc": "BBT-201 equilibrium head pressure for the target (computed, absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT201",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.BBT202.TT01.PV",
+      "desc": "BBT-202 temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202",
+      "device_type": "bbt",
+      "point": "temp_f",
+      "helics_key": "cellar/bbt202.temp_f",
+      "alarms": [
+        "CEL.BBT202.TT01.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.BBT202.TT01.ALM_DEVIATION",
+      "desc": "BBT-202 temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.BBT202.PT01.PV",
+      "desc": "BBT-202 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202",
+      "device_type": "bbt",
+      "point": "pressure_psia",
+      "helics_key": "cellar/bbt202.pressure_psia",
+      "alarms": [
+        "CEL.BBT202.PT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.BBT202.PT01.ALM_HIGH",
+      "desc": "BBT-202 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.BBT202.LT01.PV",
+      "desc": "BBT-202 level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202",
+      "device_type": "bbt",
+      "point": "level_pct",
+      "helics_key": "cellar/bbt202.level_pct"
+    },
+    {
+      "name": "CEL.BBT202.AT01.PV",
+      "desc": "BBT-202 dissolved CO2 (inline meter)",
+      "type": "analog-read",
+      "units": "vol",
+      "range": [
+        0.0,
+        5.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202",
+      "device_type": "bbt",
+      "point": "co2_vol",
+      "helics_key": "cellar/bbt202.co2_vol"
+    },
+    {
+      "name": "CEL.BBT202.FT01.PV",
+      "desc": "BBT-202 carbonation stone CO2 flow",
+      "type": "analog-read",
+      "units": "L/min",
+      "range": [
+        0.0,
+        200.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202",
+      "device_type": "bbt",
+      "point": "co2_slpm",
+      "helics_key": "cellar/bbt202.co2_slpm"
+    },
+    {
+      "name": "CEL.BBT202.TV01.CMD",
+      "desc": "BBT-202 jacket glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202",
+      "device_type": "bbt",
+      "point": "valve",
+      "helics_key": "cellar/bbt202.valve"
+    },
+    {
+      "name": "CEL.BBT202.XV01.CMD",
+      "desc": "BBT-202 outlet valve (to packaging)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202",
+      "device_type": "bbt",
+      "point": "outlet_valve",
+      "helics_key": "cellar/bbt202.outlet_valve"
+    },
+    {
+      "name": "CEL.BBT202.FCV01.OUT",
+      "desc": "BBT-202 carbonation CO2 flow valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202",
+      "device_type": "bbt",
+      "point": "co2_valve_pct",
+      "helics_key": "cellar/bbt202.co2_valve_pct"
+    },
+    {
+      "name": "CEL.BBT202.TT01.SP",
+      "desc": "BBT-202 temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.BBT202.AT01.SP",
+      "desc": "BBT-202 carbonation target",
+      "type": "analog-read-write",
+      "units": "vol",
+      "range": [
+        0.0,
+        5.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.BBT202.PT01.SP",
+      "desc": "BBT-202 equilibrium head pressure for the target (computed, absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "BBT202",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.DH.ZSC01.PV",
+      "desc": "Hop port closed",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "DH",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "hopdoser",
+      "device_type": "hop-doser",
+      "point": "port_closed",
+      "helics_key": "cellar/hopdoser.port_closed"
+    },
+    {
+      "name": "CEL.DH.XV01.CMD",
+      "desc": "Hop port CO2 purge valve",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "DH",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "hopdoser",
+      "device_type": "hop-doser",
+      "point": "purge_valve",
+      "helics_key": "cellar/hopdoser.purge_valve"
+    },
+    {
+      "name": "CEL.DH.XV02.CMD",
+      "desc": "Hop dose valve",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "DH",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "hopdoser",
+      "device_type": "hop-doser",
+      "point": "dose_valve",
+      "helics_key": "cellar/hopdoser.dose_valve"
+    },
+    {
+      "name": "CEL.XFER.ZS01.PV",
+      "desc": "Transfer route verified (swing-panel proximity)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "XFER",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "transfer",
+      "device_type": "transfer-panel",
+      "point": "route_ok",
+      "helics_key": "cellar/transfer.route_ok"
+    },
+    {
+      "name": "CEL.XFER.YS01.PV",
+      "desc": "Transfer pump running",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "XFER",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "transfer",
+      "device_type": "transfer-panel",
+      "point": "pump_running",
+      "helics_key": "cellar/transfer.pump_running"
+    },
+    {
+      "name": "CEL.XFER.FT01.PV",
+      "desc": "Transfer flow",
+      "type": "analog-read",
+      "units": "gal/min",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "XFER",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "transfer",
+      "device_type": "transfer-panel",
+      "point": "flow_gpm",
+      "helics_key": "cellar/transfer.flow_gpm"
+    },
+    {
+      "name": "CEL.XFER.HS01.CMD",
+      "desc": "Transfer pump run command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "XFER",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "transfer",
+      "device_type": "transfer-panel",
+      "point": "pump_run",
+      "helics_key": "cellar/transfer.pump_run"
+    },
+    {
+      "name": "CEL.XFER.XS01.ACTIVE",
+      "desc": "Transfer in progress (peer status for plc-utilities)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "XFER",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.XFER.XS02.CIP_PERMIT",
+      "desc": "CIP permitted on the cellar circuits (peer status for plc-utilities)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "XFER",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.SYS.XS01.CO2_INHIBIT",
+      "desc": "Carbonation inhibited by cellar CO2 (written by scada-fuxa from bas-vent)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "SYS",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "alarms": [
+        "CEL.SYS.XS01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.SYS.XS01.ALM_STATE",
+      "desc": "Carbonation inhibited by cellar CO2 (written by scada-fuxa from bas-vent): state alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "SYS",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "PKG.LINE.PACKML.STATE",
+      "desc": "Bottling line PackML state (StateCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        17.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging",
+      "alarms": [
+        "PKG.LINE.PACKML.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PKG.LINE.PACKML.ALM_STATE",
+      "desc": "Bottling line PackML state (StateCurrent): state alarm (low)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging",
+      "generated": true
+    },
+    {
+      "name": "PKG.LINE.PACKML.MODE",
+      "desc": "Bottling line PackML mode (UnitModeCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.LINE.PACKML.CMD",
+      "desc": "Bottling line PackML command (CntrlCmd)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        9.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.LINE.PACKML.MODE_CMD",
+      "desc": "Bottling line mode command",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.LINE.PACKML.SPEED_SP",
+      "desc": "Bottling line speed setpoint (MachSpeed)",
+      "type": "analog-read-write",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.LINE.PACKML.PROCESSED",
+      "desc": "Bottles filled this shift (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.LINE.PACKML.DEFECTIVE",
+      "desc": "Bottles rejected this shift (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.LINE.PACKML.STOP_REASON",
+      "desc": "Line stop reason (first-out machine)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        99.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.LINE.KQ01.OEE",
+      "desc": "Shift OEE",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.LINE.XS01.RUN",
+      "desc": "Line not Stopped or Aborted (alarm suppression)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "LINE",
+      "source": "plc",
+      "plc": "plc-packaging"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.STATE",
+      "desc": "Filler PackML state (StateCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        17.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "state",
+      "helics_key": "packaging/filler.state"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.MODE",
+      "desc": "Filler PackML mode (UnitModeCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "mode",
+      "helics_key": "packaging/filler.mode"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.SPEED",
+      "desc": "Filler current speed (CurMachSpeed)",
+      "type": "analog-read",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "speed_bpm",
+      "helics_key": "packaging/filler.speed_bpm"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.PROCESSED",
+      "desc": "Filler ProdProcessedCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "processed",
+      "helics_key": "packaging/filler.processed"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.DEFECTIVE",
+      "desc": "Fill-level inspection rejects (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "defective",
+      "helics_key": "packaging/filler.defective"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.STOP_REASON",
+      "desc": "Filler stop reason (StopReason.ID)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        99.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "stop_reason",
+      "helics_key": "packaging/filler.stop_reason"
+    },
+    {
+      "name": "PKG.FILLER.PT01.PV",
+      "desc": "Filler bowl pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 2,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "bowl_psia",
+      "helics_key": "packaging/filler.bowl_psia"
+    },
+    {
+      "name": "PKG.FILLER.YA01.PV",
+      "desc": "Filler jammed",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "jammed",
+      "helics_key": "packaging/filler.jammed",
+      "alarms": [
+        "PKG.FILLER.YA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PKG.FILLER.YA01.ALM_STATE",
+      "desc": "Filler jammed: state alarm (low)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "plc",
+      "plc": "plc-packaging",
+      "generated": true
+    },
+    {
+      "name": "PKG.FILLER.LSL01.PV",
+      "desc": "Filler bowl low (product supply)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "low_bowl",
+      "helics_key": "packaging/filler.low_bowl",
+      "alarms": [
+        "PKG.FILLER.LSL01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PKG.FILLER.LSL01.ALM_STATE",
+      "desc": "Filler bowl low (product supply): state alarm (medium)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "plc",
+      "plc": "plc-packaging",
+      "generated": true
+    },
+    {
+      "name": "PKG.FILLER.XV01.CMD",
+      "desc": "Filler product valve (from BBT-202)",
+      "type": "binary-read-write",
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "product_valve",
+      "helics_key": "packaging/filler.product_valve"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.CMD",
+      "desc": "Filler PackML command (CntrlCmd)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        9.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "cmd",
+      "helics_key": "packaging/filler.cmd"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.MODE_CMD",
+      "desc": "Filler PackML mode command (UnitMode)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "mode_cmd",
+      "helics_key": "packaging/filler.mode_cmd"
+    },
+    {
+      "name": "PKG.FILLER.PACKML.SPEED_SP",
+      "desc": "Filler speed setpoint (MachSpeed)",
+      "type": "analog-read-write",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "FILLER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "filler",
+      "device_type": "filler",
+      "point": "speed_sp_bpm",
+      "helics_key": "packaging/filler.speed_sp_bpm"
+    },
+    {
+      "name": "PKG.RINSER.PACKML.STATE",
+      "desc": "Rinser PackML state (StateCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        17.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "state",
+      "helics_key": "packaging/rinser.state"
+    },
+    {
+      "name": "PKG.RINSER.PACKML.MODE",
+      "desc": "Rinser PackML mode (UnitModeCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "mode",
+      "helics_key": "packaging/rinser.mode"
+    },
+    {
+      "name": "PKG.RINSER.PACKML.SPEED",
+      "desc": "Rinser current speed (CurMachSpeed)",
+      "type": "analog-read",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "speed_bpm",
+      "helics_key": "packaging/rinser.speed_bpm"
+    },
+    {
+      "name": "PKG.RINSER.PACKML.PROCESSED",
+      "desc": "Rinser ProdProcessedCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "processed",
+      "helics_key": "packaging/rinser.processed"
+    },
+    {
+      "name": "PKG.RINSER.PACKML.DEFECTIVE",
+      "desc": "Rinser ProdDefectiveCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "defective",
+      "helics_key": "packaging/rinser.defective"
+    },
+    {
+      "name": "PKG.RINSER.PACKML.STOP_REASON",
+      "desc": "Rinser stop reason (StopReason.ID)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        99.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "stop_reason",
+      "helics_key": "packaging/rinser.stop_reason"
+    },
+    {
+      "name": "PKG.RINSER.YA01.PV",
+      "desc": "Rinser jammed",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "jammed",
+      "helics_key": "packaging/rinser.jammed",
+      "alarms": [
+        "PKG.RINSER.YA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PKG.RINSER.YA01.ALM_STATE",
+      "desc": "Rinser jammed: state alarm (low)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "plc",
+      "plc": "plc-packaging",
+      "generated": true
+    },
+    {
+      "name": "PKG.RINSER.PACKML.CMD",
+      "desc": "Rinser PackML command (CntrlCmd)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        9.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "cmd",
+      "helics_key": "packaging/rinser.cmd"
+    },
+    {
+      "name": "PKG.RINSER.PACKML.MODE_CMD",
+      "desc": "Rinser PackML mode command (UnitMode)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "mode_cmd",
+      "helics_key": "packaging/rinser.mode_cmd"
+    },
+    {
+      "name": "PKG.RINSER.PACKML.SPEED_SP",
+      "desc": "Rinser speed setpoint (MachSpeed)",
+      "type": "analog-read-write",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "RINSER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "rinser",
+      "device_type": "packml-machine",
+      "point": "speed_sp_bpm",
+      "helics_key": "packaging/rinser.speed_sp_bpm"
+    },
+    {
+      "name": "PKG.CODER.PACKML.STATE",
+      "desc": "Date coder PackML state (StateCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        17.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "state",
+      "helics_key": "packaging/coder.state"
+    },
+    {
+      "name": "PKG.CODER.PACKML.MODE",
+      "desc": "Date coder PackML mode (UnitModeCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "mode",
+      "helics_key": "packaging/coder.mode"
+    },
+    {
+      "name": "PKG.CODER.PACKML.SPEED",
+      "desc": "Date coder current speed (CurMachSpeed)",
+      "type": "analog-read",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "speed_bpm",
+      "helics_key": "packaging/coder.speed_bpm"
+    },
+    {
+      "name": "PKG.CODER.PACKML.PROCESSED",
+      "desc": "Date coder ProdProcessedCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "processed",
+      "helics_key": "packaging/coder.processed"
+    },
+    {
+      "name": "PKG.CODER.PACKML.DEFECTIVE",
+      "desc": "Date coder ProdDefectiveCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "defective",
+      "helics_key": "packaging/coder.defective"
+    },
+    {
+      "name": "PKG.CODER.PACKML.STOP_REASON",
+      "desc": "Date coder stop reason (StopReason.ID)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        99.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "stop_reason",
+      "helics_key": "packaging/coder.stop_reason"
+    },
+    {
+      "name": "PKG.CODER.YA01.PV",
+      "desc": "Date coder jammed",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "jammed",
+      "helics_key": "packaging/coder.jammed",
+      "alarms": [
+        "PKG.CODER.YA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PKG.CODER.YA01.ALM_STATE",
+      "desc": "Date coder jammed: state alarm (low)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "plc",
+      "plc": "plc-packaging",
+      "generated": true
+    },
+    {
+      "name": "PKG.CODER.PACKML.CMD",
+      "desc": "Date coder PackML command (CntrlCmd)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        9.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "cmd",
+      "helics_key": "packaging/coder.cmd"
+    },
+    {
+      "name": "PKG.CODER.PACKML.MODE_CMD",
+      "desc": "Date coder PackML mode command (UnitMode)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "mode_cmd",
+      "helics_key": "packaging/coder.mode_cmd"
+    },
+    {
+      "name": "PKG.CODER.PACKML.SPEED_SP",
+      "desc": "Date coder speed setpoint (MachSpeed)",
+      "type": "analog-read-write",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "CODER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "coder",
+      "device_type": "packml-machine",
+      "point": "speed_sp_bpm",
+      "helics_key": "packaging/coder.speed_sp_bpm"
+    },
+    {
+      "name": "PKG.LABELER.PACKML.STATE",
+      "desc": "Labeler PackML state (StateCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        17.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "state",
+      "helics_key": "packaging/labeler.state"
+    },
+    {
+      "name": "PKG.LABELER.PACKML.MODE",
+      "desc": "Labeler PackML mode (UnitModeCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "mode",
+      "helics_key": "packaging/labeler.mode"
+    },
+    {
+      "name": "PKG.LABELER.PACKML.SPEED",
+      "desc": "Labeler current speed (CurMachSpeed)",
+      "type": "analog-read",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "speed_bpm",
+      "helics_key": "packaging/labeler.speed_bpm"
+    },
+    {
+      "name": "PKG.LABELER.PACKML.PROCESSED",
+      "desc": "Labeler ProdProcessedCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "processed",
+      "helics_key": "packaging/labeler.processed"
+    },
+    {
+      "name": "PKG.LABELER.PACKML.DEFECTIVE",
+      "desc": "Labeler ProdDefectiveCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "defective",
+      "helics_key": "packaging/labeler.defective"
+    },
+    {
+      "name": "PKG.LABELER.PACKML.STOP_REASON",
+      "desc": "Labeler stop reason (StopReason.ID)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        99.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "stop_reason",
+      "helics_key": "packaging/labeler.stop_reason"
+    },
+    {
+      "name": "PKG.LABELER.YA01.PV",
+      "desc": "Labeler jammed",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "jammed",
+      "helics_key": "packaging/labeler.jammed",
+      "alarms": [
+        "PKG.LABELER.YA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PKG.LABELER.YA01.ALM_STATE",
+      "desc": "Labeler jammed: state alarm (low)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "plc",
+      "plc": "plc-packaging",
+      "generated": true
+    },
+    {
+      "name": "PKG.LABELER.PACKML.CMD",
+      "desc": "Labeler PackML command (CntrlCmd)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        9.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "cmd",
+      "helics_key": "packaging/labeler.cmd"
+    },
+    {
+      "name": "PKG.LABELER.PACKML.MODE_CMD",
+      "desc": "Labeler PackML mode command (UnitMode)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "mode_cmd",
+      "helics_key": "packaging/labeler.mode_cmd"
+    },
+    {
+      "name": "PKG.LABELER.PACKML.SPEED_SP",
+      "desc": "Labeler speed setpoint (MachSpeed)",
+      "type": "analog-read-write",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "LABELER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "labeler",
+      "device_type": "packml-machine",
+      "point": "speed_sp_bpm",
+      "helics_key": "packaging/labeler.speed_sp_bpm"
+    },
+    {
+      "name": "PKG.PACKER.PACKML.STATE",
+      "desc": "Case packer PackML state (StateCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        17.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "state",
+      "helics_key": "packaging/packer.state"
+    },
+    {
+      "name": "PKG.PACKER.PACKML.MODE",
+      "desc": "Case packer PackML mode (UnitModeCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "mode",
+      "helics_key": "packaging/packer.mode"
+    },
+    {
+      "name": "PKG.PACKER.PACKML.SPEED",
+      "desc": "Case packer current speed (CurMachSpeed)",
+      "type": "analog-read",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "speed_bpm",
+      "helics_key": "packaging/packer.speed_bpm"
+    },
+    {
+      "name": "PKG.PACKER.PACKML.PROCESSED",
+      "desc": "Case packer ProdProcessedCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "processed",
+      "helics_key": "packaging/packer.processed"
+    },
+    {
+      "name": "PKG.PACKER.PACKML.DEFECTIVE",
+      "desc": "Case packer ProdDefectiveCount (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "defective",
+      "helics_key": "packaging/packer.defective"
+    },
+    {
+      "name": "PKG.PACKER.PACKML.STOP_REASON",
+      "desc": "Case packer stop reason (StopReason.ID)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        99.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "stop_reason",
+      "helics_key": "packaging/packer.stop_reason"
+    },
+    {
+      "name": "PKG.PACKER.YA01.PV",
+      "desc": "Case packer jammed",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "jammed",
+      "helics_key": "packaging/packer.jammed",
+      "alarms": [
+        "PKG.PACKER.YA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PKG.PACKER.YA01.ALM_STATE",
+      "desc": "Case packer jammed: state alarm (low)",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "plc",
+      "plc": "plc-packaging",
+      "generated": true
+    },
+    {
+      "name": "PKG.PACKER.PACKML.CMD",
+      "desc": "Case packer PackML command (CntrlCmd)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        9.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "cmd",
+      "helics_key": "packaging/packer.cmd"
+    },
+    {
+      "name": "PKG.PACKER.PACKML.MODE_CMD",
+      "desc": "Case packer PackML mode command (UnitMode)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "mode_cmd",
+      "helics_key": "packaging/packer.mode_cmd"
+    },
+    {
+      "name": "PKG.PACKER.PACKML.SPEED_SP",
+      "desc": "Case packer speed setpoint (MachSpeed)",
+      "type": "analog-read-write",
+      "units": "bottles/min",
+      "range": [
+        0.0,
+        60.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "PACKER",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "packer",
+      "device_type": "packml-machine",
+      "point": "speed_sp_bpm",
+      "helics_key": "packaging/packer.speed_sp_bpm"
+    },
+    {
+      "name": "PKG.KEG.PACKML.STATE",
+      "desc": "Keg washer/filler PackML state (StateCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        17.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "state",
+      "helics_key": "packaging/kegger.state"
+    },
+    {
+      "name": "PKG.KEG.PACKML.MODE",
+      "desc": "Keg washer/filler PackML mode (UnitModeCurrent)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "mode",
+      "helics_key": "packaging/kegger.mode"
+    },
+    {
+      "name": "PKG.KEG.PACKML.PROCESSED",
+      "desc": "Kegs filled (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "processed",
+      "helics_key": "packaging/kegger.processed"
+    },
+    {
+      "name": "PKG.KEG.PACKML.DEFECTIVE",
+      "desc": "Kegs rejected (wraps at 65535)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "defective",
+      "helics_key": "packaging/kegger.defective"
+    },
+    {
+      "name": "PKG.KEG.PACKML.STOP_REASON",
+      "desc": "Keg washer/filler stop reason",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        99.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "stop_reason",
+      "helics_key": "packaging/kegger.stop_reason"
+    },
+    {
+      "name": "PKG.KEG.TT01.PV",
+      "desc": "Keg wash water temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        32.0,
+        212.0
+      ],
+      "scaling": 1,
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "wash_temp_f",
+      "helics_key": "packaging/kegger.wash_temp_f"
+    },
+    {
+      "name": "PKG.KEG.YA01.PV",
+      "desc": "Keg washer/filler jammed",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "jammed",
+      "helics_key": "packaging/kegger.jammed"
+    },
+    {
+      "name": "PKG.KEG.HS01.CMD",
+      "desc": "Keg wash heater command",
+      "type": "binary-read-write",
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "heater",
+      "helics_key": "packaging/kegger.heater"
+    },
+    {
+      "name": "PKG.KEG.PACKML.CMD",
+      "desc": "Keg washer/filler PackML command (CntrlCmd)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        9.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "cmd",
+      "helics_key": "packaging/kegger.cmd"
+    },
+    {
+      "name": "PKG.KEG.PACKML.MODE_CMD",
+      "desc": "Keg washer/filler mode command",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "KEG",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "kegger",
+      "device_type": "keg-machine",
+      "point": "mode_cmd",
+      "helics_key": "packaging/kegger.mode_cmd"
+    },
+    {
+      "name": "PKG.CONV.LS01.PV",
+      "desc": "Conveyor 1 (depalletizer to rinser) accumulation eye",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv1",
+      "device_type": "conveyor",
+      "point": "accum_eye",
+      "helics_key": "packaging/conv1.accum_eye"
+    },
+    {
+      "name": "PKG.CONV.YA01.PV",
+      "desc": "Conveyor 1 jam eye",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv1",
+      "device_type": "conveyor",
+      "point": "jam_eye",
+      "helics_key": "packaging/conv1.jam_eye"
+    },
+    {
+      "name": "PKG.CONV.HS01.CMD",
+      "desc": "Conveyor 1 run command",
+      "type": "binary-read-write",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv1",
+      "device_type": "conveyor",
+      "point": "run",
+      "helics_key": "packaging/conv1.run"
+    },
+    {
+      "name": "PKG.CONV.LS02.PV",
+      "desc": "Conveyor 2 (filler to coder) accumulation eye",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv2",
+      "device_type": "conveyor",
+      "point": "accum_eye",
+      "helics_key": "packaging/conv2.accum_eye"
+    },
+    {
+      "name": "PKG.CONV.YA02.PV",
+      "desc": "Conveyor 2 jam eye",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv2",
+      "device_type": "conveyor",
+      "point": "jam_eye",
+      "helics_key": "packaging/conv2.jam_eye"
+    },
+    {
+      "name": "PKG.CONV.HS02.CMD",
+      "desc": "Conveyor 2 run command",
+      "type": "binary-read-write",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv2",
+      "device_type": "conveyor",
+      "point": "run",
+      "helics_key": "packaging/conv2.run"
+    },
+    {
+      "name": "PKG.CONV.LS03.PV",
+      "desc": "Conveyor 3 (labeler to packer) accumulation eye",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv3",
+      "device_type": "conveyor",
+      "point": "accum_eye",
+      "helics_key": "packaging/conv3.accum_eye"
+    },
+    {
+      "name": "PKG.CONV.YA03.PV",
+      "desc": "Conveyor 3 jam eye",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv3",
+      "device_type": "conveyor",
+      "point": "jam_eye",
+      "helics_key": "packaging/conv3.jam_eye"
+    },
+    {
+      "name": "PKG.CONV.HS03.CMD",
+      "desc": "Conveyor 3 run command",
+      "type": "binary-read-write",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv3",
+      "device_type": "conveyor",
+      "point": "run",
+      "helics_key": "packaging/conv3.run"
+    },
+    {
+      "name": "PKG.CONV.LS04.PV",
+      "desc": "Conveyor 4 (packer to palletizing) accumulation eye",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv4",
+      "device_type": "conveyor",
+      "point": "accum_eye",
+      "helics_key": "packaging/conv4.accum_eye"
+    },
+    {
+      "name": "PKG.CONV.YA04.PV",
+      "desc": "Conveyor 4 jam eye",
+      "type": "binary-read",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv4",
+      "device_type": "conveyor",
+      "point": "jam_eye",
+      "helics_key": "packaging/conv4.jam_eye"
+    },
+    {
+      "name": "PKG.CONV.HS04.CMD",
+      "desc": "Conveyor 4 run command",
+      "type": "binary-read-write",
+      "area": "PKG",
+      "unit": "CONV",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "conv4",
+      "device_type": "conveyor",
+      "point": "run",
+      "helics_key": "packaging/conv4.run"
+    },
+    {
+      "name": "UTL.CHL.TT01.PV",
+      "desc": "Glycol supply temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "supply_f",
+      "helics_key": "utilities/chiller.supply_f",
+      "alarms": [
+        "UTL.CHL.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "UTL.CHL.TT01.ALM_HIGH",
+      "desc": "Glycol supply temperature: high alarm (high)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.CHL.TT02.PV",
+      "desc": "Glycol return temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "return_f",
+      "helics_key": "utilities/chiller.return_f"
+    },
+    {
+      "name": "UTL.CHL.JT01.PV",
+      "desc": "Chiller electrical input",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "power_kw",
+      "helics_key": "utilities/chiller.power_kw"
+    },
+    {
+      "name": "UTL.CHL.YS01.PV",
+      "desc": "Compressor stage 1 running",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "stage1_on",
+      "helics_key": "utilities/chiller.stage1_on"
+    },
+    {
+      "name": "UTL.CHL.YS02.PV",
+      "desc": "Compressor stage 2 running",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "stage2_on",
+      "helics_key": "utilities/chiller.stage2_on"
+    },
+    {
+      "name": "UTL.CHL.YA01.PV",
+      "desc": "Chiller compressor fault",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "fault",
+      "helics_key": "utilities/chiller.fault",
+      "alarms": [
+        "UTL.CHL.YA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "UTL.CHL.YA01.ALM_STATE",
+      "desc": "Chiller compressor fault: state alarm (high)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.CHL.HS01.CMD",
+      "desc": "Chiller enable",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "enable",
+      "helics_key": "utilities/chiller.enable"
+    },
+    {
+      "name": "UTL.CHL.TIC01.SP",
+      "desc": "Chiller supply setpoint (written to the OEM controller)",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "supply_sp_f",
+      "helics_key": "utilities/chiller.supply_sp_f"
+    },
+    {
+      "name": "UTL.CHL.TT01.SP",
+      "desc": "Glycol supply setpoint (operator)",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "plc",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.GLY.LT01.PV",
+      "desc": "Glycol reservoir level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "GLY",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "glycol",
+      "device_type": "glycol-loop",
+      "point": "reservoir_pct",
+      "helics_key": "utilities/glycol.reservoir_pct",
+      "alarms": [
+        "UTL.GLY.LT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "UTL.GLY.LT01.ALM_LOW",
+      "desc": "Glycol reservoir level: low alarm (medium)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "GLY",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.GLY.PT01.PV",
+      "desc": "Glycol supply pressure",
+      "type": "analog-read",
+      "units": "psig",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "GLY",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "glycol",
+      "device_type": "glycol-loop",
+      "point": "pump_psig",
+      "helics_key": "utilities/glycol.pump_psig"
+    },
+    {
+      "name": "UTL.GLY.YS01.PV",
+      "desc": "Glycol pump running",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "GLY",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "glycol",
+      "device_type": "glycol-loop",
+      "point": "pump_running",
+      "helics_key": "utilities/glycol.pump_running"
+    },
+    {
+      "name": "UTL.GLY.HS01.CMD",
+      "desc": "Glycol pump run command",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "GLY",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "glycol",
+      "device_type": "glycol-loop",
+      "point": "pump_run",
+      "helics_key": "utilities/glycol.pump_run"
+    },
+    {
+      "name": "UTL.GLY.SC01.OUT",
+      "desc": "Glycol pump VFD speed reference (pressure control)",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "GLY",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "glycol",
+      "device_type": "glycol-loop",
+      "point": "pump_speed_pct",
+      "helics_key": "utilities/glycol.pump_speed_pct"
+    },
+    {
+      "name": "UTL.GLY.PT01.SP",
+      "desc": "Glycol supply pressure setpoint",
+      "type": "analog-read-write",
+      "units": "psig",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "GLY",
+      "source": "plc",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.STM.PT01.PV",
+      "desc": "Steam header pressure",
+      "type": "analog-read",
+      "units": "psig",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "STM",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "boiler",
+      "device_type": "boiler",
+      "point": "pressure_psig",
+      "helics_key": "utilities/boiler.pressure_psig",
+      "alarms": [
+        "UTL.STM.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "UTL.STM.PT01.ALM_LOW",
+      "desc": "Steam header pressure: low alarm (medium)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "STM",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.STM.JT01.PV",
+      "desc": "Boiler electrical input",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        0.0,
+        250.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "STM",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "boiler",
+      "device_type": "boiler",
+      "point": "power_kw",
+      "helics_key": "utilities/boiler.power_kw"
+    },
+    {
+      "name": "UTL.STM.YS01.PV",
+      "desc": "Boiler firing",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "STM",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "boiler",
+      "device_type": "boiler",
+      "point": "running",
+      "helics_key": "utilities/boiler.running"
+    },
+    {
+      "name": "UTL.STM.LSL01.PV",
+      "desc": "Boiler low-water cutoff tripped (hardwired)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "STM",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "boiler",
+      "device_type": "boiler",
+      "point": "low_water",
+      "helics_key": "utilities/boiler.low_water",
+      "alarms": [
+        "UTL.STM.LSL01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "UTL.STM.LSL01.ALM_STATE",
+      "desc": "Boiler low-water cutoff tripped (hardwired): state alarm (high)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "STM",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.STM.HS01.CMD",
+      "desc": "Boiler enable",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "STM",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "boiler",
+      "device_type": "boiler",
+      "point": "enable",
+      "helics_key": "utilities/boiler.enable"
+    },
+    {
+      "name": "UTL.STM.PC01.SP",
+      "desc": "Boiler pressure setpoint",
+      "type": "analog-read-write",
+      "units": "psig",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "STM",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "boiler",
+      "device_type": "boiler",
+      "point": "pressure_sp_psig",
+      "helics_key": "utilities/boiler.pressure_sp_psig"
+    },
+    {
+      "name": "UTL.AIR.PT01.PV",
+      "desc": "Compressed-air header pressure",
+      "type": "analog-read",
+      "units": "psig",
+      "range": [
+        0.0,
+        150.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "AIR",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "aircomp",
+      "device_type": "air-compressor",
+      "point": "header_psig",
+      "helics_key": "utilities/aircomp.header_psig",
+      "alarms": [
+        "UTL.AIR.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "UTL.AIR.PT01.ALM_LOW",
+      "desc": "Compressed-air header pressure: low alarm (medium)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "AIR",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.AIR.YS01.PV",
+      "desc": "Air compressor running",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "AIR",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "aircomp",
+      "device_type": "air-compressor",
+      "point": "running",
+      "helics_key": "utilities/aircomp.running"
+    },
+    {
+      "name": "UTL.AIR.YA01.PV",
+      "desc": "Air dryer fault",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "AIR",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "aircomp",
+      "device_type": "air-compressor",
+      "point": "dryer_fault",
+      "helics_key": "utilities/aircomp.dryer_fault"
+    },
+    {
+      "name": "UTL.AIR.HS01.CMD",
+      "desc": "Air compressor enable",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "AIR",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "aircomp",
+      "device_type": "air-compressor",
+      "point": "enable",
+      "helics_key": "utilities/aircomp.enable"
+    },
+    {
+      "name": "UTL.CO2.PT01.PV",
+      "desc": "Bulk CO2 tank pressure",
+      "type": "analog-read",
+      "units": "psig",
+      "range": [
+        0.0,
+        400.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "co2",
+      "device_type": "co2-supply",
+      "point": "tank_psig",
+      "helics_key": "utilities/co2.tank_psig"
+    },
+    {
+      "name": "UTL.CO2.LT01.PV",
+      "desc": "Bulk CO2 tank level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "co2",
+      "device_type": "co2-supply",
+      "point": "tank_level_pct",
+      "helics_key": "utilities/co2.tank_level_pct",
+      "alarms": [
+        "UTL.CO2.LT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "UTL.CO2.LT01.ALM_LOW",
+      "desc": "Bulk CO2 tank level: low alarm (low)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.CO2.PT02.PV",
+      "desc": "CO2 supply header pressure",
+      "type": "analog-read",
+      "units": "psig",
+      "range": [
+        0.0,
+        150.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "co2",
+      "device_type": "co2-supply",
+      "point": "supply_psig",
+      "helics_key": "utilities/co2.supply_psig",
+      "alarms": [
+        "UTL.CO2.PT02.ALM_LOW"
+      ]
+    },
+    {
+      "name": "UTL.CO2.PT02.ALM_LOW",
+      "desc": "CO2 supply header pressure: low alarm (medium)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.CO2.XV01.CMD",
+      "desc": "CO2 main supply valve",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "co2",
+      "device_type": "co2-supply",
+      "point": "main_valve",
+      "helics_key": "utilities/co2.main_valve"
+    },
+    {
+      "name": "UTL.RO.FT01.PV",
+      "desc": "RO permeate flow",
+      "type": "analog-read",
+      "units": "gal/min",
+      "range": [
+        0.0,
+        50.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "RO",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "ro",
+      "device_type": "ro-skid",
+      "point": "permeate_gpm",
+      "helics_key": "utilities/ro.permeate_gpm"
+    },
+    {
+      "name": "UTL.RO.AT01.PV",
+      "desc": "RO permeate conductivity",
+      "type": "analog-read",
+      "units": "uS/cm",
+      "range": [
+        0.0,
+        1000.0
+      ],
+      "scaling": 0,
+      "area": "UTL",
+      "unit": "RO",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "ro",
+      "device_type": "ro-skid",
+      "point": "conductivity_us",
+      "helics_key": "utilities/ro.conductivity_us",
+      "alarms": [
+        "UTL.RO.AT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "UTL.RO.AT01.ALM_HIGH",
+      "desc": "RO permeate conductivity: high alarm (low)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "RO",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.RO.YS01.PV",
+      "desc": "RO skid running",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "RO",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "ro",
+      "device_type": "ro-skid",
+      "point": "running",
+      "helics_key": "utilities/ro.running"
+    },
+    {
+      "name": "UTL.RO.HS01.CMD",
+      "desc": "RO skid run command",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "RO",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "ro",
+      "device_type": "ro-skid",
+      "point": "run",
+      "helics_key": "utilities/ro.run"
+    },
+    {
+      "name": "UTL.WWN.LT01.PV",
+      "desc": "Neutralization tank level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "wwn",
+      "device_type": "wastewater",
+      "point": "level_pct",
+      "helics_key": "utilities/wwn.level_pct",
+      "alarms": [
+        "UTL.WWN.LT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "UTL.WWN.LT01.ALM_HIGH",
+      "desc": "Neutralization tank level: high alarm (medium)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.WWN.AT01.PV",
+      "desc": "Neutralization tank pH",
+      "type": "analog-read",
+      "units": "pH",
+      "range": [
+        0.0,
+        14.0
+      ],
+      "scaling": 2,
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "wwn",
+      "device_type": "wastewater",
+      "point": "ph",
+      "helics_key": "utilities/wwn.ph",
+      "alarms": [
+        "UTL.WWN.AT01.ALM_HIGH",
+        "UTL.WWN.AT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "UTL.WWN.AT01.ALM_HIGH",
+      "desc": "Neutralization tank pH: high alarm (low)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.WWN.AT01.ALM_LOW",
+      "desc": "Neutralization tank pH: low alarm (low)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.WWN.LSH01.PV",
+      "desc": "Neutralization tank high-level switch",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "wwn",
+      "device_type": "wastewater",
+      "point": "high_level",
+      "helics_key": "utilities/wwn.high_level"
+    },
+    {
+      "name": "UTL.WWN.XV01.CMD",
+      "desc": "Caustic dosing pump",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "wwn",
+      "device_type": "wastewater",
+      "point": "caustic_pump",
+      "helics_key": "utilities/wwn.caustic_pump"
+    },
+    {
+      "name": "UTL.WWN.XV02.CMD",
+      "desc": "Acid dosing pump",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "wwn",
+      "device_type": "wastewater",
+      "point": "acid_pump",
+      "helics_key": "utilities/wwn.acid_pump"
+    },
+    {
+      "name": "UTL.WWN.XV03.CMD",
+      "desc": "Discharge valve to the sewer (permitted at pH 6.0-9.0)",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "wwn",
+      "device_type": "wastewater",
+      "point": "discharge_valve",
+      "helics_key": "utilities/wwn.discharge_valve"
+    },
+    {
+      "name": "UTL.WWN.XS01.INHIBIT",
+      "desc": "Discharge inhibited (pH outside 6.0-9.0)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "alarms": [
+        "UTL.WWN.XS01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "UTL.WWN.XS01.ALM_STATE",
+      "desc": "Discharge inhibited (pH outside 6.0-9.0): state alarm (medium)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "WWN",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.CIP.TT01.PV",
+      "desc": "CIP supply temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        32.0,
+        212.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "supply_f",
+      "helics_key": "utilities/cip.supply_f",
+      "alarms": [
+        "UTL.CIP.TT01.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "UTL.CIP.TT01.ALM_DEVIATION",
+      "desc": "CIP supply temperature: deviation alarm (low)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.CIP.AT01.PV",
+      "desc": "CIP return conductivity",
+      "type": "analog-read",
+      "units": "mS/cm",
+      "range": [
+        0.0,
+        200.0
+      ],
+      "scaling": 2,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "return_cond_ms",
+      "helics_key": "utilities/cip.return_cond_ms"
+    },
+    {
+      "name": "UTL.CIP.FT01.PV",
+      "desc": "CIP return flow",
+      "type": "analog-read",
+      "units": "gal/min",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "return_gpm",
+      "helics_key": "utilities/cip.return_gpm"
+    },
+    {
+      "name": "UTL.CIP.LT01.PV",
+      "desc": "Caustic tank level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "caustic_level_pct",
+      "helics_key": "utilities/cip.caustic_level_pct"
+    },
+    {
+      "name": "UTL.CIP.LT02.PV",
+      "desc": "Acid/sanitizer tank level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "acid_level_pct",
+      "helics_key": "utilities/cip.acid_level_pct"
+    },
+    {
+      "name": "UTL.CIP.FS01.PV",
+      "desc": "CIP return flow proven (flow switch)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "return_flow",
+      "helics_key": "utilities/cip.return_flow"
+    },
+    {
+      "name": "UTL.CIP.HS01.CMD",
+      "desc": "CIP supply pump run command",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "supply_pump",
+      "helics_key": "utilities/cip.supply_pump"
+    },
+    {
+      "name": "UTL.CIP.HS02.CMD",
+      "desc": "CIP return pump run command",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "return_pump",
+      "helics_key": "utilities/cip.return_pump"
+    },
+    {
+      "name": "UTL.CIP.XV01.CMD",
+      "desc": "Caustic dosing",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "caustic_dose",
+      "helics_key": "utilities/cip.caustic_dose"
+    },
+    {
+      "name": "UTL.CIP.XV02.CMD",
+      "desc": "Acid/sanitizer dosing",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "acid_dose",
+      "helics_key": "utilities/cip.acid_dose"
+    },
+    {
+      "name": "UTL.CIP.TV01.OUT",
+      "desc": "CIP heater steam valve position",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cip",
+      "device_type": "cip-skid",
+      "point": "steam_valve_pct",
+      "helics_key": "utilities/cip.steam_valve_pct"
+    },
+    {
+      "name": "UTL.CIP.ZS01.PV",
+      "desc": "Swing panel on the brewhouse circuit",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cippanel",
+      "device_type": "cip-panel",
+      "point": "route_bh",
+      "helics_key": "utilities/cippanel.route_bh"
+    },
+    {
+      "name": "UTL.CIP.ZS02.PV",
+      "desc": "Swing panel on FV-101",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cippanel",
+      "device_type": "cip-panel",
+      "point": "route_fv101",
+      "helics_key": "utilities/cippanel.route_fv101"
+    },
+    {
+      "name": "UTL.CIP.ZS03.PV",
+      "desc": "Swing panel on FV-102",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cippanel",
+      "device_type": "cip-panel",
+      "point": "route_fv102",
+      "helics_key": "utilities/cippanel.route_fv102"
+    },
+    {
+      "name": "UTL.CIP.ZS04.PV",
+      "desc": "Swing panel on FV-103",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cippanel",
+      "device_type": "cip-panel",
+      "point": "route_fv103",
+      "helics_key": "utilities/cippanel.route_fv103"
+    },
+    {
+      "name": "UTL.CIP.ZS05.PV",
+      "desc": "Swing panel on FV-104",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cippanel",
+      "device_type": "cip-panel",
+      "point": "route_fv104",
+      "helics_key": "utilities/cippanel.route_fv104"
+    },
+    {
+      "name": "UTL.CIP.ZS06.PV",
+      "desc": "Swing panel on BBT-201",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cippanel",
+      "device_type": "cip-panel",
+      "point": "route_bbt201",
+      "helics_key": "utilities/cippanel.route_bbt201"
+    },
+    {
+      "name": "UTL.CIP.ZS07.PV",
+      "desc": "Swing panel on BBT-202",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "cippanel",
+      "device_type": "cip-panel",
+      "point": "route_bbt202",
+      "helics_key": "utilities/cippanel.route_bbt202"
+    },
+    {
+      "name": "UTL.CIP.TT01.SP",
+      "desc": "CIP supply temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        32.0,
+        212.0
+      ],
+      "scaling": 1,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "plc",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XC01.CIRCUIT",
+      "desc": "CIP circuit selected",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        8.0
+      ],
+      "scaling": 0,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "plc",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XC01.CMD",
+      "desc": "CIP sequence command (1 start, 2 hold, 3 abort)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "plc",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XS01.STEP",
+      "desc": "CIP sequence step",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        7.0
+      ],
+      "scaling": 0,
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "plc",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XS02.ROUTE_OK",
+      "desc": "CIP route verified and return flow proven",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "plc",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "PWR.MAIN.JT01.PV",
+      "desc": "Service real power (import positive)",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        -500.0,
+        1000.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "p_kw",
+      "helics_key": "power/relay-main.p_kw",
+      "signed": true,
+      "alarms": [
+        "PWR.MAIN.JT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "PWR.MAIN.JT01.ALM_HIGH",
+      "desc": "Service real power (import positive): high alarm (medium)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
+    },
+    {
+      "name": "PWR.MAIN.JT02.PV",
+      "desc": "Service reactive power",
+      "type": "analog-read",
+      "units": "kvar",
+      "range": [
+        -500.0,
+        500.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "q_kvar",
+      "helics_key": "power/relay-main.q_kvar",
+      "signed": true
+    },
+    {
+      "name": "PWR.MAIN.ET01.PV",
+      "desc": "Service voltage, line to line",
+      "type": "analog-read",
+      "units": "V",
+      "range": [
+        0.0,
+        600.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "v_ll",
+      "helics_key": "power/relay-main.v_ll",
+      "alarms": [
+        "PWR.MAIN.ET01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "PWR.MAIN.ET01.ALM_LOW",
+      "desc": "Service voltage, line to line: low alarm (medium)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
+    },
+    {
+      "name": "PWR.MAIN.IT01.PV",
+      "desc": "Service current, phase A",
+      "type": "analog-read",
+      "units": "A",
+      "range": [
+        0.0,
+        1200.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "i_a",
+      "helics_key": "power/relay-main.i_a"
+    },
+    {
+      "name": "PWR.MAIN.ST01.PV",
+      "desc": "Service frequency",
+      "type": "analog-read",
+      "units": "Hz",
+      "range": [
+        0.0,
+        70.0
+      ],
+      "scaling": 2,
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "freq_hz",
+      "helics_key": "power/relay-main.freq_hz"
+    },
+    {
+      "name": "PWR.MAIN.JQ01.PV",
+      "desc": "15-minute demand (meter)",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        0.0,
+        1000.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "demand_kw",
+      "helics_key": "power/relay-main.demand_kw"
+    },
+    {
+      "name": "PWR.MAIN.ZS01.PV",
+      "desc": "52-M main breaker closed",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "breaker_closed",
+      "helics_key": "power/relay-main.breaker_closed"
+    },
+    {
+      "name": "PWR.MAIN.YA01.PV",
+      "desc": "52-M tripped on overcurrent",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "tripped",
+      "helics_key": "power/relay-main.tripped",
+      "alarms": [
+        "PWR.MAIN.YA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PWR.MAIN.YA01.ALM_STATE",
+      "desc": "52-M tripped on overcurrent: state alarm (high)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
+    },
+    {
+      "name": "PWR.MAIN.HS01.CMD",
+      "desc": "52-M close command (0 opens)",
+      "type": "binary-read-write",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "relay-main",
+      "device_type": "relay-meter",
+      "point": "close",
+      "helics_key": "power/relay-main.close"
+    },
+    {
+      "name": "PWR.MAIN.ZS02.PV",
+      "desc": "Boiler feeder closed",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "msb",
+      "device_type": "msb-feeders",
+      "point": "boiler_closed",
+      "helics_key": "power/msb.boiler_closed"
+    },
+    {
+      "name": "PWR.MAIN.ZS03.PV",
+      "desc": "Packaging feeder (PP-PKG) closed",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "msb",
+      "device_type": "msb-feeders",
+      "point": "pkg_closed",
+      "helics_key": "power/msb.pkg_closed"
+    },
+    {
+      "name": "PWR.MAIN.ZS04.PV",
+      "desc": "RTU-1 feeder closed",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "msb",
+      "device_type": "msb-feeders",
+      "point": "rtu_closed",
+      "helics_key": "power/msb.rtu_closed"
+    },
+    {
+      "name": "PWR.MAIN.HS02.CMD",
+      "desc": "Boiler feeder close command",
+      "type": "binary-read-write",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "msb",
+      "device_type": "msb-feeders",
+      "point": "boiler_close",
+      "helics_key": "power/msb.boiler_close"
+    },
+    {
+      "name": "PWR.MAIN.HS03.CMD",
+      "desc": "Packaging feeder close command",
+      "type": "binary-read-write",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "msb",
+      "device_type": "msb-feeders",
+      "point": "pkg_close",
+      "helics_key": "power/msb.pkg_close"
+    },
+    {
+      "name": "PWR.MAIN.HS04.CMD",
+      "desc": "RTU-1 feeder close command",
+      "type": "binary-read-write",
+      "area": "PWR",
+      "unit": "MAIN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "relay-main",
+      "federate": "power",
+      "device": "msb",
+      "device_type": "msb-feeders",
+      "point": "rtu_close",
+      "helics_key": "power/msb.rtu_close"
+    },
+    {
+      "name": "PWR.PV.JT01.PV",
+      "desc": "PV inverter output",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        0.0,
+        150.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "PV",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "pv-inverter",
+      "federate": "power",
+      "device": "pv-inverter",
+      "device_type": "pv-inverter",
+      "point": "p_kw",
+      "helics_key": "power/pv-inverter.p_kw"
+    },
+    {
+      "name": "PWR.PV.JY01.PV",
+      "desc": "PV active power limit in effect (min of site and utility)",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "PV",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "pv-inverter",
+      "federate": "power",
+      "device": "pv-inverter",
+      "device_type": "pv-inverter",
+      "point": "limit_pct",
+      "helics_key": "power/pv-inverter.limit_pct"
+    },
+    {
+      "name": "PWR.PV.ZS01.PV",
+      "desc": "PV inverter connected (IEEE 1547)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "PV",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "pv-inverter",
+      "federate": "power",
+      "device": "pv-inverter",
+      "device_type": "pv-inverter",
+      "point": "connected",
+      "helics_key": "power/pv-inverter.connected"
+    },
+    {
+      "name": "PWR.PV.HS01.CMD",
+      "desc": "PV inverter enable",
+      "type": "binary-read-write",
+      "area": "PWR",
+      "unit": "PV",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "pv-inverter",
+      "federate": "power",
+      "device": "pv-inverter",
+      "device_type": "pv-inverter",
+      "point": "enable",
+      "helics_key": "power/pv-inverter.enable"
+    },
+    {
+      "name": "PWR.PV.JC01.SP",
+      "desc": "PV site limit (plc-power)",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "PV",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "pv-inverter",
+      "federate": "power",
+      "device": "pv-inverter",
+      "device_type": "pv-inverter",
+      "point": "site_limit_pct",
+      "helics_key": "power/pv-inverter.site_limit_pct"
+    },
+    {
+      "name": "PWR.PV.JC02.SP",
+      "desc": "PV utility limit (DERMS through rtu-der; read only here)",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "PV",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "pv-inverter",
+      "federate": "power",
+      "device": "pv-inverter",
+      "device_type": "pv-inverter",
+      "point": "utility_limit_pct",
+      "helics_key": "power/pv-inverter.utility_limit_pct",
+      "written_by": "rtu-der"
+    },
+    {
+      "name": "PWR.BESS.JT01.PV",
+      "desc": "BESS power (discharge positive)",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        -150.0,
+        150.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "p_kw",
+      "helics_key": "power/bess-pcs.p_kw",
+      "signed": true
+    },
+    {
+      "name": "PWR.BESS.EY01.PV",
+      "desc": "BESS state of charge",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "soc_pct",
+      "helics_key": "power/bess-pcs.soc_pct",
+      "alarms": [
+        "PWR.BESS.EY01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "PWR.BESS.EY01.ALM_LOW",
+      "desc": "BESS state of charge: low alarm (low)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
+    },
+    {
+      "name": "PWR.BESS.ZS01.PV",
+      "desc": "BESS connected (IEEE 1547)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "connected",
+      "helics_key": "power/bess-pcs.connected"
+    },
+    {
+      "name": "PWR.BESS.YA01.PV",
+      "desc": "BESS PCS fault",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "fault",
+      "helics_key": "power/bess-pcs.fault",
+      "alarms": [
+        "PWR.BESS.YA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PWR.BESS.YA01.ALM_STATE",
+      "desc": "BESS PCS fault: state alarm (medium)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
+    },
+    {
+      "name": "PWR.BESS.HS01.CMD",
+      "desc": "BESS enable",
+      "type": "binary-read-write",
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "enable",
+      "helics_key": "power/bess-pcs.enable"
+    },
+    {
+      "name": "PWR.BESS.JC01.SP",
+      "desc": "BESS power setpoint (plc-power dispatch)",
+      "type": "analog-read-write",
+      "units": "kW",
+      "range": [
+        -100.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "p_sp_kw",
+      "helics_key": "power/bess-pcs.p_sp_kw",
+      "signed": true
+    },
+    {
+      "name": "PWR.BESS.JC02.SP",
+      "desc": "BESS utility dispatch (DERMS through rtu-der; read only here)",
+      "type": "analog-read-write",
+      "units": "kW",
+      "range": [
+        -100.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "utility_p_sp_kw",
+      "helics_key": "power/bess-pcs.utility_p_sp_kw",
+      "signed": true,
+      "written_by": "rtu-der"
+    },
+    {
+      "name": "PWR.GEN.JT01.PV",
+      "desc": "Genset output",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        0.0,
+        150.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "gen_kw",
+      "helics_key": "power/gen-ats.gen_kw"
+    },
+    {
+      "name": "PWR.GEN.JT02.PV",
+      "desc": "EP-1 emergency panel load",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        0.0,
+        150.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "ep1_kw",
+      "helics_key": "power/gen-ats.ep1_kw"
+    },
+    {
+      "name": "PWR.GEN.LT01.PV",
+      "desc": "Genset fuel level",
+      "type": "analog-read",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "fuel_pct",
+      "helics_key": "power/gen-ats.fuel_pct"
+    },
+    {
+      "name": "PWR.GEN.YS01.PV",
+      "desc": "Genset running",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "gen_running",
+      "helics_key": "power/gen-ats.gen_running"
+    },
+    {
+      "name": "PWR.GEN.ZS01.PV",
+      "desc": "ATS on the emergency source",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "on_emergency",
+      "helics_key": "power/gen-ats.on_emergency",
+      "alarms": [
+        "PWR.GEN.ZS01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PWR.GEN.ZS01.ALM_STATE",
+      "desc": "ATS on the emergency source: state alarm (high)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
+    },
+    {
+      "name": "PWR.GEN.ZS02.PV",
+      "desc": "Utility source available at the ATS",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "utility_ok",
+      "helics_key": "power/gen-ats.utility_ok"
+    },
+    {
+      "name": "PWR.GEN.HS01.CMD",
+      "desc": "Genset remote start (weekly exercise)",
+      "type": "binary-read-write",
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "gen_start",
+      "helics_key": "power/gen-ats.gen_start"
+    },
+    {
+      "name": "PWR.DMD.JY01.SP",
+      "desc": "Monthly demand cap target",
+      "type": "analog-read-write",
+      "units": "kW",
+      "range": [
+        0.0,
+        1000.0
+      ],
+      "scaling": 0,
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power"
+    },
+    {
+      "name": "PWR.DMD.JY02.PV",
+      "desc": "Month-to-date peak 15-minute demand",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        0.0,
+        1000.0
+      ],
+      "scaling": 0,
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power"
+    },
+    {
+      "name": "PWR.DMD.EY01.SP",
+      "desc": "BESS minimum state of charge before 05:00 on brew days",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 0,
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power"
+    },
+    {
+      "name": "PWR.DMD.XS01.ONPEAK",
+      "desc": "SV-SGT on-peak window (weekdays 17:00-21:00)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power"
+    },
+    {
+      "name": "PWR.DMD.XS02.SHED",
+      "desc": "Load shed active (large feeders held open)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power"
+    },
+    {
+      "name": "PWR.DMD.XS03.BREWDAY",
+      "desc": "Brew day scheduled (from the batch engine)",
+      "type": "binary-read-write",
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power"
+    },
+    {
+      "name": "FAC.RTU1.TT01.PV",
+      "desc": "Taproom zone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        40.0,
+        100.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "zone_temp_f",
+      "helics_key": "building/bas-rtu-taproom.zone_temp_f",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "degreesFahrenheit"
+      },
+      "alarms": [
+        "FAC.RTU1.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "FAC.RTU1.AT01.PV",
+      "desc": "Taproom zone CO2",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        5000.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "zone_co2_ppm",
+      "helics_key": "building/bas-rtu-taproom.zone_co2_ppm",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "partsPerMillion"
+      }
+    },
+    {
+      "name": "FAC.RTU1.TT02.PV",
+      "desc": "RTU-1 supply air temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        30.0,
+        150.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "supply_air_f",
+      "helics_key": "building/bas-rtu-taproom.supply_air_f",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "degreesFahrenheit"
+      }
+    },
+    {
+      "name": "FAC.RTU1.JT01.PV",
+      "desc": "RTU-1 electrical input",
+      "type": "analog-read",
+      "units": "kW",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "power_kw",
+      "helics_key": "building/bas-rtu-taproom.power_kw",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "kilowatts"
+      }
+    },
+    {
+      "name": "FAC.RTU1.DMP01.CMD",
+      "desc": "RTU-1 economizer damper",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "econ_pct",
+      "helics_key": "building/bas-rtu-taproom.econ_pct",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "analog-output",
+        "units": "percent"
+      }
+    },
+    {
+      "name": "FAC.RTU1.TIC01.SP",
+      "desc": "Occupied cooling setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        60.0,
+        90.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "cool_sp_f",
+      "helics_key": "building/bas-rtu-taproom.cool_sp_f",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "analog-value",
+        "units": "degreesFahrenheit"
+      }
+    },
+    {
+      "name": "FAC.RTU1.TIC02.SP",
+      "desc": "Occupied heating setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        50.0,
+        80.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "heat_sp_f",
+      "helics_key": "building/bas-rtu-taproom.heat_sp_f",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "analog-value",
+        "units": "degreesFahrenheit"
+      }
+    },
+    {
+      "name": "FAC.RTU1.FAN01.CMD",
+      "desc": "RTU-1 supply fan",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "supply_fan",
+      "helics_key": "building/bas-rtu-taproom.supply_fan",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.RTU1.CMP01.CMD",
+      "desc": "RTU-1 cooling stage 1",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "cool_stage1",
+      "helics_key": "building/bas-rtu-taproom.cool_stage1",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.RTU1.CMP02.CMD",
+      "desc": "RTU-1 cooling stage 2",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "cool_stage2",
+      "helics_key": "building/bas-rtu-taproom.cool_stage2",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.RTU1.HTR01.CMD",
+      "desc": "RTU-1 gas heat",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "heat",
+      "helics_key": "building/bas-rtu-taproom.heat",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.RTU1.HS01.MODE",
+      "desc": "Occupancy mode (1 occupied, 2 unoccupied, 3 standby)",
+      "type": "analog-read-write",
+      "range": [
+        1.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "RTU1",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-rtu-taproom",
+      "federate": "building",
+      "device": "bas-rtu-taproom",
+      "device_type": "rtu-1",
+      "point": "occ_mode",
+      "helics_key": "building/bas-rtu-taproom.occ_mode",
+      "owner": "bas-rtu-taproom",
+      "bacnet": {
+        "object_type": "multi-state-value",
+        "states": [
+          "occupied",
+          "unoccupied",
+          "standby"
+        ]
+      }
+    },
+    {
+      "name": "FAC.CR.TT01.PV",
+      "desc": "Cold room temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        0.0,
+        80.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "CR",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-coldroom",
+      "federate": "building",
+      "device": "bas-coldroom",
+      "device_type": "coldroom",
+      "point": "room_temp_f",
+      "helics_key": "building/bas-coldroom.room_temp_f",
+      "owner": "bas-coldroom",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "degreesFahrenheit"
+      },
+      "alarms": [
+        "FAC.CR.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "FAC.CR.KQ01.PV",
+      "desc": "Cold room door open time today",
+      "type": "analog-read",
+      "units": "min",
+      "range": [
+        0.0,
+        1440.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "CR",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-coldroom",
+      "federate": "building",
+      "device": "bas-coldroom",
+      "device_type": "coldroom",
+      "point": "door_open_min",
+      "helics_key": "building/bas-coldroom.door_open_min",
+      "owner": "bas-coldroom",
+      "bacnet": {
+        "object_type": "analog-value",
+        "units": "minutes"
+      }
+    },
+    {
+      "name": "FAC.CR.TT01.SP",
+      "desc": "Cold room setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        28.0,
+        50.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "CR",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-coldroom",
+      "federate": "building",
+      "device": "bas-coldroom",
+      "device_type": "coldroom",
+      "point": "setpoint_f",
+      "helics_key": "building/bas-coldroom.setpoint_f",
+      "owner": "bas-coldroom",
+      "bacnet": {
+        "object_type": "analog-value",
+        "units": "degreesFahrenheit"
+      }
+    },
+    {
+      "name": "FAC.CR.ZS01.PV",
+      "desc": "Cold room door open",
+      "type": "binary-read",
+      "area": "FAC",
+      "unit": "CR",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-coldroom",
+      "federate": "building",
+      "device": "bas-coldroom",
+      "device_type": "coldroom",
+      "point": "door",
+      "helics_key": "building/bas-coldroom.door",
+      "owner": "bas-coldroom",
+      "bacnet": {
+        "object_type": "binary-input"
+      }
+    },
+    {
+      "name": "FAC.CR.CMP01.CMD",
+      "desc": "Condensing unit compressor",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "CR",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-coldroom",
+      "federate": "building",
+      "device": "bas-coldroom",
+      "device_type": "coldroom",
+      "point": "compressor",
+      "helics_key": "building/bas-coldroom.compressor",
+      "owner": "bas-coldroom",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.CR.DEF01.CMD",
+      "desc": "Evaporator defrost",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "CR",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-coldroom",
+      "federate": "building",
+      "device": "bas-coldroom",
+      "device_type": "coldroom",
+      "point": "defrost",
+      "helics_key": "building/bas-coldroom.defrost",
+      "owner": "bas-coldroom",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.VENT.AT01.PV",
+      "desc": "Cellar CO2 sensor 1 (low-mounted)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        50000.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_1_ppm",
+      "helics_key": "building/bas-vent.co2_1_ppm",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "partsPerMillion"
+      },
+      "alarms": [
+        "FAC.VENT.AT01.ALM_HIGH",
+        "FAC.VENT.AT01.ALM_HIGHHIGH"
+      ]
+    },
+    {
+      "name": "FAC.VENT.AT02.PV",
+      "desc": "Cellar CO2 sensor 2 (low-mounted)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        50000.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_2_ppm",
+      "helics_key": "building/bas-vent.co2_2_ppm",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "partsPerMillion"
+      },
+      "alarms": [
+        "FAC.VENT.AT02.ALM_HIGH",
+        "FAC.VENT.AT02.ALM_HIGHHIGH"
+      ]
+    },
+    {
+      "name": "FAC.VENT.AT03.PV",
+      "desc": "Cellar CO2 sensor 3 (low-mounted)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        50000.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_3_ppm",
+      "helics_key": "building/bas-vent.co2_3_ppm",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "partsPerMillion"
+      },
+      "alarms": [
+        "FAC.VENT.AT03.ALM_HIGH",
+        "FAC.VENT.AT03.ALM_HIGHHIGH"
+      ]
+    },
+    {
+      "name": "FAC.VENT.AT04.PV",
+      "desc": "Cellar CO2 sensor 4 (low-mounted)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        50000.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_4_ppm",
+      "helics_key": "building/bas-vent.co2_4_ppm",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "partsPerMillion"
+      },
+      "alarms": [
+        "FAC.VENT.AT04.ALM_HIGH",
+        "FAC.VENT.AT04.ALM_HIGHHIGH"
+      ]
+    },
+    {
+      "name": "FAC.VENT.TT01.PV",
+      "desc": "Makeup-air unit discharge temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        0.0,
+        150.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "mua_discharge_f",
+      "helics_key": "building/bas-vent.mua_discharge_f",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "degreesFahrenheit"
+      }
+    },
+    {
+      "name": "FAC.VENT.SC01.CMD",
+      "desc": "Kettle hood exhaust fan speed",
+      "type": "analog-read-write",
+      "units": "%",
+      "range": [
+        0.0,
+        100.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "exhaust_pct",
+      "helics_key": "building/bas-vent.exhaust_pct",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-output",
+        "units": "percent"
+      }
+    },
+    {
+      "name": "FAC.VENT.FAN01.PV",
+      "desc": "Cellar purge fan 1 running (current switch)",
+      "type": "binary-read",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "purge_fan_1_status",
+      "helics_key": "building/bas-vent.purge_fan_1_status",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-input"
+      }
+    },
+    {
+      "name": "FAC.VENT.FAN02.PV",
+      "desc": "Cellar purge fan 2 running (current switch)",
+      "type": "binary-read",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "purge_fan_2_status",
+      "helics_key": "building/bas-vent.purge_fan_2_status",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-input"
+      }
+    },
+    {
+      "name": "FAC.VENT.AY01.TIER1",
+      "desc": "Cellar CO2 tier 1 (5,000 ppm, purge fans on)",
+      "type": "binary-read",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_tier_1",
+      "helics_key": "building/bas-vent.co2_tier_1",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-value"
+      }
+    },
+    {
+      "name": "FAC.VENT.AY01.TIER2",
+      "desc": "Cellar CO2 tier 2 (15,000 ppm, carbonation inhibited)",
+      "type": "binary-read",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_tier_2",
+      "helics_key": "building/bas-vent.co2_tier_2",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-value"
+      }
+    },
+    {
+      "name": "FAC.VENT.AY01.TIER3",
+      "desc": "Cellar CO2 tier 3 (30,000 ppm, evacuate)",
+      "type": "binary-read",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_tier_3",
+      "helics_key": "building/bas-vent.co2_tier_3",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-value"
+      }
+    },
+    {
+      "name": "FAC.VENT.FAN01.CMD",
+      "desc": "Cellar purge fan 1",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "purge_fan_1",
+      "helics_key": "building/bas-vent.purge_fan_1",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.VENT.FAN02.CMD",
+      "desc": "Cellar purge fan 2",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "purge_fan_2",
+      "helics_key": "building/bas-vent.purge_fan_2",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.VENT.MUA01.CMD",
+      "desc": "Makeup-air unit enable",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "mua_enable",
+      "helics_key": "building/bas-vent.mua_enable",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    }
+  ]
+}

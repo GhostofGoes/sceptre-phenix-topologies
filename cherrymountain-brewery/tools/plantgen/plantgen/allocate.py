@@ -25,10 +25,20 @@ Conventions (one source, four views of each tag):
   (alarm bits, commands) use ``%QX0.0`` upward.
 - **FUXA.** ``memaddress`` area plus a 1-based ``address`` (FUXA subtracts
   one), so ``address = PDU + 1``.
+- **Read-only holding registers.** A holding register another host writes
+  (``written_by``, for example the utility limit the DER gateway sets on the
+  PV inverter) is polled with FC3 into ``%IW``, so ``modbus_master`` never
+  overwrites it. It takes the next ``%IW`` word after the RIO's input
+  registers.
+- **BACnet.** Objects are numbered from 1 per object type, in host device
+  order then point order (the same rule the phenix app applies to Modbus
+  registers), and addressed in FUXA as ``<type number>-<instance>`` with
+  ``memaddress`` set to the remote device instance.
 """
 
 from __future__ import annotations
 
+from collections import defaultdict
 from collections.abc import Callable, Iterable
 from typing import ClassVar
 
@@ -52,6 +62,8 @@ SPACE_FOR_TYPE: dict[str, str] = {
 }
 #: modbus_master function codes per RIO space (read or write).
 MASTER_FC: dict[str, int] = {"coil": 15, "discrete": 2, "input": 4, "holding": 16}
+#: modbus_master function code for holding registers the PLC only reads.
+READ_HOLDING_FC: int = 3
 #: IEC area/size for RIO-mapped I/O per space.
 IO_IEC: dict[str, tuple[str, str]] = {
     "coil": ("Q", "X"),
@@ -218,6 +230,35 @@ class RioRegister(BaseModel):
     device: Device
     point: str
     tag: Tag | None
+    read_only: bool = False  # holding register the PLC polls with FC3
+
+
+class BacnetObject(BaseModel):
+    """One BACnet object on a BACnet controller (ot-sim BACnet module)."""
+
+    host: str
+    object_type: str
+    type_number: int
+    instance: int
+    device: Device
+    point: str
+    tag: Tag | None
+
+    @property
+    def fuxa_address(self) -> str:
+        """FUXA BACnet tag address: ``<type number>-<instance>``."""
+        return f"{self.type_number}-{self.instance}"
+
+
+class MasterBlock(BaseModel):
+    """One ``modbus_master`` io_point: a run of registers with one FC."""
+
+    rio: str
+    space: str
+    fc: int
+    start: int  # first ot-sim literal register
+    count: int
+    iec: IecAddress  # IEC location of the first register
 
 
 class TagAddress(BaseModel):
@@ -243,6 +284,8 @@ class TagAddress(BaseModel):
     @property
     def master_fc(self) -> int | None:
         """modbus_master function code used for this RIO point."""
+        if self.tag.written_by:
+            return READ_HOLDING_FC
         return MASTER_FC[self.rio_space] if self.rio_space else None
 
 
@@ -255,11 +298,49 @@ class Allocation(BaseModel):
     plc_rios: dict[str, list[str]] = Field(default_factory=dict)
     # PLC -> its modbus_slave buffer_mapping
     layouts: dict[str, SlaveLayout] = Field(default_factory=dict)
+    # BACnet controller -> its objects
+    bacnet: dict[str, list[BacnetObject]] = Field(default_factory=dict)
 
 
 def rio_devices(plant: Plant, rio: str) -> list[Device]:
     """Devices served by ``rio``, in plant order (= phenix host device order)."""
     return [d for d in plant.devices if d.rio == rio]
+
+
+def master_blocks(alloc: Allocation, rio: str) -> list[MasterBlock]:
+    """The modbus_master io_points of one RIO, in space order.
+
+    Each space is one block, except that holding registers split into runs
+    the PLC writes (FC16 from ``%QW``) and runs it only reads (FC3 into
+    ``%IW``). A run breaks where the register or the IEC index is not
+    consecutive.
+    """
+    blocks: list[MasterBlock] = []
+    for space in ("discrete", "input", "coil", "holding"):
+        regs = sorted(
+            (r for r in alloc.rio_registers[rio] if r.space == space and r.tag),
+            key=lambda r: r.address,
+        )
+        for reg in regs:
+            fc = READ_HOLDING_FC if reg.read_only else MASTER_FC[space]
+            iec = alloc.tags[reg.tag.name].plc_iec  # type: ignore[union-attr]
+            last = blocks[-1] if blocks else None
+            if (
+                last is not None
+                and last.space == space
+                and last.fc == fc
+                and last.start + last.count == reg.address
+                and last.iec.area == iec.area
+                and last.iec.index + last.count == iec.index
+            ):
+                blocks[-1] = last.model_copy(update={"count": last.count + 1})
+            else:
+                blocks.append(
+                    MasterBlock(
+                        rio=rio, space=space, fc=fc, start=reg.address, count=1, iec=iec
+                    )
+                )
+    return blocks
 
 
 def allocate(plant: Plant) -> Allocation:
@@ -268,7 +349,8 @@ def allocate(plant: Plant) -> Allocation:
     bound = {(t.device.name, t.point): t for t in plant.tags if t.device}
 
     # 1. ot-sim literal registers, replicating the phenix app's numbering.
-    for rio in sorted({d.rio for d in plant.devices}, key=_order(plant)):
+    modbus_rios = {d.rio for d in plant.devices if d.protocol == "modbus"}
+    for rio in sorted(modbus_rios, key=_order(plant)):
         counters = dict(OTSIM_BASE)
         regs: list[RioRegister] = []
         for dev in rio_devices(plant, rio):
@@ -282,13 +364,38 @@ def allocate(plant: Plant) -> Allocation:
                         device=dev,
                         point=point.name,
                         tag=bound.get((dev.name, point.name)),
+                        read_only=point.written_by is not None,
                     )
                 )
                 counters[space] += 1
         alloc.rio_registers[rio] = regs
 
+    # 1b. BACnet objects: numbered from 1 per object type on each controller.
+    bacnet_hosts = {d.rio for d in plant.devices if d.protocol == "bacnet"}
+    for host in sorted(bacnet_hosts, key=_order(plant)):
+        instances: dict[str, int] = defaultdict(lambda: 1)
+        objects: list[BacnetObject] = []
+        for dev in rio_devices(plant, host):
+            for point in plant.device_types[dev.type].values():
+                bac = point.bacnet
+                if bac is None:  # pragma: no cover - _protocol forbids mixing
+                    raise PlantError(f"{dev.name}.{point.name}: not a BACnet point")
+                objects.append(
+                    BacnetObject(
+                        host=host,
+                        object_type=bac.object_type,
+                        type_number=bac.type_number,
+                        instance=instances[bac.object_type],
+                        device=dev,
+                        point=point.name,
+                        tag=bound.get((dev.name, point.name)),
+                    )
+                )
+                instances[bac.object_type] += 1
+        alloc.bacnet[host] = objects
+
     # 2. PLC image: RIO blocks from %X100.0 / %W100, PLC memory below/at %MW.
-    for plc in sorted({t.plc for t in plant.tags}, key=_order(plant)):
+    for plc in sorted({t.plc for t in plant.tags if t.plc}, key=_order(plant)):
         rios = []
         for t in plant.tags:
             if t.plc == plc and t.rio and t.rio not in rios:
@@ -301,12 +408,14 @@ def allocate(plant: Plant) -> Allocation:
         next_io.update({"input": IO_WORD_BASE, "holding": IO_WORD_BASE})
         for rio in rios:
             for space in ("discrete", "coil", "input", "holding"):
-                for reg in alloc.rio_registers[rio]:
+                for reg in alloc.rio_registers.get(rio, []):
                     if reg.space != space:
                         continue
-                    area, size = IO_IEC[space]
-                    iec = IecAddress(area=area, size=size, index=next_io[space])
-                    next_io[space] += 1
+                    # A read-only holding register is read into %IW.
+                    target = "input" if reg.read_only else space
+                    area, size = IO_IEC[target]
+                    iec = IecAddress(area=area, size=size, index=next_io[target])
+                    next_io[target] += 1
                     if reg.tag is None:
                         continue  # reported by checks.unbound_points
                     located.append((reg.tag, iec, reg.space, reg.address))
@@ -343,8 +452,11 @@ def access(tag: Tag) -> str:
     """SCADA access: PLC-memory setpoints and commands are read-write.
 
     Writable RIO points (valve commands, spunding setpoints) are driven by
-    the PLC program every scan, so SCADA only reads them.
+    the PLC program every scan, so SCADA only reads them. Writable BACnet
+    objects have no PLC in front of them, so the BAS front end writes them.
     """
+    if tag.bacnet is not None:
+        return "read-write" if is_writable(tag.type) else "read"
     return "read-write" if is_writable(tag.type) and not tag.device else "read"
 
 

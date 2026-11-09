@@ -1,0 +1,186 @@
+[
+  {
+    "name": "relay-main",
+    "protocol": "MODBUS",
+    "config": {
+      "type": "SLAVE",
+      "transport": "tcp",
+      "host": "10.20.16.20",
+      "port": 502,
+      "slave_id": 1,
+      "timeout_ms": 1000,
+      "io_points": [
+        {
+          "fc": 2,
+          "offset": "10001",
+          "iec_location": "%IX100.0",
+          "len": 5,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 4,
+          "offset": "30001",
+          "iec_location": "%IW100",
+          "len": 6,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 15,
+          "offset": "1",
+          "iec_location": "%QX100.0",
+          "len": 4,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        }
+      ]
+    }
+  },
+  {
+    "name": "pv-inverter",
+    "protocol": "MODBUS",
+    "config": {
+      "type": "SLAVE",
+      "transport": "tcp",
+      "host": "10.20.16.21",
+      "port": 502,
+      "slave_id": 1,
+      "timeout_ms": 1000,
+      "io_points": [
+        {
+          "fc": 2,
+          "offset": "10001",
+          "iec_location": "%IX100.5",
+          "len": 1,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 4,
+          "offset": "30001",
+          "iec_location": "%IW106",
+          "len": 2,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 15,
+          "offset": "1",
+          "iec_location": "%QX100.4",
+          "len": 1,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 16,
+          "offset": "40001",
+          "iec_location": "%QW100",
+          "len": 1,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 3,
+          "offset": "40002",
+          "iec_location": "%IW108",
+          "len": 1,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        }
+      ]
+    }
+  },
+  {
+    "name": "bess-pcs",
+    "protocol": "MODBUS",
+    "config": {
+      "type": "SLAVE",
+      "transport": "tcp",
+      "host": "10.20.16.22",
+      "port": 502,
+      "slave_id": 1,
+      "timeout_ms": 1000,
+      "io_points": [
+        {
+          "fc": 2,
+          "offset": "10001",
+          "iec_location": "%IX100.6",
+          "len": 2,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 4,
+          "offset": "30001",
+          "iec_location": "%IW109",
+          "len": 2,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 15,
+          "offset": "1",
+          "iec_location": "%QX100.5",
+          "len": 1,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 16,
+          "offset": "40001",
+          "iec_location": "%QW101",
+          "len": 1,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 3,
+          "offset": "40002",
+          "iec_location": "%IW111",
+          "len": 1,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        }
+      ]
+    }
+  },
+  {
+    "name": "gen-ats",
+    "protocol": "MODBUS",
+    "config": {
+      "type": "SLAVE",
+      "transport": "tcp",
+      "host": "10.20.16.23",
+      "port": 502,
+      "slave_id": 1,
+      "timeout_ms": 1000,
+      "io_points": [
+        {
+          "fc": 2,
+          "offset": "10001",
+          "iec_location": "%IX101.0",
+          "len": 3,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 4,
+          "offset": "30001",
+          "iec_location": "%IW112",
+          "len": 3,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 15,
+          "offset": "1",
+          "iec_location": "%QX100.6",
+          "len": 1,
+          "cycle_time_ms": 250,
+          "error_handling": "keep-last-value"
+        }
+      ]
+    }
+  }
+]

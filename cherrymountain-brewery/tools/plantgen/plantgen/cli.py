@@ -10,7 +10,7 @@ from pathlib import Path
 
 from plantgen.allocate import allocate
 from plantgen.checks import file_checks, plant_checks
-from plantgen.model import PlantError, load
+from plantgen.model import PlantError, load, load_file
 from plantgen.render import render_all
 
 #: cherrymountain-brewery/ (this file is tools/plantgen/plantgen/cli.py).
@@ -73,11 +73,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Entry point for ``python -m plantgen`` and the ``plantgen`` script."""
     ap = argparse.ArgumentParser(prog="plantgen", description=__doc__)
     ap.add_argument("--plant", type=Path, default=DEFAULT_PLANT, help="plant.yaml")
-    ap.add_argument("--variant", default="ci", help="variant name (default: ci)")
+    ap.add_argument(
+        "--variant",
+        default="all",
+        help="variant name, or `all` (default) for every variant in plant.yaml",
+    )
     ap.add_argument(
         "--out",
         type=Path,
-        help="output directory (default: <plant dir>/generated/<variant>)",
+        help="output directory for one variant (default: "
+        "<plant dir>/generated/<variant>)",
     )
     ap.add_argument(
         "--check",
@@ -86,13 +91,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = ap.parse_args(argv)
     plant_path: Path = args.plant
-    out_dir: Path = args.out or plant_path.parent / "generated" / args.variant
+    if args.variant == "all":
+        if args.out is not None:
+            print("plantgen: --out needs a single --variant", file=sys.stderr)
+            return 2
+        try:
+            variants = list(load_file(plant_path).variants)
+        except PlantError as exc:
+            print(f"plantgen: {exc}", file=sys.stderr)
+            return 1
+    else:
+        variants = [args.variant]
+    status = 0
+    for variant in variants:
+        out_dir: Path = args.out or plant_path.parent / "generated" / variant
+        status = max(status, _run(plant_path, variant, out_dir, check=args.check))
+    return status
+
+
+def _run(plant_path: Path, variant: str, out_dir: Path, *, check: bool) -> int:
     try:
-        files = generate(plant_path, args.variant)
+        files = generate(plant_path, variant)
     except PlantError as exc:
-        print(f"plantgen: {exc}", file=sys.stderr)
+        print(f"plantgen: {variant}: {exc}", file=sys.stderr)
         return 1
-    if args.check:
+    if check:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dir = Path(tmp)
             write(files, tmp_dir)

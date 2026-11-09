@@ -1,0 +1,48 @@
+[
+  {
+    "name": "rio-packaging",
+    "protocol": "MODBUS",
+    "config": {
+      "type": "SLAVE",
+      "transport": "tcp",
+      "host": "10.20.13.10",
+      "port": 502,
+      "slave_id": 1,
+      "timeout_ms": 1000,
+      "io_points": [
+        {
+          "fc": 2,
+          "offset": "10001",
+          "iec_location": "%IX100.0",
+          "len": 15,
+          "cycle_time_ms": 100,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 4,
+          "offset": "30001",
+          "iec_location": "%IW100",
+          "len": 37,
+          "cycle_time_ms": 100,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 15,
+          "offset": "1",
+          "iec_location": "%QX100.0",
+          "len": 6,
+          "cycle_time_ms": 100,
+          "error_handling": "keep-last-value"
+        },
+        {
+          "fc": 16,
+          "offset": "40001",
+          "iec_location": "%QW100",
+          "len": 17,
+          "cycle_time_ms": 100,
+          "error_handling": "keep-last-value"
+        }
+      ]
+    }
+  }
+]

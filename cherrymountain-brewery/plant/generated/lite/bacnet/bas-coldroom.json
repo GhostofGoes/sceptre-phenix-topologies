@@ -1,0 +1,86 @@
+{
+  "generator": "plantgen",
+  "variant": "lite",
+  "host": "bas-coldroom",
+  "endpoint": {
+    "interface": "IF0",
+    "address": "10.30.10.21",
+    "prefix": 24,
+    "port": 47808
+  },
+  "device": {
+    "instance": 3002,
+    "name": "BAS-COLDROOM-1"
+  },
+  "objects": [
+    {
+      "object_type": "analog-input",
+      "instance": 1,
+      "name": "FAC.CR.TT01.PV",
+      "description": "Cold room temperature",
+      "tag": "bas-coldroom.room_temp_f",
+      "helics_key": "building/bas-coldroom.room_temp_f",
+      "commandable": false,
+      "units": "degreesFahrenheit",
+      "range": [
+        0.0,
+        80.0
+      ]
+    },
+    {
+      "object_type": "analog-value",
+      "instance": 1,
+      "name": "FAC.CR.KQ01.PV",
+      "description": "Cold room door open time today",
+      "tag": "bas-coldroom.door_open_min",
+      "helics_key": "building/bas-coldroom.door_open_min",
+      "commandable": false,
+      "units": "minutes",
+      "range": [
+        0.0,
+        1440.0
+      ]
+    },
+    {
+      "object_type": "analog-value",
+      "instance": 2,
+      "name": "FAC.CR.TT01.SP",
+      "description": "Cold room setpoint",
+      "tag": "bas-coldroom.setpoint_f",
+      "helics_key": "building/bas-coldroom.setpoint_f",
+      "commandable": false,
+      "units": "degreesFahrenheit",
+      "range": [
+        28.0,
+        50.0
+      ]
+    },
+    {
+      "object_type": "binary-input",
+      "instance": 1,
+      "name": "FAC.CR.ZS01.PV",
+      "description": "Cold room door open",
+      "tag": "bas-coldroom.door",
+      "helics_key": "building/bas-coldroom.door",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 1,
+      "name": "FAC.CR.CMP01.CMD",
+      "description": "Condensing unit compressor",
+      "tag": "bas-coldroom.compressor",
+      "helics_key": "building/bas-coldroom.compressor",
+      "commandable": true
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 2,
+      "name": "FAC.CR.DEF01.CMD",
+      "description": "Evaporator defrost",
+      "tag": "bas-coldroom.defrost",
+      "helics_key": "building/bas-coldroom.defrost",
+      "commandable": true
+    }
+  ]
+}

@@ -8,6 +8,7 @@ same bug in another.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import math
 from collections import defaultdict
@@ -19,6 +20,7 @@ from plantgen.allocate import (
     FUXA_MEMADDRESS,
     MASTER_FC,
     OTSIM_BASE,
+    READ_HOLDING_FC,
     SPACE_FOR_TYPE,
     Allocation,
     IecAddress,
@@ -26,7 +28,11 @@ from plantgen.allocate import (
 )
 from plantgen.model import (
     ALARM_KINDS,
+    INT16_MAX,
+    INT16_MIN,
+    IO_ROLES,
     MAX_REGISTER,
+    MODBUS_IO_ROLES,
     PRIORITIES,
     RATIONALE_FIELDS,
     Plant,
@@ -34,7 +40,9 @@ from plantgen.model import (
 )
 
 #: modbus_master function code -> ot-sim space.
-FC_SPACE: dict[int, str] = {fc: space for space, fc in MASTER_FC.items()}
+FC_SPACE: dict[int, str] = {fc: space for space, fc in MASTER_FC.items()} | {
+    READ_HOLDING_FC: "holding"
+}
 
 
 def plant_checks(plant: Plant, alloc: Allocation) -> list[str]:
@@ -48,6 +56,10 @@ def plant_checks(plant: Plant, alloc: Allocation) -> list[str]:
         alarms_rationalized,
         no_gaps,
         ntp_hosts,
+        addresses_valid,
+        bacnet_valid,
+        external_writers,
+        federates_hosted,
     ):
         errors += check(plant, alloc)
     return errors
@@ -57,6 +69,7 @@ def file_checks(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[
     """Cross-checks of the rendered files against each other."""
     errors = otsim_agrees(plant, alloc, files)
     errors += master_agrees(plant, alloc, files)
+    errors += slave_agrees(plant, alloc, files)
     errors += fuxa_agrees(plant, alloc, files)
     errors += helics_closed(plant, files)
     return errors
@@ -74,22 +87,31 @@ def unique_names(plant: Plant, alloc: Allocation) -> list[str]:
 
 
 def owners(plant: Plant, alloc: Allocation) -> list[str]:
-    """Every tag has an owning PLC; I/O tags also a RIO and a federate."""
+    """Every tag has an owner: a PLC, or for BACnet points their controller.
+
+    I/O tags also need a field host of the right kind (a Modbus RIO or field
+    device, or a BACnet controller) and a federate in the variant.
+    """
     errs = []
     for t in plant.tags:
-        plc = plant.hosts.get(t.plc)
-        if plc is None or plc.role != "plc":
-            errs.append(
-                f"{t.name}: owner PLC {t.plc!r} is not a plc host in the variant"
-            )
+        if t.bacnet is None:
+            plc = plant.hosts.get(t.plc or "")
+            if plc is None or plc.role != "plc":
+                errs.append(
+                    f"{t.name}: owner PLC {t.plc!r} is not a plc host in the variant"
+                )
+            if t.name not in alloc.tags:
+                errs.append(f"{t.name}: no address assigned")
         if t.device:
             rio = plant.hosts.get(t.rio or "")
-            if rio is None or rio.role != "rio":
-                errs.append(f"{t.name}: RIO {t.rio!r} is not a rio host in the variant")
+            roles = MODBUS_IO_ROLES if t.bacnet is None else ("bas",)
+            if rio is None or rio.role not in roles:
+                errs.append(
+                    f"{t.name}: field host {t.rio!r} is not a {'/'.join(roles)} "
+                    "host in the variant"
+                )
             if t.federate not in plant.federates:
                 errs.append(f"{t.name}: federate {t.federate!r} is not in the variant")
-        if t.name not in alloc.tags:
-            errs.append(f"{t.name}: no address assigned")
     return errs
 
 
@@ -105,6 +127,11 @@ def unbound_points(plant: Plant, alloc: Allocation) -> list[str]:
             n = count[(r.device.name, r.point)]
             if n != 1:
                 errs.append(f"{r.rio} {r.device.name}.{r.point}: bound to {n} tags")
+    for objs in alloc.bacnet.values():
+        for o in objs:
+            n = count[(o.device.name, o.point)]
+            if n != 1:
+                errs.append(f"{o.host} {o.device.name}.{o.point}: bound to {n} tags")
     return errs
 
 
@@ -115,7 +142,17 @@ def ranges_fit(plant: Plant, alloc: Allocation) -> list[str]:
         if not is_analog(t.type):
             continue
         lo, hi = t.range or (math.nan, math.nan)
-        if not (lo >= 0 and hi * 10**t.scaling <= MAX_REGISTER and lo < hi):
+        if t.bacnet is not None:  # BACnet REAL: any finite range
+            if not lo < hi:
+                errs.append(f"{t.name}: range {t.range} is empty")
+            continue
+        scale = 10**t.scaling
+        if t.signed:
+            if not (lo * scale >= INT16_MIN and hi * scale <= INT16_MAX and lo < hi):
+                errs.append(
+                    f"{t.name}: range {t.range} x10^{t.scaling} does not fit int16"
+                )
+        elif not (lo >= 0 and hi * scale <= MAX_REGISTER and lo < hi):
             errs.append(
                 f"{t.name}: range {t.range} x10^{t.scaling} does not fit uint16"
             )
@@ -138,15 +175,32 @@ def alarms_rationalized(plant: Plant, alloc: Allocation) -> list[str]:
                 errs.append(f"{where}: missing rationalization field {f}")
         if math.isnan(a.limit):
             errs.append(f"{where}: missing limit")
+        src = plant.tag(a.source)
         if a.kind == "deviation":
             if not a.setpoint or a.setpoint not in names:
                 errs.append(f"{where}: deviation needs an existing setpoint tag")
             elif a.limit <= 0:
                 errs.append(f"{where}: deviation limit must be positive")
-        else:
-            src = plant.tag(a.source)
-            if src.range and not src.range[0] <= a.limit <= src.range[1]:
-                errs.append(f"{where}: limit {a.limit} outside range {src.range}")
+        elif a.kind == "state":
+            if not is_analog(src.type) and a.limit not in (0.0, 1.0):
+                errs.append(f"{where}: a bit's state alarm limit must be 0 or 1")
+        elif not is_analog(src.type):
+            errs.append(f"{where}: {a.kind} alarms need an analog source")
+        elif src.range and not src.range[0] <= a.limit <= src.range[1]:
+            errs.append(f"{where}: limit {a.limit} outside range {src.range}")
+        if a.suppress is not None:
+            if a.suppress not in names:
+                errs.append(f"{where}: suppression tag {a.suppress} does not exist")
+            elif is_analog(plant.tag(a.suppress).type):
+                errs.append(f"{where}: suppression tag {a.suppress} is not a bit")
+            elif plant.tag(a.suppress).owner != src.owner:
+                errs.append(f"{where}: suppression tag {a.suppress} has another owner")
+    seen: dict[tuple[str, str], str] = {}
+    for a in plant.alarms:
+        key = (a.source, a.kind)
+        if key in seen:
+            errs.append(f"alarm {a.name}: second {a.kind} alarm on {a.source}")
+        seen[key] = a.name
     return errs
 
 
@@ -165,6 +219,12 @@ def no_gaps(plant: Plant, alloc: Allocation) -> list[str]:
     blocks: dict[tuple[str, str, str], list[int]] = defaultdict(list)
     for a in alloc.tags.values():
         block = "io" if a.tag.device else "mem"
+        plc_host = plant.hosts.get(a.tag.plc or "")
+        if plc_host is not None and plc_host.northbound != "modbus":
+            blocks[
+                (a.tag.plc or "", f"{a.plc_iec.area}{a.plc_iec.size}", block)
+            ].append(a.plc_iec.index)
+            continue
         blocks[(a.tag.plc, f"{a.plc_iec.area}{a.plc_iec.size}", block)].append(
             a.plc_iec.index
         )
@@ -176,17 +236,32 @@ def no_gaps(plant: Plant, alloc: Allocation) -> list[str]:
     return errs
 
 
+def reachable(plant: Plant, client: str, vlan: str) -> bool:
+    """A client reaches an address on ``vlan``: it shares the VLAN, or both
+    are on routed networks (every routed network has static routes to every
+    other, DESIGN.md §10.2; the firewalls decide what may pass)."""
+    vlans = plant.hosts[client].vlans()
+    if vlan in vlans:
+        return True
+
+    def routed(v: str) -> bool:
+        net = plant.network(v)
+        return net is not None and net.gateway is not None
+
+    return routed(vlan) and any(routed(v) for v in vlans)
+
+
 def ntp_hosts(plant: Plant, alloc: Allocation) -> list[str]:
-    """Every variant host is listed; client sources are reachable servers."""
+    """Every variant host has an entry; client sources are reachable servers."""
     errs = []
     ntp = plant.spec.ntp
-    listed = ntp.hosts
-    for h in plant.hosts:
-        if h not in listed:
-            errs.append(f"ntp: host {h} not listed")
-    for h, md in listed.items():
+    for h in ntp.hosts:
         if h not in plant.hosts:
             errs.append(f"ntp: {h} is not a variant host")
+    for h in plant.hosts:
+        md = plant.ntp_entry(h)
+        if md is None:
+            errs.append(f"ntp: host {h} not listed")
             continue
         if md.server:
             if md.client or md.source:
@@ -197,19 +272,16 @@ def ntp_hosts(plant: Plant, alloc: Allocation) -> list[str]:
             continue
         src = md.source or ntp.default_source
         server = plant.hosts.get(src.hostname)
-        if (
-            server is None
-            or src.hostname not in listed
-            or not listed[src.hostname].server
-        ):
+        entry = plant.ntp_entry(src.hostname) if server else None
+        if server is None or entry is None or not entry.server:
             errs.append(f"ntp: {h} source {src.hostname} is not a server")
             continue
         if src.interface not in server.interfaces:
             errs.append(f"ntp: {src.hostname} has no interface {src.interface}")
             continue
         vlan = server.interfaces[src.interface].vlan
-        if vlan not in plant.hosts[h].vlans():
-            errs.append(f"ntp: {h} shares no VLAN with {src.hostname} ({vlan})")
+        if not reachable(plant, h, vlan):
+            errs.append(f"ntp: {h} cannot reach {src.hostname} ({vlan})")
     return errs
 
 
@@ -218,11 +290,34 @@ def otsim_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list
     app = yaml.safe_load(files["phenix/ot-sim.yaml"])
     infra = app["metadata"]["infrastructures"][app["metadata"]["infrastructure"]]
     expected = {
-        (t.device.name, t.point): alloc.tags[t.name] for t in plant.tags if t.device
+        (t.device.name, t.point): alloc.tags[t.name]
+        for t in plant.tags
+        if t.device and t.bacnet is None
+    }
+    objects = {
+        (o.device.name, o.point): o for objs in alloc.bacnet.values() for o in objs
     }
     errs = []
     for host in app["hosts"]:
         counters = dict(OTSIM_BASE)
+        if "bacnet" in host["metadata"]:
+            # The proposed module numbers objects like the app numbers
+            # registers: from 1 per object type, device order, point order.
+            instances: dict[str, int] = defaultdict(lambda: 1)
+            for dev in host["metadata"]["bacnet"]["devices"]:
+                name = dev["name"].split("/")[-1]
+                for var, spec in infra[dev["type"]].items():
+                    otype = spec["bacnet"]["object-type"]
+                    inst = instances[otype]
+                    instances[otype] += 1
+                    o = objects.get((name, var))
+                    if o is None or (o.object_type, o.instance) != (otype, inst):
+                        errs.append(
+                            f"ot-sim {name}.{var}: BACnet {otype} {inst} disagrees"
+                        )
+            continue
+        if "modbus" not in host["metadata"]:
+            continue  # the FEP and the DNP3 master
         for dev in host["metadata"]["modbus"]["devices"]:
             name = dev["name"].split("/")[-1]
             for var, spec in infra[dev["type"]].items():
@@ -327,7 +422,12 @@ def slave_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list
     are tight (the highest located index + 1), so the v4 runtime clamps nothing."""
     errs: list[str] = []
     for plc in alloc.plc_rios:
-        cfg = json.loads(files[f"openplc/{plc}/modbus_slave.json"])
+        key = f"openplc/{plc}/modbus_slave.json"
+        if plant.hosts[plc].northbound != "modbus":
+            if key in files:
+                errs.append(f"{key}: {plc} is {plant.hosts[plc].northbound}")
+            continue
+        cfg = json.loads(files[key])
         mapping = cfg["buffer_mapping"]
         for a in alloc.tags.values():
             if a.tag.plc != plc:
@@ -359,14 +459,24 @@ def fuxa_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[
             continue
         ids = set()
         for dev in json.loads(text)["devices"]:
+            for tag in dev["tags"]:
+                if tag["id"] in ids:
+                    errs.append(f"FUXA duplicate id {tag['id']}")
+                ids.add(tag["id"])
+            if dev["type"] == "BACnet":
+                errs += _fuxa_bacnet(plant, alloc, name, dev)
+                continue
+            if dev["type"] != "ModbusTCP":
+                for tag in dev["tags"]:
+                    a = alloc.tags[tag["name"]]
+                    if tag.get("plc_iec") != str(a.plc_iec):
+                        errs.append(f"FUXA {tag['name']}: plc_iec is not {a.plc_iec}")
+                continue
             plc = dev["name"]
             mapping = json.loads(files[f"openplc/{plc}/modbus_slave.json"])[
                 "buffer_mapping"
             ]
             for tag in dev["tags"]:
-                if tag["id"] in ids:
-                    errs.append(f"FUXA duplicate id {tag['id']}")
-                ids.add(tag["id"])
                 a = alloc.tags[tag["name"]]
                 space = FUXA_SPACE.get(tag["memaddress"], "?")
                 got = resolve_slave(mapping, space, tag["address"] - 1)
@@ -376,6 +486,96 @@ def fuxa_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[
                         f"is {space} {tag['address'] - 1}, served as {got}, "
                         f"but the tag is {a.plc_iec}"
                     )
+    return errs
+
+
+def _fuxa_bacnet(
+    plant: Plant, alloc: Allocation, name: str, dev: dict[str, Any]
+) -> list[str]:
+    """BACnet tags address the object the controller serves for the tag."""
+    errs = []
+    objects = {
+        o.tag.name: (o, h) for h, objs in alloc.bacnet.items() for o in objs if o.tag
+    }
+    for tag in dev["tags"]:
+        found = objects.get(tag["name"])
+        if found is None:
+            errs.append(f"{name} {tag['name']}: no BACnet object")
+            continue
+        obj, host = found
+        ep = plant.hosts[host].bacnet
+        want = (obj.fuxa_address, str(ep.instance if ep else ""))
+        if (tag["address"], tag["memaddress"]) != want:
+            errs.append(f"{name} {tag['name']}: BACnet address is not {want}")
+    return errs
+
+
+def addresses_valid(plant: Plant, alloc: Allocation) -> list[str]:
+    """Interface addresses parse, sit in their VLAN's subnet, and are unique."""
+    errs = []
+    seen: dict[str, str] = {}
+    for host in plant.hosts.values():
+        for nic, iface in host.interfaces.items():
+            where = f"{host.name} {nic}"
+            try:
+                addr = ipaddress.ip_interface(iface.ip)
+            except ValueError:
+                errs.append(f"{where}: bad address {iface.ip}")
+                continue
+            net = plant.network(iface.vlan)
+            if net is not None and addr.ip not in ipaddress.ip_network(net.subnet):
+                errs.append(f"{where}: {addr.ip} is not in {iface.vlan} {net.subnet}")
+            ip = str(addr.ip)
+            if ip in seen:
+                errs.append(f"{where}: {ip} is also on {seen[ip]}")
+            seen[ip] = where
+    return errs
+
+
+def bacnet_valid(plant: Plant, alloc: Allocation) -> list[str]:
+    """BACnet device instances are unique and every controller has one."""
+    errs = []
+    instances: dict[int, str] = {}
+    for host in alloc.bacnet:
+        ep = plant.hosts[host].bacnet if host in plant.hosts else None
+        if ep is None:
+            errs.append(f"{host}: BACnet points but no bacnet endpoint")
+            continue
+        if ep.interface not in plant.hosts[host].interfaces:
+            errs.append(f"{host}: bacnet interface {ep.interface} does not exist")
+        if ep.instance in instances:
+            other = instances[ep.instance]
+            errs.append(f"{host}: device instance {ep.instance} also on {other}")
+        instances[ep.instance] = host
+    return errs
+
+
+def external_writers(plant: Plant, alloc: Allocation) -> list[str]:
+    """A ``written_by`` host polls the device (a FEP lists it upstream)."""
+    errs = []
+    for t in plant.tags:
+        if not t.written_by:
+            continue
+        writer = plant.hosts.get(t.written_by)
+        if writer is None:
+            continue  # not in this variant: nothing writes the register
+        if t.rio not in writer.upstream:
+            errs.append(f"{t.name}: {t.written_by} does not poll {t.rio}")
+    return errs
+
+
+def federates_hosted(plant: Plant, alloc: Allocation) -> list[str]:
+    """Each federate runs on a sim host of the variant; field hosts of a
+    federate's devices are HELICS-backed (an MGMT NIC)."""
+    errs = []
+    for name, fed in plant.federates.items():
+        host = plant.hosts.get(fed.host)
+        if host is None or host.role != "sim":
+            errs.append(f"federate {name}: host {fed.host} is not a sim host")
+    for d in plant.devices:
+        host = plant.hosts.get(d.rio)
+        if host is not None and host.role in IO_ROLES and "mgmt" not in host.interfaces:
+            errs.append(f"{d.rio}: HELICS-backed device {d.name} but no mgmt NIC")
     return errs
 
 

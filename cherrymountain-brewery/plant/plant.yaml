@@ -19,8 +19,15 @@
 # <AREA>.<UNIT>.<INSTR>.ALM_<KIND> (for example CEL.FV101.TT01.ALM_DEVIATION).
 #
 # Analog values are unsigned 16-bit registers holding value x 10^scaling,
-# so every range must satisfy 0 <= lo and hi x 10^scaling <= 65535.
+# so every range must satisfy 0 <= lo and hi x 10^scaling <= 65535. Points
+# marked `signed` are int16 instead (power flows that change direction).
 # Pressures are stored as absolute (psia) and displayed as gauge (§6.3).
+#
+# Building automation points are BACnet objects (`bacnet:` on the point),
+# served by the BAS controllers themselves: their tags have no PLC, and their
+# alarms are evaluated by FUXA. tools/plantgen/README.md documents the rest of
+# the schema (networks, loads, per-unit field hosts, written_by, suppression,
+# soh, wireguard, scorch) and every generated file.
 
 schema_version: 1
 
@@ -28,6 +35,29 @@ site:
   name: CherryMountain Brewery
   elevation_ft: 5200
   ambient_psia: 12.1
+
+# VLAN aliases (DESIGN.md §10.2). `gateway` is the router; a network without
+# one is an unrouted island. Routed networks reach each other through static
+# routes (the firewalls decide what may pass), which the ntp check uses.
+networks:
+  INET: { subnet: 203.0.113.0/24, gateway: isp-rtr }
+  VENDOR: { subnet: 198.51.100.0/24, gateway: isp-rtr }
+  UTIL: { subnet: 192.0.2.0/24, gateway: util-rtr }
+  CORP: { subnet: 10.10.10.0/24, gateway: fw-edge }
+  DMZ: { subnet: 10.10.20.0/24, gateway: fw-edge }
+  OPS: { subnet: 10.20.30.0/24, gateway: fw-ot }
+  HMI: { subnet: 10.20.20.0/24, gateway: fw-ot }
+  CTRL: { subnet: 10.20.10.0/24, gateway: fw-ot }
+  FIELD-BH: { subnet: 10.20.11.0/24 }
+  FIELD-CEL: { subnet: 10.20.12.0/24 }
+  FIELD-PKG: { subnet: 10.20.13.0/24 }
+  FIELD-UTL: { subnet: 10.20.14.0/24 }
+  DERLINK: { subnet: 10.20.15.0/24, gateway: fw-ot }
+  FIELD-PWR: { subnet: 10.20.16.0/24 }
+  BAS: { subnet: 10.30.10.0/24, gateway: fw-ot }
+  SOC: { subnet: 10.40.10.0/24, gateway: fw-ot }
+  MGMT: { subnet: 172.16.0.0/16 }
+  MIRROR: { subnet: 172.30.0.0/16 }
 
 # HELICS federates (DESIGN.md §9.2). Keys are <federate>/<device>.<point>;
 # writes go to the <federate>/<endpoint> endpoint.
@@ -40,12 +70,124 @@ federates:
     outputs:
       - { key: co2.vent_gps, type: double, units: g/s, desc: CO2 vented into the cellar room (to building) }
       - { key: glycol.load_kw, type: double, units: kW, desc: Jacket heat load on the glycol loop (to utilities) }
+      - { key: co2.draw_slpm, type: double, units: L/min, desc: CO2 drawn for BBT carbonation and purges (to utilities), variants: [full, lite] }
     # Inputs from other federates. A subscription is generated only when the
     # source federate is part of the variant; otherwise `default` is used.
     inputs:
       - { key: utilities/glycol.supply_f, type: double, units: degF, default: 28.0 }
       - { key: building/cellar.temp_f, type: double, units: degF, default: 68.0 }
       - { key: weather/pressure.kpa, type: double, units: kPa, default: 83.4 }
+      - { key: brewhouse/knockout.gpm, type: double, units: gal/min, default: 0.0, variants: [full, lite] }
+      - { key: packaging/beer.draw_gpm, type: double, units: gal/min, default: 0.0, variants: [full, lite] }
+  # Full plant federates (DESIGN.md §9.2). The cellar entry above keeps its
+  # ci inputs and outputs; full-plant-only I/O is scoped with `variants`.
+  weather:
+    host: sim-ctl
+    period_s: 60.0
+    endpoint: updates
+    outputs:
+      - { key: ambient.temp_f, type: double, units: degF, desc: Outdoor dry-bulb temperature }
+      - { key: rh.pct, type: double, units: "%", desc: Outdoor relative humidity }
+      - { key: ghi.wm2, type: double, units: W/m2, desc: Global horizontal irradiance }
+      - { key: pressure.kpa, type: double, units: kPa, desc: Station pressure corrected to the site elevation }
+      - { key: groundwater.temp_f, type: double, units: degF, desc: Seasonal Denver groundwater (city water) temperature }
+      - { key: clock.epoch_s, type: double, units: s, desc: "Simulation clock, Unix seconds" }
+      - { key: event, type: string, desc: "Last scenario event (JSON), for the ground-truth record" }
+  brewhouse:
+    host: sim-process
+    period_s: 1.0
+    endpoint: updates
+    outputs:
+      - { key: steam.demand_kw, type: double, units: kW, desc: "Steam demand of the HLT, MLT, and kettle jackets (to the boiler)" }
+      - { key: glycol.load_kw, type: double, units: kW, desc: Knockout HX stage-2 heat into the glycol loop (to utilities) }
+      - { key: drain.gpm, type: double, units: gal/min, desc: Brewhouse drain flow to wastewater }
+      - { key: hood.heat_kw, type: double, units: kW, desc: Kettle vapor and heat released into the brewhouse (to building) }
+      - { key: knockout.gpm, type: double, units: gal/min, desc: Wort flow to the fermenter at knockout (to cellar) }
+      - { key: batch.phase, type: double, desc: Active ISA-88 phase number }
+    inputs:
+      - { key: weather/pressure.kpa, type: double, units: kPa, default: 83.4 }
+      - { key: weather/groundwater.temp_f, type: double, units: degF, default: 58.0 }
+      - { key: weather/ambient.temp_f, type: double, units: degF, default: 75.0 }
+      - { key: utilities/steam.psig, type: double, units: psig, default: 15.0 }
+      - { key: utilities/glycol.supply_f, type: double, units: degF, default: 28.0 }
+  utilities:
+    host: sim-process
+    period_s: 1.0
+    endpoint: updates
+    outputs:
+      - { key: glycol.supply_f, type: double, units: degF, desc: Glycol supply temperature (to cellar and brewhouse) }
+      - { key: steam.psig, type: double, units: psig, desc: Steam header pressure (to brewhouse) }
+      - { key: air.psig, type: double, units: psig, desc: Compressed-air header pressure (to packaging) }
+      - { key: co2.supply_psig, type: double, units: psig, desc: CO2 supply header pressure (to cellar and packaging) }
+    inputs:
+      - { key: weather/ambient.temp_f, type: double, units: degF, default: 75.0 }
+      - { key: weather/groundwater.temp_f, type: double, units: degF, default: 58.0 }
+      - { key: cellar/glycol.load_kw, type: double, units: kW, default: 5.0 }
+      - { key: cellar/co2.draw_slpm, type: double, units: L/min, default: 0.0 }
+      - { key: brewhouse/glycol.load_kw, type: double, units: kW, default: 0.0 }
+      - { key: brewhouse/steam.demand_kw, type: double, units: kW, default: 0.0 }
+      - { key: brewhouse/drain.gpm, type: double, units: gal/min, default: 0.0 }
+      - { key: packaging/co2.draw_slpm, type: double, units: L/min, default: 0.0 }
+      - { key: packaging/air.demand_scfm, type: double, units: scfm, default: 10.0 }
+  packaging:
+    host: sim-process
+    period_s: 1.0
+    endpoint: updates
+    outputs:
+      - { key: co2.draw_slpm, type: double, units: L/min, desc: CO2 for pre-evacuation and counterpressure (to utilities) }
+      - { key: air.demand_scfm, type: double, units: scfm, desc: Compressed-air demand (to utilities) }
+      - { key: beer.draw_gpm, type: double, units: gal/min, desc: Beer drawn from BBT-202 by the filler and keg filler (to cellar) }
+      - { key: line.state, type: double, desc: Line PackML state (PackTags StateCurrent) }
+      - { key: line.bottles, type: double, desc: Bottles filled this shift }
+    inputs:
+      - { key: cellar/bbt202.pressure_psia, type: double, units: psia, default: 25.0 }
+      - { key: utilities/air.psig, type: double, units: psig, default: 100.0 }
+      - { key: utilities/co2.supply_psig, type: double, units: psig, default: 60.0 }
+  power:
+    host: sim-power
+    period_s: 1.0
+    endpoint: updates
+    outputs:
+      - { key: grid.kw, type: double, units: kW, desc: Net import at the utility meter (negative for export) }
+      - { key: demand.kw, type: double, units: kW, desc: Rolling 15-minute demand }
+      - { key: tariff.cost_usd, type: double, units: USD, desc: Month-to-date SV-SGT bill }
+    inputs:
+      - { key: weather/ghi.wm2, type: double, units: W/m2, default: 0.0 }
+      - { key: weather/ambient.temp_f, type: double, units: degF, default: 75.0 }
+      - { key: weather/clock.epoch_s, type: double, units: s, default: 0.0 }
+  building:
+    host: sim-building
+    period_s: 10.0
+    endpoint: updates
+    outputs:
+      - { key: cellar.temp_f, type: double, units: degF, desc: Cellar room temperature (to cellar) }
+      - { key: cellar.co2_ppm, type: double, units: ppm, desc: "Cellar room CO2, well mixed" }
+    inputs:
+      - { key: weather/ambient.temp_f, type: double, units: degF, default: 75.0 }
+      - { key: weather/ghi.wm2, type: double, units: W/m2, default: 0.0 }
+      - { key: weather/clock.epoch_s, type: double, units: s, default: 0.0 }
+      - { key: cellar/co2.vent_gps, type: double, units: g/s, default: 0.0 }
+      - { key: brewhouse/hood.heat_kw, type: double, units: kW, default: 0.0 }
+
+# Electrical loads (DESIGN.md §7.2). Each publisher publishes
+# `<federate>/load.<name>.kw` and subscribes to `power/bus.<bus>.energized`;
+# the power federate subscribes to every load (default_kw when the publisher
+# is not in the variant). Buses: msb (main switchboard), mcc1, boiler, pkg
+# (feeders plc-power can hold open), lp1 (T-2 lighting panel), rtu (RTU-1
+# breaker on LP-1), ep1 (ATS emergency panel).
+loads:
+  - { name: boiler, federate: utilities, bus: boiler, rated_kw: 200, desc: Electric steam boiler }
+  - { name: chiller, federate: utilities, bus: ep1, rated_kw: 22, default_kw: 12, desc: Glycol chiller (2 stages) and glycol pumps }
+  - { name: air, federate: utilities, bus: msb, rated_kw: 12, default_kw: 3, desc: Air compressor (15 hp) }
+  - { name: ro, federate: utilities, bus: msb, rated_kw: 4, desc: "RO skid, dosing, misc." }
+  - { name: mcc1, federate: brewhouse, bus: mcc1, rated_kw: 15, desc: "Mill, rake, wort and CIP pumps" }
+  - { name: line, federate: packaging, bus: pkg, rated_kw: 25, desc: Bottling line and conveyors }
+  - { name: kegwasher, federate: packaging, bus: pkg, rated_kw: 12, desc: Keg washer heater }
+  - { name: rtu, federate: building, bus: rtu, rated_kw: 12, default_kw: 4, desc: "Taproom RTU-1 (DX cooling, fan)" }
+  - { name: coldroom, federate: building, bus: ep1, rated_kw: 3, default_kw: 1.5, desc: Cold room condensing unit }
+  - { name: fans, federate: building, bus: ep1, rated_kw: 6, desc: "Kettle exhaust, makeup air, and cellar purge fans" }
+  - { name: lighting, federate: building, bus: lp1, rated_kw: 16, default_kw: 5, desc: "Lighting, plugs, office IT" }
+  - { name: otracks, federate: building, bus: ep1, rated_kw: 2, default_kw: 2, desc: OT and network racks }
 
 # ot-sim infrastructure device types (`infrastructures: brewery:` in the
 # phenix ot-sim app). Point order is register order: the app numbers
@@ -61,6 +203,274 @@ device_types:
     spund_open: { type: binary-read }
   sim-clock:
     sim_hours: { type: analog-read, scaling: 1 }
+  # -- brewhouse (rio-brewhouse) ----------------------------------------------
+  mill:
+    silo_level_pct: { type: analog-read, scaling: 1 }
+    speed_hz: { type: analog-read, scaling: 1 }
+    running: { type: binary-read }
+    run: { type: binary-read-write }
+    auger_run: { type: binary-read-write }
+    speed_sp_hz: { type: analog-read-write, scaling: 1 }
+  liquor-tank:
+    level_pct: { type: analog-read, scaling: 1 }
+    temp_f: { type: analog-read, scaling: 1 }
+    high_level: { type: binary-read }
+    fill_valve: { type: binary-read-write }
+  hot-liquor-tank:
+    level_pct: { type: analog-read, scaling: 1 }
+    temp_f: { type: analog-read, scaling: 1 }
+    low_level: { type: binary-read }
+    fill_valve: { type: binary-read-write }
+    steam_valve_pct: { type: analog-read-write, scaling: 1 }
+  mash-tun:
+    temp_f: { type: analog-read, scaling: 1 }
+    level_pct: { type: analog-read, scaling: 1 }
+    bed_dp_psi: { type: analog-read, scaling: 2 }
+    runoff_gpm: { type: analog-read, scaling: 1 }
+    sparge_gpm: { type: analog-read, scaling: 1 }
+    rake_height_in: { type: analog-read, scaling: 1 }
+    rake_running: { type: binary-read }
+    strike_valve: { type: binary-read-write }
+    rake_run: { type: binary-read-write }
+    steam_valve_pct: { type: analog-read-write, scaling: 1 }
+    runoff_valve_pct: { type: analog-read-write, scaling: 1 }
+    sparge_valve_pct: { type: analog-read-write, scaling: 1 }
+    rake_speed_pct: { type: analog-read-write, scaling: 1 }
+  kettle:
+    temp_f: { type: analog-read, scaling: 1 }
+    level_pct: { type: analog-read, scaling: 1 }
+    ambient_psia: { type: analog-read, scaling: 2 }
+    high_level: { type: binary-read }
+    whirlpool_valve: { type: binary-read-write }
+    hop_doser: { type: binary-read-write }
+    steam_valve_pct: { type: analog-read-write, scaling: 1 }
+  knockout:
+    wort_gpm: { type: analog-read, scaling: 1 }
+    stage1_out_f: { type: analog-read, scaling: 1 }
+    wort_out_f: { type: analog-read, scaling: 1 }
+    o2_slpm: { type: analog-read, scaling: 2 }
+    do_ppm: { type: analog-read, scaling: 2 }
+    pump_running: { type: binary-read }
+    pump_run: { type: binary-read-write }
+    to_fv_valve: { type: binary-read-write }
+    pump_speed_pct: { type: analog-read-write, scaling: 1 }
+    glycol_valve_pct: { type: analog-read-write, scaling: 1 }
+    o2_sp_slpm: { type: analog-read-write, scaling: 2 }
+
+  # -- cellar conditioning and shared equipment (rio-cellar) ------------------
+  bbt:
+    temp_f: { type: analog-read, scaling: 2 }
+    pressure_psia: { type: analog-read, scaling: 2 }
+    level_pct: { type: analog-read, scaling: 1 }
+    co2_vol: { type: analog-read, scaling: 2 }
+    co2_slpm: { type: analog-read, scaling: 1 }
+    valve: { type: binary-read-write }
+    outlet_valve: { type: binary-read-write }
+    co2_valve_pct: { type: analog-read-write, scaling: 1 }
+  hop-doser:
+    port_closed: { type: binary-read }
+    purge_valve: { type: binary-read-write }
+    dose_valve: { type: binary-read-write }
+  transfer-panel:
+    route_ok: { type: binary-read }
+    pump_running: { type: binary-read }
+    flow_gpm: { type: analog-read, scaling: 1 }
+    pump_run: { type: binary-read-write }
+
+  # -- packaging (rio-packaging) -----------------------------------------------
+  # Machine PackTags as the OEM controllers expose them (DESIGN.md §6.3).
+  # state is PackTags StateCurrent (2 Stopped, 4 Idle, 6 Execute, 11 Held,
+  # ...); cmd is CntrlCmd (1 Reset, 2 Start, 3 Stop, 4 Hold, 5 Unhold,
+  # 6 Suspend, 7 Unsuspend, 8 Abort, 9 Clear); mode is UnitModeCurrent
+  # (1 Production, 2 Maintenance, 3 Manual). Counts are 16-bit and wrap.
+  packml-machine:
+    state: { type: analog-read, scaling: 0 }
+    mode: { type: analog-read, scaling: 0 }
+    speed_bpm: { type: analog-read, scaling: 1 }
+    processed: { type: analog-read, scaling: 0 }
+    defective: { type: analog-read, scaling: 0 }
+    stop_reason: { type: analog-read, scaling: 0 }
+    jammed: { type: binary-read }
+    cmd: { type: analog-read-write, scaling: 0 }
+    mode_cmd: { type: analog-read-write, scaling: 0 }
+    speed_sp_bpm: { type: analog-read-write, scaling: 1 }
+  filler:
+    state: { type: analog-read, scaling: 0 }
+    mode: { type: analog-read, scaling: 0 }
+    speed_bpm: { type: analog-read, scaling: 1 }
+    processed: { type: analog-read, scaling: 0 }
+    defective: { type: analog-read, scaling: 0 }
+    stop_reason: { type: analog-read, scaling: 0 }
+    bowl_psia: { type: analog-read, scaling: 2 }
+    jammed: { type: binary-read }
+    low_bowl: { type: binary-read }
+    product_valve: { type: binary-read-write }
+    cmd: { type: analog-read-write, scaling: 0 }
+    mode_cmd: { type: analog-read-write, scaling: 0 }
+    speed_sp_bpm: { type: analog-read-write, scaling: 1 }
+  keg-machine:
+    state: { type: analog-read, scaling: 0 }
+    mode: { type: analog-read, scaling: 0 }
+    processed: { type: analog-read, scaling: 0 }
+    defective: { type: analog-read, scaling: 0 }
+    stop_reason: { type: analog-read, scaling: 0 }
+    wash_temp_f: { type: analog-read, scaling: 1 }
+    jammed: { type: binary-read }
+    heater: { type: binary-read-write }
+    cmd: { type: analog-read-write, scaling: 0 }
+    mode_cmd: { type: analog-read-write, scaling: 0 }
+  conveyor:
+    accum_eye: { type: binary-read }
+    jam_eye: { type: binary-read }
+    run: { type: binary-read-write }
+
+  # -- utilities (rio-utilities and glycol-chiller) ----------------------------
+  chiller:
+    supply_f: { type: analog-read, scaling: 1 }
+    return_f: { type: analog-read, scaling: 1 }
+    power_kw: { type: analog-read, scaling: 1 }
+    stage1_on: { type: binary-read }
+    stage2_on: { type: binary-read }
+    fault: { type: binary-read }
+    enable: { type: binary-read-write }
+    supply_sp_f: { type: analog-read-write, scaling: 1 }
+  glycol-loop:
+    reservoir_pct: { type: analog-read, scaling: 1 }
+    pump_psig: { type: analog-read, scaling: 1 }
+    pump_running: { type: binary-read }
+    pump_run: { type: binary-read-write }
+    pump_speed_pct: { type: analog-read-write, scaling: 1 }
+  boiler:
+    pressure_psig: { type: analog-read, scaling: 1 }
+    power_kw: { type: analog-read, scaling: 1 }
+    running: { type: binary-read }
+    low_water: { type: binary-read }
+    enable: { type: binary-read-write }
+    pressure_sp_psig: { type: analog-read-write, scaling: 1 }
+  air-compressor:
+    header_psig: { type: analog-read, scaling: 1 }
+    running: { type: binary-read }
+    dryer_fault: { type: binary-read }
+    enable: { type: binary-read-write }
+  co2-supply:
+    tank_psig: { type: analog-read, scaling: 1 }
+    tank_level_pct: { type: analog-read, scaling: 1 }
+    supply_psig: { type: analog-read, scaling: 1 }
+    main_valve: { type: binary-read-write }
+  ro-skid:
+    permeate_gpm: { type: analog-read, scaling: 1 }
+    conductivity_us: { type: analog-read, scaling: 0 }
+    running: { type: binary-read }
+    run: { type: binary-read-write }
+  wastewater:
+    level_pct: { type: analog-read, scaling: 1 }
+    ph: { type: analog-read, scaling: 2 }
+    high_level: { type: binary-read }
+    caustic_pump: { type: binary-read-write }
+    acid_pump: { type: binary-read-write }
+    discharge_valve: { type: binary-read-write }
+  cip-skid:
+    supply_f: { type: analog-read, scaling: 1 }
+    return_cond_ms: { type: analog-read, scaling: 2 }
+    return_gpm: { type: analog-read, scaling: 1 }
+    caustic_level_pct: { type: analog-read, scaling: 1 }
+    acid_level_pct: { type: analog-read, scaling: 1 }
+    return_flow: { type: binary-read }
+    supply_pump: { type: binary-read-write }
+    return_pump: { type: binary-read-write }
+    caustic_dose: { type: binary-read-write }
+    acid_dose: { type: binary-read-write }
+    steam_valve_pct: { type: analog-read-write, scaling: 1 }
+  cip-panel:
+    route_bh: { type: binary-read }
+    route_fv101: { type: binary-read }
+    route_fv102: { type: binary-read }
+    route_fv103: { type: binary-read }
+    route_fv104: { type: binary-read }
+    route_bbt201: { type: binary-read }
+    route_bbt202: { type: binary-read }
+
+  # -- electrical (FIELD-PWR) ---------------------------------------------------
+  # Signed points are int16 registers. Power is positive into the plant
+  # (import) at the relay and positive out of the battery (discharge).
+  relay-meter:
+    p_kw: { type: analog-read, scaling: 1, signed: true }
+    q_kvar: { type: analog-read, scaling: 1, signed: true }
+    v_ll: { type: analog-read, scaling: 1 }
+    i_a: { type: analog-read, scaling: 1 }
+    freq_hz: { type: analog-read, scaling: 2 }
+    demand_kw: { type: analog-read, scaling: 1 }
+    breaker_closed: { type: binary-read }
+    tripped: { type: binary-read }
+    close: { type: binary-read-write }
+  msb-feeders:
+    boiler_closed: { type: binary-read }
+    pkg_closed: { type: binary-read }
+    rtu_closed: { type: binary-read }
+    boiler_close: { type: binary-read-write }
+    pkg_close: { type: binary-read-write }
+    rtu_close: { type: binary-read-write }
+  pv-inverter:
+    p_kw: { type: analog-read, scaling: 1 }
+    limit_pct: { type: analog-read, scaling: 1 }
+    connected: { type: binary-read }
+    enable: { type: binary-read-write }
+    site_limit_pct: { type: analog-read-write, scaling: 1 }
+    utility_limit_pct: { type: analog-read-write, scaling: 1, written_by: rtu-der }
+  bess-pcs:
+    p_kw: { type: analog-read, scaling: 1, signed: true }
+    soc_pct: { type: analog-read, scaling: 1 }
+    connected: { type: binary-read }
+    fault: { type: binary-read }
+    enable: { type: binary-read-write }
+    p_sp_kw: { type: analog-read-write, scaling: 1, signed: true }
+    utility_p_sp_kw: { type: analog-read-write, scaling: 1, signed: true, written_by: rtu-der }
+  gen-ats:
+    gen_kw: { type: analog-read, scaling: 1 }
+    ep1_kw: { type: analog-read, scaling: 1 }
+    fuel_pct: { type: analog-read, scaling: 1 }
+    gen_running: { type: binary-read }
+    on_emergency: { type: binary-read }
+    utility_ok: { type: binary-read }
+    gen_start: { type: binary-read-write }
+
+  # -- building automation (BACnet objects, DESIGN.md §8.1) -------------------
+  # Units are BACnet engineering-unit names. Outputs are commandable.
+  rtu-1:
+    zone_temp_f: { type: analog-read, bacnet: { object_type: analog-input, units: degreesFahrenheit } }
+    zone_co2_ppm: { type: analog-read, bacnet: { object_type: analog-input, units: partsPerMillion } }
+    supply_air_f: { type: analog-read, bacnet: { object_type: analog-input, units: degreesFahrenheit } }
+    power_kw: { type: analog-read, bacnet: { object_type: analog-input, units: kilowatts } }
+    econ_pct: { type: analog-read-write, bacnet: { object_type: analog-output, units: percent } }
+    cool_sp_f: { type: analog-read-write, bacnet: { object_type: analog-value, units: degreesFahrenheit } }
+    heat_sp_f: { type: analog-read-write, bacnet: { object_type: analog-value, units: degreesFahrenheit } }
+    supply_fan: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    cool_stage1: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    cool_stage2: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    heat: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    occ_mode: { type: analog-read-write, bacnet: { object_type: multi-state-value, states: [occupied, unoccupied, standby] } }
+  coldroom:
+    room_temp_f: { type: analog-read, bacnet: { object_type: analog-input, units: degreesFahrenheit } }
+    door_open_min: { type: analog-read, bacnet: { object_type: analog-value, units: minutes } }
+    setpoint_f: { type: analog-read-write, bacnet: { object_type: analog-value, units: degreesFahrenheit } }
+    door: { type: binary-read, bacnet: { object_type: binary-input } }
+    compressor: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    defrost: { type: binary-read-write, bacnet: { object_type: binary-output } }
+  vent:
+    co2_1_ppm: { type: analog-read, bacnet: { object_type: analog-input, units: partsPerMillion } }
+    co2_2_ppm: { type: analog-read, bacnet: { object_type: analog-input, units: partsPerMillion } }
+    co2_3_ppm: { type: analog-read, bacnet: { object_type: analog-input, units: partsPerMillion } }
+    co2_4_ppm: { type: analog-read, bacnet: { object_type: analog-input, units: partsPerMillion } }
+    mua_discharge_f: { type: analog-read, bacnet: { object_type: analog-input, units: degreesFahrenheit } }
+    exhaust_pct: { type: analog-read-write, bacnet: { object_type: analog-output, units: percent } }
+    purge_fan_1_status: { type: binary-read, bacnet: { object_type: binary-input } }
+    purge_fan_2_status: { type: binary-read, bacnet: { object_type: binary-input } }
+    co2_tier_1: { type: binary-read, bacnet: { object_type: binary-value } }
+    co2_tier_2: { type: binary-read, bacnet: { object_type: binary-value } }
+    co2_tier_3: { type: binary-read, bacnet: { object_type: binary-value } }
+    purge_fan_1: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    purge_fan_2: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    mua_enable: { type: binary-read-write, bacnet: { object_type: binary-output } }
 
 # Hosts that own tags or appear in generated app blocks. Interface names
 # and addresses follow DESIGN.md §10.2 (IF0, IF1, ... in zone order; the
@@ -90,12 +500,239 @@ hosts:
       IF1: { vlan: FIELD-CEL, ip: 10.20.12.1/24 }
   scada-fuxa:
     role: scada
+    # The PLCs, plus the cellar CO2 objects of bas-vent through the BBMDs
+    # (DESIGN.md §6.6 #6). Hosts outside a variant are skipped.
+    fuxa:
+      - { host: plc-brewhouse }
+      - { host: plc-cellar }
+      - { host: plc-packaging }
+      - { host: plc-utilities }
+      - { host: plc-power }
+      - { host: bas-vent, tags: ["FAC.VENT.AT0*", "FAC.VENT.AY01.*", "FAC.VENT.FAN0*.PV"] }
     interfaces:
       IF0: { vlan: OPS, ip: 10.20.30.10/24 }
   ot-svc:
     role: service
     interfaces:
       IF0: { vlan: OPS, ip: 10.20.30.13/24 }
+  # -- the rest of the full plant (DESIGN.md §10.2, §11) ----------------------
+  sim-power:
+    role: sim
+    interfaces:
+      mgmt: { vlan: MGMT, ip: 172.16.10.3/16 }
+  sim-building:
+    role: sim
+    interfaces:
+      mgmt: { vlan: MGMT, ip: 172.16.10.4/16 }
+  isp-rtr:
+    role: router
+    vyos: true
+    interfaces:
+      IF0: { vlan: INET, ip: 203.0.113.1/24 }
+      IF1: { vlan: VENDOR, ip: 198.51.100.1/24 }
+  inet-nuke:
+    role: service
+    interfaces:
+      IF0: { vlan: INET, ip: 203.0.113.10/24 }
+  vendor-ws:
+    role: workstation
+    interfaces:
+      IF0: { vlan: VENDOR, ip: 198.51.100.10/24 }
+  util-rtr:
+    role: router
+    vyos: true
+    interfaces:
+      IF0: { vlan: INET, ip: 203.0.113.3/24 }
+      IF1: { vlan: UTIL, ip: 192.0.2.1/24 }
+  utility-derms:
+    role: dnp3-master
+    upstream: [rtu-der]
+    interfaces:
+      IF0: { vlan: UTIL, ip: 192.0.2.10/24 }
+  corp-ws:
+    role: workstation
+    interfaces:
+      IF0: { vlan: CORP, ip: 10.10.10.10/24 }
+  fw-edge:
+    role: firewall
+    vyos: true
+    interfaces:
+      IF0: { vlan: INET, ip: 203.0.113.2/24 }
+      IF1: { vlan: CORP, ip: 10.10.10.1/24 }
+      IF2: { vlan: DMZ, ip: 10.10.20.1/24 }
+  dmz-vpn:
+    role: vpn
+    interfaces:
+      IF0: { vlan: DMZ, ip: 10.10.20.10/24 }
+  dmz-jump:
+    role: jump
+    interfaces:
+      IF0: { vlan: DMZ, ip: 10.10.20.11/24 }
+  fw-ot:
+    role: firewall
+    vyos: true
+    interfaces:
+      IF0: { vlan: DMZ, ip: 10.10.20.2/24 }
+      IF1: { vlan: OPS, ip: 10.20.30.1/24 }
+      IF2: { vlan: HMI, ip: 10.20.20.1/24 }
+      IF3: { vlan: CTRL, ip: 10.20.10.1/24 }
+      IF4: { vlan: DERLINK, ip: 10.20.15.1/24 }
+      IF5: { vlan: BAS, ip: 10.30.10.1/24 }
+      IF6: { vlan: SOC, ip: 10.40.10.1/24 }
+  historian:
+    role: historian
+    interfaces:
+      IF0: { vlan: OPS, ip: 10.20.30.11/24 }
+  ews:
+    role: ews
+    interfaces:
+      IF0: { vlan: OPS, ip: 10.20.30.12/24 }
+  hmi-brewhouse:
+    role: hmi
+    interfaces:
+      IF0: { vlan: HMI, ip: 10.20.20.10/24 }
+  hmi-packaging:
+    role: hmi
+    interfaces:
+      IF0: { vlan: HMI, ip: 10.20.20.11/24 }
+  plc-brewhouse:
+    role: plc
+    northbound: opcua
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    poll_ms: 100
+    interfaces:
+      IF0: { vlan: CTRL, ip: 10.20.10.11/24 }
+      IF1: { vlan: FIELD-BH, ip: 10.20.11.1/24 }
+  plc-packaging:
+    role: plc
+    northbound: s7comm
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    poll_ms: 100
+    interfaces:
+      IF0: { vlan: CTRL, ip: 10.20.10.13/24 }
+      IF1: { vlan: FIELD-PKG, ip: 10.20.13.1/24 }
+  plc-utilities:
+    role: plc
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    poll_ms: 250
+    interfaces:
+      IF0: { vlan: CTRL, ip: 10.20.10.14/24 }
+      IF1: { vlan: FIELD-UTL, ip: 10.20.14.1/24 }
+  plc-power:
+    role: plc
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    poll_ms: 250
+    interfaces:
+      IF0: { vlan: CTRL, ip: 10.20.10.15/24 }
+      IF1: { vlan: FIELD-PWR, ip: 10.20.16.1/24 }
+  rio-brewhouse:
+    role: rio
+    federate: brewhouse
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-BH, ip: 10.20.11.10/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.11/16 }
+  rio-packaging:
+    role: rio
+    federate: packaging
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-PKG, ip: 10.20.13.10/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.13/16 }
+  rio-utilities:
+    role: rio
+    federate: utilities
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-UTL, ip: 10.20.14.10/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.14/16 }
+  glycol-chiller:
+    role: field
+    federate: utilities
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-UTL, ip: 10.20.14.11/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.15/16 }
+  relay-main:
+    role: field
+    federate: power
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-PWR, ip: 10.20.16.20/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.21/16 }
+  pv-inverter:
+    role: field
+    federate: power
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-PWR, ip: 10.20.16.21/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.22/16 }
+  bess-pcs:
+    role: field
+    federate: power
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-PWR, ip: 10.20.16.22/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.23/16 }
+  gen-ats:
+    role: field
+    federate: power
+    modbus: { interface: IF0, port: 502, unit_id: 1 }
+    interfaces:
+      IF0: { vlan: FIELD-PWR, ip: 10.20.16.23/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.24/16 }
+  rtu-der:
+    role: fep
+    dnp3: { interface: IF0, port: 20000 }
+    upstream: [relay-main, pv-inverter, bess-pcs]
+    interfaces:
+      IF0: { vlan: DERLINK, ip: 10.20.15.10/24 }
+      IF1: { vlan: FIELD-PWR, ip: 10.20.16.2/24 }
+  bas-bbmd:
+    role: bbmd
+    interfaces:
+      IF0: { vlan: BAS, ip: 10.30.10.5/24 }
+  bas-fuxa:
+    role: scada
+    fuxa:
+      - { host: bas-rtu-taproom }
+      - { host: bas-coldroom }
+      - { host: bas-vent }
+    interfaces:
+      IF0: { vlan: BAS, ip: 10.30.10.10/24 }
+  bas-rtu-taproom:
+    role: bas
+    federate: building
+    bacnet: { interface: IF0, port: 47808, instance: 3001, name: BAS-RTU-1 }
+    interfaces:
+      IF0: { vlan: BAS, ip: 10.30.10.20/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.31/16 }
+  bas-coldroom:
+    role: bas
+    federate: building
+    bacnet: { interface: IF0, port: 47808, instance: 3002, name: BAS-COLDROOM-1 }
+    interfaces:
+      IF0: { vlan: BAS, ip: 10.30.10.21/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.32/16 }
+  bas-vent:
+    role: bas
+    federate: building
+    bacnet: { interface: IF0, port: 47808, instance: 3003, name: BAS-VENT-1 }
+    interfaces:
+      IF0: { vlan: BAS, ip: 10.30.10.22/24 }
+      mgmt: { vlan: MGMT, ip: 172.16.20.33/16 }
+  malcolm:
+    role: soc
+    interfaces:
+      IF0: { vlan: SOC, ip: 10.40.10.10/24 }
+  wazuh:
+    role: soc
+    interfaces:
+      IF0: { vlan: SOC, ip: 10.40.10.11/24 }
+  soc-analyst:
+    role: workstation
+    interfaces:
+      IF0: { vlan: SOC, ip: 10.40.10.12/24 }
 
 # Alarm rationalization library (ISA-18.2, DESIGN.md §6.5). An alarm can
 # reference an entry with `rationale:` and override any field inline.
@@ -131,8 +768,388 @@ alarm_rationale:
     consequence: Vacuum relief admits air; oxygen pickup and staling
     action: Apply CO2 top pressure through the blow-off arm
     response_time: 60m
+  # -- brewhouse ------------------------------------------------------------------
+  hlt-level-low:
+    priority: low
+    cause: CLT transfer stopped or HLT drawn down by strike and sparge
+    consequence: Steam jacket heats a low liquid level; next brew starts late
+    action: Check the CLT level and the HLT fill valve; refill before the next mash-in
+    response_time: 30m
+  hlt-temp-high:
+    priority: medium
+    cause: Steam valve stuck open or HLT temperature loop in manual
+    consequence: Liquor too hot for strike and sparge; tannin extraction and scald risk
+    action: Close the HLT steam valve and check the temperature loop mode
+    response_time: 15m
+  mash-temp-deviation:
+    priority: medium
+    cause: Jacket steam valve fault, poor mixing, or wrong strike temperature
+    consequence: Wrong fermentability; beer misses its final gravity
+    action: Check the MLT steam valve and rake; adjust the step manually if needed
+    response_time: 10m
+  lauter-dp-high:
+    priority: medium
+    cause: Grain bed compacted (stuck mash) or runoff faster than the bed allows
+    consequence: Runoff stops; long lauter and poor extract
+    action: Reduce runoff, raise the rake and cut the bed, then resume slowly
+    response_time: 10m
+  kettle-level-high:
+    priority: high
+    cause: Over-collection during lauter or boil-over at the hot break
+    consequence: Hot wort overflows the kettle; scald hazard and product loss
+    action: Cut the kettle steam immediately and stop the runoff
+    response_time: 2m
+  knockout-temp-deviation:
+    priority: high
+    cause: Glycol trim valve fault, warm glycol, or CLT water too warm at stage 1
+    consequence: Yeast pitched at the wrong temperature; off-flavors or slow start
+    action: Slow the wort pump, check the stage-2 glycol valve and glycol supply
+    response_time: 5m
+  knockout-do-low:
+    priority: low
+    cause: O2 mass-flow controller fault or empty O2 cylinder
+    consequence: Under-oxygenated wort; sluggish fermentation
+    action: Check the O2 supply and the mass-flow controller
+    response_time: 15m
+  # -- cellar conditioning --------------------------------------------------------
+  bbt-pressure-high:
+    priority: high
+    cause: Carbonation stone left open or regulator setpoint too high
+    consequence: Mechanical relief lifts at 15 psig; CO2 released into the cellar
+    action: Close the carbonation valve and vent to the target pressure
+    response_time: 10m
+  bbt-temp-deviation:
+    priority: medium
+    cause: Jacket valve fault or warm glycol supply
+    consequence: Carbonation drifts off target and the beer warms
+    action: Check the BBT jacket valve and the glycol supply temperature
+    response_time: 30m
+  carbonation-inhibited:
+    priority: medium
+    cause: Cellar CO2 at or above 15,000 ppm (bas-vent tier 2)
+    consequence: BBT carbonation is held until the room is safe
+    action: Confirm the purge fans are running and find the CO2 source before re-entry
+    response_time: 15m
+  # -- packaging ------------------------------------------------------------------
+  line-held:
+    priority: low
+    cause: An upstream or downstream machine held the line (jam, starved, or blocked)
+    consequence: Lost production and warm product in the filler bowl
+    action: Check the PackML stop reason and clear the holding machine
+    response_time: 15m
+  filler-bowl-low:
+    priority: medium
+    cause: BBT pressure or level low, or the product valve closed
+    consequence: Short fills and foaming; rejects at fill-level inspection
+    action: Check BBT-202 pressure and level and the filler product valve
+    response_time: 5m
+  machine-jam:
+    priority: low
+    cause: Fallen bottle, broken glass, or label stock fault at the machine
+    consequence: The machine stops; the line blocks or starves
+    action: Clear the jam with the machine in Maintenance mode, then reset
+    response_time: 10m
+  # -- utilities ------------------------------------------------------------------
+  glycol-supply-high:
+    priority: high
+    cause: Chiller compressor fault, high load (crash plus knockout), or high ambient
+    consequence: Fermenters lose temperature control; batches at risk
+    action: Check the chiller stages and faults; defer cold crashes and knockout
+    response_time: 15m
+  chiller-fault:
+    priority: high
+    cause: Compressor trip (high head pressure, low suction, or overload)
+    consequence: Glycol capacity drops; supply temperature rises
+    action: Reset the chiller at its controller; call for service if it repeats
+    response_time: 15m
+  glycol-reservoir-low:
+    priority: medium
+    cause: Glycol leak at a jacket, hose, or pump seal
+    consequence: Pump cavitation and loss of cooling
+    action: Find and isolate the leak; top up the reservoir with 35% propylene glycol
+    response_time: 30m
+  boiler-low-water:
+    priority: high
+    cause: Feedwater pump failure or a leak; the hardwired low-water cutoff tripped
+    consequence: Boiler off; no steam for mash, boil, or CIP
+    action: Check the feedwater supply and the cutoff; reset at the boiler
+    response_time: 10m
+  steam-pressure-low:
+    priority: medium
+    cause: Boiler disabled, feeder open, or demand above 200 kW
+    consequence: Slow heating; the boil may not reach vigor
+    action: Check the boiler enable, its feeder breaker, and the steam demand
+    response_time: 10m
+  air-pressure-low:
+    priority: medium
+    cause: Compressor off or failed, or a large leak
+    consequence: Pneumatic valves and the bottling line stop
+    action: Check the compressor and the dryer; look for leaks
+    response_time: 10m
+  co2-supply-low:
+    priority: medium
+    cause: Bulk tank low or vaporizer frozen
+    consequence: No CO2 for purging, carbonation, or counterpressure filling
+    action: Check the bulk tank level and the vaporizer; order a delivery
+    response_time: 30m
+  co2-tank-low:
+    priority: low
+    cause: Normal consumption since the last delivery
+    consequence: Supply runs out in a few days
+    action: Schedule a bulk CO2 delivery
+    response_time: 24h
+  ro-conductivity-high:
+    priority: low
+    cause: RO membrane fouling or a failed carbon prefilter
+    consequence: Brewing liquor out of specification
+    action: Check the membranes and the carbon filter; switch to the backup supply
+    response_time: 4h
+  wastewater-ph:
+    priority: low
+    cause: Caustic or acid CIP dump faster than the dosing can neutralize
+    consequence: Discharge inhibited until pH returns to 6.0-9.0
+    action: Check the dosing pumps and chemical levels; hold CIP dumps
+    response_time: 1h
+  discharge-inhibited:
+    priority: medium
+    cause: Neutralization tank pH outside 6.0-9.0
+    consequence: Tank fills; CIP and brewhouse drains must stop when it is full
+    action: Check the neutralization and dosing; do not override the discharge permit
+    response_time: 30m
+  wastewater-level-high:
+    priority: medium
+    cause: Discharge inhibited for a long time, or a large dump
+    consequence: Tank overflow to the floor drain (permit violation)
+    action: Stop CIP and brewhouse drains until the tank is neutralized and discharged
+    response_time: 15m
+  cip-temp-deviation:
+    priority: low
+    cause: Steam valve fault or low steam pressure
+    consequence: Caustic below 175 degF cleans poorly; the cycle must be repeated
+    action: Check the CIP steam valve and the steam header pressure
+    response_time: 15m
+  # -- electrical -----------------------------------------------------------------
+  utility-outage:
+    priority: high
+    cause: Utility feeder lost (Summit Valley Power) or the main breaker opened
+    consequence: Brewhouse and packaging stop; EP-1 runs on the genset
+    action: Confirm the genset carries EP-1; hold the large feeders open until the utility returns
+    response_time: 5m
+  main-breaker-trip:
+    priority: high
+    cause: Overcurrent or ground fault on the 480 V service
+    consequence: The whole site is on the genset (EP-1 only)
+    action: Do not reclose before the fault is found; call the electrical contractor
+    response_time: 10m
+  demand-high:
+    priority: medium
+    cause: Coincident boiler, chiller, and packaging load above the demand target
+    consequence: A new monthly demand peak costs about $37 per kW in summer
+    action: Defer the next boil step or packaging start; check the BESS dispatch
+    response_time: 15m
+  voltage-low:
+    priority: medium
+    cause: Utility voltage sag or heavy motor starting
+    consequence: Below ANSI C84.1 Range A; motors run hot and drives may trip
+    action: Check the utility service and the load; stagger motor starts
+    response_time: 15m
+  bess-fault:
+    priority: medium
+    cause: PCS fault, battery temperature, or a communication loss
+    consequence: No peak shaving; the monthly demand peak may rise
+    action: Check the PCS fault code and reset it from its panel
+    response_time: 1h
+  bess-soc-low:
+    priority: low
+    cause: Discharge for peak shaving or energy shift without enough recharge
+    consequence: Too little energy to cap the next brew-day peak
+    action: Check the overnight recharge schedule and the dispatch settings
+    response_time: 4h
+  # -- facilities (BACnet, evaluated by FUXA) -----------------------------------
+  cellar-co2-high:
+    priority: high
+    cause: Fermentation venting, a CO2 leak, or the purge fans not running
+    consequence: CO2 above the NIOSH short-term limit (30,000 ppm) is near
+    action: Keep staff out of the cellar, confirm the purge fans, and find the source
+    response_time: 5m
+  cellar-co2-critical:
+    priority: critical
+    cause: Large CO2 release (blow-off, relief valve, or line break)
+    consequence: Life safety; CO2 at the NIOSH STEL and approaching IDLH (40,000 ppm)
+    action: Evacuate the cellar; enter only with SCBA; ventilate before re-entry
+    response_time: 1m
+  coldroom-temp-high:
+    priority: medium
+    cause: Door left open, defrost stuck, or condensing unit fault
+    consequence: Kegs warm; foaming at the taps and product quality loss
+    action: Close the door, check the defrost and the compressor
+    response_time: 30m
+  taproom-temp-high:
+    priority: low
+    cause: RTU-1 cooling stage fault or an economizer stuck open on a hot day
+    consequence: Uncomfortable taproom; guests leave
+    action: Check RTU-1 cooling stages and the economizer damper
+    response_time: 1h
 
 areas:
+  - id: BH
+    name: Raw materials and brewhouse
+    plc: plc-brewhouse
+    rio: rio-brewhouse
+    federate: brewhouse
+    units:
+      - id: MILL
+        name: Grain silo, auger, and roller mill
+        model: mill
+        devices:
+          - { name: mill, type: mill }
+        tags:
+          - { id: LT01.PV, desc: Grain silo level, io: mill.silo_level_pct, units: "%", range: [0, 100] }
+          - { id: SI01.PV, desc: Mill VFD speed, io: mill.speed_hz, units: Hz, range: [0, 60] }
+          - { id: YS01.PV, desc: Mill running, io: mill.running }
+          - { id: HS01.CMD, desc: Mill run command, io: mill.run }
+          - { id: HS02.CMD, desc: Grain auger run command, io: mill.auger_run }
+          - { id: SC01.SP, desc: Mill VFD speed reference, io: mill.speed_sp_hz, units: Hz, range: [0, 60] }
+
+      - id: CLT
+        name: Cold liquor tank
+        model: liquor-tank
+        devices:
+          - { name: clt, type: liquor-tank }
+        tags:
+          - { id: LT01.PV, desc: CLT level, io: clt.level_pct, units: "%", range: [0, 100] }
+          - { id: TT01.PV, desc: CLT temperature, io: clt.temp_f, units: degF, range: [32, 212] }
+          - { id: LSH01.PV, desc: CLT high-level switch, io: clt.high_level }
+          - { id: XV01.CMD, desc: CLT fill valve (RO permeate), io: clt.fill_valve }
+
+      - id: HLT
+        name: Hot liquor tank
+        model: hot-liquor-tank
+        devices:
+          - { name: hlt, type: hot-liquor-tank }
+        tags:
+          - id: LT01.PV
+            desc: HLT level
+            io: hlt.level_pct
+            units: "%"
+            range: [0, 100]
+            alarms:
+              - { kind: low, limit: 20.0, delay: 1m, rationale: hlt-level-low }
+          - id: TT01.PV
+            desc: HLT temperature
+            io: hlt.temp_f
+            units: degF
+            range: [32, 212]
+            alarms:
+              - { kind: high, limit: 190.0, delay: 2m, rationale: hlt-temp-high }
+          - { id: LSL01.PV, desc: HLT low-level switch (jacket covered), io: hlt.low_level }
+          - { id: XV01.CMD, desc: HLT fill valve (from the CLT), io: hlt.fill_valve }
+          - { id: TV01.OUT, desc: HLT steam valve position, io: hlt.steam_valve_pct, units: "%", range: [0, 100] }
+          - { id: TT01.SP, desc: HLT temperature setpoint, type: analog-read-write, units: degF, range: [32, 212], scaling: 1 }
+
+      - id: MLT
+        name: Mash/lauter tun
+        model: mash-tun
+        devices:
+          - { name: mlt, type: mash-tun }
+        tags:
+          - id: TT01.PV
+            desc: MLT mash temperature
+            io: mlt.temp_f
+            units: degF
+            range: [32, 212]
+            alarms:
+              - { kind: deviation, setpoint: TT01.SP, limit: 2.0, delay: 10m, rationale: mash-temp-deviation, suppress: XS01.ACTIVE }
+          - { id: LT01.PV, desc: MLT level, io: mlt.level_pct, units: "%", range: [0, 100] }
+          - id: PDT01.PV
+            desc: MLT false-bottom differential pressure
+            io: mlt.bed_dp_psi
+            units: psi
+            range: [0, 10]
+            alarms:
+              - { kind: high, limit: 1.5, delay: 2m, rationale: lauter-dp-high }
+          - { id: FT01.PV, desc: Lauter runoff flow, io: mlt.runoff_gpm, units: gal/min, range: [0, 100] }
+          - { id: FT02.PV, desc: Sparge flow, io: mlt.sparge_gpm, units: gal/min, range: [0, 100] }
+          - { id: ZT01.PV, desc: Rake height above the false bottom, io: mlt.rake_height_in, units: in, range: [0, 40] }
+          - { id: YS01.PV, desc: Rake running, io: mlt.rake_running }
+          - { id: XV01.CMD, desc: Strike water valve (from the HLT), io: mlt.strike_valve }
+          - { id: HS01.CMD, desc: Rake run command, io: mlt.rake_run }
+          - { id: TV01.OUT, desc: MLT jacket steam valve position, io: mlt.steam_valve_pct, units: "%", range: [0, 100] }
+          - { id: FV01.OUT, desc: Runoff valve position, io: mlt.runoff_valve_pct, units: "%", range: [0, 100] }
+          - { id: FV02.OUT, desc: Sparge valve position, io: mlt.sparge_valve_pct, units: "%", range: [0, 100] }
+          - { id: SC01.OUT, desc: Rake speed reference, io: mlt.rake_speed_pct, units: "%", range: [0, 100] }
+          - { id: TT01.SP, desc: Mash step temperature setpoint, type: analog-read-write, units: degF, range: [32, 212], scaling: 1 }
+          - { id: XS01.ACTIVE, desc: Mash step holding (deviation alarm enabled), type: binary-read }
+
+      - id: KTL
+        name: Kettle/whirlpool
+        model: kettle
+        devices:
+          - { name: kettle, type: kettle }
+        tags:
+          - { id: TT01.PV, desc: Kettle temperature, io: kettle.temp_f, units: degF, range: [32, 230] }
+          - id: LT01.PV
+            desc: Kettle level
+            io: kettle.level_pct
+            units: "%"
+            range: [0, 100]
+            alarms:
+              - { kind: high, limit: 92.0, delay: 10s, rationale: kettle-level-high }
+          - { id: PT01.PV, desc: Ambient (barometric) pressure for boil detection, io: kettle.ambient_psia, units: psia, range: [0, 20] }
+          - { id: LSH01.PV, desc: Kettle high-level switch (boil-over), io: kettle.high_level }
+          - { id: XV01.CMD, desc: Whirlpool tangential inlet valve, io: kettle.whirlpool_valve }
+          - { id: XV02.CMD, desc: Whirlpool hop doser, io: kettle.hop_doser }
+          - { id: TV01.OUT, desc: Kettle jacket steam valve position, io: kettle.steam_valve_pct, units: "%", range: [0, 100] }
+          - { id: TB01.PV, desc: Computed local wort boiling point, type: analog-read, units: degF, range: [180, 230], scaling: 1 }
+          - { id: KI01.PV, desc: Boil time elapsed, type: analog-read, units: min, range: [0, 600], scaling: 1 }
+          - { id: XS01.BOIL, desc: Boil detected (within 0.5 degF of the boiling point), type: binary-read }
+
+      - id: KO
+        name: Knockout (wort pump, two-stage HX, inline O2)
+        model: knockout
+        devices:
+          - { name: knockout, type: knockout }
+        tags:
+          - { id: FT01.PV, desc: Wort flow to the fermenter, io: knockout.wort_gpm, units: gal/min, range: [0, 100] }
+          - { id: TT01.PV, desc: HX stage-1 wort outlet temperature (CLT water side), io: knockout.stage1_out_f, units: degF, range: [32, 230] }
+          - id: TT02.PV
+            desc: Knockout wort temperature (after stage 2)
+            io: knockout.wort_out_f
+            units: degF
+            range: [32, 230]
+            alarms:
+              - { kind: deviation, setpoint: TT02.SP, limit: 3.0, delay: 2m, rationale: knockout-temp-deviation, suppress: YS01.PV }
+          - { id: FT02.PV, desc: Inline O2 flow, io: knockout.o2_slpm, units: L/min, range: [0, 20] }
+          - id: AT01.PV
+            desc: Wort dissolved oxygen
+            io: knockout.do_ppm
+            units: ppm
+            range: [0, 20]
+            alarms:
+              - { kind: low, limit: 6.0, delay: 5m, rationale: knockout-do-low, suppress: YS01.PV }
+          - { id: YS01.PV, desc: Wort pump running, io: knockout.pump_running }
+          - { id: HS01.CMD, desc: Wort pump run command, io: knockout.pump_run }
+          - { id: XV01.CMD, desc: Knockout valve to the fermenter header, io: knockout.to_fv_valve }
+          - { id: SC01.OUT, desc: Wort pump VFD speed reference, io: knockout.pump_speed_pct, units: "%", range: [0, 100] }
+          - { id: TV01.OUT, desc: HX stage-2 glycol valve position, io: knockout.glycol_valve_pct, units: "%", range: [0, 100] }
+          - { id: FC01.SP, desc: Inline O2 mass-flow setpoint, io: knockout.o2_sp_slpm, units: L/min, range: [0, 20] }
+          - { id: TT02.SP, desc: Knockout temperature setpoint, type: analog-read-write, units: degF, range: [32, 100], scaling: 1 }
+
+      - id: BATCH
+        name: ISA-88 phase interface (FUXA batch engine)
+        model: phases
+        tags:
+          # Phase numbers: 1 MILL, 2 HLT_HEAT, 3 MASH_IN, 4 MASH_STEP, 5 VORLAUF,
+          # 6 LAUTER, 7 BOIL, 8 WHIRLPOOL, 9 KNOCKOUT, 10 CIP_READY. Commands
+          # and states follow ISA-88 (1 Start, 2 Hold, 3 Restart, 4 Abort, 5 Reset;
+          # states 0 Idle, 1 Running, 2 Holding, 3 Held, 4 Restarting, 5 Complete,
+          # 6 Aborted).
+          - { id: XC01.PHASE, desc: Phase selected by the batch engine, type: analog-read-write, range: [0, 10], scaling: 0 }
+          - { id: XC01.CMD, desc: Phase command, type: analog-read-write, range: [0, 5], scaling: 0 }
+          - { id: XS01.STATE, desc: Phase state, type: analog-read, range: [0, 6], scaling: 0 }
+          - { id: XS01.STEP, desc: Phase step number, type: analog-read, range: [0, 100], scaling: 0 }
+          - { id: XI01.BATCH, desc: Batch number (low 16 bits), type: analog-read-write, range: [0, 65535], scaling: 0 }
+
   - id: CEL
     name: Cellar
     plc: plc-cellar
@@ -303,6 +1320,786 @@ areas:
           - { id: TT01.SP, desc: FV-104 side temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
           - { id: TT02.SP, desc: FV-104 cone temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
 
+
+      - id: BBT201
+        name: BBT-201
+        model: bbt
+        devices:
+          - { name: bbt201, type: bbt }
+        tags:
+          - id: TT01.PV
+            desc: BBT-201 temperature
+            io: bbt201.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT01.SP, limit: 2.0, delay: 30m, rationale: bbt-temp-deviation }
+          - id: PT01.PV
+            desc: BBT-201 head pressure (absolute)
+            io: bbt201.pressure_psia
+            units: psia
+            range: [0, 40]
+            alarms:
+              - { kind: high, limit: 26.1, delay: 30s, rationale: bbt-pressure-high }
+          - { id: LT01.PV, desc: BBT-201 level, io: bbt201.level_pct, units: "%", range: [0, 100] }
+          - { id: AT01.PV, desc: BBT-201 dissolved CO2 (inline meter), io: bbt201.co2_vol, units: vol, range: [0, 5] }
+          - { id: FT01.PV, desc: BBT-201 carbonation stone CO2 flow, io: bbt201.co2_slpm, units: L/min, range: [0, 200] }
+          - { id: TV01.CMD, desc: BBT-201 jacket glycol valve command, io: bbt201.valve }
+          - { id: XV01.CMD, desc: BBT-201 outlet valve (to packaging), io: bbt201.outlet_valve }
+          - { id: FCV01.OUT, desc: BBT-201 carbonation CO2 flow valve position, io: bbt201.co2_valve_pct, units: "%", range: [0, 100] }
+          - { id: TT01.SP, desc: BBT-201 temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: AT01.SP, desc: BBT-201 carbonation target, type: analog-read-write, units: vol, range: [0, 5], scaling: 2 }
+          - { id: PT01.SP, desc: "BBT-201 equilibrium head pressure for the target (computed, absolute)", type: analog-read, units: psia, range: [0, 40], scaling: 2 }
+
+      - id: BBT202
+        name: BBT-202
+        model: bbt
+        devices:
+          - { name: bbt202, type: bbt }
+        tags:
+          - id: TT01.PV
+            desc: BBT-202 temperature
+            io: bbt202.temp_f
+            units: degF
+            range: [20, 90]
+            alarms:
+              - { kind: deviation, setpoint: TT01.SP, limit: 2.0, delay: 30m, rationale: bbt-temp-deviation }
+          - id: PT01.PV
+            desc: BBT-202 head pressure (absolute)
+            io: bbt202.pressure_psia
+            units: psia
+            range: [0, 40]
+            alarms:
+              - { kind: high, limit: 26.1, delay: 30s, rationale: bbt-pressure-high }
+          - { id: LT01.PV, desc: BBT-202 level, io: bbt202.level_pct, units: "%", range: [0, 100] }
+          - { id: AT01.PV, desc: BBT-202 dissolved CO2 (inline meter), io: bbt202.co2_vol, units: vol, range: [0, 5] }
+          - { id: FT01.PV, desc: BBT-202 carbonation stone CO2 flow, io: bbt202.co2_slpm, units: L/min, range: [0, 200] }
+          - { id: TV01.CMD, desc: BBT-202 jacket glycol valve command, io: bbt202.valve }
+          - { id: XV01.CMD, desc: BBT-202 outlet valve (to packaging), io: bbt202.outlet_valve }
+          - { id: FCV01.OUT, desc: BBT-202 carbonation CO2 flow valve position, io: bbt202.co2_valve_pct, units: "%", range: [0, 100] }
+          - { id: TT01.SP, desc: BBT-202 temperature setpoint, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: AT01.SP, desc: BBT-202 carbonation target, type: analog-read-write, units: vol, range: [0, 5], scaling: 2 }
+          - { id: PT01.SP, desc: "BBT-202 equilibrium head pressure for the target (computed, absolute)", type: analog-read, units: psia, range: [0, 40], scaling: 2 }
+
+      - id: DH
+        name: Dry-hop doser
+        model: hop-doser
+        devices:
+          - { name: hopdoser, type: hop-doser }
+        tags:
+          - { id: ZSC01.PV, desc: Hop port closed, io: hopdoser.port_closed }
+          - { id: XV01.CMD, desc: Hop port CO2 purge valve, io: hopdoser.purge_valve }
+          - { id: XV02.CMD, desc: Hop dose valve, io: hopdoser.dose_valve }
+
+      - id: XFER
+        name: Transfer panel (FV to BBT)
+        model: transfer
+        devices:
+          - { name: transfer, type: transfer-panel }
+        tags:
+          - { id: ZS01.PV, desc: Transfer route verified (swing-panel proximity), io: transfer.route_ok }
+          - { id: YS01.PV, desc: Transfer pump running, io: transfer.pump_running }
+          - { id: FT01.PV, desc: Transfer flow, io: transfer.flow_gpm, units: gal/min, range: [0, 100] }
+          - { id: HS01.CMD, desc: Transfer pump run command, io: transfer.pump_run }
+          - { id: XS01.ACTIVE, desc: Transfer in progress (peer status for plc-utilities), type: binary-read }
+          - { id: XS02.CIP_PERMIT, desc: CIP permitted on the cellar circuits (peer status for plc-utilities), type: binary-read }
+
+      - id: SYS
+        name: Cellar life-safety interface
+        model: interlocks
+        tags:
+          - id: XS01.CO2_INHIBIT
+            desc: Carbonation inhibited by cellar CO2 (written by scada-fuxa from bas-vent)
+            type: binary-read-write
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: carbonation-inhibited }
+
+  - id: PKG
+    name: Packaging
+    plc: plc-packaging
+    rio: rio-packaging
+    federate: packaging
+    units:
+      - id: LINE
+        name: Bottling line (PackML line state, PackTags)
+        model: packml-line
+        tags:
+          - id: PACKML.STATE
+            desc: Bottling line PackML state (StateCurrent)
+            type: analog-read
+            range: [0, 17]
+            scaling: 0
+            alarms:
+              - { kind: state, limit: 11, delay: 10m, rationale: line-held }
+          - { id: PACKML.MODE, desc: Bottling line PackML mode (UnitModeCurrent), type: analog-read, range: [0, 3], scaling: 0 }
+          - { id: PACKML.CMD, desc: Bottling line PackML command (CntrlCmd), type: analog-read-write, range: [0, 9], scaling: 0 }
+          - { id: PACKML.MODE_CMD, desc: Bottling line mode command, type: analog-read-write, range: [0, 3], scaling: 0 }
+          - { id: PACKML.SPEED_SP, desc: Bottling line speed setpoint (MachSpeed), type: analog-read-write, units: bottles/min, range: [0, 60], scaling: 1 }
+          - { id: PACKML.PROCESSED, desc: Bottles filled this shift (wraps at 65535), type: analog-read, range: [0, 65535], scaling: 0 }
+          - { id: PACKML.DEFECTIVE, desc: Bottles rejected this shift (wraps at 65535), type: analog-read, range: [0, 65535], scaling: 0 }
+          - { id: PACKML.STOP_REASON, desc: Line stop reason (first-out machine), type: analog-read, range: [0, 99], scaling: 0 }
+          - { id: KQ01.OEE, desc: Shift OEE, type: analog-read, units: "%", range: [0, 100], scaling: 1 }
+          - { id: XS01.RUN, desc: Line not Stopped or Aborted (alarm suppression), type: binary-read }
+
+      - id: FILLER
+        name: Monoblock filler/crowner with fill-level inspection
+        model: filler
+        devices:
+          - { name: filler, type: filler }
+        tags:
+          - { id: PACKML.STATE, desc: Filler PackML state (StateCurrent), io: filler.state, range: [0, 17] }
+          - { id: PACKML.MODE, desc: Filler PackML mode (UnitModeCurrent), io: filler.mode, range: [0, 3] }
+          - { id: PACKML.SPEED, desc: Filler current speed (CurMachSpeed), io: filler.speed_bpm, units: bottles/min, range: [0, 60] }
+          - { id: PACKML.PROCESSED, desc: Filler ProdProcessedCount (wraps at 65535), io: filler.processed, range: [0, 65535] }
+          - { id: PACKML.DEFECTIVE, desc: Fill-level inspection rejects (wraps at 65535), io: filler.defective, range: [0, 65535] }
+          - { id: PACKML.STOP_REASON, desc: Filler stop reason (StopReason.ID), io: filler.stop_reason, range: [0, 99] }
+          - { id: PT01.PV, desc: Filler bowl pressure (absolute), io: filler.bowl_psia, units: psia, range: [0, 60] }
+          - id: YA01.PV
+            desc: Filler jammed
+            io: filler.jammed
+            alarms:
+              - { kind: state, limit: 1, delay: 30s, rationale: machine-jam, suppress: LINE.XS01.RUN }
+          - id: LSL01.PV
+            desc: Filler bowl low (product supply)
+            io: filler.low_bowl
+            alarms:
+              - { kind: state, limit: 1, delay: 1m, rationale: filler-bowl-low, suppress: LINE.XS01.RUN }
+          - { id: XV01.CMD, desc: Filler product valve (from BBT-202), io: filler.product_valve }
+          - { id: PACKML.CMD, desc: Filler PackML command (CntrlCmd), io: filler.cmd, range: [0, 9] }
+          - { id: PACKML.MODE_CMD, desc: Filler PackML mode command (UnitMode), io: filler.mode_cmd, range: [0, 3] }
+          - { id: PACKML.SPEED_SP, desc: Filler speed setpoint (MachSpeed), io: filler.speed_sp_bpm, units: bottles/min, range: [0, 60] }
+
+      - id: RINSER
+        name: Rinser
+        model: packml-machine
+        devices:
+          - { name: rinser, type: packml-machine }
+        tags:
+          - { id: PACKML.STATE, desc: Rinser PackML state (StateCurrent), io: rinser.state, range: [0, 17] }
+          - { id: PACKML.MODE, desc: Rinser PackML mode (UnitModeCurrent), io: rinser.mode, range: [0, 3] }
+          - { id: PACKML.SPEED, desc: Rinser current speed (CurMachSpeed), io: rinser.speed_bpm, units: bottles/min, range: [0, 60] }
+          - { id: PACKML.PROCESSED, desc: Rinser ProdProcessedCount (wraps at 65535), io: rinser.processed, range: [0, 65535] }
+          - { id: PACKML.DEFECTIVE, desc: Rinser ProdDefectiveCount (wraps at 65535), io: rinser.defective, range: [0, 65535] }
+          - { id: PACKML.STOP_REASON, desc: Rinser stop reason (StopReason.ID), io: rinser.stop_reason, range: [0, 99] }
+          - id: YA01.PV
+            desc: Rinser jammed
+            io: rinser.jammed
+            alarms:
+              - { kind: state, limit: 1, delay: 30s, rationale: machine-jam, suppress: LINE.XS01.RUN }
+          - { id: PACKML.CMD, desc: Rinser PackML command (CntrlCmd), io: rinser.cmd, range: [0, 9] }
+          - { id: PACKML.MODE_CMD, desc: Rinser PackML mode command (UnitMode), io: rinser.mode_cmd, range: [0, 3] }
+          - { id: PACKML.SPEED_SP, desc: Rinser speed setpoint (MachSpeed), io: rinser.speed_sp_bpm, units: bottles/min, range: [0, 60] }
+
+      - id: CODER
+        name: Date coder
+        model: packml-machine
+        devices:
+          - { name: coder, type: packml-machine }
+        tags:
+          - { id: PACKML.STATE, desc: Date coder PackML state (StateCurrent), io: coder.state, range: [0, 17] }
+          - { id: PACKML.MODE, desc: Date coder PackML mode (UnitModeCurrent), io: coder.mode, range: [0, 3] }
+          - { id: PACKML.SPEED, desc: Date coder current speed (CurMachSpeed), io: coder.speed_bpm, units: bottles/min, range: [0, 60] }
+          - { id: PACKML.PROCESSED, desc: Date coder ProdProcessedCount (wraps at 65535), io: coder.processed, range: [0, 65535] }
+          - { id: PACKML.DEFECTIVE, desc: Date coder ProdDefectiveCount (wraps at 65535), io: coder.defective, range: [0, 65535] }
+          - { id: PACKML.STOP_REASON, desc: Date coder stop reason (StopReason.ID), io: coder.stop_reason, range: [0, 99] }
+          - id: YA01.PV
+            desc: Date coder jammed
+            io: coder.jammed
+            alarms:
+              - { kind: state, limit: 1, delay: 30s, rationale: machine-jam, suppress: LINE.XS01.RUN }
+          - { id: PACKML.CMD, desc: Date coder PackML command (CntrlCmd), io: coder.cmd, range: [0, 9] }
+          - { id: PACKML.MODE_CMD, desc: Date coder PackML mode command (UnitMode), io: coder.mode_cmd, range: [0, 3] }
+          - { id: PACKML.SPEED_SP, desc: Date coder speed setpoint (MachSpeed), io: coder.speed_sp_bpm, units: bottles/min, range: [0, 60] }
+
+      - id: LABELER
+        name: Labeler
+        model: packml-machine
+        devices:
+          - { name: labeler, type: packml-machine }
+        tags:
+          - { id: PACKML.STATE, desc: Labeler PackML state (StateCurrent), io: labeler.state, range: [0, 17] }
+          - { id: PACKML.MODE, desc: Labeler PackML mode (UnitModeCurrent), io: labeler.mode, range: [0, 3] }
+          - { id: PACKML.SPEED, desc: Labeler current speed (CurMachSpeed), io: labeler.speed_bpm, units: bottles/min, range: [0, 60] }
+          - { id: PACKML.PROCESSED, desc: Labeler ProdProcessedCount (wraps at 65535), io: labeler.processed, range: [0, 65535] }
+          - { id: PACKML.DEFECTIVE, desc: Labeler ProdDefectiveCount (wraps at 65535), io: labeler.defective, range: [0, 65535] }
+          - { id: PACKML.STOP_REASON, desc: Labeler stop reason (StopReason.ID), io: labeler.stop_reason, range: [0, 99] }
+          - id: YA01.PV
+            desc: Labeler jammed
+            io: labeler.jammed
+            alarms:
+              - { kind: state, limit: 1, delay: 30s, rationale: machine-jam, suppress: LINE.XS01.RUN }
+          - { id: PACKML.CMD, desc: Labeler PackML command (CntrlCmd), io: labeler.cmd, range: [0, 9] }
+          - { id: PACKML.MODE_CMD, desc: Labeler PackML mode command (UnitMode), io: labeler.mode_cmd, range: [0, 3] }
+          - { id: PACKML.SPEED_SP, desc: Labeler speed setpoint (MachSpeed), io: labeler.speed_sp_bpm, units: bottles/min, range: [0, 60] }
+
+      - id: PACKER
+        name: Case packer
+        model: packml-machine
+        devices:
+          - { name: packer, type: packml-machine }
+        tags:
+          - { id: PACKML.STATE, desc: Case packer PackML state (StateCurrent), io: packer.state, range: [0, 17] }
+          - { id: PACKML.MODE, desc: Case packer PackML mode (UnitModeCurrent), io: packer.mode, range: [0, 3] }
+          - { id: PACKML.SPEED, desc: Case packer current speed (CurMachSpeed), io: packer.speed_bpm, units: bottles/min, range: [0, 60] }
+          - { id: PACKML.PROCESSED, desc: Case packer ProdProcessedCount (wraps at 65535), io: packer.processed, range: [0, 65535] }
+          - { id: PACKML.DEFECTIVE, desc: Case packer ProdDefectiveCount (wraps at 65535), io: packer.defective, range: [0, 65535] }
+          - { id: PACKML.STOP_REASON, desc: Case packer stop reason (StopReason.ID), io: packer.stop_reason, range: [0, 99] }
+          - id: YA01.PV
+            desc: Case packer jammed
+            io: packer.jammed
+            alarms:
+              - { kind: state, limit: 1, delay: 30s, rationale: machine-jam, suppress: LINE.XS01.RUN }
+          - { id: PACKML.CMD, desc: Case packer PackML command (CntrlCmd), io: packer.cmd, range: [0, 9] }
+          - { id: PACKML.MODE_CMD, desc: Case packer PackML mode command (UnitMode), io: packer.mode_cmd, range: [0, 3] }
+          - { id: PACKML.SPEED_SP, desc: Case packer speed setpoint (MachSpeed), io: packer.speed_sp_bpm, units: bottles/min, range: [0, 60] }
+
+      - id: KEG
+        name: Keg washer/filler
+        model: keg-machine
+        devices:
+          - { name: kegger, type: keg-machine }
+        tags:
+          - { id: PACKML.STATE, desc: Keg washer/filler PackML state (StateCurrent), io: kegger.state, range: [0, 17] }
+          - { id: PACKML.MODE, desc: Keg washer/filler PackML mode (UnitModeCurrent), io: kegger.mode, range: [0, 3] }
+          - { id: PACKML.PROCESSED, desc: Kegs filled (wraps at 65535), io: kegger.processed, range: [0, 65535] }
+          - { id: PACKML.DEFECTIVE, desc: Kegs rejected (wraps at 65535), io: kegger.defective, range: [0, 65535] }
+          - { id: PACKML.STOP_REASON, desc: Keg washer/filler stop reason, io: kegger.stop_reason, range: [0, 99] }
+          - { id: TT01.PV, desc: Keg wash water temperature, io: kegger.wash_temp_f, units: degF, range: [32, 212] }
+          - { id: YA01.PV, desc: Keg washer/filler jammed, io: kegger.jammed }
+          - { id: HS01.CMD, desc: Keg wash heater command, io: kegger.heater }
+          - { id: PACKML.CMD, desc: Keg washer/filler PackML command (CntrlCmd), io: kegger.cmd, range: [0, 9] }
+          - { id: PACKML.MODE_CMD, desc: Keg washer/filler mode command, io: kegger.mode_cmd, range: [0, 3] }
+
+      - id: CONV
+        name: Conveyors (depalletizer sweep through the case packer)
+        model: conveyors
+        devices:
+          - { name: conv1, type: conveyor, zone: depal-rinser }
+          - { name: conv2, type: conveyor, zone: filler-coder }
+          - { name: conv3, type: conveyor, zone: labeler-packer }
+          - { name: conv4, type: conveyor, zone: packer-pallet }
+        tags:
+          - { id: LS01.PV, desc: Conveyor 1 (depalletizer to rinser) accumulation eye, io: conv1.accum_eye }
+          - { id: YA01.PV, desc: Conveyor 1 jam eye, io: conv1.jam_eye }
+          - { id: HS01.CMD, desc: Conveyor 1 run command, io: conv1.run }
+          - { id: LS02.PV, desc: Conveyor 2 (filler to coder) accumulation eye, io: conv2.accum_eye }
+          - { id: YA02.PV, desc: Conveyor 2 jam eye, io: conv2.jam_eye }
+          - { id: HS02.CMD, desc: Conveyor 2 run command, io: conv2.run }
+          - { id: LS03.PV, desc: Conveyor 3 (labeler to packer) accumulation eye, io: conv3.accum_eye }
+          - { id: YA03.PV, desc: Conveyor 3 jam eye, io: conv3.jam_eye }
+          - { id: HS03.CMD, desc: Conveyor 3 run command, io: conv3.run }
+          - { id: LS04.PV, desc: Conveyor 4 (packer to palletizing) accumulation eye, io: conv4.accum_eye }
+          - { id: YA04.PV, desc: Conveyor 4 jam eye, io: conv4.jam_eye }
+          - { id: HS04.CMD, desc: Conveyor 4 run command, io: conv4.run }
+
+  - id: UTL
+    name: Utilities
+    plc: plc-utilities
+    rio: rio-utilities
+    federate: utilities
+    units:
+      - id: CHL
+        name: Glycol chiller (OEM controller)
+        model: chiller
+        rio: glycol-chiller
+        devices:
+          - { name: chiller, type: chiller }
+        tags:
+          - id: TT01.PV
+            desc: Glycol supply temperature
+            io: chiller.supply_f
+            units: degF
+            range: [0, 100]
+            alarms:
+              - { kind: high, limit: 34.0, delay: 5m, rationale: glycol-supply-high }
+          - { id: TT02.PV, desc: Glycol return temperature, io: chiller.return_f, units: degF, range: [0, 100] }
+          - { id: JT01.PV, desc: Chiller electrical input, io: chiller.power_kw, units: kW, range: [0, 100] }
+          - { id: YS01.PV, desc: Compressor stage 1 running, io: chiller.stage1_on }
+          - { id: YS02.PV, desc: Compressor stage 2 running, io: chiller.stage2_on }
+          - id: YA01.PV
+            desc: Chiller compressor fault
+            io: chiller.fault
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: chiller-fault }
+          - { id: HS01.CMD, desc: Chiller enable, io: chiller.enable }
+          - { id: TIC01.SP, desc: Chiller supply setpoint (written to the OEM controller), io: chiller.supply_sp_f, units: degF, range: [0, 100] }
+          - { id: TT01.SP, desc: Glycol supply setpoint (operator), type: analog-read-write, units: degF, range: [0, 100], scaling: 1 }
+
+      - id: GLY
+        name: Glycol reservoir and supply pumps
+        model: glycol-loop
+        devices:
+          - { name: glycol, type: glycol-loop }
+        tags:
+          - id: LT01.PV
+            desc: Glycol reservoir level
+            io: glycol.reservoir_pct
+            units: "%"
+            range: [0, 100]
+            alarms:
+              - { kind: low, limit: 40.0, delay: 5m, rationale: glycol-reservoir-low }
+          - { id: PT01.PV, desc: Glycol supply pressure, io: glycol.pump_psig, units: psig, range: [0, 100] }
+          - { id: YS01.PV, desc: Glycol pump running, io: glycol.pump_running }
+          - { id: HS01.CMD, desc: Glycol pump run command, io: glycol.pump_run }
+          - { id: SC01.OUT, desc: Glycol pump VFD speed reference (pressure control), io: glycol.pump_speed_pct, units: "%", range: [0, 100] }
+          - { id: PT01.SP, desc: Glycol supply pressure setpoint, type: analog-read-write, units: psig, range: [0, 100], scaling: 1 }
+
+      - id: STM
+        name: Electric steam boiler (200 kW)
+        model: boiler
+        devices:
+          - { name: boiler, type: boiler }
+        tags:
+          - id: PT01.PV
+            desc: Steam header pressure
+            io: boiler.pressure_psig
+            units: psig
+            range: [0, 30]
+            alarms:
+              - { kind: low, limit: 10.0, delay: 5m, rationale: steam-pressure-low, suppress: HS01.CMD }
+          - { id: JT01.PV, desc: Boiler electrical input, io: boiler.power_kw, units: kW, range: [0, 250] }
+          - { id: YS01.PV, desc: Boiler firing, io: boiler.running }
+          - id: LSL01.PV
+            desc: Boiler low-water cutoff tripped (hardwired)
+            io: boiler.low_water
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: boiler-low-water }
+          - { id: HS01.CMD, desc: Boiler enable, io: boiler.enable }
+          - { id: PC01.SP, desc: Boiler pressure setpoint, io: boiler.pressure_sp_psig, units: psig, range: [0, 30] }
+
+      - id: AIR
+        name: Air compressor and dryer
+        model: air-compressor
+        devices:
+          - { name: aircomp, type: air-compressor }
+        tags:
+          - id: PT01.PV
+            desc: Compressed-air header pressure
+            io: aircomp.header_psig
+            units: psig
+            range: [0, 150]
+            alarms:
+              - { kind: low, limit: 80.0, delay: 1m, rationale: air-pressure-low, suppress: HS01.CMD }
+          - { id: YS01.PV, desc: Air compressor running, io: aircomp.running }
+          - { id: YA01.PV, desc: Air dryer fault, io: aircomp.dryer_fault }
+          - { id: HS01.CMD, desc: Air compressor enable, io: aircomp.enable }
+
+      - id: CO2
+        name: Bulk CO2 tank and vaporizer
+        model: co2-supply
+        devices:
+          - { name: co2, type: co2-supply }
+        tags:
+          - { id: PT01.PV, desc: Bulk CO2 tank pressure, io: co2.tank_psig, units: psig, range: [0, 400] }
+          - id: LT01.PV
+            desc: Bulk CO2 tank level
+            io: co2.tank_level_pct
+            units: "%"
+            range: [0, 100]
+            alarms:
+              - { kind: low, limit: 20.0, delay: 10m, rationale: co2-tank-low }
+          - id: PT02.PV
+            desc: CO2 supply header pressure
+            io: co2.supply_psig
+            units: psig
+            range: [0, 150]
+            alarms:
+              - { kind: low, limit: 40.0, delay: 1m, rationale: co2-supply-low, suppress: XV01.CMD }
+          - { id: XV01.CMD, desc: CO2 main supply valve, io: co2.main_valve }
+
+      - id: RO
+        name: RO skid and carbon filter
+        model: ro-skid
+        devices:
+          - { name: ro, type: ro-skid }
+        tags:
+          - { id: FT01.PV, desc: RO permeate flow, io: ro.permeate_gpm, units: gal/min, range: [0, 50] }
+          - id: AT01.PV
+            desc: RO permeate conductivity
+            io: ro.conductivity_us
+            units: uS/cm
+            range: [0, 1000]
+            alarms:
+              - { kind: high, limit: 50.0, delay: 10m, rationale: ro-conductivity-high, suppress: YS01.PV }
+          - { id: YS01.PV, desc: RO skid running, io: ro.running }
+          - { id: HS01.CMD, desc: RO skid run command, io: ro.run }
+
+      - id: WWN
+        name: Wastewater neutralization
+        model: wastewater
+        devices:
+          - { name: wwn, type: wastewater }
+        tags:
+          - id: LT01.PV
+            desc: Neutralization tank level
+            io: wwn.level_pct
+            units: "%"
+            range: [0, 100]
+            alarms:
+              - { kind: high, limit: 85.0, delay: 1m, rationale: wastewater-level-high }
+          - id: AT01.PV
+            desc: Neutralization tank pH
+            io: wwn.ph
+            units: pH
+            range: [0, 14]
+            alarms:
+              - { kind: high, limit: 9.0, delay: 15m, rationale: wastewater-ph }
+              - { kind: low, limit: 6.0, delay: 15m, rationale: wastewater-ph }
+          - { id: LSH01.PV, desc: Neutralization tank high-level switch, io: wwn.high_level }
+          - { id: XV01.CMD, desc: Caustic dosing pump, io: wwn.caustic_pump }
+          - { id: XV02.CMD, desc: Acid dosing pump, io: wwn.acid_pump }
+          - { id: XV03.CMD, desc: Discharge valve to the sewer (permitted at pH 6.0-9.0), io: wwn.discharge_valve }
+          - id: XS01.INHIBIT
+            desc: Discharge inhibited (pH outside 6.0-9.0)
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 5m, rationale: discharge-inhibited }
+
+      - id: CIP
+        name: CIP skid
+        model: cip-skid
+        devices:
+          - { name: cip, type: cip-skid }
+          - { name: cippanel, type: cip-panel }
+        tags:
+          - id: TT01.PV
+            desc: CIP supply temperature
+            io: cip.supply_f
+            units: degF
+            range: [32, 212]
+            alarms:
+              - { kind: deviation, setpoint: TT01.SP, limit: 5.0, delay: 5m, rationale: cip-temp-deviation, suppress: HS01.CMD }
+          - { id: AT01.PV, desc: CIP return conductivity, io: cip.return_cond_ms, units: mS/cm, range: [0, 200] }
+          - { id: FT01.PV, desc: CIP return flow, io: cip.return_gpm, units: gal/min, range: [0, 100] }
+          - { id: LT01.PV, desc: Caustic tank level, io: cip.caustic_level_pct, units: "%", range: [0, 100] }
+          - { id: LT02.PV, desc: Acid/sanitizer tank level, io: cip.acid_level_pct, units: "%", range: [0, 100] }
+          - { id: FS01.PV, desc: CIP return flow proven (flow switch), io: cip.return_flow }
+          - { id: HS01.CMD, desc: CIP supply pump run command, io: cip.supply_pump }
+          - { id: HS02.CMD, desc: CIP return pump run command, io: cip.return_pump }
+          - { id: XV01.CMD, desc: Caustic dosing, io: cip.caustic_dose }
+          - { id: XV02.CMD, desc: Acid/sanitizer dosing, io: cip.acid_dose }
+          - { id: TV01.OUT, desc: CIP heater steam valve position, io: cip.steam_valve_pct, units: "%", range: [0, 100] }
+          - { id: ZS01.PV, desc: Swing panel on the brewhouse circuit, io: cippanel.route_bh }
+          - { id: ZS02.PV, desc: Swing panel on FV-101, io: cippanel.route_fv101 }
+          - { id: ZS03.PV, desc: Swing panel on FV-102, io: cippanel.route_fv102 }
+          - { id: ZS04.PV, desc: Swing panel on FV-103, io: cippanel.route_fv103 }
+          - { id: ZS05.PV, desc: Swing panel on FV-104, io: cippanel.route_fv104 }
+          - { id: ZS06.PV, desc: Swing panel on BBT-201, io: cippanel.route_bbt201 }
+          - { id: ZS07.PV, desc: Swing panel on BBT-202, io: cippanel.route_bbt202 }
+          - { id: TT01.SP, desc: CIP supply temperature setpoint, type: analog-read-write, units: degF, range: [32, 212], scaling: 1 }
+          # Circuits: 1 brewhouse, 2-5 FV-101..104, 6-7 BBT-201/202, 8 transfer
+          # lines. Steps: 0 idle, 1 pre-rinse, 2 caustic, 3 rinse, 4 acid,
+          # 5 rinse, 6 sanitize, 7 done.
+          - { id: XC01.CIRCUIT, desc: CIP circuit selected, type: analog-read-write, range: [0, 8], scaling: 0 }
+          - { id: XC01.CMD, desc: "CIP sequence command (1 start, 2 hold, 3 abort)", type: analog-read-write, range: [0, 3], scaling: 0 }
+          - { id: XS01.STEP, desc: CIP sequence step, type: analog-read, range: [0, 7], scaling: 0 }
+          - { id: XS02.ROUTE_OK, desc: CIP route verified and return flow proven, type: binary-read }
+
+  - id: PWR
+    name: Electrical
+    plc: plc-power
+    federate: power
+    units:
+      - id: MAIN
+        name: 52-M main breaker relay and meter, MSB feeders
+        model: relay
+        rio: relay-main
+        devices:
+          - { name: relay-main, type: relay-meter }
+          - { name: msb, type: msb-feeders }
+        tags:
+          - id: JT01.PV
+            desc: Service real power (import positive)
+            io: relay-main.p_kw
+            units: kW
+            range: [-500, 1000]
+            alarms:
+              - { kind: high, limit: 250.0, delay: 5m, rationale: demand-high }
+          - { id: JT02.PV, desc: Service reactive power, io: relay-main.q_kvar, units: kvar, range: [-500, 500] }
+          - id: ET01.PV
+            desc: Service voltage, line to line
+            io: relay-main.v_ll
+            units: V
+            range: [0, 600]
+            alarms:
+              - { kind: low, limit: 456.0, delay: 1m, rationale: voltage-low, suppress: ZS01.PV }
+          - { id: IT01.PV, desc: "Service current, phase A", io: relay-main.i_a, units: A, range: [0, 1200] }
+          - { id: ST01.PV, desc: Service frequency, io: relay-main.freq_hz, units: Hz, range: [0, 70] }
+          - { id: JQ01.PV, desc: 15-minute demand (meter), io: relay-main.demand_kw, units: kW, range: [0, 1000] }
+          - { id: ZS01.PV, desc: 52-M main breaker closed, io: relay-main.breaker_closed }
+          - id: YA01.PV
+            desc: 52-M tripped on overcurrent
+            io: relay-main.tripped
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: main-breaker-trip }
+          - { id: HS01.CMD, desc: 52-M close command (0 opens), io: relay-main.close }
+          - { id: ZS02.PV, desc: Boiler feeder closed, io: msb.boiler_closed }
+          - { id: ZS03.PV, desc: Packaging feeder (PP-PKG) closed, io: msb.pkg_closed }
+          - { id: ZS04.PV, desc: RTU-1 feeder closed, io: msb.rtu_closed }
+          - { id: HS02.CMD, desc: Boiler feeder close command, io: msb.boiler_close }
+          - { id: HS03.CMD, desc: Packaging feeder close command, io: msb.pkg_close }
+          - { id: HS04.CMD, desc: RTU-1 feeder close command, io: msb.rtu_close }
+
+      - id: PV
+        name: Rooftop PV (100 kWac)
+        model: pv
+        rio: pv-inverter
+        devices:
+          - { name: pv-inverter, type: pv-inverter }
+        tags:
+          - { id: JT01.PV, desc: PV inverter output, io: pv-inverter.p_kw, units: kW, range: [0, 150] }
+          - { id: JY01.PV, desc: PV active power limit in effect (min of site and utility), io: pv-inverter.limit_pct, units: "%", range: [0, 100] }
+          - { id: ZS01.PV, desc: PV inverter connected (IEEE 1547), io: pv-inverter.connected }
+          - { id: HS01.CMD, desc: PV inverter enable, io: pv-inverter.enable }
+          - { id: JC01.SP, desc: PV site limit (plc-power), io: pv-inverter.site_limit_pct, units: "%", range: [0, 100] }
+          - { id: JC02.SP, desc: PV utility limit (DERMS through rtu-der; read only here), io: pv-inverter.utility_limit_pct, units: "%", range: [0, 100] }
+
+      - id: BESS
+        name: Battery storage (100 kW / 200 kWh)
+        model: bess
+        rio: bess-pcs
+        devices:
+          - { name: bess-pcs, type: bess-pcs }
+        tags:
+          - { id: JT01.PV, desc: BESS power (discharge positive), io: bess-pcs.p_kw, units: kW, range: [-150, 150] }
+          - id: EY01.PV
+            desc: BESS state of charge
+            io: bess-pcs.soc_pct
+            units: "%"
+            range: [0, 100]
+            alarms:
+              - { kind: low, limit: 50.0, delay: 15m, rationale: bess-soc-low }
+          - { id: ZS01.PV, desc: BESS connected (IEEE 1547), io: bess-pcs.connected }
+          - id: YA01.PV
+            desc: BESS PCS fault
+            io: bess-pcs.fault
+            alarms:
+              - { kind: state, limit: 1, delay: 1m, rationale: bess-fault }
+          - { id: HS01.CMD, desc: BESS enable, io: bess-pcs.enable }
+          - { id: JC01.SP, desc: BESS power setpoint (plc-power dispatch), io: bess-pcs.p_sp_kw, units: kW, range: [-100, 100] }
+          - { id: JC02.SP, desc: BESS utility dispatch (DERMS through rtu-der; read only here), io: bess-pcs.utility_p_sp_kw, units: kW, range: [-100, 100] }
+
+      - id: GEN
+        name: Standby genset (100 kW) and ATS
+        model: gen-ats
+        rio: gen-ats
+        devices:
+          - { name: gen-ats, type: gen-ats }
+        tags:
+          - { id: JT01.PV, desc: Genset output, io: gen-ats.gen_kw, units: kW, range: [0, 150] }
+          - { id: JT02.PV, desc: EP-1 emergency panel load, io: gen-ats.ep1_kw, units: kW, range: [0, 150] }
+          - { id: LT01.PV, desc: Genset fuel level, io: gen-ats.fuel_pct, units: "%", range: [0, 100] }
+          - { id: YS01.PV, desc: Genset running, io: gen-ats.gen_running }
+          - id: ZS01.PV
+            desc: ATS on the emergency source
+            io: gen-ats.on_emergency
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: utility-outage }
+          - { id: ZS02.PV, desc: Utility source available at the ATS, io: gen-ats.utility_ok }
+          - { id: HS01.CMD, desc: Genset remote start (weekly exercise), io: gen-ats.gen_start }
+
+      - id: DMD
+        name: Demand and tariff logic (SV-SGT)
+        model: tariff
+        tags:
+          - { id: JY01.SP, desc: Monthly demand cap target, type: analog-read-write, units: kW, range: [0, 1000], scaling: 0 }
+          - { id: JY02.PV, desc: Month-to-date peak 15-minute demand, type: analog-read, units: kW, range: [0, 1000], scaling: 0 }
+          - { id: EY01.SP, desc: BESS minimum state of charge before 05:00 on brew days, type: analog-read-write, units: "%", range: [0, 100], scaling: 0 }
+          - { id: XS01.ONPEAK, desc: SV-SGT on-peak window (weekdays 17:00-21:00), type: binary-read }
+          - { id: XS02.SHED, desc: Load shed active (large feeders held open), type: binary-read }
+          - { id: XS03.BREWDAY, desc: Brew day scheduled (from the batch engine), type: binary-read-write }
+
+  - id: FAC
+    name: Facilities (building automation)
+    federate: building
+    units:
+      - id: RTU1
+        name: Taproom/office rooftop unit RTU-1
+        model: rtu
+        rio: bas-rtu-taproom
+        devices:
+          - { name: bas-rtu-taproom, type: rtu-1 }
+        tags:
+          - id: TT01.PV
+            desc: Taproom zone temperature
+            io: bas-rtu-taproom.zone_temp_f
+            units: degF
+            range: [40, 100]
+            alarms:
+              - { kind: high, limit: 80.0, delay: 30m, rationale: taproom-temp-high }
+          - { id: AT01.PV, desc: Taproom zone CO2, io: bas-rtu-taproom.zone_co2_ppm, units: ppm, range: [0, 5000] }
+          - { id: TT02.PV, desc: RTU-1 supply air temperature, io: bas-rtu-taproom.supply_air_f, units: degF, range: [30, 150] }
+          - { id: JT01.PV, desc: RTU-1 electrical input, io: bas-rtu-taproom.power_kw, units: kW, range: [0, 30] }
+          - { id: DMP01.CMD, desc: RTU-1 economizer damper, io: bas-rtu-taproom.econ_pct, units: "%", range: [0, 100] }
+          - { id: TIC01.SP, desc: Occupied cooling setpoint, io: bas-rtu-taproom.cool_sp_f, units: degF, range: [60, 90] }
+          - { id: TIC02.SP, desc: Occupied heating setpoint, io: bas-rtu-taproom.heat_sp_f, units: degF, range: [50, 80] }
+          - { id: FAN01.CMD, desc: RTU-1 supply fan, io: bas-rtu-taproom.supply_fan }
+          - { id: CMP01.CMD, desc: RTU-1 cooling stage 1, io: bas-rtu-taproom.cool_stage1 }
+          - { id: CMP02.CMD, desc: RTU-1 cooling stage 2, io: bas-rtu-taproom.cool_stage2 }
+          - { id: HTR01.CMD, desc: RTU-1 gas heat, io: bas-rtu-taproom.heat }
+          - { id: HS01.MODE, desc: "Occupancy mode (1 occupied, 2 unoccupied, 3 standby)", io: bas-rtu-taproom.occ_mode, range: [1, 3] }
+
+      - id: CR
+        name: Walk-in cold room (kegs)
+        model: coldroom
+        rio: bas-coldroom
+        devices:
+          - { name: bas-coldroom, type: coldroom }
+        tags:
+          - id: TT01.PV
+            desc: Cold room temperature
+            io: bas-coldroom.room_temp_f
+            units: degF
+            range: [0, 80]
+            alarms:
+              - { kind: high, limit: 42.0, delay: 20m, rationale: coldroom-temp-high }
+          - { id: KQ01.PV, desc: Cold room door open time today, io: bas-coldroom.door_open_min, units: min, range: [0, 1440] }
+          - { id: TT01.SP, desc: Cold room setpoint, io: bas-coldroom.setpoint_f, units: degF, range: [28, 50] }
+          - { id: ZS01.PV, desc: Cold room door open, io: bas-coldroom.door }
+          - { id: CMP01.CMD, desc: Condensing unit compressor, io: bas-coldroom.compressor }
+          - { id: DEF01.CMD, desc: Evaporator defrost, io: bas-coldroom.defrost }
+
+      - id: VENT
+        name: Brewhouse and cellar ventilation, cellar CO2 detection
+        model: vent
+        rio: bas-vent
+        devices:
+          - { name: bas-vent, type: vent }
+        tags:
+          - id: AT01.PV
+            desc: Cellar CO2 sensor 1 (low-mounted)
+            io: bas-vent.co2_1_ppm
+            units: ppm
+            range: [0, 50000]
+            alarms:
+              - { kind: high, limit: 15000.0, delay: 30s, rationale: cellar-co2-high }
+              - { kind: highhigh, limit: 30000.0, delay: 0s, rationale: cellar-co2-critical }
+          - id: AT02.PV
+            desc: Cellar CO2 sensor 2 (low-mounted)
+            io: bas-vent.co2_2_ppm
+            units: ppm
+            range: [0, 50000]
+            alarms:
+              - { kind: high, limit: 15000.0, delay: 30s, rationale: cellar-co2-high }
+              - { kind: highhigh, limit: 30000.0, delay: 0s, rationale: cellar-co2-critical }
+          - id: AT03.PV
+            desc: Cellar CO2 sensor 3 (low-mounted)
+            io: bas-vent.co2_3_ppm
+            units: ppm
+            range: [0, 50000]
+            alarms:
+              - { kind: high, limit: 15000.0, delay: 30s, rationale: cellar-co2-high }
+              - { kind: highhigh, limit: 30000.0, delay: 0s, rationale: cellar-co2-critical }
+          - id: AT04.PV
+            desc: Cellar CO2 sensor 4 (low-mounted)
+            io: bas-vent.co2_4_ppm
+            units: ppm
+            range: [0, 50000]
+            alarms:
+              - { kind: high, limit: 15000.0, delay: 30s, rationale: cellar-co2-high }
+              - { kind: highhigh, limit: 30000.0, delay: 0s, rationale: cellar-co2-critical }
+          - { id: TT01.PV, desc: Makeup-air unit discharge temperature, io: bas-vent.mua_discharge_f, units: degF, range: [0, 150] }
+          - { id: SC01.CMD, desc: Kettle hood exhaust fan speed, io: bas-vent.exhaust_pct, units: "%", range: [0, 100] }
+          - { id: FAN01.PV, desc: Cellar purge fan 1 running (current switch), io: bas-vent.purge_fan_1_status }
+          - { id: FAN02.PV, desc: Cellar purge fan 2 running (current switch), io: bas-vent.purge_fan_2_status }
+          - { id: AY01.TIER1, desc: "Cellar CO2 tier 1 (5,000 ppm, purge fans on)", io: bas-vent.co2_tier_1 }
+          - { id: AY01.TIER2, desc: "Cellar CO2 tier 2 (15,000 ppm, carbonation inhibited)", io: bas-vent.co2_tier_2 }
+          - { id: AY01.TIER3, desc: "Cellar CO2 tier 3 (30,000 ppm, evacuate)", io: bas-vent.co2_tier_3 }
+          - { id: FAN01.CMD, desc: Cellar purge fan 1, io: bas-vent.purge_fan_1 }
+          - { id: FAN02.CMD, desc: Cellar purge fan 2, io: bas-vent.purge_fan_2 }
+          - { id: MUA01.CMD, desc: Makeup-air unit enable, io: bas-vent.mua_enable }
+
+# State of health (DESIGN.md §15.4). plantgen derives the PLC-to-field,
+# FUXA-to-PLC/BACnet, FEP, and DNP3 flows; the conduits below are the other
+# testable TCP flows of §10.3 (flows with no reply, such as syslog, IKE, and
+# WireGuard, are checked with cc scripts instead). Flows whose hosts are not
+# in a variant are dropped.
+soh:
+  startup_delay: 10m
+  c2_timeout: 15m
+  wait: 5m
+  skip_hosts: [isp-rtr, util-rtr, fw-edge, fw-ot]
+  profiles:
+    rio: { processes: [ot-sim-cpu-module, ot-sim-modbus-module, ot-sim-io-module], listeners: [":502"] }
+    field: { processes: [ot-sim-cpu-module, ot-sim-modbus-module, ot-sim-io-module], listeners: [":502"] }
+    bas: { processes: [ot-sim-cpu-module, ot-sim-bacnet-module, ot-sim-io-module] }
+    fep: { processes: [ot-sim-cpu-module, ot-sim-dnp3-module, ot-sim-modbus-module], listeners: [":20000"] }
+    dnp3-master: { processes: [ot-sim-cpu-module, ot-sim-dnp3-module] }
+    plc: { listeners: [":8443"] }
+    scada: { processes: [/opt/fuxa/server/main.js], listeners: [":1881"] }
+    historian: { listeners: [":8086", ":3000", ":1883"] }
+    sim: { processes: [cherrymountain_sim] }
+    ews: { listeners: [":3389", ":22"] }
+    jump: { listeners: [":443"], containers: [guacamole, guacd, postgres] }
+    bbmd: { processes: [cm-bbmd] }
+    hmi: { processes: [chromium] }
+  host_profiles:
+    sim-ctl: { processes: [helics_broker], listeners: [":8080", ":9200", ":3000"] }
+    ot-svc: { processes: [chronyd, dnsmasq, rsyslogd, cm-bbmd], listeners: [":53"] }
+    inet-nuke: { processes: [protonuke, chronyd, dnsmasq], listeners: [":80", ":443"] }
+    plc-brewhouse: { listeners: [":4840"] }
+    plc-cellar: { listeners: [":502"] }
+    plc-packaging: { listeners: [":102"] }
+    plc-utilities: { listeners: [":502"] }
+    plc-power: { listeners: [":502"] }
+    wazuh: { listeners: [":443", ":1514", ":1515"] }
+    malcolm: { listeners: [":443"] }
+  conduits:
+    - { src: hmi-brewhouse, dst: scada-fuxa, port: 1881, desc: Operator HMI }
+    - { src: hmi-packaging, dst: scada-fuxa, port: 1881, desc: Operator HMI }
+    - { src: hmi-brewhouse, dst: bas-fuxa, port: 1881, desc: BAS HMI }
+    - { src: hmi-packaging, dst: bas-fuxa, port: 1881, desc: BAS HMI }
+    - { src: hmi-brewhouse, dst: historian, port: 3000, desc: Read-only Grafana }
+    - { src: hmi-packaging, dst: historian, port: 3000, desc: Read-only Grafana }
+    - { src: scada-fuxa, dst: historian, port: 8086, desc: SCADA DAQ (intra-zone) }
+    - { src: scada-fuxa, dst: historian, port: 1883, desc: PackTags/OEE MQTT (intra-zone) }
+    - { src: bas-fuxa, dst: historian, port: 8086, desc: BAS DAQ }
+    - { src: plc-utilities, dst: plc-cellar, port: 502, desc: Peer interlock reads (east-west) }
+    - { src: ews, dst: plc-brewhouse, port: 8443, desc: OpenPLC REST }
+    - { src: ews, dst: plc-cellar, port: 8443, desc: OpenPLC REST }
+    - { src: ews, dst: plc-packaging, port: 8443, desc: OpenPLC REST }
+    - { src: ews, dst: plc-utilities, port: 8443, desc: OpenPLC REST }
+    - { src: ews, dst: plc-power, port: 8443, desc: OpenPLC REST }
+    - { src: ews, dst: bas-fuxa, port: 1881, desc: BAS engineering }
+    - { src: dmz-jump, dst: ews, port: 3389, desc: Vendor RDP through Guacamole }
+    - { src: dmz-jump, dst: ews, port: 22, desc: Vendor SSH through Guacamole }
+    - { src: vendor-ws, dst: dmz-jump, port: 443, desc: Guacamole login through the WireGuard tunnel }
+    - { src: dmz-jump, dst: ot-svc, port: 53, desc: DNS for DMZ hosts }
+    - { src: dmz-vpn, dst: ot-svc, port: 53, desc: DNS for DMZ hosts }
+    - { src: corp-ws, dst: inet-nuke, port: 443, desc: Office web (SNAT) }
+    - { src: corp-ws, dst: inet-nuke, port: 80, desc: Office web (SNAT) }
+    - { src: scada-fuxa, dst: wazuh, port: 1514, desc: Wazuh agent }
+    - { src: historian, dst: wazuh, port: 1514, desc: Wazuh agent }
+    - { src: ews, dst: wazuh, port: 1514, desc: Wazuh agent }
+    - { src: hmi-brewhouse, dst: wazuh, port: 1514, desc: Wazuh agent }
+    - { src: bas-fuxa, dst: wazuh, port: 1514, desc: Wazuh agent }
+    - { src: dmz-jump, dst: wazuh, port: 1514, desc: Wazuh agent }
+    - { src: dmz-vpn, dst: wazuh, port: 1515, desc: Wazuh agent enrollment }
+    - { src: soc-analyst, dst: malcolm, port: 443, desc: Malcolm UI }
+    - { src: soc-analyst, dst: wazuh, port: 443, desc: Wazuh UI }
+
+# Vendor WireGuard tunnel (DESIGN.md §13). The keys are derived from the seed
+# (tools/plantgen/plantgen/wgkeys.py), so they are public, range-only
+# throwaway secrets. vendor-ws routes only dmz-jump into the tunnel.
+wireguard:
+  server: dmz-vpn
+  client: vendor-ws
+  server_address: 10.99.0.1/24
+  client_address: 10.99.0.2/24
+  listen_port: 51820
+  endpoint: 203.0.113.2:51820
+  client_allowed_ips: [10.10.20.11/32]
+  keepalive: 25
+  seed: cherrymountain-range-only-wireguard-v1
+
+# SCORCH pcap capture lists per run (DESIGN.md §15.6): host|interface.
+scorch:
+  captures:
+    baseline-brew-day: [scada-fuxa|IF0, plc-brewhouse|IF0, plc-brewhouse|IF1, rio-brewhouse|IF0]
+    utility-outage: [rtu-der|IF0, rtu-der|IF1, plc-power|IF1, gen-ats|IF0]
+    cellar-co2-leak: [bas-fuxa|IF0, bas-vent|IF0]
+    packaging-shift: [plc-packaging|IF1, rio-packaging|IF0]
+
 # Variants (DESIGN.md §11, §15.3). Each variant lists the areas, federates,
 # and hosts it contains; plantgen emits per-variant outputs.
 variants:
@@ -312,6 +2109,10 @@ variants:
       scada-fuxa. scada-fuxa and plc-cellar share one flat CTRL VLAN with no
       firewall; there is no ot-svc, weather, utilities, or building federate.
     areas: [CEL]
+    # The fermentation cell only; BBTs and shared cellar equipment are full
+    # plant (and would move the ci register map and the PLC program).
+    units:
+      CEL: [CLK, FV101, FV102, FV103, FV104]
     federates: [cellar]
     hosts: [sim-ctl, sim-process, rio-cellar, plc-cellar, scada-fuxa]
     host_overrides:
@@ -344,3 +2145,193 @@ variants:
         sim-process: { client: chrony }
         rio-cellar: { client: chrony }
         plc-cellar: { client: chrony, source: { hostname: scada-fuxa, interface: IF0 } }
+
+  full:
+    description: >-
+      The whole plant (DESIGN.md §11): 43 VMs with the SOC and vendor remote
+      access. Every area, federate, and field device.
+    areas: [BH, CEL, PKG, UTL, PWR, FAC]
+    federates: &full-federates [weather, brewhouse, cellar, utilities, packaging, power, building]
+    hosts:
+      - isp-rtr
+      - inet-nuke
+      - vendor-ws
+      - util-rtr
+      - utility-derms
+      - corp-ws
+      - fw-edge
+      - dmz-vpn
+      - dmz-jump
+      - fw-ot
+      - scada-fuxa
+      - historian
+      - ews
+      - ot-svc
+      - hmi-brewhouse
+      - hmi-packaging
+      - plc-brewhouse
+      - plc-cellar
+      - plc-packaging
+      - plc-utilities
+      - plc-power
+      - rio-brewhouse
+      - rio-cellar
+      - rio-packaging
+      - rio-utilities
+      - glycol-chiller
+      - relay-main
+      - pv-inverter
+      - bess-pcs
+      - gen-ats
+      - rtu-der
+      - bas-bbmd
+      - bas-fuxa
+      - bas-rtu-taproom
+      - bas-coldroom
+      - bas-vent
+      - sim-ctl
+      - sim-process
+      - sim-power
+      - sim-building
+      - malcolm
+      - wazuh
+      - soc-analyst
+    helics: &full-helics
+      broker: { hostname: sim-ctl, interface: mgmt }
+      # One week; the phenix ot-sim app's default 36000 s is too short (§9.2).
+      end_time_s: 604800
+    ground_truth: true
+    # Summer weekday, 04:30 local, ahead of the 05:00 brew start (§9.4).
+    clock: &full-clock { start: "2026-07-15T04:30:00-06:00", timezone: America/Denver, speedup: 1 }
+    sim: &full-sim
+      compression: 48
+      noise: true
+      seed: 2026
+      # Staggered initial state (DESIGN.md §9.4).
+      initial_state:
+        FV101: { phase: empty, temp_f: 64 }
+        FV102: { phase: fermenting, sim_hours: 48, temp_f: 66, spund_sp_psig: 1.0 }
+        FV103: { phase: fermenting, sim_hours: 120, temp_f: 68, dry_hop_lb_per_bbl: 2.0, spund_sp_psig: 12.0 }
+        FV104: { phase: fermenting, sim_hours: 264, temp_f: 50, spund_sp_psig: 12.0 }
+        BBT201: { phase: carbonating, temp_f: 34, level_pct: 90, co2_vol: 1.8 }
+        BBT202: { phase: serving, temp_f: 34, level_pct: 70, co2_vol: 2.6 }
+    federate_sim: &full-federate-sim
+      weather:
+        # EPW path on sim-ctl; without it the federate uses its synthetic
+        # Denver design-day model.
+        epw: /opt/cherrymountain/weather/USA_CO_Golden-NREL.724666_TMY3.epw
+        station_elevation_m: 1829
+        site_elevation_m: 1585
+      brewhouse:
+        recipe: fire-of-the-phenix
+        auto_start: "05:00"
+      utilities:
+        seed: 11
+      packaging:
+        seed: 7
+        shift_start: "06:00"
+        shift_end: "14:30"
+      power:
+        demand_target_kw: 250
+        bess_min_soc_pct: 50
+      building:
+        seed: 13
+    ntp:
+      default_source: { hostname: ot-svc, interface: IF0 }
+      hosts:
+        ot-svc: { server: chronyd }
+        sim-ctl: { server: chronyd }
+        inet-nuke: { server: chronyd }
+        corp-ws: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
+        vendor-ws: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
+        utility-derms: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
+        isp-rtr: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
+        util-rtr: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
+        fw-edge: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
+        fw-ot: { client: ntp }
+      roles: &ntp-roles
+        # HELICS-backed devices and the federates follow sim-ctl over MGMT.
+        sim: { client: chrony, source: { hostname: sim-ctl, interface: mgmt } }
+        rio: { client: chrony, source: { hostname: sim-ctl, interface: mgmt } }
+        field: { client: chrony, source: { hostname: sim-ctl, interface: mgmt } }
+        bas: { client: chrony, source: { hostname: sim-ctl, interface: mgmt } }
+        plc: { client: chrony }
+        scada: { client: chrony }
+        historian: { client: chrony }
+        ews: { client: chrony }
+        hmi: { client: chrony }
+        bbmd: { client: chrony }
+        fep: { client: chrony }
+        soc: { client: chrony }
+        workstation: { client: chrony }
+        vpn: { client: chrony }
+        jump: { client: chrony }
+    soh: true
+    wireguard: true
+    scorch: true
+
+  lite:
+    description: >-
+      The full plant without the SOC (malcolm, wazuh, soc-analyst) and vendor
+      remote access (vendor-ws, dmz-vpn, dmz-jump): 37 VMs (DESIGN.md §11).
+    areas: [BH, CEL, PKG, UTL, PWR, FAC]
+    federates: *full-federates
+    hosts:
+      - isp-rtr
+      - inet-nuke
+      - util-rtr
+      - utility-derms
+      - corp-ws
+      - fw-edge
+      - fw-ot
+      - scada-fuxa
+      - historian
+      - ews
+      - ot-svc
+      - hmi-brewhouse
+      - hmi-packaging
+      - plc-brewhouse
+      - plc-cellar
+      - plc-packaging
+      - plc-utilities
+      - plc-power
+      - rio-brewhouse
+      - rio-cellar
+      - rio-packaging
+      - rio-utilities
+      - glycol-chiller
+      - relay-main
+      - pv-inverter
+      - bess-pcs
+      - gen-ats
+      - rtu-der
+      - bas-bbmd
+      - bas-fuxa
+      - bas-rtu-taproom
+      - bas-coldroom
+      - bas-vent
+      - sim-ctl
+      - sim-process
+      - sim-power
+      - sim-building
+    helics: *full-helics
+    ground_truth: true
+    clock: *full-clock
+    sim: *full-sim
+    federate_sim: *full-federate-sim
+    ntp:
+      default_source: { hostname: ot-svc, interface: IF0 }
+      hosts:
+        ot-svc: { server: chronyd }
+        sim-ctl: { server: chronyd }
+        inet-nuke: { server: chronyd }
+        corp-ws: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
+        utility-derms: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
+        isp-rtr: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
+        util-rtr: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
+        fw-edge: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
+        fw-ot: { client: ntp }
+      roles: *ntp-roles
+    soh: true
+    wireguard: false
+    scorch: true

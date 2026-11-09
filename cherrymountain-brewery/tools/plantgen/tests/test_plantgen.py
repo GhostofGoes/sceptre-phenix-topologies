@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import shutil
 from collections.abc import Callable
@@ -33,6 +34,14 @@ def write_plant(tmp_path: Path, mutate: Callable[[dict[str, Any]], None]) -> Pat
     out = tmp_path / "plant.yaml"
     out.write_text(yaml.safe_dump(data, sort_keys=False), encoding="utf-8")
     return out
+
+
+def unit(data: dict[str, Any], area: str, unit_id: str) -> dict[str, Any]:
+    """The plant.yaml unit ``unit_id`` of ``area`` (raw data, for mutation)."""
+    for a in data["areas"]:
+        if a["id"] == area:
+            return next(u for u in a["units"] if u["id"] == unit_id)
+    raise KeyError(area)
 
 
 def test_generate_ci_is_clean() -> None:
@@ -230,7 +239,7 @@ def test_phenix_yaml_is_block_style(plant: Plant) -> None:
     assert names
     for name in names:
         events = list(yaml.parse(files[name]))
-        for event, following in zip(events, events[1:]):
+        for event, following in itertools.pairwise(events):
             if isinstance(event, yaml.CollectionStartEvent) and event.flow_style:
                 assert isinstance(following, yaml.CollectionEndEvent), name
 
@@ -329,7 +338,7 @@ def test_detects_unrationalized_alarm(tmp_path: Path) -> None:
     """An alarm without a cause or response time fails the checks."""
 
     def mutate(d: dict[str, Any]) -> None:
-        tag = d["areas"][0]["units"][1]["tags"][0]
+        tag = unit(d, "CEL", "FV101")["tags"][0]
         tag["alarms"][0] = {"kind": "deviation", "setpoint": "TT01.SP", "limit": 2.0}
 
     with pytest.raises(PlantError, match="rationalization"):
@@ -340,7 +349,7 @@ def test_detects_unbound_point(tmp_path: Path) -> None:
     """A device point with no tag would be an unnamed register."""
 
     def mutate(d: dict[str, Any]) -> None:
-        tags = d["areas"][0]["units"][1]["tags"]
+        tags = unit(d, "CEL", "FV101")["tags"]
         tags[:] = [t for t in tags if t["id"] != "ZSO01.PV"]
 
     with pytest.raises(PlantError, match="bound to 0 tags"):
@@ -362,13 +371,13 @@ def test_schema_rejects_unknown_keys_and_bad_ids(tmp_path: Path) -> None:
     """Pydantic validation catches typos in plant.yaml."""
 
     def typo(d: dict[str, Any]) -> None:
-        d["areas"][0]["units"][1]["tags"][0]["unts"] = "degF"
+        unit(d, "CEL", "FV101")["tags"][0]["unts"] = "degF"
 
     with pytest.raises(PlantError, match="unts"):
         load_file(write_plant(tmp_path, typo))
 
     def bad_id(d: dict[str, Any]) -> None:
-        d["areas"][0]["units"][1]["tags"][0]["id"] = "TT1.PV"
+        unit(d, "CEL", "FV101")["tags"][0]["id"] = "TT1.PV"
 
     with pytest.raises(PlantError, match="TT01.PV"):
         load_file(write_plant(tmp_path, bad_id))
@@ -380,7 +389,7 @@ def test_range_must_fit_uint16(tmp_path: Path) -> None:
     """hi x 10^scaling above 65535 is rejected."""
 
     def mutate(d: dict[str, Any]) -> None:
-        d["areas"][0]["units"][1]["tags"][0]["range"] = [20, 900]
+        unit(d, "CEL", "FV101")["tags"][0]["range"] = [20, 900]
 
     with pytest.raises(PlantError, match="uint16"):
         generate(write_plant(tmp_path, mutate), "ci")
@@ -400,11 +409,11 @@ def test_check_fails_on_stale_or_extra_files(
     """--check reports stale, missing, and unexpected files."""
     out = tmp_path / "ci"
     shutil.copytree(COMMITTED, out)
-    assert main(["--check", "--out", str(out)]) == 0
+    assert main(["--check", "--variant", "ci", "--out", str(out)]) == 0
     (out / "registers.csv").write_text("stale\n", encoding="utf-8")
     (out / "extra.json").write_text("{}\n", encoding="utf-8")
     (out / "alarms.json").unlink()
-    assert main(["--check", "--out", str(out)]) == 1
+    assert main(["--check", "--variant", "ci", "--out", str(out)]) == 1
     err = capsys.readouterr().err
     assert "stale: registers.csv" in err
     assert "unexpected: extra.json" in err
@@ -416,6 +425,6 @@ def test_generate_writes_and_prunes(tmp_path: Path) -> None:
     out = tmp_path / "ci"
     (out / "old").mkdir(parents=True)
     (out / "old" / "gone.txt").write_text("x", encoding="utf-8")
-    assert main(["--out", str(out)]) == 0
+    assert main(["--variant", "ci", "--out", str(out)]) == 0
     assert not (out / "old").exists()
-    assert main(["--check", "--out", str(out)]) == 0
+    assert main(["--check", "--variant", "ci", "--out", str(out)]) == 0

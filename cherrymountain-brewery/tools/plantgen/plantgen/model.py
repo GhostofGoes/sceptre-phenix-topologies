@@ -16,14 +16,51 @@ from pathlib import Path
 from typing import Any, ClassVar, Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 type TagType = Literal[
     "analog-read", "analog-read-write", "binary-read", "binary-read-write"
 ]
 type Priority = Literal["critical", "high", "medium", "low"]
-type AlarmKind = Literal["deviation", "high", "low"]
-type HostRole = Literal["sim", "rio", "plc", "scada", "service"]
+type AlarmKind = Literal["deviation", "high", "low", "highhigh", "lowlow", "state"]
+type HostRole = Literal[
+    "sim",  # cherrymountain_sim federates (MGMT only)
+    "rio",  # remote I/O: ot-sim Modbus fd-server, HELICS-backed
+    "field",  # other ot-sim Modbus fd-servers (OEM controllers, power devices)
+    "bas",  # ot-sim fd-server with the BACnet module (building automation)
+    "fep",  # ot-sim front-end processor (rtu-der)
+    "dnp3-master",  # ot-sim fd-client (utility-derms)
+    "plc",
+    "scada",  # FUXA
+    "service",
+    "router",
+    "firewall",
+    "hmi",
+    "historian",
+    "ews",
+    "workstation",
+    "vpn",
+    "jump",
+    "bbmd",
+    "soc",
+]
+type Northbound = Literal["modbus", "opcua", "s7comm"]
+type BacnetObjectType = Literal[
+    "analog-input",
+    "analog-output",
+    "analog-value",
+    "binary-input",
+    "binary-output",
+    "binary-value",
+    "multi-state-value",
+]
 
 TAG_TYPES: tuple[str, ...] = (
     "analog-read",
@@ -32,7 +69,30 @@ TAG_TYPES: tuple[str, ...] = (
     "binary-read-write",
 )
 PRIORITIES: tuple[str, ...] = ("critical", "high", "medium", "low")
-ALARM_KINDS: tuple[str, ...] = ("deviation", "high", "low")
+ALARM_KINDS: tuple[str, ...] = (
+    "deviation",
+    "high",
+    "low",
+    "highhigh",
+    "lowlow",
+    "state",
+)
+#: Host roles that run an ot-sim I/O module (HELICS-backed points).
+IO_ROLES: tuple[str, ...] = ("rio", "field", "bas")
+#: Host roles that serve their points over Modbus TCP.
+MODBUS_IO_ROLES: tuple[str, ...] = ("rio", "field")
+#: BACnet object type -> (tag types it may carry, BACnet object type number).
+BACNET_OBJECTS: dict[str, tuple[tuple[str, ...], int]] = {
+    "analog-input": (("analog-read",), 0),
+    "analog-output": (("analog-read-write",), 1),
+    "analog-value": (("analog-read", "analog-read-write"), 2),
+    "binary-input": (("binary-read",), 3),
+    "binary-output": (("binary-read-write",), 4),
+    "binary-value": (("binary-read", "binary-read-write"), 5),
+    "multi-state-value": (("analog-read", "analog-read-write"), 19),
+}
+INT16_MIN: int = -32768
+INT16_MAX: int = 32767
 RATIONALE_FIELDS: tuple[str, ...] = (
     "priority",
     "cause",
@@ -42,7 +102,9 @@ RATIONALE_FIELDS: tuple[str, ...] = (
 )
 MAX_REGISTER: int = 65535
 
-_TAG_ID_RE: re.Pattern[str] = re.compile(r"^[A-Z]+[0-9]{2}\.[A-Z_]+$")
+#: ``<INSTR>.<ATTR>``: an ISA-5.1 loop (``TT01``) or the PackTags group
+#: ``PACKML`` (``PKG.FILLER.PACKML.STATE``, DESIGN.md §6.4).
+_TAG_ID_RE: re.Pattern[str] = re.compile(r"^(?:[A-Z]+[0-9]{2}|PACKML)\.[A-Z_0-9]+$")
 _DURATION_RE: re.Pattern[str] = re.compile(r"^(\d+(?:\.\d+)?)\s*(s|m|h)$")
 _DURATION_UNITS: dict[str, int] = {"s": 1, "m": 60, "h": 3600}
 
@@ -91,21 +153,29 @@ class Site(Strict):
 
 
 class FederateOutput(Strict):
-    """A federate publication that is not a remote I/O point."""
+    """A federate publication that is not a remote I/O point.
+
+    ``variants`` limits the output to those variants (default: all).
+    """
 
     key: str
-    type: Literal["double", "boolean"]
+    type: Literal["double", "boolean", "string"]
     units: str | None = None
     desc: str = ""
+    variants: list[str] | None = None
 
 
 class FederateInput(Strict):
-    """A subscription to another federate, with a default when it is absent."""
+    """A subscription to another federate, with a default when it is absent.
+
+    ``variants`` limits the input to those variants (default: all).
+    """
 
     key: str
-    type: Literal["double", "boolean"]
+    type: Literal["double", "boolean", "string"]
     units: str | None = None
     default: float
+    variants: list[str] | None = None
 
 
 class FederateSpec(Strict):
@@ -118,11 +188,57 @@ class FederateSpec(Strict):
     inputs: list[FederateInput] = Field(default_factory=list)
 
 
+class BacnetPoint(Strict):
+    """BACnet object attributes of a point (ot-sim BACnet module, DESIGN.md §16).
+
+    ``units`` is a BACnet engineering-units enumeration name (for example
+    ``degreesFahrenheit``); ``states`` lists the state texts of a
+    multi-state value (state 1 is the first entry).
+    """
+
+    object_type: BacnetObjectType
+    units: str | None = None
+    states: list[str] | None = None
+
+    @property
+    def type_number(self) -> int:
+        """BACnet object type enumeration (FUXA addresses use it)."""
+        return BACNET_OBJECTS[self.object_type][1]
+
+    @property
+    def commandable(self) -> bool:
+        """Outputs carry a priority array; values do when they are writable."""
+        return self.object_type in ("analog-output", "binary-output")
+
+
 class PointSpec(Strict):
-    """One point of an ot-sim device type."""
+    """One point of an ot-sim device type.
+
+    ``signed`` points are int16 registers (two's complement) instead of uint16.
+    ``written_by`` names the host that writes a holding register (for example
+    the DER gateway); the owning PLC then only reads it (FC3 into ``%IW``).
+    ``bacnet`` makes the point a BACnet object instead of a Modbus register.
+    """
 
     type: TagType
     scaling: int | None = None
+    signed: bool = False
+    written_by: str | None = None
+    bacnet: BacnetPoint | None = None
+
+    @model_validator(mode="after")
+    def _check(self) -> PointSpec:
+        if self.written_by and self.type != "analog-read-write":
+            raise ValueError("written_by applies to analog-read-write points only")
+        if self.bacnet:
+            allowed = BACNET_OBJECTS[self.bacnet.object_type][0]
+            if self.type not in allowed:
+                raise ValueError(
+                    f"{self.bacnet.object_type} cannot carry a {self.type} point"
+                )
+            if self.signed or self.written_by:
+                raise ValueError("signed and written_by are Modbus-only")
+        return self
 
 
 class Interface(Strict):
@@ -140,6 +256,29 @@ class ModbusEndpoint(Strict):
     unit_id: int = 1
 
 
+class BacnetEndpoint(Strict):
+    """A BACnet/IP device served by the ot-sim BACnet module."""
+
+    interface: str = "IF0"
+    port: int = 47808
+    instance: int = Field(ge=0, le=4194302)
+    name: str
+
+
+class Dnp3Endpoint(Strict):
+    """Where an ot-sim FEP serves DNP3 (outstation)."""
+
+    interface: str = "IF0"
+    port: int = 20000
+
+
+class FuxaSource(Strict):
+    """A device a FUXA instance polls, and which of its tags (fnmatch)."""
+
+    host: str
+    tags: list[str] = Field(default_factory=lambda: ["*"])
+
+
 class HostSpec(Strict):
     """A topology node relevant to plantgen."""
 
@@ -148,6 +287,16 @@ class HostSpec(Strict):
     federate: str | None = None
     modbus: ModbusEndpoint | None = None
     poll_ms: int = 100
+    #: PLC northbound protocol (DESIGN.md §12.1).
+    northbound: Northbound = "modbus"
+    bacnet: BacnetEndpoint | None = None
+    dnp3: Dnp3Endpoint | None = None
+    #: FEP: field devices it polls (``upstream``); DNP3 master: FEPs it polls.
+    upstream: list[str] = Field(default_factory=list)
+    #: FUXA: what it polls. Default: every PLC in the variant.
+    fuxa: list[FuxaSource] | None = None
+    #: VyOS hosts use the ``ntp`` client and no guest agent processes.
+    vyos: bool = False
 
 
 class Rationale(Strict):
@@ -161,13 +310,20 @@ class Rationale(Strict):
 
 
 class AlarmSpec(Rationale):
-    """One alarm on a tag."""
+    """One alarm on a tag.
+
+    ``state`` alarms are active while the tag equals ``limit`` (1 or 0 for a
+    bit, an enumeration value such as PackML Held = 11 for a word).
+    ``suppress`` names a bit tag (same unit or full name) that suppresses the
+    alarm while it is 0, for state-based suppression (ISA-18.2).
+    """
 
     kind: AlarmKind
     limit: float | None = None
     delay: str | float = 0.0
     setpoint: str | None = None
     rationale: str | None = None
+    suppress: str | None = None
 
 
 class TagSpec(Strict):
@@ -195,26 +351,37 @@ class DeviceSpec(Strict):
 
     name: str
     type: str
-    zone: Literal["side", "cone"] | None = None
+    zone: str | None = None
 
 
 class UnitSpec(Strict):
-    """An ISA-88 unit (equipment) with its devices and tags."""
+    """An ISA-88 unit (equipment) with its devices and tags.
+
+    ``rio`` and ``federate`` override the area defaults, for units whose
+    devices live on another field host (the chiller's OEM controller, each
+    power device, each BAS controller).
+    """
 
     id: str
     name: str
     model: str
+    rio: str | None = None
+    federate: str | None = None
     devices: list[DeviceSpec] = Field(default_factory=list)
     tags: list[TagSpec] = Field(default_factory=list)
 
 
 class AreaSpec(Strict):
-    """A process area and the hosts that own it."""
+    """A process area and the hosts that own it.
+
+    An area without a ``plc`` (Facilities) has its tags owned by the BACnet
+    controllers themselves; its alarms are evaluated by FUXA.
+    """
 
     id: str
     name: str
-    plc: str
-    rio: str
+    plc: str | None = None
+    rio: str | None = None
     federate: str
     units: list[UnitSpec]
 
@@ -234,13 +401,19 @@ class VariantHelics(Strict):
 
 
 class InitialStateSpec(Strict):
-    """Initial state of one vessel (mirrors cherrymountain_sim.InitialState)."""
+    """Initial state of one vessel (mirrors cherrymountain_sim.InitialState).
 
-    phase: Literal["empty", "fermenting"] = "empty"
+    Fermenters use ``empty`` or ``fermenting``; bright beer tanks use
+    ``empty``, ``carbonating``, or ``serving`` with a level and dissolved CO2.
+    """
+
+    phase: Literal["empty", "fermenting", "carbonating", "serving"] = "empty"
     sim_hours: float = 0.0
     temp_f: float = 66.0
     dry_hop_lb_per_bbl: float = 0.0
     spund_sp_psig: float | None = None
+    level_pct: float | None = None
+    co2_vol: float | None = None
 
 
 class SimSpec(Strict):
@@ -268,24 +441,124 @@ class NtpHost(Strict):
 
 
 class NtpSpec(Strict):
-    """ntp app (app mode) for a variant."""
+    """ntp app (app mode) for a variant.
+
+    A host's entry is ``hosts[name]`` if present, else ``roles[role]``.
+    """
 
     default_source: NtpSource
-    hosts: dict[str, NtpHost]
+    hosts: dict[str, NtpHost] = Field(default_factory=dict)
+    roles: dict[str, NtpHost] = Field(default_factory=dict)
+
+
+class ClockSpec(Strict):
+    """Simulation clock (DESIGN.md §9.4): ISO 8601 start with UTC offset."""
+
+    start: str
+    timezone: str = "America/Denver"
+    speedup: float = Field(default=1.0, ge=1.0)
 
 
 class VariantSpec(Strict):
-    """A topology variant."""
+    """A topology variant.
+
+    ``units`` limits an area to the listed units (an allow-list per area id);
+    an area that is not listed keeps all its units. ``federate_sim`` passes
+    per-federate model settings through to helics.json (the cellar uses
+    ``sim``). ``soh``, ``wireguard``, and ``scorch`` turn on the app blocks
+    and lists of the same names.
+    """
 
     description: str = ""
     areas: list[str]
+    units: dict[str, list[str]] = Field(default_factory=dict)
     federates: list[str]
     hosts: list[str]
     host_overrides: dict[str, dict[str, Any]] = Field(default_factory=dict)
     helics: VariantHelics
     ground_truth: bool = True
     sim: SimSpec = Field(default_factory=SimSpec)
+    federate_sim: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    clock: ClockSpec | None = None
     ntp: NtpSpec
+    soh: bool = False
+    wireguard: bool = False
+    scorch: bool = False
+
+
+class Network(Strict):
+    """A VLAN alias: subnet and router. ``gateway`` None means unrouted."""
+
+    subnet: str
+    gateway: str | None = None
+
+
+class LoadSpec(Strict):
+    """An electrical load the power federate subscribes to (DESIGN.md §7.2).
+
+    The publishing federate publishes ``<federate>/load.<name>.kw``; the power
+    federate subscribes to it when both are in the variant, and uses
+    ``default_kw`` otherwise. The publisher subscribes to
+    ``power/bus.<bus>.energized``.
+    """
+
+    name: str
+    federate: str
+    bus: str
+    rated_kw: float
+    default_kw: float = 0.0
+    desc: str = ""
+
+
+class SohProfile(Strict):
+    """Per-role SoH expectations (pgrep patterns, listeners, containers)."""
+
+    processes: list[str] = Field(default_factory=list)
+    listeners: list[str] = Field(default_factory=list)
+    containers: list[str] = Field(default_factory=list)
+
+
+class Conduit(Strict):
+    """A testable flow for SoH ``testCustomReachability`` (DESIGN.md §10.3)."""
+
+    src: str
+    dst: str  # hostname; the interface defaults to the first plant NIC
+    interface: str | None = None
+    proto: Literal["tcp", "udp"] = "tcp"
+    port: int
+    desc: str = ""
+
+
+class SohSpec(Strict):
+    """soh app settings (DESIGN.md §15.4); plantgen derives most flows."""
+
+    startup_delay: str = "10m"
+    c2_timeout: str = "15m"
+    wait: str = "5m"
+    skip_hosts: list[str] = Field(default_factory=list)
+    profiles: dict[str, SohProfile] = Field(default_factory=dict)
+    host_profiles: dict[str, SohProfile] = Field(default_factory=dict)
+    conduits: list[Conduit] = Field(default_factory=list)
+
+
+class WireguardSpec(Strict):
+    """Vendor WireGuard tunnel (DESIGN.md §13): range-only throwaway keys."""
+
+    server: str
+    client: str
+    server_address: str
+    client_address: str
+    listen_port: int = 51820
+    endpoint: str
+    client_allowed_ips: list[str]
+    keepalive: int = 25
+    seed: str
+
+
+class ScorchSpec(Strict):
+    """SCORCH pcap capture lists per run (DESIGN.md §15.6): ``host|IF``."""
+
+    captures: dict[str, list[str]]
 
 
 class PlantFile(Strict):
@@ -293,11 +566,16 @@ class PlantFile(Strict):
 
     schema_version: Literal[1]
     site: Site
+    networks: dict[str, Network] = Field(default_factory=dict)
     federates: dict[str, FederateSpec]
+    loads: list[LoadSpec] = Field(default_factory=list)
     device_types: dict[str, dict[str, PointSpec]]
     hosts: dict[str, HostSpec]
     alarm_rationale: dict[str, Rationale] = Field(default_factory=dict)
     areas: list[AreaSpec]
+    soh: SohSpec | None = None
+    wireguard: WireguardSpec | None = None
+    scorch: ScorchSpec | None = None
     variants: dict[str, VariantSpec]
 
 
@@ -314,10 +592,17 @@ class Point(BaseModel):
     name: str
     type: TagType
     scaling: int | None = None
+    signed: bool = False
+    written_by: str | None = None
+    bacnet: BacnetPoint | None = None
 
 
 class Device(BaseModel):
-    """One ot-sim infrastructure device on a remote I/O host."""
+    """One ot-sim infrastructure device on a field host.
+
+    ``rio`` is the field host that serves the device (a remote I/O, an OEM
+    controller, a power device, or a BACnet controller).
+    """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(frozen=True)
 
@@ -328,6 +613,7 @@ class Device(BaseModel):
     area: str
     unit: str
     zone: str | None = None
+    protocol: Literal["modbus", "bacnet"] = "modbus"
 
     @property
     def topic(self) -> str:
@@ -336,7 +622,11 @@ class Device(BaseModel):
 
 
 class Alarm(BaseModel):
-    """A rationalized alarm (ISA-18.2) and the PLC bit that carries it."""
+    """A rationalized alarm (ISA-18.2) and the PLC bit that carries it.
+
+    Alarms on tags without a PLC (BACnet points) have no bit; FUXA evaluates
+    them from the source tag.
+    """
 
     name: str  # alarm bit tag name
     source: str  # monitored tag name
@@ -349,6 +639,8 @@ class Alarm(BaseModel):
     action: str
     response_time_s: float
     setpoint: str | None = None
+    suppress: str | None = None
+    has_bit: bool = True
 
 
 class Tag(BaseModel):
@@ -361,10 +653,13 @@ class Tag(BaseModel):
     attr: str
     desc: str
     type: TagType
-    plc: str
+    plc: str | None
     units: str | None = None
     range: tuple[float, float] | None = None
     scaling: int = 0
+    signed: bool = False
+    written_by: str | None = None
+    bacnet: BacnetPoint | None = None
     device: Device | None = None
     point: str | None = None
     rio: str | None = None
@@ -376,6 +671,11 @@ class Tag(BaseModel):
     def source(self) -> str:
         """``io`` for remote-I/O tags, ``plc`` for PLC memory."""
         return "io" if self.device else "plc"
+
+    @property
+    def owner(self) -> str | None:
+        """The PLC, or for BACnet points the controller that serves them."""
+        return self.plc or (self.device.rio if self.device else None)
 
     @property
     def helics_key(self) -> str | None:
@@ -424,9 +724,27 @@ class Plant(BaseModel):
                 return t
         raise KeyError(name)
 
-    def hosts_by_role(self, role: str) -> list[Host]:
-        """Variant hosts with ``role``, in variant order."""
-        return [h for h in self.hosts.values() if h.role == role]
+    def hosts_by_role(self, *roles: str) -> list[Host]:
+        """Variant hosts with any of ``roles``, in variant order."""
+        return [h for h in self.hosts.values() if h.role in roles]
+
+    @property
+    def plcs(self) -> list[str]:
+        """PLCs that own tags, in variant host order."""
+        owned = {t.plc for t in self.tags if t.plc}
+        return [h for h in self.hosts if h in owned]
+
+    def ntp_entry(self, host: str) -> NtpHost | None:
+        """The ntp app metadata of a variant host (host entry, else role)."""
+        ntp = self.spec.ntp
+        if host in ntp.hosts:
+            return ntp.hosts[host]
+        role = self.hosts[host].role if host in self.hosts else None
+        return ntp.roles.get(role) if role else None
+
+    def network(self, vlan: str) -> Network | None:
+        """The network definition of a VLAN alias, if plant.yaml has one."""
+        return self.file.networks.get(vlan)
 
 
 # ---------------------------------------------------------------------------
@@ -457,39 +775,63 @@ def expand(pf: PlantFile, variant: str) -> Plant:
     hosts = _hosts(pf, spec)
     device_types = {
         name: {
-            pn: Point(name=pn, type=p.type, scaling=p.scaling) for pn, p in pts.items()
+            pn: Point(
+                name=pn,
+                type=p.type,
+                scaling=p.scaling,
+                signed=p.signed,
+                written_by=p.written_by,
+                bacnet=p.bacnet,
+            )
+            for pn, p in pts.items()
         }
         for name, pts in pf.device_types.items()
     }
+    protocols = {name: _protocol(name, pts) for name, pts in device_types.items()}
     unknown = [f for f in spec.federates if f not in pf.federates]
     if unknown:
         raise PlantError(f"variant {variant}: unknown federates {unknown}")
+    known_areas = {a.id: a for a in pf.areas}
+    for area_id, unit_ids in spec.units.items():
+        if area_id not in known_areas:
+            raise PlantError(f"variant {variant}: units for unknown area {area_id}")
+        missing = set(unit_ids) - {u.id for u in known_areas[area_id].units}
+        if missing:
+            raise PlantError(f"variant {variant}: unknown {area_id} units {missing}")
     federates = {n: f for n, f in pf.federates.items() if n in spec.federates}
     devices: list[Device] = []
     tags: list[Tag] = []
     for area in pf.areas:
         if area.id not in spec.areas:
             continue
+        allowed = spec.units.get(area.id)
         for unit in area.units:
+            if allowed is not None and unit.id not in allowed:
+                continue
+            rio = unit.rio or area.rio
+            federate = unit.federate or area.federate
             unit_devices: dict[str, Device] = {}
             for d in unit.devices:
                 if d.type not in device_types:
                     raise PlantError(f"device {d.name}: unknown type {d.type!r}")
+                if rio is None:
+                    raise PlantError(f"device {d.name}: unit {unit.id} has no rio")
                 unit_devices[d.name] = Device(
                     name=d.name,
                     type=d.type,
-                    federate=area.federate,
-                    rio=area.rio,
+                    federate=federate,
+                    rio=rio,
                     area=area.id,
                     unit=unit.id,
                     zone=d.zone,
+                    protocol=protocols[d.type],
                 )
             devices.extend(unit_devices.values())
             for ts in unit.tags:
                 tag = _tag(area, unit, ts, unit_devices, device_types)
                 tag.alarms = [_alarm(tag, a, pf.alarm_rationale) for a in ts.alarms]
                 tags.append(tag)
-                tags.extend(_alarm_tag(tag, a) for a in tag.alarms)
+                tags.extend(_alarm_tag(tag, a) for a in tag.alarms if a.has_bit)
     return Plant(
         variant=variant,
         file=pf,
@@ -500,6 +842,14 @@ def expand(pf: PlantFile, variant: str) -> Plant:
         tags=tags,
         federates=federates,
     )
+
+
+def _protocol(name: str, points: dict[str, Point]) -> Literal["modbus", "bacnet"]:
+    """A device type is all BACnet objects or all Modbus registers."""
+    kinds = {p.bacnet is not None for p in points.values()}
+    if len(kinds) > 1:
+        raise PlantError(f"device type {name} mixes BACnet and Modbus points")
+    return "bacnet" if kinds == {True} else "modbus"
 
 
 def _hosts(pf: PlantFile, spec: VariantSpec) -> dict[str, Host]:
@@ -544,12 +894,18 @@ def _tag(
         if spec.scaling not in (None, pdef.scaling):
             raise PlantError(f"{name}: scaling disagrees with {device.type}.{point}")
         ttype, scaling = pdef.type, pdef.scaling
+        signed, written_by, bacnet = pdef.signed, pdef.written_by, pdef.bacnet
     else:
         if spec.type is None:
             raise PlantError(f"{name}: PLC-memory tags need a type")
+        if area.plc is None:
+            raise PlantError(f"{name}: area {area.id} has no PLC for memory tags")
         ttype, scaling = spec.type, spec.scaling
-    if is_analog(ttype) and (scaling is None or spec.range is None):
-        raise PlantError(f"{name}: analog tags need a scaling and a range")
+        signed, written_by, bacnet = False, None, None
+    if is_analog(ttype) and spec.range is None:
+        raise PlantError(f"{name}: analog tags need a range")
+    if is_analog(ttype) and scaling is None and bacnet is None:
+        raise PlantError(f"{name}: analog Modbus tags need a scaling")
     return Tag(
         name=name,
         area=area.id,
@@ -558,10 +914,13 @@ def _tag(
         attr=attr,
         desc=spec.desc,
         type=ttype,
-        plc=area.plc,
+        plc=area.plc if bacnet is None else None,
         units=spec.units,
         range=spec.range,
         scaling=scaling or 0,
+        signed=signed,
+        written_by=written_by,
+        bacnet=bacnet,
         device=device,
         point=point,
         rio=device.rio if device else None,
@@ -577,6 +936,11 @@ def _alarm(tag: Tag, spec: AlarmSpec, library: dict[str, Rationale]) -> Alarm:
         merged.update(library[spec.rationale].model_dump(exclude_none=True))
     merged.update(spec.model_dump(exclude_none=True, exclude={"rationale"}))
     setpoint = merged.get("setpoint")
+    suppress = merged.get("suppress")
+    if suppress and suppress.count(".") == 1:  # INSTR.ATTR in the same unit
+        suppress = f"{tag.area}.{tag.unit}.{suppress}"
+    elif suppress and suppress.count(".") == 2:  # UNIT.INSTR.ATTR in the area
+        suppress = f"{tag.area}.{suppress}"
     return Alarm(
         name=f"{tag.area}.{tag.unit}.{tag.instrument}.ALM_{spec.kind.upper()}",
         source=tag.name,
@@ -589,6 +953,8 @@ def _alarm(tag: Tag, spec: AlarmSpec, library: dict[str, Rationale]) -> Alarm:
         action=str(merged.get("action", "")).strip(),
         response_time_s=parse_duration(merged.get("response_time", 0)),
         setpoint=f"{tag.area}.{tag.unit}.{setpoint}" if setpoint else None,
+        suppress=suppress,
+        has_bit=tag.plc is not None,
     )
 
 

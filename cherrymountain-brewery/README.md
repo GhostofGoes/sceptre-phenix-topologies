@@ -1,17 +1,24 @@
 # CherryMountain Brewery
 
 > **Status:** in progress. The design is complete and the Phase 0 spikes are
-> done (all nine are go; the decisions are folded into
-> [DESIGN.md](DESIGN.md#18-implementation-roadmap)). The **ci variant** (the
-> cellar slice, five VMs) exists: the tag database, plantgen, the cellar
-> simulation, the PLC program and its OpenPLC v4 ZIP, the FUXA project, the
-> image configs, and the topology, scenario, and workflow. Its integration test
-> passes in Docker (ot-sim, OpenPLC, FUXA), but the slice has not run on a phenix
-> host yet. **Phase 1 (network)** is written for the **full and lite variants**:
-> the topology modules, the VyOS conduits and static routes, ot-svc and the
-> BBMDs, and the SoH reachability and blocked-path checks. `tools/netcheck`
-> proves the conduit matrix statically (every conduit passes and every other
-> path is blocked), but no VM has run it yet.
+> done (all nine are go, and a second round closed their gaps; the decisions are
+> folded into [DESIGN.md](DESIGN.md#18-implementation-roadmap)). The **ci
+> variant** (the cellar slice, five VMs) exists: the tag database, plantgen, the
+> cellar simulation, the PLC program and its OpenPLC v4 ZIP, the FUXA project,
+> the image configs, and the topology, scenario, and workflow. Its integration
+> test passes in Docker (ot-sim, OpenPLC, FUXA), but the slice has not run on a
+> phenix host yet. **Phase 1 (network)** is implemented for the **full and lite
+> variants**: the topology modules, the VyOS conduits and static routes, ot-svc
+> and the BBMDs, and the SoH reachability and blocked-path checks.
+> `tools/netcheck` proves the conduit matrix statically (every conduit passes
+> and every other path is blocked), but no VM has run it yet. **Phase 2
+> (simulation)** is largely implemented: `plant.yaml` covers every area (43
+> hosts, 411 tags, 69 rationalized alarms), plantgen writes the ci, full, and
+> lite outputs, and seven federates pass their validation tests (remaining: the
+> cellar autopilot, ot-sim logic blocks, and a 24 h soak). The
+> **`cherrymountain` app and `plantevent`** are built (all five stages; the
+> historian, Guacamole, Wazuh, and kiosk parts are stubs). **Phase 3 (control)
+> and Phase 5 (SOC and remote access)** are next.
 
 The CherryMountain Brewery topology models a notional SCADA system for a
 Colorado microbrewery and taproom. Its flagship West Coast IPA is "Fire of the
@@ -41,15 +48,15 @@ integration, new software, testing, roadmap, risks, and references.
 
 | Path | Contents |
 |---|---|
-| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts) and the plantgen output under `plant/generated/{ci,full,lite}/` |
+| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts, 411 tags, 69 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
 | `tools/plantgen/` | Generator: tags, addresses, the ot-sim, ntp, soh, wireguard, helics, and cherrymountain app blocks, HELICS lists, OpenPLC, FUXA, BACnet, DNP3, and SCORCH inputs ([README](tools/plantgen/README.md) documents every output) |
-| `sim/` | `cherrymountain_sim`: the weather, brewhouse, cellar, utilities, packaging, power (OpenDSS), and building federates and the sim-ctl event API ([README](sim/README.md)) |
+| `sim/` | `cherrymountain_sim`: the weather, brewhouse, cellar, utilities, packaging, power (OpenDSS), and building federates, the sim-ctl event API, and an offline harness; 95 tests ([README](sim/README.md)) |
 | `recipes/` | `fire-of-the-phenix.json`, the flagship recipe in BeerJSON |
 | `phenix-ci.yml`, `phenix-configs/{topology,scenario}-ci.yml` | Workflow, topology, and scenario for the ci variant |
 | `phenix.yml`, `phenix-lite.yml`, `phenix-configs/` | Workflows for the full and lite variants; topology modules `topology-{core,soc,remote-access}.yml`, `topology-{full,lite}.yml` (they include the modules), and `scenario-{full,lite}.yml` |
 | `phenix-injects/{ot-svc,bbmd,inet-nuke,vrouter,malcolm}/` | The network phase's injects: ot-svc DNS, syslog relay, and chrony hook; the `cm-bbmd` BACnet BBMD service; inet-nuke DNS; the VyOS settings script; malcolm's capture flow |
-| `sync.py` (and `sync_ci.py`) | Embeds plantgen's per-variant app blocks into the scenarios and copies generated files into `phenix-injects/` |
-| `tools/netcheck/` | Static check of the topology, scenario, and workflow against the IP plan and conduit matrix ([README](tools/netcheck/README.md)) |
+| `sync.py` | Embeds plantgen's per-variant app blocks into the scenarios and copies generated files into `phenix-injects/`; aware of Git LFS pointers. It replaces `sync_ci.py`, which now only calls it for `ci` |
+| `tools/netcheck/` | Static check of the topology, scenario, and workflow against the IP plan and conduit matrix: every conduit and every default drop; 41 tests ([README](tools/netcheck/README.md)) |
 | `phenix-injects/` | Files the ci scenario injects: federate units, OpenPLC and FUXA provisioning, generated copies |
 | `phenix-images/` | Image configs for `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa`, `cm-svc` (noble), with [one README](phenix-images/README.md) that has a section per image |
 | `plc/plc-cellar/` | The cellar PLC program in Structured Text, and `build_zip.sh`, which builds its OpenPLC v4 ZIP |
@@ -57,7 +64,7 @@ integration, new software, testing, roadmap, risks, and references.
 | `fuxa/` | The generated FUXA project for scada-fuxa |
 | `tools/lint/` | Hook scripts for prek: systemd-analyze on units and shellcheck on shell in image YAML |
 | `spikes/` | Phase 0 spike kits, each with its go/no-go result ([summary](spikes/README.md)) |
-| `apps/` | Not created yet. Each phenix app will live here and ship its own `README.md` |
+| `apps/` | The `cherrymountain` phenix app (five stages) and the `plantevent` SCORCH component, each with its own `README.md`; 94 tests ([README](apps/README.md)) |
 
 ## The ci variant
 
@@ -77,8 +84,9 @@ program ZIP must exist first:
 docker exec phenix phenix workflow apply -b cherrymountain-ci -c phenix-ci.yml /phenix/topologies/cherrymountain-brewery
 ```
 
-Host access to FUXA is `http://<host>:11881` through the startup autotunnel.
-The range admin password is in `phenix-injects/fuxa/fuxa.env` (range-only).
+Host access to FUXA is through the startup autotunnel. The host port is random
+(11881 is only the annotation's label): find it with `cc tunnel list scada-fuxa`
+(the row with `dst port 1881`). The range admin password is in `phenix-injects/fuxa/fuxa.env` (range-only).
 
 ## Regenerate and test
 
@@ -97,6 +105,7 @@ Checks (all must pass; `prek run --all-files` covers lint and hygiene):
 ```shell
 (cd tools/plantgen && python -m plantgen --check && python -m pytest)
 (cd sim && python -m pytest)                         # model validation and the offline federation
+(cd apps && python -m pytest)                        # the cherrymountain app and plantevent (needs phenix-apps, see apps/README.md)
 python sync.py --check                               # injects and scenarios match plantgen output (ci, full, lite)
 python tools/netcheck/run_netcheck.py                # IP plan, conduit matrix, routes, rules (full, lite)
 (cd tools/netcheck && python -m pytest)              # netcheck, sync.py, and BBMD tests
@@ -184,8 +193,10 @@ it matters):
 
 - **Not run on a VM.** `netcheck` models the rules phenix renders; it does not
   prove VyOS behavior. Check the `vyatta.tmpl` output commits with these rulesets,
-  that the ACL names (`acl.egress` is the inbound filter) behave as modeled, and
-  that SoH passes.
+  that the ACL names (`acl.egress` is the inbound filter) behave as modeled,
+  `cm-bbmd.service` under systemd, and that every SoH probe passes. BBMD rule 2
+  (the device's I-Am to FUXA) and the syslog flows send no reply, so they have no
+  SoH probe and only `netcheck` checks them. BBMD rule 3 is optional (DESIGN 10.3).
 - **The vrouter templates cannot do four things the design wants,** so
   `phenix-injects/vrouter/cm-vyos-config.sh` does them after boot, delivered by a
   topology `commands` entry (a `cc exec`): rule logging (`default-log` on every
@@ -200,6 +211,12 @@ it matters):
   address (IKE, SSH) is never filtered; rules have no `log` field; netem `loss`
   is an integer percent (the design asks for 0.1 percent, the files use 1); and
   the template has no `key-exchange`.
+- **FUXA BACnet discovery.** plantgen writes the subnet's directed broadcast as
+  the `broadcastAddress` of scada-fuxa's BACnet device, but the `bbmd` spike
+  tested the property unset (the Who-Is then goes to 255.255.255.255, which the
+  OPS BBMD hears). The generator should omit it (DESIGN 8.1).
+- **Malcolm upload pipeline.** A pcap in `pcap/upload` reaches OpenSearch only
+  with four setup steps that the cm-malcolm boot script must do (DESIGN 14).
 - **Mirror.** `df_default=false` on the host's GRE port still needs the mirror
   app (nothing in a topology can set it). The OpenFlow capture flow is injected
   into malcolm (`phenix-injects/malcolm/99-zz-capture-flow.sh`) until the app or
@@ -232,4 +249,5 @@ docker exec phenix phenix workflow apply -b cherrymountain-lite -c phenix-lite.y
 
 Host access to the web UIs is through the startup autotunnel (DESIGN.md
 15.3): the forwards use random host ports, so look the port up with
-`cc tunnel list <vm>` or the phenix forwards API each time.
+`cc tunnel list <vm>` each time. phenix's forwards API does not report it (its
+`srcPort` is the annotation label).

@@ -42,7 +42,7 @@ READ_FCS: Final[frozenset[int]] = frozenset({1, 2, 3, 4})
 #: matches the launcher while it waits and the browser's ``--kiosk`` after.
 KIOSK_PROCESS: Final[str] = "kiosk"
 #: plant.yaml roles of the ot-sim devices that serve Modbus from an I/O module.
-IO_MODULE_ROLES: Final[frozenset[str]] = frozenset({"rio", "field"})
+IO_MODULE_ROLES: Final[frozenset[str]] = frozenset({"rio", "field", "bas"})
 
 MODBUS_READ: Final[str] = """\
 python3 - {host} {port} {unit} {fc} {offset} <<'PY'

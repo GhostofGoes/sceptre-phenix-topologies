@@ -233,9 +233,10 @@ def test_a_second_start_changes_nothing(chain: Chain) -> None:
 
 def test_the_broker_waits_for_every_federate_the_apps_annotated(chain: Chain) -> None:
     """The helics app starts the root broker on sim-ctl for the sum of the
-    ``helics/federate`` annotations: this app's on the sim nodes and the ot-sim
-    app's on every device with an I/O module. The SoH check on sim-ctl asks
-    for the same hosts."""
+    ``helics/federate`` annotations: this app's on the sim nodes and on the
+    BACnet controllers, and the ot-sim app's on every device it gives an I/O
+    module. Those are the devices whose config.xml, as it lands on the node,
+    has an I/O module. The SoH check on sim-ctl asks for the same hosts."""
     feds: dict[str, int] = chain.federate_hosts()
     script: str = (chain.base_dir / "helics" / "sim-ctl-broker.sh").read_text()
     waits_for: list[str] = re.findall(r"-f(\d+)\b", script)
@@ -244,7 +245,7 @@ def test_the_broker_waits_for_every_federate_the_apps_annotated(chain: Chain) ->
     otsim: Any = chain.app("ot-sim")
     io_modules: set[str] = set()
     for host in otsim["hosts"]:
-        config: Path = chain.base_dir / "ot-sim" / f"{host['hostname']}.xml"
+        (config,) = [src for src, dst, _ in chain.injections()[host["hostname"]] if dst == OTSIM_CONFIG]
         if ET.parse(config).getroot().find("io") is not None:
             io_modules.add(host["hostname"])
     sims: set[str] = {h for h in feds if h.startswith("sim-")}
@@ -260,8 +261,9 @@ def test_the_broker_waits_for_every_federate_the_apps_annotated(chain: Chain) ->
 
 
 def test_every_ot_sim_device_keeps_one_config(chain: Chain) -> None:
-    """A device with the telnet module (relay-main) gets this app's copy of
-    the ot-sim app's config.xml, the others the ot-sim app's own."""
+    """A device with the telnet module (relay-main) and a BACnet controller
+    get this app's copy of the ot-sim app's config.xml with the modules that
+    app cannot render; the others get the ot-sim app's own."""
     cm: dict[str, Any] = {
         h["hostname"]: h["metadata"] for h in chain.app("cherrymountain")["hosts"]
     }
@@ -280,6 +282,9 @@ def test_every_ot_sim_device_keeps_one_config(chain: Chain) -> None:
         if (cm.get(name) or {}).get("telnet"):
             assert modules == [*expected, "telnet"], (chain.variant, name)
             assert len(root.findall("telnet")) == 1
+        elif "bacnet" in host["metadata"]:
+            assert modules == [*expected, "i/o", "bacnet"], (chain.variant, name)
+            assert len(root.findall("io")) == 1 and len(root.findall("bacnet")) == 1
         else:
             assert modules == expected, (chain.variant, name)
 

@@ -423,6 +423,15 @@ def test_full_restart_reads_the_config_the_ot_sim_app_just_rendered(
         {"src": str(stale), "dst": "/etc/ot-sim/config.xml"},
         {"src": str(fresh), "dst": "/etc/ot-sim/config.xml"},
     ]
+    # The BACnet controllers need the ot-sim app's config too (test_bacnet.py).
+    for host in ("bas-rtu-taproom", "bas-coldroom", "bas-vent"):
+        rendered = base / "ot-sim" / f"{host}.xml"
+        rendered.write_text(config('<module name="backplane">a</module>'))
+        bas = node(full, host)
+        bas["injections"] = [
+            *(bas.get("injections") or []),
+            {"src": str(rendered), "dst": "/etc/ot-sim/config.xml"},
+        ]
     app = run_app("pre-start", exp=full)
     injects = [
         i

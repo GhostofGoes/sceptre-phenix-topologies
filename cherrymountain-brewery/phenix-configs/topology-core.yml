@@ -339,9 +339,10 @@ spec:
       phenix/startup-autotunnel:
       - 13001:3000
       - 18080:8080
+      - 18090:8090
       - 19200:9200
     general:
-      description: HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, chronyd for MGMT
+      description: HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, cm-viz 3D view, chronyd for MGMT
       hostname: sim-ctl
     hardware:
       drives:

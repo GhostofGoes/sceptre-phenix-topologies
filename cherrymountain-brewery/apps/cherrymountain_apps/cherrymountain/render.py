@@ -715,7 +715,46 @@ def render_sim(
             ),
         ],
     )
+    if isinstance(md, SimCtlHost) and "weather" in federates:
+        injects += render_viz(ctx, hostname, out)
     return injects
+
+
+def render_viz(ctx: Context, hostname: str, out: Path) -> list[Injection]:
+    """cm-viz on sim-ctl, next to the event API it reads (DESIGN.md 15.10):
+    its settings, its hardened unit (loopback only), and the startup hook."""
+    sim_ctl = ctx.app.sim_ctl
+    env: Path = write(
+        out / "cm-viz.env",
+        env_file(
+            {
+                "CM_VIZ_SIMCTL_URL": f"http://127.0.0.1:{sim_ctl.event_port}",
+                "CM_VIZ_PORT": str(sim_ctl.viz_port),
+                "CM_HELICS_CONFIG": f"{CONF_DIR}/helics.json",
+            }
+        ),
+    )
+    return [
+        Injection(src=env, dst="/etc/default/cm-viz", description="cm-viz settings"),
+        *_packaged(
+            ctx,
+            hostname,
+            [
+                (
+                    ("systemd", "cm-viz.service"),
+                    "/etc/systemd/system/cm-viz.service",
+                    "0644",
+                    "cm-viz unit (white-cell 3D view)",
+                ),
+                (
+                    ("scripts", "61-cm-viz.sh"),
+                    f"{STARTUP}/61-cm-viz.sh",
+                    "0755",
+                    "start cm-viz after the federates",
+                ),
+            ],
+        ),
+    ]
 
 
 # ---------------------------------------------------------------- historian

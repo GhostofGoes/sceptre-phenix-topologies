@@ -62,13 +62,15 @@ spec:
     INSTALL_SIM: |
       # ------------------------------------------------- cherrymountain_sim --------------------------------------------
       # The simulation nodes (DESIGN.md 9, 15.7): HELICS, the cherrymountain_sim
-      # federates with OpenDSS (the `power` extra) and SimPy, and on sim-ctl the
-      # ground-truth OpenSearch (9200) and the white-cell Grafana (3000).
+      # federates with OpenDSS (the `power` extra) and SimPy, cm-viz (the white
+      # cell's 3D view, DESIGN.md 15.10), and on sim-ctl the ground-truth
+      # OpenSearch (9200) and the white-cell Grafana (3000).
       export DEBIAN_FRONTEND=noninteractive
       # CM_REF names the commit of this repository whose sim/ is installed. Move it
       # forward in the same change as any sim/ change the image must carry.
       CM_REF=41bc2e0d9dd0467074b15a614f705b07d4f23b89
       HELICS_VERSION=3.6.1
+      WEBSOCKETS_VERSION=15.0.1
       OPENSEARCH_VERSION=3.9.0
       OPENSEARCH_KEY_FINGERPRINT=A8B2D9E04CD51FEF6AA2DB53BA81D99981191457
       GRAFANA_KEY_FINGERPRINT=B53AE77BADB630A683046005963FA27710458545
@@ -85,10 +87,16 @@ spec:
       /opt/cherrymountain/venv/bin/pip install --no-cache-dir "helics==${HELICS_VERSION}"
       /opt/cherrymountain/venv/bin/pip install --no-cache-dir \
         "cherrymountain-sim[power] @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/${CM_REF}.tar.gz#subdirectory=cherrymountain-brewery/sim"
+      # cm-viz from the same archive: the bridge and the page with three.js
+      # vendored in the package (web/vendor/three, MIT), so nothing is fetched
+      # at run time. The app injects its unit on sim-ctl only.
+      /opt/cherrymountain/venv/bin/pip install --no-cache-dir "websockets==${WEBSOCKETS_VERSION}" \
+        "cherrymountain-viz @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/${CM_REF}.tar.gz#subdirectory=cherrymountain-brewery/viz"
       for exe in helics_broker helics_app helics_player helics_recorder; do
         ln -sf "/opt/cherrymountain/venv/bin/$exe" "/usr/local/bin/$exe"
       done
       /opt/cherrymountain/venv/bin/python -c "import helics, simpy, opendssdirect, cherrymountain_sim; print(helics.helicsGetVersion(), opendssdirect.__version__)"
+      /opt/cherrymountain/venv/bin/python -c "import cherrymountain_viz.server as s; assert (s.WEB / 'vendor/three/three.module.js').is_file()"
       install -d -m 0755 /etc/cherrymountain
 
       # Ground truth (DESIGN.md 9.5): a single-node OpenSearch that the federates and

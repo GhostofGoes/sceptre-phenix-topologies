@@ -148,6 +148,26 @@ def test_full_sim_ctl_gets_the_ground_truth_marker(ctx: Context) -> None:
     assert "/etc/cherrymountain/ground-truth.env" not in dsts
 
 
+def test_full_sim_ctl_runs_cm_viz_on_loopback(ctx: Context) -> None:
+    """cm-viz (DESIGN.md 15.10) goes where the event API runs: sim-ctl, which
+    hosts the weather federate. It reads the snapshot on 127.0.0.1 and its unit
+    allows loopback traffic only; no federate node gets it."""
+    sim_ctl = ctx.hosts["sim-ctl"]
+    assert isinstance(sim_ctl, SimCtlHost)
+    injects = {i.dst: i for i in render.render_sim(ctx, "sim-ctl", sim_ctl)}
+    values = env(Path(injects["/etc/default/cm-viz"].src))
+    assert values["CM_VIZ_SIMCTL_URL"] == "http://127.0.0.1:8080"
+    assert values["CM_VIZ_PORT"] == "8090"
+    unit = Path(injects["/etc/systemd/system/cm-viz.service"].src).read_text()
+    assert "--host 127.0.0.1" in unit
+    assert "IPAddressDeny=any" in unit and "IPAddressAllow=localhost" in unit
+    assert injects["/etc/phenix/startup/61-cm-viz.sh"].permissions == "0755"
+    proc = ctx.hosts["sim-process"]
+    assert isinstance(proc, SimFederateHost)
+    dsts = {i.dst for i in render.render_sim(ctx, "sim-process", proc)}
+    assert "/etc/default/cm-viz" not in dsts
+
+
 def test_full_mgmt_policy_covers_every_mgmt_member(ctx: Context) -> None:
     members = render.mgmt_members(ctx)
     plan = render.render_mgmt(ctx)

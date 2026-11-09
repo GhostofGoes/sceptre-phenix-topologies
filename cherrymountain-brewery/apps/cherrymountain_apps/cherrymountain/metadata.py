@@ -83,6 +83,9 @@ class SimCtl(Closed):
     event_port: Port = 8080
     #: Seconds to wait for one event API request.
     timeout: Seconds = 10.0
+    #: Guest port of cm-viz, the white cell's 3D view (DESIGN.md 15.10), on
+    #: 127.0.0.1 next to the event API; the autotunnel forwards it.
+    viz_port: Port = 8090
 
 
 class MgmtPolicy(Closed):

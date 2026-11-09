@@ -287,7 +287,7 @@ NODES: tuple[Node, ...] = (
     _vm("inet-nuke", "core", "cm-svc-protonuke.qc2", 1, 1, "inet", "Internet web and SMTP server (protonuke), plus the public NTP and DNS stand-in", [("INET", INET_NUKE_IP)], gateway=ISP_RTR_INET_IP, dns=None),
     _vm("bas-bbmd", "core", "cm-svc.qc2", 1, 1, "bas", "BAS BBMD (BACpypes3); its BDT lists itself and ot-svc", [("BAS", "10.30.10.5")], gateway="10.30.10.1"),
     # 3. sim-ctl, then the federates.
-    _vm("sim-ctl", "core", "cm-sim.qc2", 2, 6, "mgmt", "HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, chronyd for MGMT", [], mgmt="172.16.10.1", autotunnel=("13001:3000", "18080:8080", "19200:9200")),
+    _vm("sim-ctl", "core", "cm-sim.qc2", 2, 6, "mgmt", "HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, cm-viz 3D view, chronyd for MGMT", [], mgmt="172.16.10.1", autotunnel=("13001:3000", "18080:8080", "18090:8090", "19200:9200")),
     _vm("sim-process", "core", "cm-sim.qc2", 2, 3, "mgmt", "Process federates (HELICS)", [], mgmt="172.16.10.2", delay_c2=("sim-ctl",)),
     _vm("sim-power", "core", "cm-sim.qc2", 2, 3, "mgmt", "OpenDSS power federate (HELICS)", [], mgmt="172.16.10.3", delay_c2=("sim-ctl",)),
     _vm("sim-building", "core", "cm-sim.qc2", 2, 3, "mgmt", "Building federate (HELICS)", [], mgmt="172.16.10.4", delay_c2=("sim-ctl",)),

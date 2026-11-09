@@ -12,15 +12,19 @@ source decides and that broke, or would break, the first boot:
 
 from __future__ import annotations
 
+import json
 import os
 import re
+import shlex
+import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
+import yaml
 
-from soc_paths import INJECTS, ROOT
+from soc_paths import CONFIGS, INJECTS, ROOT
 
 MALCOLM: Path = INJECTS / "malcolm"
 WAZUH: Path = INJECTS / "wazuh"
@@ -211,3 +215,81 @@ def test_the_agent_enrolls_into_its_zone_group(tmp_path: Path) -> None:
     # A second boot changes nothing.
     assert run_agent_script(tmp_path, "dmz") == text
     assert text.count("<enrollment>") == 1
+
+
+# --- the vendor-maintenance run's expectations ------------------------------------------
+
+#: `docker exec ... curl -d @-`: keep the query, answer a count.
+EXPECT_DOCKER: str = """#!/bin/sh
+cat > "$FAKE_QUERY"
+printf '{"count": 3}\\n'
+"""
+
+
+def scorch_args(script: str) -> list[str]:
+    """The arguments of the SCORCH cc step of the full scenario that runs ``script``."""
+    scenario = yaml.safe_load((CONFIGS / "scenario-full.yml").read_text(encoding="utf-8"))
+    scorch = next(app for app in scenario["spec"]["apps"] if app["name"] == "scorch")
+    for component in scorch["metadata"]["components"]:
+        for vm in (component.get("metadata") or {}).get("vms") or []:
+            for stage in ("configure", "start", "stop", "cleanup"):
+                for step in vm.get(stage) or []:
+                    if script in str(step.get("args", "")):
+                        return shlex.split(step["args"])
+    raise AssertionError(f"no SCORCH step runs {script}")
+
+
+def expect_phrases() -> list[str]:
+    args = scorch_args("cm-malcolm-expect")[1:]
+    if args[0] == "--since":
+        args = args[2:]
+    return args
+
+
+@pytest.mark.skipif(shutil.which("jq") is None, reason="jq is not installed")
+def test_malcolm_expect_matches_the_start_of_a_signature(tmp_path: Path) -> None:
+    """Malcolm maps rule.name (the Suricata signature) as a keyword (ECS): a quoted
+    phrase matches it only as the whole value, so the start must match too."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "docker").write_text(EXPECT_DOCKER)
+    (bin_dir / "docker").chmod(0o755)
+    proc = subprocess.run(
+        ["bash", str(MALCOLM / "cm-malcolm-expect"), "--since", "45", 'CM "WireGuard" handshake'],
+        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "FAKE_QUERY": str(tmp_path / "query.json")},
+        capture_output=True, text=True, check=False, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert proc.stdout.startswith('PASS: "CM "WireGuard" handshake" found 3 time(s) in the last 45 minutes')
+    query = json.loads((tmp_path / "query.json").read_text())["query"]["bool"]
+    assert query["filter"] == [{"range": {"@timestamp": {"gte": "now-45m"}}}]
+    assert query["minimum_should_match"] == 1
+    assert {"prefix": {"rule.name": 'CM "WireGuard" handshake'}} in query["should"]
+    assert {"prefix": {"zeek.notice.note": 'CM "WireGuard" handshake'}} in query["should"]
+    assert {"query_string": {"query": '"CM \\"WireGuard\\" handshake"'}} in query["should"]
+
+
+def test_the_run_expects_detections_that_exist() -> None:
+    """Each phrase of the expect-malcolm step starts a Suricata signature of
+    cherrymountain.rules or names a notice of cherrymountain.zeek."""
+    signatures = re.findall(r'msg:"([^"]+)"', (MALCOLM / "cherrymountain.rules").read_text())
+    zeek = (MALCOLM / "zeek" / "cherrymountain.zeek").read_text()
+    module = re.search(r"^module (\w+);", zeek, re.MULTILINE)
+    assert module is not None
+    phrases = expect_phrases()
+    assert phrases, "the expect-malcolm step names no detection"
+    for phrase in phrases:
+        if phrase.startswith(f"{module.group(1)}::"):
+            note = phrase.split("::", 1)[1]
+            assert re.search(rf"\$note={note}\b", zeek), f"no notice {phrase} in cherrymountain.zeek"
+        else:
+            assert any(s.startswith(phrase) for s in signatures), f"no Suricata signature starts with {phrase!r}"
+
+
+def test_the_run_expects_wazuh_rules_that_exist() -> None:
+    rules = {int(i) for i in re.findall(r'<rule id="(\d+)"', (WAZUH / "cherrymountain_rules.xml").read_text())}
+    groups = [a for a in scorch_args("cm-wazuh-expect")[1:] if re.fullmatch(r"\d{6}(,\d{6})*", a)]
+    assert groups, "the expect-wazuh step names no rule"
+    for group in groups:
+        missing = {int(i) for i in group.split(",")} - rules
+        assert not missing, f"expect-wazuh names rules that do not exist: {sorted(missing)}"

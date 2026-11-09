@@ -296,9 +296,10 @@ priority = "check"
 
 [[repos.hooks]]
 # netcheck's own tests (they break the configs on purpose and expect the
-# findings), plus the tests of sync.py and of the BBMD service.
+# findings), plus the tests of sync.py, the BBMD service, and the VyOS
+# post-boot script.
 id = "cm-netcheck-tests"
-name = "pytest (netcheck, sync.py, BBMD service)"
+name = "pytest (netcheck, sync.py, BBMD service, VyOS script)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/netcheck/tests"
 additional_dependencies = [
@@ -306,7 +307,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/netcheck/|sync\.py$|phenix-injects/bbmd/)'
+files = '^cherrymountain-brewery/(tools/netcheck/|sync\.py$|phenix-injects/(bbmd|vrouter)/)'
 pass_filenames = false
 priority = "check"
 

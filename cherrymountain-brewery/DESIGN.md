@@ -1496,9 +1496,13 @@ notional design targets):
   - The utility DNP3 conduit ([§7.5](#75-utility-der-link)) reaches an L1
     gateway from L5 through fw-edge and fw-ot with no protocol break. It is
     decrypted from IPsec on fw-edge, so it crosses the DMZ in plaintext.
-    The fw-edge rule matches the source address `192.0.2.10` only, with no
-    IPsec policy match, so a plaintext packet spoofing that address from the
-    INET segment would pass the ACL. Adding a policy match is open work.
+    The vrouter template's rule matches the source address `192.0.2.10` only
+    (it has no IPsec policy match), so a plaintext packet spoofing that address
+    from the INET segment would pass the ACL. `cm-vyos-config.sh` therefore adds
+    `ipsec match-ipsec-in` (or `match-ipsec` on older builds) after boot to
+    every fw-edge rule whose source is utility-derms. That is unverified on a
+    VyOS VM, and `netcheck` does not model it; the template limitation is
+    recorded for upstream ([§16](#16-new-and-extended-software)).
   - The MGMT plane (below).
 - **MGMT is a simulation back-plane, not a containment boundary.** Field
   devices with HELICS-backed I/O and the simulation nodes have a MGMT NIC
@@ -1645,11 +1649,16 @@ default drop through the static routes, NAT, IPsec, and these rulesets
 ([§17](#17-testing-and-validation)).
 
 - **Router settings the templates cannot render.** phenix's vrouter templates
-  cannot log a rule, set a syslog target, write the IKEv2 `key-exchange`, or give
-  fw-ot its own NTP source. `phenix-injects/vrouter/cm-vyos-config.sh` does all
-  four after boot. A topology `commands` entry (a `cc exec`) runs it once per
-  boot. It turns on `default-log` for every ruleset, sends the router logs to
-  Wazuh, sets `ike-group IKE-1W key-exchange ikev2`, and points fw-ot at ot-svc.
+  cannot log a rule, set a syslog target, write the IKEv2 `key-exchange`, give
+  fw-ot its own NTP source, or match an IPsec policy.
+  `phenix-injects/vrouter/cm-vyos-config.sh` does all five after boot. A
+  topology `commands` entry (a `cc exec`) runs it once per boot. It turns on
+  `default-log` for every ruleset, sends the router logs to Wazuh, sets
+  `ike-group IKE-1W key-exchange ikev2`, points fw-ot at ot-svc, and requires
+  IPsec on fw-edge's utility DNP3 rule. `--dry-run` makes the changes, prints
+  `compare`, and discards them. `tools/netcheck/tests/test_vyos_config.py` runs
+  the script against a stand-in VyOS shell (the commands per router, the
+  run-once marker, the dry run, and the failure paths).
 - **Boot order.** isp-rtr boots first, because the vrouter app reuses the NTP
   address of the first router that has one for every router. The script then
   fixes fw-ot's source.
@@ -2791,7 +2800,7 @@ is never hand-written.
 | phenix `mirror` app follow-up (upstream) | `sandialabs/sceptre-phenix-apps` | In `setupOVS` mode, set `options:df_default=false` on the host's GRE port and add the capture-VM flow `in_port=sniffer,actions=output:phenix` (then `ip link set phenix up`), instead of leaving both to the image ([§14](#14-blue-team-monitoring)) |
 | phenix autotunnel loop (upstream) | `sandialabs/sceptre-phenix` | The fork's fixes (branch `ci-e2e-minimega`): a loop in `phenix ui` that creates tunnels for every experiment, including CLI-started ones, waits for C2 as long as it runs, and re-creates tunnels after VM restarts, reboots, and long pauses. It also needs a way to read the host port (the forwards API reports only the annotation label) |
 | `vyatta.tmpl` and VyOS image fixes (upstream) | `sandialabs/sceptre-phenix`, `sandialabs/sceptre-phenix-images` | `set vpn ipsec ike-group IKE-1W key-exchange ikev2`; the `ike-group` fix if `main` still has the `esp-group` typo; `build-vyos.sh` fixes for the current vyos-build image naming |
-| phenix `vrouter` app limitations (upstream) | `sandialabs/sceptre-phenix` | Found while building the network. (1) The app keeps the NTP address of the first router that has one and uses it for every later router, so isp-rtr comes first in the topology and `cm-vyos-config.sh` sets fw-ot's source. (2) The rendered rulesets filter only the `forward` chain, so traffic to a router's own address (IKE, SSH, NTP, syslog) is never filtered. (3) Rules have no `log` field, so `cm-vyos-config.sh` turns on `default-log`. (4) netem `loss` is an integer percent (the design wants 0.1 %, the files use 1). (5) The template has no `key-exchange`, which the row above also asks for. Until these merge, the script and the topology order work around them |
+| phenix `vrouter` app limitations (upstream) | `sandialabs/sceptre-phenix` | Found while building the network. (1) The app keeps the NTP address of the first router that has one and uses it for every later router, so isp-rtr comes first in the topology and `cm-vyos-config.sh` sets fw-ot's source. (2) The rendered rulesets filter only the `forward` chain, so traffic to a router's own address (IKE, SSH, NTP, syslog) is never filtered. (3) Rules have no `log` field, so `cm-vyos-config.sh` turns on `default-log`. (4) netem `loss` is an integer percent (the design wants 0.1 %, the files use 1). (5) The template has no `key-exchange`, which the row above also asks for. (6) Rules have no IPsec policy match (`ipsec match-ipsec-in`), so a rule for traffic that should arrive only through a tunnel also passes a spoofed plaintext packet; `cm-vyos-config.sh` adds it to the utility DNP3 rule. Until these merge, the script and the topology order work around them |
 | phenix PR #130 follow-up (upstream) | `sandialabs/sceptre-phenix` (PR 130, `activeshadow:serial-app`) | Reconnect the host `socat` when a VM is redeployed (after `vm kill` it exits and is never restarted), lower the `-d -d -d -d` log volume (4.4 MB per 5 minutes), and isolate why a restarted VM did not register its C2 client. The design stays on the current serial app until then ([§15.2](#152-apps)) |
 | `sync.py` and `netcheck` | repository root, `tools/netcheck/` | `sync.py` embeds plantgen's app blocks in the scenarios, copies generated files into `phenix-injects/`, and checks them (LFS-pointer aware; it replaces `sync_ci.py`). `netcheck` traces every §10.3 conduit and default drop statically ([§17](#17-testing-and-validation)). Built |
 | Repository lint hooks | `tools/lint/` | prek hooks that run `systemd-analyze` on units and shellcheck on shell embedded in image YAML ([§17](#17-testing-and-validation)) |

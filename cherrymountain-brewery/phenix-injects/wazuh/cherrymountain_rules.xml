@@ -18,7 +18,7 @@
     100411  the OpenPLC program re-upload from the EWS
   The same events outside the approved window (06:00 to 19:00 on weekdays, manager
   time) are the "vendor session outside an approved window" detection: 100204,
-  100205, 100305, 100306. Change the window by editing the <time> and <weekday>
+  100205, 100305, 100306, and for the cmadmin account 100307 and 100308. Change the window by editing the <time> and <weekday>
   options below.
 
   Wazuh built-in rules used as parents: 553 and 554 (file deleted, file added),
@@ -29,8 +29,11 @@
 
   <!-- ===== Firewalls: blocked conduit attempts ===== -->
 
+  <!-- The cm-fw-drop decoders are children of Wazuh's kernel decoder, so the event
+       is decoded as `kernel`; the regex keeps other kernel lines out. -->
   <rule id="100100" level="3">
-    <decoded_as>cm-fw-drop</decoded_as>
+    <decoded_as>kernel</decoded_as>
+    <regex type="pcre2">IN=\S* OUT=\S* (?:MAC=\S* )?SRC=</regex>
     <description>CherryMountain firewall: default deny dropped $(srcip) to $(dstip) $(protocol)/$(dstport).</description>
     <group>cm_firewall,</group>
   </rule>
@@ -83,21 +86,21 @@
 
   <rule id="100201" level="6">
     <if_sid>100200</if_sid>
-    <action>^peer_up$</action>
+    <action>peer_up</action>
     <description>Vendor WireGuard tunnel is up: peer $(peer) from $(srcip).</description>
     <group>cm_vendor,cm_wireguard,cm_vendor_session,</group>
   </rule>
 
   <rule id="100202" level="4">
     <if_sid>100200</if_sid>
-    <action>^peer_down$</action>
+    <action>peer_down</action>
     <description>Vendor WireGuard tunnel is down: peer $(peer) had no handshake for three minutes.</description>
     <group>cm_vendor,cm_wireguard,</group>
   </rule>
 
   <rule id="100203" level="8">
     <if_sid>100200</if_sid>
-    <action>^peer_roam$</action>
+    <action>peer_roam</action>
     <description>Vendor WireGuard peer $(peer) changed its endpoint to $(srcip).</description>
     <group>cm_vendor,cm_wireguard,</group>
   </rule>
@@ -167,6 +170,24 @@
     <group>cm_vendor,cm_guacamole,cm_vendor_outside_window,</group>
   </rule>
 
+  <!-- Wazuh tries the children of one rule highest level first and stops at the first
+       that matches (checked with wazuh-logtest on 4.14.1), so 100302 (level 12) hides
+       100305 and 100306 for a cmadmin login from the tunnel. These two carry the
+       window under 100302 instead. -->
+  <rule id="100307" level="13">
+    <if_sid>100302</if_sid>
+    <time>7 pm - 6 am</time>
+    <description>The Guacamole admin account cmadmin signed in from the vendor tunnel ($(srcip)) outside the approved window (evening or night).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_outside_window,authentication_success,</group>
+  </rule>
+
+  <rule id="100308" level="13">
+    <if_sid>100302</if_sid>
+    <weekday>weekends</weekday>
+    <description>The Guacamole admin account cmadmin signed in from the vendor tunnel ($(srcip)) outside the approved window (weekend).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_outside_window,authentication_success,</group>
+  </rule>
+
   <rule id="100310" level="3">
     <decoded_as>cm-guacd</decoded_as>
     <description>CherryMountain guacd event.</description>
@@ -208,7 +229,7 @@
 
   <rule id="100401" level="12">
     <if_sid>5715</if_sid>
-    <srcip>!10.10.20.11</srcip>
+    <srcip negate="yes">10.10.20.11</srcip>
     <user>^ridgeline$</user>
     <description>The vendor account signed in to the EWS over SSH from $(srcip), not from the jump host.</description>
     <group>cm_vendor,cm_ews,</group>
@@ -232,21 +253,21 @@
 
   <rule id="100411" level="8">
     <if_sid>100410</if_sid>
-    <action>^plc_upload$</action>
+    <action>plc_upload</action>
     <description>OpenPLC program upload from the EWS to $(plc) ($(dstip)) by $(srcuser).</description>
     <group>cm_plc,cm_vendor_session,cm_program_change,</group>
   </rule>
 
   <rule id="100412" level="8">
     <if_sid>100410</if_sid>
-    <action>^plc_start$|^plc_stop$</action>
+    <action type="pcre2">^plc_(?:start|stop)$</action>
     <description>OpenPLC runtime $(action) on $(plc) ($(dstip)) from the EWS by $(srcuser).</description>
     <group>cm_plc,cm_program_change,</group>
   </rule>
 
   <rule id="100413" level="10">
     <if_sid>100410</if_sid>
-    <action>^plc_failed$</action>
+    <action>plc_failed</action>
     <description>OpenPLC action from the EWS failed on $(plc) ($(dstip)).</description>
     <group>cm_plc,</group>
   </rule>

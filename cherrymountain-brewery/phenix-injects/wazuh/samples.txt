@@ -13,7 +13,7 @@
 100203|Nov  9 12:00:05 dmz-vpn cm-wg-watch: event=peer_roam interface=wg0 peer=7bqjO1NU endpoint=198.51.100.99:51820
 100301,100305,100306|Nov  9 12:00:06 phenix guacamole[1234]: 12:00:06.123 [http-nio-8080-exec-3] INFO  o.a.g.event.EventLoggingListener - User "ridgeline-tech" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5].
 100301,100305,100306|Nov  9 12:00:06 phenix guacamole[1234]: 12:00:06.895 [http-nio-8080-exec-3] INFO  o.a.g.event.EventLoggingListener - User "ridgeline-tech" (authenticated by "postgresql") successfully authenticated from 10.99.0.2
-100302|Nov  9 12:00:07 phenix guacamole[1234]: 12:00:07.123 [http-nio-8080-exec-4] INFO  o.a.g.event.EventLoggingListener - User "cmadmin" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5].
+100302,100307,100308|Nov  9 12:00:07 phenix guacamole[1234]: 12:00:07.123 [http-nio-8080-exec-4] INFO  o.a.g.event.EventLoggingListener - User "cmadmin" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5].
 100303|Nov  9 12:00:08 phenix guacamole[1234]: 12:00:08.123 [http-nio-8080-exec-5] WARN  o.a.g.event.EventLoggingListener - Authentication attempt from [10.99.0.2, 172.18.0.5] for user "ridgeline-tech" failed: Permission denied. (rejected by "totp")
 100303|Nov  9 12:00:08 phenix guacamole[1234]: 12:00:08.408 [http-nio-8080-exec-1] WARN  o.a.g.event.EventLoggingListener - Authentication attempt from 10.99.0.2 for user "ridgeline-tech" failed: Provided TOTP code is not valid. (rejected by "totp")
 100311|Nov  9 12:00:09 phenix guacd[1]: guacd[1]: INFO:	Creating new client for protocol "rdp"

@@ -2422,6 +2422,18 @@ point for future adversary-emulation scenarios.
   the list equal to the conduit matrix.
 - Syslog comes from the VyOS firewalls and from the ot-svc relay.
 - PLCs and ot-sim devices have no agents, which is realistic.
+- **Rules checked on a real manager.** Every line of
+  `phenix-injects/wazuh/samples.txt` was run through `wazuh-logtest` on a Wazuh
+  4.14.1 manager container and fires its rule. That run found four problems the
+  offline evaluator in `tests/soc/test_wazuh.py` had modeled wrongly, all fixed:
+  Wazuh's own `kernel` decoder takes every kernel line first, so the firewall
+  drop decoders are its children and rule 100100 matches `decoded_as kernel`;
+  `<action>` is a plain string comparison, so anchored patterns never matched;
+  `!` in `<srcip>` does not negate (Wazuh 4 uses `negate="yes"`); and the
+  children of a rule run highest level first and stop at the first match, so
+  100302 (cmadmin from the tunnel, level 12) hid the approved-window rules
+  100305/100306 for that login, which 100307/100308 now carry under 100302.
+  The evaluator now models all four.
 
 **Baseline detection use cases** (normal operations should generate known,
 explainable events):

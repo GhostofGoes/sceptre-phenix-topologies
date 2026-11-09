@@ -13,27 +13,30 @@
     cm-guacamole   the Guacamole web app on dmz-jump (login events)
     cm-guacd       guacd on dmz-jump (sessions)
     cm-plc-tool    cm_plc_reupload.py on the EWS: OpenPLC REST actions of the engineer
-  The children of one parent exclude each other through their prematch, so it does
-  not matter whether Wazuh runs the first matching child or all of them.
+  Wazuh runs the first child of a parent whose prematch matches, then that child's
+  siblings (the same name, no prematch); a child of a built-in parent (kernel) is
+  reported, and matched by <decoded_as>, under the parent's name. Every sample of
+  samples.txt was run through wazuh-logtest on a Wazuh 4.14.1 manager.
 -->
 
 <!-- ===== VyOS firewall drops ===== -->
+<!-- Wazuh's own `kernel` decoder takes every line from the kernel program first, so
+     these are its children: a second top-level decoder for kernel lines would never
+     run. Its built-in iptables children expect a space before IN=, which VyOS's
+     "[ipv4-FROM-DMZ-default-D]IN=" prefix lacks, so they do not match these lines.
+     The two siblings share the name: the first matches and takes the addresses and
+     protocol, the second adds the ports when there are any. -->
 <decoder name="cm-fw-drop">
+  <parent>kernel</parent>
   <prematch type="pcre2">IN=\S* OUT=\S* (?:MAC=\S* )?SRC=</prematch>
-</decoder>
-
-<decoder name="cm-fw-drop-l4">
-  <parent>cm-fw-drop</parent>
-  <prematch type="pcre2">PROTO=(?:TCP|UDP) SPT=\d+ DPT=\d+</prematch>
-  <regex type="pcre2">SRC=(\S+) DST=(\S+) .*?PROTO=(\w+) SPT=(\d+) DPT=(\d+)</regex>
-  <order>srcip, dstip, protocol, srcport, dstport</order>
-</decoder>
-
-<decoder name="cm-fw-drop-other">
-  <parent>cm-fw-drop</parent>
-  <prematch type="pcre2">PROTO=(?!TCP |UDP )\w+</prematch>
   <regex type="pcre2">SRC=(\S+) DST=(\S+) .*?PROTO=(\w+)</regex>
   <order>srcip, dstip, protocol</order>
+</decoder>
+
+<decoder name="cm-fw-drop">
+  <parent>kernel</parent>
+  <regex type="pcre2">PROTO=(?:TCP|UDP) SPT=(\d+) DPT=(\d+)</regex>
+  <order>srcport, dstport</order>
 </decoder>
 
 <!-- ===== WireGuard peer events (dmz-vpn) ===== -->

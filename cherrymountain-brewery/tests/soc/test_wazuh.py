@@ -97,12 +97,20 @@ RULES: list[Rule] = load_rules()
 RULES_BY_ID: dict[int, Rule] = {r.id: r for r in RULES}
 
 
+#: Wazuh's own parent decoders that ours extend, with their program_name pattern.
+#: A child of one is reported (and matched by decoded_as) under the parent's name.
+BUILTIN_DECODERS: dict[str, str] = {"kernel": r"^kernel"}
+
+
 def test_decoders_are_well_formed() -> None:
     names = [d.name for d in DECODERS]
-    assert len(names) == len(set(names)), "decoder names must be unique"
+    # One name may repeat only as sibling decoders (the same parent, in a row).
+    for name in set(names):
+        parents = {d.parent for d in DECODERS if d.name == name}
+        assert len(parents) == 1, f"decoder {name} is defined under different parents"
     for decoder in DECODERS:
         if decoder.parent:
-            assert decoder.parent in names, f"{decoder.name}: unknown parent {decoder.parent}"
+            assert decoder.parent in names or decoder.parent in BUILTIN_DECODERS, f"{decoder.name}: unknown parent {decoder.parent}"
         for pattern in (decoder.program_name, decoder.prematch, decoder.regex):
             if pattern:
                 re.compile(pattern)
@@ -114,7 +122,7 @@ def test_decoders_are_well_formed() -> None:
 def test_rules_are_well_formed() -> None:
     ids = [r.id for r in RULES]
     assert len(ids) == len(set(ids)), "rule ids must be unique"
-    decoder_names = {d.name for d in DECODERS}
+    decoder_names = {d.name for d in DECODERS if d.parent is None} | set(BUILTIN_DECODERS)
     for rule in RULES:
         assert 100100 <= rule.id <= 100499, f"rule {rule.id} is outside the range this file owns"
         assert set(rule.options) <= KNOWN_OPTIONS, f"rule {rule.id}: unknown options {set(rule.options) - KNOWN_OPTIONS}"
@@ -130,9 +138,19 @@ def test_rules_are_well_formed() -> None:
             for value in rule.values(option):
                 if rule.attrs.get(option, {}).get("type") == "pcre2":
                     re.compile(value)
-        for field in ("hostname", "program_name", "dstport", "protocol", "action", "user"):
+        for field in ("hostname", "program_name", "dstport", "protocol", "user"):
             for value in rule.values(field):
                 re.compile(value.replace("$|^", "|^"))  # alternations of anchored words
+        # Wazuh compares <action> as a plain string unless it has a type: anchors
+        # there never match (found with wazuh-logtest on 4.14.1).
+        for value in rule.values("action"):
+            if rule.attrs.get("action", {}).get("type") == "pcre2":
+                re.compile(value)
+            else:
+                assert not set(value) & set("^$|*"), f"rule {rule.id}: <action> {value} is not a plain string"
+        # Wazuh 4 negates an address with negate="yes"; a leading ! does not work.
+        for value in rule.values("srcip"):
+            assert not value.startswith("!"), f"rule {rule.id}: use negate=\"yes\", not !"
 
 
 #: What Wazuh's own decoders and rules contribute for the log lines of the samples: the
@@ -165,23 +183,33 @@ def decode(line: str) -> Event:
         found = re.search(pattern, event.message)
         if found:
             event.fields.update(dict(zip(names, found.groups(), strict=True)))
-    for parent in (d for d in DECODERS if d.parent is None):
-        if parent.program_name and re.search(parent.program_name, event.program_name):
+    parents: list[tuple[str, str | None, str | None]] = [
+        (name, pattern, None) for name, pattern in BUILTIN_DECODERS.items()
+    ] + [(d.name, d.program_name, d.prematch) for d in DECODERS if d.parent is None]
+    for name, program, prematch in parents:
+        if program and re.search(program, event.program_name):
             matched = True
-        elif parent.prematch and re.search(parent.prematch, event.message):
+        elif prematch and re.search(prematch, event.message):
             matched = True
         else:
             matched = False
         if not matched:
             continue
-        event.decoder = parent.name
-        for child in (d for d in DECODERS if d.parent == parent.name):
+        # The event carries the parent's name. Children are tried in order; the
+        # first whose prematch matches wins, and its later siblings (the same
+        # name, no prematch) add their fields.
+        event.decoder = name
+        children = [d for d in DECODERS if d.parent == name]
+        for i, child in enumerate(children):
             if child.prematch and not re.search(child.prematch, event.message):
                 continue
-            found = re.search(child.regex, event.message) if child.regex else None
-            if found:
-                event.fields.update(dict(zip(child.order, found.groups(), strict=True)))
-                break
+            for sibling in [child, *(c for c in children[i + 1 :] if c.name == child.name and not c.prematch)]:
+                found = re.search(sibling.regex, event.message) if sibling.regex else None
+                if found:
+                    event.fields.update(
+                        {k: v for k, v in zip(sibling.order, found.groups(), strict=True) if v is not None}
+                    )
+            break
         break
     return event
 
@@ -198,16 +226,20 @@ def option_matches(rule: Rule, event: Event, option: str, value: str) -> bool:
         return re.search(value, event.program_name) is not None
     if option == "regex":
         return re.search(value, event.message) is not None
-    if option in ("dstport", "protocol", "action"):
+    if option in ("dstport", "protocol"):
         return re.search(value, event.fields.get(option, "")) is not None
+    if option == "action":
+        if rule.attrs.get("action", {}).get("type") == "pcre2":
+            return re.search(value, event.fields.get("action", "")) is not None
+        return event.fields.get("action") == value
     if option == "user":
         return re.search(value, event.fields.get("dstuser", "")) is not None
     if option == "srcip":
         address = event.fields.get("srcip")
         if address is None:
             return False
-        negate = value.startswith("!")
-        network = ipaddress.ip_network(value.lstrip("!"), strict=False)
+        negate = rule.attrs.get("srcip", {}).get("negate") == "yes"
+        network = ipaddress.ip_network(value, strict=False)
         return (ipaddress.ip_address(address) in network) != negate
     if option == "field":
         return True  # file integrity fields: not exercised by log samples
@@ -233,7 +265,12 @@ def evaluate(event: Event) -> int | None:
         ]
         current = roots[0] if roots else None
     while current is not None:
-        children = [r for r in RULES if str(current.id) in r.values("if_sid") and rule_matches(r, event)]
+        # Wazuh tries the children of a rule highest level first and stops at the
+        # first that matches (checked with wazuh-logtest on 4.14.1).
+        children = sorted(
+            (r for r in RULES if str(current.id) in r.values("if_sid") and rule_matches(r, event)),
+            key=lambda r: -r.level,
+        )
         if not children:
             break
         current = children[0]

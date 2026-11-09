@@ -323,9 +323,13 @@ class CherryMountain(AppBase):
             return HostCheck(state="not-checked")
         asked: list[str] = [*units, *legacy.values()]
         try:
+            # miniccc runs the command's words as an argument vector, with no
+            # shell, so nothing here may be shell syntax (a trailing `|| true`
+            # would be two more unit names). systemctl exits nonzero unless
+            # every unit is active, which mm_exec_wait reports, not raises.
             resp: dict[str, Any] = self._exec(
                 name,
-                "systemctl is-active " + " ".join(asked) + " || true",
+                "systemctl is-active " + " ".join(asked),
                 config.verify.timeout,
                 config.verify.client_grace,
             )

@@ -17,7 +17,10 @@ from cherrymountain_apps.cherrymountain.tests.conftest import RunApp, app_block
 
 
 class FakeVms:
-    """Answers the provisioning checks the app runs through cc."""
+    """Answers the provisioning checks the app runs through cc, as miniccc
+    does: it runs the command's words as an argument vector, with no shell
+    (cmd/miniccc/commands.go), so every word after ``systemctl is-active`` is
+    a unit name and gets a line of output."""
 
     def __init__(self, states: dict[str, str | dict[str, str]]) -> None:
         #: vm -> one state for every unit, or a state per unit (others inactive).
@@ -31,16 +34,16 @@ class FakeVms:
         if vm not in self.states:
             raise TimeoutError("no C2 client")
         units = (
-            cmd.split("systemctl is-active ", 1)[1].split(" ||", 1)[0].split()
-            if "is-active" in cmd
-            else []
+            cmd.split("systemctl is-active ", 1)[1].split() if "is-active" in cmd else []
         )
         state = self.states[vm]
         if isinstance(state, dict):
             lines = [state.get(u, "inactive") for u in units]
         else:
             lines = [state for _ in units] or [state]
-        return {"exitcode": 0, "stdout": "\n".join(lines), "stderr": ""}
+        # systemctl is-active exits 0 only when every unit is active.
+        code = 0 if lines and all(line == "active" for line in lines) else 3
+        return {"exitcode": code, "stdout": "\n".join(lines), "stderr": ""}
 
 
 @pytest.fixture
@@ -79,8 +82,10 @@ def test_post_start_records_pending_and_no_kpis(
     assert "no tunnel to sim-ctl:8080" in st["kpis"]["reason"]
     assert (
         "sim-process",
-        "systemctl is-active cm-federate@cellar.service cm-cellar.service || true",
+        "systemctl is-active cm-federate@cellar.service cm-cellar.service",
     ) in fake.commands
+    # No shell runs the command, so it holds no shell syntax.
+    assert not any(set(cmd) & set("|&;<>$`") for _, cmd in fake.commands)
 
 
 def test_a_federate_run_by_its_legacy_unit_counts_as_provisioned(

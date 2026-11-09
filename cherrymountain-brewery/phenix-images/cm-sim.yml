@@ -207,8 +207,8 @@ spec:
           options:
             path: /var/lib/grafana/dashboards/cherrymountain
       EOF
-      # The documents carry the federate clock in @timestamp (sim time, which starts
-      # on a summer weekday at 04:30), so the dashboard opens on the last day.
+      # The documents carry the wall clock in @timestamp and the simulated time in
+      # sim_time, so the dashboard opens on the last day of the run.
       cat > /var/lib/grafana/dashboards/cherrymountain/cm-ground-truth.json <<'EOF'
       {"uid": "cm-ground-truth", "title": "CherryMountain ground truth", "schemaVersion": 39,
        "time": {"from": "now-24h", "to": "now+24h"}, "refresh": "30s",
@@ -221,7 +221,7 @@ spec:
                       "timeField": "@timestamp"}]},
         {"id": 2, "type": "logs", "title": "Scenario events", "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
          "datasource": {"type": "grafana-opensearch-datasource", "uid": "cm-ground-truth"},
-         "targets": [{"refId": "A", "query": "federate:weather AND _exists_:event", "metrics": [{"id": "1", "type": "logs"}],
+         "targets": [{"refId": "A", "query": "federate:weather AND _exists_:events", "metrics": [{"id": "1", "type": "logs"}],
                       "bucketAggs": [], "timeField": "@timestamp"}]}
        ]}
       EOF

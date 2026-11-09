@@ -629,13 +629,10 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
         },
         "cpu-module": {"api-endpoint": "127.0.0.1:9101"},
     }
-    if plant.spec.ground_truth:
-        md["ground-truth-module"] = {
-            "elastic": {
-                "endpoint": f"http://{plant.hosts['sim-ctl'].ip('mgmt')}:9200",
-                "index-base-name": "cherrymountain-truth",
-            }
-        }
+    # No ground-truth-module: ot-sim's writes one document per point per
+    # second from every device (about 27 million a day in the full plant) into
+    # sim-ctl's 16 GB disk, and nothing reads them. The federates record the
+    # same values every step (cherrymountain_sim.groundtruth).
 
     def devices(host: str) -> list[dict[str, Any]]:
         out = []

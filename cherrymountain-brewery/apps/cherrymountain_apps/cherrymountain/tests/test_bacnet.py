@@ -76,10 +76,7 @@ def test_the_ot_sim_app_alone_leaves_a_bacnet_controller_without_io(chain: Chain
     this fails, and the rendering here can go."""
     for host in BAS:
         root: ET.Element = config_of(chain.otsim, host)
-        assert [m.get("name") for m in root.find("cpu").findall("module")] == [  # type: ignore[union-attr]
-            "backplane",
-            "ground-truth",
-        ]
+        assert [m.get("name") for m in root.find("cpu").findall("module")] == ["backplane"]  # type: ignore[union-attr]
         assert root.find("io") is None
         assert "helics/federate" not in (node(chain.otsim, host).get("annotations") or {})
     # A Modbus device, for contrast, has both.
@@ -93,7 +90,7 @@ def test_bacnet_controllers_get_the_io_and_bacnet_modules(chain: Chain) -> None:
         modules: dict[str | None, str | None] = {
             m.get("name"): m.text for m in root.find("cpu").findall("module")  # type: ignore[union-attr]
         }
-        assert list(modules) == ["backplane", "ground-truth", "i/o", "bacnet"]
+        assert list(modules) == ["backplane", "i/o", "bacnet"]
         assert modules["i/o"] == "ot-sim-io-module {{config_file}}"
         assert modules["bacnet"] == (
             "/opt/otsim-venv/bin/python -I /usr/local/lib/cm-otsim/cm_otsim_bacnet.py {{config_file}}"
@@ -101,7 +98,7 @@ def test_bacnet_controllers_get_the_io_and_bacnet_modules(chain: Chain) -> None:
         assert len(root.findall("io")) == 1 and len(root.findall("bacnet")) == 1
         # What the ot-sim app rendered is still there.
         assert root.findtext("message-bus/pull-endpoint") == "tcp://127.0.0.1:1234"
-        assert root.find("ground-truth") is not None
+        assert root.findtext("cpu/api/endpoint") == "127.0.0.1:9101"
 
 
 def test_the_io_element_is_what_the_ot_sim_app_renders_for_a_modbus_device(chain: Chain) -> None:

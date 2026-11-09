@@ -138,7 +138,7 @@ systemctl enable --now filebeat.service
 
 # Agent groups, named like the nodes' zone labels (the app enrolls each agent into
 # its zone's group), and the shared settings of the groups that have any.
-for group in default dmz ops hmi bas soc ctrl corp vendor inet util mgmt derlink field-bh field-cel field-pkg field-utl field-pwr; do
+for group in default dmz ops hmi bas soc ctrl corp vendor inet util mgmt derlink edge ot-edge field-bh field-cel field-pkg field-utl field-pwr; do
   "${OSSEC}/bin/agent_groups" -a -g "$group" -q || true
 done
 for file in "${CONF}"/*.conf; do

@@ -17,7 +17,8 @@ TimeoutStartSec=30min
 Restart=on-failure
 RestartSec=30
 
-# Hardening. This is the one root unit of the sensor: it writes the Malcolm
+# Hardening. The system call filter keeps @privileged calls (chown and setuid are in it), which
+# this unit needs. This is the one root unit of the sensor: it writes the Malcolm
 # checkout, hands it to uid 1000 (CAP_CHOWN, CAP_FOWNER, CAP_DAC_OVERRIDE), runs
 # Malcolm's auth_setup as uid 1000 through setpriv (CAP_SETUID, CAP_SETGID), and
 # talks to Docker through its socket.
@@ -42,8 +43,8 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 MemoryDenyWriteExecute=yes
 SystemCallArchitectures=native
-SystemCallFilter=@system-service @setuid
-SystemCallFilter=~@privileged @resources
+SystemCallFilter=@system-service
+SystemCallFilter=~@resources
 CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID
 UMask=0077
 

@@ -50,9 +50,10 @@ set_env() {
   fi
 }
 
-# as_malcolm CMD...: run a command as the unprivileged user Malcolm's scripts need.
+# as_malcolm CMD...: run a command as the unprivileged user Malcolm's scripts need. The
+# unit hides /home (ProtectHome=yes), so HOME is the private /tmp.
 as_malcolm() {
-  setpriv --reuid="${MALCOLM_UID}" --regid="${MALCOLM_UID}" --clear-groups "$@"
+  setpriv --reuid="${MALCOLM_UID}" --regid="${MALCOLM_UID}" --clear-groups env HOME=/tmp "$@"
 }
 
 if [ -f "${STATE}/provisioned" ]; then
@@ -64,7 +65,10 @@ fi
 profile=$(cm_malcolm_profile)
 read -r os_heap ls_heap <<< "$(cm_malcolm_heaps "$profile")"
 log "profile ${profile} (OpenSearch heap ${os_heap}, Logstash heap ${ls_heap})"
+# The profile file is read by cm-malcolm-start, which runs as the user malcolm; the unit's
+# umask would make it root-only.
 printf '%s\n' "$profile" > "${STATE}/profile"
+chmod 0644 "${STATE}/profile"
 
 cd "${MALCOLM_DIR}"
 

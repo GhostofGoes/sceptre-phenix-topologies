@@ -15,7 +15,8 @@ TimeoutStartSec=45min
 Restart=on-failure
 RestartSec=60
 
-# Hardening. This is the one root unit of the SIEM: it writes configuration and
+# Hardening. The system call filter keeps @privileged calls (chown and setuid are in it), which
+# this unit needs. This is the one root unit of the SIEM: it writes configuration and
 # certificates for three services under their own users (CAP_CHOWN, CAP_FOWNER,
 # CAP_DAC_OVERRIDE), starts them through systemd (D-Bus, an AF_UNIX socket), and
 # talks to the indexer and the API over TCP.
@@ -40,7 +41,7 @@ RestrictSUIDSGID=yes
 LockPersonality=yes
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
-SystemCallFilter=~@privileged @resources
+SystemCallFilter=~@resources
 CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID
 UMask=0077
 

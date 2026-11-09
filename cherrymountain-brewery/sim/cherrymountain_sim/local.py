@@ -19,26 +19,41 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from cherrymountain_sim.federate import Federate, HelicsConfig, Value, build
+from cherrymountain_sim.plcloop import PlcLink
 
 
 class LocalFederation:
-    """All federates of a helics.json, stepped together at 1 s."""
+    """All federates of a helics.json, stepped together at 1 s (or ``dt``).
+
+    ``plcs`` closes the loop for PLCs (:class:`~cherrymountain_sim.plcloop.PlcLink`):
+    each step, once the federation has published, every PLC scans on the values
+    of the previous step and writes its outputs to the federates before they
+    step, the same one-step latency as a field device.
+    """
 
     config: HelicsConfig
     feds: dict[str, Federate]
     values: dict[str, Value]
+    plcs: list[PlcLink]
     t: float
 
     def __init__(
-        self, config: HelicsConfig, names: Sequence[str] | None = None
+        self,
+        config: HelicsConfig,
+        names: Sequence[str] | None = None,
+        plcs: Sequence[PlcLink] | None = None,
     ) -> None:
         self.config = config
         self.feds = {n: build(config, n) for n in (names or list(config.federates))}
         self.values = {}
+        self.plcs = list(plcs or [])
         self.t = 0.0
 
     def step(self, dt: float = 1.0) -> None:
         """Advance every federate whose period is due by ``dt`` seconds."""
+        if self.values:
+            for link in self.plcs:
+                link.scan(self.values, self.feds, self.t)
         for name, fed in self.feds.items():
             period = self.config.federates[name].period_s
             if self.t % period > 1e-9 and period > dt:

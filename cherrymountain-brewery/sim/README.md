@@ -67,7 +67,22 @@ two PLC programs.
 **Time.** Everything runs in wall time except the cellar's fermentation
 kinetics, which run 48x faster; exported fluxes stay real-time-equivalent
 (DESIGN.md §9.4). The clock starts at helics.json's `clock.start` (a summer
-weekday, 04:30).
+weekday, 04:30), and `clock.speedup` moves the calendar faster than the physics.
+
+There are two clocks. The cellar's `clock.sim_hours` (`CEL.CLK.KI01`) is the
+fermentation recipe clock: kinetic hours since the start, 48x compressed, not a
+date. The calendar is `SimClock` (`clock.start` plus federate time times
+`clock.speedup`, a fixed UTC offset, so no daylight-saving shift): the weather
+federate publishes it as `weather/clock.epoch_s`, the tariff meter bills by it,
+and the ATS controller (`gen-ats`) shows it to plc-power as three 16-bit
+registers (`power.ClockRegisters`): `clock_min` (minute of the local day,
+0-1439), `clock_day` (the local date as days since 1970-01-01, monotonic, so a
+reader can tell a stopped or jumping clock from a running one; the weekday is
+`(day + 4) mod 7`, 0 = Sunday), and `clock_month` (1-12, the billing month).
+They are `PWR.GEN.KI01` to `KI03` in `plant.yaml`. plc-power schedules the
+SV-SGT on-peak window, the brew-day reserve, the monthly demand reset, and the
+weekly genset exercise from them, and distrusts them when they stop or jump
+(`plc/plc-power/plc-power.st`).
 
 ## Event API (sim-ctl)
 
@@ -145,13 +160,38 @@ so `plant.yaml` is unchanged.
 | `test_brewing.py` | Boiling points (94.6 °C water, 94.9 °C wort at 83.4 kPa), strike water, Tinseth against the Brewtarget/brewday formula (20.73 IBU reference), altitude derating (0.698 Hosom, 0.643 Malowicki), the recipe's 68.0 IBU on site vs 74.9 at sea level, ε-NTU hand calculations and `ht`, mash fermentability trend |
 | `test_carbonation.py` | Zahm-Nagel 10.2 psig (sea level) and 12.8 psig (site) for 2.6 vol at 34 °F, Henry's law within 6 % over 32-50 °F and 2.0-3.0 vol, BBT carbonation and serving |
 | `test_packml.py` | Transition table equals PackMLpy's, illegal commands refused, a 5,000-command fuzz and a packaging shift (jam, power loss) with legal transitions only, OEE |
-| `test_power.py` | MSB, MCC-1, LP-1, and EP-1 within ANSI C84.1 Range A from no load to 329 kW, BESS peak shaving, outage and return, the tariff's $19,140 per 50 kW-year, a monthly bill |
-| `test_plant.py` | Cellar CO₂ steady state hand calculation, purge tiers and BACnet override, RTU and cold room, weather, glycol and a chiller fault, wastewater neutralization, a brew day, ground truth documents, the event API, and all seven federates together for 20 minutes with an outage and a CO₂ release |
+| `test_power.py` | MSB, MCC-1, LP-1, and EP-1 within ANSI C84.1 Range A from no load to 329 kW, BESS peak shaving, outage and return, the tariff's $19,140 per 50 kW-year, a monthly bill; the ATS clock registers at the default start, across a day, week, month, year, and leap-day boundary, with a fixed UTC offset, under 1x to 600x compression, and against `Tariff.onpeak` for every minute of a leap year |
+| `test_plant.py` | Cellar CO₂ steady state hand calculation, purge tiers and BACnet override, RTU and cold room, weather, glycol and a chiller fault, wastewater neutralization, a brew day, ground truth documents, the event API, all seven federates together for 20 minutes with an outage and a CO₂ release, and a simulated week with plc-power's program in the loop (on-peak discharge and overnight recharge, the demand reset at the month rollover, one genset exercise in the compliance log) |
+| `test_plc_power.py` | plc-power's schedule: the clock trusted only when steady (stopped, jumping, torn, garbage, fast), the on-peak flag equal to the tariff window, the monthly demand reset, every BESS dispatch regime and its clock-free fallback, load shed versus an exercise transfer, the weekly exercise and what blocks it, the generated alarms, and the compiled ST against its Python model on 40,000 random scans |
+| `test_plcloop.py` | The PLC link of the offline federation: tag directions and register scaling from `tags.json`, and one step of read, scan, write |
 | `test_compliance.py` | The genset exercise under load and its log (33 kW EP-1 meets 30 % of nameplate; the everyday 15 kW does not until a 40 kW load bank is added; an outage during a test becomes an emergency run), the wastewater discharge record (a caustic slug is inhibited and logged, the discharge stays in 6.0-9.0), a verified caustic CIP record and an unverified rinse, fill-level rejects against the Handbook 133 MAV with the lot mean at or above 12 fl oz and the quarterly variance inside the TTB 0.5 %, and the event API's validation of `genset-exercise` |
 | `test_fermentation.py`, `test_thermal.py`, `test_timebase.py`, `test_federate.py` | The cellar slice's existing tests |
 | `test_plc_brewhouse.py` | Two brews driven by a port of plc-brewhouse's phases: the HLT heats while its jacket is covered, each brew is counted, the tun and kettle are empty between brews, the second mash-in takes as long as the first, the hops go in, and an interrupted knockout counts once |
 | `test_plc_packaging.py` | The line driven by a port of plc-packaging: the filler runs once the PLC opens its product valve, holds on a low supply and recovers, a jam clears after its time, and a commanded Hold stays |
 | `test_groundtruth.py` | The writer against a stand-in OpenSearch (template first, documents kept through an outage, rejected documents logged), boolean and float values whoever wrote the command, and the event API's `starting`, `ok`, and `stalled` health |
+
+## A PLC in the offline federation
+
+`plcloop.py` closes the loop for one PLC in `LocalFederation` (`plcs=[PlcLink(...)]`):
+each step it reads the PLC's input tags from the federation's values, runs one
+scan of an engine, and writes the PLC's output tags to the federate, with the
+scaling and direction of every tag taken from `plant/generated/<variant>/tags.json`.
+An engine is anything with `set`, `get`, and `scan`. The tests use two for
+plc-power (`tests/plc_power_model.py`, a Python transcription of the program, and
+`tests/st_engine.py`, the program's strucpp C++ built with g++ and run through
+`ctypes`, so what runs is the program as OpenPLC would compile it):
+
+```shell
+plc/common/build_zip.sh plc-power --variant full    # once: clones and builds the pinned strucpp (needs Node 22+)
+python -m pytest tests/test_plc_power.py tests/test_plant.py
+```
+
+The compiled runs skip, with the reason, where Node, a built strucpp checkout
+(`~/.cache/cherrymountain/strucpp-fcccfbdf5370`, or `$STRUCPP`), or `g++` is
+missing; the model runs always, and `test_compiled_st_agrees_with_the_model` ties
+the two where both exist. What neither covers is the OpenPLC runtime: the
+image-table binding, the Modbus master's polling and its torn reads, and scan
+jitter. The loop scans once per federation step, not every 100 ms.
 
 ## Simplifications and tuned values
 

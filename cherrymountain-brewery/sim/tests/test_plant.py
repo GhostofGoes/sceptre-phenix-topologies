@@ -6,16 +6,20 @@ import datetime as dt
 import http.client
 import json
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import pytest
 
 from cherrymountain_sim.building import BuildingFederate
-from cherrymountain_sim.federate import HelicsConfig, build
+from cherrymountain_sim.federate import ClockConfig, HelicsConfig, build
 from cherrymountain_sim.groundtruth import TruthWriter
 from cherrymountain_sim.local import LocalFederation
+from cherrymountain_sim.plcloop import PlcEngine, PlcLink
+from cherrymountain_sim.power import PowerFederate
 from cherrymountain_sim.simctl import EventRequest
+from cherrymountain_sim.tariff import Tariff
 from cherrymountain_sim.utilities import UtilitiesFederate, ph_of
 from cherrymountain_sim.weather import (
     WeatherFederate,
@@ -492,3 +496,215 @@ def test_state_snapshot_and_kpis_come_from_the_subscriptions(full: HelicsConfig)
     finally:
         assert weather.api is not None
         weather.api.close()
+
+
+class Sample(NamedTuple):
+    """One federation step of the simulated week."""
+
+    now: dt.datetime
+    bess_kw: float
+    soc_pct: float
+    import_kw: float
+    plc_onpeak: int
+    plc_peak_kw: int
+    meter_peak_kw: float
+    exercise_cmd: int
+    exercise_flag: int
+    feeders_closed: bool
+    shed: int
+
+
+def _brewery_loads(now: dt.datetime) -> dict[str, float]:
+    """A brewery week, kW by load: brew days Monday, Wednesday, and Friday from 05:00
+    to 15:30 (steam, MCC-1, the chiller at full stage and the fans, so EP-1 carries its
+    33 kW); packaging shifts Tuesday and Thursday and with Monday's brew (a coincident
+    peak); the everyday base on every other hour."""
+    minute = now.hour * 60 + now.minute
+    brew = now.weekday() in (0, 2, 4) and 5 * 60 <= minute < 15 * 60 + 30
+    pack = (now.weekday() in (1, 3) and 6 <= now.hour < 14) or (brew and now.weekday() == 0)
+    return {
+        "boiler": 200.0 if brew else 0.0,
+        "mcc1": 15.0 if brew else 0.0,
+        "chiller": 22.0 if brew else 12.0,
+        "air": 12.0 if brew else 3.0,
+        "ro": 4.0 if brew else 0.0,
+        "line": 25.0 if pack else 0.0,
+        "kegwasher": 12.0 if pack else 0.0,
+        "rtu": 12.0 if brew else 4.0,
+        "coldroom": 3.0 if brew else 1.5,
+        "fans": 6.0 if brew else 3.0,
+        "lighting": 5.0,
+        "otracks": 2.0,
+    }
+
+
+def _brew_day_ahead(now: dt.datetime) -> bool:
+    """What the batch engine sets: the next brew day (Monday, Wednesday, Friday, from
+    05:00 to 15:30) is today before it ends, or tomorrow from noon today."""
+    minute = now.hour * 60 + now.minute
+    today = now.weekday() in (0, 2, 4) and minute < 15 * 60 + 30
+    tomorrow = (now.weekday() + 1) % 7 in (0, 2, 4) and minute >= 12 * 60
+    return today or tomorrow
+
+
+def _run_week(full: HelicsConfig, plc: PlcEngine) -> tuple[list[Sample], PowerFederate]:
+    """A week, Monday 2026-06-29 00:00 to Monday 07-06, a minute per federation step,
+    with plc-power's program in the loop and the other federates' loads from a profile.
+    The battery starts at 20 % so the first brew day drains it (a high June peak)."""
+    clock = ClockConfig(start="2026-06-29T00:00:00-06:00", speedup=1.0)
+    config = full.model_copy(update={"clock": clock})
+    link = PlcLink("plc-power", plc, GENERATED / "full" / "tags.json")
+    lf = LocalFederation(config, ["power"], [link])
+    power = lf.feds["power"]
+    assert isinstance(power, PowerFederate)
+    power.grid.soc_pct = 20.0
+    keys = {ld.name: ld.key for ld in power.cfg.loads}
+    samples: list[Sample] = []
+    for _ in range(7 * 1440):
+        for name, kw in _brewery_loads(power.now).items():
+            lf.values[keys[name]] = kw
+        plc.set("PWR_DMD_XS03_BREWDAY", _brew_day_ahead(power.now))
+        lf.step(60.0)
+        samples.append(
+            Sample(
+                now=power.now,
+                bess_kw=power.grid.bess_kw,
+                soc_pct=power.grid.soc_pct,
+                import_kw=power.grid.p_kw,
+                plc_onpeak=plc.get("PWR_DMD_XS01_ONPEAK"),
+                plc_peak_kw=plc.get("PWR_DMD_JY02_PV"),
+                meter_peak_kw=power.meter.month_peak_kw,
+                exercise_cmd=plc.get("PWR_GEN_HS01_CMD"),
+                exercise_flag=plc.get("PWR_DMD_XS04_EXERCISE"),
+                feeders_closed=all(power.energized[b] for b in ("boiler", "pkg", "rtu")),
+                shed=plc.get("PWR_DMD_XS02_SHED"),
+            )
+        )
+    return samples, power
+
+
+def test_a_simulated_week_under_the_plc_power_schedule(
+    full: HelicsConfig, make_plc: Callable[[], PlcEngine]
+) -> None:
+    """plc-power's program drives the power federate for a simulated week (Monday
+    2026-06-29 to Sunday 07-05, which holds one month rollover and one Wednesday):
+
+    - the on-peak flag is the tariff's window, minute for minute (weekdays 17:00 to
+      21:00), and never on the weekend;
+    - the battery discharges through the window on the evenings it has energy, down to
+      the brew-day reserve when the next day is a brew day, never past the site's
+      import (no export), and recharges overnight to 95 % so the brew days start full;
+    - the PLC's month-to-date peak resets at the billing-month rollover, once, and
+      follows the meter's monthly peak on either side of it;
+    - the genset is exercised once, Wednesday 10:00, 30 minutes under load, recorded as an
+      exercise run that meets the NFPA 110 criteria (a brew day: EP-1 at 33 kW), and the
+      boiler, packaging, and RTU feeders stay closed through it.
+    """
+    samples, power = _run_week(full, make_plc())
+    tariff = Tariff()
+    step = dt.timedelta(minutes=1)
+    by_time = {s.now: s for s in samples}
+
+    def at(when: str) -> Sample:
+        return by_time[dt.datetime.fromisoformat(when + "-06:00")]
+
+    # The flag the PLC raised on the clock it read is the window the meter bills.
+    for sample in samples[3:]:
+        assert bool(sample.plc_onpeak) == tariff.onpeak(sample.now - step), sample.now
+    assert sum(s.plc_onpeak for s in samples) == 5 * 240
+
+    # Weekends: no window and no discharge in the evening.
+    for day in ("2026-07-04", "2026-07-05"):
+        evening = [s for s in samples if s.now.date().isoformat() == day and 17 <= s.now.hour < 21]
+        assert evening and all(s.plc_onpeak == 0 and s.bess_kw <= 0.5 for s in evening)
+
+    # Tuesday and Thursday evenings: the battery carries the site (about 30 kW, no
+    # export) until it reaches the 50 % reserve (Wednesday and Friday are brew days),
+    # then holds it; it does not charge in the window.
+    for day in ("2026-06-30", "2026-07-02"):
+        evening = [s for s in samples if s.now.date().isoformat() == day and 17 <= s.now.hour < 21]
+        early = [s for s in evening if s.now.hour < 19 and s.now.minute + s.now.hour * 60 > 17 * 60 + 4]
+        assert early and all(s.bess_kw > 25.0 for s in early), day
+        assert all(s.import_kw > -0.5 and s.bess_kw >= 0.0 for s in evening), day
+        assert min(s.soc_pct for s in evening) >= 49.0, day
+        assert at(f"{day}T21:00:00").soc_pct == pytest.approx(50.0, abs=1.0), day
+
+    # Every night the battery recharges from the grid, and the brew days start full.
+    for night in ("2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03"):
+        charging = [s for s in samples if s.now.isoformat().startswith(f"{night}T23:")]
+        assert all(s.bess_kw < -25.0 for s in charging), night
+    for brew_day in ("2026-06-29", "2026-07-01", "2026-07-03"):
+        assert at(f"{brew_day}T05:00:00").soc_pct >= 50.0, brew_day
+    assert at("2026-07-01T05:00:00").soc_pct == pytest.approx(95.0, abs=1.0)
+
+    # The monthly demand: June's peak is Monday's coincident load (the battery was
+    # empty), July's is Wednesday's brew day; the PLC register resets between.
+    june = at("2026-06-30T23:58:00")
+    assert june.meter_peak_kw > 300.0
+    assert abs(june.plc_peak_kw - june.meter_peak_kw) <= 1.0
+    drops = [b.now for a, b in zip(samples, samples[1:]) if b.plc_peak_kw < a.plc_peak_kw]
+    assert len(drops) == 1
+    assert dt.datetime.fromisoformat("2026-07-01T00:00:00-06:00") <= drops[0] <= dt.datetime.fromisoformat("2026-07-01T00:03:00-06:00")
+    july = at("2026-07-03T12:00:00")
+    assert july.meter_peak_kw < june.meter_peak_kw - 20.0
+    assert abs(july.plc_peak_kw - july.meter_peak_kw) <= 1.0
+
+    # One exercise, on a brew day, under load, and no load shed.
+    runs = power.gen_runs
+    assert [r.kind for r in runs] == ["exercise"]
+    run = runs[0]
+    assert dt.datetime.fromisoformat(run.started) == dt.datetime.fromisoformat("2026-07-01T10:00:00-06:00")
+    assert run.loaded_s >= 1800.0 and run.nfpa110_duration_ok and run.nfpa110_load_ok
+    assert run.avg_kw == pytest.approx(33.0, abs=0.5)
+    assert 0.5 < power.grid.gen_test_hours_year < 1.0
+    window = [s for s in samples if "2026-07-01T10:00" <= s.now.isoformat() < "2026-07-01T10:40"]
+    assert window and all(s.feeders_closed and s.shed == 0 for s in window)
+    assert any(s.exercise_flag for s in window)
+    starts = [b.now for a, b in zip(samples, samples[1:]) if b.exercise_cmd and not a.exercise_cmd]
+    assert starts == [dt.datetime.fromisoformat("2026-07-01T10:01:00-06:00")]  # a step after it began
+    assert all(s.shed == 0 for s in samples[3:])
+
+
+def test_a_genset_exercise_event_is_not_an_outage_to_plc_power(
+    full: HelicsConfig, make_plc: Callable[[], PlcEngine]
+) -> None:
+    """The ``genset-exercise`` event (the white cell's loaded test, here with a 20 kW
+    load bank) puts the ATS on the genset with the utility healthy. plc-power sees an
+    exercise: it keeps the boiler, packaging, and RTU feeders closed, raises its
+    exercise flag, and the log has an exercise run. A real utility loss afterwards is
+    an outage: the feeders open, the flag drops, and the run is an emergency run."""
+    plc = make_plc()
+    link = PlcLink("plc-power", plc, GENERATED / "full" / "tags.json")
+    lf = LocalFederation(full, ["power"], [link])
+    power = lf.feds["power"]
+    assert isinstance(power, PowerFederate)
+    lf.run(300)  # the PLC trusts the clock after two steady minutes
+    assert plc.get("PWR_DMD_XS05_CLKOK") == 1
+    event = {"type": "genset-exercise", "params": {"duration": 1900, "load_bank_kw": 20}}
+    power.handle_message(json.dumps({"event": event}))
+    closed: list[bool] = []
+    flags: list[int] = []
+    sheds: list[int] = []
+    for _ in range(1900):
+        lf.step(1.0)
+        closed.append(all(power.energized[b] for b in ("boiler", "pkg", "rtu")))
+        flags.append(plc.get("PWR_DMD_XS04_EXERCISE"))
+        sheds.append(plc.get("PWR_DMD_XS02_SHED"))
+    assert power.grid.exercising and all(closed) and not any(sheds) and flags[-1] == 1
+    lf.run(400)  # the event ends the exercise; the engine cools down
+    assert [r.kind for r in power.gen_runs] == ["exercise"]
+    assert plc.get("PWR_DMD_XS04_EXERCISE") == 0 and not power.grid.gen_running
+
+    power.handle_message(
+        json.dumps({"event": {"type": "utility-breaker", "params": {"action": "open"}}})
+    )
+    lf.run(30)
+    assert plc.get("PWR_DMD_XS02_SHED") == 1 and plc.get("PWR_DMD_XS04_EXERCISE") == 0
+    assert power.grid.on_emergency and not power.energized["boiler"]
+    power.handle_message(
+        json.dumps({"event": {"type": "utility-breaker", "params": {"action": "close"}}})
+    )
+    lf.run(900)  # retransfer after 120 s, the feeders back in three stages, cool-down
+    assert plc.get("PWR_DMD_XS02_SHED") == 0
+    assert all(power.energized[b] for b in ("boiler", "pkg", "rtu"))
+    assert [r.kind for r in power.gen_runs] == ["exercise", "emergency"]

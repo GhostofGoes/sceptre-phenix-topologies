@@ -234,6 +234,25 @@ def test_cleanup_failure_is_recorded_not_raised(
     assert st["exports"] == {"scada-fuxa": "failed: RuntimeError"}
 
 
+def test_cleanup_never_fails_the_stop(
+    run_app: RunApp,
+    mm: MagicMock,
+    experiment: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """phenix ends its cleanup pass at the first app that fails, which would
+    skip the cleanup of every app after this one. A stop whose inputs are gone
+    (the topology directory was moved) exports nothing and says so."""
+    app_block(experiment)["metadata"]["sourceDir"] = str(tmp_path / "moved")
+    calls: list[Any] = []
+    monkeypatch.setattr(CherryMountain, "_exec", lambda *a, **k: calls.append(a))
+    st = status(run_app("cleanup", exp=experiment))
+    assert calls == []
+    assert st["exports"] == {}
+    assert st["exportError"] == "AppError"
+
+
 def test_cleanup_can_be_turned_off(
     run_app: RunApp,
     mm: MagicMock,

@@ -394,7 +394,18 @@ class CherryMountain(AppBase):
 
     def cleanup(self) -> None:
         logger.info(f"Cleaning up user application: {self.name}")
-        config, _ = self._validate()
+        # phenix ends its cleanup pass at the first app that fails, so the apps
+        # after this one (mirror, which removes its taps and OVS mirrors from
+        # the host) would not clean up: a stop that cannot export says so and
+        # goes on.
+        try:
+            config, _ = self._validate()
+        except Exception as ex:
+            logger.warning(
+                f"{self.name}: cleanup exported nothing ({type(ex).__name__})"
+            )
+            self._set_status({"exports": {}, "exportError": type(ex).__name__})
+            return
         if not config.export_on_cleanup or self.dryrun:
             return
         files: Path = Path(

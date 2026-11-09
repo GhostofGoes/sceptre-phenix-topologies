@@ -80,4 +80,6 @@ VAR
   UTL_CIP_XC01_CMD AT %MW4 : UINT; (* CIP sequence command (1 start, 2 hold, 3 abort), None, x1 *)
   UTL_CIP_XS01_STEP AT %MW5 : UINT; (* CIP sequence step, None, x1 *)
   UTL_CIP_XS02_ROUTE_OK AT %QX1.7 : BOOL; (* CIP route verified and return flow proven *)
+  UTL_CIP_XS03_PV AT %IX120.0 : BOOL; (* Cellar transfer in progress (peer read from plc-cellar) *)
+  UTL_CIP_XS04_PV AT %IX120.1 : BOOL; (* Cellar circuits permit CIP (peer read from plc-cellar) *)
 END_VAR

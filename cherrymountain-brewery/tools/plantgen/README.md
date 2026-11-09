@@ -306,6 +306,12 @@ slice it has:
 - `loads`: electrical loads and buses for the power federate.
 - Units may override the area's field host (`rio`) and federate, for the
   chiller's OEM controller, each power device, and each BAS controller.
+- A PLC-memory tag may name `peer: <tag>`, a bit another PLC computes (a
+  `binary-read` coil in its `modbus_slave`). plantgen places it at `%IX120.0`
+  up and adds that PLC as a device of the reading PLC's `modbus_master.json`
+  (FC1 over CTRL, `error_handling: set-to-zero`, so a lost peer reads 0); the
+  tag's `source` in `tags.json` is `peer`. plc-utilities reads plc-cellar's
+  transfer and CIP-permit bits this way (DESIGN.md 6.6 #4).
 - Device-type points may be `signed` (int16), `written_by` another host (read
   with FC3), or `bacnet` objects. A device type is all BACnet or all Modbus.
 - Host roles: `sim`, `rio`, `field` (other Modbus field devices), `bas`, `fep`,

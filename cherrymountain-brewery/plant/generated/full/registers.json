@@ -75,7 +75,7 @@
         "mx_bits": 0
       },
       "discrete_inputs": {
-        "ix_bits": 824
+        "ix_bits": 968
       },
       "input_registers": {
         "iw_count": 120
@@ -6464,6 +6464,44 @@
       "slave_pdu_address": 15,
       "fuxa_memaddress": "000000",
       "fuxa_address": 16,
+      "scada_access": "read"
+    },
+    {
+      "tag": "UTL.CIP.XS03.PV",
+      "type": "binary-read",
+      "units": null,
+      "scaling": null,
+      "rio": null,
+      "rio_space": null,
+      "otsim_register": null,
+      "master_fc": null,
+      "master_offset": null,
+      "plc": "plc-utilities",
+      "plc_iec": "%IX120.0",
+      "slave_space": "discrete",
+      "slave_read_fc": 2,
+      "slave_pdu_address": 960,
+      "fuxa_memaddress": "100000",
+      "fuxa_address": 961,
+      "scada_access": "read"
+    },
+    {
+      "tag": "UTL.CIP.XS04.PV",
+      "type": "binary-read",
+      "units": null,
+      "scaling": null,
+      "rio": null,
+      "rio_space": null,
+      "otsim_register": null,
+      "master_fc": null,
+      "master_offset": null,
+      "plc": "plc-utilities",
+      "plc_iec": "%IX120.1",
+      "slave_space": "discrete",
+      "slave_read_fc": 2,
+      "slave_pdu_address": 961,
+      "fuxa_memaddress": "100000",
+      "fuxa_address": 962,
       "scada_access": "read"
     },
     {

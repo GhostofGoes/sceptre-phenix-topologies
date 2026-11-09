@@ -4311,6 +4311,24 @@
           "memaddress": "000000",
           "address": 16,
           "access": "read"
+        },
+        {
+          "id": "t_89955187-1391-5624-bbdf-22b8e022b7d5",
+          "name": "UTL.CIP.XS03.PV",
+          "label": "Cellar transfer in progress (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 961,
+          "access": "read"
+        },
+        {
+          "id": "t_961fff91-c2f8-54d5-963c-089659c2e6b8",
+          "name": "UTL.CIP.XS04.PV",
+          "label": "Cellar circuits permit CIP (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 962,
+          "access": "read"
         }
       ]
     },

@@ -693,6 +693,10 @@ def ntp_app(plant: Plant) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+#: The interface a PLC's modbus_slave serves the peers on (CTRL).
+PEER_INTERFACE: str = "IF0"
+
+
 def modbus_master(
     plant: Plant, alloc: Allocation, plc: str, rios: list[str]
 ) -> list[dict[str, Any]]:
@@ -725,6 +729,46 @@ def modbus_master(
                     "slave_id": mb.unit_id,
                     "timeout_ms": 1000,
                     "io_points": points,
+                },
+            }
+        )
+    # Peer reads (DESIGN.md 6.6 #4): one device per other PLC, its coils read
+    # with FC1 into %IX120.0 up. A lost peer reads as 0 (set-to-zero), so a
+    # permit bit fails safe instead of holding its last value.
+    by_source: dict[str, list[Any]] = {}
+    for read in alloc.peer_reads.get(plc, []):
+        by_source.setdefault(read.source_plc, []).append(read)
+    for source_plc, reads in by_source.items():
+        host = plant.hosts[source_plc]
+        runs: list[list[Any]] = []
+        for read in sorted(reads, key=lambda r: r.coil):
+            last = runs[-1][-1] if runs else None
+            if last is not None and read.coil == last.coil + 1 and read.iec.index == last.iec.index + 1:
+                runs[-1].append(read)
+            else:
+                runs.append([read])
+        devices.append(
+            {
+                "name": source_plc,
+                "protocol": "MODBUS",
+                "config": {
+                    "type": "SLAVE",
+                    "transport": "tcp",
+                    "host": host.ip(PEER_INTERFACE),
+                    "port": 502,
+                    "slave_id": 1,
+                    "timeout_ms": 1000,
+                    "io_points": [
+                        {
+                            "fc": 1,
+                            "offset": str(run[0].coil),
+                            "iec_location": str(run[0].iec),
+                            "len": len(run),
+                            "cycle_time_ms": poll,
+                            "error_handling": "set-to-zero",
+                        }
+                        for run in runs
+                    ],
                 },
             }
         )

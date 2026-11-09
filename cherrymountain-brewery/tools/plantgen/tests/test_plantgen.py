@@ -457,3 +457,29 @@ def test_alarm_deadbands_and_off_delays(tmp_path: Path) -> None:
 
     with pytest.raises(PlantError, match="deadband"):
         load(write_plant(tmp_path, bad), "ci")
+
+
+def test_peer_reads_land_on_the_other_plcs_coils() -> None:
+    """plc-utilities reads plc-cellar's transfer and CIP-permit bits over CTRL
+    (DESIGN.md 6.6 #4): FC1 from the coils plc-cellar's modbus_slave serves, into
+    %IX120.0 up, and a lost peer reads 0."""
+    full = load(DEFAULT_PLANT, "full")
+    alloc = allocate(full)
+    reads = {r.tag: r for r in alloc.peer_reads["plc-utilities"]}
+    assert set(reads) == {"UTL.CIP.XS03.PV", "UTL.CIP.XS04.PV"}
+    for read in reads.values():
+        src = alloc.tags[read.source]
+        assert (src.slave_space, src.slave_address) == ("coil", read.coil)
+        assert src.plc_iec.area == "Q" and read.iec.area == "I" and read.iec.index >= 960
+    files = render_all(full, alloc)
+    peer = next(d for d in json.loads(files["openplc/plc-utilities/modbus_master.json"]) if d["name"] == "plc-cellar")
+    assert peer["config"]["host"] == "10.20.10.12"
+    assert [(p["fc"], p["error_handling"]) for p in peer["config"]["io_points"]] == [(1, "set-to-zero")]
+
+
+def test_a_peer_read_must_name_another_plcs_bit(tmp_path: Path) -> None:
+    def mutate(d: dict[str, Any]) -> None:
+        unit(d, "UTL", "CIP")["tags"].append({"id": "XS09.PV", "desc": "bad", "peer": "UTL.CIP.XS02.ROUTE_OK"})
+
+    with pytest.raises(PlantError, match="another PLC"):
+        allocate(load(write_plant(tmp_path, mutate), "full"))

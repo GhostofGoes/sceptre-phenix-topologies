@@ -334,6 +334,8 @@ UTL.CIP.XC01.CIRCUIT,analog-read-write,,0,,,,,,plc-utilities,%MW3,holding,3,107,
 UTL.CIP.XC01.CMD,analog-read-write,,0,,,,,,plc-utilities,%MW4,holding,3,108,400000,109,read-write
 UTL.CIP.XS01.STEP,analog-read,,0,,,,,,plc-utilities,%MW5,holding,3,109,400000,110,read
 UTL.CIP.XS02.ROUTE_OK,binary-read,,,,,,,,plc-utilities,%QX1.7,coil,1,15,000000,16,read
+UTL.CIP.XS03.PV,binary-read,,,,,,,,plc-utilities,%IX120.0,discrete,2,960,100000,961,read
+UTL.CIP.XS04.PV,binary-read,,,,,,,,plc-utilities,%IX120.1,discrete,2,961,100000,962,read
 PWR.MAIN.JT01.PV,analog-read,kW,1,relay-main,input,30001,4,30001,plc-power,%IW100,input,4,100,300000,101,read
 PWR.MAIN.JT01.ALM_HIGH,binary-read,,,,,,,,plc-power,%QX0.0,coil,1,0,000000,1,read
 PWR.MAIN.JT02.PV,analog-read,kvar,1,relay-main,input,30002,4,30002,plc-power,%IW101,input,4,101,300000,102,read

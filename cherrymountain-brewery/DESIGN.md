@@ -1403,9 +1403,11 @@ values:
 - The event API binds `127.0.0.1:8080` on the weather federate and is reached
   through the cc tunnel. The `ci` variant has none.
 
-**Remaining:** the cellar autopilot, the peer reads of `plc-cellar` by
-`plc-utilities` in its `modbus_master` config, the ot-sim `logic` blocks of
-[§12.3](#123-ot-sim-field-devices), and the 24 h soak.
+**Remaining:** the cellar autopilot, the ot-sim `logic` blocks of
+[§12.3](#123-ot-sim-field-devices), and the 24 h soak. The peer reads of
+`plc-cellar` by `plc-utilities` are in plantgen: tags with `peer:` land at
+`%IX120.0` up through an FC1 device in plc-utilities' `modbus_master.json`
+that reads 0 when plc-cellar is unreachable.
 
 ## 10. Network architecture
 
@@ -1937,6 +1939,18 @@ provisioning below) or in the OpenPLC Editor:
   sequences with route verification.
 - **plc-power:** load shed, BESS dispatch, PV site limit, and ATS
   supervision.
+
+**As built** (`plc/<plc>/`, [plc/common/README.md](plc/common/README.md)).
+The programs are simpler than the targets above, and the gaps are open work:
+plc-brewhouse uses proportional valves rather than PID and runs one phase per
+Start (no FUXA batch engine exists yet to sequence them, so with the PLC
+running the brewhouse waits for phase commands instead of following its
+autopilot); plc-cellar has fixed spunding steps, no setpoint profiles, and no
+transfer sequence beyond the peer status bits; plc-packaging coordinates the
+machines' own PackML state machines (it is not the Beckhoff port); and
+plc-power has no time source on FIELD-PWR, so the on-peak window, the 05:00
+state-of-charge target, the monthly demand reset, and the weekly genset
+exercise wait for a clock point ([§19](#19-risks-and-open-questions)).
 
 **v4 plugins per PLC.** Each PLC runs `modbus_master` to poll its RIO, plus
 one northbound plugin:
@@ -2966,8 +2980,8 @@ five stages) and follows the pattern of sceptre-phenix-apps:
   the vendor persona (`ridgeline.env`) and replaces the scenario's WireGuard
   keys at configure ([§13](#13-vendor-remote-access)).
 - **Follow-ups.**
-  - Per-variant PLC ZIPs with `debug_map.json` exist for plc-cellar
-    (`plc/common`); the other four PLCs need theirs.
+  - Per-variant PLC ZIPs with `debug_map.json` exist for all five PLCs
+    (`plc/common`); the app renders each from its variant's ZIP.
   - `fuxa/build_project.py` fails on the full tag list, and there is no
     `bas-fuxa` project.
   - Drop the static sim, OpenPLC, and FUXA topology injects once the app runs.
@@ -3094,7 +3108,7 @@ rebroadcast reaches it.
 | 0: Spikes | **Done.** See the spike results below | Each spike has a written go/no-go decision (all nine are go) | Done, with a second round that closed the gaps |
 | 1: Network | Core topology, VyOS conduits and static routes, ot-svc, SoH reachability | All §10.3 conduits pass; blocked paths fail | **Implemented**: topology modules, rulesets, services, BBMDs, the post-boot VyOS script, and SoH probes. Validated statically by `netcheck`; the VM run is pending |
 | 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic | **Largely implemented**: `plant.yaml`, plantgen, seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). Remaining: the cellar autopilot, the peer reads of `plc-cellar`, the ot-sim `logic` blocks, and the 24 h soak |
-| 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** The per-variant PLC builder `plc/common` exists (alarms generated from `alarms.json` with deadbands), and plc-cellar has its full and lite program and ZIPs with the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)); the other four PLC programs are next. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. Open: the FUXA batch engine (so no unattended brew day through the PLC yet), views beyond the generated tag lists, and any VM run |
+| 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** All five PLC programs and their full and lite ZIPs are built by `plc/common` (alarms generated from `alarms.json` with deadbands, C++ checked; none run in an OpenPLC runtime yet), including the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)) and the peer reads. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. Open: the FUXA batch engine (so no unattended brew day through the PLC yet), views beyond the generated tag lists, and any VM run |
 | 4: Power + BAS | OpenDSS, tariff logic, BESS/ATS, BACnet devices | Outage and CO₂ scenarios behave as in §6.6 | The power and building federates are built with Phase 2. The `plc-power` program and the ot-sim BACnet module remain (the module waits on the ot-sim fork) |
 | 5: SOC + remote access | Malcolm, Wazuh, WireGuard, Guacamole | Baseline detections fire on the vendor-maintenance run | **Built, not run on a VM.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), Zeek script (checked in Malcolm's Zeek image), and Wazuh rules with their tests; per-experiment vendor and WireGuard secrets |
 | 6: Polish | SCORCH runs, Builder package, README, e2e CI, upstream PRs | Fresh `phenix workflow apply` → green SoH, with no manual steps | Not started. `plantevent` is built |
@@ -3152,6 +3166,7 @@ silently.
 | Hardened systemd units are verified offline only | First VM run checks `DynamicUser` with `StateDirectory`, read-only paths, and `MemoryDenyWriteExecute` at runtime (§17) |
 | `CM_REF` in `cm-sim` trails `sim/` changes (`OTSIM_REF` is pinned to the tested ot-sim `9dc33047`) | Move `CM_REF` forward with every `sim/` change the image must carry |
 | OpenDSS islanding needs a source in each island | Genset modeled as a switched Vsource; pandapower fallback |
+| plc-power has no clock: nothing on FIELD-PWR carries the time, so the on-peak window, brew-day SOC target, monthly demand reset, and genset exercise are not in the PLC | Open: expose the sim clock as a gen-ats or relay-main point (as `CEL.CLK.KI01` does for the cellar) and add the schedule to `plc-power.st` |
 | rtu-der's DNP3 map exposes the relay-main breaker and MSB feeder commands (BO 0-3) and the site's own setpoints to the utility master, because plantgen maps every FIELD-PWR point | Detection now (Suricata 9000138/9000139, Zeek `DNP3_Breaker_Command`); open: a utility-only FEP map in plantgen's `dnp3/rtu-der.json` and the ot-sim FEP config |
 | OpenPLC's `modbus_master` keeps the last input value on a lost RIO link (`error_handling: keep-last-value`), so an interlock input such as the cellar CO₂ relay holds its last state when rio-cellar is unreachable | Open: a RIO heartbeat point (a counter the RIO increments) that each PLC watches, failing its interlocks safe on a stale count ([§6.7](#67-cellar-co2-life-safety-interlock)) |
 

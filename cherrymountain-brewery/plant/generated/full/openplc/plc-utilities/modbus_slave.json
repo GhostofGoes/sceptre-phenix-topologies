@@ -16,7 +16,7 @@
       "mx_bits": 0
     },
     "discrete_inputs": {
-      "ix_bits": 824
+      "ix_bits": 968
     },
     "input_registers": {
       "iw_count": 120

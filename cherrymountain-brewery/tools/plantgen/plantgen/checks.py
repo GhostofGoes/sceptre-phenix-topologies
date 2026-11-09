@@ -346,7 +346,20 @@ def master_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> lis
     for plc in alloc.plc_rios:
         cfg = json.loads(files[f"openplc/{plc}/modbus_master.json"])
         covered = set()
+        peers: dict[tuple[str, int], Any] = {
+            (r.source_plc, r.coil): r for r in alloc.peer_reads.get(plc, [])
+        }
         for dev in cfg:
+            if dev["name"] in plant.hosts and plant.hosts[dev["name"]].name in alloc.plc_rios:
+                # A peer PLC: every coil read must land where the peer read says.
+                for p in dev["config"]["io_points"]:
+                    start = IecAddress.parse(p["iec_location"])
+                    for i in range(p["len"]):
+                        read = peers.pop((dev["name"], int(p["offset"]) + i), None)
+                        iec = start.model_copy(update={"index": start.index + i})
+                        if p["fc"] != 1 or read is None or read.iec != iec:
+                            errs.append(f"modbus_master {plc} peer {dev['name']} coil {int(p['offset']) + i}: not a planned peer read")
+                continue
             for p in dev["config"]["io_points"]:
                 space = FC_SPACE[p["fc"]]
                 start = IecAddress.parse(p["iec_location"])
@@ -365,6 +378,7 @@ def master_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> lis
                         )
         missing = {k for k, a in by_rio.items() if a.tag.plc == plc} - covered
         errs += [f"modbus_master: {k} not polled" for k in sorted(missing)]
+        errs += [f"modbus_master {plc}: peer read {r.tag} not polled" for r in peers.values()]
     return errs
 
 

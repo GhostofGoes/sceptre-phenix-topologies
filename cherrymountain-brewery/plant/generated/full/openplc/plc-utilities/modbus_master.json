@@ -90,5 +90,27 @@
         }
       ]
     }
+  },
+  {
+    "name": "plc-cellar",
+    "protocol": "MODBUS",
+    "config": {
+      "type": "SLAVE",
+      "transport": "tcp",
+      "host": "10.20.10.12",
+      "port": 502,
+      "slave_id": 1,
+      "timeout_ms": 1000,
+      "io_points": [
+        {
+          "fc": 1,
+          "offset": "25",
+          "iec_location": "%IX120.0",
+          "len": 2,
+          "cycle_time_ms": 250,
+          "error_handling": "set-to-zero"
+        }
+      ]
+    }
   }
 ]

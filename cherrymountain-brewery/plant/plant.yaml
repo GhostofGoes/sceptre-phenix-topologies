@@ -1834,6 +1834,10 @@ areas:
           - { id: XC01.CMD, desc: "CIP sequence command (1 start, 2 hold, 3 abort)", type: analog-read-write, range: [0, 3], scaling: 0 }
           - { id: XS01.STEP, desc: CIP sequence step, type: analog-read, range: [0, 7], scaling: 0 }
           - { id: XS02.ROUTE_OK, desc: CIP route verified and return flow proven, type: binary-read }
+          # Peer reads of plc-cellar's coils (DESIGN.md 6.6 #4), FC1 over CTRL into %IX120.0 up;
+          # a lost peer reads 0, so the CIP permit fails safe.
+          - { id: XS03.PV, desc: Cellar transfer in progress (peer read from plc-cellar), peer: CEL.XFER.XS01.ACTIVE }
+          - { id: XS04.PV, desc: Cellar circuits permit CIP (peer read from plc-cellar), peer: CEL.XFER.XS02.CIP_PERMIT }
 
   - id: PWR
     name: Electrical

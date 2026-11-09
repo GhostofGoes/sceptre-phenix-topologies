@@ -76,6 +76,9 @@ IO_BIT_BASE: int = 800
 IO_WORD_BASE: int = 100
 #: PLC-memory bits must stay below the RIO block.
 MEM_BIT_LIMIT: int = IO_BIT_BASE
+#: First IEC bit of the peer reads (bits another PLC computes): bit 960 is
+#: %IX120.0, clear of any RIO discrete inputs.
+PEER_BIT_BASE: int = 960
 #: OpenPLC v4 ``modbus_slave`` ceiling for one Modbus table (a PDU address is
 #: 16 bits). The composed holding block ``qw + mw + 2*md + 4*ml`` must fit.
 MAX_TABLE: int = 65536
@@ -289,6 +292,16 @@ class TagAddress(BaseModel):
         return MASTER_FC[self.rio_space] if self.rio_space else None
 
 
+class PeerRead(BaseModel):
+    """One bit a PLC reads from another PLC's coils (FC1)."""
+
+    tag: str  # the reading PLC's tag
+    iec: IecAddress  # where it lands, %IX120.0 up
+    source: str  # the other PLC's tag
+    source_plc: str
+    coil: int  # PDU address of the source tag in the other PLC's modbus_slave
+
+
 class Allocation(BaseModel):
     """All addresses for a variant."""
 
@@ -300,6 +313,9 @@ class Allocation(BaseModel):
     layouts: dict[str, SlaveLayout] = Field(default_factory=dict)
     # BACnet controller -> its objects
     bacnet: dict[str, list[BacnetObject]] = Field(default_factory=dict)
+    # PLC -> the bits it reads from other PLCs (east-west peer interlocks)
+    peer_reads: dict[str, list[PeerRead]] = Field(default_factory=dict)
+
 
 
 def rio_devices(plant: Plant, rio: str) -> list[Device]:
@@ -421,8 +437,14 @@ def allocate(plant: Plant) -> Allocation:
                     located.append((reg.tag, iec, reg.space, reg.address))
         mem_bit = 0
         mem_word = 0
+        peer_bit = PEER_BIT_BASE
         for t in plant.tags:
             if t.plc != plc or t.device:
+                continue
+            if t.peer:
+                iec = IecAddress(area="I", size="X", index=peer_bit)
+                peer_bit += 1
+                located.append((t, iec, None, None))
                 continue
             if is_analog(t.type):
                 iec = IecAddress(area="M", size="W", index=mem_word)
@@ -445,6 +467,29 @@ def allocate(plant: Plant) -> Allocation:
                 rio_space=rio_space,
                 rio_address=rio_address,
             )
+
+    # 3. Peer reads: each lands at its %IX bit and is read with FC1 from the
+    # other PLC's modbus_slave coil, which exists only now that every PLC has
+    # its layout.
+    for t in plant.tags:
+        if not t.peer or t.plc is None:
+            continue
+        src = alloc.tags.get(t.peer)
+        if src is None:
+            raise PlantError(f"{t.name}: peer {t.peer} is not a PLC tag of this variant")
+        if src.tag.plc in (None, t.plc) or src.tag.device or src.tag.type != "binary-read":
+            raise PlantError(f"{t.name}: peer {t.peer} must be a bit another PLC computes (binary-read, no io)")
+        if src.slave_space != "coil":
+            raise PlantError(f"{t.name}: peer {t.peer} is not a coil of {src.tag.plc}")
+        alloc.peer_reads.setdefault(t.plc, []).append(
+            PeerRead(
+                tag=t.name,
+                iec=alloc.tags[t.name].plc_iec,
+                source=t.peer,
+                source_plc=src.tag.plc,
+                coil=src.slave_address,
+            )
+        )
     return alloc
 
 

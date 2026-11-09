@@ -342,6 +342,9 @@ class TagSpec(Strict):
     id: str
     desc: str = ""
     io: str | None = None
+    #: A bit another PLC computes (its full tag name), which this area's PLC
+    #: reads over Modbus (east-west peer interlock, DESIGN.md 6.6 #4).
+    peer: str | None = None
     type: TagType | None = None
     units: str | None = None
     range: tuple[float, float] | None = None
@@ -685,11 +688,13 @@ class Tag(BaseModel):
     federate: str | None = None
     alarms: list[Alarm] = Field(default_factory=list)
     generated: bool = False  # alarm bit tags are generated
+    peer: str | None = None  # source tag on another PLC (peer read)
 
     @property
     def source(self) -> str:
-        """``io`` for remote-I/O tags, ``plc`` for PLC memory."""
-        return "io" if self.device else "plc"
+        """``io`` for remote-I/O tags, ``peer`` for bits read from another PLC,
+        ``plc`` for PLC memory."""
+        return "io" if self.device else ("peer" if self.peer else "plc")
 
     @property
     def owner(self) -> str | None:
@@ -915,6 +920,10 @@ def _tag(
         ttype, scaling = pdef.type, pdef.scaling
         signed, written_by, bacnet = pdef.signed, pdef.written_by, pdef.bacnet
     else:
+        if spec.peer is not None and spec.type not in (None, "binary-read"):
+            raise PlantError(f"{name}: a peer read is a binary-read bit")
+        if spec.peer is not None:
+            spec = spec.model_copy(update={"type": "binary-read"})
         if spec.type is None:
             raise PlantError(f"{name}: PLC-memory tags need a type")
         if area.plc is None:
@@ -944,6 +953,7 @@ def _tag(
         point=point,
         rio=device.rio if device else None,
         federate=device.federate if device else None,
+        peer=spec.peer,
     )
 
 

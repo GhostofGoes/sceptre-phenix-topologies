@@ -1,6 +1,6 @@
 """The full variant: plant.yaml against the 43-node topology, and the
-renderers whose inputs exist for it. (The full PLC program ZIPs and the FUXA
-projects do not exist yet, so a whole pre-start is not run here.)"""
+renderers whose inputs exist for it, the five PLC program ZIPs included. (The
+full FUXA projects are built here too, but a whole pre-start is not run.)"""
 
 from __future__ import annotations
 
@@ -232,3 +232,23 @@ def test_full_wireguard_keys_are_replaced_consistently(
     assert after["vendor-ws"]["peers"][0]["public_key"] == public_key(after["dmz-vpn"]["interface"]["private_key"])
     again = run_app("configure", exp=full)
     assert wg_hosts(again.experiment) == after
+
+
+def test_full_renders_every_plc_from_its_variant_zip(ctx: Context) -> None:
+    """Every PLC of the full variant has a program ZIP (plc/common/build_zip.sh);
+    the app renders all five, plc-brewhouse's OPC UA config from the ZIP's
+    debug map and plc-packaging's S7 config from the slave layout."""
+    from cherrymountain_apps.cherrymountain.metadata import OpenPlcHost
+
+    plcs = {n: md for n, md in ctx.hosts.items() if isinstance(md, OpenPlcHost)}
+    assert set(plcs) == {"plc-brewhouse", "plc-cellar", "plc-packaging", "plc-utilities", "plc-power"}
+    for name, md in plcs.items():
+        dsts = {i.dst for i in render.render_openplc(ctx, name, md)}
+        assert f"/opt/cherrymountain/openplc/{md.program or name}.zip" in dsts, name
+    opcua = next(
+        i.src
+        for i in render.render_openplc(ctx, "plc-brewhouse", plcs["plc-brewhouse"])
+        if i.dst.endswith("opcua.json")
+    )
+    config = json.loads(Path(opcua).read_text())
+    assert config  # built from the ZIP's debug_map.json

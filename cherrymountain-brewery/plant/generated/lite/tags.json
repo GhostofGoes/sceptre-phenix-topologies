@@ -5644,6 +5644,24 @@
       "plc": "plc-utilities"
     },
     {
+      "name": "UTL.CIP.XS03.PV",
+      "desc": "Cellar transfer in progress (peer read from plc-cellar)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "peer",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XS04.PV",
+      "desc": "Cellar circuits permit CIP (peer read from plc-cellar)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "peer",
+      "plc": "plc-utilities"
+    },
+    {
       "name": "PWR.MAIN.JT01.PV",
       "desc": "Service real power (import positive)",
       "type": "analog-read",

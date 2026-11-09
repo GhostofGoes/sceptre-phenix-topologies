@@ -13,6 +13,18 @@ The ci slice's plc-cellar ZIP keeps its own builder in `plc/plc-cellar/`.
 | `zipdiff.py` | Compares two ZIPs by entries, for `--check` |
 | `build_zip.sh` | Runs the four steps for one PLC and variant, or `--all` |
 
+The programs are `plc/plc-brewhouse/plc-brewhouse.st` (ISA-88 phases for the
+FUXA batch engine, the liquor tanks, boil detection), `plc/plc-cellar/
+plc-cellar-plant.st` (glycol zones, spunding, carbonation, the CO2 interlock,
+the dry-hop sequence, the peer status bits), `plc/plc-packaging/
+plc-packaging.st` (the PackML line over the machines, OEE, conveyors),
+`plc/plc-utilities/plc-utilities.st` (glycol, steam, wastewater, the CIP
+sequence with plc-cellar's permit read peer to peer), and
+`plc/plc-power/plc-power.st` (load shed and staged restoration, BESS dispatch
+on the demand cap). Each was compiled by strucpp and its C++ checked with
+`g++ -fsyntax-only` against the strucpp runtime headers; none has run in an
+OpenPLC runtime yet.
+
 ```shell
 plc/common/build_zip.sh plc-utilities --variant full    # writes phenix-injects/openplc/full/plc-utilities.zip
 plc/common/build_zip.sh --all                           # every PLC, full and lite

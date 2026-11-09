@@ -134,7 +134,8 @@ write.
   program ZIP is built separately (`plc/plc-cellar/build_zip.sh`).
 - **Used by:** `plc-cellar` in the ci variant.
 - **Pinned versions:** `OPENPLC_REF=v4.3.2` (a tag of
-  `Autonomy-Logic/openplc-runtime`). Whether `install.sh --native` works in the
+  `Autonomy-Logic/openplc-runtime`), checked against its commit
+  `9fb5e1a29b574806f5aea3a4e78202c7a5d658ee` so a moved tag fails the build. Whether `install.sh --native` works in the
   build chroot is marked `TODO(verify)`; `spikes/openplc-v4` runs the same
   install on a live VM.
 
@@ -144,7 +145,8 @@ write.
 - **Base:** the shared noble `minbase` image plus `git`, `xz-utils`,
   `python3`, `build-essential`, and `libsqlite3-dev` for the build, 12 GB disk.
 - **Contents:**
-  - Node.js from the nodejs.org tarball, unpacked under `/usr/local`.
+  - Node.js from the nodejs.org tarball, checked against its SHA-256 and
+    unpacked under `/usr/local`.
   - FUXA at `/opt/fuxa` (one commit, built with `npm run build`, dev
     dependencies pruned) with the driver plugins installed so the range runs
     offline.
@@ -154,7 +156,8 @@ write.
   - The Wazuh agent, disabled ([Wazuh agent](#wazuh-agent)).
 - **Build:** the commands above, with `<name>` set to `cm-fuxa`.
 - **Used by:** `scada-fuxa` in the ci variant.
-- **Pinned versions:** Node.js `22.14.0`; FUXA commit
+- **Pinned versions:** Node.js `22.14.0` (tarball SHA-256
+  `69b09dba...e80437ec`, from nodejs.org's `SHASUMS256.txt`); FUXA commit
   `b2972583b3d59525131c44e8b3214f55b74750fe` (server 1.3.6); plugins
   `modbus-serial@8.0.19`, `node-opcua@2.149.0`, `node-snap7@1.0.9`, and
   `node-bacnet@0.2.4`. Other npm dependencies follow FUXA's lockfile.

@@ -68,11 +68,14 @@ spec:
       # spikes/openplc-v4 runs the same install on a live VM.
       export DEBIAN_FRONTEND=noninteractive
       OPENPLC_REF=v4.3.2
+      # The commit the tag names: a moved tag fails the build instead of changing it.
+      OPENPLC_COMMIT=9fb5e1a29b574806f5aea3a4e78202c7a5d658ee
       apt-get update
       apt-get install -y --no-install-recommends git zip unzip
 
       git clone --depth 1 --branch "$OPENPLC_REF" https://github.com/Autonomy-Logic/openplc-runtime.git /opt/openplc-runtime
       cd /opt/openplc-runtime || exit 1
+      test "$(git rev-parse HEAD)" = "$OPENPLC_COMMIT"
       # install.sh creates this directory only when systemd is running, which it is
       # not in a chroot. It holds the user database and .env across reboots.
       mkdir -p /var/lib/openplc-runtime /var/run/runtime

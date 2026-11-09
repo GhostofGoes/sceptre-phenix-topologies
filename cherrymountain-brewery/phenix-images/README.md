@@ -361,6 +361,9 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   - A Grafana drop-in with anonymous Viewer access (the HMI kiosks read it
     without a login, DESIGN.md 10.3), the plant dashboard as the home page, and
     no plugin downloads, update checks, or news feed (the VMs have no internet).
+  - A trimmed `/etc/mosquitto/mosquitto.conf` (pid file, log file, and `include_dir`
+    only). The packaged one also sets `persistence_location`, and the app's drop-in sets
+    it again, which makes Mosquitto stop with "Duplicate persistence_location".
   - The Wazuh agent, disabled.
   - The cherrymountain app renders the rest at boot: credentials, `telegraf.conf`,
     the Mosquitto listeners, the Grafana data sources and dashboard, and the

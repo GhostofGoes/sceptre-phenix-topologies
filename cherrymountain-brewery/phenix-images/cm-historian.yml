@@ -129,6 +129,15 @@ spec:
       Environment=GF_NEWS_NEWS_FEED_ENABLED=false
       EOF
       install -d -o grafana -g grafana -m 0755 /var/lib/grafana/dashboards/cherrymountain
+      # Mosquitto's packaged mosquitto.conf sets the persistence file and directory, and the
+      # cherrymountain app's /etc/mosquitto/conf.d/cherrymountain.conf sets them again; Mosquitto
+      # stops with "Duplicate persistence_location" on a duplicate. The main file keeps only
+      # what the app does not set.
+      cat > /etc/mosquitto/mosquitto.conf <<'EOF'
+      pid_file /run/mosquitto/mosquitto.pid
+      log_dest file /var/log/mosquitto/mosquitto.log
+      include_dir /etc/mosquitto/conf.d
+      EOF
       install -d -m 0755 /var/lib/cm-historian /etc/cherrymountain
       systemctl enable influxdb.service telegraf.service grafana-server.service mosquitto.service
 

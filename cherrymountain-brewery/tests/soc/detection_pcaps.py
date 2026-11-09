@@ -26,12 +26,12 @@ from pathlib import Path
 
 from scapy.all import IP, TCP, UDP, Ether, Raw, wrpcap  # type: ignore[import-untyped]
 
-#: What the Suricata pcap must raise: every sid of cherrymountain.rules except 9000134
-#: (DNP3 Select from utility-derms), which has no flow here.
+#: What the Suricata pcap must raise: every sid of cherrymountain.rules.
 EXPECTED_SIDS: frozenset[int] = frozenset(
     {
         9000110, 9000111, 9000112, 9000113, 9000114, 9000120, 9000121, 9000122, 9000123, 9000124,
-        9000125, 9000126, 9000127, 9000130, 9000131, 9000132, 9000133, 9000135, 9000136, 9000137,
+        9000125, 9000126, 9000127, 9000130, 9000131, 9000132, 9000133, 9000134, 9000135, 9000136,
+        9000137, 9000138, 9000139,
         9000140, 9000150, 9000151, 9000160, 9000161, 9000162, 9000163, 9000164,
     }
 )
@@ -48,6 +48,7 @@ EXPECTED_NOTICES: frozenset[str] = frozenset(
         "CherryMountain::ATS_Transfer_To_Utility",
         "CherryMountain::Load_Shed_Active",
         "CherryMountain::Load_Shed_Cleared",
+        "CherryMountain::DNP3_Breaker_Command",
     }
 )
 
@@ -187,8 +188,19 @@ def suricata_pcap(path: Path) -> None:
 
     for function in (3, 4, 5, 6):
         b.tcp("10.10.20.11", "10.20.15.10", 20000, operate(function))
-    for function in (4, 5, 6):
-        b.tcp("192.0.2.10", "10.20.15.10", 20000, operate(function))
+    # From utility-derms: a CROB on BO 2 (the packaging feeder, 9000137 and 9000138),
+    # one on BO 2 with a 2-byte index (9000139), and the analog setpoints of the
+    # expected DER dispatch in each Analog Output Block variation (9000134-9000136).
+    b.tcp("192.0.2.10", "10.20.15.10", 20000, operate(5))
+    b.tcp(
+        "192.0.2.10",
+        "10.20.15.10",
+        20000,
+        dnp3_frame(0xC4, 4, 3, bytes([0xC1, 0xC1, 5, 0x0C, 0x01, 0x28, 0x01, 0x00, 0x02, 0x00]) + crob),
+    )
+    for variation, value in ((1, struct.pack("<i", 500)), (2, struct.pack("<h", 500)), (3, struct.pack("<f", 50.0))):
+        ao: bytes = bytes([0xC1, 0xC1, 5, 0x29, variation, 0x17, 0x01, 0x03]) + value + b"\x00"
+        b.tcp("192.0.2.10", "10.20.15.10", 20000, dnp3_frame(0xC4, 4, 3, ao))
     # A host that is not in the inventory on a field VLAN, and one that is.
     b.tcp("10.20.11.99", "10.20.11.10", 502, read_3, b"")
     b.tcp("10.20.11.1", "10.20.11.10", 502, read_3, b"")
@@ -223,6 +235,14 @@ def zeek_pcap(path: Path) -> None:
     # the emergency bit goes 0, 0, 1, 1, 0. plc-power's coil 7 (load shed) goes 0, 1, 0.
     b.modbus_poll("10.20.16.1", "10.20.16.23", 2, 10001, 3, [b"\x05", b"\x05", b"\x07", b"\x07", b"\x05"])
     b.modbus_poll("10.20.30.10", "10.20.10.15", 1, 0, 16, [b"\x00\x00", b"\x80\x00", b"\x00\x00"])
+    # A DNP3 CROB from utility-derms on rtu-der BO 1 (the boiler feeder).
+    crob: bytes = bytes([0x41, 0x01]) + struct.pack("<II", 100, 100) + bytes([0x00])
+    b.tcp(
+        "192.0.2.10",
+        "10.20.15.10",
+        20000,
+        dnp3_frame(0xC4, 4, 3, bytes([0xC1, 0xC1, 5, 0x0C, 0x01, 0x17, 0x01, 0x01]) + crob),
+    )
     wrpcap(str(path), b.packets)
 
 

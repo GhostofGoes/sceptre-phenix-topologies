@@ -47,6 +47,11 @@ export {
         Load_Shed_Active,
         ## plc-power stopped shedding load.
         Load_Shed_Cleared,
+        ## A DNP3 binary control (CROB) on the main breaker or an MSB feeder
+        ## (rtu-der binary outputs 0 to 3), from any host. The utility's expected
+        ## DER dispatch is analog setpoints plus the DER enables (BO 4 and 5;
+        ## DESIGN.md 7.5).
+        DNP3_Breaker_Command,
     };
 
     ## One bit of a Modbus read that carries a plant state change worth a notice.
@@ -91,6 +96,9 @@ export {
 
     ## The engineering workstation, and the OpenPLC REST port.
     const ews_host: addr = 10.20.30.12 &redef;
+    ## rtu-der binary outputs that operate a breaker: 52-M and the boiler,
+    ## packaging, and RTU-1 feeders (plant/generated/full/dnp3/rtu-der.json).
+    const dnp3_breaker_indexes: set[count] = { 0, 1, 2, 3 } &redef;
     const plc_rest_port: port = 8443/tcp &redef;
     ## Bytes the originator sends in one REST session that mark a program upload
     ## (the cellar program ZIP is about 100 KB).
@@ -282,4 +290,29 @@ event modbus_read_discrete_inputs_request(c: connection, headers: ModbusHeaders,
 event modbus_read_discrete_inputs_response(c: connection, headers: ModbusHeaders, coils: ModbusCoils)
     {
     check_bits(c, headers$tid, 2, coils);
+    }
+
+# ---------------------------------------------------------------- DNP3 breaker commands
+# The index of a point comes in dnp3_object_prefix, just before the object it
+# prefixes, so the last prefix of each request is kept per connection.
+global dnp3_last_prefix: table[string] of count &create_expire=1min;
+
+event dnp3_object_prefix(c: connection, is_orig: bool, prefix_value: count)
+    {
+    if ( is_orig )
+        dnp3_last_prefix[c$uid] = prefix_value;
+    }
+
+event dnp3_crob(c: connection, is_orig: bool, control_code: count, count8: count,
+                on_time: count, off_time: count, status_code: count)
+    {
+    if ( ! is_orig || c$uid !in dnp3_last_prefix )
+        return;
+    local index = dnp3_last_prefix[c$uid];
+    if ( index in dnp3_breaker_indexes )
+        NOTICE([$note=DNP3_Breaker_Command, $conn=c,
+                $msg=fmt("DNP3 CROB (control code %d) on rtu-der binary output %d from %s",
+                         control_code, index, c$id$orig_h),
+                $identifier=cat(c$id$orig_h, index, control_code),
+                $suppress_for=5min]);
     }

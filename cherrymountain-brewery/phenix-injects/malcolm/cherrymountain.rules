@@ -80,10 +80,21 @@ alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Select from a host other t
 alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Operate from a host other than utility-derms"; flow:established,to_server; dnp3_func:operate; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_control; sid:9000131; rev:1;)
 alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Direct Operate from a host other than utility-derms"; flow:established,to_server; dnp3_func:direct_operate; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_control; sid:9000132; rev:1;)
 alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Direct Operate No Ack from a host other than utility-derms"; flow:established,to_server; dnp3_func:direct_operate_nr; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_control; sid:9000133; rev:1;)
-alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 control operation from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_func:select; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000134; rev:1;)
-alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 control operation from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_func:operate; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000135; rev:1;)
-alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 control operation from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_func:direct_operate; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000136; rev:1;)
-alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 control operation from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_func:direct_operate_nr; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000137; rev:1;)
+# The expected DER dispatch is an analog setpoint (object group 41: the PV
+# utility limit and the BESS utility dispatch, rtu-der AO 1 and 3; DESIGN.md 7.5),
+# a low-priority baseline event. A binary control (CROB, group 12) from
+# utility-derms is rarer: BO 4 and 5 enable the PV inverter and the BESS, and BO 0
+# to 3 close or open the main breaker and the MSB feeders, which the utility has
+# no business operating. 9000138 and 9000139 match a CROB on index 0 to 3 in the
+# reassembled application data, for the 1-byte (0x17) and 2-byte (0x28) index
+# qualifiers; Zeek's DNP3_Breaker_Command notice names the point whatever the
+# encoding.
+alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 analog setpoint (g41v1) from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_obj:41,1; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000134; rev:2;)
+alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 analog setpoint (g41v2) from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_obj:41,2; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000135; rev:2;)
+alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 analog setpoint (g41v3) from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_obj:41,3; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000136; rev:2;)
+alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 binary control (CROB) from utility-derms (DER enable, or a breaker: check 9000138/9000139)"; flow:established,to_server; dnp3_obj:12,1; classtype:misc-activity; priority:3; metadata:cm_usecase dnp3_control_baseline; sid:9000137; rev:2;)
+alert dnp3 any any -> any any (msg:"CM DNP3 CROB on the main breaker or an MSB feeder (rtu-der BO 0-3)"; flow:established,to_server; dnp3_obj:12,1; dnp3.data; content:"|0c 01 17|"; byte_test:1,<,4,1,relative; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_breaker; sid:9000138; rev:1;)
+alert dnp3 any any -> any any (msg:"CM DNP3 CROB on the main breaker or an MSB feeder (rtu-der BO 0-3, 2-byte index)"; flow:established,to_server; dnp3_obj:12,1; dnp3.data; content:"|0c 01 28|"; byte_test:2,<,4,2,relative,little; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_breaker; sid:9000139; rev:1;)
 
 # --- New hosts on the field VLANs ----------------------------------------------------
 # Every address of FIELD-BH, FIELD-CEL, FIELD-PKG, FIELD-UTL, DERLINK, and

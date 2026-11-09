@@ -4,7 +4,7 @@ Skipped when scapy, Suricata, or Docker with Malcolm's Zeek image is missing, so
 hook skips it. Run it by hand on a machine that has them:
 
     pip install scapy
-    apt-get install suricata        # the rules were run on 7.0.3; Malcolm uses 8.0.7
+    apt-get install suricata        # the rules pass on 7.0.3, 8.0.2, and Malcolm 26.10.0's 8.0.7
     docker pull ghcr.io/idaholab/malcolm/zeek:26.10.0
     python3 -m pytest cherrymountain-brewery/tests/soc/test_detection_traffic.py
 """

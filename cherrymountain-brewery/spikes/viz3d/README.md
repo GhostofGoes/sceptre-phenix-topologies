@@ -9,8 +9,9 @@ cost? **Decides:** whether a 3D view enters the design (a new white-cell
 component next to §9.5 ground truth and §15.3 autotunnel), its data path and
 node, and the scope of the first build.
 
-**Status:** planned. A local proof of concept (`poc/`) ran in this round; the
-spike itself, in phenix, is the [Spike plan](#spike-plan) below.
+**Status:** go; being built as the `cm-viz` component (`viz/`). A local proof
+of concept (`poc/`) ran in this round; the spike itself, in phenix, is the
+[Spike plan](#spike-plan) below.
 
 ## Background: how GRFICS does it
 

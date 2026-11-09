@@ -62,7 +62,7 @@ App block:
 | `mgmt.exclude` | hostnames | `[]` | MGMT members that keep no policy |
 | `historian.org` | name | `cherrymountain` | InfluxDB organization |
 | `historian.buckets` | names | `[scada, bas, oee]` | InfluxDB buckets |
-| `historian.retentionHours` | integer | `0` (forever) | Bucket retention |
+| `historian.retentionHours` | integer | `720` (30 days) | Bucket retention; `0` keeps data forever |
 | `historian.influxPort`, `grafanaPort`, `mqttPort` | ports | `8086`, `3000`, `1883` | Historian services |
 | `historian.mqttTopicRoot` | topic | `cherrymountain/frontrange` | PackTags topic root |
 | `wazuh.manager` | hostname | `wazuh` | Wazuh manager; no `wazuh` block means no Wazuh files |

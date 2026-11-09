@@ -5,7 +5,10 @@
 # cm-historian-provision.service. Re-running is safe: setup runs only while
 # InfluxDB still allows it, and existing buckets are kept.
 # Env (from /etc/default/cm-historian): INFLUX_HOST, INFLUX_ORG, INFLUX_TOKEN,
-# INFLUX_PASSWORD, INFLUX_BUCKETS, INFLUX_RETENTION.
+# INFLUX_PASSWORD, INFLUX_BUCKETS, INFLUX_RETENTION (an influx duration such as 30d
+# or 720h, or 0 for no expiry; the app renders 720h unless historian.retentionHours
+# says otherwise). Retention is set when a bucket is created, so a bucket that
+# already exists keeps the retention it has.
 # The influx CLI reads INFLUX_HOST, INFLUX_ORG, and INFLUX_TOKEN itself, so the
 # token never appears on a command line.
 set -euo pipefail
@@ -13,7 +16,7 @@ set -euo pipefail
 : "${INFLUX_HOST:?set INFLUX_HOST}" "${INFLUX_ORG:?set INFLUX_ORG}"
 : "${INFLUX_TOKEN:?set INFLUX_TOKEN}" "${INFLUX_PASSWORD:?set INFLUX_PASSWORD}"
 : "${INFLUX_BUCKETS:?set INFLUX_BUCKETS}"
-RETENTION="${INFLUX_RETENTION:-0}"
+RETENTION="${INFLUX_RETENTION:-30d}"
 STATE=/var/lib/cm-historian
 
 log() { echo "cm-historian-provision: $*"; }

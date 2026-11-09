@@ -181,6 +181,8 @@ def test_historian_files(ctx: Context) -> None:
     env = injects["/etc/default/cm-historian"]
     assert env.permissions == "0600"
     assert 'INFLUX_BUCKETS="scada bas oee"' in Path(env.src).read_text()
+    # Buckets expire after 30 days unless historian.retentionHours says otherwise.
+    assert "INFLUX_RETENTION=720h\n" in Path(env.src).read_text()
     sources = yaml.safe_load(
         Path(
             injects["/etc/grafana/provisioning/datasources/cherrymountain.yaml"].src

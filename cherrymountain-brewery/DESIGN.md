@@ -1971,7 +1971,11 @@ health checks read a tag value, not the connection state
 
 **historian**
 
-- InfluxDB 2 OSS, with buckets `scada` and `bas`, and `oee` from Telegraf.
+- InfluxDB 2 OSS, with buckets `scada` and `bas`, and `oee` from Telegraf. Each
+  bucket has an explicit retention of 30 days (`historian.retentionHours`, 720
+  by default; 0 keeps data forever). `cm-historian-provision` passes it to
+  `influx setup` and `influx bucket create`, so an existing bucket keeps the
+  retention it was created with.
 - Telegraf runs `mqtt_consumer` for PackTags, plus host metrics.
 - Grafana is provisioned with dashboards for fermentation curves, OEE,
   energy (kWh/bbl against the BA benchmark), monthly demand cost, and

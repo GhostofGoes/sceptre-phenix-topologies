@@ -109,8 +109,8 @@ class Historian(Closed):
     buckets: Annotated[list[Name], Field(min_length=1)] = Field(
         default_factory=lambda: ["scada", "bas", "oee"]
     )
-    #: Retention for every bucket, in hours; 0 keeps data forever.
-    retention_hours: Annotated[int, Field(ge=0)] = 0
+    #: Retention for every bucket, in hours (720 h is 30 days); 0 keeps data forever.
+    retention_hours: Annotated[int, Field(ge=0)] = 720
     influx_port: Port = 8086
     grafana_port: Port = 3000
     mqtt_port: Port = 1883

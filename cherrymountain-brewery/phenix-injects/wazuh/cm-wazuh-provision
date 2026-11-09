@@ -193,7 +193,15 @@ fi
 # The tool waits only 60 s for wazuh.yml. If the file came later, the dashboard
 # still holds the default wazuh-wui password and cannot reach the Wazuh API.
 wui_password=$(sed -n 's/.*The password for Wazuh API user wazuh-wui is //p' "${STATE}/passwords.txt" 2> /dev/null | tail -n 1)
-if [ -n "$wui_password" ] && [ -f "$WUI_CONF" ] && ! grep -qF "password: \"${wui_password}\"" "$WUI_CONF"; then
+if [ -n "$wui_password" ] && [ ! -f "$WUI_CONF" ]; then
+  # The dashboard keeps a wazuh.yml that exists, so write it in its default form.
+  wui_dir=$(dirname "$WUI_CONF")
+  install -d -m 0750 -o wazuh-dashboard -g wazuh-dashboard "$(dirname "$wui_dir")" "$wui_dir"
+  printf 'hosts:\n  - default:\n      url: https://localhost\n      port: 55000\n      username: wazuh-wui\n      password: "%s"\n      run_as: false\n' "$wui_password" > "$WUI_CONF"
+  chown wazuh-dashboard:wazuh-dashboard "$WUI_CONF"
+  chmod 0600 "$WUI_CONF"
+  log "wrote ${WUI_CONF} with the wazuh-wui password"
+elif [ -n "$wui_password" ] && ! grep -qF "password: \"${wui_password}\"" "$WUI_CONF"; then
   sed -i "s|password: .*|password: \"${wui_password}\"|g" "$WUI_CONF"
   log "set the wazuh-wui password in ${WUI_CONF}"
 fi

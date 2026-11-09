@@ -309,20 +309,11 @@ class WazuhManagerHost(HostBase):
 
 
 class BbmdHost(HostBase):
-    """A BACpypes3 BBMD (cm-bbmd.service on ot-svc and bas-bbmd)."""
+    """A BACpypes3 BBMD (cm-bbmd.service on ot-svc and bas-bbmd). The
+    topology injects its static settings from phenix-injects/bbmd/; the app
+    only checks it."""
 
     type: Literal["bbmd"]
-    #: BACnet device instance of the BBMD; unique on the BACnet network.
-    instance: Annotated[int, Field(ge=0, le=4194302)]
-    #: BACnet device name; default ``bbmd-<hostname>``.
-    device_name: Name | None = None
-    interface: Interface = "IF0"
-    #: Listen prefix length. 0 makes the broadcast address 255.255.255.255,
-    #: which the OPS BBMD needs to hear FUXA's Who-Is (DESIGN.md 10.4).
-    prefix: Annotated[int, Field(ge=0, le=32)] | None = None
-    port: Port = 47808
-    #: The other BBMDs in the BDT; every BDT also lists this host.
-    peers: Annotated[list[Hostname], Field(min_length=1)]
 
 
 #: metadata.type -> model.

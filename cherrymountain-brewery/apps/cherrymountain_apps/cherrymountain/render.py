@@ -26,7 +26,6 @@ from pydantic import BaseModel, ConfigDict
 from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, write_private
 from cherrymountain_apps.cherrymountain.metadata import (
     AppMetadata,
-    BbmdHost,
     FuxaHost,
     GuacamoleHost,
     HistorianHost,
@@ -310,6 +309,14 @@ def render_openplc(ctx: Context, hostname: str, md: OpenPlcHost) -> list[Injecti
     )
 
     plantgen_dir: Path = src.plc_conf_dir(program)
+    stale: list[str] = src.zip_conf_drift(program, plantgen_dir)
+    if stale:
+        # The boot script replaces conf/ anyway, but the program's located
+        # variables were compiled against these maps (DESIGN.md 12.6).
+        logger.warning(
+            f"{hostname}: the {program} ZIP was built with other plugin configs than "
+            f"plant/generated/{src.variant} ({', '.join(stale)}); rebuild it for this variant"
+        )
     for plugin in ("modbus_master", "modbus_slave"):
         path: Path = plantgen_dir / f"{plugin}.json"
         if (
@@ -1190,128 +1197,47 @@ def render_mgmt(ctx: Context) -> dict[str, list[Injection]]:
     return plan
 
 
-# ---------------------------------------------------------------- BBMD
-
-
-def bbmd_config(ctx: Context, hostname: str, md: BbmdHost) -> dict[str, Any]:
-    """The BDT for one BBMD: itself first, then its peers, all without a mask,
-    so each BBMD unicasts to its peers (DESIGN.md 10.4)."""
-    own: str = ctx.ip(hostname, md.interface)
-    entries: list[dict[str, Any]] = [{"address": own, "port": md.port}]
-    for peer in md.peers:
-        peer_md: Any = ctx.hosts.get(peer)
-        iface: str = peer_md.interface if isinstance(peer_md, BbmdHost) else "IF0"
-        port: int = peer_md.port if isinstance(peer_md, BbmdHost) else md.port
-        entries.append({"address": ctx.ip(peer, iface), "port": port})
-    node: Any = ctx.nodes[hostname]
-    mask: Any = next(
-        (
-            i.get("mask")
-            for i in (node.get("network") or {}).get("interfaces") or []
-            if i.get("name") == md.interface
-        ),
-        24,
-    )
-    prefix: int = md.prefix if md.prefix is not None else int(mask)
-    return {
-        "address": f"{own}/{prefix}",
-        "port": md.port,
-        "bdt": entries,
-    }
-
-
-def render_bbmd(ctx: Context, hostname: str, md: BbmdHost) -> list[Injection]:
-    """``/etc/default/cm-bbmd`` for cm-bbmd.service (phenix-injects/bbmd/:
-    CM_BBMD_NAME, CM_BBMD_INSTANCE, CM_BBMD_ADDRESS, and a comma-separated
-    CM_BBMD_BDT), the same BDT as JSON, and the service files themselves."""
-    out: Path = ctx.host_dir(hostname) / "bbmd"
-    cfg: dict[str, Any] = bbmd_config(ctx, hostname, md)
-    path: Path = write(
-        out / "bbmd.json",
-        to_json(
-            {
-                **cfg,
-                "name": md.device_name or f"bbmd-{hostname}",
-                "instance": md.instance,
-            }
-        ),
-    )
-    bdt: str = ",".join(f"{e['address']}:{e['port']}" for e in cfg["bdt"])
-    env: Path = write(
-        out / "cm-bbmd.env",
-        env_file(
-            {
-                "CM_BBMD_NAME": md.device_name or f"bbmd-{hostname}",
-                "CM_BBMD_INSTANCE": md.instance,
-                "CM_BBMD_ADDRESS": f"{cfg['address']}:{cfg['port']}",
-                "CM_BBMD_BDT": bdt,
-            }
-        ),
-    )
-    injects: list[Injection] = [
-        Injection(
-            src=path, dst=f"{CONF_DIR}/bbmd.json", description="BBMD address and BDT"
-        ),
-        Injection(
-            src=env,
-            dst="/etc/default/cm-bbmd",
-            description="BBMD settings for cm-bbmd.service",
-        ),
-    ]
-    if not ctx.sources.has_injects_dir("bbmd"):
-        logger.warning(
-            f"{hostname}: phenix-injects/bbmd/ is missing; injecting the BDT config only"
-        )
-        return injects
-    return injects + _shared(
-        ctx,
-        hostname,
-        "bbmd",
-        [
-            (
-                "cm_bbmd.py",
-                "/usr/local/lib/cm-bbmd/cm_bbmd.py",
-                "0644",
-                "BACpypes3 BBMD",
-            ),
-            (
-                "cm-bbmd.service",
-                "/etc/systemd/system/cm-bbmd.service",
-                "0644",
-                "BBMD unit",
-            ),
-            ("70-bbmd.sh", f"{STARTUP}/70-bbmd.sh", "0755", "start the BBMD"),
-        ],
-    )
-
-
 # ---------------------------------------------------------------- all
 
 
+#: Host type -> its renderer.
+RENDERERS: Final[dict[type[HostBase], Any]] = {
+    OpenPlcHost: render_openplc,
+    FuxaHost: render_fuxa,
+    SimCtlHost: render_sim,
+    SimFederateHost: render_sim,
+    HistorianHost: render_historian,
+    HmiHost: render_hmi,
+    GuacamoleHost: render_guacamole,
+}
+
+
 def render_all(ctx: Context) -> dict[str, list[Injection]]:
-    """Every injection, by host."""
+    """Every injection, by host. Renders every host before failing, so one
+    run reports every missing input at once."""
     plan: dict[str, list[Injection]] = {}
+    failures: list[str] = []
 
     def add(hostname: str, injects: list[Injection]) -> None:
         plan.setdefault(hostname, []).extend(injects)
 
     for name, md in ctx.hosts.items():
-        if isinstance(md, OpenPlcHost):
-            add(name, render_openplc(ctx, name, md))
-        elif isinstance(md, FuxaHost):
-            add(name, render_fuxa(ctx, name, md))
-        elif isinstance(md, (SimCtlHost, SimFederateHost)):
-            add(name, render_sim(ctx, name, md))
-        elif isinstance(md, HistorianHost):
-            add(name, render_historian(ctx, name, md))
-        elif isinstance(md, HmiHost):
-            add(name, render_hmi(ctx, name, md))
-        elif isinstance(md, GuacamoleHost):
-            add(name, render_guacamole(ctx, name, md))
-        elif isinstance(md, BbmdHost):
-            add(name, render_bbmd(ctx, name, md))
-    for name, injects in render_wazuh(ctx).items():
-        add(name, injects)
-    for name, injects in render_mgmt(ctx).items():
-        add(name, injects)
+        renderer: Any = RENDERERS.get(type(md))
+        if renderer is None:
+            continue
+        try:
+            add(name, renderer(ctx, name, md))
+        except SourceError as ex:
+            failures.append(f"{name}: {ex}")
+    for step in (render_wazuh, render_mgmt):
+        try:
+            for name, injects in step(ctx).items():
+                add(name, injects)
+        except SourceError as ex:
+            failures.append(str(ex))
+    if failures:
+        raise SourceError(
+            f"{len(failures)} host(s) could not be rendered:\n  "
+            + "\n  ".join(failures)
+        )
     return plan

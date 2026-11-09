@@ -47,6 +47,7 @@ ROLE_TYPES: Final[dict[str, frozenset[str]]] = {
     "historian": frozenset({"historian"}),
     "hmi": frozenset({"hmi"}),
     "jump": frozenset({"guacamole"}),
+    "bbmd": frozenset({"bbmd"}),
 }
 #: Roles whose hosts the app should provision; a missing one is a warning.
 PROVISIONED_ROLES: Final[frozenset[str]] = frozenset(
@@ -247,6 +248,13 @@ def check_topology(
             )
             continue
         ifaces: dict[str, Any] = _interfaces(node)
+        if getattr(phost, "vyos", False):
+            # VyOS names its NICs eth<index> in PCI order, which the topology
+            # follows; plant.yaml keeps the IF<index> names (DESIGN.md 10.2).
+            listed_ifaces: list[Any] = (node.get("network") or {}).get(
+                "interfaces"
+            ) or []
+            ifaces = {f"IF{i}": iface for i, iface in enumerate(listed_ifaces)}
         for iname, spec in phost.interfaces.items():
             where: str = f"network.interfaces[{iname}]"
             iface: Any = ifaces.get(iname)
@@ -406,8 +414,6 @@ def _host_refs(md: HostBase) -> list[tuple[str, str]]:
     fuxa: Any = getattr(md, "fuxa", None)
     if isinstance(fuxa, str):
         refs.append(("metadata.fuxa", fuxa))
-    for index, peer in enumerate(getattr(md, "peers", None) or []):
-        refs.append((f"metadata.peers[{index}]", peer))
     for index, conn in enumerate(getattr(md, "connections", None) or []):
         refs.append((f"metadata.connections[{index}].hostname", conn.hostname))
     return refs

@@ -85,7 +85,7 @@ Host metadata, selected by `type`:
 | `hmi` | `fuxa` (`scada-fuxa`), `view` (`Overview`), `interface` (the FUXA host's, IF0) | `/etc/default/cm-kiosk`, `cm-kiosk`, XDG autostart entry |
 | `guacamole` | `connections` (`ews-rdp`, `ews-ssh`), `recording` (true), `totp` (true) | Guacamole initdb SQL (salted hash only), `/etc/default/cm-guacamole` |
 | `wazuh-manager` | | With the app's `wazuh` block: the enrollment password and boot hook |
-| `bbmd` | `instance` (required), `deviceName` (`bbmd-<hostname>`), `interface` (IF0), `prefix` (the interface's), `port` (47808), `peers` (required) | `/etc/default/cm-bbmd` for cm-bbmd.service (`CM_BBMD_NAME`, `CM_BBMD_INSTANCE`, `CM_BBMD_ADDRESS`, `CM_BBMD_BDT`: itself, then its peers, no masks), the same as `/etc/cherrymountain/bbmd.json`, and the service files from `phenix-injects/bbmd/` |
+| `bbmd` | | Nothing; the topology injects cm-bbmd.service and its settings from `phenix-injects/bbmd/`. Checked only (SoH: the `cm_bbmd.py` process) |
 
 Every topology node with a `mgmt` NIC, listed in the app or not, gets
 `/etc/cherrymountain/nftables-mgmt.nft` and `04-cm-mgmt-nftables.sh`. The
@@ -149,16 +149,9 @@ A fuller plant (excerpt):
     - hostname: ot-svc
       metadata:
         type: bbmd
-        instance: 9001
-        prefix: 0
-        peers:
-          - bas-bbmd
     - hostname: bas-bbmd
       metadata:
         type: bbmd
-        instance: 9002
-        peers:
-          - ot-svc
 ```
 
 ## Status
@@ -201,8 +194,10 @@ the value.
 | `metadata.northbound: differs from plant.yaml hosts.<host>.northbound` | Leave `northbound` out to use plant.yaml's. |
 | `phenix-injects/openplc/<program>.zip is a Git LFS pointer` | Run `git lfs pull` in the topology directory. |
 | `no debug map for <program>` | OPC UA needs the compiled program's `debug_map.json`, in the ZIP or at `plc/<program>/debug_map.json`, or set `opcua.debugMap`. |
+| warning `the <program> ZIP was built with other plugin configs than plant/generated/<variant>` | The ZIP was built for another variant (for example the ci ZIP in full). Rebuild it with `plc/<program>/build_zip.sh` for this variant. |
 | `the debug map of <program> is not from the program in its ZIP` | Rebuild the ZIP and the debug map together. |
 | `a bas FUXA needs metadata.project` | The builder only builds the scada project; commit the BAS project and point `project` at it. |
+| `<n> host(s) could not be rendered:` and a line per host | pre-start renders every host before failing; fix each listed input. |
 | status `unreachable` for a host | Its C2 client is not up yet; `running` checks again. |
 
 ## Tests

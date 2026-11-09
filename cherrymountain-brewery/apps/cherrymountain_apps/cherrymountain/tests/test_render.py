@@ -1,5 +1,5 @@
 """Renderers for hosts the ci variant does not have (OPC UA and S7 PLCs, the
-historian, HMIs, Guacamole, Wazuh, BBMDs), on a context built from the ci
+historian, HMIs, Guacamole, Wazuh), on a context built from the ci
 experiment plus extra topology nodes."""
 
 from __future__ import annotations
@@ -17,7 +17,6 @@ from box import Box
 
 from cherrymountain_apps.cherrymountain import render
 from cherrymountain_apps.cherrymountain.metadata import (
-    BbmdHost,
     FuxaHost,
     GuacamoleHost,
     HistorianHost,
@@ -61,8 +60,6 @@ def ctx(run_app: RunApp) -> Context:
         _node("ews", "IF0", "10.20.30.12"),
         _node("dmz-jump", "IF0", "10.10.20.11", zone="dmz"),
         _node("wazuh", "IF0", "10.40.10.11", zone="soc"),
-        _node("ot-svc", "IF0", "10.20.30.13"),
-        _node("bas-bbmd", "IF0", "10.30.10.5", zone="bas"),
     ):
         context.nodes[n.general.hostname] = n
     return context
@@ -221,7 +218,7 @@ def test_fuxa_expected_device_must_be_in_the_project(ctx: Context) -> None:
         render.render_fuxa(ctx, "scada-fuxa", host)
 
 
-# ---------------------------------------------------------------- HMI, Guacamole, Wazuh, BBMD
+# ---------------------------------------------------------------- HMI, Guacamole, Wazuh
 
 
 def test_hmi_kiosk_url(ctx: Context) -> None:
@@ -269,38 +266,6 @@ def test_wazuh_default_agents_skip_plcs(ctx: Context) -> None:
     plan = render.render_wazuh(ctx)
     assert "plc-cellar" not in plan
     assert "scada-fuxa" in plan
-
-
-def test_bbmd_bdt_lists_itself_then_its_peers(ctx: Context) -> None:
-    ops_md: BbmdHost = md(
-        BbmdHost, {"type": "bbmd", "instance": 9001, "prefix": 0, "peers": ["bas-bbmd"]}
-    )
-    bas_md: BbmdHost = md(
-        BbmdHost,
-        {
-            "type": "bbmd",
-            "instance": 9002,
-            "deviceName": "bbmd-bas",
-            "peers": ["ot-svc"],
-        },
-    )
-    ctx.hosts["ot-svc"] = ops_md
-    ctx.hosts["bas-bbmd"] = bas_md
-    ops = render.bbmd_config(ctx, "ot-svc", ops_md)
-    assert ops["address"] == "10.20.30.13/0"
-    assert [e["address"] for e in ops["bdt"]] == ["10.20.30.13", "10.30.10.5"]
-    bas = render.bbmd_config(ctx, "bas-bbmd", bas_md)
-    assert bas["address"] == "10.30.10.5/24"
-    env = Path(
-        by_dst(render.render_bbmd(ctx, "ot-svc", ops_md))["/etc/default/cm-bbmd"].src
-    ).read_text()
-    assert "CM_BBMD_BDT=10.20.30.13:47808,10.30.10.5:47808" in env
-    assert "CM_BBMD_ADDRESS=10.20.30.13/0:47808" in env
-    assert "CM_BBMD_NAME=bbmd-ot-svc" in env
-    assert "CM_BBMD_INSTANCE=9001" in env
-    dsts = by_dst(render.render_bbmd(ctx, "bas-bbmd", bas_md))
-    assert "/usr/local/lib/cm-bbmd/cm_bbmd.py" in dsts
-    assert "CM_BBMD_NAME=bbmd-bas" in Path(dsts["/etc/default/cm-bbmd"].src).read_text()
 
 
 # ---------------------------------------------------------------- MGMT nftables

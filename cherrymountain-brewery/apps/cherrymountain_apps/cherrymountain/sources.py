@@ -207,6 +207,19 @@ class Sources:
         except (KeyError, TypeError) as ex:
             raise SourceError(f"{where} is not a strucpp debug map") from ex
 
+    def zip_conf_drift(self, program: str, conf_dir: Path) -> list[str]:
+        """Plugin configs in the program ZIP that differ from ``conf_dir``."""
+        drift: list[str] = []
+        with zipfile.ZipFile(self.program_zip(program)) as zf:
+            names: set[str] = set(zf.namelist())
+            for path in sorted(conf_dir.glob("*.json")):
+                entry: str = f"conf/{path.name}"
+                if entry in names and json.loads(zf.read(entry)) != json.loads(
+                    path.read_text(encoding="utf-8")
+                ):
+                    drift.append(path.name)
+        return drift
+
     def zip_md5(self, program: str) -> str | None:
         """``PROGRAM_MD5`` from the ZIP's defines.h, if present."""
         with zipfile.ZipFile(self.program_zip(program)) as zf:
@@ -249,6 +262,11 @@ class Sources:
             # The builder reports a bad input with SystemExit(message).
             raise SourceError(
                 f"fuxa/build_project.py failed for variant {self.variant}: {ex}"
+            ) from None
+        except Exception as ex:
+            raise SourceError(
+                f"fuxa/build_project.py failed for variant {self.variant} "
+                f"({type(ex).__name__}); it may not handle this variant's tag list yet"
             ) from None
         finally:
             sys.modules.pop(spec.name, None)

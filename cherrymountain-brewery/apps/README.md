@@ -79,7 +79,5 @@ python3 -I cherrymountain_apps/cherrymountain/tests/build_fixtures.py
 - **Program ZIPs:** `phenix-injects/openplc/<program>.zip`; an OPC UA PLC also
   needs its compile's `debug_map.json`, inside the ZIP or at
   `plc/<program>/debug_map.json`.
-- **BBMD:** `/etc/default/cm-bbmd` in the format `phenix-injects/bbmd/cm_bbmd.py`
-  reads (`CM_BBMD_NAME`, `CM_BBMD_INSTANCE`, `CM_BBMD_ADDRESS` with the listen
-  prefix, comma-separated `CM_BBMD_BDT`), plus the same as
-  `/etc/cherrymountain/bbmd.json`.
+- **BBMD:** the topology injects `cm-bbmd.service` and its settings from
+  `phenix-injects/bbmd/`; the app only checks the BBMD hosts.

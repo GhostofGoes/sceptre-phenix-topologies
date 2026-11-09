@@ -173,7 +173,7 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
     elif isinstance(md, WazuhManagerHost):
         listeners += [":1514", ":1515"]
     elif isinstance(md, BbmdHost):
-        processes.append("bbmd")
+        processes.append("cm_bbmd.py")
 
     if not (processes or listeners or tests):
         return None

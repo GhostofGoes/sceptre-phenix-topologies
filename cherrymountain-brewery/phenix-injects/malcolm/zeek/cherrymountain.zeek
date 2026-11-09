@@ -56,6 +56,27 @@ export {
         ## vendor_window after) a vendor session from dmz-jump reached the EWS:
         ## the vendor path changed a PLC (DESIGN.md 13).
         PLC_Change_During_Vendor_Session,
+        ## A Modbus coil write to a life-safety output from a host that is not
+        ## its writer: the bulk CO2 supply valve, the CO2 shutoff reset, a
+        ## confined-space entry permit, or any PLC's RIO output image (coil 800
+        ## and up, which no supervisory host writes; DESIGN.md 6.3, 6.7).
+        Life_Safety_Write,
+        ## plc-utilities latched the CO2 supply shutoff (tier 3 or loss of gas
+        ## detection; Denver IFC 5307), or the operator reset it.
+        CO2_Supply_Shutoff,
+        CO2_Supply_Shutoff_Reset,
+        ## plc-cellar found a locked-out output of a vessel under confined-space
+        ## entry written (29 CFR 1910.146).
+        Vessel_Entry_Violation,
+    };
+
+    ## A range of coils on one Modbus server and the hosts that may write it.
+    type WatchedWrite: record {
+        server: subnet;     ##< Modbus server(s)
+        first: count;       ##< first coil (PDU address)
+        last: count;        ##< last coil (PDU address)
+        writers: set[addr]; ##< hosts that may write it (empty: none)
+        name: string;       ##< what the coils are
     };
 
     ## One bit of a Modbus read that carries a plant state change worth a notice.
@@ -90,12 +111,36 @@ export {
         10.20.16.1, 10.20.16.2, 10.20.16.20, 10.20.16.21, 10.20.16.22, 10.20.16.23,
     } &redef;
 
-    ## State changes of the power system (DESIGN.md 6.6 and 14): gen-ats reports
-    ## "ATS on the emergency source" as discrete input 10002 (plc-power polls it),
-    ## and plc-power's own coil 7 is "load shed active" (FUXA polls it).
+    ## State changes worth a notice (DESIGN.md 6.3, 6.6, 6.7, and 14), with the
+    ## addresses of plant/generated/full/registers.json: gen-ats reports "ATS on
+    ## the emergency source" as discrete input 10002 (plc-power polls it);
+    ## plc-power's coil 10 is "load shed active", plc-utilities' coil 9 the CO2
+    ## supply shutoff, and plc-cellar's coils 53 to 63 (odd) the entry
+    ## violations of FV-101 to BBT-202 (FUXA polls them).
     const watched_bits: vector of WatchedBit = vector(
         [$server=10.20.16.23, $fc=2, $address=10002, $name="ats_on_emergency"],
-        [$server=10.20.10.15, $fc=1, $address=7, $name="load_shed"]
+        [$server=10.20.10.15, $fc=1, $address=10, $name="load_shed"],
+        [$server=10.20.10.14, $fc=1, $address=9, $name="co2_shutoff"],
+        [$server=10.20.10.12, $fc=1, $address=53, $name="entry_violation FV-101"],
+        [$server=10.20.10.12, $fc=1, $address=55, $name="entry_violation FV-102"],
+        [$server=10.20.10.12, $fc=1, $address=57, $name="entry_violation FV-103"],
+        [$server=10.20.10.12, $fc=1, $address=59, $name="entry_violation FV-104"],
+        [$server=10.20.10.12, $fc=1, $address=61, $name="entry_violation BBT-201"],
+        [$server=10.20.10.12, $fc=1, $address=63, $name="entry_violation BBT-202"]
+    ) &redef;
+
+    ## Nobody: no supervisory host writes a RIO output image.
+    const nobody: set[addr] = set() &redef;
+    ## Life-safety coils and their writers (cherrymountain.rules 9000170-9000173).
+    const watched_writes: vector of WatchedWrite = vector(
+        [$server=10.20.14.10/32, $first=4, $last=4, $writers=set(10.20.14.1),
+         $name="the bulk CO2 supply valve on rio-utilities"],
+        [$server=10.20.10.0/24, $first=800, $last=65535, $writers=nobody,
+         $name="a PLC's RIO output image"],
+        [$server=10.20.10.14/32, $first=11, $last=11, $writers=set(10.20.30.10),
+         $name="the CO2 supply shutoff reset on plc-utilities"],
+        [$server=10.20.10.12/32, $first=35, $last=40, $writers=set(10.20.30.10),
+         $name="a confined-space entry permit on plc-cellar"]
     ) &redef;
 
     ## The engineering workstation, and the OpenPLC REST port.
@@ -252,6 +297,19 @@ function bit_changed(c: connection, name: string, value: bool)
         note = value ? ATS_Transfer_To_Emergency : ATS_Transfer_To_Utility;
         what = value ? "the ATS moved to the emergency source" : "the ATS moved back to the utility source";
         }
+    else if ( name == "co2_shutoff" )
+        {
+        note = value ? CO2_Supply_Shutoff : CO2_Supply_Shutoff_Reset;
+        what = value ? "plc-utilities shut off the bulk CO2 supply" : "the CO2 supply shutoff was reset";
+        }
+    else if ( /^entry_violation / in name )
+        {
+        # Only the rising edge: the alarm clears when the entry ends.
+        if ( ! value )
+            return;
+        note = Vessel_Entry_Violation;
+        what = fmt("a locked-out output of %s was written during confined-space entry", name[16:]);
+        }
     else
         {
         note = value ? Load_Shed_Active : Load_Shed_Cleared;
@@ -299,6 +357,35 @@ event modbus_read_discrete_inputs_request(c: connection, headers: ModbusHeaders,
 event modbus_read_discrete_inputs_response(c: connection, headers: ModbusHeaders, coils: ModbusCoils)
     {
     check_bits(c, headers$tid, 2, coils);
+    }
+
+# --- Life-safety coil writes ---------------------------------------------------
+
+function check_write(c: connection, first: count, quantity: count)
+    {
+    local last = first + quantity - 1;
+    for ( i in watched_writes )
+        {
+        local w = watched_writes[i];
+        if ( c$id$resp_h !in w$server || last < w$first || first > w$last )
+            next;
+        if ( c$id$orig_h in w$writers )
+            next;
+        NOTICE([$note=Life_Safety_Write, $conn=c,
+                $msg=fmt("%s wrote coil %d (%d coils) of %s: %s", c$id$orig_h, first, quantity, c$id$resp_h, w$name),
+                $identifier=cat(c$id$orig_h, c$id$resp_h, w$first),
+                $suppress_for=5min]);
+        }
+    }
+
+event modbus_write_single_coil_request(c: connection, headers: ModbusHeaders, address: count, value: bool)
+    {
+    check_write(c, address, 1);
+    }
+
+event modbus_write_multiple_coils_request(c: connection, headers: ModbusHeaders, start_address: count, coils: ModbusCoils)
+    {
+    check_write(c, start_address, |coils|);
     }
 
 # ---------------------------------------------------------------- DNP3 breaker commands

@@ -27,6 +27,33 @@ alert modbus ![10.20.30.10,10.20.30.12,10.20.11.1,10.20.12.1,10.20.13.1,10.20.14
 alert tcp ![10.20.30.10,10.20.30.12] any -> any 102 (msg:"CM S7comm Write Var from a host other than scada-fuxa or the EWS"; flow:established,to_server; content:"|03 00|"; depth:2; content:"|32 01|"; offset:7; depth:2; content:"|05|"; offset:17; depth:1; classtype:policy-violation; priority:1; metadata:cm_usecase s7_write; sid:9000111; rev:1;)
 alert tcp ![10.20.30.12] any -> any 102 (msg:"CM S7comm download, PLC control, or PLC stop from a host other than the EWS"; flow:established,to_server; content:"|03 00|"; depth:2; content:"|32 01|"; offset:7; depth:2; pcre:"/^.{17}[\x1a\x1b\x1c\x28\x29]/s"; classtype:policy-violation; priority:1; metadata:cm_usecase s7_control; sid:9000112; rev:1;)
 
+# --- Life-safety outputs (DESIGN.md 6.3, 6.7) -----------------------------------------
+# The addresses are plantgen's (plant/generated/full/registers.json); tests/soc checks
+# them. The bulk CO2 supply valve is coil 4 of rio-utilities (UTL.CO2.XV01.CMD). Only
+# plc-utilities drives it, and its solenoid is also wired through the bas-vent shutoff
+# relay (it fails closed at 30,000 ppm or on loss of detection), so a coil write to
+# rio-utilities from any other host is a probe of the life-safety path whatever its
+# value. (Suricata 7's modbus address test does not match a single-coil write at an
+# exact address, so 9000170 takes every coil write and 9000172/9000173 match the
+# Write Single Coil PDU by its bytes: function 5 at offset 7, the address at 8-9.)
+alert modbus ![10.20.14.1] any -> 10.20.14.10 502 (msg:"CM Modbus coil write to rio-utilities (coil 4 is the bulk CO2 supply valve) from a host other than plc-utilities"; flow:established,to_server; modbus: access write coils; classtype:attempted-admin; priority:1; metadata:cm_usecase co2_valve_write; sid:9000170; rev:1;)
+# A PLC's Modbus server maps its RIO outputs at coil 800 and up (%QX100.0; DESIGN.md
+# 12.5): the CO2 supply valve is plc-utilities coil 804. scada-fuxa and the EWS write
+# PLC-memory commands below 800 and never a RIO output, which the program rewrites
+# every scan, so such a write tries to drive a field output between scans. plc-cellar
+# and plc-brewhouse catch it on a vessel locked out for entry (DESIGN.md 6.3); this
+# rule catches it on the wire. A write of several coils that starts below 800 and
+# runs past it is not matched.
+alert modbus any any -> 10.20.10.0/24 502 (msg:"CM Modbus write to a PLC's RIO output image (coil 800 and up)"; flow:established,to_server; modbus: access write coils, address >799; classtype:attempted-admin; priority:1; metadata:cm_usecase rio_output_write; sid:9000171; rev:1;)
+# The CO2 supply shutoff reset (plc-utilities coil 11, UTL.CO2.XC01.RESET) is an
+# operator action on scada-fuxa; the confined-space entry permits (plc-cellar coils 35
+# to 40, CEL.ENTRY.HS01..06.ENTRY) are the entry supervisor's, on the same HMI. From
+# the EWS, or anyone else, either is unexpected: clearing a permit unlocks a vessel
+# with a person inside. These two match Write Single Coil, which FUXA uses; Zeek's
+# Life_Safety_Write (zeek/cherrymountain.zeek) also sees Write Multiple Coils.
+alert tcp ![10.20.30.10] any -> 10.20.10.14 502 (msg:"CM CO2 supply shutoff reset (plc-utilities coil 11) from a host other than scada-fuxa"; flow:established,to_server; content:"|05 00 0b|"; offset:7; depth:3; classtype:policy-violation; priority:1; metadata:cm_usecase co2_shutoff_reset; sid:9000172; rev:1;)
+alert tcp ![10.20.30.10] any -> 10.20.10.12 502 (msg:"CM confined-space entry permit (plc-cellar coils 35-40) written from a host other than scada-fuxa"; flow:established,to_server; content:"|05 00|"; offset:7; depth:2; byte_test:1,>=,35,9; byte_test:1,<=,40,9; classtype:policy-violation; priority:1; metadata:cm_usecase vessel_entry_write; sid:9000173; rev:1;)
+
 # --- OpenPLC REST (HTTPS 8443): the EWS uploads programs and starts or stops them --
 # The content is encrypted, so this sees sessions, not requests. The Zeek script
 # adds a size test that tells a program upload from a status call.

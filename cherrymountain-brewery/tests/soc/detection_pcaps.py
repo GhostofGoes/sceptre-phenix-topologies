@@ -33,6 +33,7 @@ EXPECTED_SIDS: frozenset[int] = frozenset(
         9000125, 9000126, 9000127, 9000130, 9000131, 9000132, 9000133, 9000134, 9000135, 9000136,
         9000137, 9000138, 9000139,
         9000140, 9000141, 9000142, 9000143, 9000150, 9000151, 9000160, 9000161, 9000162, 9000163, 9000164,
+        9000170, 9000171, 9000172, 9000173,
     }
 )
 #: What the Zeek pcap must raise (the notice types of cherrymountain.zeek that need no TLS).
@@ -49,6 +50,10 @@ EXPECTED_NOTICES: frozenset[str] = frozenset(
         "CherryMountain::Load_Shed_Active",
         "CherryMountain::Load_Shed_Cleared",
         "CherryMountain::DNP3_Breaker_Command",
+        "CherryMountain::Life_Safety_Write",
+        "CherryMountain::CO2_Supply_Shutoff",
+        "CherryMountain::CO2_Supply_Shutoff_Reset",
+        "CherryMountain::Vessel_Entry_Violation",
         "CherryMountain::PLC_Change_During_Vendor_Session",
     }
 )
@@ -168,6 +173,17 @@ def suricata_pcap(path: Path) -> None:
     b.tcp("10.20.30.10", "10.20.10.12", 502, write_15, b"")
     b.tcp("10.20.12.1", "10.20.12.10", 502, write_15, b"")
     b.tcp("10.20.20.10", "10.20.10.12", 502, read_3, b"")
+    # Life-safety coils (DESIGN.md 6.3, 6.7): the CO2 valve on rio-utilities from a
+    # rogue host and from plc-utilities (quiet); a PLC's RIO output image (plc-utilities
+    # coil 804, the CO2 valve); the CO2 shutoff reset and an entry permit from the EWS,
+    # and both from scada-fuxa (quiet).
+    b.tcp("10.20.14.99", "10.20.14.10", 502, mbap(4, bytes([5]) + struct.pack(">HH", 4, 0xFF00)), b"")
+    b.tcp("10.20.14.1", "10.20.14.10", 502, mbap(4, bytes([15]) + struct.pack(">HHBB", 0, 8, 1, 0x10)), b"")
+    b.tcp("10.20.30.10", "10.20.10.14", 502, mbap(5, bytes([5]) + struct.pack(">HH", 804, 0xFF00)), b"")
+    b.tcp("10.20.30.12", "10.20.10.14", 502, mbap(6, bytes([5]) + struct.pack(">HH", 11, 0xFF00)), b"")
+    b.tcp("10.20.30.10", "10.20.10.14", 502, mbap(6, bytes([5]) + struct.pack(">HH", 11, 0xFF00)), b"")
+    b.tcp("10.20.30.12", "10.20.10.12", 502, mbap(7, bytes([5]) + struct.pack(">HH", 36, 0x0000)), b"")
+    b.tcp("10.20.30.10", "10.20.10.12", 502, mbap(7, bytes([5]) + struct.pack(">HH", 36, 0xFF00)), b"")
     # S7comm: a write and a PLC stop from the wrong hosts.
     write_var: bytes = s7(0x05, bytes.fromhex("01120a10020001000184000000") + bytes.fromhex("000400"))
     b.tcp("10.10.20.11", "10.20.10.13", 102, write_var)
@@ -254,9 +270,18 @@ def zeek_pcap(path: Path) -> None:
     b.tcp("10.10.20.11", "10.20.30.12", 3389, b"x" * 64)
     b.tcp("10.20.30.12", "10.20.10.12", 8443, b"A" * 90000)
     # gen-ats discrete inputs 10001 to 10003 (running, on the emergency source, utility ok):
-    # the emergency bit goes 0, 0, 1, 1, 0. plc-power's coil 7 (load shed) goes 0, 1, 0.
+    # the emergency bit goes 0, 0, 1, 1, 0. plc-power's coil 10 (load shed) goes 0, 1, 0.
     b.modbus_poll("10.20.16.1", "10.20.16.23", 2, 10001, 3, [b"\x05", b"\x05", b"\x07", b"\x07", b"\x05"])
-    b.modbus_poll("10.20.30.10", "10.20.10.15", 1, 0, 16, [b"\x00\x00", b"\x80\x00", b"\x00\x00"])
+    b.modbus_poll("10.20.30.10", "10.20.10.15", 1, 0, 16, [b"\x00\x00", b"\x00\x04", b"\x00\x00"])
+    # plc-utilities' coil 9 (the CO2 supply shutoff) goes 0, 1, 0; plc-cellar's coil 55
+    # (an entry violation on FV-102) goes 0, 1.
+    b.modbus_poll("10.20.30.10", "10.20.10.14", 1, 0, 16, [b"\x00\x00", b"\x00\x02", b"\x00\x00"])
+    b.modbus_poll("10.20.30.10", "10.20.10.12", 1, 48, 16, [b"\x00\x00", b"\x80\x00"])
+    # Life-safety writes: the CO2 valve from a rogue host on FIELD-UTL, and an entry
+    # permit cleared from the EWS (from scada-fuxa it is quiet).
+    b.tcp("10.20.14.99", "10.20.14.10", 502, mbap(4, bytes([5]) + struct.pack(">HH", 4, 0xFF00)), b"")
+    b.tcp("10.20.30.12", "10.20.10.12", 502, mbap(7, bytes([15]) + struct.pack(">HHBB", 35, 6, 1, 0x00)), b"")
+    b.tcp("10.20.30.10", "10.20.10.12", 502, mbap(7, bytes([15]) + struct.pack(">HHBB", 35, 6, 1, 0x3F)), b"")
     # A DNP3 CROB from utility-derms on rtu-der BO 1 (the boiler feeder).
     crob: bytes = bytes([0x41, 0x01]) + struct.pack("<II", 100, 100) + bytes([0x00])
     b.tcp(

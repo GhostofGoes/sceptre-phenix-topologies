@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -96,6 +97,30 @@ def test_the_vendor_path_matches_the_topology(topology_nodes: dict[str, dict]) -
     assert f"-> {vpn} 51820" in text
     assert f"-> {jump} 443" in text
     assert f"10.99.0.0/24 any -> !{jump} any" in text
+
+
+def test_life_safety_addresses_match_plantgen(repo: Path) -> None:
+    """The coil numbers the life-safety rules and notices name (DESIGN.md 6.3, 6.7)
+    are plantgen's, and the power-state bit Zeek watches is still load shed."""
+    regs = json.loads((repo / "plant" / "generated" / "full" / "registers.json").read_text())
+    by_tag = {r["tag"]: r for r in regs["registers"]}
+    valve = by_tag["UTL.CO2.XV01.CMD"]
+    assert (valve["rio"], valve["otsim_register"], valve["slave_pdu_address"]) == ("rio-utilities", 4, 804)
+    assert by_tag["UTL.CO2.XC01.RESET"]["slave_pdu_address"] == 11
+    assert by_tag["UTL.CO2.XS02.SHUTOFF"]["slave_pdu_address"] == 9
+    assert by_tag["PWR.DMD.XS02.SHED"]["slave_pdu_address"] == 10
+    permits = [by_tag[f"CEL.ENTRY.HS0{n}.ENTRY"]["slave_pdu_address"] for n in range(1, 7)]
+    assert permits == list(range(35, 41))
+    zeek = ZEEK.read_text()
+    for n in range(1, 7):
+        address = by_tag[f"CEL.ENTRY.XA0{n}.PV"]["slave_pdu_address"]
+        assert f"$server=10.20.10.12, $fc=1, $address={address}," in zeek
+    assert '$server=10.20.10.15, $fc=1, $address=10, $name="load_shed"' in zeek
+    assert '$server=10.20.10.14, $fc=1, $address=9, $name="co2_shutoff"' in zeek
+    assert "$first=35, $last=40" in zeek and "$first=11, $last=11" in zeek
+    rules = RULES.read_text()
+    assert 'content:"|05 00 0b|"' in rules  # coil 11
+    assert "byte_test:1,>=,35,9; byte_test:1,<=,40,9;" in rules
 
 
 def test_the_dnp3_master_is_the_utility_derms_address(repo: Path) -> None:

@@ -21,9 +21,13 @@ plc-packaging.st` (the PackML line over the machines, OEE, conveyors),
 `plc/plc-utilities/plc-utilities.st` (glycol, steam, wastewater, the CIP
 sequence with plc-cellar's permit read peer to peer), and
 `plc/plc-power/plc-power.st` (load shed and staged restoration, BESS dispatch
-on the demand cap). Each was compiled by strucpp and its C++ checked with
-`g++ -fsyntax-only` against the strucpp runtime headers; none has run in an
-OpenPLC runtime yet.
+on the demand cap, the on-peak shift, the overnight and brew-day recharge, the
+monthly demand reset, and the weekly genset exercise, all from the ATS
+controller's clock, which the program distrusts when it stops or jumps). Each
+was compiled by strucpp and its C++ checked with `g++ -fsyntax-only` against the
+strucpp runtime headers; none has run in an OpenPLC runtime yet. plc-power's C++
+is also built and run scan by scan against the federates' power model by
+`sim/tests/test_plc_power.py` and `test_plant.py` (`sim/README.md`).
 
 ```shell
 plc/common/build_zip.sh plc-utilities --variant full    # writes phenix-injects/openplc/full/plc-utilities.zip

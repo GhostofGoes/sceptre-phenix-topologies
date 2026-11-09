@@ -36,6 +36,18 @@ plant's own hour meter and test log are the records a real brewery keeps.
 **Tariff.** :class:`cherrymountain_sim.tariff.Meter` turns the service import
 into 15-minute demand, the monthly peak, and the SV-SGT bill.
 
+**Clock** (DESIGN.md §7.3, §9.4). The ATS controller's real-time clock is three
+16-bit registers on ``gen-ats`` (:class:`ClockRegisters`): the minute of the
+local day, the local date as days since 1970-01-01, and the calendar month. They
+read the simulation clock (``clock.start`` plus the federate time times
+``clock.speedup``), the same instant the meter bills with, so plc-power's
+on-peak window, brew-day reserve, monthly demand reset, and weekly exercise
+fall on the calendar :class:`~cherrymountain_sim.tariff.Tariff` charges by.
+``clock.start`` carries a fixed UTC offset, so there is no daylight-saving
+shift. The clock is calendar time, not the cellar's compressed kinetic time
+(``cellar/clock.sim_hours``, :mod:`cherrymountain_sim.timebase`): the power
+model runs in wall time and only its calendar moves faster under ``speedup``.
+
 Until plc-power writes, a built-in controller does its job: feeders closed,
 inverters enabled, and the BESS dispatch of DESIGN.md §7.3 (hold 15-minute
 demand under the target, recharge overnight to the brew-day minimum, shift
@@ -56,6 +68,7 @@ battery off line; ``action: clear`` stands the event down (a replaced module).
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 import math
 from typing import Any, ClassVar, Literal
@@ -159,6 +172,38 @@ class PowerSettings(BaseModel):
     epa_test_hours_cap: float = 100.0
     #: Seconds from the start command to the ATS transfer during an exercise.
     exercise_warmup_s: float = 8.0
+
+
+#: Day zero of the clock's date register (days since the Unix epoch).
+EPOCH_DATE: dt.date = dt.date(1970, 1, 1)
+
+
+class ClockRegisters(BaseModel):
+    """The ATS controller clock as its three 16-bit registers.
+
+    ``day`` counts local calendar days since 1970-01-01, so it is monotonic
+    (a reader detects a stopped or jumping clock from ``day * 1440 + minute``)
+    and fits 16 bits until 2149. The weekday is ``(day + 4) % 7`` with 0 =
+    Sunday (1970-01-01 was a Thursday); ``month`` is 1 to 12.
+    """
+
+    minute: int
+    day: int
+    month: int
+
+    @classmethod
+    def of(cls, when: dt.datetime) -> ClockRegisters:
+        """The registers for a local simulation date and time."""
+        return cls(
+            minute=when.hour * 60 + when.minute,
+            day=(when.date() - EPOCH_DATE).days,
+            month=when.month,
+        )
+
+    @property
+    def weekday(self) -> int:
+        """Day of the week, 0 = Sunday to 6 = Saturday."""
+        return (self.day + 4) % 7
 
 
 class GenRun(BaseModel):
@@ -648,6 +693,11 @@ class PowerFederate(Federate):
 
     # -- publications ------------------------------------------------------------------
 
+    @property
+    def clock_registers(self) -> ClockRegisters:
+        """The ATS controller clock now (the simulation clock, local time)."""
+        return ClockRegisters.of(self.now)
+
     def point_value(self, pub: Publication) -> Value:
         """A field point of relay-main, pv-inverter, bess-pcs, or gen-ats."""
         tag = f"{pub.device}.{pub.point}"
@@ -655,6 +705,7 @@ class PowerFederate(Federate):
             return self.cmd(tag)
         g = self.grid
         e = self.energized
+        regs = self.clock_registers
         values: dict[str, Value] = {
             "relay-main.p_kw": g.p_kw,
             "relay-main.q_kvar": g.q_kvar,
@@ -685,6 +736,9 @@ class PowerFederate(Federate):
             "gen-ats.gen_running": g.gen_running,
             "gen-ats.on_emergency": g.on_emergency,
             "gen-ats.utility_ok": g.utility_ok,
+            "gen-ats.clock_min": regs.minute,
+            "gen-ats.clock_day": regs.day,
+            "gen-ats.clock_month": regs.month,
         }
         if tag not in values:
             raise KeyError(f"no model value for {pub.key}")

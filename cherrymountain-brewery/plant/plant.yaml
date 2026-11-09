@@ -498,6 +498,16 @@ device_types:
     on_emergency: { type: binary-read }
     utility_ok: { type: binary-read }
     gen_start: { type: binary-read-write }
+    # The ATS controller's real-time clock: the simulation clock's local civil
+    # date and time, the calendar SV-SGT bills by (DESIGN.md 7.3, 9.4). Three
+    # 16-bit registers (no scaling): the minute of the day, the date as days
+    # since 1970-01-01 (monotonic, so a reader can tell a stopped or jumping
+    # clock from a running one; weekday is (day + 4) mod 7, 0 = Sunday), and the
+    # calendar month (the billing month rolls over with it). They are appended
+    # after the existing points, so no existing register moves.
+    clock_min: { type: analog-read, scaling: 0 }
+    clock_day: { type: analog-read, scaling: 0 }
+    clock_month: { type: analog-read, scaling: 0 }
 
   # -- building automation (BACnet objects, DESIGN.md §8.1) -------------------
   # Units are BACnet engineering-unit names. Outputs are commandable.
@@ -1095,6 +1105,12 @@ alarm_rationale:
     consequence: Too little energy to cap the next brew-day peak
     action: Check the overnight recharge schedule and the dispatch settings
     response_time: 4h
+  power-clock-untrusted:
+    priority: medium
+    cause: The ATS controller clock stopped, jumped, or reads out of range, or the power federate is not publishing it
+    consequence: "plc-power falls back to demand-cap dispatch only: no on-peak shift, no overnight or brew-day recharge, no monthly demand reset, no weekly genset exercise (NFPA 110 test records fall behind)"
+    action: Check the sim-power federate and the gen-ats clock registers (PWR.GEN.KI01 to KI03); the schedule resumes after two minutes of a steady clock
+    response_time: 1h
   # -- facilities (BACnet, evaluated by FUXA) -----------------------------------
   cellar-co2-purge:
     priority: low
@@ -2231,9 +2247,15 @@ areas:
             desc: ATS on the emergency source
             io: gen-ats.on_emergency
             alarms:
-              - { kind: state, limit: 1, delay: 0s, rationale: utility-outage }
+              - { kind: state, limit: 1, delay: 0s, rationale: utility-outage, suppress: DMD.XS02.SHED }
           - { id: ZS02.PV, desc: Utility source available at the ATS, io: gen-ats.utility_ok }
           - { id: HS01.CMD, desc: Genset remote start (weekly exercise), io: gen-ats.gen_start }
+          # The ATS controller's clock (device type gen-ats). plc-power schedules the
+          # on-peak window, the 05:00 reserve, the monthly demand reset, and the
+          # weekly exercise from it, and distrusts it when it stops or jumps.
+          - { id: KI01.PV, desc: "ATS controller clock, minute of the local day", io: gen-ats.clock_min, units: min, range: [0, 1439] }
+          - { id: KI02.PV, desc: "ATS controller clock, local date (days since 1970-01-01)", io: gen-ats.clock_day, units: d, range: [0, 65535] }
+          - { id: KI03.PV, desc: "ATS controller clock, calendar month", io: gen-ats.clock_month, units: mo, range: [1, 12] }
 
       - id: DMD
         name: Demand and tariff logic (SV-SGT)
@@ -2244,7 +2266,13 @@ areas:
           - { id: EY01.SP, desc: BESS minimum state of charge before 05:00 on brew days, type: analog-read-write, units: "%", range: [0, 100], scaling: 0 }
           - { id: XS01.ONPEAK, desc: SV-SGT on-peak window (weekdays 17:00-21:00), type: binary-read }
           - { id: XS02.SHED, desc: Load shed active (large feeders held open), type: binary-read }
-          - { id: XS03.BREWDAY, desc: Brew day scheduled (from the batch engine), type: binary-read-write }
+          - { id: XS03.BREWDAY, desc: "Brew day scheduled (the next 05:00 starts one; the batch engine or an operator sets it)", type: binary-read-write }
+          - { id: XS04.EXERCISE, desc: "Genset exercise in progress (ATS on the genset, utility healthy)", type: binary-read }
+          - id: XS05.CLKOK
+            desc: "ATS clock trusted (in range, advancing, in step)"
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 0, delay: 5m, rationale: power-clock-untrusted }
 
   - id: FAC
     name: Facilities (building automation)

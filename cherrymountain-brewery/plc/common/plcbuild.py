@@ -11,7 +11,8 @@ two marker comments. This script:
    (limit, deadband, on-delay, off-delay, suppression; DESIGN.md 6.5) at the
    ALARMS marker, so the program and the FUXA alarm list cannot drift,
 3. checks that the hand-written part assigns every RIO output and every
-   PLC-computed status tag and never assigns an alarm bit itself,
+   PLC-computed status tag, never assigns an alarm bit itself, and, where it
+   counts scans (``SCAN_MS``), uses the task interval set here,
 4. prepends ``cm_alarm.st`` and appends the CONFIGURATION block, and writes
    ``<out>/<plc>-full.st``, which ``gen_program.mjs`` (strucpp) compiles.
 
@@ -37,7 +38,10 @@ PLC_ROOT: Path = HERE.parent
 GENERATED: Path = PLC_ROOT.parent / "plant" / "generated"
 LOCATED_MARKER: str = "(* LOCATED_VARS: plcbuild.py splices the located variables and alarm instances here. *)"
 ALARM_MARKER: str = "(* ALARMS: plcbuild.py generates the alarm logic here. *)"
-SCAN_INTERVAL: str = "T#100ms"
+#: The task interval, in milliseconds. A program that times its steps by
+#: counting scans declares the same number as ``SCAN_MS``; check() compares.
+SCAN_MS: int = 100
+SCAN_INTERVAL: str = f"T#{SCAN_MS}ms"
 #: Variants this builder serves (ci has its own assemble.py).
 VARIANTS: tuple[str, ...] = ("full", "lite")
 #: Program source per PLC, relative to plc/<plc>/ (default: <plc>.st).
@@ -183,6 +187,9 @@ def assigned(source: str, var: str) -> bool:
 def check(source: str, located: dict[str, Located], tags: dict[str, Tag], alarms: list[Alarm]) -> list[str]:
     """Problems in the hand-written program (before the alarm logic is added)."""
     problems: list[str] = []
+    for m in re.finditer(r"^\s*SCAN_MS\s*:\s*\w+\s*:=\s*(\d+)\s*;", source, re.MULTILINE):
+        if int(m.group(1)) != SCAN_MS:
+            problems.append(f"SCAN_MS is {m.group(1)}, but the task interval is {SCAN_MS} ms")
     alarm_bits: set[str] = {st_name(a.name) for a in alarms}
     for name in sorted(alarm_bits):
         if assigned(source, name):

@@ -11,11 +11,15 @@
            6 Aborted
   Start is accepted in Idle, Complete, and Aborted; Hold and Restart pass
   through Holding and Restarting for one scan; Reset returns Complete or
-  Aborted to Idle. The phase in force is latched at Start.
+  Aborted to Idle. The phase in force is latched at Start. A timed step (mill,
+  mash rest, vorlauf, whirlpool and its hop dose) counts only the scans it
+  runs, so a hold keeps the time already served and a restart finishes the
+  rest: nothing is milled, rested, or dosed twice.
 
   Equipment control that runs whatever the phase:
     - CLT and HLT levels (fill valves with hysteresis), and the HLT temperature
-      (steam valve, proportional, only while the jacket is covered).
+      (steam valve, proportional, only while the jacket is covered: the
+      low-level switch BH.HLT.LSL01.PV is on below 15 %).
     - The local wort boiling point from the barometric pressure
       (Clausius-Clapeyron for water, plus 0.5 degF for the extract), boil
       detection within 0.5 degF of it, and the boil timer.
@@ -48,11 +52,12 @@ PROGRAM plc_brewhouse
   (* LOCATED_VARS: plcbuild.py splices the located variables and alarm instances here. *)
 
   VAR CONSTANT
-    MILL_TIME : TIME := T#300s;
-    VORLAUF_TIME : TIME := T#600s;
-    MASH_HOLD : TIME := T#3600s;      (* single infusion, 60 min *)
-    WHIRLPOOL_TIME : TIME := T#1200s;
-    HOP_DOSE_TIME : TIME := T#30s;
+    SCAN_MS : UDINT := 100;           (* the task interval plcbuild.py sets (T#100ms) *)
+    MILL_MS : UDINT := 1020000;       (* 17 min: the 503 kg grain bill at 0.5 kg/s (50 Hz) *)
+    VORLAUF_MS : UDINT := 600000;     (* 10 min *)
+    MASH_HOLD_MS : UDINT := 3600000;  (* single infusion, 60 min *)
+    WHIRLPOOL_MS : UDINT := 1200000;  (* 20 min *)
+    HOP_DOSE_MS : UDINT := 30000;     (* the hop stand dose, 30 s *)
     BOIL_MINUTES_X10 : UINT := 600;   (* 60 min *)
     MASH_IN_LEVEL : UINT := 600;      (* 60 % *)
     KETTLE_FULL : UINT := 850;        (* 85 % *)
@@ -68,8 +73,8 @@ PROGRAM plc_brewhouse
     started : BOOL := FALSE;
     active : UINT := 0;               (* the phase latched at Start *)
     cmd : UINT;
-    step_timer : TON;
-    hop_timer : TON;
+    step_ms : UDINT := 0;             (* time the latched phase's step has run *)
+    timing : BOOL;                    (* the step's time counts this scan *)
     boil_tick : TON;
     running : BOOL;
     complete : BOOL;
@@ -134,7 +139,7 @@ PROGRAM plc_brewhouse
         active := BH_BATCH_XC01_PHASE;
         BH_BATCH_XS01_STATE := 1;
         BH_BATCH_XS01_STEP := 1;
-        step_timer(IN := FALSE, PT := T#0s);
+        step_ms := 0;
         IF active = 7 THEN
           BH_KTL_KI01_PV := 0;
         END_IF;
@@ -173,10 +178,10 @@ PROGRAM plc_brewhouse
     hlt_fill := FALSE;
   END_IF;
   BH_HLT_XV01_CMD := hlt_fill AND BH_CLT_LT01_PV > 100;
-  IF BH_HLT_LSL01_PV THEN
+  IF NOT BH_HLT_LSL01_PV THEN
     BH_HLT_TV01_OUT := PValve(SP := BH_HLT_TT01_SP, PV := BH_HLT_TT01_PV, GAIN := 20);
   ELSE
-    BH_HLT_TV01_OUT := 0;  (* jacket uncovered: no steam *)
+    BH_HLT_TV01_OUT := 0;  (* low-level switch on: jacket uncovered, no steam *)
   END_IF;
 
   (* ---- boiling point and boil detection --------------------------------------------- *)
@@ -213,6 +218,7 @@ PROGRAM plc_brewhouse
   BH_KO_TV01_OUT := 0;
   BH_KO_FC01_SP := 0;
   complete := FALSE;
+  timing := FALSE;
 
   IF running THEN
     CASE active OF
@@ -220,8 +226,8 @@ PROGRAM plc_brewhouse
         BH_MILL_HS01_CMD := TRUE;
         BH_MILL_HS02_CMD := TRUE;
         BH_MILL_SC01_SP := 500;
-        step_timer(IN := TRUE, PT := MILL_TIME);
-        complete := step_timer.Q;
+        timing := TRUE;
+        complete := step_ms >= MILL_MS;
       2:  (* HLT_HEAT: the HLT loop runs anyway; done at temperature and level *)
         complete := BH_HLT_TT01_PV + 10 >= BH_HLT_TT01_SP AND BH_HLT_LT01_PV >= HLT_LOW;
       3:  (* MASH_IN *)
@@ -234,12 +240,12 @@ PROGRAM plc_brewhouse
         BH_MLT_SC01_OUT := 300;
         BH_MLT_TV01_OUT := PValve(SP := BH_MLT_TT01_SP, PV := BH_MLT_TT01_PV, GAIN := 30);
         BH_MLT_XS01_ACTIVE := BH_MLT_TT01_PV + 20 >= BH_MLT_TT01_SP;
-        step_timer(IN := BH_MLT_XS01_ACTIVE, PT := MASH_HOLD);
-        complete := step_timer.Q;
+        timing := BH_MLT_XS01_ACTIVE;  (* the rest counts only at temperature *)
+        complete := step_ms >= MASH_HOLD_MS;
       5:  (* VORLAUF: recirculate until the runnings clear *)
         BH_MLT_FV01_OUT := 300;
-        step_timer(IN := TRUE, PT := VORLAUF_TIME);
-        complete := step_timer.Q;
+        timing := TRUE;
+        complete := step_ms >= VORLAUF_MS;
       6:  (* LAUTER: runoff and sparge; lower the rake when the bed packs *)
         BH_MLT_FV01_OUT := 600;
         BH_MLT_FV02_OUT := 500;
@@ -251,24 +257,22 @@ PROGRAM plc_brewhouse
         complete := BH_KTL_KI01_PV >= BOIL_MINUTES_X10;
       8:  (* WHIRLPOOL, with the hop stand dose at the start *)
         BH_KTL_XV01_CMD := TRUE;
-        hop_timer(IN := TRUE, PT := HOP_DOSE_TIME);
-        BH_KTL_XV02_CMD := NOT hop_timer.Q;
-        step_timer(IN := TRUE, PT := WHIRLPOOL_TIME);
-        complete := step_timer.Q;
+        BH_KTL_XV02_CMD := step_ms < HOP_DOSE_MS;
+        timing := TRUE;
+        complete := step_ms >= WHIRLPOOL_MS;
       9:  (* KNOCKOUT: wort through the HX to the FV, O2 ratioed to flow *)
         BH_KO_HS01_CMD := TRUE;
         BH_KO_XV01_CMD := TRUE;
         BH_KO_SC01_OUT := 700;
         (* Stage-2 glycol opens as the wort runs warm of the setpoint. *)
         BH_KO_TV01_OUT := PValve(SP := BH_KO_TT02_PV, PV := BH_KO_TT02_SP, GAIN := 40);
-        BH_KO_FC01_SP := MIN(BH_KO_FT01_PV * 2, 1000);
+        (* 0.04 L/min of O2 per gal/min of wort (FT01 is x 10, FC01 x 100):
+           about 9 ppm dissolved, inside the 8 to 10 ppm target. *)
+        BH_KO_FC01_SP := MIN(BH_KO_FT01_PV * 2 / 5, 1000);
         complete := BH_KTL_LT01_PV <= KETTLE_EMPTY;
       10: (* CIP_READY: everything off *)
         complete := TRUE;
     END_CASE;
-  ELSE
-    step_timer(IN := FALSE, PT := T#0s);
-    hop_timer(IN := FALSE, PT := T#0s);
   END_IF;
   (* ---- entry lockout: the locked vessel's outputs off, its phase held -------- *)
   IF BH_ENTRY_XS01_LOCKED THEN
@@ -288,12 +292,14 @@ PROGRAM plc_brewhouse
       OR (BH_ENTRY_XS02_LOCKED AND active >= 6 AND active <= 9)) THEN
     BH_BATCH_XS01_STATE := 2;     (* Holding *)
     complete := FALSE;
+    timing := FALSE;
+  END_IF;
+  IF timing THEN
+    step_ms := step_ms + SCAN_MS;
   END_IF;
   IF complete THEN
     BH_BATCH_XS01_STATE := 5;
     BH_BATCH_XS01_STEP := 0;
-    step_timer(IN := FALSE, PT := T#0s);
-    hop_timer(IN := FALSE, PT := T#0s);
   END_IF;
 
   (* ALARMS: plcbuild.py generates the alarm logic here. *)

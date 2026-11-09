@@ -6,9 +6,12 @@
   OEM controllers on rio-packaging):
     - The operator's line command (PKG.LINE.PACKML.CMD, PackML CntrlCmd: 1 Reset,
       2 Start, 3 Stop, 4 Hold, 5 Unhold, 6 Suspend, 7 Unsuspend, 8 Abort,
-      9 Clear) goes to every machine for one scan and is then cleared, so a
-      command is an edge, not a level. The mode command and speed setpoint go
-      to every machine every scan.
+      9 Clear) is taken once and cleared, so a command is an edge, not a
+      level. It is held on every machine for CMD_SCANS scans and then zeroed:
+      the modbus_master plugin samples the outputs once per poll (100 ms, not
+      in step with the scan), so a one-scan pulse could fall between two
+      polls and never reach the machines. The mode command and speed setpoint
+      go to every machine every scan.
     - The line state and mode are the filler's (the line's constraint machine);
       XS01.RUN is TRUE unless the line is Stopped (2) or Aborted (9), and it
       suppresses the jam alarms (ISA-18.2 state-based suppression).
@@ -36,13 +39,15 @@ PROGRAM plc_packaging
     STATE_HELD : UINT := 11;
     MODE_PRODUCTION : UINT := 1;
     SPEED_MAX : UINT := 600;        (* 60 bottles/min *)
+    CMD_SCANS : UINT := 5;          (* a command stays on the machines 0.5 s *)
     KEG_WASH_ON : UINT := 1650;     (* 165.0 degF *)
     KEG_WASH_OFF : UINT := 1750;    (* 175.0 degF *)
   END_VAR
 
   VAR
     started : BOOL := FALSE;
-    cmd : UINT;
+    cmd : UINT := 0;                (* the command the machines are being given *)
+    cmd_scans : UINT := 0;          (* scans it stays on them *)
     defective : UDINT;
     perf : REAL;
     quality : REAL;
@@ -58,9 +63,13 @@ PROGRAM plc_packaging
   PKG_LINE_PACKML_SPEED_SP := MIN(PKG_LINE_PACKML_SPEED_SP, SPEED_MAX);
   PKG_LINE_PACKML_MODE_CMD := LIMIT(1, PKG_LINE_PACKML_MODE_CMD, 3);
 
-  (* ---- line command: one scan to every machine, then cleared --------------------------- *)
-  cmd := PKG_LINE_PACKML_CMD;
-  IF cmd > 9 THEN
+  (* ---- line command: CMD_SCANS scans to every machine, then cleared -------------------- *)
+  IF PKG_LINE_PACKML_CMD >= 1 AND PKG_LINE_PACKML_CMD <= 9 THEN
+    cmd := PKG_LINE_PACKML_CMD;
+    cmd_scans := CMD_SCANS;
+  ELSIF cmd_scans > 0 THEN
+    cmd_scans := cmd_scans - 1;
+  ELSE
     cmd := 0;
   END_IF;
   PKG_LINE_PACKML_CMD := 0;

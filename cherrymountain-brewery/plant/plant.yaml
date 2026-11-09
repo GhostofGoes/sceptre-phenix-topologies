@@ -1196,7 +1196,7 @@ areas:
             range: [32, 212]
             alarms:
               - { kind: high, limit: 190.0, delay: 2m, rationale: hlt-temp-high }
-          - { id: LSL01.PV, desc: HLT low-level switch (jacket covered), io: hlt.low_level }
+          - { id: LSL01.PV, desc: "HLT low-level switch (on below 15 %: steam jacket uncovered)", io: hlt.low_level }
           - { id: XV01.CMD, desc: HLT fill valve (from the CLT), io: hlt.fill_valve }
           - { id: TV01.OUT, desc: HLT steam valve position, io: hlt.steam_valve_pct, units: "%", range: [0, 100] }
           - { id: TT01.SP, desc: HLT temperature setpoint, type: analog-read-write, units: degF, range: [32, 212], scaling: 1 }

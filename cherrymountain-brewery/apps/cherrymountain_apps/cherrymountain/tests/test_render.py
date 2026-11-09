@@ -255,9 +255,12 @@ def test_hmi_kiosk_url(ctx: Context) -> None:
 def test_guacamole_sql_has_the_connections_and_only_a_salted_hash(ctx: Context) -> None:
     host = md(GuacamoleHost, {"type": "guacamole"})
     injects = by_dst(render.render_guacamole(ctx, "dmz-jump", host))
-    sql = Path(
-        injects["/opt/cherrymountain/guacamole/initdb/50-cherrymountain.sql"].src
-    ).read_text()
+    inject = injects["/opt/cherrymountain/guacamole/initdb/50-cherrymountain.sql"]
+    # PostgreSQL's entrypoint runs /docker-entrypoint-initdb.d/* as the postgres
+    # user (not root) and aborts on a file it cannot read, so the file must be
+    # world-readable in the guest, as the stock schema is. It holds no password.
+    assert inject.permissions == "0644"
+    sql = Path(inject.src).read_text()
     password = ctx.creds.guacamole_password.get_secret_value()
     assert password not in sql
     salt = bytes.fromhex((ctx.out_dir / "dmz-jump" / "guacamole" / "salt").read_text())

@@ -1143,7 +1143,11 @@ def render_guacamole(ctx: Context, hostname: str, md: GuacamoleHost) -> list[Inj
             src=sql,
             dst="/opt/cherrymountain/guacamole/initdb/50-cherrymountain.sql",
             description="Guacamole connections and range admin",
-            permissions="0600",
+            # Not 0600: the postgres container runs its init files as its own
+            # (non-root) user, after dropping root, and stops the first-run setup
+            # on a file it cannot read. The file holds only a salted hash of a
+            # generated password, like the stock schema next to it (0644).
+            permissions="0644",
         ),
         Injection(
             src=env, dst="/etc/default/cm-guacamole", description="Guacamole settings"

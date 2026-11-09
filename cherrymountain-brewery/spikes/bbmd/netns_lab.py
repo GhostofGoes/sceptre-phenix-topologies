@@ -12,6 +12,7 @@ image is available; `ci.py` runs the same scenario on a VyOS VM.
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -21,15 +22,17 @@ from pydantic import BaseModel
 HERE: Path = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "ci"))
 
+from fuxa_probe import FuxaProbe  # noqa: E402
 from scenario import (  # noqa: E402
     BAS_BBMD_IP,
     CLIENT_IP,
     DEVICE_IP,
+    FUXA_IP,
     OPS_BBMD_IP,
     STAGE_BOTH_WAYS,
     STAGE_FULL,
     STAGE_ONE_WAY,
-    STAGE_UNICAST,
+    RuleHits,
     run_scenario,
 )
 from vmlab import Check, Evidence  # noqa: E402
@@ -68,16 +71,16 @@ def sh(argv: list[str], timeout_s: float = 60) -> str:
     return out
 
 
-def nft_ruleset(stage: str) -> str:
+def nft_ruleset(stage: str, client: str = CLIENT_IP) -> str:
     """The router's forward chain for an ACL stage (the same intent as the VyOS ruleset in ci.py)."""
     rules: list[str] = ["ct state established,related counter accept comment est"]
-    rules.append(f"ip saddr {CLIENT_IP} ip daddr {DEVICE_IP} udp dport 47808 counter accept comment client-to-device")
+    rules.append(f"ip saddr {client} ip daddr {DEVICE_IP} udp dport 47808 counter accept comment client-to-device")
     if stage in (STAGE_ONE_WAY, STAGE_BOTH_WAYS, STAGE_FULL):
         rules.append(f"ip saddr {OPS_BBMD_IP} ip daddr {BAS_BBMD_IP} udp dport 47808 counter accept comment ops-bbmd-to-bas-bbmd")
     if stage in (STAGE_BOTH_WAYS, STAGE_FULL):
         rules.append(f"ip saddr {BAS_BBMD_IP} ip daddr {OPS_BBMD_IP} udp dport 47808 counter accept comment bas-bbmd-to-ops-bbmd")
     if stage == STAGE_FULL:
-        rules.append(f"ip saddr {DEVICE_IP} ip daddr {CLIENT_IP} udp dport 47808 counter accept comment device-to-client")
+        rules.append(f"ip saddr {DEVICE_IP} ip daddr {client} udp dport 47808 counter accept comment device-to-client")
     body: str = "\n    ".join(rules)
     return (
         "flush ruleset\n"
@@ -140,8 +143,8 @@ class NetnsRunner:
     def tool(self, node: str, name: str) -> str:
         return str(TOOLS[name])
 
-    def apply_acl(self, stage: str) -> str:
-        text: str = nft_ruleset(stage)
+    def apply_acl(self, stage: str, client: str = CLIENT_IP) -> str:
+        text: str = nft_ruleset(stage, client)
         proc: subprocess.CompletedProcess[str] = subprocess.run(  # noqa: S603
             ["ip", "netns", "exec", "fw", "nft", "-f", "-"],  # noqa: S607
             input=text, capture_output=True, text=True, check=False,
@@ -152,6 +155,26 @@ class NetnsRunner:
 
     def acl_counters(self) -> str:
         return sh(["ip", "netns", "exec", "fw", "nft", "list", "ruleset"])
+
+    def rule_hits(self) -> RuleHits:
+        text: str = self.acl_counters()
+        roles: dict[str, str] = {
+            "est": "est", "client-to-device": "client_to_device", "ops-bbmd-to-bas-bbmd": "ops_bbmd_to_bas_bbmd",
+            "bas-bbmd-to-ops-bbmd": "bas_bbmd_to_ops_bbmd", "device-to-client": "device_to_client", "default-drop": "default_drop",
+        }  # fmt: skip
+        packets: dict[str, int] = {}
+        for line in text.splitlines():
+            m: re.Match[str] | None = re.search(r"counter packets (\d+) bytes \d+.*comment \"?([\w-]+)\"?", line)
+            if m and m.group(2) in roles:
+                packets[roles[m.group(2)]] = int(m.group(1))
+        return RuleHits(packets=packets, raw=text)
+
+    def attach_fuxa(self, probe: FuxaProbe) -> None:
+        def attach(host_end: str) -> None:
+            sh(["ip", "link", "set", host_end, "netns", "fw"])
+            sh(["ip", "netns", "exec", "fw", "ip", "link", "set", host_end, "master", "br-ops", "up"])
+
+        probe.plumb(GATEWAY["ops"], ["10.20.60.0/24"], attach)
 
     def flush_state(self) -> None:
         subprocess.run(["ip", "netns", "exec", "fw", "conntrack", "-F"], capture_output=True, check=False)  # noqa: S603, S607
@@ -192,7 +215,12 @@ def main() -> int:
     runner: NetnsRunner = NetnsRunner()
     try:
         runner.setup()
-        run_scenario(runner, rec)
+        probe: FuxaProbe | None = None if os.environ.get("CM_SKIP_FUXA") else FuxaProbe(EVIDENCE / "fuxa", FUXA_IP)
+        try:
+            run_scenario(runner, rec, probe)
+        finally:
+            if probe is not None:
+                probe.remove()
         rec.fact("router", "Linux network namespace with nftables (stand-in for VyOS)")
         rec.fact("nft", sh(["nft", "--version"]).strip())
         rec.fact("kernel", sh(["uname", "-r"]).strip())

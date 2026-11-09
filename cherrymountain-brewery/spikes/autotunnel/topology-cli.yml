@@ -1,0 +1,33 @@
+# Autotunnel fixture for the CLI-started case: sim-ctl and scada-fuxa of
+# topology.yml under another name, so the experiment is started with
+# `phenix experiment start` (its own process) while `phenix ui` runs separately.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-autotunnel-cli
+spec:
+  nodes:
+    - type: VirtualMachine
+      general: {hostname: sim-ctl}
+      annotations:
+        phenix/startup-autotunnel: ["13001:3000", "18080:8080", "19200:9200"]
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.10.10, mask: 16, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: scada-fuxa}
+      annotations:
+        phenix/startup-autotunnel: ["11881:1881"]
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.10.11, mask: 16, proto: static, type: ethernet}

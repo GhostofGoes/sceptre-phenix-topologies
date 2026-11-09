@@ -6,7 +6,8 @@ resolves a device from the I-Am it gets back. This script does the same with
 plain sockets (no BACpypes3, so it runs on any guest), then reads the
 object-name of the first device found with a unicast ReadProperty.
 
-Usage: whois_client.py [--wait 6] [--device 3003] [--bind 0.0.0.0]
+Usage: whois_client.py [--wait 6] [--device 3003] [--bind 0.0.0.0] [--listen-only]
+--listen-only sends no Who-Is: it only collects the I-Ams that arrive (unsolicited).
 Prints one JSON line:
   {"iams": [{"instance": 3003, "address": "10.20.60.13", "via": "10.20.30.5"}],
    "read": {"address": "10.20.60.13", "object_name": "bas-vent"}}
@@ -75,13 +76,15 @@ def main() -> int:
     parser.add_argument("--wait", type=float, default=6.0)
     parser.add_argument("--device", type=int, default=3003)
     parser.add_argument("--bind", default="0.0.0.0")  # noqa: S104
+    parser.add_argument("--listen-only", action="store_true")
     args: argparse.Namespace = parser.parse_args()
 
     sock: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     sock.bind((args.bind, PORT))
-    sock.sendto(WHO_IS, ("255.255.255.255", PORT))
+    if not args.listen_only:
+        sock.sendto(WHO_IS, ("255.255.255.255", PORT))
 
     iams: list[dict[str, object]] = []
     deadline: float = time.monotonic() + args.wait

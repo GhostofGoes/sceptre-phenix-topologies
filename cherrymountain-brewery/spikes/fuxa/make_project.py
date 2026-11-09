@@ -3,7 +3,12 @@
 per protocol, each with one tag, pointed at the spike PLC and BACnet device.
 
 Usage: make_project.py OUT.json --plc 10.20.40.10 --bacnet 10.20.60.13 \
-           --local-ip 10.20.30.10
+           --local-ip 10.20.30.10 [--bacnet-only] [--broadcast-address none|ADDR]
+  --bacnet-only keeps just the BACnet device (no PLC needed). By default the
+  device's `broadcastAddress` is the --bacnet IP; node-bacnet sends its Who-Is
+  to that address, so with a unicast address nothing is broadcast. Pass
+  `--broadcast-address none` to leave the property out (the Who-Is then goes to
+  255.255.255.255, which is what a FUXA that does not know the device does).
 Install: pip install pydantic
 Schema read from FUXA v1.3.5 client/src/app/_models/device.ts and the drivers
 in server/runtime/devices/*. Tag address formats:
@@ -56,7 +61,22 @@ class View(BaseModel):
     svgcontent: str = ""
 
 
-def build(plc: str, bacnet: str, local_ip: str) -> dict[str, object]:
+def build(plc: str, bacnet: str, local_ip: str, bacnet_only: bool = False, broadcast: str | None = None) -> dict[str, object]:
+    """broadcast: None = the --bacnet IP (legacy), "none" = omit the property, else that address."""
+    bac_property: dict[str, object] = {"address": local_ip}
+    if broadcast != "none":
+        bac_property["broadcastAddress"] = broadcast or bacnet
+    bacnet_device = Device(
+        id="d_bacnet", name="bas-bacnet", type="BACnet", property=bac_property,
+    ).with_tag(Tag(id="t_bac_co2", name="bac_co2", type="Real", address="0-0", memaddress="3003"))
+    if bacnet_only:
+        view_only = View(id="v_spike", name="Spike")
+        server = Device(id="0", name="FUXA Server", type="FuxaServer", property={})
+        return {
+            "version": PROJECT_VERSION,
+            "devices": {d.id: d.model_dump() for d in (server, bacnet_device)},
+            "hmi": {"views": [view_only.model_dump()]},
+        }
     devices = [
         # POST /api/project replaces everything, including the built-in
         # FuxaServer device; re-add it or the project loses it.
@@ -73,10 +93,7 @@ def build(plc: str, bacnet: str, local_ip: str) -> dict[str, object]:
             id="d_modbus", name="plc-modbus", type="ModbusTCP",
             property={"address": plc, "port": "502", "slaveid": "1", "delay": 10},
         ).with_tag(Tag(id="t_mb_cnt", name="mb_cnt", type="Int16", address="1", memaddress="400000")),
-        Device(
-            id="d_bacnet", name="bas-bacnet", type="BACnet",
-            property={"address": local_ip, "broadcastAddress": bacnet},
-        ).with_tag(Tag(id="t_bac_co2", name="bac_co2", type="Real", address="0-0", memaddress="3003")),
+        bacnet_device,
     ]
     view = View(id="v_spike", name="Spike")
     return {
@@ -89,11 +106,13 @@ def build(plc: str, bacnet: str, local_ip: str) -> dict[str, object]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("out", type=Path)
-    ap.add_argument("--plc", required=True)
+    ap.add_argument("--plc", default="127.0.0.1")
     ap.add_argument("--bacnet", required=True)
     ap.add_argument("--local-ip", required=True, help="FUXA host interface IP for BACnet")
+    ap.add_argument("--bacnet-only", action="store_true", help="only the FuxaServer and BACnet devices")
+    ap.add_argument("--broadcast-address", default=None, help='BACnet broadcastAddress property; "none" omits it')
     a = ap.parse_args()
-    a.out.write_text(json.dumps(build(a.plc, a.bacnet, a.local_ip), indent=1) + "\n")
+    a.out.write_text(json.dumps(build(a.plc, a.bacnet, a.local_ip, a.bacnet_only, a.broadcast_address), indent=1) + "\n")
     print(f"wrote {a.out}")
     return 0
 

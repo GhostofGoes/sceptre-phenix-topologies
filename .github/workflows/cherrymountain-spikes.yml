@@ -351,7 +351,7 @@ jobs:
     needs: [plan, image-cm-spike]
     if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' autotunnel ') && needs.image-cm-spike.result == 'success' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
     env:
@@ -496,7 +496,7 @@ jobs:
     needs: plan
     if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' bbmd-netns ') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 35
     permissions:
       contents: read
     env:
@@ -540,11 +540,13 @@ jobs:
     needs: plan
     if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' malcolm-docker ') }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 90
     permissions:
       contents: read
     env:
       CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      # The whole upload-to-OpenSearch hand-off, Zeek and Suricata included.
+      FULL_STACK: '1'
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

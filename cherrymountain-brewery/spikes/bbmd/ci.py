@@ -18,14 +18,17 @@ from pathlib import Path
 HERE: Path = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "ci"))
 
+from fuxa_probe import FuxaProbe  # noqa: E402
 from scenario import (  # noqa: E402
     BAS_BBMD_IP,
     CLIENT_IP,
     DEVICE_IP,
+    FUXA_IP,
     OPS_BBMD_IP,
     STAGE_BOTH_WAYS,
     STAGE_FULL,
     STAGE_ONE_WAY,
+    RuleHits,
     run_scenario,
 )
 from vmlab import Lab, log, main_guard, sh  # noqa: E402
@@ -41,7 +44,14 @@ TOOLS: dict[str, Path] = {
 }
 
 
-def acl_commands(stage: str) -> list[str]:
+# VyOS rule number to the role the scenario knows it by.
+RULE_ROLES: dict[str, str] = {
+    "10": "est", "20": "client_to_device", "30": "ops_bbmd_to_bas_bbmd", "40": "bas_bbmd_to_ops_bbmd",
+    "50": "device_to_client", "default": "default_drop",
+}  # fmt: skip
+
+
+def acl_commands(stage: str, client: str = CLIENT_IP) -> list[str]:
     """VyOS 1.5 set commands for an ACL stage (the same intent as netns_lab.nft_ruleset)."""
     base: str = "set firewall ipv4 forward filter"
 
@@ -60,14 +70,14 @@ def acl_commands(stage: str) -> list[str]:
         f"{base} rule 10 action accept",
         f"{base} rule 10 state established",
         f"{base} rule 10 state related",
-        *rule(20, CLIENT_IP, DEVICE_IP),
+        *rule(20, client, DEVICE_IP),
     ]
     if stage in (STAGE_ONE_WAY, STAGE_BOTH_WAYS, STAGE_FULL):
         cmds += rule(30, OPS_BBMD_IP, BAS_BBMD_IP)
     if stage in (STAGE_BOTH_WAYS, STAGE_FULL):
         cmds += rule(40, BAS_BBMD_IP, OPS_BBMD_IP)
     if stage == STAGE_FULL:
-        cmds += rule(50, DEVICE_IP, CLIENT_IP)
+        cmds += rule(50, DEVICE_IP, client)
     return cmds
 
 
@@ -105,8 +115,8 @@ class VmRunner:
         )
         return self.lab.shell("fw-ot", script, wait_s=240)
 
-    def apply_acl(self, stage: str) -> str:
-        cmds: list[str] = acl_commands(stage)
+    def apply_acl(self, stage: str, client: str = CLIENT_IP) -> str:
+        cmds: list[str] = acl_commands(stage, client)
         out: str = self.vyos(cmds)
         if re.search(r"commit failed|invalid|not valid|error|set failed|configuration path", out, re.IGNORECASE):
             raise RuntimeError(f"VyOS rejected the {stage} ACL:\n{out}")
@@ -118,6 +128,29 @@ class VmRunner:
             "chmod +x /tmp/op.sh; sg vyattacfg -c /tmp/op.sh 2>&1"
         )
         return self.lab.shell("fw-ot", script, wait_s=180)
+
+    def rule_hits(self) -> RuleHits:
+        """Parse the rule table of `show firewall ipv4 forward filter` (rule, action, protocol, packets, bytes)."""
+        text: str = self.acl_counters()
+        packets: dict[str, int] = {}
+        for line in text.splitlines():
+            m: re.Match[str] | None = re.match(r"\s*(\d+|default)\s+(?:accept|drop|reject)\s+\S+\s+(\d+)\s+(\d+)\b", line)
+            if m and m.group(1) in RULE_ROLES:
+                packets[RULE_ROLES[m.group(1)]] = int(m.group(2))
+        return RuleHits(packets=packets, raw=text)
+
+    def attach_fuxa(self, probe: FuxaProbe) -> None:
+        """Wire the container's veth to the OVS bridge of the OPS VLAN, on the tag ops-client's tap uses."""
+
+        def attach(host_end: str) -> None:
+            tap: str = self.lab.taps("ops-client")[0]
+            bridge: str = sh(["ovs-vsctl", "port-to-br", tap], check=True).stdout.strip()
+            tag: str = sh(["ovs-vsctl", "get", "port", tap, "tag"], check=True).stdout.strip()
+            sh(["ovs-vsctl", "add-port", bridge, host_end, f"tag={tag}"], check=True)
+            sh(["ip", "link", "set", host_end, "up"], check=True)
+            self.lab.fact("fuxa_attachment", f"{host_end} on OVS bridge {bridge}, tag {tag} (like {tap} of ops-client)")
+
+        probe.plumb("10.20.30.1", ["10.20.60.0/24"], attach)
 
     def flush_state(self) -> None:
         self.lab.shell("fw-ot", "conntrack -F 2>&1 || true; echo flushed")
@@ -149,7 +182,11 @@ def run() -> int:
             version[:200],
         )
         lab.fact("bacpypes3_in_guest", lab.shell("bas-dev", "/opt/bacnet/bin/pip show bacpypes3 | head -2"))
-        run_scenario(runner, lab)
+        probe: FuxaProbe = FuxaProbe(lab.dir / "fuxa", FUXA_IP)
+        try:
+            run_scenario(runner, lab, probe)
+        finally:
+            probe.remove()
         runner.stop_daemons()
     finally:
         lab.collect()

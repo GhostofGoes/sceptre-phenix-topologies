@@ -7,8 +7,10 @@
 #   1. free disk, build a Modbus/TCP + DNP3 + BACnet/IP pcap (make_pcap.py);
 #   2. Malcolm's Zeek image on the pcap, asserting on the Zeek log files;
 #   3. only with FULL_STACK=1: a trimmed Malcolm stack (OpenSearch, Logstash,
-#      Filebeat, pcap-monitor, Zeek offline, Arkime, Dashboards) fed the same
-#      pcap. CI does not run it: stage 2 meets the criteria with one container.
+#      Filebeat, pcap-monitor, Zeek offline, Suricata offline, Arkime,
+#      Dashboards) fed the same pcap through pcap/upload, the documented way.
+#      The workflow sets FULL_STACK=1: it checks the whole hand-off, pcap-monitor
+#      to Zeek and Suricata to OpenSearch.
 # `docker stats` is sampled throughout; peak memory and CPU go to peak.txt.
 # Writes evidence/malcolm-docker/{result.json,summary.md,...}; exits 1 if a
 # check fails. Every command runs under `timeout`.
@@ -122,8 +124,8 @@ docker rm -f cm-zeek >/dev/null 2>&1
 fact zeek_load "$(du -h "$EV/ics-load.pcap" | cut -f1) pcap; modbus.log $(grep -vc '^#' "$ZL/modbus.log") records, dnp3.log $(grep -vc '^#' "$ZL/dnp3.log"), bacnet.log $(grep -vc '^#' "$ZL/bacnet.log")"
 rm -rf "$ZL"
 
-# 3. The full pipeline, only when asked (FULL_STACK=1): the pass/fail criteria are met by stage 2,
-# so CI runs the smallest set of containers (just Zeek) and does not start OpenSearch and friends.
+# 3. The full pipeline, only when asked (FULL_STACK=1): the documented upload path, from a pcap in
+# pcap/upload to Zeek logs and Suricata alerts in OpenSearch, with nothing fed by hand.
 if [ "${FULL_STACK:-0}" = 1 ]; then
 if [ ! -d "$WORK/Malcolm/.git" ]; then
   timeout 300 git clone -q --depth 1 --branch "$MALCOLM_TAG" https://github.com/idaholab/Malcolm "$WORK/Malcolm"
@@ -136,8 +138,23 @@ for f in config/*.env.example; do cp "$f" "${f%.example}"; done
 sed -i "s/^PUID=.*/PUID=$(id -u)/; s/^PGID=.*/PGID=$(id -g)/" config/process.env
 sed -i "s/-Xmx[0-9]*[gm] -Xms[0-9]*[gm]/-Xmx$OS_HEAP -Xms$OS_HEAP/" config/opensearch.env
 sed -i "s/-Xmx[0-9]*[gm] -Xms[0-9]*[gm]/-Xmx$LS_HEAP -Xms$LS_HEAP/" config/logstash.env
-# The file has no trailing newline; the processors buffer stdout unless Python is unbuffered.
-printf '\nPCAP_PIPELINE_VERBOSITY=-vv\nPYTHONUNBUFFERED=1\n' >>config/process.env
+# The pcap processors log at CRITICAL by default, so a failing `zeek -r` leaves no trace in `docker logs`.
+# upload-common.env is read after process.env by pcap-monitor, zeek and suricata and sets the variable
+# to empty, so the verbosity must go there, and `-vv` is DEBUG (the flag and the variable both count).
+# (config files have no trailing newline: start with one.)
+printf '\nPCAP_PIPELINE_VERBOSITY=-vv\n' >>config/upload-common.env
+printf '\nPYTHONUNBUFFERED=1\n' >>config/process.env
+# Zeek's local.zeek loads site/custom, which the compose file bind-mounts read-only from ./zeek/custom.
+# In a checkout that directory holds only a .gitignore, which hides the image's empty __load__.zeek:
+# `zeek -r pcap local` then dies with "can't open .../custom/__load__.zeek", writes no logs, and
+# pcap_zeek_processor drops the pcap (warning level). This was the cause of the empty 12 minute wait.
+touch zeek/custom/__load__.zeek
+# A rule that fires on the test pcap's Modbus write and DNP3 direct operate, next to the default rules.
+mkdir -p suricata/rules suricata-logs
+cat >suricata/rules/cherrymountain.rules <<'RULES'
+alert modbus any any -> any any (msg:"CM spike Modbus write single register"; modbus: function 6; sid:1000001; rev:1;)
+alert dnp3 any any -> any any (msg:"CM spike DNP3 direct operate"; dnp3_func:direct_operate; sid:1000002; rev:1;)
+RULES
 grep -h "JAVA_OPTS" config/opensearch.env config/logstash.env >"$EV/heap-settings.txt"
 
 timeout 300 python3 -m venv "$WORK-mvenv" && timeout 300 "$WORK-mvenv/bin/pip" install -q ruamel.yaml python-dotenv kubernetes requests pyyaml
@@ -148,7 +165,7 @@ PATH="$WORK-mvenv/bin:$PATH" timeout 300 ./scripts/auth_setup --auth-noninteract
   --auth-generate-valkey-password --auth-generate-postgres-password -f docker-compose.yml >"$EV/auth_setup.out" 2>&1
 check "auth_setup produced the credentials and certificates" "$([ -s .opensearch.primary.curlrc ] && echo true || echo false)" "$(tail -3 "$EV/auth_setup.out")"
 touch htadmin/metadata nginx/htpasswd nginx/nginx_ldap.conf .opensearch.secondary.curlrc
-mkdir -p opensearch pcap/upload pcap/processed zeek-logs/upload zeek-logs/processed zeek-logs/current zeek-logs/extract_files zeek-logs/live
+mkdir -p opensearch pcap/upload pcap/processed zeek-logs/upload zeek-logs/processed zeek-logs/current zeek-logs/extract_files zeek-logs/live suricata-logs
 timeout 300 docker run --rm -v "$PWD/opensearch:/out" --user root --entrypoint bash \
   "ghcr.io/idaholab/malcolm/opensearch:$IMAGE_TAG" -c \
   "/usr/share/opensearch/bin/opensearch-keystore create && cp /usr/share/opensearch/config/opensearch.keystore /out/" >>"$EV/steps.log" 2>&1
@@ -157,7 +174,7 @@ chmod 600 .opensearch.*.curlrc config/*.env
 
 # Logstash waits for the malcolm_template index template. dashboards-helper creates it, but only after
 # Dashboards answers and Arkime has created arkime_sessions3_template (run 4 stuck on that).
-SERVICES=(opensearch dashboards-helper dashboards arkime logstash filebeat pcap-monitor zeek)
+SERVICES=(opensearch dashboards-helper dashboards arkime logstash filebeat pcap-monitor zeek suricata)
 log "pulling ${SERVICES[*]}"
 timeout 1500 docker compose --profile malcolm pull -q "${SERVICES[@]}" >>"$EV/steps.log" 2>&1
 check "the trimmed Malcolm images pulled" "$([ $? -eq 0 ] && echo true || echo false)" "$(docker images --format '{{.Repository}}:{{.Tag}} {{.Size}}' | grep idaholab | tr '\n' ';')"
@@ -181,36 +198,47 @@ if [ "$os_ready" = true ]; then
   timeout 300 docker compose --profile malcolm up -d "${SERVICES[@]:1}" >>"$EV/steps.log" 2>&1
   log "services started; letting the watchers settle (pcap-monitor waits 30 s)"
   sleep 60
+  # The documented path: a pcap in ./pcap/upload. The upload watcher in pcap-monitor moves it to
+  # pcap/processed, pcap-monitor publishes it, and the Arkime, Zeek and Suricata processors pick it up.
   cp "$EV/ics.pcap" pcap/upload/cherrymountain-ics.pcap
+  DROPPED=$(date +%s)
   log "pcap dropped into pcap/upload"
-  # Wait for Zeek records of the three protocols in OpenSearch (up to 12 minutes).
-  q='{"size":0,"query":{"match_all":{}},"aggs":{"ds":{"terms":{"field":"event.dataset","size":100}}}}'
+  os_query() { # index-pattern body
+    timeout 30 docker exec malcolm-opensearch-1 sh -c "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/$1/_search' -d '$2'" 2>/dev/null || true
+  }
+  q='{"size":0,"query":{"match_all":{}},"aggs":{"ds":{"terms":{"field":"event.dataset","size":100}},"prov":{"terms":{"field":"event.provider","size":20}}}}'
+  # Wait for Zeek records of the three protocols in OpenSearch (up to 15 minutes).
   found=false
-  for _ in $(seq 1 72); do
-    out=$(timeout 30 docker exec malcolm-opensearch-1 sh -c "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_search' -d '$q'" 2>/dev/null || true)
+  zeek_secs=""
+  for _ in $(seq 1 90); do
+    out=$(os_query 'arkime_sessions3-*' "$q")
     echo "$out" >"$EV/opensearch-datasets.json"
     if echo "$out" | jq -e '[.aggregations.ds.buckets[].key] | (index("modbus") != null) and (index("dnp3") != null) and (index("bacnet") != null)' >/dev/null 2>&1; then
-      found=true; break
+      found=true; zeek_secs=$(($(date +%s) - DROPPED)); break
     fi
     sleep 10
   done
-  fact pipeline_path "pcap-monitor -> zeek offline -> filebeat -> logstash -> opensearch: $found"
+  fact pipeline_path "pcap/upload -> pcap-monitor -> zeek offline -> filebeat -> logstash -> opensearch: $found${zeek_secs:+ in ${zeek_secs} s}"
+  check "a pcap dropped in pcap/upload yields Zeek modbus, dnp3 and bacnet records in OpenSearch" "$found" "$(jq -c '[.aggregations.ds.buckets[]? | {(.key): .doc_count}]' "$EV/opensearch-datasets.json" 2>/dev/null)"
+  # Suricata alerts: up to 5 more minutes (its processor loads the rules before the first pcap).
+  alerts=false
+  for _ in $(seq 1 30); do
+    out=$(os_query 'arkime_sessions3-*' "$q")
+    echo "$out" >"$EV/opensearch-datasets-final.json"
+    if echo "$out" | jq -e '[.aggregations.prov.buckets[].key] | index("suricata") != null' >/dev/null 2>&1; then
+      alerts=true; break
+    fi
+    sleep 10
+  done
+  # A separate query: a mapping surprise in rule.name must not break the checks above.
+  os_query 'arkime_sessions3-*' '{"size":0,"query":{"term":{"event.provider":"suricata"}},"aggs":{"rule":{"terms":{"field":"rule.name","size":20}}}}' >"$EV/opensearch-suricata-rules.json"
+  fact suricata_alerts "$alerts after $(($(date +%s) - DROPPED)) s; rules: $(jq -c '[.aggregations.rule.buckets[]? | {(.key): .doc_count}]' "$EV/opensearch-suricata-rules.json" 2>/dev/null)"
+  check "Suricata alerts from the same pcap reach OpenSearch" "$alerts" "$(jq -c '[.aggregations.prov.buckets[]? | {(.key): .doc_count}]' "$EV/opensearch-datasets-final.json" 2>/dev/null)"
   if [ "$found" != true ]; then
-    # Fall back to feeding the Zeek logs from stage 2 to Filebeat's upload directory.
-    log "pipeline did not deliver; feeding stage-2 Zeek logs to filebeat through zeek-logs/upload"
-    # Filebeat's upload watcher unpacks archives, not loose logs.
-    (cd "$ZD" && tar -czf "$WORK/Malcolm/zeek-logs/upload/cherrymountain-ics.tar.gz" ./*.log)
-    for _ in $(seq 1 36); do
-      out=$(timeout 30 docker exec malcolm-opensearch-1 sh -c "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_search' -d '$q'" 2>/dev/null || true)
-      echo "$out" >"$EV/opensearch-datasets-fallback.json"
-      if echo "$out" | jq -e '[.aggregations.ds.buckets[].key] | (index("modbus") != null) and (index("dnp3") != null) and (index("bacnet") != null)' >/dev/null 2>&1; then
-        found=true; break
-      fi
-      sleep 10
-    done
-    fact fallback_feed_used "true (filebeat via zeek-logs/upload); delivered: $found"
+    # Diagnosis only (not a pass): what the Zeek processor and the watchers say now that they log.
+    for c in zeek pcap-monitor suricata; do docker logs --tail 80 "malcolm-$c-1" >"$EV/diag-$c.log" 2>&1; done
+    timeout 60 docker exec malcolm-zeek-1 sh -c 'mkdir -p /tmp/zt && cd /tmp/zt && /usr/local/zeek/bin/zeek-offline -r /pcap/processed/cherrymountain-ics.pcap local 2>&1 | grep -iE "error|fatal" ; echo "rc=$?"' >"$EV/diag-zeek-offline.txt" 2>&1
   fi
-  check "OpenSearch holds Zeek modbus, dnp3 and bacnet records from the test pcap" "$found" "$(jq -c '[.aggregations.ds.buckets[]? | {(.key): .doc_count}]' "$EV/opensearch-datasets.json" 2>/dev/null)"
 fi
 
 fi
@@ -219,7 +247,7 @@ fi
 if [ "${FULL_STACK:-0}" = 1 ]; then
 {
   echo "== host trees"; find pcap zeek-logs -type f ! -name .gitignore 2>/dev/null | head -60
-  for c in malcolm-zeek-1 malcolm-pcap-monitor-1 malcolm-arkime-1 malcolm-filebeat-1; do
+  for c in malcolm-zeek-1 malcolm-pcap-monitor-1 malcolm-arkime-1 malcolm-filebeat-1 malcolm-suricata-1; do
     echo "== $c"
     timeout 30 docker exec "$c" sh -c 'supervisorctl status 2>&1 | head -30; ls -la /pcap/upload /pcap/processed /zeek/upload /zeek/current 2>&1 | head -40; ls /var/log /var/log/supervisor 2>&1 | head; ps aux 2>/dev/null | grep -iE "pcap|zeek|arkime" | grep -v grep | cut -c1-220 | head -12'
   done

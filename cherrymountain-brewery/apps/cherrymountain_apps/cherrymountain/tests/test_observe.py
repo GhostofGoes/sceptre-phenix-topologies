@@ -98,7 +98,7 @@ def test_running_reads_kpis_through_the_tunnel(
             ],
         }
     ]
-    monkeypatch.setattr(simctl.utils, "is_headnode", lambda host, mm=None: True)
+    monkeypatch.setattr(simctl, "is_headnode", lambda mm, host: True)
     seen: dict[str, str] = {}
 
     def kpis(self: simctl.EventApi) -> dict[str, Any]:

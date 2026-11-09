@@ -28,6 +28,7 @@ Event API contract (served by cherrymountain_sim on sim-ctl, DESIGN.md 9.5):
 from __future__ import annotations
 
 import random
+import socket
 from typing import Any, ClassVar, Final
 
 import requests
@@ -98,9 +99,30 @@ def find(
     return None
 
 
+#: Suffixes the phenix and minimega containers add to the host name (phenix's
+#: default --hostname-suffixes).
+HOST_SUFFIXES: Final[tuple[str, ...]] = ("-minimega", "-phenix")
+
+
+def is_headnode(mm: Any, host: str) -> bool:
+    """Whether minimega ``host`` is the headnode. Uses phenix-apps' helper
+    where it exists (the fork); upstream has none, so this compares the names
+    without the container suffixes, as phenix core does."""
+    helper: Any = getattr(utils, "is_headnode", None)
+    if helper is not None:
+        return bool(helper(host, mm))
+
+    def trim(name: str) -> str:
+        for suffix in HOST_SUFFIXES:
+            name = name.removesuffix(suffix)
+        return name
+
+    return trim(host) == trim(socket.gethostname())
+
+
 def connect_host(mm: Any, cluster_host: str) -> str:
     """The address phenix would use for a tunnel on ``cluster_host``."""
-    if not cluster_host or utils.is_headnode(cluster_host, mm):
+    if not cluster_host or is_headnode(mm, cluster_host):
         return "127.0.0.1"
     return cluster_host
 

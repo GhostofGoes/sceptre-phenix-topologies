@@ -3,7 +3,7 @@
 # phenix-apps (AppBase, ComponentBase) and its dependencies; the Dockerfile
 # next to this file installs this package on top.
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -12,7 +12,7 @@ version = "0.1.0"
 description = "phenix-app-cherrymountain and the plantevent SCORCH component for the CherryMountain Brewery topology"
 readme = "README.md"
 requires-python = ">=3.12,<4"
-license = "GPL-3.0-only"
+license = {text = "GPL-3.0-only"}
 # phenix-apps is not on PyPI; the phenix image installs it from
 # sandialabs/sceptre-phenix-apps (or the fork, DESIGN.md 16). The rest are
 # phenix-apps dependencies, listed for a standalone install.

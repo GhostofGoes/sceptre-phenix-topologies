@@ -120,7 +120,7 @@ def test_resolve_finds_the_random_host_port(monkeypatch: pytest.MonkeyPatch) -> 
     mm.cc_tunnel_list.return_value = tunnels(
         ["1", "52424", "127.0.0.1", "3000"], ["2", "57571", "127.0.0.1", "8080"]
     )
-    monkeypatch.setattr(simctl.utils, "is_headnode", lambda host, mm=None: True)
+    monkeypatch.setattr(simctl, "is_headnode", lambda mm, host: True)
     ep = simctl.resolve(mm, "sim-ctl", 8080, create=False)
     assert (ep.host, ep.port, ep.cluster_host, ep.created) == (
         "127.0.0.1",
@@ -138,7 +138,7 @@ def test_resolve_uses_the_compute_node_for_a_remote_vm(
     mm.cc_tunnel_list.return_value = tunnels(
         ["2", "61480", "127.0.0.1", "8080"], host="compute-3"
     )
-    monkeypatch.setattr(simctl.utils, "is_headnode", lambda host, mm=None: False)
+    monkeypatch.setattr(simctl, "is_headnode", lambda mm, host: False)
     assert simctl.resolve(mm, "sim-ctl", 8080).url == "http://compute-3:61480"
 
 
@@ -165,7 +165,7 @@ def test_resolve_creates_a_tunnel_like_phenix(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(
         simctl.utils, "mm_cc_client_locate", lambda mm, vm, grace: ("uuid", "mm-head")
     )
-    monkeypatch.setattr(simctl.utils, "is_headnode", lambda host, mm=None: True)
+    monkeypatch.setattr(simctl, "is_headnode", lambda mm, host: True)
     ep = simctl.resolve(mm, "sim-ctl", 8080)
     vm, src, host, dst = created[-1]
     assert (vm, host, dst) == ("sim-ctl", "127.0.0.1", 8080)
@@ -281,7 +281,7 @@ def test_start_posts_through_the_looked_up_port(
 ) -> None:
     mm = MagicMock()
     mm.cc_tunnel_list.return_value = tunnels(["2", str(api), "127.0.0.1", "8080"])
-    monkeypatch.setattr(simctl.utils, "is_headnode", lambda host, mm=None: True)
+    monkeypatch.setattr(simctl, "is_headnode", lambda mm, host: True)
     events = [
         {"event": "utility-breaker", "action": "open"},
         {"event": "co2-release", "fv": "FV-102"},
@@ -346,3 +346,14 @@ def test_unknown_keys_are_not_sent(
         MagicMock(),
     )
     assert StandIn.posted == [{"event": "start-batch", "recipe": "fire-of-the-phenix"}]
+
+
+def test_headnode_check_without_the_phenix_apps_helper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Upstream phenix-apps has no is_headnode; the fork does.
+    monkeypatch.delattr(simctl.utils, "is_headnode", raising=False)
+    monkeypatch.setattr(simctl.socket, "gethostname", lambda: "range-phenix")
+    assert simctl.is_headnode(MagicMock(), "range-minimega")
+    assert not simctl.is_headnode(MagicMock(), "compute-3")
+    assert simctl.connect_host(MagicMock(), "range") == "127.0.0.1"

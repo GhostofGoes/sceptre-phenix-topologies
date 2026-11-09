@@ -2449,7 +2449,8 @@ spec:
   # (phenix-injects/malcolm: 99-zz-capture-flow.sh starts cm-malcolm-capture.service, which
   # also brings the port up) until the app does it. The sohProfile of malcolm is checked
   # by SoH next to the app's own probes: the processes, the web UI listener, and
-  # cm-malcolm-health (containers of the profile running, Zeek records in the last 15 minutes).
+  # cm-malcolm-health (containers of the profile running and not unhealthy, the capture port
+  # promiscuous and receiving, Zeek records in the last 15 minutes).
   - name: mirror
     metadata:
       version: v1

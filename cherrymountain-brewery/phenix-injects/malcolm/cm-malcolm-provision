@@ -121,8 +121,15 @@ cp "${SRC}"/zeek/*.zeek zeek/custom/
 # Fix 1: the compose bind mount needs a file here whatever the scripts are.
 [ -f zeek/custom/__load__.zeek ] || touch zeek/custom/__load__.zeek
 cp "${SRC}/cherrymountain.rules" suricata/rules/cherrymountain.rules
-# Fix 4: refuse a custom rule that would clash with Malcolm's own sids.
-bad=$(grep -hEo 'sid: *[0-9]+' suricata/rules/*.rules | awk -F'[: ]+' '$2 < 9000101 { print $2 }' | sort -u | tr '\n' ' ')
+# Fix 4: refuse a custom rule that would clash with Malcolm's own sids. Only our
+# file is checked (suricata/rules/ may hold other rule files), and a file with
+# no sid at all is a failure too (an empty or truncated copy).
+sids=$(grep -hEo 'sid: *[0-9]+' suricata/rules/cherrymountain.rules | awk -F'[: ]+' '{ print $2 }' | sort -u)
+if [ -z "$sids" ]; then
+  log "FAIL: suricata/rules/cherrymountain.rules holds no sid"
+  exit 1
+fi
+bad=$(awk '$1 < 9000101' <<< "$sids" | tr '\n' ' ')
 if [ -n "$bad" ]; then
   log "FAIL: custom Suricata rules use sids below 9000101: ${bad}"
   exit 1

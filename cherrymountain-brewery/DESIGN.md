@@ -2404,7 +2404,9 @@ point for future adversary-emulation scenarios.
      first pcap, or restart pcap-monitor afterwards.
   4. **Use sids of 9000101 and up for custom Suricata rules.** Malcolm's default
      OT rules (ELITEWOLF) use 1000001 and up, and Suricata rejects a clashing
-     custom rule as a `Duplicate signature`.
+     custom rule as a `Duplicate signature`. `cm-malcolm-provision` checks only
+     `cherrymountain.rules` and fails when it has no sid at all
+     (`tests/soc/test_malcolm.py`).
 - **Not yet verified:** a real `cm-malcolm` VM image with live capture, and
   NetBox and Strelka.
 
@@ -2751,7 +2753,9 @@ which uses the Elasticsearch-compatible API.
     "connected" on the first I-Am from anything, including a BBMD's
   - the HELICS federate count on sim-ctl
   - fresh points in each InfluxDB bucket
-  - Malcolm Zeek logs growing
+  - Malcolm healthy (`cm-malcolm-health`): every container of the profile
+    running and none unhealthy, the capture port `phenix` promiscuous with its
+    rx count growing, and Zeek records in the last 15 minutes
 - **Probe limits.** SoH TCP and UDP probes need a reply. One-way flows
   (syslog), IKE/ESP, and negative tests (blocked paths stay blocked) are
   therefore checked with `cc` scripts in SCORCH or `sohProfile.customTests`.

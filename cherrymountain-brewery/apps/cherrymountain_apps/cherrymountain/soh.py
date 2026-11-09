@@ -26,7 +26,7 @@ from cherrymountain_apps.cherrymountain.metadata import (
     SimFederateHost,
     WazuhManagerHost,
 )
-from cherrymountain_apps.cherrymountain.render import Context, fuxa_daq
+from cherrymountain_apps.cherrymountain.render import Context, fuxa_daq, northbound
 
 #: Modbus function codes a read test may use (coils, discrete, holding, input).
 READ_FCS: Final[frozenset[int]] = frozenset({1, 2, 3, 4})
@@ -99,9 +99,10 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
 
     if isinstance(md, OpenPlcHost):
         listeners.append(f":{md.rest_port}")
-        if md.northbound == "modbus_slave":
+        nb: str = northbound(ctx, hostname, md)
+        if nb == "modbus_slave":
             listeners.append(":502")
-        elif md.northbound == "opcua":
+        elif nb == "opcua":
             listeners.append(f":{md.opcua.port}")
         else:
             listeners.append(f":{md.s7comm.port}")
@@ -124,8 +125,12 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
             )
         )
     elif isinstance(md, RioHost):
-        processes += ["ot-sim-cpu-module", "ot-sim-modbus-module"]
-        listeners.append(":502")
+        processes.append("ot-sim-cpu-module")
+        planned: Any = ctx.sources.plant().hosts.get(hostname)
+        modbus: Any = getattr(planned, "modbus", None)
+        if modbus is not None:
+            processes.append("ot-sim-modbus-module")
+            listeners.append(f":{modbus.port}")
     elif isinstance(md, SimCtlHost):
         processes.append("helics_broker")
         listeners.append(f":{ctx.app.mgmt.broker_ports[0]}")

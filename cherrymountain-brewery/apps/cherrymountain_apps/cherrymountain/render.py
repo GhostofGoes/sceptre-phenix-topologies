@@ -49,8 +49,12 @@ PLC_PLUGINS: Final[tuple[str, ...]] = (
     "opcua",
     "s7comm",
 )
-#: Ounces per US beer barrel (DESIGN.md 12.2).
-OZ_PER_BBL: Final[float] = 3968.0
+#: plant.yaml northbound -> OpenPLC plugin.
+NORTHBOUND_PLUGIN: Final[dict[str, str]] = {
+    "modbus": "modbus_slave",
+    "opcua": "opcua",
+    "s7comm": "s7comm",
+}
 
 
 class Injection(BaseModel):
@@ -276,8 +280,19 @@ def s7comm_config(layout: dict[str, Any], port: int) -> dict[str, Any]:
     }
 
 
+def northbound(ctx: Context, hostname: str, md: OpenPlcHost) -> str:
+    """The northbound plugin: the metadata's, else plant.yaml's."""
+    if md.northbound is not None:
+        return md.northbound
+    planned: Any = ctx.sources.plant().hosts.get(hostname)
+    return NORTHBOUND_PLUGIN.get(
+        getattr(planned, "northbound", "modbus"), "modbus_slave"
+    )
+
+
 def render_openplc(ctx: Context, hostname: str, md: OpenPlcHost) -> list[Injection]:
     src: Sources = ctx.sources
+    plugin_nb: str = northbound(ctx, hostname, md)
     program: str = md.program or hostname
     out: Path = ctx.host_dir(hostname) / "openplc"
     conf_out: Path = out / "conf"
@@ -299,7 +314,7 @@ def render_openplc(ctx: Context, hostname: str, md: OpenPlcHost) -> list[Injecti
         path: Path = plantgen_dir / f"{plugin}.json"
         if (
             plugin == "modbus_slave"
-            and md.northbound != "modbus_slave"
+            and plugin_nb != "modbus_slave"
             and not path.is_file()
         ):
             continue
@@ -312,7 +327,7 @@ def render_openplc(ctx: Context, hostname: str, md: OpenPlcHost) -> list[Injecti
             )
         )
 
-    if md.northbound == "opcua":
+    if plugin_nb == "opcua":
         dmap: DebugMap = src.debug_map(program, md.opcua.debug_map)
         md5: str | None = src.zip_md5(program)
         if md5 is not None and dmap.md5 != md5:
@@ -341,7 +356,7 @@ def render_openplc(ctx: Context, hostname: str, md: OpenPlcHost) -> list[Injecti
                 description="opcua plugin config (from the debug map)",
             )
         )
-    elif md.northbound == "s7comm":
+    elif plugin_nb == "s7comm":
         layouts: dict[str, Any] = src.generated_json("registers.json").get(
             "slave_layouts", {}
         )

@@ -205,7 +205,9 @@ class OpenPlcHost(HostBase):
     #: Program name: the ZIP is phenix-injects/openplc/<program>.zip and the
     #: plantgen configs are under plant/generated/<variant>/openplc/<program>/.
     program: Name | None = None
-    northbound: Literal["modbus_slave", "opcua", "s7comm"] = "modbus_slave"
+    #: The northbound plugin. Default: plant.yaml's ``northbound`` for the host
+    #: (``modbus`` is the ``modbus_slave`` plugin).
+    northbound: Literal["modbus_slave", "opcua", "s7comm"] | None = None
     opcua: OpcUa = Field(default_factory=OpcUa)
     s7comm: S7Comm = Field(default_factory=S7Comm)
     rest_port: Port = 8443
@@ -231,7 +233,8 @@ class FuxaHost(HostBase):
 
 
 class RioHost(HostBase):
-    """An ot-sim field device; the ot-sim app configures it."""
+    """An ot-sim device (remote I/O, field, BAS, FEP, or DNP3 master); the
+    ot-sim app configures it, and this app checks it."""
 
     type: Literal["rio"]
 
@@ -267,6 +270,7 @@ class HmiHost(HostBase):
     #: The FUXA host the kiosk shows, and the view to open.
     fuxa: Hostname = "scada-fuxa"
     view: ViewName = "Overview"
+    #: The FUXA host's interface the kiosk connects to.
     interface: Interface = "IF0"
 
 

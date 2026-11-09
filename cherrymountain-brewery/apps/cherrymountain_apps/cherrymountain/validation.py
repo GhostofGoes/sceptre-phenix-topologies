@@ -30,6 +30,7 @@ from cherrymountain_apps.cherrymountain.metadata import (
     Block,
     HostBase,
 )
+from cherrymountain_apps.cherrymountain.render import NORTHBOUND_PLUGIN
 
 APP: Final[str] = "cherrymountain"
 
@@ -37,9 +38,20 @@ APP: Final[str] = "cherrymountain"
 ROLE_TYPES: Final[dict[str, frozenset[str]]] = {
     "plc": frozenset({"openplc"}),
     "rio": frozenset({"rio"}),
+    "field": frozenset({"rio"}),
+    "bas": frozenset({"rio"}),
+    "fep": frozenset({"rio"}),
+    "dnp3-master": frozenset({"rio"}),
     "scada": frozenset({"fuxa"}),
     "sim": frozenset({"sim-ctl", "sim-federate"}),
+    "historian": frozenset({"historian"}),
+    "hmi": frozenset({"hmi"}),
+    "jump": frozenset({"guacamole"}),
 }
+#: Roles whose hosts the app should provision; a missing one is a warning.
+PROVISIONED_ROLES: Final[frozenset[str]] = frozenset(
+    {"plc", "scada", "sim", "historian", "hmi"}
+)
 
 
 class Problem(BaseModel):
@@ -276,13 +288,14 @@ def check_topology(
 
         allowed: frozenset[str] | None = ROLE_TYPES.get(phost.role)
         listed: HostBase | None = hosts.get(name)
-        if allowed is not None and listed is None:
+        if listed is None and phost.role in PROVISIONED_ROLES:
             problems.append(
                 Problem(
                     hostname=name,
                     field="hosts",
                     message=f"plant.yaml {phost.role} host is not in the app's hosts; the app will not provision it",
-                    hint="add it with metadata.type " + " or ".join(sorted(allowed)),
+                    hint="add it with metadata.type "
+                    + " or ".join(sorted(allowed or ())),
                     fatal=False,
                 )
             )
@@ -300,6 +313,22 @@ def check_topology(
                 )
             )
 
+    for name, md in hosts.items():
+        planned: Any = plant.hosts.get(name)
+        nb: str | None = getattr(md, "northbound", None)
+        if nb is not None and planned is not None:
+            want: str = NORTHBOUND_PLUGIN.get(
+                getattr(planned, "northbound", "modbus"), ""
+            )
+            if nb != want:
+                problems.append(
+                    Problem(
+                        hostname=name,
+                        field="metadata.northbound",
+                        message=f"differs from plant.yaml hosts.{name}.northbound",
+                        hint="leave it out to use plant.yaml's",
+                    )
+                )
     for name, md in hosts.items():
         if name not in nodes:
             problems.append(

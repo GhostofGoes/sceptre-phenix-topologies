@@ -171,8 +171,14 @@ def _clocked(start: str, speedup: float = 1.0) -> PowerFederate:
 def _registers(fed: PowerFederate) -> tuple[int, int, int]:
     """The clock registers a reader of gen-ats sees: minute, day, month."""
     values = fed.values()
-    minute, day, month = (values[k] for k in CLOCK_KEYS)
-    assert isinstance(minute, int) and isinstance(day, int) and isinstance(month, int)
+    registers: list[int] = []
+    for key in CLOCK_KEYS:
+        # A publication is a HELICS double, so 270 reads 270.0; a register
+        # holds only a whole number.
+        value = values[key]
+        assert isinstance(value, int | float) and float(value).is_integer(), (key, value)
+        registers.append(int(value))
+    minute, day, month = registers
     return minute, day, month
 
 

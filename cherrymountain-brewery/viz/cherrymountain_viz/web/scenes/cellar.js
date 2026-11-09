@@ -277,10 +277,11 @@ export function buildCellar() {
       const psig = op ? op.vessel_pressure_psig[d.id] ?? d.pressure_psig : d.pressure_psig;
       m.tgt = { level: d.level_pct ?? 0, temp: temp ?? 60, psig: psig ?? 0 };
       m.label.draw(vesselLines(d, op));
-      m.jackets.forEach((mat, i) => mat.color.setHex(d.glycol_valves[i] ? COLORS.glycol : COLORS.off));
+      const valves = op ? op.glycol_valves[d.id] ?? d.glycol_valves : d.glycol_valves;
+      m.jackets.forEach((mat, i) => mat.color.setHex(valves[i] ? COLORS.glycol : COLORS.off));
       m.psvMat.color.setHex(d.psv_lifted && !op ? COLORS.bad : COLORS.off);
       if (m.carbMat) {
-        const pct = d.carb_valve_pct ?? 0;
+        const pct = (op ? op.carb_valve_pct[d.id] : d.carb_valve_pct) ?? 0;
         const relayOpen = (op ? op.relay_ok : f.cellar.air.relay_ok) === false;
         m.carbMat.color.setHex(relayOpen ? (pct > 0 ? 0xff00ff : COLORS.bad) : pct > 0 ? COLORS.warn : COLORS.off);
       }
@@ -297,7 +298,7 @@ export function buildCellar() {
     running.forEach((on, i) => {
       if (!fans[i]) return;
       fans[i].on = on;
-      const cmd = air.fans[i]?.commanded;
+      const cmd = op ? op.fans_commanded?.[i] : air.fans[i]?.commanded;
       fans[i].label.draw([[`Purge fan ${i + 1}`], [on ? 'running' : cmd ? 'commanded, stopped' : 'off', on ? '#5cc98a' : '#ff6b5e']]);
     });
     const relay = op ? op.relay_ok : air.relay_ok;

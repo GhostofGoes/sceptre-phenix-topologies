@@ -3,7 +3,8 @@
 const params = new URLSearchParams(location.search);
 const SCENES = ['cellar', 'fermenters', 'power'];
 let scene = SCENES.includes(params.get('scene')) ? params.get('scene') : 'cellar';
-const STALE_MS = 3000;
+// As in app.js: 5 s, and data age from the server's own stamps.
+const STALE_MS = 5000;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const fmt = (x, d = 0) => (x === null || x === undefined ? '–'
@@ -121,19 +122,27 @@ function setScene(s) {
 document.querySelectorAll('[data-scene]').forEach((b) => b.addEventListener('click', () => setScene(b.dataset.scene)));
 
 let lastMsgAt = 0;
+let ageAtSend = 0;
 function connect() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
-  ws.onmessage = (ev) => { lastMsgAt = Date.now(); viz.msgs += 1; draw(JSON.parse(ev.data)); };
+  ws.onmessage = (ev) => {
+    lastMsgAt = performance.now();
+    viz.msgs += 1;
+    const f = JSON.parse(ev.data);
+    ageAtSend = Math.max(f.sent_wall_ms - f.sampled_wall_ms, 0);
+    draw(f);
+  };
   ws.onclose = () => setTimeout(connect, 1000);
 }
 setInterval(() => {
   const f = viz.last;
-  const now = Date.now();
-  const age = f ? now - f.sampled_wall_ms : Infinity;
-  const stale = !f || f.stale || now - lastMsgAt > STALE_MS || age > 5000;
+  const now = performance.now();
+  const age = f ? ageAtSend + (now - lastMsgAt) : Infinity;
+  const stale = !f || f.stale || now - lastMsgAt > STALE_MS || age > STALE_MS;
   viz.stale = stale;
   document.body.classList.toggle('stale', stale);
   $('stale').hidden = !stale || !f;
+  viz.layout = $('drawing').getBoundingClientRect().width;
   const pill = $('age');
   pill.textContent = f ? `${fmt(age / 1000, 1)} s old` : 'no frame';
   pill.className = `pill ${stale ? 'dead' : age > 2500 ? 'late' : 'fresh'}`;

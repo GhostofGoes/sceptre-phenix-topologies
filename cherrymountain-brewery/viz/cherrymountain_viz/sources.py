@@ -21,15 +21,21 @@ import logging
 import math
 import threading
 import time
-import urllib.error
 import urllib.request
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
-from cherrymountain_viz.frame import Frame, OperatorView, Value, build_frame, operator_from_values
+from cherrymountain_viz.frame import (
+    Frame,
+    Hold,
+    OperatorView,
+    Value,
+    build_frame,
+    operator_from_values,
+)
 from cherrymountain_viz.scenarios import SCENARIOS, Step
 
 if TYPE_CHECKING:
@@ -46,6 +52,11 @@ class Source(Protocol):
 
     def frame(self) -> Frame | None:
         """The latest frame, or None before the first one."""
+        ...
+
+    def health(self) -> str | None:
+        """Why the source cannot be trusted now (it stopped, it cannot reach
+        its data), or None while it is healthy."""
         ...
 
 
@@ -82,6 +93,10 @@ class StaticSource:
         """The fixed frame."""
         return self.fixed
 
+    def health(self) -> str | None:
+        """Always healthy (a stale fixed frame says so itself)."""
+        return None
+
 
 class SimctlSource(threading.Thread):
     """Polls the sim-ctl snapshot in its own thread."""
@@ -93,6 +108,9 @@ class SimctlSource(threading.Thread):
     latest: Frame | None
     last_seq: int
     last_change: float
+    last_ok: float
+    last_error: str | None
+    hold: Hold
     lock: threading.Lock
     stop: threading.Event
 
@@ -112,6 +130,9 @@ class SimctlSource(threading.Thread):
         self.latest = None
         self.last_seq = -1
         self.last_change = 0.0
+        self.last_ok = time.time()
+        self.last_error = None
+        self.hold = Hold()
         self.lock = threading.Lock()
         self.stop = threading.Event()
 
@@ -125,10 +146,14 @@ class SimctlSource(threading.Thread):
         now = time.time()
         try:
             snap = self.fetch()
-        except (OSError, urllib.error.URLError, ValidationError) as exc:
-            LOG.debug("snapshot fetch failed: %s", exc)
+        except Exception as exc:  # noqa: BLE001 - any failure: stale, retry
+            # URLError, a timeout, http.client.IncompleteRead, a bad document...
+            self.last_error = f"{type(exc).__name__}: {exc}"
+            LOG.debug("snapshot fetch failed: %s", self.last_error)
             self._mark_stale()
             return
+        self.last_ok = now
+        self.last_error = None
         if snap.seq != self.last_seq:
             self.last_seq = snap.seq
             self.last_change = now
@@ -142,6 +167,7 @@ class SimctlSource(threading.Thread):
                 sampled_wall_ms=snap.wall_time * 1000.0,
                 load_buses=self.buses,
                 stale=now - snap.wall_time > STALE_AFTER_S,
+                hold=self.hold,
                 notes=["Operator view: not connected in the range yet (FUXA beside this window)"],
             )
             with self.lock:
@@ -159,10 +185,24 @@ class SimctlSource(threading.Thread):
         with self.lock:
             return self.latest
 
+    def health(self) -> str | None:
+        """The poller stopped, or sim-ctl has not answered for a while."""
+        if self.ident is not None and not self.is_alive():
+            return "the sim-ctl poller stopped"
+        if self.last_error and time.time() - self.last_ok > STALE_AFTER_S:
+            return f"sim-ctl snapshot unreachable: {self.last_error}"
+        return None
+
     def run(self) -> None:
-        """Poll until stopped."""
+        """Poll until stopped. Nothing but stop() ends the loop: an error in a
+        poll is logged, the last frame goes stale, and the next poll retries."""
         while not self.stop.is_set():
-            self.poll_once()
+            try:
+                self.poll_once()
+            except Exception as exc:  # noqa: BLE001 - keep polling
+                self.last_error = f"{type(exc).__name__}: {exc}"
+                LOG.exception("snapshot poll failed")
+                self._mark_stale()
             self.stop.wait(self.poll_s)
 
 
@@ -175,6 +215,7 @@ class LocalSource(threading.Thread):
     notes: list[str]
     frozen: OperatorView | None
     buses: dict[str, str]
+    hold: Hold
     latest: Frame | None
     seq: int
     lock: threading.Lock
@@ -206,6 +247,7 @@ class LocalSource(threading.Thread):
         self.notes = []
         self.frozen = None
         self.buses = load_buses(config)
+        self.hold = Hold()
         self.latest = None
         self.seq = 0
         self.lock = threading.Lock()
@@ -263,6 +305,7 @@ class LocalSource(threading.Thread):
             load_buses=self.buses,
             operator=operator,
             speed=self.speed,
+            hold=self.hold,
             notes=self.notes[-5:],
         )
         with self.lock:
@@ -272,6 +315,12 @@ class LocalSource(threading.Thread):
         """The latest frame."""
         with self.lock:
             return self.latest
+
+    def health(self) -> str | None:
+        """The offline federation stopped (a scenario step failed)."""
+        if self.ident is not None and not self.is_alive():
+            return "the offline federation stopped"
+        return None
 
     def run(self) -> None:
         """Step the federation to keep pace with the wall clock."""

@@ -11,7 +11,14 @@ lifted, a carbonation stone open while the CO2 relay is open).
 Everything here is ground truth. The operator's layer (what the HMI shows) is a
 separate, optional :class:`OperatorView`: the offline harness can produce one,
 and in the range it waits on a historian relay (DESIGN.md §15.10), so a frame
-without it says so instead of pretending.
+without it says so instead of pretending. The page's operator toggle draws
+from it, but every frame still carries the truth: the toggle is a convenience
+for the white cell, not a confidentiality boundary.
+
+Findings that wait on a controller's reaction (a purge fan starting at tier 1,
+a carbonation stone closing when the relay opens) are reported only once they
+have held for :data:`HOLD_S` simulated seconds, given a :class:`Hold` that
+remembers across frames; without one, :func:`build_frame` reports at once.
 
 The functions are pure (no I/O), so the tests drive them with plain dicts.
 """
@@ -32,6 +39,10 @@ SITE_PSIA: float = 12.1
 MAWP_PSIG: float = 15.0
 #: Cellar CO2 alarm tiers on the sensed value, ppm (DESIGN.md §6.7).
 CO2_TIERS: tuple[float, float, float] = (5000.0, 15000.0, 30000.0)
+#: A finding that waits on a controller must hold this long (simulated s):
+#: the PLC and bas-vent react within a scan or two, the snapshot may catch the
+#: step in between, and a purge fan takes a few seconds to prove running.
+HOLD_S: float = 5.0
 #: Fermenter and bright-tank publication keys: cellar/fv101.pressure_psia.
 _VESSEL_RE: re.Pattern[str] = re.compile(r"^cellar/((?:fv|bbt)\d+)\.pressure_psia$")
 _LOAD_RE: re.Pattern[str] = re.compile(r"^(\w+)/load\.([\w-]+)\.kw$")
@@ -66,6 +77,25 @@ class Vessel(BaseModel):
     carb_valve_pct: float | None = None
 
 
+class Hold:
+    """Remembers since when each condition has been true, across frames."""
+
+    hold_s: float
+    since: dict[str, float]
+
+    def __init__(self, hold_s: float = HOLD_S) -> None:
+        self.hold_s = hold_s
+        self.since = {}
+
+    def held(self, key: str, condition: bool, t_s: float) -> bool:
+        """``condition`` has been true for at least ``hold_s`` up to ``t_s``."""
+        if not condition:
+            self.since.pop(key, None)
+            return False
+        start = self.since.setdefault(key, t_s)
+        return t_s - start >= self.hold_s
+
+
 class Fan(BaseModel):
     """A cellar purge fan: what bas-vent commands and whether it turns."""
 
@@ -82,8 +112,9 @@ class CellarAir(BaseModel):
     fans: list[Fan] = Field(default_factory=list)
     relay_ok: bool | None = None  # bas-vent's gas-detection relay
     relay_at_rio: bool | None = None  # the same contact as rio-cellar reads it
-    #: True when every carbonation valve is shut while the relay is open;
-    #: None while the relay is closed (no inhibit asked for).
+    #: While the relay is open: False once a carbonation valve has stayed open
+    #: for HOLD_S (the inhibit is defeated), else True. None while the relay is
+    #: closed (no inhibit asked for).
     inhibit_effective: bool | None = None
     co2_into_room_gps: float = 0.0
     temp_f: float | None = None
@@ -157,9 +188,14 @@ class OperatorView(BaseModel):
     co2_sensors_ppm: list[float]
     tiers: list[bool]
     fans_running: list[bool]
+    fans_commanded: list[bool] = Field(default_factory=list)
     relay_ok: bool | None = None
     vessel_temp_f: dict[str, float] = Field(default_factory=dict)
     vessel_pressure_psig: dict[str, float] = Field(default_factory=dict)
+    #: Jacket valve commands per vessel (FV: side, cone; BBT: one).
+    glycol_valves: dict[str, list[bool]] = Field(default_factory=dict)
+    #: Carbonation stone valve per bright tank, %.
+    carb_valve_pct: dict[str, float] = Field(default_factory=dict)
 
 
 class Frame(BaseModel):
@@ -270,7 +306,7 @@ def _vessels(r: _Values, ambient: float) -> list[Vessel]:
     return out
 
 
-def _air(r: _Values, vessels: list[Vessel]) -> CellarAir:
+def _air(r: _Values, vessels: list[Vessel], hold: Hold | None, t_s: float) -> CellarAir:
     sensors = [
         x for i in range(1, 5) if (x := r.num(f"building/bas-vent.co2_{i}_ppm")) is not None
     ]
@@ -290,7 +326,11 @@ def _air(r: _Values, vessels: list[Vessel]) -> CellarAir:
     relay = r.flag("building/vent.co2_relay_ok")
     inhibit: bool | None = None
     if relay is False:
-        inhibit = all((v.carb_valve_pct or 0.0) <= 0.0 for v in vessels if v.kind == "bbt")
+        open_now = any((v.carb_valve_pct or 0.0) > 0.0 for v in vessels if v.kind == "bbt")
+        defeated = open_now if hold is None else hold.held("inhibit", open_now, t_s)
+        inhibit = not defeated
+    elif hold is not None:
+        hold.held("inhibit", False, t_s)
     return CellarAir(
         co2_mixed_ppm=r.num("building/cellar.co2_ppm"),
         sensors_ppm=sensors,
@@ -349,13 +389,25 @@ def _power(r: _Values, load_buses: Mapping[str, str]) -> Power:
     )
 
 
-def findings(cellar: Cellar, power: Power) -> list[Finding]:
-    """What the truth shows that the white cell should notice."""
+def findings(
+    cellar: Cellar, power: Power, hold: Hold | None = None, t_s: float = 0.0
+) -> list[Finding]:
+    """What the truth shows that the white cell should notice. With ``hold``,
+    the fan and relay findings must last HOLD_S (bas-vent starts the fans at
+    tier 1, a fan takes a few seconds to prove running, and rio-cellar sees the
+    relay a step after bas-vent)."""
+
+    def lasting(key: str, condition: bool) -> bool:
+        return condition if hold is None else hold.held(key, condition, t_s)
+
     out: list[Finding] = []
     air = cellar.air
-    if air.tiers and air.tiers[0]:
-        for i, fan in enumerate(air.fans, 1):
-            if not fan.commanded:
+    tier1 = bool(air.tiers and air.tiers[0])
+    for i, fan in enumerate(air.fans, 1):
+        off = lasting(f"fan{i}-off", tier1 and not fan.commanded)
+        stopped = lasting(f"fan{i}-stopped", tier1 and fan.commanded and not fan.running)
+        if tier1:
+            if off:
                 out.append(
                     Finding(
                         level="alarm",
@@ -364,7 +416,7 @@ def findings(cellar: Cellar, power: Power) -> list[Finding]:
                         "active (bas-vent's own logic would run it: a BACnet write?)",
                     )
                 )
-            elif not fan.running:
+            elif stopped:
                 out.append(
                     Finding(
                         level="alarm",
@@ -381,7 +433,13 @@ def findings(cellar: Cellar, power: Power) -> list[Finding]:
                 "the inhibit is defeated",
             )
         )
-    if air.relay_ok is not None and air.relay_at_rio is not None and air.relay_ok != air.relay_at_rio:
+    mismatch = (
+        air.relay_ok is not None
+        and air.relay_at_rio is not None
+        and air.relay_ok != air.relay_at_rio
+    )
+    # rio-cellar reads the contact a federate step after bas-vent drives it.
+    if lasting("relay-mismatch", mismatch):
         out.append(
             Finding(
                 level="warn",
@@ -445,15 +503,17 @@ def build_frame(
     operator: OperatorView | None = None,
     stale: bool = False,
     speed: float = 1.0,
+    hold: Hold | None = None,
     notes: list[str] | None = None,
 ) -> Frame:
-    """The frame for one snapshot of HELICS values."""
+    """The frame for one snapshot of HELICS values. ``hold`` debounces the
+    findings that wait on a controller (see the module docstring)."""
     r = _Values(values)
     kpa = r.num("weather/pressure.kpa")
     ambient = kpa * PSI_PER_KPA if kpa else SITE_PSIA
     vessels = _vessels(r, ambient)
     cellar = Cellar(
-        air=_air(r, vessels),
+        air=_air(r, vessels, hold, sim_t_s),
         vessels=vessels,
         glycol_supply_f=r.num("utilities/glycol.supply_f"),
         kinetic_hours=r.num("cellar/clock.sim_hours"),
@@ -470,7 +530,7 @@ def build_frame(
         speed=speed,
         cellar=cellar,
         power=power,
-        findings=findings(cellar, power),
+        findings=findings(cellar, power, hold, sim_t_s),
         operator=operator,
         notes=notes or [],
     )
@@ -486,22 +546,36 @@ def operator_from_values(
     ambient = kpa * PSI_PER_KPA if kpa else SITE_PSIA
     temps: dict[str, float] = {}
     pressures: dict[str, float] = {}
+    valves: dict[str, list[bool]] = {}
+    carb: dict[str, float] = {}
     for k in values:
         m = _VESSEL_RE.match(k)
         if not m:
             continue
         u = m.group(1)
-        t = r.num(f"cellar/{u}-side.temp_f") if u.startswith("fv") else r.num(f"cellar/{u}.temp_f")
+        fv = u.startswith("fv")
+        t = r.num(f"cellar/{u}-side.temp_f") if fv else r.num(f"cellar/{u}.temp_f")
         if t is not None:
             temps[u.upper()] = t
         pressures[u.upper()] = r.num0(k) - ambient
+        if fv:
+            valves[u.upper()] = [
+                bool(r.flag(f"cellar/{u}-side.valve")),
+                bool(r.flag(f"cellar/{u}-cone.valve")),
+            ]
+        else:
+            valves[u.upper()] = [bool(r.flag(f"cellar/{u}.valve"))]
+            carb[u.upper()] = r.num0(f"cellar/{u}.co2_valve_pct")
     return OperatorView(
         source=source,
         frozen=frozen,
         co2_sensors_ppm=[r.num0(f"building/bas-vent.co2_{i}_ppm") for i in range(1, 5)],
         tiers=[bool(r.flag(f"building/bas-vent.co2_tier_{i}")) for i in range(1, 4)],
         fans_running=[bool(r.flag(f"building/bas-vent.purge_fan_{i}_status")) for i in (1, 2)],
+        fans_commanded=[bool(r.flag(f"building/bas-vent.purge_fan_{i}")) for i in (1, 2)],
         relay_ok=r.flag("cellar/gasrelay.co2_ok"),
         vessel_temp_f=temps,
         vessel_pressure_psig=pressures,
+        glycol_valves=valves,
+        carb_valve_pct=carb,
     )

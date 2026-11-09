@@ -12,8 +12,10 @@ import { buildPower } from './scenes/power.js';
 
 const params = new URLSearchParams(location.search);
 const FPS_CAP = Number(params.get('fps') ?? 15);
-const STALE_MS = 3000; // no frame for this long: grey out
-const OLD_STATE_MS = 5000; // a frame whose state is older than this: grey out
+// Grey out after this long without a message, or when the state is older
+// than this; the same 5 s after which the server marks a snapshot stale. The
+// server sends at least one message a second.
+const STALE_MS = 5000;
 const SCENES = ['cellar', 'fermenters', 'power'];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -103,7 +105,8 @@ function rowsCellar(f, op) {
     ['CO₂ alarm', tierText(a.tiers), op ? tierText(op.tiers) : null, op && tierText(op.tiers) !== tierText(a.tiers)],
     ['Purge fans running', onOff(a.fans.map((x) => x.running)), op ? onOff(op.fans_running) : null,
       op && onOff(op.fans_running) !== onOff(a.fans.map((x) => x.running))],
-    ['Purge fans commanded', onOff(a.fans.map((x) => x.commanded)), '', false],
+    ['Purge fans commanded', onOff(a.fans.map((x) => x.commanded)), op ? onOff(op.fans_commanded) : null,
+      op && onOff(op.fans_commanded) !== onOff(a.fans.map((x) => x.commanded))],
     ['Gas-detection relay', relayText(a.relay_ok), op ? relayText(op.relay_ok) : null, op && op.relay_ok !== a.relay_ok],
     ['Carbonation inhibit', inhibit, '', false],
     ['CO₂ into the room', `${fmt(a.co2_into_room_gps, 1)} g/s`, NOT_MEASURED, false],
@@ -176,13 +179,21 @@ function applyFrame(f) {
   renderSide(f);
 }
 
+// Data age uses no browser wall clock: the frame's age when the server sent
+// it (both stamps come from the server host's clock) plus the time since it
+// arrived here, on this browser's monotonic clock. Clock skew between the
+// white cell's machine and sim-ctl does not matter.
 let lastMsgAt = 0;
+let ageAtSend = 0;
+const stateAgeMs = (now) => ageAtSend + (now - lastMsgAt);
 function connect() {
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`);
   ws.onmessage = (ev) => {
-    lastMsgAt = Date.now();
+    lastMsgAt = performance.now();
     viz.msgs += 1;
-    applyFrame(JSON.parse(ev.data));
+    const f = JSON.parse(ev.data);
+    ageAtSend = Math.max(f.sent_wall_ms - f.sampled_wall_ms, 0);
+    applyFrame(f);
   };
   ws.onclose = () => setTimeout(connect, 1000);
 }
@@ -190,8 +201,8 @@ function connect() {
 function staleness(now) {
   const f = viz.last;
   const sinceMsg = lastMsgAt ? now - lastMsgAt : Infinity;
-  const stateAge = f ? now - f.sampled_wall_ms : Infinity;
-  const stale = !f || f.stale || sinceMsg > STALE_MS || stateAge > OLD_STATE_MS;
+  const stateAge = f ? stateAgeMs(now) : Infinity;
+  const stale = !f || f.stale || sinceMsg > STALE_MS || stateAge > STALE_MS;
   viz.stale = stale;
   document.body.classList.toggle('stale', stale);
   const pill = $('age');
@@ -207,7 +218,9 @@ function staleness(now) {
   if (f && stale) {
     banner.textContent = f.stale
       ? 'NO DATA: the simulation snapshot has stopped advancing'
-      : `NO DATA: last frame ${fmt(Math.min(sinceMsg, stateAge) / 1000)} s ago`;
+      : sinceMsg > STALE_MS
+        ? `NO DATA: no message from cm-viz for ${fmt(sinceMsg / 1000)} s`
+        : `NO DATA: the state is ${fmt(stateAge / 1000)} s old`;
   }
 }
 
@@ -222,7 +235,7 @@ function tick(now) {
   lastRender = now;
   const world = worldOf(current);
   world.tick(dt, now);
-  staleness(Date.now());
+  staleness(performance.now());
   renderer.render(world.scene, camera);
   viz.frames += 1;
   viz.ready = true;

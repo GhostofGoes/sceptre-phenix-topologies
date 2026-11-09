@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from cherrymountain_viz.frame import Frame, Value, build_frame, operator_from_values
+from cherrymountain_viz.frame import HOLD_S, Frame, Hold, Value, build_frame, operator_from_values
 from cherrymountain_viz.sources import load_buses
 
 HELICS_FULL: Path = Path(__file__).resolve().parents[2] / "plant" / "generated" / "full" / "helics.json"
@@ -154,3 +154,56 @@ def test_outage_and_operator_view() -> None:
 def test_an_empty_snapshot_still_builds() -> None:
     f = build_frame({}, seq=0, source="t", sim_t_s=0, sim_time=None, sampled_wall_ms=0)
     assert f.cellar.vessels == [] and f.power.loads == [] and f.findings == []
+
+
+def test_findings_that_wait_on_a_controller_must_hold() -> None:
+    """With a Hold, the relay opening or tier 1 arriving does not flag the
+    inhibit or the fans in the step before the PLC and bas-vent react; it
+    does once the condition has lasted HOLD_S, and clears when it stops."""
+    hold = Hold()
+    late = {
+        "building/vent.co2_relay_ok": 0.0,
+        "cellar/bbt201.co2_valve_pct": 40.0,
+        "building/bas-vent.co2_tier_1": True,
+    }
+
+    def at(t: float, **over: Value) -> Frame:
+        return build_frame(
+            snapshot(**{**late, **over}),
+            seq=int(t),
+            source="test",
+            sim_t_s=t,
+            sim_time=None,
+            sampled_wall_ms=0.0,
+            hold=hold,
+        )
+
+    for t in (0.0, 2.0, 4.0):
+        f = at(t)
+        assert f.cellar.air.inhibit_effective is True
+        assert f.findings == []
+    f = at(HOLD_S)
+    assert f.cellar.air.inhibit_effective is False
+    texts = " ".join(x.text for x in f.findings)
+    assert "inhibit is defeated" in texts and texts.count("commanded off") == 2
+    # The stone closes: the inhibit finding clears and starts over.
+    f = at(HOLD_S + 1, **{"cellar/bbt201.co2_valve_pct": 0.0})
+    assert f.cellar.air.inhibit_effective is True
+    f = at(HOLD_S + 2)
+    assert f.cellar.air.inhibit_effective is True
+    # Without a Hold a single snapshot reports at once (the pure function).
+    assert build_frame(
+        snapshot(**late), seq=0, source="t", sim_t_s=0, sim_time=None, sampled_wall_ms=0
+    ).cellar.air.inhibit_effective is False
+
+
+def test_operator_view_carries_its_own_valves_and_fan_commands() -> None:
+    """What the operator toggle draws comes from the operator's values, not
+    from the truth (frozen with them in a replay)."""
+    op = operator_from_values(
+        snapshot(**{"cellar/bbt201.co2_valve_pct": 30.0, "building/bas-vent.purge_fan_2": True}),
+        "test",
+    )
+    assert op.glycol_valves == {"FV101": [True, False], "BBT201": [False]}
+    assert op.carb_valve_pct == {"BBT201": 30.0}
+    assert op.fans_commanded == [False, True]

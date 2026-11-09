@@ -142,3 +142,56 @@ def test_local_source_scenarios(scenario: str, seconds: float, check: str) -> No
     else:
         assert f.power.ats_on_emergency and f.power.gen_running
         assert f.power.buses["boiler"] is False
+
+
+def test_poller_survives_any_error_and_reports_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A truncated reply (http.client.IncompleteRead, not an OSError), a bad
+    document, or a bug past the fetch must not kill the poller: it keeps
+    polling, recovers, and reports the problem through health() (which
+    /healthz serves) once it has lasted STALE_AFTER_S."""
+    import http.client
+
+    from cherrymountain_viz import sources
+
+    monkeypatch.setattr(sources, "STALE_AFTER_S", 0.3)
+    src = SimctlSource("http://127.0.0.1:9", poll_s=0.02)
+    state = {"n": 0, "broken": False}
+
+    def fetch() -> sources.StateSnapshot:
+        state["n"] += 1
+        if state["broken"] or state["n"] <= 3:
+            raise http.client.IncompleteRead(b"partial")
+        if state["n"] == 4:
+            raise RuntimeError("bad snapshot")
+        return sources.StateSnapshot(
+            seq=state["n"], t_s=float(state["n"]), wall_time=time.time(), values={}
+        )
+
+    real_build = sources.build_frame
+    builds = {"n": 0}
+
+    def flaky_build(*args: object, **kwargs: object) -> Frame:
+        builds["n"] += 1
+        if builds["n"] == 1:
+            raise ValueError("a bug past the fetch")
+        return real_build(*args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(src, "fetch", fetch)
+    monkeypatch.setattr(sources, "build_frame", flaky_build)
+    src.start()
+    try:
+        deadline = time.monotonic() + 5
+        while (f := src.frame()) is None or f.seq < 8:
+            assert time.monotonic() < deadline
+            time.sleep(0.02)
+        assert src.is_alive() and src.health() is None and not f.stale
+        state["broken"] = True
+        time.sleep(0.6)
+        assert src.is_alive()
+        problem = src.health()
+        assert problem is not None and "IncompleteRead" in problem
+        assert src.frame() is not None and src.frame().stale  # type: ignore[union-attr]
+    finally:
+        src.stop.set()
+        src.join(5)
+    assert src.health() == "the sim-ctl poller stopped"

@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from cherrymountain_viz.server import BackgroundServer
-from cherrymountain_viz.sources import LocalSource
+from cherrymountain_viz.sources import LocalSource, StaticSource
 
 HERE: Path = Path(__file__).resolve().parent
 HELICS_FULL: Path = HERE.parents[1] / "plant" / "generated" / "full" / "helics.json"
@@ -37,22 +37,29 @@ def _playwright_ok() -> bool:
 
 
 @pytest.fixture(scope="module")
-def base_url() -> Iterator[str]:
-    """The bridge on the offline harness (co2-attack, so every panel has data),
-    served from a background thread."""
+def urls() -> Iterator[tuple[str, str]]:
+    """Two servers: the bridge on the offline harness (co2-attack, so every
+    panel has data), and one whose only frame is that harness's first frame
+    marked stale (a snapshot that stopped advancing). One federation only:
+    OpenDSS is a process-wide singleton."""
     src = LocalSource(HELICS_FULL, scenario="co2-attack", speed=5.0, fast_forward_s=200.0)
+    first = src.frame()
+    assert first is not None
+    stale = BackgroundServer(StaticSource(first.model_copy(update={"stale": True})))
     src.start()
-    server = BackgroundServer(src)
-    yield server.start()
-    server.stop()
+    live = BackgroundServer(src)
+    yield live.start(), stale.start()
+    live.stop()
+    stale.stop()
     src.stop.set()
 
 
 @pytest.mark.skipif(not _playwright_ok(), reason="node with the playwright package is needed")
-def test_every_scene_renders_with_data(base_url: str) -> None:
+def test_every_scene_renders_with_data(urls: tuple[str, str]) -> None:
+    base_url, stale_url = urls
     node = shutil.which("node") or "node"
     run = subprocess.run(  # noqa: S603 - fixed argv
-        [node, str(HERE / "browser_smoke.cjs"), base_url],
+        [node, str(HERE / "browser_smoke.cjs"), base_url, stale_url],
         capture_output=True,
         text=True,
         timeout=180,
@@ -61,3 +68,4 @@ def test_every_scene_renders_with_data(base_url: str) -> None:
     )
     assert run.returncode == 0, run.stdout + run.stderr
     assert run.stdout.count('"webgl":2') + run.stdout.count('"webgl":1') >= 4
+    assert run.stdout.count('"stale_layout":"ok"') == 2

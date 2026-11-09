@@ -28,7 +28,7 @@ VIZ: Path = HERE.parent
 sys.path[:0] = [str(VIZ), str(VIZ.parent / "sim")]
 
 from cherrymountain_viz.server import BackgroundServer  # noqa: E402
-from cherrymountain_viz.sources import LocalSource  # noqa: E402
+from cherrymountain_viz.sources import LocalSource, Source, StaticSource  # noqa: E402
 
 HELICS_FULL: Path = VIZ.parent / "plant" / "generated" / "full" / "helics.json"
 #: 04:30 start + 6.5 h: late morning, with sun on the PV array.
@@ -47,6 +47,8 @@ class Shot(BaseModel):
     view: str = "truth"
     wait: str = "true"  # JavaScript over `f`, the latest frame
     settle_ms: int = 3000
+    #: Serve the scenario's frame frozen and marked stale (the NO DATA view).
+    stale: bool = False
 
 
 SHOTS: tuple[Shot, ...] = (
@@ -83,6 +85,15 @@ SHOTS: tuple[Shot, ...] = (
         fast_forward_s=MIDDAY_S,
         wait="f.power.ats_on_emergency && f.power.gen_running",
     ),
+    Shot(
+        name="cellar-stale",
+        scene="cellar",
+        scenario="co2-attack",
+        fast_forward_s=1500.0,
+        stale=True,
+        wait="v.stale && document.body.classList.contains('stale')",
+        settle_ms=1500,
+    ),
 )
 
 
@@ -95,8 +106,14 @@ def take(shot: Shot, out: Path) -> dict[str, object]:
         fast_forward_s=shot.fast_forward_s,
         scenario_at_s=shot.scenario_at_s,
     )
-    src.start()
-    server = BackgroundServer(src)
+    served: Source = src
+    if shot.stale:
+        first = src.frame()
+        assert first is not None
+        served = StaticSource(first.model_copy(update={"stale": True}))
+    else:
+        src.start()
+    server = BackgroundServer(served)
     base = server.start()
     try:
         args = {

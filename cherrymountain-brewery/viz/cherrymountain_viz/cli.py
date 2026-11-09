@@ -55,6 +55,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     ap.add_argument("--rate", type=float, default=2.0, help="most frames per second sent")
     ap.add_argument("--host", default="127.0.0.1")
+    ap.add_argument(
+        "--allow-host",
+        action="append",
+        default=[],
+        help="a Host name browsers may use besides 127.0.0.1, localhost, ::1 (repeat)",
+    )
     ap.add_argument("--port", type=int, default=8090)
     ap.add_argument("--log-level", default="INFO")
     args = ap.parse_args(argv)
@@ -78,5 +84,5 @@ def main(argv: Sequence[str] | None = None) -> int:
         poller.start()
         source = poller
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(run(source, args.host, args.port, args.rate))
+        asyncio.run(run(source, args.host, args.port, args.rate, args.allow_host))
     return 0

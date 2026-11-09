@@ -8,6 +8,44 @@ const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
 
 const base = process.argv[2];
+const staleBase = process.argv[3];
+
+// A stale feed greys the page out and shows the NO DATA banner, and the
+// layout stays as it was (body.stale must not pick up the banner's styles).
+async function checkStale(browser, path) {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(`${staleBase}/${path}?scene=cellar`);
+  await page.waitForFunction(
+    () => window.__viz && window.__viz.last && window.__viz.stale === true
+      && document.body.classList.contains('stale'),
+    null, { timeout: 30000 },
+  );
+  const banner = page.locator('#stale');
+  assert.ok(await banner.isVisible(), 'the NO DATA banner shows');
+  assert.match(await banner.textContent(), /NO DATA/);
+  const bb = await banner.boundingBox();
+  assert.ok(bb.width > 200 && bb.width < 900, `banner width ${bb.width}`);
+  const body = await page.evaluate(() => {
+    const r = document.body.getBoundingClientRect();
+    return { w: r.width, pos: getComputedStyle(document.body).position };
+  });
+  assert.equal(body.w, 1280, 'the body keeps the viewport width');
+  assert.notEqual(body.pos, 'fixed');
+  if (path === 'svg.html') {
+    const w = (await page.locator('#drawing').boundingBox()).width;
+    assert.ok(w > 1000, `the 2.5D drawing keeps its width (${w})`);
+  } else {
+    const c = await page.locator('#scene').boundingBox();
+    assert.equal(c.width, 1280, 'the canvas fills the viewport');
+    const side = await page.locator('.side').boundingBox();
+    assert.ok(side.x > 800, `the side panel stays on the right (${side.x})`);
+  }
+  assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ path, stale_layout: 'ok' }));
+  await page.close();
+}
 
 async function check(browser, path, scene, extra) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, bypassCSP: false });
@@ -56,6 +94,8 @@ async function check(browser, path, scene, extra) {
       assert.ok(await page.locator('#drawing svg').count() === 1);
       assert.match(await page.locator('#drawing').textContent(), /MSB load/);
     });
+    await checkStale(browser, 'index.html');
+    await checkStale(browser, 'svg.html');
   } finally {
     await browser.close();
   }

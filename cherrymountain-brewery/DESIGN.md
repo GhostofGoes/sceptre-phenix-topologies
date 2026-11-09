@@ -769,8 +769,13 @@ the way real BAS controllers do. For example, CO₂ ≥ 5,000 ppm starts the
 purge fans locally. The `bas-fuxa` front end supervises, schedules, and
 alarms. `scada-fuxa` reads the CO₂ objects for the process HMI.
 
-**Discovery across `fw-ot`.** `bas-fuxa` shares the BAS VLAN with the devices,
-so its broadcast Who-Is finds them directly. `scada-fuxa` is on OPS, and FUXA's
+**Discovery across `fw-ot`.** `bas-fuxa` shares the BAS VLAN with the devices.
+plantgen sets its BACnet device's `broadcastAddress` to the subnet's directed
+broadcast address, `10.30.10.255`
+(`plant/generated/full/fuxa/bas-fuxa-tags.json`), so its Who-Is reaches the BAS
+devices directly on their own VLAN, without the BBMDs. FUXA on the BAS side has
+not been tested: the `bbmd` spike ran `scada-fuxa` only, so this path is
+expected to work but is unverified. `scada-fuxa` is on OPS, and FUXA's
 BACnet driver (node-bacnet 0.2.4) sends its Who-Is to the device's
 `broadcastAddress` property, or to `255.255.255.255:47808` when the property is
 unset. A router never forwards the limited broadcast. A BBMD on each side
@@ -1302,6 +1307,38 @@ flowchart TB
   RTU -- "Modbus client" --- PDEVS
 ```
 
+**Text alternative to the diagram.** The Internet zone holds `isp-rtr`, which
+joins `fw-edge`, `inet-nuke` (the public NTP and DNS stand-in), the vendor
+(`vendor-ws`), and the utility (`util-rtr`, then `utility-derms`). `util-rtr`
+also reaches `fw-edge` over an IPsec tunnel. `fw-edge` is the only router
+between those external networks and the inside: it connects the enterprise
+zone (`corp-ws`) and the IT/OT DMZ (`dmz-vpn`, which ends the vendor's
+WireGuard tunnel, and `dmz-jump`, the Guacamole jump host). The DMZ connects to
+`fw-ot`, and `fw-ot` is the only router into the OT zones: OPS (`scada-fuxa`,
+`historian`, `ews`, and `ot-svc`, which also hosts the OPS BBMD), HMI (the two
+kiosks), CTRL (the five PLCs), DERLINK (`rtu-der`), BAS (`bas-fuxa`, `bas-bbmd`,
+and the three BAS devices), and SOC (`malcolm`, `wazuh`, `soc-analyst`). The
+field networks are not routed: each PLC reaches its I/O devices (`rio-*`,
+`glycol-chiller`, and the FIELD-PWR power devices) only over its own FIELD
+VLAN, and `rtu-der` is a second Modbus client of the power devices. The BBMD on
+`ot-svc` and the one on `bas-bbmd` talk to each other across `fw-ot`.
+
+The main flows, all detailed in [§10.3](#103-conduit-matrix-default-deny-stateful-logged):
+
+- **Vendor access.** `vendor-ws` opens a WireGuard tunnel (UDP 51820) through
+  `isp-rtr` and `fw-edge` to `dmz-vpn`, reaches `dmz-jump` on HTTPS, and then
+  `dmz-jump` reaches `ews` through `fw-ot` (RDP or SSH).
+- **Utility link.** `utility-derms` reaches `rtu-der` with DNP3 (TCP 20000)
+  through the IPsec tunnel, `fw-edge`, and `fw-ot`.
+- **Supervision.** The kiosks in HMI use the FUXA servers. `scada-fuxa` polls
+  the PLCs in CTRL and the BAS devices through `fw-ot`, and `ews` programs the
+  PLCs.
+- **Monitoring.** Logs and agents flow upward into SOC (`wazuh`), the firewalls
+  send their logs there too, and `malcolm` watches a mirror of the inside
+  networks.
+- **Corporate Internet.** `corp-ws` reaches the Internet zone through `fw-edge`
+  (web, mail, NTP, and DNS).
+
 **Zones** (ISA/IEC 62443-3-2; the security level targets, SL-T, are
 notional design targets):
 
@@ -1338,7 +1375,8 @@ notional design targets):
   utility DERMS to rtu-der.
 - **Cross-zone conduits cross at least one firewall.** The rows marked "—"
   in [§10.3](#103-conduit-matrix-default-deny-stateful-logged) are not
-  cross-zone: intra-DMZ (vendor tunnel to dmz-jump through dmz-vpn),
+  cross-zone: intra-DMZ (vendor tunnel to dmz-jump through dmz-vpn, which
+  enforces its own nftables forward policy, [§13](#13-vendor-remote-access)),
   intra-SOC (soc-analyst), and fw-edge's own NTP from inet-nuke. There are
   two documented deviations:
   - The utility DNP3 conduit ([§7.5](#75-utility-der-link)) reaches an L1
@@ -1429,7 +1467,7 @@ static routes are set in topology `network.routes`:
 | CORP → INET | TCP 80/443/25, UDP 123/53 (SNAT) | fw-edge | Office web and email (protonuke noise); public NTP/DNS stand-in on inet-nuke |
 | fw-edge → inet-nuke | UDP 123 | — | Edge firewall time from the public NTP stand-in |
 | INET → dmz-vpn | UDP 51820 (DNAT 203.0.113.2 → 10.10.20.10) | fw-edge | Vendor WireGuard |
-| vendor-ws (tunnel 10.99.0.2) → dmz-jump | TCP 443 | — (intra-DMZ via dmz-vpn; WireGuard AllowedIPs restrict the peer to dmz-jump) | Guacamole login |
+| vendor-ws (tunnel 10.99.0.2) → dmz-jump (10.10.20.11) | TCP 443 | dmz-vpn's own nftables `forward` policy (default drop, [§13](#13-vendor-remote-access)); WireGuard AllowedIPs also restrict the peer to dmz-jump | Guacamole login. Anything else from the tunnel address is dropped and logged (`cm-wg-drop`), and Wazuh rule 100105 alerts on it |
 | DMZ hosts → ot-svc | UDP 123, UDP/TCP 53 | fw-ot | Time (Guacamole TOTP needs it) and DNS |
 | util-rtr (203.0.113.3) ↔ fw-edge (203.0.113.2) | IKE UDP 500/4500, ESP | fw-edge | Utility IPsec |
 | utility-derms (192.0.2.10) → rtu-der (10.20.15.10) | TCP 20000 (DNP3) | fw-edge, fw-ot | DER telemetry and control |
@@ -1443,7 +1481,7 @@ static routes are set in topology `network.routes`:
 | ot-svc (OPS BBMD) → bas-bbmd | UDP 47808 | fw-ot | BBMD rule 1: Forwarded-NPDU carrying FUXA's Who-Is, plus BDT and foreign-device messages |
 | BAS devices → scada-fuxa, ews | UDP 47808 | fw-ot | BBMD rule 2, **required**: a device answers the forwarded Who-Is with a unicast I-Am straight to the client. This is a new BAS → OPS flow that no BBMD-to-BBMD rule covers; without it discovery fails. It has no SoH probe, because the flow sends no reply of its own, so only `netcheck` checks it |
 | bas-bbmd → ot-svc (OPS BBMD) | UDP 47808 | fw-ot | BBMD rule 3, tested and **optional**: it passes only unsolicited broadcast I-Ams (power-up, periodic) from devices, which the BAS BBMD forwards to OPS. It matched when tested. A Who-Is answered with a broadcast I-Am passes on the established rule, and FUXA cannot hear broadcast I-Ams anyway ([§10.4](#104-protocol-map)). Keep it only for devices that announce themselves |
-| ews → CTRL PLCs | TCP 8443 (OpenPLC REST), 502, 4840, 102 | fw-ot | Programming and diagnostics |
+| ews → CTRL PLCs | TCP 8443 (OpenPLC REST, HTTPS with a self-signed certificate), 502, 4840, 102 | fw-ot | Programming and diagnostics. The REST session is TLS, so Zeek and Suricata see the session (source, destination, bytes) but not the requests ([§14](#14-blue-team-monitoring)) |
 | ews → bas-fuxa, BAS devices | TCP 1881, UDP 47808 | fw-ot | BAS engineering (unicast reads) |
 | bas-fuxa → historian | TCP 8086 | fw-ot | BAS DAQ |
 | All routed OT zones (incl. fw-ot itself) → ot-svc | UDP 123, UDP/TCP 53, UDP 514 | fw-ot | NTP, DNS, syslog |
@@ -1519,12 +1557,13 @@ default drop through the static routes, NAT, IPsec, and these rulesets
 | FUXA → plc-cellar, utilities, power | Modbus TCP (502) | FUXA Modbus client ↔ OpenPLC v4 `modbus_slave` |
 | PLCs → RIO and power devices | Modbus TCP (502) | OpenPLC v4 `modbus_master` ↔ ot-sim Modbus server |
 | plc-utilities → plc-cellar | Modbus TCP (502) | Peer interlock reads (east–west) |
-| bas-fuxa → BAS devices | BACnet/IP (UDP 47808) | FUXA BACnet client ↔ new ot-sim BACnet module. Same VLAN, so the broadcast Who-Is works without a BBMD |
+| bas-fuxa → BAS devices | BACnet/IP (UDP 47808) | FUXA BACnet client ↔ new ot-sim BACnet module. Same VLAN, and the Who-Is goes to the directed broadcast address `10.30.10.255`, so no BBMD is involved. Untested: the `bbmd` spike covered `scada-fuxa` only |
 | scada-fuxa → BAS devices | BACnet/IP (UDP 47808) through fw-ot | Same client and module. Who-Is discovery goes through the BBMDs below; the I-Am returns by unicast; reads and writes are unicast |
 | ot-svc ↔ bas-bbmd | BACnet/IP BBMD (UDP 47808) | BACpypes3 BBMDs; each BDT lists both |
 | utility-derms → rtu-der | DNP3 (TCP 20000) over IPsec | ot-sim DNP3 master ↔ ot-sim FEP outstation |
 | rtu-der → power devices | Modbus TCP (502) | ot-sim FEP Modbus client |
 | relay-main | Telnet (23) | ot-sim `telnet` module (an ot-sim admin shell with its default banner). Reachable only from the FIELD-PWR segment (plc-power, rtu-der), so it is a lateral-movement artifact, not a sanctioned path. The `cherrymountain` app injects the telnet config, because the phenix ot-sim app doesn't generate it |
+| ews → CTRL PLCs | OpenPLC v4 runtime REST API (TCP 8443) | HTTPS with a self-signed certificate (`phenix-injects/openplc/cm-openplc-provision.sh` uses `curl -k`, and the EWS tool does not verify the certificate). Mirrored capture holds only TLS sessions: Zeek and Suricata cannot read the program upload or start/stop calls, only the session ([§14](#14-blue-team-monitoring)) |
 | FUXA → historian | InfluxDB HTTP (8086); MQTT (1883) PackTags/OEE | FUXA DAQ; FUXA server script publishing to Mosquitto; Telegraf → InfluxDB |
 | HMIs → FUXA | HTTP/WebSocket (1881) | Chromium kiosk |
 | vendor-ws → dmz-vpn → dmz-jump → ews | WireGuard (UDP 51820) → HTTPS (443) → RDP (3389)/SSH (22) | phenix `wireguard` app; Guacamole; xrdp |
@@ -1842,7 +1881,9 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
 **bas-fuxa (BAS)**
 
 - BACnet/IP client to the three BAS devices, on the same VLAN. Its Who-Is
-  broadcast reaches them directly.
+  goes to the directed broadcast address `10.30.10.255`, so it needs no BBMD
+  ([§8.1](#81-spaces-equipment-and-bacnet-devices); untested, because the `bbmd`
+  spike covered `scada-fuxa` only).
 - Views: building overview, RTU-1, cold room, ventilation/CO₂.
 - Schedules (occupancy) and alarms.
 - DAQ goes to the InfluxDB 2 bucket `bas`.
@@ -2015,6 +2056,11 @@ sequenceDiagram
   S->>P: OpenPLC REST 8443 / SCADA protocols
 ```
 
+The OpenPLC REST API on 8443 is HTTPS with a self-signed certificate, so a
+capture of the EWS-to-PLC leg shows TLS sessions only. A program upload or a
+start/stop from the EWS is detected from the session source and size and from
+the EWS's own logs, not from request contents ([§14](#14-blue-team-monitoring)).
+
 **Controls**
 
 - **WireGuard keys and config.**
@@ -2025,6 +2071,23 @@ sequenceDiagram
     that metadata. With `boot: true` it enables `wg-quick@wg0`.
   - The vendor peer's AllowedIPs on dmz-vpn admit only traffic to
     `dmz-jump`.
+- **Forward policy on dmz-vpn.** AllowedIPs on the vendor's laptop do not
+  limit where a decapsulated packet goes next, and dmz-vpn forwards without NAT,
+  so a rewritten laptop config would otherwise reach the whole DMZ. The
+  nftables ruleset `phenix-injects/wireguard/nftables-wireguard.nft` (table
+  `inet cm_wireguard`, loaded by `70-wireguard.sh` before the tunnel comes up)
+  sets the `forward` chain policy to drop and allows only:
+  - established and related replies, and
+  - the vendor tunnel address (`10.99.0.2`, arriving on `wg0`) to dmz-jump
+    (`10.10.20.11`) on TCP 443.
+
+  Every other forwarded packet is logged with the prefix `cm-wg-drop` (rate
+  limited to 5 per second with a burst of 10) and dropped. The Wazuh agent on
+  dmz-vpn reads the line from `/var/log/kern.log`, and rule 100105 (level 12, in
+  `phenix-injects/wazuh/cherrymountain_rules.xml`) alerts that the vendor peer
+  tried to reach something other than dmz-jump on TCP 443. The `input` and
+  `output` hooks stay open, because the host answers the handshake on UDP 51820
+  and talks to ot-svc and Wazuh.
 - **Tunnel routing.** dmz-vpn forwards decapsulated traffic onto the DMZ
   with the tunnel source address. dmz-jump routes 10.99.0.0/24 back via
   dmz-vpn, so Guacamole and Wazuh see the vendor's real tunnel address. No
@@ -2133,7 +2196,23 @@ point for future adversary-emulation scenarios.
 **Baseline detection use cases** (normal operations should generate known,
 explainable events):
 
-- OpenPLC program upload or start/stop, seen in REST traffic from the EWS.
+- OpenPLC program upload or start/stop. The runtime's v4 REST API on 8443 is
+  HTTPS with a self-signed certificate (`phenix-injects/openplc/cm-openplc-provision.sh`;
+  the tools use `curl -k`), so Zeek and Suricata see only TLS sessions, never
+  the requests. Detection rests on:
+  - the session source: Suricata sid 9000150 alerts on a REST session from any
+    host other than the EWS, and sid 9000151 on a session from the EWS, which is
+    the baseline for an upload or start/stop. The Zeek notices
+    `PLC_REST_Unexpected_Client` and `PLC_REST_From_EWS` say the same;
+  - the Zeek upload-size heuristic in
+    `phenix-injects/malcolm/zeek/cherrymountain.zeek`:
+    `PLC_Program_Upload_Suspected` fires when one session sends at least 50,000
+    bytes to port 8443 (the cellar program ZIP is about 100 KB). It marks an
+    upload-sized session, and it cannot tell a start/stop from other small
+    calls; and
+  - EWS-side logs: `cm_plc_tool.py` writes `cm-plc-tool` events to syslog, and
+    Wazuh rules 100411 to 100413 alert on them. An upload made some other way
+    on the EWS (for example with `curl`) leaves only the network evidence.
 - Modbus or S7 writes from a host other than scada-fuxa or the EWS.
 - BACnet `WriteProperty` from outside bas-fuxa or the EWS.
 - **BBMD and BDT activity.** The two BBMDs are a new lateral path between OPS
@@ -2203,24 +2282,31 @@ cherrymountain-brewery/
 │   ├── topology-ci.yml             # cherrymountain-ci (flat CTRL VLAN)
 │   ├── scenario-full.yml
 │   ├── scenario-lite.yml
-│   ├── scenario-ci.yml
-│   └── scenario-soh-capture.yml    # adds SoH packetCapture (Packetbeat)
+│   └── scenario-ci.yml
 ├── phenix-injects/                 # -> /phenix/injects/cherrymountain-brewery
-│   ├── fuxa/  openplc/  sim/  bbmd/  ot-svc/  inet-nuke/  vrouter/  malcolm/
-│   └── (later: historian/  guacamole/  wazuh/  desktop/)
-├── phenix-images/                  # Image configs (cm-*.yml); built with phenix image build
-├── apps/                           # phenix-app-cherrymountain + plantevent SCORCH component
-├── sim/                            # cherrymountain_sim federates package
-├── plc/                            # OpenPLC Editor projects + program ZIPs (LFS)
-├── fuxa/                           # FUXA project builder and view skeletons
+│   ├── bbmd/  desktop/  docker/  ews/  fuxa/  guacamole/  inet-nuke/
+│   └── malcolm/  openplc/  ot-svc/  sim/  vrouter/  wazuh/  wireguard/
+├── phenix-images/                  # Image configs (cm-*.yml) and README; built with phenix image build
+├── apps/                           # cherrymountain_apps: the cherrymountain phenix app (with its script, systemd, and template files, which include the historian and federate units), the plantevent SCORCH component, simctl.py
+├── sim/                            # cherrymountain_sim federates package and tests
+├── plc/plc-cellar/                 # plc-cellar Structured Text and the ZIP build scripts (the built ZIP is phenix-injects/openplc/plc-cellar.zip, LFS)
+├── fuxa/                           # FUXA project builder (build_project.py) and the scada-fuxa project it writes
 ├── plant/plant.yaml                # tag database (single source of truth)
 ├── plant/generated/{ci,full,lite}/ # plantgen output (committed, checked current)
 ├── recipes/fire-of-the-phenix.json # BeerJSON
 ├── sync.py                         # embeds plantgen blocks in the scenarios, copies generated files into phenix-injects/
+├── sync_ci.py                      # runs sync.py --variant ci
 ├── tools/plantgen/                 # offline generator
 ├── tools/netcheck/                 # static check of the IP plan and conduit matrix
-└── builder/cherrymountain.package.yaml
+├── tools/lint/                     # image-script and systemd-unit lint helpers (run by prek)
+├── tests/{integration,soc}/        # CI-slice and render checks; SOC detection, Wazuh, vendor-access, and WireGuard tests
+├── spikes/                         # Phase 0 spike kits (bacnet, bbmd, fuxa, malcolm, openplc-v4, otsim-noble, serial, vyos-ipsec, autotunnel, ci)
+└── .yamllint-block-style.yml       # block-style rule for phenix YAML
 ```
+
+Not yet in the repository: a SoH packet-capture scenario
+(`scenario-soh-capture.yml`, see [§15.4](#154-state-of-health)) and the Builder
+package (`builder/`, see [§15.8](#158-builder-package)).
 
 `phenix.yml` sketch:
 
@@ -2441,8 +2527,8 @@ which uses the Elasticsearch-compatible API.
   wind-plant SoH configs on the user's unmerged fork branch
   `feat-topology-soh-checks`, where VyOS adjacency and guest C2
   registration were slow in CI.
-- **Packet capture view.** `scenario-soh-capture.yml` adds SoH
-  `packetCapture`, which feeds the Network Volume chord graph. It is a
+- **Packet capture view (planned, not yet in the repository).** A
+  `scenario-soh-capture.yml` would add SoH `packetCapture`, which feeds the Network Volume chord graph. It is a
   separate scenario because of its cost:
   - phenix adds an Elastic VM (default 4 vCPU / 4 GB) plus one hidden
     Packetbeat VM per captured *host* (1 vCPU / 512 MB, with one NIC per
@@ -2526,7 +2612,7 @@ magnitudes. Validate the configs offline with `phenix-scorch-validate`.
 
 After the topology is published, open it in Builder. Add zone groups,
 notes, and custom icons (brew kettle, fermenter, bottle, BACnet). Then
-export `builder/cherrymountain.package.yaml` with its linked scenarios and
+export `builder/cherrymountain.package.yaml` (not yet created) with its linked scenarios and
 the list of required images, apps, and files. The `builder-doc` annotation
 is never hand-written.
 
@@ -2783,6 +2869,12 @@ silently.
 | Malcolm, Guacamole, Zeek ICSNPP | Apache-2.0 / Apache-2.0 / BSD-3-Clause |
 | Zeek | BSD-3-Clause |
 | Suricata, Wazuh | GPL-2.0 |
+| OpenSearch (bundled in Malcolm; also the ground-truth node on sim-ctl) | Apache-2.0 |
+| NetBox, Arkime, Strelka (bundled in Malcolm) | Apache-2.0 each |
+| PostgreSQL (Malcolm's NetBox database; Guacamole's database on dmz-jump) | PostgreSQL License |
+| nginx (Malcolm's `nginx-proxy`; the TLS front end of Guacamole on dmz-jump) | BSD-2-Clause |
+| xrdp (on ews, for the vendor's Guacamole session) | Apache-2.0 |
+| Chromium (HMI kiosks and the desktops in `cm-desktop`; the browser on ews) | BSD-3-Clause and others (it bundles third-party code under other licenses) |
 | InfluxDB 2 OSS, Telegraf | MIT |
 | Grafana | AGPL-3.0 |
 | Mosquitto | EPL-2.0 / EDL-1.0 |

@@ -33,7 +33,9 @@ to rio-cellar; tier 3 anywhere, or loss of detection, to the CO2 supply
 shutoff on rio-utilities), and the kettle hood exhaust. A ``gas-detection``
 event fails the detection panel (both relays drop) or restores it.
 A BACnet write to a point overrides the local logic for that point, as a
-priority-array write above the controller's own priority would.
+priority-array write above the controller's own priority would, and a null
+write hands the point back: the ot-sim BACnet module sends one when the last
+priority of the point is relinquished.
 """
 
 from __future__ import annotations
@@ -214,8 +216,15 @@ class BuildingFederate(Federate):
         }
 
     def cmd(self, tag: str) -> Value:
-        """Per-point authority: a BACnet write overrides the local logic."""
+        """Per-point authority: a BACnet write overrides the local logic until
+        a null write relinquishes the point."""
         return self.commands.get(tag, self.local[tag])
+
+    def on_write(self, device: str, point: str, value: Any) -> None:
+        """A null write relinquishes the point: forget the override, so the
+        local logic runs it and ground truth no longer lists it."""
+        if value is None:
+            self.commands.pop(f"{device}.{point}", None)
 
     def on(self, tag: str) -> bool:
         """A binary output."""

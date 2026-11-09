@@ -71,6 +71,38 @@ def test_purge_fans_start_at_tier_1(full: HelicsConfig) -> None:
     assert fed.values()["building/bas-vent.purge_fan_1"] is True
 
 
+def test_a_null_write_hands_a_point_back_to_the_controller(full: HelicsConfig) -> None:
+    """The BACnet module sends a null value when the last command on a point is
+    relinquished (the form ot-sim's I/O module passes on): the controller's own
+    logic runs the point again. Life safety: a purge fan that was commanded off
+    starts as soon as the override is given up."""
+    fed = build(full, "building")
+    assert isinstance(fed, BuildingFederate)
+    off = json.dumps([{"tag": "bas-vent.purge_fan_1", "value": 0.0}, {"tag": "bas-vent.purge_fan_2", "value": 0.0}])
+    assert fed.handle_message(off) == ["bas-vent.purge_fan_1", "bas-vent.purge_fan_2"]
+    fed.apply_input("cellar/co2.vent_gps", 40.0)
+    for _ in range(60):
+        fed.step(10.0)
+    vals = fed.values()
+    assert vals["building/bas-vent.co2_tier_1"] is True
+    assert not vals["building/bas-vent.purge_fan_1"]  # the override holds the fans off
+    assert not vals["building/bas-vent.purge_fan_1_status"]
+    assert fed.truth()["building"]["overrides"] == ["bas-vent.purge_fan_1", "bas-vent.purge_fan_2"]
+    released = json.dumps([{"tag": "bas-vent.purge_fan_1", "value": None}])
+    assert fed.handle_message(released) == ["bas-vent.purge_fan_1"]
+    fed.step(10.0)
+    vals = fed.values()
+    assert vals["building/bas-vent.purge_fan_1"] is True
+    assert vals["building/bas-vent.purge_fan_1_status"] is True
+    assert not vals["building/bas-vent.purge_fan_2"]  # still commanded off
+    assert fed.truth()["building"]["overrides"] == ["bas-vent.purge_fan_2"]
+    # A setpoint goes back to the controller's own value the same way.
+    fed.handle_message(json.dumps([{"tag": "bas-coldroom.setpoint_f", "value": 40.0}]))
+    assert fed.num("bas-coldroom.setpoint_f") == 40.0
+    fed.handle_message(json.dumps([{"tag": "bas-coldroom.setpoint_f", "value": None}]))
+    assert fed.num("bas-coldroom.setpoint_f") == 36.0
+
+
 def test_co2_relay_trips_at_tier_2_and_on_power_loss(full: HelicsConfig) -> None:
     """The hardwired gas-detection relay to rio-cellar (DESIGN.md §6.6 #6) is
     energized below tier 2 with EP-1 powered, drops at 15,000 ppm, and drops

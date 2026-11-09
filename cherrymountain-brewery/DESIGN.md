@@ -1200,7 +1200,11 @@ values:
 - Chiller staging, the BAS interlocks, and the PV site limit live in the
   federates, not in ot-sim `logic` blocks ([§12.3](#123-ot-sim-field-devices)).
 - Built-in operators (the `autopilot` setting) run the brewhouse, utilities,
-  and packaging until the first PLC write. The power and building federates
+  and packaging while no PLC is writing. They hand over on the first write
+  and take control back after 300 federate seconds without one (a stopped
+  PLC, or a one-off write from another host). This assumes a running PLC
+  rewrites its outputs every polling cycle, which a VM run must confirm. The
+  power and building federates
   follow a point's last write and otherwise their own controller. The cellar has
   no autopilot yet.
 - PackML uses PackMLpy's transition table on a custom synchronous machine.

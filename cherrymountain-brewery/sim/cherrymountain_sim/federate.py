@@ -213,11 +213,18 @@ class Federate:
     :meth:`point_value`, :meth:`output_value`, and, when they accept writes or
     events, :meth:`on_write` and :meth:`on_event`. Writes are recorded in
     :attr:`commands` (``"<device>.<point>" -> value``); :attr:`external`
-    counts them, which models use to hand control from their built-in
-    operator (autopilot) to the PLC.
+    counts them and :attr:`last_write_t` stamps the latest. Models hand
+    control from their built-in operator (autopilot) to the PLC while
+    :attr:`plc_driving` is true, and take it back once the writes stop for
+    :attr:`HANDOFF_TIMEOUT_S` (a stopped or disconnected PLC, or a one-off
+    write from another host). This assumes a running PLC rewrites its outputs
+    at least that often (OpenPLC's Modbus master writes each polling cycle,
+    and ot-sim forwards each write); not yet verified on a VM.
     """
 
     name: ClassVar[str] = ""
+    #: Federate seconds without a write before the autopilot takes back control.
+    HANDOFF_TIMEOUT_S: ClassVar[float] = 300.0
     cfg: FederateConfig
     clock: SimClock
     t: float
@@ -225,6 +232,7 @@ class Federate:
     commands: dict[str, Value]
     devices: dict[str, Publication]
     external: int
+    last_write_t: float | None
     events: list[ScenarioEvent]
     outbox: list[tuple[str, str]]
     peers: dict[str, str]
@@ -240,6 +248,7 @@ class Federate:
             if pub.device:
                 self.devices.setdefault(pub.device, pub)
         self.external = 0
+        self.last_write_t = None
         self.events = []
         self.outbox = []
         self.peers = {}  # other federates' endpoints, set by build()
@@ -284,7 +293,16 @@ class Federate:
             raise KeyError(f"no device {device}")
         self.commands[tag] = value
         self.external += 1
+        self.last_write_t = self.t
         self.on_write(device, point, value)
+
+    @property
+    def plc_driving(self) -> bool:
+        """True while writes keep arriving (within :attr:`HANDOFF_TIMEOUT_S`)."""
+        return (
+            self.last_write_t is not None
+            and self.t - self.last_write_t <= self.HANDOFF_TIMEOUT_S
+        )
 
     def command(self, tag: str, default: Value) -> Value:
         """The last value written to ``tag`` (or ``default``)."""

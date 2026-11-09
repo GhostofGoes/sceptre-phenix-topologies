@@ -185,7 +185,7 @@ class PackagingFederate(Federate):
     def autopilot(self) -> bool:
         """True while the built-in operator runs the shift."""
         mode = self.settings.autopilot
-        return mode == "on" or (mode == "auto" and self.external == 0)
+        return mode == "on" or (mode == "auto" and not self.plc_driving)
 
     def on_write(self, device: str, point: str, value: Any) -> None:
         """PackML commands act on change; speed and valves are levels."""

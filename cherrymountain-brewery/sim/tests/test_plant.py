@@ -192,6 +192,14 @@ def test_event_api_contract(full: HelicsConfig) -> None:
         assert call("/events", {"event": "weather-step", "delta_f": 15})[0] == 202
         assert call("/api/v1/events", {"event": "utility-breaker"})[0] == 400
         assert call("/api/v1/events", {"event": "meteor"})[0] == 400
+        bad_params: list[dict[str, object]] = [
+            {"event": "chiller-fault", "compressor": 3},
+            {"event": "start-batch", "recipe": "pilsner"},
+            {"event": "start-batch", "brews": 0},
+            {"event": "start-batch", "brews": "two"},
+        ]
+        for bad in bad_params:
+            assert call("/api/v1/events", bad)[0] == 400, bad
         fed.step(1.0)
         assert fed.outbox and fed.outbox[0][0] == "cellar/updates"
         assert fed.step_f == 15.0
@@ -246,3 +254,18 @@ def test_whole_federation_offline(full: HelicsConfig) -> None:
     assert lf.values["power/bus.ep1.energized"] is True
     assert lf.values["power/bus.boiler.energized"] is False
     assert lf.values["power/gen-ats.on_emergency"] is True
+
+
+def test_autopilot_takes_back_control_when_writes_stop(full: HelicsConfig) -> None:
+    """The brewhouse hands over on a PLC write and takes control back after
+    HANDOFF_TIMEOUT_S federate seconds without another write."""
+    fed = build(full, "brewhouse")
+    assert fed.autopilot
+    tag = next(iter(fed.cfg.accepted_updates))
+    fed.handle_message(json.dumps([{"tag": tag, "value": 0}]))
+    assert not fed.autopilot
+    for _ in range(int(fed.HANDOFF_TIMEOUT_S / 10) - 1):
+        fed.step(10.0)
+    assert not fed.autopilot  # still inside the window
+    fed.step(20.0)
+    assert fed.autopilot

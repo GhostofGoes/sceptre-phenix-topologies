@@ -7,7 +7,7 @@
 > for the full and lite variants and checked statically by `tools/netcheck`.
 > **Phase 2 (simulation)** is largely built: `plant.yaml` covers every area,
 > plantgen writes the ci, full, and lite outputs, and seven federates pass their
-> tests (remaining: the cellar autopilot, ot-sim logic blocks, a 24 h soak).
+> tests (remaining: ot-sim logic blocks and a 24 h soak).
 > **Phase 3 (control)** is in progress: the per-variant PLC builder and the full
 > plc-cellar program (with the hardwired CO₂ interlock) exist; the other PLC
 > programs, the FUXA batch engine, and bas-fuxa's project are next. **Phase 5

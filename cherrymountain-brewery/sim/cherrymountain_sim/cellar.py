@@ -131,6 +131,7 @@ class Fermenter:
     co2_vented_g: float
     co2_generated_g: float
     liquid_l: float
+    age_h: float
 
     def __init__(
         self,
@@ -173,6 +174,7 @@ class Fermenter:
         self.co2_vented_g = 0.0  # running totals for mass-balance checks
         self.co2_generated_g = 0.0
         self.liquid_l = 0.0
+        self.age_h = 0.0  # kinetic hours since pitch (the autopilot stages on it)
 
     # -- setup -------------------------------------------------------------------------
 
@@ -213,6 +215,7 @@ class Fermenter:
         self._set_liquid(new)
         if self.state is None:
             self.state = pitch(self.cfg.wort.fermentable, self.cfg.pitch_g_l)
+            self.age_h = 0.0
 
     def advance_kinetics(self, sim_hours: float, temp_f: float) -> None:
         """Run the kinetics alone (isothermal), e.g. to set an initial state."""
@@ -222,6 +225,7 @@ class Fermenter:
         n = max(1, math.ceil(sim_hours / MAX_KINETIC_STEP_H))
         for _ in range(n):
             self.state = self.kinetics.step(self.state, t_k, sim_hours / n)
+        self.age_h += sim_hours
 
     def dry_hop(self, dose_lb_per_bbl: float) -> None:
         """Add dry hops; starts the hop-creep sugar source.
@@ -296,6 +300,7 @@ class Fermenter:
             extract_kg_per_h = max(r.sugar_consumed, 0.0) * vol / 1000.0
             heat_w = 1e3 * tb.flux_per_second(extract_kg_per_h * HEAT_KJ_PER_KG_EXTRACT)
             sim_h = tb.kinetic_hours(wall_dt_s)
+            self.age_h += sim_h
             n = max(1, math.ceil(sim_h / MAX_KINETIC_STEP_H))
             for _ in range(n):
                 self.state = self.kinetics.step(self.state, t_k, sim_h / n)

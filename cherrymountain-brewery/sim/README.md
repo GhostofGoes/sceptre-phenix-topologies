@@ -37,7 +37,11 @@ weekdays. The first PLC write hands control over (`on` keeps the autopilot,
 instead: a point the PLC, the DER gateway, or a BACnet client has written
 follows its last write, and the others follow the built-in controller (the
 plc-power dispatch of DESIGN.md §7.3, the BAS controllers' local logic). The
-cellar has no autopilot: the ci slice's PLC controls it.
+cellar's autopilot runs the recipe profile by kinetic hours since pitch
+(66 °F, 70 °F and sealed spunding from day 4, a 34 °F crash from day 10), holds
+the bright tanks at 34 °F, and carbonates toward 2.6 vol only while the CO2
+relay (`building/vent.co2_relay_ok`) is healthy; plc-cellar takes over on its
+first write.
 
 **Time.** Everything runs in wall time except the cellar's fermentation
 kinetics, which run 48x faster; exported fluxes stay real-time-equivalent

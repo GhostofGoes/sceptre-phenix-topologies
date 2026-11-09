@@ -1387,8 +1387,11 @@ values:
   which its io module sends to the federate's endpoint at the next step. So no
   PLC heartbeat tag is needed; a VM run must still confirm it. The power and
   building federates follow a point's last write and otherwise their own
-  controller. The cellar has
-  no autopilot yet.
+  controller. The cellar's autopilot (sim setting `autopilot`, the same
+  hand-off) runs the recipe profile by kinetic hours since pitch: 66 °F, then
+  70 °F with the spunding valve sealed from day 4, then a 34 °F crash from day
+  10; it holds the bright tanks at 34 °F and carbonates them toward 2.6 vol
+  only while the CO₂ relay is healthy ([§6.7](#67-cellar-co2-life-safety-interlock)).
 - PackML uses PackMLpy's transition table on a custom synchronous machine.
 - There is no CoolProp or pvlib. The code has its own EPW reader, synthetic
   Denver weather when no EPW file is present, and a constant glycol c_p.
@@ -1403,7 +1406,7 @@ values:
 - The event API binds `127.0.0.1:8080` on the weather federate and is reached
   through the cc tunnel. The `ci` variant has none.
 
-**Remaining:** the cellar autopilot, the ot-sim `logic` blocks of
+**Remaining:** the ot-sim `logic` blocks of
 [§12.3](#123-ot-sim-field-devices), and the 24 h soak. The peer reads of
 `plc-cellar` by `plc-utilities` are in plantgen: tags with `peer:` land at
 `%IX120.0` up through an FC1 device in plc-utilities' `modbus_master.json`
@@ -3115,7 +3118,7 @@ rebroadcast reaches it.
 |---|---|---|---|
 | 0: Spikes | **Done.** See the spike results below | Each spike has a written go/no-go decision (all nine are go) | Done, with a second round that closed the gaps |
 | 1: Network | Core topology, VyOS conduits and static routes, ot-svc, SoH reachability | All §10.3 conduits pass; blocked paths fail | **Implemented**: topology modules, rulesets, services, BBMDs, the post-boot VyOS script, and SoH probes. Validated statically by `netcheck`; the VM run is pending |
-| 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic | **Largely implemented**: `plant.yaml`, plantgen, seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). Remaining: the cellar autopilot, the peer reads of `plc-cellar`, the ot-sim `logic` blocks, and the 24 h soak |
+| 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic | **Largely implemented**: `plant.yaml`, plantgen, seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). The cellar autopilot and the peer reads of `plc-cellar` are built. Remaining: the ot-sim `logic` blocks and the 24 h soak |
 | 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** All five PLC programs and their full and lite ZIPs are built by `plc/common` (alarms generated from `alarms.json` with deadbands, C++ checked; none run in an OpenPLC runtime yet), including the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)) and the peer reads. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. Open: the FUXA batch engine (so no unattended brew day through the PLC yet), views beyond the generated tag lists, and any VM run |
 | 4: Power + BAS | OpenDSS, tariff logic, BESS/ATS, BACnet devices | Outage and CO₂ scenarios behave as in §6.6 | The power and building federates are built with Phase 2. The `plc-power` program and the ot-sim BACnet module remain (the module waits on the ot-sim fork) |
 | 5: SOC + remote access | Malcolm, Wazuh, WireGuard, Guacamole | Baseline detections fire on the vendor-maintenance run | **Built, not run on a VM.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), Zeek script (checked in Malcolm's Zeek image), and Wazuh rules with their tests; per-experiment vendor and WireGuard secrets |

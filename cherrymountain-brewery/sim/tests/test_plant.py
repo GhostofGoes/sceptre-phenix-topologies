@@ -352,3 +352,30 @@ def test_autopilot_takes_back_control_when_writes_stop(full: HelicsConfig) -> No
     assert not fed.autopilot  # still inside the window
     fed.step(20.0)
     assert fed.autopilot
+
+
+def test_cellar_autopilot_runs_until_a_plc_writes(full: HelicsConfig) -> None:
+    """Without a PLC the cellar federate's operator holds the fermenters and
+    bright tanks (DESIGN.md 9.6); the first write hands the cellar to the PLC,
+    and carbonation stops while the CO2 relay is open (§6.7)."""
+    from cherrymountain_sim.federate import CellarFederate
+
+    cel = build(full, "cellar")
+    assert isinstance(cel, CellarFederate)
+    assert cel.autopilot
+    cel.apply_input("building/vent.co2_relay_ok", 1.0)
+    fv104 = cel.cellar.fermenters["FV104"]  # cold crashing at the start
+    start_f = fv104.zone_temp_f("side")
+    for _ in range(600):
+        cel.step(1.0)
+    assert fv104.valve("side") and fv104.valve("cone")  # cooling toward 34 °F
+    assert fv104.zone_temp_f("side") < start_f
+    bbt = next(iter(cel.cellar.bbts.values()))
+    assert 32.0 <= float(bbt.read("temp_f")) <= 37.0
+    carbonating = [b for b in cel.cellar.bbts.values() if float(b.read("co2_vol")) < 2.5]
+    assert all(float(b.read("co2_valve_pct")) > 0 for b in carbonating)
+    cel.apply_input("building/vent.co2_relay_ok", 0.0)
+    cel.step(1.0)
+    assert all(float(b.read("co2_valve_pct")) == 0.0 for b in cel.cellar.bbts.values())
+    cel.write("fv101-side.valve", True)  # a PLC write: hands over
+    assert not cel.autopilot

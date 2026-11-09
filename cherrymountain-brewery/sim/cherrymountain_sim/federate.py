@@ -37,6 +37,14 @@ SHARED_TYPES: frozenset[str] = frozenset({"hop-doser", "transfer-panel", "gas-re
 FERMENTER_TYPES: frozenset[str] = frozenset({"fv-zone", "fv-vessel"})
 #: The bas-vent gas-detection relay, an input from the building federate.
 CO2_RELAY_INPUT: str = "building/vent.co2_relay_ok"
+#: Cellar autopilot (no PLC): the recipe's profile by kinetic hours since pitch
+#: (§3.2, §9.4): ferment at 66 °F, free-rise to 70 °F for the diacetyl rest with
+#: the spunding valve sealed from day 4, cold crash to 34 °F from day 10.
+AUTO_REST_H: float = 96.0
+AUTO_CRASH_H: float = 240.0
+AUTO_HYST_F: float = 0.5
+AUTO_BBT_F: float = 34.0
+AUTO_CARB_VOL: float = 2.6
 #: Measurement noise (standard deviation) per point, when noise is enabled.
 NOISE_SIGMA: dict[str, float] = {
     "temp_f": 0.02,
@@ -103,6 +111,9 @@ class SimSettings(BaseModel):
     noise: bool = True
     seed: int = 0
     initial_state: dict[str, InitialState] = Field(default_factory=dict)
+    #: The built-in cellar operator: ``auto`` runs it while no PLC writes (the
+    #: hand-off of :attr:`Federate.plc_driving`), ``on`` always, ``off`` never.
+    autopilot: Literal["auto", "on", "off"] = "auto"
 
 
 class FederateConfig(BaseModel):
@@ -455,9 +466,47 @@ class CellarFederate(Federate):
             seconds = float(event.params.get("duration", 600.0))
             self.cellar.add_leak(unit, gps, seconds)
 
+    @property
+    def autopilot(self) -> bool:
+        """True while the built-in operator runs the cellar."""
+        mode = self.settings.autopilot
+        return mode == "on" or (mode == "auto" and not self.plc_driving)
+
     def advance(self, wall_dt_s: float) -> None:
-        """Advance the cellar model."""
+        """Advance the cellar model (the autopilot first, while it drives)."""
+        if self.autopilot:
+            self._autopilot()
         self.cellar.step(wall_dt_s)
+
+    def _autopilot(self) -> None:
+        """What plc-cellar does, for runs without a PLC (DESIGN.md 9.6): glycol
+        zones on/off around the recipe's setpoint for the fermentation stage,
+        spunding sealed from the diacetyl rest, bright tanks held at 34 °F, and
+        carbonation toward 2.6 vol, stopped while the CO2 relay is open (§6.7)."""
+        ambient = self.cellar.env.ambient_psia
+        for fv in self.cellar.fermenters.values():
+            if not fv.filled:
+                for zone in ("side", "cone"):
+                    fv.set_valve(zone, False)
+                continue
+            age = fv.age_h
+            target = 66.0 if age < AUTO_REST_H else (70.0 if age < AUTO_CRASH_H else 34.0)
+            for zone in ("side", "cone"):
+                temp = fv.zone_temp_f(zone)
+                if temp >= target + AUTO_HYST_F:
+                    fv.set_valve(zone, True)
+                elif temp <= target - AUTO_HYST_F:
+                    fv.set_valve(zone, False)
+            fv.spund_sp_psia = ambient + (12.0 if age >= AUTO_REST_H else 1.0)
+        relay_ok = self.input(CO2_RELAY_INPUT, 0.0) >= 0.5
+        for bbt in self.cellar.bbts.values():
+            temp = float(bbt.read("temp_f"))
+            if temp >= AUTO_BBT_F + AUTO_HYST_F:
+                bbt.write("valve", True)
+            elif temp <= AUTO_BBT_F - AUTO_HYST_F:
+                bbt.write("valve", False)
+            short = AUTO_CARB_VOL - float(bbt.read("co2_vol"))
+            bbt.write("co2_valve_pct", min(max(short * 200.0, 0.0), 100.0) if relay_ok else 0.0)
 
     def output_value(self, name: str) -> Value:
         """Federate outputs: CO2 vented, glycol load, CO2 drawn."""

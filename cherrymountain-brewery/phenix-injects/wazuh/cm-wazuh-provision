@@ -11,7 +11,7 @@
 #   3. the manager and Filebeat: certificates, keystores, indexer address, start
 #   4. new passwords for the indexer and API users (wazuh-passwords-tool.sh)
 #   5. the dashboard: certificates, indexer address, start
-#   6. an index retention (ISM) policy for the alerts and archives
+#   6. index retention (ISM) policies: alerts 30 days, archives 7 (DESIGN.md 14)
 #   6. the cherrymountain additions: agent groups and their shared settings, the
 #      syslog listener, and no vulnerability detection or update check (the VMs have
 #      no internet)
@@ -184,27 +184,37 @@ systemctl enable --now wazuh-dashboard.service
 wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:443/'
 
 # --- 6. index retention -----------------------------------------------------------------
-# The indexer has a 16 GB disk, so alerts and archives are deleted after
-# CM_WAZUH_RETENTION_DAYS (default 14) by an ISM policy that every new daily index
-# picks up (DESIGN.md 15.9). The admin client certificate authenticates. A failure
-# here is logged, not fatal: the SIEM works without it until the disk fills.
-days="${CM_WAZUH_RETENTION_DAYS:-14}"
-case "$days" in '' | *[!0-9]*) days=14 ;; esac
+# The range's retention target (DESIGN.md 14, Log and NSM retention): alerts, the
+# detections an analyst works, stay CM_WAZUH_ALERTS_DAYS (default 30: a week-long
+# exercise and its after-action review); archives, every event the manager received,
+# stay CM_WAZUH_ARCHIVES_DAYS (default 7: the exercise). CM_WAZUH_RETENTION_DAYS, if
+# set, applies to both (the single policy of earlier versions). The indexer has a
+# 16 GB disk; an ISM policy per pattern, which every new daily index picks up,
+# deletes the older ones. The admin client certificate authenticates. A failure here
+# is logged, not fatal: the SIEM works without it until the disk fills.
+number() { case "$1" in '' | *[!0-9]*) echo "$2" ;; *) echo "$1" ;; esac; }
+alerts_days=$(number "${CM_WAZUH_RETENTION_DAYS:-${CM_WAZUH_ALERTS_DAYS:-}}" 30)
+archives_days=$(number "${CM_WAZUH_RETENTION_DAYS:-${CM_WAZUH_ARCHIVES_DAYS:-}}" 7)
 ism() {
   curl -sS -o /dev/null -w '%{http_code}' --cacert /etc/wazuh-indexer/certs/root-ca.pem \
     --cert /etc/wazuh-indexer/certs/admin.pem --key /etc/wazuh-indexer/certs/admin-key.pem "$@"
 }
-policy_url="https://${node_ip}:9200/_plugins/_ism/policies/cm-retention"
-if [ "$(ism "$policy_url" || true)" = 200 ]; then
-  log "index retention policy already present"
-else
-  code=$(printf '{"policy":{"description":"CherryMountain: delete Wazuh alerts and archives after %s days","default_state":"hot","states":[{"name":"hot","actions":[],"transitions":[{"state_name":"delete","conditions":{"min_index_age":"%sd"}}]},{"name":"delete","actions":[{"delete":{}}],"transitions":[]}],"ism_template":[{"index_patterns":["wazuh-alerts-*","wazuh-archives-*"],"priority":100}]}}' "$days" "$days" \
-    | ism -X PUT -H 'Content-Type: application/json' --data-binary @- "$policy_url" || true)
+retention() {
+  local name="$1" pattern="$2" days="$3" url code
+  url="https://${node_ip}:9200/_plugins/_ism/policies/cm-retention-${name}"
+  if [ "$(ism "$url" || true)" = 200 ]; then
+    log "index retention for ${name} already present"
+    return
+  fi
+  code=$(printf '{"policy":{"description":"CherryMountain: delete Wazuh %s after %s days","default_state":"hot","states":[{"name":"hot","actions":[],"transitions":[{"state_name":"delete","conditions":{"min_index_age":"%sd"}}]},{"name":"delete","actions":[{"delete":{}}],"transitions":[]}],"ism_template":[{"index_patterns":["%s"],"priority":100}]}}' "$name" "$days" "$days" "$pattern" \
+    | ism -X PUT -H 'Content-Type: application/json' --data-binary @- "$url" || true)
   case "$code" in
-    200 | 201) log "index retention: alerts and archives deleted after ${days} days" ;;
-    *) log "WARNING: could not create the index retention policy (HTTP ${code}); indexes are kept until the disk fills" ;;
+    200 | 201) log "index retention: ${name} deleted after ${days} days" ;;
+    *) log "WARNING: could not create the ${name} retention policy (HTTP ${code}); they are kept until the disk fills" ;;
   esac
-fi
+}
+retention alerts 'wazuh-alerts-*' "$alerts_days"
+retention archives 'wazuh-archives-*' "$archives_days"
 
 touch "${STATE}/provisioned"
 log "PASS: indexer, manager, Filebeat, and dashboard are up"

@@ -63,6 +63,9 @@ App block:
 | `historian.org` | name | `cherrymountain` | InfluxDB organization |
 | `historian.buckets` | names | `[scada, bas, oee]` | InfluxDB buckets |
 | `historian.retentionHours` | integer | `720` (30 days) | Bucket retention; `0` keeps data forever |
+| `historian.recordsBucket` | name | `records` | The TTB records bucket (DESIGN.md 12.4): a daily InfluxDB task copies the last value of each `recordsTags` series from `scada` into it; empty turns it off |
+| `historian.recordsRetentionHours` | integer | `26280` (3 years) | The records bucket's retention (27 CFR 25.300, C.R.S. 44-3-503(6)) |
+| `historian.recordsTags` | Flux regular expression | packaging counts and rejects, BBT levels, fermenter extract | The tag names copied into the records bucket |
 | `historian.influxPort`, `grafanaPort`, `mqttPort` | ports | `8086`, `3000`, `1883` | Historian services |
 | `historian.mqttTopicRoot` | topic | `cherrymountain/frontrange` | PackTags topic root |
 | `wazuh.manager` | hostname | `wazuh` | Wazuh manager; no `wazuh` block means no Wazuh files |

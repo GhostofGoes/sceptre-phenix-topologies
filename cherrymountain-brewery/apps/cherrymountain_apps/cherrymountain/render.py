@@ -816,6 +816,28 @@ def _panel(
     }
 
 
+#: Where the historian finds the records task (cm-historian-provision).
+RECORDS_TASK: Final[str] = "/etc/cherrymountain/cm-records.flux"
+
+
+def records_task(ctx: Context) -> str:
+    """The InfluxDB task that copies, once a day, the last value of each TTB
+    record series from the scada bucket into the records bucket (DESIGN.md
+    12.4). The raw data ages out after 30 days; the daily values stay three
+    years. TODO(verify): FUXA's DAQ field layout, as for the dashboard."""
+    h = ctx.app.historian
+    scada: str = "scada" if "scada" in h.buckets else h.buckets[0]
+    return (
+        "// Rendered by the cherrymountain app (DESIGN.md 12.4): the daily TTB records copy.\n"
+        'option task = {name: "cm-ttb-records", every: 1d, offset: 10m}\n\n'
+        f'from(bucket: "{scada}")\n'
+        "  |> range(start: -task.every)\n"
+        f"  |> filter(fn: (r) => r.tag =~ /{h.records_tags}/)\n"
+        "  |> aggregateWindow(every: 1d, fn: last, createEmpty: false)\n"
+        f'  |> to(bucket: "{h.records_bucket or scada}", org: "{h.org}")\n'
+    )
+
+
 def grafana_dashboard(ctx: Context) -> dict[str, Any]:
     """A starter plant dashboard. TODO(verify): the measurement and field
     names FUXA's InfluxDB DAQ store writes; the queries filter on the tag
@@ -873,6 +895,10 @@ def render_historian(ctx: Context, hostname: str, md: HistorianHost) -> list[Inj
                 "INFLUX_RETENTION": f"{h.retention_hours}h"
                 if h.retention_hours
                 else "0",
+                "INFLUX_RECORDS_BUCKET": h.records_bucket,
+                "INFLUX_RECORDS_RETENTION": f"{h.records_retention_hours}h"
+                if h.records_retention_hours
+                else "0",
                 "GF_SECURITY_ADMIN_PASSWORD": ctx.creds.grafana_password.get_secret_value(),
                 "GF_SERVER_HTTP_PORT": h.grafana_port,
             }
@@ -903,6 +929,7 @@ def render_historian(ctx: Context, hostname: str, md: HistorianHost) -> list[Inj
         yaml.safe_dump(grafana_dashboard_provider(), sort_keys=False),
     )
     dashboard: Path = write(out / "cm-plant.json", to_json(grafana_dashboard(ctx)))
+    records: Path = write(out / "cm-records.flux", records_task(ctx))
     dropin_path: Path = write(out / "cherrymountain.conf", dropin)
     injects: list[Injection] = [
         Injection(
@@ -935,6 +962,11 @@ def render_historian(ctx: Context, hostname: str, md: HistorianHost) -> list[Inj
             src=dashboard,
             dst="/var/lib/grafana/dashboards/cherrymountain/cm-plant.json",
             description="Grafana plant dashboard",
+        ),
+        Injection(
+            src=records,
+            dst=RECORDS_TASK,
+            description="InfluxDB task: the daily TTB records copy",
         ),
     ]
     for unit in ("telegraf", "grafana-server"):

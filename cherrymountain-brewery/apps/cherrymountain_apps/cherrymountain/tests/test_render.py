@@ -196,6 +196,13 @@ def test_historian_files(ctx: Context) -> None:
     assert 'INFLUX_BUCKETS="scada bas oee"' in Path(env.src).read_text()
     # Buckets expire after 30 days unless historian.retentionHours says otherwise.
     assert "INFLUX_RETENTION=720h\n" in Path(env.src).read_text()
+    # The TTB records (27 CFR 25.300): a daily copy kept three years (DESIGN.md 12.4).
+    assert "INFLUX_RECORDS_BUCKET=records\n" in Path(env.src).read_text()
+    assert "INFLUX_RECORDS_RETENTION=26280h\n" in Path(env.src).read_text()
+    task = Path(injects["/etc/cherrymountain/cm-records.flux"].src).read_text()
+    assert 'option task = {name: "cm-ttb-records", every: 1d' in task
+    assert 'from(bucket: "scada")' in task and 'to(bucket: "records"' in task
+    assert r"PKG\.(LINE|FILLER|KEG)\.PACKML\.(PROCESSED|DEFECTIVE)" in task
     sources = yaml.safe_load(
         Path(
             injects["/etc/grafana/provisioning/datasources/cherrymountain.yaml"].src

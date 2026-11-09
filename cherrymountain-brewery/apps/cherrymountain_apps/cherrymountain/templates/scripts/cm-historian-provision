@@ -8,7 +8,10 @@
 # INFLUX_PASSWORD, INFLUX_BUCKETS, INFLUX_RETENTION (an influx duration such as 30d
 # or 720h, or 0 for no expiry; the app renders 720h unless historian.retentionHours
 # says otherwise). Retention is set when a bucket is created, so a bucket that
-# already exists keeps the retention it has.
+# already exists keeps the retention it has. INFLUX_RECORDS_BUCKET (empty: none) is
+# the records bucket, created with INFLUX_RECORDS_RETENTION (three years), and the
+# task in /etc/cherrymountain/cm-records.flux copies the TTB record series into it
+# once a day (DESIGN.md 12.4); an existing task is kept.
 # The influx CLI reads INFLUX_HOST, INFLUX_ORG, and INFLUX_TOKEN itself, and the
 # first-run setup posts its JSON body (admin password and operator token) to the
 # setup API on stdin, so neither secret appears on a command line.
@@ -63,6 +66,25 @@ for bucket in "${buckets[@]}"; do
     influx bucket create --name "${bucket}" --retention "${RETENTION}"
   fi
 done
+
+RECORDS="${INFLUX_RECORDS_BUCKET:-}"
+TASK=/etc/cherrymountain/cm-records.flux
+if [ -n "$RECORDS" ]; then
+  if influx bucket list --name "${RECORDS}" >/dev/null 2>&1; then
+    log "records bucket ${RECORDS} exists"
+  else
+    log "creating the records bucket ${RECORDS} (retention ${INFLUX_RECORDS_RETENTION:-26280h})"
+    influx bucket create --name "${RECORDS}" --retention "${INFLUX_RECORDS_RETENTION:-26280h}"
+  fi
+  if [ ! -f "$TASK" ]; then
+    log "WARNING: no ${TASK}; the records bucket gets no daily copy"
+  elif influx task list --json 2>/dev/null | grep -q '"name": *"cm-ttb-records"'; then
+    log "records task exists"
+  else
+    log "creating the daily records task"
+    influx task create --file "$TASK" >/dev/null
+  fi
+fi
 
 touch "${STATE}/provisioned"
 log "PASS: InfluxDB is set up"

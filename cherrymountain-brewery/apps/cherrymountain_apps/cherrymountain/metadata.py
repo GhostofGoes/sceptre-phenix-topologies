@@ -116,6 +116,19 @@ class Historian(Closed):
     )
     #: Retention for every bucket, in hours (720 h is 30 days); 0 keeps data forever.
     retention_hours: Annotated[int, Field(ge=0)] = 720
+    #: The records bucket (DESIGN.md 12.4): a daily copy of the series a TTB
+    #: and Colorado excise audit asks for, kept three years (27 CFR 25.300,
+    #: C.R.S. 44-3-503(6)) while the raw buckets keep their 30 days. An empty
+    #: name turns it off.
+    records_bucket: Name | Literal[""] = "records"
+    #: 26,280 h is three years.
+    records_retention_hours: Annotated[int, Field(ge=0)] = 26280
+    #: The tags copied (a Flux regular expression on FUXA's tag name): the
+    #: packaging counts and rejects that the barrel figures come from, the
+    #: bright-tank levels (beer on hand), and the fermenters' extract (production).
+    records_tags: Annotated[str, Field(pattern=r"^[^/\n]+$")] = (
+        r"^(PKG\.(LINE|FILLER|KEG)\.PACKML\.(PROCESSED|DEFECTIVE)|CEL\.BBT20[12]\.LT01\.PV|CEL\.FV10[1-4]\.DT01\.PV)$"
+    )
     influx_port: Port = 8086
     grafana_port: Port = 3000
     mqtt_port: Port = 1883

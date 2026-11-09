@@ -104,6 +104,14 @@ set_env config/suricata-live.env SURICATA_LIVE_CAPTURE "$suricata"
 set_env config/suricata.env SURICATA_UPDATE_RULES false
 set_env config/suricata.env SURICATA_UPDATE_SOURCES false
 # Basic authentication (htpasswd), no Keycloak or LDAP.
+# Retention (DESIGN.md 14, Log and NSM retention): the 64 GB disk holds the indexes
+# and the pcap together. OpenSearch prunes the oldest network-metadata indexes past
+# 24 GB, and Arkime deletes its oldest pcap once free space falls under 10 %, so
+# full pcap rotates in about a day of mirrored traffic and the metadata of the
+# whole exercise stays. TODO(verify): both settings on a running 26.10.0 VM.
+set_env config/dashboards-helper.env OPENSEARCH_INDEX_SIZE_PRUNE_LIMIT 24G
+set_env config/arkime.env MANAGE_PCAP_FILES true
+set_env config/arkime.env ARKIME_FREESPACEG 10%
 set_env config/auth-common.env NGINX_AUTH_MODE basic
 if [ "$profile" = full ]; then
   set_env config/netbox-common.env NETBOX_MODE local

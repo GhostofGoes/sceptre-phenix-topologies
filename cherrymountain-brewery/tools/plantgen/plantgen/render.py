@@ -860,6 +860,7 @@ def fuxa_doc(plant: Plant, alloc: Allocation, scada: Host) -> dict[str, Any]:
     """
     devices = []
     bacnet_tags: list[dict[str, Any]] = []
+    bacnet_ips: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
     by_owner: dict[str, list[Tag]] = {}
     for t in plant.tags:
         if t.owner:
@@ -868,6 +869,9 @@ def fuxa_doc(plant: Plant, alloc: Allocation, scada: Host) -> dict[str, Any]:
         host = plant.hosts[host_name]
         tags = _selected(by_owner.get(host_name, []), patterns)
         if host.role == "bas":
+            bacnet_ips.update(
+                ipaddress.ip_interface(i.ip).ip for i in host.interfaces.values()
+            )
             objects = {o.tag.name: o for o in alloc.bacnet.get(host_name, []) if o.tag}
             ep = host.bacnet
             for t in tags:
@@ -948,16 +952,20 @@ def fuxa_doc(plant: Plant, alloc: Allocation, scada: Host) -> dict[str, Any]:
     if bacnet_tags:
         iface = next(iter(scada.interfaces.values()))
         net = ipaddress.ip_interface(iface.ip).network
+        # FUXA binds its BACnet client to an address on its own host
+        # (DESIGN.md §12.2), not to the remote device.
+        bprop: dict[str, str] = {"address": iface.ip.split("/")[0]}
+        if any(ip in net for ip in bacnet_ips):
+            # Controllers on FUXA's own subnet hear the directed broadcast.
+            bprop["broadcastAddress"] = str(net.broadcast_address)
+        # Otherwise leave it unset: FUXA's Who-Is then goes to
+        # 255.255.255.255, which the local BBMD forwards across fw-ot
+        # (DESIGN.md §8.1; spikes/bbmd).
         devices.append(
             {
                 "name": f"{scada.name}-bacnet",
                 "type": "BACnet",
-                "property": {
-                    # FUXA binds its BACnet client to an address on its own
-                    # host (DESIGN.md §12.2), not to the remote device.
-                    "address": iface.ip.split("/")[0],
-                    "broadcastAddress": str(net.broadcast_address),
-                },
+                "property": bprop,
                 "polling": 1000,
                 "tags": bacnet_tags,
             }

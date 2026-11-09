@@ -195,6 +195,20 @@ def test_opcua_and_s7_plcs_have_no_modbus_slave(full_files: dict[str, str]) -> N
 # -- FUXA and BACnet ----------------------------------------------------------------
 
 
+def test_scada_fuxa_bacnet_leaves_broadcast_unset(full_files: dict[str, str]) -> None:
+    """scada-fuxa is off the BAS subnet: Who-Is must go to 255.255.255.255.
+
+    The OPS BBMD hears that limited broadcast and forwards it across fw-ot
+    (spikes/bbmd); a directed broadcast of FUXA's own subnet would not reach
+    the BAS controllers.
+    """
+    doc = json.loads(full_files["fuxa/scada-fuxa-tags.json"])
+    bacnet = [d for d in doc["devices"] if d["type"] == "BACnet"]
+    assert bacnet, "scada-fuxa reads BAS points over BACnet"
+    for dev in bacnet:
+        assert "broadcastAddress" not in dev["property"]
+
+
 def test_bas_fuxa_reads_every_bacnet_object(
     full: Plant, full_files: dict[str, str]
 ) -> None:

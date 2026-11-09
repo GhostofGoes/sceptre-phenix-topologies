@@ -4840,8 +4840,7 @@
       "name": "scada-fuxa-bacnet",
       "type": "BACnet",
       "property": {
-        "address": "10.20.30.10",
-        "broadcastAddress": "10.20.30.255"
+        "address": "10.20.30.10"
       },
       "polling": 1000,
       "tags": [

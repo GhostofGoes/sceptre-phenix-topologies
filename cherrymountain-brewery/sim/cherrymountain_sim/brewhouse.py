@@ -67,6 +67,12 @@ EXTRACT_POTENTIAL: float = 1.0
 ABSORPTION_L_KG: float = 0.8
 #: Steam the 200 kW electric boiler can deliver, W.
 BOILER_W: float = 196e3
+#: Kettle level at or below which a knockout is over, %: what is left is trub,
+#: which goes to the drain. plc-brewhouse ends its KNOCKOUT phase at 5 %
+#: (KETTLE_EMPTY); the autopilot pumps down to 5 L.
+KETTLE_HEEL_PCT: float = 6.0
+#: Wort that must have run off a mash before the brewer grains out, L.
+GRAIN_OUT_MIN_RUNOFF_L: float = 1000.0
 #: ISA-88 phase numbers (plant.yaml BH.BATCH.XC01.PHASE).
 PHASES: dict[str, int] = {
     "IDLE": 0,
@@ -146,6 +152,8 @@ class Process(BaseModel):
     compaction: float = 1.0
     rake_in: float = 30.0
     runoff_lpm: float = 0.0
+    #: Wort run off the mash now in the tun, L (reset when it is grained out).
+    runoff_l: float = 0.0
     sparge_lpm: float = 0.0
     boil_min: float = 0.0
     boiling: bool = False
@@ -463,7 +471,48 @@ class BrewhouseFederate(Federate):
         p.grain_kg = p.extract_kg = p.dissolved_kg = 0.0
         p.mash = MashState()
         p.compaction = 1.0
+        p.runoff_l = 0.0
         p.drain_s = 3 * 60.0
+
+    def _brewer(self) -> None:
+        """The brewer's manual jobs while a PLC runs the phases. No field point
+        commands them, so the model does them when the plant's state calls for
+        them (the autopilot does its own):
+
+        - the boil hop additions of the recipe, by the boil time left;
+        - the whirlpool hops, when the PLC opens the hop doser;
+        - graining out, once the mash has run off, the tun's valves are shut,
+          and the kettle is on steam for the boil.
+
+        Without them a PLC-driven brew leaves the spent grain in the tun, so
+        the next mash-in ends at once on the level it finds there.
+        """
+        p = self.proc
+        pilot = self.pilot
+        if p.boiling:
+            remaining = self.recipe.boil_minutes - p.boil_min
+            for hop in self.recipe.hops:
+                key = f"{hop.name}@{hop.minutes}"
+                if hop.use == "boil" and key not in pilot.hops_added and remaining <= hop.minutes:
+                    self.add_hops(hop.alpha, hop.grams)
+                    pilot.hops_added.add(key)
+        if self.on("kettle.hop_doser") and not pilot.whirlpool_dosed and p.kettle.liters > 100.0:
+            for hop in self.recipe.hops:
+                if hop.use == "whirlpool":
+                    self.add_hops(hop.alpha, hop.grams)
+            pilot.whirlpool_dosed = True
+        tun_shut = not (
+            self.on("mlt.strike_valve")
+            or self.num("mlt.runoff_valve_pct") > 0
+            or self.num("mlt.sparge_valve_pct") > 0
+        )
+        if (
+            p.grain_kg > 0
+            and tun_shut
+            and p.runoff_l >= GRAIN_OUT_MIN_RUNOFF_L
+            and self.num("kettle.steam_valve_pct") >= 50.0
+        ):
+            self.grain_out()
 
     @property
     def ambient_kpa(self) -> float:
@@ -525,6 +574,8 @@ class BrewhouseFederate(Federate):
         self._mash(dt, q_mlt, amb_c)
         self._kettle(dt, q_ktl, amb_c, boil_c)
         self._knockout(dt, powered)
+        if not self.autopilot:
+            self._brewer()
         p.steam_w = q_hlt + q_mlt + q_ktl
         p.drain_s = max(p.drain_s - dt, 0.0)
 
@@ -604,6 +655,7 @@ class BrewhouseFederate(Federate):
             self.num("mlt.runoff_valve_pct") / 100 * 40.0, free / dt * 60
         )
         out = p.mlt.take(p.runoff_lpm / 60.0 * dt)
+        p.runoff_l += out
         p.dissolved_kg -= p.dissolved_kg * out / max(out + p.mlt.liters, 1.0)
         p.kettle.add(out, p.mlt.temp_c, p.mlt.plato)
         rake = self.on("mlt.rake_run")
@@ -668,9 +720,19 @@ class BrewhouseFederate(Federate):
         p.wort_lpm = out / dt * 60.0
         if p.wort_lpm > 0:
             p.knocking_out = True
-        elif p.knocking_out and p.kettle.liters <= 5.0:
+        elif p.knocking_out and p.kettle.level_pct <= KETTLE_HEEL_PCT:
+            # The knockout is over: count the brew and dump the heel (trub) to
+            # the drain. plc-brewhouse stops the pump at 5 % of the kettle, so
+            # a count that waited for an empty kettle never came with a PLC.
             p.knocking_out = False
             p.brews_completed += 1
+            if p.kettle.liters > 5.0:
+                p.drain_s = max(p.drain_s, 5 * 60.0)
+            p.kettle = Tank(capacity_l=p.kettle.capacity_l, temp_c=p.kettle.temp_c)
+            p.hops.clear()
+            p.boil_min = 0.0
+            self.pilot.hops_added.clear()
+            self.pilot.whirlpool_dosed = False
         o2_sp = self.num("knockout.o2_sp_slpm") if p.wort_lpm > 0 else 0.0
         p.o2_slpm += (o2_sp - p.o2_slpm) * min(dt / 2.0, 1.0)
         if p.wort_lpm <= 0:
@@ -720,7 +782,10 @@ class BrewhouseFederate(Federate):
             "clt.high_level": p.clt.level_pct > 95.0,
             "hlt.level_pct": p.hlt.level_pct,
             "hlt.temp_f": c_to_f(p.hlt.temp_c),
-            "hlt.low_level": p.hlt.level_pct < 15.0,
+            # BH.HLT.LSL01 is made (true) while the liquor covers the jacket,
+            # as plant.yaml describes it and plc-brewhouse uses it: steam only
+            # while it is true. It drops below 15 %.
+            "hlt.low_level": p.hlt.level_pct >= 15.0,
             "mlt.temp_f": c_to_f(p.mlt.temp_c),
             "mlt.level_pct": min(
                 100.0 * (p.mlt.liters + 0.7 * p.grain_kg) / p.mlt.capacity_l, 100.0

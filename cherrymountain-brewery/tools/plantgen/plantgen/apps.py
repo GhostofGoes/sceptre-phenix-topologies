@@ -302,6 +302,7 @@ APP_TYPES: dict[str, str] = {
     "plc": "openplc",
     "scada": "fuxa",
     "historian": "historian",
+    "ews": "ews",
 }
 #: Order of the host types in the block (the app's fixtures use it).
 APP_ORDER: tuple[str, ...] = (
@@ -315,6 +316,7 @@ APP_ORDER: tuple[str, ...] = (
     "guacamole",
     "wazuh-manager",
     "bbmd",
+    "ews",
 )
 
 

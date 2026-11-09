@@ -2185,9 +2185,14 @@ health checks read a tag value, not the connection state
   `timeout`) replaces `<endpoint>` in the Modbus module. No ot-sim change is
   needed. It ran over the phenix `serial` app ([§15.2](#152-apps)). The image
   for an RTU node also needs libzmq5, libczmq4, and libxml2.
-- **Telnet.** `relay-main` also runs the ot-sim `telnet` module. Its config
-  is injected by the `cherrymountain` app, and it is reachable only from
-  FIELD-PWR ([§10.4](#104-protocol-map)).
+- **Telnet.** `relay-main` also runs the ot-sim `telnet` module, reachable
+  only from FIELD-PWR ([§10.4](#104-protocol-map)). The phenix ot-sim app does
+  not render it, so at pre-start the `cherrymountain` app (which runs after it)
+  takes the `config.xml` the ot-sim app rendered for relay-main and adds the
+  CPU `module` entry and a `telnet` element on relay-main's FIELD-PWR address,
+  port 23 (plant.yaml `hosts.relay-main.app.telnet`).
+- **EWS credentials.** The app writes `/etc/default/cm-ews` (0600) with the
+  OpenPLC account it creates on every PLC, which `cm_plc_tool.py` reads.
 
 ### 12.4 Historian and engineering workstation
 
@@ -2996,7 +3001,6 @@ five stages) and follows the pattern of sceptre-phenix-apps:
     FUXA, and the OPC UA namespace index and S7 tag types they assume, are
     unverified.
   - Drop the static sim, OpenPLC, and FUXA topology injects once the app runs.
-  - Render the `relay-main` telnet config ([§12.3](#123-ot-sim-field-devices)).
   - The HELICS federate-count SoH check counts distinct peers on the broker
     port, which is approximate.
 

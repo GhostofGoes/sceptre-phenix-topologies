@@ -79,7 +79,7 @@ Host metadata, selected by `type`:
 |---|---|---|
 | `openplc` | `program` (the hostname), `northbound` (plant.yaml's: `modbus_slave`, `opcua`, `s7comm`), `opcua.port` (4840), `opcua.interface` (IF0), `opcua.debugMap`, `opcua.cycleTimeMs` (100), `s7comm.port` (102), `restPort` (8443), `compileTimeout` (900) | Program ZIP, `conf/modbus_master.json` and `modbus_slave.json` (plantgen), `conf/opcua.json` (from the compiled program's debug map) or `conf/s7comm.json`, `/etc/default/cm-openplc`, the provisioning script, unit, and boot hook |
 | `fuxa` | `role` (`scada`), `project` (built), `expectDevices` (every project device), `daq` (`auto`: InfluxDB when the app has a historian, else SQLite), `bucket` (the role), `port` (1881) | Project JSON, `mysettings.json` (secure mode, JWT secret, DAQ store, no Node-RED), `/etc/default/cm-fuxa`, the provisioning script, unit, and hook, `cm-export-fuxa` |
-| `rio` | | Nothing; checked only (ot-sim devices of any role) |
+| `rio` | `telnet` (`interface` IF0, `port` 23, `banner` default) | Nothing, unless `telnet` is set: then the ot-sim `config.xml` the ot-sim app rendered gets the telnet module (relay-main). Checked otherwise (ot-sim devices of any role) |
 | `sim-ctl` | `federates` (plant.yaml's for this host) | As `sim-federate` when it runs any |
 | `sim-federate` | `federates` (plant.yaml's for this host), `logLevel` (`INFO`) | `helics.json`, `/etc/cherrymountain/federates`, `/etc/default/cm-federate-<name>`, `cm-federate@.service`, `60-cm-federates.sh` |
 | `historian` | `interface` (IF0) | `/etc/default/cm-historian`, Telegraf, Mosquitto, Grafana data sources and dashboard, systemd drop-ins, `cm-historian-provision` and its unit and hook, `cm-export-historian` |
@@ -87,6 +87,7 @@ Host metadata, selected by `type`:
 | `guacamole` | `connections` (`ews-rdp`, `ews-ssh`), `recording` (true), `totp` (true) | Guacamole initdb SQL (salted hash only), `/etc/default/cm-guacamole` |
 | `wazuh-manager` | | With the app's `wazuh` block: the enrollment password and boot hook |
 | `bbmd` | | Nothing; the topology injects cm-bbmd.service and its settings from `phenix-injects/bbmd/`. Checked only (SoH: the `cm_bbmd.py` process) |
+| `ews` | | `/etc/default/cm-ews` (0600): the OpenPLC REST account `cm_plc_tool.py` uses, the same one the app creates on every PLC |
 
 Every topology node with a `mgmt` NIC, listed in the app or not, gets
 `/etc/cherrymountain/nftables-mgmt.nft` and `04-cm-mgmt-nftables.sh`. The

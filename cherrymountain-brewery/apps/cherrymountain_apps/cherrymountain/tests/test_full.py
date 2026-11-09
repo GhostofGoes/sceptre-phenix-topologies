@@ -269,3 +269,45 @@ def test_full_fuxa_projects_are_built_for_both_hosts(ctx: Context) -> None:
         assert project == committed, host
         expect = env(Path(injects["/etc/default/cm-fuxa"].src))["FUXA_EXPECT_DEVICES"].split()
         assert set(expect) == {d["name"] for d in project["devices"].values()}
+
+
+def test_full_ews_gets_the_openplc_credentials(ctx: Context) -> None:
+    """cm_plc_tool.py on the EWS reads /etc/default/cm-ews: the same OpenPLC
+    account the app creates on every PLC, root-only."""
+    from cherrymountain_apps.cherrymountain.metadata import EwsHost
+
+    md = ctx.hosts["ews"]
+    assert isinstance(md, EwsHost)
+    (inject,) = render.render_ews(ctx, "ews", md)
+    assert inject.dst == "/etc/default/cm-ews" and inject.permissions == "0600"
+    values = env(Path(inject.src))
+    assert values == {
+        "OPENPLC_USER": render.OPENPLC_USER,
+        "OPENPLC_PASSWORD": ctx.creds.openplc_password.get_secret_value(),
+    }
+
+
+def test_full_relay_main_gets_the_telnet_module(ctx: Context, tmp_path: Path) -> None:
+    """The cherrymountain app adds the ot-sim telnet module to relay-main's
+    config.xml (DESIGN.md 10.4): a CPU module entry and a telnet element on
+    relay-main's FIELD-PWR address, port 23; running it twice changes nothing."""
+    import xml.etree.ElementTree as ET
+
+    from cherrymountain_apps.cherrymountain.metadata import RioHost
+
+    md = ctx.hosts["relay-main"]
+    assert isinstance(md, RioHost) and md.telnet is not None
+    rendered = tmp_path / "relay-main.xml"
+    rendered.write_text(
+        "<ot-sim><cpu><module name=\"backplane\">ot-sim-message-bus {{config_file}}</module></cpu>"
+        "<modbus name=\"modbus\" mode=\"server\"><endpoint>10.20.16.20:502</endpoint></modbus></ot-sim>"
+    )
+    (inject,) = render.render_telnet(ctx, "relay-main", md, str(rendered))
+    assert inject.dst == "/etc/ot-sim/config.xml"
+    text = Path(inject.src).read_text()
+    assert text.startswith("<ot-sim>")
+    root = ET.fromstring(text)
+    assert [m.get("name") for m in root.find("cpu")] == ["backplane", "telnet"]  # type: ignore[union-attr]
+    assert root.findtext("telnet/endpoint") == "10.20.16.20:23"
+    assert render.add_telnet(text, "10.20.16.20:23", "default").count("<telnet") == 1
+    assert render.render_telnet(ctx, "relay-main", md, None) == []

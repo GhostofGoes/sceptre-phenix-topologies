@@ -4446,7 +4446,11 @@
             {
               "hostname": "relay-main",
               "metadata": {
-                "type": "rio"
+                "type": "rio",
+                "telnet": {
+                  "interface": "IF0",
+                  "port": 23
+                }
               }
             },
             {
@@ -4582,6 +4586,12 @@
               "hostname": "bas-bbmd",
               "metadata": {
                 "type": "bbmd"
+              }
+            },
+            {
+              "hostname": "ews",
+              "metadata": {
+                "type": "ews"
               }
             }
           ]

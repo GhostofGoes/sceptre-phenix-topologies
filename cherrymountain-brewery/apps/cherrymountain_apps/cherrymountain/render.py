@@ -17,6 +17,7 @@ import importlib
 import json
 import secrets
 import shutil
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, ClassVar, Final
 
@@ -34,6 +35,8 @@ from cherrymountain_apps.cherrymountain.metadata import (
     HmiHost,
     HostBase,
     OpenPlcHost,
+    EwsHost,
+    RioHost,
     SimCtlHost,
     SimFederateHost,
 )
@@ -125,6 +128,10 @@ class Context:
 
 
 # ---------------------------------------------------------------- helpers
+
+
+#: The OpenPLC runtime account the app creates on every PLC and gives the EWS.
+OPENPLC_USER: Final[str] = "admin"
 
 
 def template(*parts: str) -> Path:
@@ -400,7 +407,7 @@ def render_openplc(ctx: Context, hostname: str, md: OpenPlcHost) -> list[Injecti
         out / "cm-openplc.env",
         env_file(
             {
-                "OPENPLC_USER": "admin",
+                "OPENPLC_USER": OPENPLC_USER,
                 "OPENPLC_PASSWORD": ctx.creds.openplc_password.get_secret_value(),
                 "OPENPLC_PORT": md.rest_port,
                 "OPENPLC_COMPILE_TIMEOUT": md.compile_timeout,
@@ -1073,6 +1080,76 @@ def render_guacamole(ctx: Context, hostname: str, md: GuacamoleHost) -> list[Inj
     ]
 
 
+# ---------------------------------------------------------------- EWS
+
+
+def render_ews(ctx: Context, hostname: str, md: EwsHost) -> list[Injection]:
+    """/etc/default/cm-ews: the OpenPLC REST credentials cm_plc_tool.py reads
+    (the same ones the app gives every PLC), root-only."""
+    env: Path = write(
+        ctx.host_dir(hostname) / "cm-ews.env",
+        env_file(
+            {
+                "OPENPLC_USER": OPENPLC_USER,
+                "OPENPLC_PASSWORD": ctx.creds.openplc_password.get_secret_value(),
+            }
+        ),
+        private=True,
+    )
+    return [
+        Injection(
+            src=env,
+            dst="/etc/default/cm-ews",
+            description="OpenPLC REST credentials for cm_plc_tool.py",
+            permissions="0600",
+        )
+    ]
+
+
+# ---------------------------------------------------------------- ot-sim telnet
+
+OTSIM_CONFIG: Final[str] = "/etc/ot-sim/config.xml"
+
+
+def add_telnet(config_xml: str, endpoint: str, banner: str) -> str:
+    """config.xml with the ot-sim telnet module: a CPU ``module`` entry that
+    starts ``ot-sim-telnet-module`` and a ``telnet`` element (ot-sim's
+    config/single-device/device.xml shows both). Idempotent."""
+    root: ET.Element = ET.fromstring(config_xml)
+    cpu: ET.Element | None = root.find("cpu")
+    if cpu is None:
+        raise SourceError("the ot-sim config has no <cpu> element")
+    if root.find("telnet") is None:
+        module: ET.Element = ET.SubElement(cpu, "module", {"name": "telnet"})
+        module.text = "ot-sim-telnet-module {{config_file}}"
+        telnet: ET.Element = ET.SubElement(root, "telnet", {"name": "telnet"})
+        ET.SubElement(telnet, "endpoint").text = endpoint
+        ET.SubElement(telnet, "banner").text = banner
+    ET.indent(root)
+    # No XML declaration or comment before <ot-sim>: the C++ DNP3 module rejects
+    # a root comment (DESIGN.md 12.3).
+    return ET.tostring(root, encoding="unicode") + "\n"
+
+
+def render_telnet(ctx: Context, hostname: str, md: RioHost, rendered: str | None) -> list[Injection]:
+    """The ot-sim config.xml the ot-sim app rendered for ``hostname`` (its
+    injection source), with the telnet module added."""
+    if md.telnet is None:
+        return []
+    if rendered is None:
+        logger.warning(f"{hostname}: no ot-sim config.xml injection; the telnet module was not added")
+        return []
+    endpoint: str = f"{ctx.ip(hostname, md.telnet.interface)}:{md.telnet.port}"
+    text: str = add_telnet(Path(rendered).read_text(encoding="utf-8"), endpoint, md.telnet.banner)
+    return [
+        Injection(
+            src=write(ctx.host_dir(hostname) / "ot-sim-config.xml", text),
+            dst=OTSIM_CONFIG,
+            description="ot-sim config with the telnet module",
+        )
+    ]
+
+
 # ---------------------------------------------------------------- vendor persona
 
 #: Where the topology injects the vendor persona (dmz-jump, ews, vendor-ws).
@@ -1323,6 +1400,7 @@ RENDERERS: Final[dict[type[HostBase], Any]] = {
     OpenPlcHost: render_openplc,
     FuxaHost: render_fuxa,
     SimCtlHost: render_sim,
+    EwsHost: render_ews,
     SimFederateHost: render_sim,
     HistorianHost: render_historian,
     HmiHost: render_hmi,

@@ -259,11 +259,29 @@ class FuxaHost(HostBase):
     port: Port = 1881
 
 
+class Telnet(Closed):
+    """The ot-sim ``telnet`` module (an admin shell, DESIGN.md 10.4), which the
+    phenix ot-sim app does not render: this app adds it to the device's
+    config.xml at pre-start."""
+
+    interface: Interface = "IF0"
+    port: Port = 23
+    banner: Annotated[str, Field(pattern=r"^[a-z0-9-]{1,32}$")] = "default"
+
+
 class RioHost(HostBase):
     """An ot-sim device (remote I/O, field, BAS, FEP, or DNP3 master); the
     ot-sim app configures it, and this app checks it."""
 
     type: Literal["rio"]
+    telnet: Telnet | None = None
+
+
+class EwsHost(HostBase):
+    """The engineering workstation (cm-ews): the OpenPLC REST credentials for
+    cm_plc_tool.py, in /etc/default/cm-ews (DESIGN.md 12.4)."""
+
+    type: Literal["ews"]
 
 
 class SimCtlHost(HostBase):
@@ -355,6 +373,7 @@ HOST_TYPES: dict[str, type[HostBase]] = {
     "guacamole": GuacamoleHost,
     "wazuh-manager": WazuhManagerHost,
     "bbmd": BbmdHost,
+    "ews": EwsHost,
 }
 
 
@@ -375,7 +394,8 @@ HostMetadata = Annotated[
     | Annotated[HmiHost, Tag("hmi")]
     | Annotated[GuacamoleHost, Tag("guacamole")]
     | Annotated[WazuhManagerHost, Tag("wazuh-manager")]
-    | Annotated[BbmdHost, Tag("bbmd")],
+    | Annotated[BbmdHost, Tag("bbmd")]
+    | Annotated[EwsHost, Tag("ews")],
     Discriminator(
         _host_kind,
         custom_error_type="unknown_host_type",

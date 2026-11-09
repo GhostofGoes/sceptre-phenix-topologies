@@ -680,6 +680,9 @@ hosts:
     role: field
     federate: power
     modbus: { interface: IF0, port: 502, unit_id: 1 }
+    # The ot-sim telnet module (an admin shell on FIELD-PWR, DESIGN.md 10.4); the
+    # cherrymountain app adds it to the config.xml the ot-sim app renders.
+    app: { type: rio, telnet: { interface: IF0, port: 23 } }
     interfaces:
       IF0: { vlan: FIELD-PWR, ip: 10.20.16.20/24 }
       mgmt: { vlan: MGMT, ip: 172.16.20.21/16 }

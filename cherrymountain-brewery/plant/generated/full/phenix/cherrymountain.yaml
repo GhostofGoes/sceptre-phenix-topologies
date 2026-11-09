@@ -50,6 +50,9 @@ hosts:
 - hostname: relay-main
   metadata:
     type: rio
+    telnet:
+      interface: IF0
+      port: 23
 - hostname: pv-inverter
   metadata:
     type: rio
@@ -116,3 +119,6 @@ hosts:
 - hostname: bas-bbmd
   metadata:
     type: bbmd
+- hostname: ews
+  metadata:
+    type: ews

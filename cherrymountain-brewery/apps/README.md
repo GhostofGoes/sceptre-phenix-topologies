@@ -7,7 +7,7 @@ package with two executables:
 | Executable | What | README |
 |---|---|---|
 | `phenix-app-cherrymountain` | User app: validates the scenario against `plant/plant.yaml`, renders and injects every per-host file, watches provisioning and plant KPIs, exports data at cleanup | [cherrymountain_apps/cherrymountain/README.md](cherrymountain_apps/cherrymountain/README.md) |
-| `phenix-scorch-component-plantevent` | SCORCH component: posts operational events (batch, outage, chiller fault, CO2 release, jam, weather step) to the sim-ctl event API | [cherrymountain_apps/plantevent/README.md](cherrymountain_apps/plantevent/README.md) |
+| `phenix-scorch-component-plantevent` | SCORCH component: posts operational events (batch, outage, genset exercise, chiller fault, CO2 release and leak, gas-detection failure, refrigerant leak, BESS thermal event, jam, CIP panel, weather step) to the sim-ctl event API | [cherrymountain_apps/plantevent/README.md](cherrymountain_apps/plantevent/README.md) |
 
 Both follow [sceptre-phenix-apps](https://github.com/sandialabs/sceptre-phenix-apps):
 the app subclasses `AppBase` (stage on argv, experiment JSON on stdin, the
@@ -39,13 +39,21 @@ check them as they are injected. Values reach them through rendered
 docker build -t cherrymountain-phenix cherrymountain-brewery/apps
 ```
 
-The image is `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main`, pinned by
-digest. It already has phenix-apps and every dependency, so the package
-installs with `--no-deps`. DESIGN.md 16 runs the range on a phenix built with
-the forked sceptre-phenix-apps (`APPS_REPO`, `APPS_BRANCH`); build that image
-first and use its digest instead. The package needs nothing from the fork:
-where the fork has a helper upstream lacks (`utils.is_headnode`), the package
-falls back.
+By default the image is `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main`,
+pinned by digest. It already has phenix-apps and every dependency, so the
+package installs with `--no-deps`. DESIGN.md 16 runs the range on the phenix
+fork, built with the forked sceptre-phenix-apps (`APPS_REPO`, `APPS_BRANCH`).
+Build that image first, then name it with the `PHENIX_IMAGE` build argument
+(a locally built image has no registry digest to pin):
+
+```shell
+docker build --build-arg PHENIX_IMAGE=phenix:cherrymountain \
+  -t cherrymountain-phenix cherrymountain-brewery/apps
+```
+
+[USER_GUIDE.md](../USER_GUIDE.md) has the whole sequence. The package needs
+nothing from the fork: where the fork has a helper upstream lacks
+(`utils.is_headnode`), the package falls back.
 
 ## Develop and test
 
@@ -76,8 +84,9 @@ python3 -I cherrymountain_apps/cherrymountain/tests/build_fixtures.py
 - **Event API** (cherrymountain_sim on sim-ctl, guest port 8080):
   `GET /api/v1/health`, `POST /api/v1/events` (`{"event": <kind>, ...}`), and
   `GET /api/v1/kpis` (see `cherrymountain/kpi.py` for the fields).
-- **Program ZIPs:** `phenix-injects/openplc/<program>.zip`; an OPC UA PLC also
-  needs its compile's `debug_map.json`, inside the ZIP or at
+- **Program ZIPs:** `phenix-injects/openplc/<program>.zip` for ci and
+  `phenix-injects/openplc/<variant>/<program>.zip` for full and lite; an OPC UA
+  PLC also needs its compile's `debug_map.json`, inside the ZIP or at
   `plc/<program>/debug_map.json`.
 - **BBMD:** the topology injects `cm-bbmd.service` and its settings from
   `phenix-injects/bbmd/`; the app only checks the BBMD hosts.

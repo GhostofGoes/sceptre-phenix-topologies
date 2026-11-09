@@ -6,10 +6,17 @@
 #   docker build -t cherrymountain-phenix cherrymountain-brewery/apps
 #
 # The base image already ships phenix-apps (AppBase, ComponentBase) and every
-# Python dependency of this package, so it installs with --no-deps. The base is
-# pinned by digest; to move it, resolve the digest of the phenix:main tag
-# (or of the fork build DESIGN.md 16 calls for) and replace it here.
-FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main@sha256:b64b36764fa42a7ca199f42262a10644c07e967f63beaf1d34fa75648d0c2ef6
+# Python dependency of this package, so it installs with --no-deps. The default
+# base is upstream phenix:main, pinned by digest; to move it, resolve the digest
+# of the tag and replace it here.
+#
+# The range runs on the phenix fork (the autotunnel loop, DESIGN.md 15.3 and
+# 16), which is built locally and has no registry digest. Name that image with
+# the build argument:
+#   docker build --build-arg PHENIX_IMAGE=phenix:cherrymountain \
+#     -t cherrymountain-phenix cherrymountain-brewery/apps
+ARG PHENIX_IMAGE=ghcr.io/sandialabs/sceptre-phenix/phenix:main@sha256:b64b36764fa42a7ca199f42262a10644c07e967f63beaf1d34fa75648d0c2ef6
+FROM ${PHENIX_IMAGE}
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 

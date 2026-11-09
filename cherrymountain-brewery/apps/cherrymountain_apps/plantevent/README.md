@@ -70,6 +70,10 @@ Events (`event` selects the kind):
 | `jam` | `machine` (`depalletizer`, `rinser`, `filler`, `capper`, `labeler` (default), `packer`), `duration` (default 300 s) | Packaging jam |
 | `weather-step` | `delta_f` (-60 to 60, required), `duration` (default 0: hold) | Step the outside temperature |
 | `cip-panel` | `circuit`: `bh`, `fv101` .. `fv104`, `bbt201`, `bbt202`, or `none` (required) | Swing the CIP panel onto a circuit, as a cellar worker would before a CIP run |
+| `co2-leak` | `zone`: `tank`, `filler`, or `draft` (required), `rate`: `low`, `medium`, `high` (default), `duration` (default 600 s) | CO2 leak on the supply piping at the bulk tank, the filler, or the cold room and draft system; at 30,000 ppm the supply shutoff closes the bulk valve and the leak stops |
+| `gas-detection` | `action`: `fail` (default) or `restore` | Fail the gas-detection panel: both relays drop (carbonation inhibited, CO2 supply shut off) |
+| `refrigerant-leak` | `action`: `leak` (default), `repair`, or `recharge`; `rate`: `low`, `medium` (default), `high` | Chiller refrigerant leak; `recharge` tops it off and writes the charge record with its leak rate |
+| `bess-thermal` | `action`: `start` (default) or `clear` | A BESS cell heats toward thermal runaway: the BMS trips the PCS, then the off-gas detector alarms |
 
 Each event is posted as JSON to `POST /api/v1/events`, with the fields above
 as keys (for example `{"event": "co2-release", "fv": "FV-102", "rate":

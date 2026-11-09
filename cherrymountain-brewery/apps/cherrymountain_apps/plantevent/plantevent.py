@@ -92,6 +92,43 @@ class Co2Release(MetadataBlock):
     duration: Seconds = 600.0
 
 
+class Co2Leak(MetadataBlock):
+    """Open a leak on the CO2 supply piping in an area outside the cellar
+    (DESIGN.md 6.7): the bulk tank and vaporizer, the filler, or the cold room
+    and draft system. Its flow follows the supply pressure, so the CO2 supply
+    shutoff at 30,000 ppm stops it."""
+
+    event: Literal["co2-leak"]
+    zone: Literal["tank", "filler", "draft"]
+    rate: Literal["low", "medium", "high"] = "high"
+    duration: Seconds = 600.0
+
+
+class GasDetection(MetadataBlock):
+    """Fail or restore the gas-detection panel: both de-energize-to-trip relays
+    drop, so carbonation is inhibited and the CO2 supply shuts off."""
+
+    event: Literal["gas-detection"]
+    action: Literal["fail", "restore"] = "fail"
+
+
+class RefrigerantLeak(MetadataBlock):
+    """Leak the glycol chiller's R-410A charge, stop the leak, or top it off
+    (which writes the 40 CFR 84 Subpart C charge record)."""
+
+    event: Literal["refrigerant-leak"]
+    action: Literal["leak", "repair", "recharge"] = "leak"
+    #: low: 1 lb/day (no detector sees it); medium: 20 lb/day; high: a broken line.
+    rate: Literal["low", "medium", "high"] = "medium"
+
+
+class BessThermal(MetadataBlock):
+    """Start a failing BESS cell heating toward thermal runaway, or clear it."""
+
+    event: Literal["bess-thermal"]
+    action: Literal["start", "clear"] = "start"
+
+
 class Jam(MetadataBlock):
     """Jam a packaging machine."""
 
@@ -119,7 +156,11 @@ Event = Annotated[
     | Co2Release
     | Jam
     | WeatherStep
-    | CipPanel,
+    | CipPanel
+    | Co2Leak
+    | GasDetection
+    | RefrigerantLeak
+    | BessThermal,
     Field(discriminator="event"),
 ]
 

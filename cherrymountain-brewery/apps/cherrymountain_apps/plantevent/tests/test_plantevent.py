@@ -53,6 +53,29 @@ def test_defaults() -> None:
     }
 
 
+def test_the_life_safety_events_match_the_sim_api() -> None:
+    """Every life-safety event (DESIGN.md 6.7, 18A.3) with its defaults, as the
+    sim-ctl event API expects them."""
+    config, _ = validate_metadata(
+        PlantEventMetadata,
+        {
+            "events": [
+                {"event": "co2-leak", "zone": "tank"},
+                {"event": "gas-detection"},
+                {"event": "refrigerant-leak", "action": "recharge"},
+                {"event": "bess-thermal"},
+            ]
+        },
+        "p",
+    )
+    assert [e.model_dump() for e in config.events] == [
+        {"event": "co2-leak", "zone": "tank", "rate": "high", "duration": 600.0},
+        {"event": "gas-detection", "action": "fail"},
+        {"event": "refrigerant-leak", "action": "recharge", "rate": "medium"},
+        {"event": "bess-thermal", "action": "start"},
+    ]
+
+
 def test_genset_exercise_and_cip_panel_defaults() -> None:
     """The two events the sim-ctl API accepted before this component knew them."""
     config, _ = validate_metadata(
@@ -77,6 +100,11 @@ def test_genset_exercise_and_cip_panel_defaults() -> None:
         (
             {"events": [{"event": "cip-panel", "circuit": "fv105"}]},
             "circuit: Input should be",
+        ),
+        ({"events": [{"event": "co2-leak"}]}, "co2-leak.zone: Field required"),
+        (
+            {"events": [{"event": "refrigerant-leak", "action": "vent"}]},
+            "action: Input should be",
         ),
         ({"events": []}, "events: List should have at least 1 item"),
         ({"events": [{"event": "outage"}]}, "does not match any of the expected tags"),

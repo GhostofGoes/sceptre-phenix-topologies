@@ -4,11 +4,14 @@
 > done (all nine are go; the decisions are folded into
 > [DESIGN.md](DESIGN.md#18-implementation-roadmap)). The **ci variant** (the
 > cellar slice, five VMs) exists: the tag database, plantgen, the cellar
-> simulation, the PLC program and its OpenPLC v4 ZIP, the FUXA project, the four
+> simulation, the PLC program and its OpenPLC v4 ZIP, the FUXA project, the
 > image configs, and the topology, scenario, and workflow. Its integration test
 > passes in Docker (ot-sim, OpenPLC, FUXA), but the slice has not run on a phenix
-> host yet. The full and lite variants, the `cherrymountain` app, and the BACnet
-> and BBMD pieces are still design only.
+> host yet. **Phase 1 (network)** is written for the **full and lite variants**:
+> the topology modules, the VyOS conduits and static routes, ot-svc and the
+> BBMDs, and the SoH reachability and blocked-path checks. `tools/netcheck`
+> proves the conduit matrix statically (every conduit passes and every other
+> path is blocked), but no VM has run it yet.
 
 The CherryMountain Brewery topology models a notional SCADA system for a
 Colorado microbrewery and taproom. Its flagship West Coast IPA is "Fire of the
@@ -42,8 +45,12 @@ integration, new software, testing, roadmap, risks, and references.
 | `tools/plantgen/` | Generator: tags, addresses, ot-sim and ntp app blocks, HELICS, OpenPLC, and FUXA inputs |
 | `sim/` | `cherrymountain_sim`, the cellar HELICS federate |
 | `phenix-ci.yml`, `phenix-configs/{topology,scenario}-ci.yml` | Workflow, topology, and scenario for the ci variant |
+| `phenix.yml`, `phenix-lite.yml`, `phenix-configs/` | Workflows for the full and lite variants; topology modules `topology-{core,soc,remote-access}.yml`, `topology-{full,lite}.yml` (they include the modules), and `scenario-{full,lite}.yml` |
+| `phenix-injects/{ot-svc,bbmd,inet-nuke,vrouter,malcolm}/` | The network phase's injects: ot-svc DNS, syslog relay, and chrony hook; the `cm-bbmd` BACnet BBMD service; inet-nuke DNS; the VyOS settings script; malcolm's capture flow |
+| `sync.py` (and `sync_ci.py`) | Embeds plantgen's per-variant app blocks into the scenarios and copies generated files into `phenix-injects/` |
+| `tools/netcheck/` | Static check of the topology, scenario, and workflow against the IP plan and conduit matrix ([README](tools/netcheck/README.md)) |
 | `phenix-injects/` | Files the ci scenario injects: federate units, OpenPLC and FUXA provisioning, generated copies |
-| `phenix-images/` | Image configs for `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa` (noble), with [one README](phenix-images/README.md) that has a section per image |
+| `phenix-images/` | Image configs for `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa`, `cm-svc` (noble), with [one README](phenix-images/README.md) that has a section per image |
 | `plc/plc-cellar/` | The cellar PLC program in Structured Text, and `build_zip.sh`, which builds its OpenPLC v4 ZIP |
 | `tests/integration/` | `ci_slice_docker.sh`: the cellar slice (ot-sim, OpenPLC v4.3.2, FUXA) in Docker, no KVM |
 | `fuxa/` | The generated FUXA project for scada-fuxa |
@@ -78,9 +85,9 @@ Run these from this directory after changing `plant/plant.yaml`:
 
 ```shell
 (cd tools/plantgen && python -m plantgen)          # rewrite plant/generated/*
-python sync_ci.py                                    # copy generated files into phenix-injects/
+python sync.py                                       # embed the generated blocks in the scenarios, copy generated files into phenix-injects/
 python fuxa/build_project.py                         # rebuild the FUXA project
-python sync_ci.py                                    # ... and copy it (run again after build_project.py)
+python sync.py                                       # ... and copy it (run again after build_project.py)
 plc/plc-cellar/build_zip.sh                          # rebuild the OpenPLC program ZIP (needs Node 22+)
 ```
 
@@ -89,7 +96,9 @@ Checks (all must pass; `prek run --all-files` covers lint and hygiene):
 ```shell
 (cd tools/plantgen && python -m plantgen --check && python -m pytest)
 (cd sim && python -m pytest)
-python sync_ci.py --check                            # injects and scenario match plantgen output
+python sync.py --check                               # injects and scenarios match plantgen output (ci, full, lite)
+python tools/netcheck/run_netcheck.py                # IP plan, conduit matrix, routes, rules (full, lite)
+(cd tools/netcheck && python -m pytest)              # netcheck, sync.py, and BBMD tests
 python fuxa/build_project.py --check                 # FUXA project is current
 python plc/plc-cellar/assemble.py                    # PLC program matches alarms.json and the I/O map
 plc/plc-cellar/build_zip.sh --check                  # the committed ZIP is a fresh build (needs Node 22+)
@@ -128,16 +137,87 @@ to pin down how the v4 runtime clamps and segments the holding registers.
   syntax. JSON that phenix injects verbatim is exempt.
 - **Docker and desktop files:** hadolint, dclint, and `desktop-file-validate`
   run when such files exist.
+- **Network plan:** `netcheck` (see [tools/netcheck](tools/netcheck/README.md)),
+  its tests, and `sync.py --check` run as local hooks, so CI fails when a
+  conduit loses its rule, a rule has no conduit, an address overlaps, or
+  plantgen's output was not synced into the scenarios.
 
 `spikes/` and `tests/` are exempt from the stricter checks. The system tools
 that some hooks need are listed in
 [CONTRIBUTING](../.github/CONTRIBUTING.md#code-quality).
 
+## Network (Phase 1)
+
+The full and lite variants carry the whole network of DESIGN.md section 10:
+
+- **Topology.** `topology-core.yml` has the 37 core nodes (the 36 of the
+  design plus `bas-bbmd`) with their interfaces, VLANs, addresses, static
+  routes, zone labels, boot-order `delay`s, autotunnel entries, and resources.
+  `topology-soc.yml` adds malcolm, wazuh, and soc-analyst;
+  `topology-remote-access.yml` adds dmz-vpn, dmz-jump, and vendor-ws.
+  `topology-full.yml` includes all three (43 VMs, 67 vCPUs, 113 GB) and
+  `topology-lite.yml` only the core (37 VMs, 48 vCPUs, 71 GB). phenix appends
+  the included nodes in order, so the boot order is the core's, then the SOC,
+  then the remote-access nodes. Router interfaces are named `eth0`, `eth1`, ...
+  (the VyOS NIC names, because the vrouter app writes netem policies with the
+  interface name); hosts use `IF0`, `IF1`, ... and `mgmt`.
+- **Conduits.** The `vrouter` app in `scenario-full.yml` holds one ruleset per
+  source interface on fw-edge and fw-ot (`FROM-<zone>`): the stateful accept,
+  the allowed flows of the conduit matrix, and default drop. `acl.egress` is the
+  app's name for the ruleset applied to packets coming in on an interface.
+  fw-edge also has the SNAT, the WireGuard DNAT, and the IPsec site to util-rtr;
+  isp-rtr and util-rtr have the netem on the WAN legs. `scenario-lite.yml` takes
+  the vrouter app from the full scenario with `fromScenario`.
+- **Services.** ot-svc has chrony (from the ntp app, limited to the plant's
+  prefixes by a startup hook), a dnsmasq zone for the plant
+  (`phenix-injects/ot-svc/plant.hosts`, `cherrymountain.test`), the syslog relay
+  to Wazuh, and the OPS BBMD. bas-bbmd runs the BAS BBMD. Both run
+  `phenix-injects/bbmd/cm_bbmd.py` (BACpypes3, BDT listing both).
+- **SoH.** `testCustomReachability` has a probe for every conduit that
+  answers (every TCP conduit, the BACnet reads, the BBMD BDT reads, NTP and DNS),
+  and `hostCustomTests` has a cc script per blocked path that expects `DROPPED`.
+  Syslog and IKE/ESP send no reply, so they are checked statically only.
+
+Known gaps and what to check on the first VM run (each is also a comment where
+it matters):
+
+- **Not run on a VM.** `netcheck` models the rules phenix renders; it does not
+  prove VyOS behavior. Check the `vyatta.tmpl` output commits with these rulesets,
+  that the ACL names (`acl.egress` is the inbound filter) behave as modeled, and
+  that SoH passes.
+- **The vrouter templates cannot do four things the design wants,** so
+  `phenix-injects/vrouter/cm-vyos-config.sh` does them after boot, delivered by a
+  topology `commands` entry (a `cc exec`): rule logging (`default-log` on every
+  ruleset, and the syslog target for Wazuh), `ike-group IKE-1W key-exchange
+  ikev2`, and a per-router NTP server. The script is unverified on VyOS (the
+  syslog syntax is tried as `remote`, then `host`; the injected path is assumed
+  to appear as `/config/scripts/custom/`).
+- **phenix issues to report upstream.** The vrouter app keeps the NTP address
+  of the first router that has one and uses it for every later router (so
+  isp-rtr comes first in the topology, and the script fixes fw-ot's source);
+  the rendered rulesets filter only `forward`, so traffic to a router's own
+  address (IKE, SSH) is never filtered; rules have no `log` field; netem `loss`
+  is an integer percent (the design asks for 0.1 percent, the files use 1); and
+  the template has no `key-exchange`.
+- **Mirror.** `df_default=false` on the host's GRE port still needs the mirror
+  app (nothing in a topology can set it). The OpenFlow capture flow is injected
+  into malcolm (`phenix-injects/malcolm/99-zz-capture-flow.sh`) until the app or
+  the cm-malcolm image does it (DESIGN.md 14).
+- **Images.** Only `cm-svc` is new here (`phenix-images/cm-svc.yml`). The other
+  images the full topology names (`cm-desktop`, `cm-ews`, `cm-historian`,
+  `cm-guacamole`, `cm-wireguard`, `cm-malcolm`, `cm-wazuh`, and the prebuilt
+  `vyos`) do not have configs yet.
+- **Generated blocks.** `ot-sim`, `cherrymountain`, `helics`, `ntp`, and
+  `wireguard` come from plantgen through `sync.py`; the soh checks of plantgen
+  are merged into the hand-written ones. Until plantgen emits one, its marker
+  holds a placeholder comment.
+
 ## Applying the full design
 
 The topology uses the `phenix workflow apply` directory layout
-(`phenix.yml`, `phenix-configs/`, `phenix-injects/`). Once the other variants
-exist, the full plant deploys with:
+(`phenix.yml`, `phenix-configs/`, `phenix-injects/`). Build the images first
+(see [phenix-images/README.md](phenix-images/README.md)); the full plant
+deploys with:
 
 ```shell
 docker exec phenix phenix workflow apply /phenix/topologies/cherrymountain-brewery
@@ -148,3 +228,7 @@ The lite variant uses its own branch, like ci:
 ```shell
 docker exec phenix phenix workflow apply -b cherrymountain-lite -c phenix-lite.yml /phenix/topologies/cherrymountain-brewery
 ```
+
+Host access to the web UIs is through the startup autotunnel (DESIGN.md
+15.3): the forwards use random host ports, so look the port up with
+`cc tunnel list <vm>` or the phenix forwards API each time.

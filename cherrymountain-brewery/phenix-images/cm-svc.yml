@@ -1,0 +1,151 @@
+# cm-svc: ot-svc (chrony, dnsmasq, rsyslog relay, OPS BBMD), bas-bbmd (BAS BBMD),
+# and inet-nuke (the internet-side services; inet-nuke's copy also gets
+# protonuke, see below). Built from a noble minbase image with phenix image
+# build. This is the stored form of an image config (what
+# `phenix config get image/cm-svc` prints), so the POSTBUILD_* scripts below are
+# verbatim copies of the defaults that `phenix image create` adds
+# (src/go/api/image/constants.go); only the INSTALL script is specific to this
+# image.
+#   phenix config create phenix-images/cm-svc.yml
+#   phenix image build -o <dir> -c -x cm-svc
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-svc.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+# inet-nuke runs a copy with protonuke added the same way:
+#   cp <dir>/cm-svc.qc2 <dir>/cm-svc-protonuke.qc2
+#   phenix image inject-miniexe /usr/local/bin/protonuke <dir>/cm-svc-protonuke.qc2
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-svc
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - dnsmasq
+  - ethtool
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - python3-venv
+  - rsync
+  - rsyslog
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_SVC
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_SVC: |
+      # ------------------------------------------------------ svc -----------------------------------------------------
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y --no-install-recommends chrony dnsmasq rsyslog python3 python3-venv
+
+      # BACpypes3 for the BBMD service. The topology injects cm_bbmd.py, its
+      # settings, and cm-bbmd.service; the startup hook enables the unit on ot-svc
+      # and bas-bbmd only. The venv path is what the unit runs.
+      python3 -m venv /opt/bacnet
+      /opt/bacnet/bin/pip install --no-cache-dir "bacpypes3==0.0.110" "pydantic>=2.7"
+      /opt/bacnet/bin/python -c "import bacpypes3, pydantic; print(bacpypes3.__file__)"
+
+      # The startup hooks enable dnsmasq once its zone is injected; with the stock
+      # config it would also fight systemd-resolved for port 53 at boot. rsyslog
+      # keeps its default (enabled) and gets its relay config injected.
+      systemctl disable dnsmasq.service
+      mkdir -p /etc/cherrymountain /usr/local/lib/cm-bbmd
+      # TODO: the Wazuh agent (DESIGN.md 15.7) goes here once the cm-wazuh image
+      # pins the manager version it must match.
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 8G
+  variant: minbase

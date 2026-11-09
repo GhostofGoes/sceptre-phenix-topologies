@@ -10,7 +10,7 @@ prints). The `POSTBUILD_*` scripts in them are verbatim copies of the defaults
 that `phenix image create` adds (`src/go/api/image/constants.go`), so the lint
 hooks skip them. Only the `INSTALL_*` script of each image is ours.
 
-All four images are Ubuntu 24.04 (noble), `minbase`, qcow2, built from the
+All five images are Ubuntu 24.04 (noble), `minbase`, qcow2, built from the
 `us.archive.ubuntu.com` mirror with the `main restricted universe multiverse`
 components. They share this package set: `ca-certificates chrony curl dbus
 ethtool init initramfs-tools iproute2 iputils-ping isc-dhcp-client less
@@ -117,6 +117,32 @@ write.
   `b2972583b3d59525131c44e8b3214f55b74750fe` (server 1.3.6); plugins
   `modbus-serial@8.0.19`, `node-opcua@2.149.0`, `node-snap7@1.0.9`, and
   `node-bacnet@0.2.4`. Other npm dependencies follow FUXA's lockfile.
+
+## cm-svc
+
+- **Purpose:** the small network services: ot-svc (NTP, DNS, syslog relay, and
+  the OPS BBMD), bas-bbmd (the BAS BBMD), and inet-nuke (the internet-side
+  name and time service, and the protonuke server).
+- **Base:** the shared noble `minbase` image plus `dnsmasq`, `rsyslog`,
+  `python3`, and `python3-venv`, 8 GB disk.
+- **Contents:**
+  - A venv at `/opt/bacnet` with BACpypes3 and `pydantic`, which the
+    `cm-bbmd.service` unit runs. The unit, `cm_bbmd.py`, and its settings are
+    injected by the topology (`phenix-injects/bbmd/`), and the startup hook
+    enables the unit on ot-svc and bas-bbmd only.
+  - `dnsmasq` is installed and disabled. The injected plant zone
+    (`phenix-injects/ot-svc/`, `phenix-injects/inet-nuke/`) and the startup
+    hooks configure and start it.
+  - `/etc/cherrymountain` and `/usr/local/lib/cm-bbmd`.
+  - No Wazuh agent yet (TODO: add it with the cm-wazuh manager version).
+- **Build:** the commands above, with `<name>` set to `cm-svc`. inet-nuke
+  uses a copy with protonuke added: copy `cm-svc.qc2` to
+  `cm-svc-protonuke.qc2`, then run `phenix image inject-miniexe
+  /usr/local/bin/protonuke <dir>/cm-svc-protonuke.qc2`.
+- **Used by:** `ot-svc`, `bas-bbmd`, and (as `cm-svc-protonuke.qc2`)
+  `inet-nuke`.
+- **Pinned versions:** `bacpypes3==0.0.110` (the version of the BBMD spike),
+  `pydantic>=2.7` (a floor, not a pin).
 
 ## Apps
 

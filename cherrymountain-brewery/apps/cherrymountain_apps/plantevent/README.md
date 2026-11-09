@@ -30,9 +30,13 @@ plantevent_<stage>.json     each event posted: time, request body, and the API's
 - sim-ctl runs the event API on port 8080 (`cherrymountain_sim`), and its
   topology node carries the autotunnel entry `"18080:8080"`
   (`phenix/startup-autotunnel`).
-- **The host port is not 18080.** minimega listens on a random port in
+- **The host port is not 18080.** 18080 is the forward's source port: the
+  port `phenix-tunneler` opens on the machine of a user who runs it
+  (`phenix-tunneler serve http://<phenix host>:3000`), from where the traffic
+  goes through `phenix ui` to the tunnel. On the phenix host itself, minimega
+  listens on a random port in
   50000-64999 and picks a new one whenever the tunnel is re-created. The
-  component looks the port up at the start of every stage with
+  component runs on the phenix host, so it looks the port up at the start of every stage with
   `cc tunnel list sim-ctl` (the row with `dst 127.0.0.1` and `dst port 8080`)
   and connects to it on the minimega host that serves sim-ctl (127.0.0.1 on the
   headnode). It never assumes a fixed port.
@@ -62,7 +66,7 @@ Events (`event` selects the kind):
 
 | `event` | Fields | Meaning |
 |---|---|---|
-| `start-batch` | `recipe` (default `fire-of-the-phenix`), `batch_id` | Start a brew |
+| `start-batch` | `recipe` (default `fire-of-the-phenix`), `brews` (1-4, default 2: brews queued back to back), `batch_id` | Start a brew |
 | `utility-breaker` | `action`: `open` or `close` (required) | Utility outage and restoration |
 | `genset-exercise` | `action`: `start` (default) or `stop`, `load_bank_kw` (0-100, default 0), `duration` (default 1800 s, the NFPA 110 monthly minimum) | Exercise the standby genset under load; the run goes into the genset test log and the 40 CFR 60.4211(f) test hours |
 | `chiller-fault` | `compressor` (1 or 2, default 1), `action`: `fail` (default) or `clear` | Glycol chiller compressor fault |

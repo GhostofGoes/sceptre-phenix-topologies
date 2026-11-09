@@ -2,12 +2,14 @@
 
 phenix's ``phenix/startup-autotunnel`` annotation forwards guest ports of
 sim-ctl to the host through ``cc tunnel``. The annotation's first number is
-only the forward's label: minimega listens on a random host port in
-50000-64999, which changes whenever the tunnel is re-created (the
-``autotunnel`` spike, DESIGN.md 15.3). So every caller looks the port up per
-run with ``cc tunnel list <vm>`` (the row with ``dst 127.0.0.1`` and ``dst
-port <guest port>``, column ``src port``) and connects to the minimega host
-that serves the VM: 127.0.0.1 when that is the headnode, as phenix itself does.
+the forward's source port: the port ``phenix-tunneler`` opens on the machine
+of a user who runs it, not a port on the phenix host. There minimega listens
+on a random port in 50000-64999, which changes whenever the tunnel is
+re-created (the ``autotunnel`` spike, DESIGN.md 15.3). This code runs on the
+phenix host, so every caller looks the port up per run with ``cc tunnel list
+<vm>`` (the row with ``dst 127.0.0.1`` and ``dst port <guest port>``, column
+``src port``) and connects to the minimega host that serves the VM: 127.0.0.1
+when that is the headnode, as phenix itself does.
 
 phenix's ``GET /experiments/{exp}/vms/{vm}/forwards`` cannot replace the
 lookup: its ``srcPort`` is the label, and the host port is not in the JSON

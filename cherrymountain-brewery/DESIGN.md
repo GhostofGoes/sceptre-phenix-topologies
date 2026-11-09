@@ -2300,6 +2300,11 @@ the EWS's own logs, not from request contents ([§14](#14-blue-team-monitoring))
   tried to reach something other than dmz-jump on TCP 443. The `input` and
   `output` hooks stay open, because the host answers the handshake on UDP 51820
   and talks to ot-svc and Wazuh.
+- **Peer events.** `cm_wg_watch.py` on dmz-vpn polls `wg show wg0 dump` and
+  appends `peer_up`, `peer_down`, and `peer_roam` lines to
+  `/var/log/cm-wireguard/events.log`, which the Wazuh agent reads (rules
+  100201 to 100205). `/etc/logrotate.d/cm-wireguard` rotates it weekly or at
+  10 MB, and `cm_wg_watch.py --once` prints each peer's state for debugging.
 - **Tunnel routing.** dmz-vpn forwards decapsulated traffic onto the DMZ
   with the tunnel source address. dmz-jump routes 10.99.0.0/24 back via
   dmz-vpn, so Guacamole and Wazuh see the vendor's real tunnel address. No

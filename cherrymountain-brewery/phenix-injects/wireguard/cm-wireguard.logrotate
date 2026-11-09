@@ -1,0 +1,14 @@
+# /etc/logrotate.d/cm-wireguard on dmz-vpn (DESIGN.md 13): the WireGuard peer
+# events that cm_wg_watch.py appends and the Wazuh agent reads. The watcher opens
+# the file for each line, so a plain rename-and-create rotation loses nothing,
+# and Wazuh's logcollector follows the new file.
+/var/log/cm-wireguard/events.log {
+    weekly
+    maxsize 10M
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 root root
+}

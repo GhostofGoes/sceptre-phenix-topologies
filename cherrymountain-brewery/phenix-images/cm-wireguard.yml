@@ -39,6 +39,7 @@ spec:
   - less
   - linux-headers-generic
   - linux-image-generic
+  - logrotate
   - ncat
   - net-tools
   - netbase

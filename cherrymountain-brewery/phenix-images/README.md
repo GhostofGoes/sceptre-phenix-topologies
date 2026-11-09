@@ -213,6 +213,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   `python3`, `python3-pydantic`, and `rsyslog`, 8 GB disk. It is the focal
   `renewables/wind/plant/phenix-images/wireguard.yml` rebased on noble.
 - **Contents:**
+  - `logrotate`, for the WireGuard peer event log (`/etc/logrotate.d/cm-wireguard`
+    is injected by the topology).
   - `wireguard-tools` (the kernel has WireGuard).
   - `net.ipv4.ip_forward=1` in `/etc/sysctl.d`, because dmz-vpn forwards the
     decapsulated tunnel traffic onto the DMZ without NAT.

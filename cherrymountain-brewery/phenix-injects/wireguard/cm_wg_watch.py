@@ -170,13 +170,39 @@ def emit(log: Path, hostname: str, event: Event, when: float) -> None:
     print(line, flush=True)
 
 
+def snapshot(peers: list[Peer], now: float, down_after: int) -> list[str]:
+    """One line per peer for --once: its id, endpoint, handshake age, and whether
+    the watcher would count it up (a handshake within ``down_after`` seconds)."""
+    lines: list[str] = []
+    for peer in peers:
+        age: str = f"{int(now - peer.latest_handshake)}s" if peer.latest_handshake else "never"
+        up: bool = bool(peer.latest_handshake) and now - peer.latest_handshake <= down_after
+        lines.append(
+            f"peer={peer.ident} endpoint={peer.endpoint or 'none'} handshake_age={age} state={'up' if up else 'down'}"
+        )
+    return lines
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--interface", default="wg0")
     parser.add_argument("--log", type=Path, default=Path("/var/log/cm-wireguard/events.log"))
     parser.add_argument("--down-after", type=int, default=DOWN_AFTER)
     parser.add_argument("--interval", type=float, default=POLL_INTERVAL)
+    parser.add_argument(
+        "--once", action="store_true", help="print each peer's state once and exit (debugging; logs nothing)"
+    )
     args: argparse.Namespace = parser.parse_args(argv)
+
+    if args.once:
+        try:
+            peers_now: list[Peer] = parse_dump(read_dump(args.interface))
+        except (subprocess.SubprocessError, OSError, ValueError) as error:
+            print(f"cm-wg-watch: cannot read {args.interface}: {type(error).__name__}", file=sys.stderr)
+            return 1
+        for line in snapshot(peers_now, time.time(), args.down_after) or [f"interface={args.interface} peers=0"]:
+            print(line)
+        return 0
 
     hostname: str = socket.gethostname()
     watcher: Watcher = Watcher(args.interface, args.down_after)

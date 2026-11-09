@@ -131,3 +131,24 @@ def test_the_forward_policy_pins_the_vendor_to_dmz_jump(repo: Path) -> None:
     assert f"ip saddr {tunnel_address} ip daddr {jump} tcp dport 443 accept" in policy
     assert server["metadata"]["peers"][0]["allowed_ips"] == f"{tunnel_address}/32"
     assert "policy drop" in policy
+
+
+def test_once_prints_each_peer(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """--once is a debugging snapshot: one line per peer, nothing logged."""
+    now = 1_700_000_000
+    dump = "priv\tpub\t51820\toff\n" + "\t".join(["AAAAAAAAkey", "(none)", "198.51.100.10:51820", "10.99.0.2/32", str(now - 30), "1", "2", "25"]) + "\n" + "\t".join(["BBBBBBBBkey", "(none)", "(none)", "10.99.0.3/32", "0", "0", "0", "off"]) + "\n"
+    monkeypatch.setattr(cm_wg_watch, "read_dump", lambda interface: dump)
+    monkeypatch.setattr(cm_wg_watch.time, "time", lambda: float(now))
+    assert cm_wg_watch.main(["--once"]) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out == [
+        "peer=AAAAAAAA endpoint=198.51.100.10:51820 handshake_age=30s state=up",
+        "peer=BBBBBBBB endpoint=none handshake_age=never state=down",
+    ]
+
+
+def test_the_event_log_is_rotated(repo: Path) -> None:
+    text = (repo / "phenix-injects" / "wireguard" / "cm-wireguard.logrotate").read_text()
+    assert "/var/log/cm-wireguard/events.log {" in text and "maxsize" in text
+    topology = (repo / "phenix-configs" / "topology-remote-access.yml").read_text()
+    assert "dst: /etc/logrotate.d/cm-wireguard" in topology

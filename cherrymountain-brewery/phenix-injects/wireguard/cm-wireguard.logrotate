@@ -1,7 +1,10 @@
 # /etc/logrotate.d/cm-wireguard on dmz-vpn (DESIGN.md 13): the WireGuard peer
 # events that cm_wg_watch.py appends and the Wazuh agent reads. The watcher opens
-# the file for each line, so a plain rename-and-create rotation loses nothing,
-# and Wazuh's logcollector follows the new file.
+# the file for each line, so a plain rename rotation loses nothing, and Wazuh's
+# logcollector follows the new file. nocreate: the watcher runs as a dynamic user
+# (cm-wg-watch.service, DynamicUser=yes) and makes the next file itself; a file
+# that logrotate created as root, the watcher could not append to, and Wazuh would
+# see no WireGuard event after the first rotation.
 /var/log/cm-wireguard/events.log {
     weekly
     maxsize 10M
@@ -10,5 +13,5 @@
     delaycompress
     missingok
     notifempty
-    create 0640 root root
+    nocreate
 }

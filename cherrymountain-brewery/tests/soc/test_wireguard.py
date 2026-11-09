@@ -163,5 +163,9 @@ def test_once_prints_each_peer(monkeypatch: pytest.MonkeyPatch, capsys: pytest.C
 def test_the_event_log_is_rotated(repo: Path) -> None:
     text = (repo / "phenix-injects" / "wireguard" / "cm-wireguard.logrotate").read_text()
     assert "/var/log/cm-wireguard/events.log {" in text and "maxsize" in text
+    # The watcher is a dynamic user: a file that logrotate creates as root, it cannot append to.
+    unit = (repo / "phenix-injects" / "wireguard" / "cm-wg-watch.service").read_text()
+    assert "DynamicUser=yes" in unit
+    assert re.search(r"^\s*nocreate$", text, re.MULTILINE) and not re.search(r"^\s*create\b", text, re.MULTILINE)
     topology = (repo / "phenix-configs" / "topology-remote-access.yml").read_text()
     assert "dst: /etc/logrotate.d/cm-wireguard" in topology

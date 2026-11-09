@@ -141,6 +141,13 @@ def test_sim_federate_env(run_app: RunApp) -> None:
     assert "CM_HELICS_CONFIG=/etc/cherrymountain/helics.json" in env
 
 
+def test_ci_has_no_ground_truth(run_app: RunApp) -> None:
+    """The ci variant has no ground-truth OpenSearch (DESIGN.md 11)."""
+    app = run_app("pre-start")
+    for host in ("sim-ctl", "sim-process"):
+        assert "/etc/cherrymountain/ground-truth.env" not in injections(app, host)
+
+
 def test_mgmt_policy_hub_and_member(run_app: RunApp) -> None:
     app = run_app("pre-start")
     hub = Path(

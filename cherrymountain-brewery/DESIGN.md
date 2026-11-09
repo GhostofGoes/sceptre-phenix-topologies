@@ -2586,8 +2586,8 @@ magnitudes. Validate the configs offline with `phenix-scorch-validate`.
 |---|---|---|---|
 | `cm-openplc` | noble minbase | OpenPLC v4.3.2 runtime (native install), boot provisioning script, build toolchain (the runtime compiles uploads on the VM) | Program ZIPs are built outside the image by `plc/<plc>/build_zip.sh`. No v3 image: the spike chose v4 |
 | `cm-fuxa` | noble minbase | Node 22, FUXA pinned by commit (there is no 1.3.6 tag), drivers installed into `server/_pkg/runtime` at build (`modbus-serial@8.0.19`, `node-opcua@2.149.0`, `node-snap7@1.0.9`, `node-bacnet@0.2.4`), systemd unit, project-import script | Used by scada-fuxa and bas-fuxa |
-| `cm-otsim` | noble minbase | Pinned `patsec/ot-sim` built from source (pyzmq built from source, C++ DNP3 module, the E2E DNP3 master), BACnet module, HELICS, systemd unit, nftables MGMT policy | Replaces the prebuilt focal image, which has no service unit. One image for every ot-sim node, DNP3 included ([§12.3](#123-ot-sim-field-devices)) |
-| `cm-sim` | noble minbase | HELICS 3.6 + pyhelics, OpenDSSDirect.py (`~=0.8.4`), SimPy, cherrymountain_sim, chrony, nftables. The models do not use CoolProp or pvlib, and SciPy, PackMLpy, and `ht` are needed only by the tests ([§9.6](#96-implementation-status-and-validation)). On sim-ctl: single-node OpenSearch (ground truth) and Grafana | |
+| `cm-otsim` | noble minbase | Pinned `patsec/ot-sim` built from source (pyzmq built from source, C++ DNP3 module, the E2E DNP3 master, the Go toolchain download), HELICS, systemd unit; the app renders the nftables MGMT policy. The BACnet module is a placeholder until the ot-sim module exists ([§16](#16-new-and-extended-software)) | Replaces the prebuilt focal image, which has no service unit. One image for every ot-sim node, DNP3 included ([§12.3](#123-ot-sim-field-devices)) |
+| `cm-sim` | noble minbase, 16G | HELICS 3.6 + pyhelics, OpenDSSDirect.py (`~=0.8.4`), SimPy, cherrymountain_sim, chrony, nftables. The models do not use CoolProp or pvlib, and SciPy, PackMLpy, and `ht` are needed only by the tests ([§9.6](#96-implementation-status-and-validation)). Single-node OpenSearch 3.9 (ground truth, security plugin off) and Grafana 12 with the OpenSearch data source plugin, started only where the app injects `ground-truth.env` (sim-ctl in full and lite) | Built |
 | `cm-historian` | noble minbase | InfluxDB 2 OSS, Telegraf, Grafana, Mosquitto, Wazuh agent | |
 | `cm-desktop` | noble mingui | Chromium (kiosk), WireGuard tools, protonuke, Wazuh agent | Role injections: HMI, corp, vendor, analyst |
 | `cm-ews` | noble mingui | OpenPLC Editor, Wireshark, mbpoll, BAC0, pymodbus, asyncua CLI tools, xrdp, Wazuh agent | |
@@ -2613,9 +2613,10 @@ magnitudes. Validate the configs offline with `phenix-scorch-validate`.
   phenix `Image` schema, run shellcheck on every `INSTALL_*` script, and run
   `systemd-analyze` on the units those scripts write. The `POSTBUILD_*` scripts
   are phenix defaults and are skipped.
-- **Pins still open.** `CM_REF` (the `cherrymountain-sim` source in `cm-sim`)
-  and `OTSIM_REF` (ot-sim in `cm-otsim`) are still `main`. Replace them with
-  commits: the spike and the integration test used ot-sim commit `9dc33047`.
+- **Pins.** `OTSIM_REF` in `cm-otsim` is ot-sim commit `9dc33047`, the one the
+  spike and the integration test built. `CM_REF` in `cm-sim` names a commit of
+  this repository; it moves forward with any `sim/` change the image must
+  carry, so it always trails the commit that changes `sim/` by one.
 
 ### 15.8 Builder package
 
@@ -2858,7 +2859,7 @@ silently.
 | Serial: the socat link has no baud pacing, so loss and timing say nothing about a real RS-485 bus. phenix PR #130's QEMU-socket serial app fails when a VM is redeployed: the host `socat` exits and is never restarted, a restarted VM did not register its C2 client (not isolated), and `socat -d -d -d -d` logs 4.4 MB per 5 minutes | Stay on the current serial app, which carried ot-sim's own Modbus RTU master and server with 0 errors in about 680 polls (no ot-sim change). PR #130 needs a reconnect fix first; the spike's patch is `spikes/serial/pr130-serial.patch`. Modbus TCP remains the fallback |
 | The phenix `vrouter` app cannot log, set a syslog target, write IKEv2 `key-exchange`, or give each router its own NTP source; it filters only the `forward` chain; it takes only integer netem loss | `cm-vyos-config.sh` does the first four after boot, isp-rtr boots first, the 1 % loss replaces 0.1 %, and `netcheck` reports router-local traffic as unfiltered. Upstream follow-ups in §16. The script is unverified on VyOS until a VM run |
 | Hardened systemd units are verified offline only | First VM run checks `DynamicUser` with `StateDirectory`, read-only paths, and `MemoryDenyWriteExecute` at runtime (§17) |
-| `CM_REF` and `OTSIM_REF` in the image configs are still `main` | Pin both to commits (ot-sim `9dc33047` was tested) before the first release |
+| `CM_REF` in `cm-sim` trails `sim/` changes (`OTSIM_REF` is pinned to the tested ot-sim `9dc33047`) | Move `CM_REF` forward with every `sim/` change the image must carry |
 | OpenDSS islanding needs a source in each island | Genset modeled as a switched Vsource; pandapower fallback |
 
 ## 20. Licensing

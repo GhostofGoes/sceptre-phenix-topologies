@@ -623,13 +623,37 @@ def helics_annotation(ctx: Context, count: int) -> list[dict[str, Any]]:
 def render_sim(
     ctx: Context, hostname: str, md: SimCtlHost | SimFederateHost
 ) -> list[Injection]:
+    out: Path = ctx.host_dir(hostname) / "sim"
+    truth: list[Injection] = []
+    if isinstance(md, SimCtlHost):
+        helics: Any = ctx.sources.generated_json("helics.json")
+        gt: Any = helics.get("ground_truth") if isinstance(helics, dict) else None
+        if gt:
+            # cm-sim starts OpenSearch and Grafana only where this file exists
+            # (DESIGN.md 9.5, 15.7); the ci variant has no ground truth.
+            truth.append(
+                Injection(
+                    src=write(
+                        out / "ground-truth.env",
+                        env_file(
+                            {
+                                "CM_TRUTH_INDEX_BASE": str(gt.get("index_base", "")),
+                                "GF_SECURITY_ADMIN_PASSWORD": ctx.creds.grafana_password.get_secret_value(),
+                            }
+                        ),
+                        private=True,
+                    ),
+                    dst=f"{CONF_DIR}/ground-truth.env",
+                    description="ground truth on sim-ctl: OpenSearch and Grafana",
+                )
+            )
     federates: list[str] = ctx.federates_of(hostname, md)
     if not federates:
-        return []
-    out: Path = ctx.host_dir(hostname) / "sim"
+        return truth
     broker: str = ctx.ip(ctx.app.sim_ctl.hostname, ctx.app.mgmt.interface)
     level: str = md.log_level if isinstance(md, SimFederateHost) else "INFO"
     injects: list[Injection] = [
+        *truth,
         Injection(
             src=copy(ctx.sources.generated_file("helics.json"), out / "helics.json"),
             dst=f"{CONF_DIR}/helics.json",

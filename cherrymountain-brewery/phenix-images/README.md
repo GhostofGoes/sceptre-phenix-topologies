@@ -39,42 +39,81 @@ write.
 
 ## cm-sim
 
-- **Purpose:** the HELICS broker and the process federates.
-- **Base:** the shared noble `minbase` image, 8 GB disk.
+- **Purpose:** the simulation nodes: the HELICS root broker, the
+  cherrymountain_sim federates, and on sim-ctl the ground truth (DESIGN.md
+  9.5).
+- **Base:** the shared noble `minbase` image plus `gnupg`, `jq`, `python3`,
+  `python3-venv`, and `python3-pip`, 16 GB disk (the OpenSearch package alone
+  is about 1 GB).
 - **Contents:**
-  - `python3`, `python3-venv`, and `python3-pip`.
   - A venv at `/opt/cherrymountain/venv` with the `helics` wheel (which also
     ships `helics_broker`, `helics_app`, `helics_player`, and
-    `helics_recorder`, linked into `/usr/local/bin`), `pydantic`, and the
-    `cherrymountain-sim` package from this repository's `sim/` directory.
-  - `/etc/cherrymountain`. The `cm-cellar.service` unit and its config are
-    injected by the topology, not baked in.
-- **Build:** the commands above, with `<name>` set to `cm-sim`.
-- **Used by:** `sim-ctl` (HELICS root broker) and `sim-process` (cellar
-  federate) in the ci variant.
-- **Pinned versions:** `helics==3.6.1`, `pydantic>=2.7` (a floor, not a pin).
-  `cherrymountain-sim` comes from the `main` branch archive (`CM_REF=main`).
-  That is not pinned yet: replace it with a release tag or commit.
+    `helics_recorder`, linked into `/usr/local/bin`) and the
+    `cherrymountain-sim[power]` package from this repository's `sim/`
+    directory at `CM_REF`, which brings `pydantic`, SimPy, and
+    OpenDSSDirect.py. SciPy, PackMLpy, and `ht` are test-only and not
+    installed.
+  - OpenSearch (single node, `0.0.0.0:9200`, security plugin disabled, 2 GB
+    heap) for the ground-truth indexes `cherrymountain-truth-*`.
+  - Grafana with the `grafana-opensearch-datasource` plugin, a provisioned
+    "Ground truth" data source on `127.0.0.1:9200`, and a starter dashboard.
+    It serves an anonymous read-only view on port 3000; the admin password
+    comes from `ground-truth.env`.
+  - Both units carry a drop-in with
+    `ConditionPathExists=/etc/cherrymountain/ground-truth.env`. The
+    `cherrymountain` app injects that file on sim-ctl in the full and lite
+    variants only, so the other sim nodes and the ci variant never start them.
+  - `/etc/cherrymountain`. The federate unit (`cm-federate@.service`), its
+    settings, and `helics.json` are injected by the `cherrymountain` app (the
+    ci topology still injects `cm-cellar.service` statically).
+- **Build:** the commands above, with `<name>` set to `cm-sim`. The build
+  downloads from PyPI, GitHub, `artifacts.opensearch.org`, `apt.grafana.com`,
+  and `grafana.com`.
+- **Used by:** `sim-ctl`, `sim-process`, `sim-power`, and `sim-building` (ci:
+  `sim-ctl` and `sim-process`).
+- **Pinned versions:** `helics==3.6.1`; `CM_REF` (a commit of this repository;
+  move it forward with any `sim/` change the image must carry);
+  `opensearch=3.9.0` (apt, held; repository key
+  `A8B2D9E04CD51FEF6AA2DB53BA81D99981191457`); Grafana `12.*` (repository key
+  `B53AE77BADB630A683046005963FA27710458545`); `grafana-opensearch-datasource`
+  `2.34.4`. OpenDSSDirect.py follows the package's `~=0.8.4`.
+- **Ground-truth timestamps** are the federate clock (sim time, which starts on
+  a summer weekday at 04:30 by default), not wall time. The dashboard opens on
+  a two-day window around now; pick the sim date when the clock was moved.
 
 ## cm-otsim
 
 - **Purpose:** ot-sim field devices: the remote I/O servers (`fd-server`) that
-  speak Modbus to the PLCs and HELICS to the simulation.
+  speak Modbus to the PLCs and HELICS to the simulation, the DER gateway
+  (`rtu-der`, a FEP with a DNP3 outstation), and the utility DNP3 master.
 - **Base:** the shared noble `minbase` image plus the ot-sim build
-  dependencies, 10 GB disk. The build dependencies are purged at the end.
+  dependencies, 10 GB disk. The build dependencies are purged at the end;
+  `libczmq4`, `libzmq5`, and `libxml2` stay.
 - **Contents:**
-  - ot-sim (the C message bus, the Go cpu, modbus, and logic modules, and the
-    Python modules) built from source and installed under `/usr/local`.
-  - A venv at `/opt/otsim-venv` with `helics` and the ot-sim Python package.
+  - ot-sim built from source and installed under `/usr/local`, with the recipe
+    the `otsim-noble` spike verified (DESIGN.md 12.3): the C message bus, the
+    C++ DNP3 module (opendnp3 3.1.2) and the end-to-end DNP3 master
+    `ot-sim-e2e-dnp3-master` (`-DBUILD_E2E=ON`; pydnp3 does not build on
+    noble), the Go cpu, modbus, logic, and other modules, and the Python
+    modules.
+  - A venv at `/opt/otsim-venv` with `helics` and the ot-sim Python package,
+    with `pyzmq` rebuilt from source (`--no-binary`) against the system
+    libzmq. The build fails if the wheel's bundled libzmq survives.
   - `ot-sim.service`, which starts the CPU module after `phenix.service` and
     stays inactive until the ot-sim app injects `/etc/ot-sim/config.xml`.
-- **Build:** the commands above, with `<name>` set to `cm-otsim`.
-- **Used by:** `rio-cellar` in the ci variant.
-- **Pinned versions:** `helics==3.6.1`. ot-sim is built from `OTSIM_REF=main`,
-  which is not pinned yet. The integration test image
-  (`tests/integration/Dockerfile.otsim`) builds commit
-  `9dc33047ff9fb474e61c8931c7dac7bf98df38ef`; use it here once the noble spike
-  confirms it.
+  - **No BACnet module yet.** The ot-sim BACnet module (DESIGN.md 16) is still
+    to be written; the bas-* devices get it in a later image.
+- **Build:** the commands above, with `<name>` set to `cm-otsim`. The build
+  needs network access: it clones ot-sim, downloads the opendnp3 archives, and
+  lets the Go command download the newer toolchain a module needs
+  (`GOTOOLCHAIN=auto`). An offline build must pre-seed that toolchain and the
+  module cache.
+- **Used by:** every ot-sim node: the rio-* devices, glycol-chiller, the
+  FIELD-PWR devices, rtu-der, utility-derms, and the bas-* devices (ci:
+  `rio-cellar`).
+- **Pinned versions:** `OTSIM_REF=9dc33047ff9fb474e61c8931c7dac7bf98df38ef`
+  (the commit the spike and the integration test built), `helics==3.6.1`, and
+  the `pyzmq` version ot-sim's package resolves.
 
 ## cm-openplc
 

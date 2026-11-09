@@ -131,6 +131,23 @@ def test_full_renderers_with_existing_inputs(ctx: Context) -> None:
     }
 
 
+def test_full_sim_ctl_gets_the_ground_truth_marker(ctx: Context) -> None:
+    """cm-sim starts OpenSearch and Grafana only where ground-truth.env exists:
+    sim-ctl in full, never a federate node."""
+    sim_ctl = ctx.hosts["sim-ctl"]
+    assert isinstance(sim_ctl, SimCtlHost)
+    injects = {i.dst: i for i in render.render_sim(ctx, "sim-ctl", sim_ctl)}
+    marker = injects["/etc/cherrymountain/ground-truth.env"]
+    assert Path(marker.src).stat().st_mode & 0o077 == 0
+    values = env(Path(marker.src))
+    assert values["CM_TRUTH_INDEX_BASE"] == "cherrymountain-truth"
+    assert values["GF_SECURITY_ADMIN_PASSWORD"]
+    proc = ctx.hosts["sim-process"]
+    assert isinstance(proc, SimFederateHost)
+    dsts = {i.dst for i in render.render_sim(ctx, "sim-process", proc)}
+    assert "/etc/cherrymountain/ground-truth.env" not in dsts
+
+
 def test_full_mgmt_policy_covers_every_mgmt_member(ctx: Context) -> None:
     members = render.mgmt_members(ctx)
     plan = render.render_mgmt(ctx)

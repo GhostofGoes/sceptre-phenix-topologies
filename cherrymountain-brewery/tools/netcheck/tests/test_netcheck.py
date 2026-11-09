@@ -222,6 +222,81 @@ def test_lite_checks_run_without_the_soc(tree: Path) -> None:
     assert run(tree, "lite") == []
 
 
+def test_a_router_script_run_from_slash_config_is_caught(tree: Path) -> None:
+    """VyOS bind-mounts /opt/vyatta/etc/config over /config, so a file injected
+    into boot/vyos/rw/config/ is not under /config in the running router."""
+
+    def old_path(doc: dict[str, Any]) -> None:
+        node_of(doc, "fw-ot")["commands"] = [
+            "exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh"
+        ]
+
+    edit_yaml(tree / "phenix-configs" / "topology-core.yml", old_path)
+    found: list[str] = run(tree)
+    assert has(found, "router-commands", "fw-ot", "/config/scripts/custom/")
+    assert has(found, "router-commands", "fw-ot", "no commands entry")
+
+
+def test_a_router_script_that_nothing_runs_is_caught(tree: Path) -> None:
+    def drop(doc: dict[str, Any]) -> None:
+        del node_of(doc, "isp-rtr")["commands"]
+
+    edit_yaml(tree / "phenix-configs" / "topology-core.yml", drop)
+    assert has(run(tree), "router-commands", "isp-rtr", "no commands entry")
+
+
+@pytest.mark.parametrize(("variant", "workflow"), [("lite", "phenix-lite.yml"), ("ci", "phenix-ci.yml")])
+def test_a_bridge_shared_with_another_variant_is_caught(tree: Path, variant: str, workflow: str) -> None:
+    """phenix refuses a second stored experiment on a non-default bridge."""
+
+    def shared(doc: dict[str, Any]) -> None:
+        doc["spec"]["defaultBridge"] = plan.BRIDGES["full"]
+
+    edit_yaml(tree / workflow, shared)
+    found: list[str] = errors(checks.run_ci(tree)) if variant == "ci" else run(tree, variant)
+    assert has(found, f"{variant}/workflow", "defaultBridge must be", plan.BRIDGES[variant])
+
+
+def test_bridges_are_distinct_and_fit_an_interface_name() -> None:
+    assert len(set(plan.BRIDGES.values())) == len(plan.BRIDGES)
+    assert all(len(b) <= plan.MAX_BRIDGE_NAME for b in plan.BRIDGES.values())
+
+
+def scorch_component(doc: dict[str, Any], name: str) -> dict[str, Any]:
+    app: dict[str, Any] = next(a for a in doc["spec"]["apps"] if a["name"] == "scorch")
+    return next(c for c in app["metadata"]["components"] if c["name"] == name)
+
+
+def test_a_soh_component_without_network_config_is_caught(tree: Path) -> None:
+    """phenix runs the reachability tests only when network-config is checked."""
+
+    def drop(doc: dict[str, Any]) -> None:
+        scorch_component(doc, "health-check")["metadata"]["checks"].remove("network-config")
+
+    edit_yaml(scenario(tree), drop)
+    assert has(run(tree), "scorch", "health-check", "network-config")
+
+
+def test_an_unknown_scorch_component_is_caught(tree: Path) -> None:
+    def rename(doc: dict[str, Any]) -> None:
+        scorch_component(doc, "settle")["name"] = "settle-down"
+
+    edit_yaml(scenario(tree), rename)
+    assert has(run(tree), "scorch", "vendor-maintenance", "no component named settle")
+
+
+def test_a_capture_that_never_stops_is_caught(tree: Path) -> None:
+    def never_stop(doc: dict[str, Any]) -> None:
+        app: dict[str, Any] = next(a for a in doc["spec"]["apps"] if a["name"] == "scorch")
+        run_md: dict[str, Any] = next(
+            r for r in app["metadata"]["runs"] if r["name"] == "utility-outage"
+        )
+        run_md["stop"].remove("pcap-utility-outage")
+
+    edit_yaml(scenario(tree), never_stop)
+    assert has(run(tree), "scorch", "pcap-utility-outage", "never stops")
+
+
 def test_wazuh_agents_are_the_hosts_with_a_conduit_to_the_manager(repo: Path) -> None:
     """plant.yaml's Wazuh agent allowlist (which alone gets the enrollment
     password) is exactly the hosts that reach wazuh on TCP 1514 through a

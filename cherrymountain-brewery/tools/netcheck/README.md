@@ -24,14 +24,16 @@ fail; `-q` hides them.
 |---|---|
 | `plan` | A node, image, resource, zone label, interface, address, mask, gateway, DNS server, route, autotunnel entry, or `delay.c2` that differs from `netcheck/plan.py`, which holds sections 10.2 and 11 as data; wrong totals (43 VMs, 67 vCPUs, 113 GB full; 37, 48, 71 lite); an `ntp-server` label |
 | `addresses` | A duplicate address, an address outside its VLAN, a gateway that is not a router on the VLAN, overlapping VLAN subnets |
-| `workflow` | VLAN IDs that differ from the plan, an unpinned VLAN, a scenario annotation that omits a topology that borrows from it |
+| `workflow` | VLAN IDs that differ from the plan, an unpinned VLAN, a scenario annotation that omits a topology that borrows from it, a `defaultBridge` that is not the variant's own (phenix lets only one stored experiment use a bridge other than `phenix`, so a shared bridge stops the second variant from being created), a `mirrorBridge` that is not the workflow's bridge |
 | `boot-order` | A `delay.c2` on a node that boots later, or on an unknown node |
 | `injects` | An injection whose source is not under `phenix-injects/` |
+| `router-commands` | A script injected into a VyOS router that no `commands` entry runs, or that one runs from `/config/scripts/custom/` instead of `/usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/` (VyOS bind-mounts `/opt/vyatta/etc/config` over `/config`, which hides the injected file), or that is not injected `0755` |
 | `rulesets` | A firewall interface without a ruleset, a ruleset that is not default drop, does not start with the stateful accept, or has a rule that is not a TCP or UDP accept with a destination address and port |
 | `flows` | Each of the ~150 conduit flows must be delivered, its reply must come back through the same firewalls, it must cross exactly the firewalls its row names, and each of those must accept it with an explicit rule. Every other host pair and service (about 80,000) must be dropped or have no route |
 | `rule-coverage` | An explicit rule that no conduit flow uses |
 | `nat-ipsec` | The SNAT, DNAT, IPsec sites and tunnels, and netem interfaces that differ from the plan |
 | `soh` | A conduit probe missing from `testCustomReachability`, a TCP conduit without a probe, a probe the rules block, a blocked-path test that is missing, does not connect to its target, does not expect `DROPPED`, or tests a path that is open |
+| `scorch` | A run that names a component the scenario does not define, a `pcap` or `qos` component a run starts and never stops, a `soh` component with an unknown check, or one that asks for reachability tests without `network-config` (phenix skips them then) |
 | `apps` | App order (ot-sim, cherrymountain, helics), unknown hosts or interfaces in generated blocks, an incomplete `ntp` host list, routers that are not `client: ntp` |
 | `app-hosts` | The WireGuard addresses, ports, and AllowedIPs, and the mirror VLANs |
 | `services` | `plant.hosts` entries that differ from the plan |

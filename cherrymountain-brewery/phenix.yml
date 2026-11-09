@@ -10,7 +10,10 @@
 # in the configs use /phenix/injects/${BRANCH_NAME}/.
 #
 # VLAN IDs are the DESIGN.md 10.2 plan. MIRROR (118) is the mirror app's
-# mirrorVLAN, and the non-default bridge enables phenix's Netflow tab.
+# mirrorVLAN, and the non-default bridge enables phenix's Netflow tab. Each
+# variant has its own bridge (cherrymtn, cherrymtn-lite, cherrymtn-ci): phenix
+# lets only one stored experiment, running or not, use a bridge other than
+# `phenix`. The variants pin the same VLAN IDs, so only one can run at a time.
 apiVersion: phenix.sandia.gov/v0
 kind: Workflow
 metadata: {}

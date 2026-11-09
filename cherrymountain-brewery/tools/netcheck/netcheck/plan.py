@@ -86,6 +86,26 @@ VLANS: dict[str, Vlan] = {
 #: The WireGuard tunnel network (not a VLAN).
 WG_SUBNET: str = "10.99.0.0/24"
 
+#: The workflow's defaultBridge per variant. phenix lets only one stored
+#: experiment use a bridge other than `phenix`, running or not (the experiment
+#: config hook in api/experiment and CheckBridge in api/workflow), so each
+#: variant needs its own or the second variant cannot be created while the
+#: first one exists. A non-default bridge also enables the Netflow tab.
+BRIDGES: dict[str, str] = {
+    "full": "cherrymtn",
+    "lite": "cherrymtn-lite",
+    "ci": "cherrymtn-ci",
+}
+#: phenix's MaxBridgeNameLength: a bridge is a Linux interface.
+MAX_BRIDGE_NAME: int = 15
+
+#: Where VyOS mounts the image's persistence partition (partition 3, the one a
+#: topology injects into). An injection to /boot/vyos/rw/... is this path plus
+#: the destination in the running router; /config there is a bind mount of
+#: /opt/vyatta/etc/config, which hides what was injected below rw/config.
+VYOS_PERSISTENCE: str = "/usr/lib/live/mount/persistence"
+VYOS_INJECT_ROOT: str = "/boot/vyos/rw/"
+
 #: Zones that are routed by a firewall (not FIELD islands, MGMT, or MIRROR).
 OT_ROUTED_VLANS: tuple[str, ...] = ("OPS", "HMI", "CTRL", "DERLINK", "BAS", "SOC")
 

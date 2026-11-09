@@ -194,9 +194,11 @@ spec:
           testScript: |
             test -f /var/lib/cm-openplc/provisioned && echo provisioned
           testStdout: provisioned
+        # SoH tests for a substring, and "inactive" contains "active", so the
+        # state is printed with a prefix that only the wanted state matches.
         scada-fuxa:
         - name: fuxa-project-imported
           executor: bash
           testScript: |
-            systemctl is-active cm-fuxa-provision.service
-          testStdout: active
+            echo "state=$(systemctl is-active cm-fuxa-provision.service)"
+          testStdout: state=active

@@ -5,6 +5,12 @@
 #     -b cherrymountain-ci -c phenix-ci.yml /phenix/topologies/cherrymountain-brewery
 # VLAN IDs match the full plant (DESIGN.md 10.2). The slice needs only CTRL,
 # FIELD-CEL (plc-cellar to rio-cellar), and MGMT (HELICS and NTP).
+#
+# Each variant has its own bridge: phenix lets only one stored experiment,
+# running or not, use a bridge other than `phenix`, so with a shared bridge the
+# lite or full apply would fail while this experiment exists. The three variants
+# still pin the same VLAN IDs, so only one of them can run at a time: stop this
+# one before you start another.
 apiVersion: phenix.sandia.gov/v0
 kind: Workflow
 metadata: {}
@@ -22,4 +28,4 @@ spec:
   vlanRange:
     min: 100
     max: 199
-  defaultBridge: cherrymtn
+  defaultBridge: cherrymtn-ci

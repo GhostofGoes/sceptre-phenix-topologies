@@ -5,6 +5,12 @@
 #     -b cherrymountain-lite -c phenix-lite.yml /phenix/topologies/cherrymountain-brewery
 # The VLAN IDs are the full plant's (DESIGN.md 10.2). SOC stays pinned because
 # fw-ot keeps its SOC interface; MIRROR is not used.
+#
+# Each variant has its own bridge: phenix lets only one stored experiment,
+# running or not, use a bridge other than `phenix`, so with a shared bridge
+# this apply would fail while another variant's experiment exists. The three
+# variants still pin the same VLAN IDs, so only one of them can run at a time:
+# stop the other one first.
 apiVersion: phenix.sandia.gov/v0
 kind: Workflow
 metadata: {}
@@ -36,4 +42,4 @@ spec:
   vlanRange:
     min: 100
     max: 199
-  defaultBridge: cherrymtn
+  defaultBridge: cherrymtn-lite

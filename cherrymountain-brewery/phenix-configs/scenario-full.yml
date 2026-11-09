@@ -3720,10 +3720,14 @@ spec:
   - name: scorch
     metadata:
       components:
+      # phenix resolves the probes' `host|interface` targets while it checks the
+      # network configuration and skips the reachability tests without it, so a
+      # soh component that asks for custom-reachability also lists network-config.
       - name: health-check
         type: soh
         metadata:
           checks:
+          - network-config
           - custom-reachability
           - services
           - processes
@@ -3850,6 +3854,7 @@ spec:
         type: soh
         metadata:
           checks:
+          - network-config
           - custom-reachability
           - custom
           failOnError: false

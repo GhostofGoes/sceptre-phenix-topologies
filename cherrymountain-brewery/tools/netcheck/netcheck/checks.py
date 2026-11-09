@@ -191,12 +191,20 @@ def check_workflow(v: m.Variant, root: Path) -> list[Finding]:
     ids: list[int] = list(wf.vlans.values())
     if len(ids) != len(set(ids)):
         out.append(_err(c, "two VLANs share an id"))
-    if v.name != "ci" and (wf.default_bridge or "") != "cherrymtn":
+    bridge: str = plan.BRIDGES[v.name]
+    if (wf.default_bridge or "") != bridge:
         out.append(
             _err(
-                c, "defaultBridge must be cherrymtn (a non-default bridge enables the Netflow tab)"
+                c,
+                f"defaultBridge must be {bridge}: phenix lets one stored experiment use a "
+                "non-default bridge, so each variant has its own",
             )
         )
+    if len(bridge) > plan.MAX_BRIDGE_NAME:
+        out.append(_err(c, f"defaultBridge {bridge} is longer than {plan.MAX_BRIDGE_NAME}"))
+    mirror: m.App | None = v.scenario.app("mirror") if v.scenario else None
+    if mirror is not None and mirror.metadata.get("mirrorBridge", bridge) != bridge:
+        out.append(_err(c, f"the mirror app's mirrorBridge must be the workflow's bridge, {bridge}"))
     if v.scenario is not None:
         topos: list[str] = [
             t.strip() for t in v.scenario.annotations.get("topology", "").split(",")
@@ -255,6 +263,50 @@ def check_injects(v: m.Variant, root: Path) -> list[Finding]:
                         f"{n.hostname}: missing phenix-injects/{inj.src.removeprefix(prefix)}",
                     )
                 )
+    return out
+
+
+def check_router_commands(v: m.Variant) -> list[Finding]:
+    """A script injected into a VyOS router is run from where VyOS has it.
+
+    The injection goes to boot/vyos/rw/ of the persistence partition, which
+    the router mounts at ``plan.VYOS_PERSISTENCE``. The image's boot hook runs
+    only the ``*.script`` files there, so any other script needs a ``commands``
+    entry (a ``cc exec``) with that full path; /config in the running router
+    is a bind mount that does not show the injected file.
+    """
+    out: list[Finding] = []
+    c: str = f"{v.name}/router-commands"
+    for n in _routers(v):
+        for cmd in n.commands:
+            if "/config/scripts/custom/" in cmd and plan.VYOS_PERSISTENCE not in cmd:
+                out.append(
+                    _err(
+                        c,
+                        f"{n.hostname}: command {cmd!r} names /config/scripts/custom/, which is "
+                        f"not where VyOS has an injected file; use {plan.VYOS_PERSISTENCE}"
+                        f"{plan.VYOS_INJECT_ROOT}config/scripts/custom/",
+                    )
+                )
+        for inj in n.injections:
+            if inj.dst.endswith(".script"):
+                continue  # the boot hook runs it
+            if not inj.dst.startswith(plan.VYOS_INJECT_ROOT):
+                out.append(
+                    _err(
+                        c,
+                        f"{n.hostname}: injection to {inj.dst} is outside {plan.VYOS_INJECT_ROOT}, "
+                        "which a VyOS router does not show",
+                    )
+                )
+                continue
+            want: str = f"exec sg vyattacfg -c {plan.VYOS_PERSISTENCE}{inj.dst}"
+            if want not in n.commands:
+                out.append(
+                    _err(c, f"{n.hostname}: no commands entry {want!r} runs the injected {inj.dst}")
+                )
+            if inj.permissions != "0755":
+                out.append(_err(c, f"{n.hostname}: {inj.dst} must be injected 0755 to run"))
     return out
 
 
@@ -666,6 +718,72 @@ def check_soh(v: m.Variant) -> list[Finding]:
     return out
 
 
+#: The check names phenix's soh app knows (runChecks in api/soh/app.go).
+SOH_CHECKS: frozenset[str] = frozenset(
+    {
+        "network-config",
+        "reachability",
+        "custom-reachability",
+        "files",
+        "files-absent",
+        "services",
+        "processes",
+        "ports",
+        "docker",
+        "custom",
+        "cpu-load",
+        "flows",
+    }
+)
+#: SCORCH components that start something in `start` and end it in `stop`.
+START_STOP_TYPES: frozenset[str] = frozenset({"pcap", "qos"})
+
+
+def check_scorch(v: m.Variant) -> list[Finding]:
+    """The scorch app's runs name real components, and its soh components can
+    run what they ask for."""
+    out: list[Finding] = []
+    c: str = f"{v.name}/scorch"
+    app: m.App | None = v.scenario.app("scorch") if v.scenario else None
+    if app is None:
+        return out
+    components: dict[str, dict[str, Any]] = {
+        comp["name"]: comp for comp in app.metadata.get("components") or []
+    }
+    for name, comp in components.items():
+        if comp.get("type") != "soh":
+            continue
+        asked: list[str] = (comp.get("metadata") or {}).get("checks") or []
+        for check in asked:
+            if check not in SOH_CHECKS:
+                out.append(_err(c, f"soh component {name}: unknown check {check!r}"))
+        # phenix resolves the probes' `host|interface` targets while it checks the
+        # network configuration, and runs the reachability tests only with it.
+        if {"reachability", "custom-reachability"} & set(asked) and "network-config" not in asked:
+            out.append(
+                _err(
+                    c,
+                    f"soh component {name}: phenix skips reachability tests unless "
+                    "network-config is among the checks",
+                )
+            )
+    for run in app.metadata.get("runs") or []:
+        stages: dict[str, list[str]] = {
+            stage: run.get(stage) or [] for stage in ("configure", "start", "stop", "cleanup")
+        }
+        for stage, names in stages.items():
+            for name in names:
+                if name not in components:
+                    out.append(_err(c, f"run {run['name']} {stage}: no component named {name}"))
+        for name in stages["start"]:
+            kind: str = str(components.get(name, {}).get("type"))
+            if kind in START_STOP_TYPES and name not in stages["stop"]:
+                out.append(
+                    _err(c, f"run {run['name']}: {kind} component {name} starts but never stops")
+                )
+    return out
+
+
 def _check_negative_tests(v: m.Variant, c: str, md: dict[str, Any], net: Net) -> list[Finding]:
     out: list[Finding] = []
     custom: dict[str, list[dict[str, Any]]] = md.get("hostCustomTests") or {}
@@ -933,12 +1051,14 @@ def run_variant(variant: str, root: Path = m.ROOT) -> list[Finding]:
     out += check_workflow(v, root)
     out += check_boot_order(v)
     out += check_injects(v, root)
+    out += check_router_commands(v)
     out += check_rulesets(v)
     out += check_nat_ipsec(v)
     out += check_flows(v)
     if variant == "full":
         out += check_rule_coverage(v)
     out += check_soh(v)
+    out += check_scorch(v)
     out += check_apps(v)
     out += check_app_hosts(v)
     out += check_services(root, v)

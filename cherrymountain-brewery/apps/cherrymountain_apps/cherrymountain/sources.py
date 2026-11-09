@@ -40,6 +40,20 @@ class SourceError(ValueError):
     relative to the topology directory, never its contents."""
 
 
+@contextlib.contextmanager
+def no_bytecode() -> Iterator[None]:
+    """Import without writing ``__pycache__``. The app runs as root in the
+    phenix container and imports plantgen and the FUXA builder from the
+    topology directory, which is the user's Git checkout on the host: bytecode
+    written there would be root-owned files the user cannot remove."""
+    before: bool = sys.dont_write_bytecode
+    sys.dont_write_bytecode = True
+    try:
+        yield
+    finally:
+        sys.dont_write_bytecode = before
+
+
 class DebugLeaf(BaseModel):
     """One leaf of a strucpp ``debug_map.json``: where a variable lives in the
     runtime's debug arrays (``arr``/``elem`` in the OPC UA plugin config)."""
@@ -122,7 +136,8 @@ class Sources:
         if added:
             sys.path.insert(0, path)
         try:
-            yield
+            with no_bytecode():
+                yield
         finally:
             if added:
                 sys.path.remove(path)
@@ -264,8 +279,10 @@ class Sources:
         # annotations through sys.modules.
         sys.modules[spec.name] = builder
         try:
-            spec.loader.exec_module(builder)
-            text: str = builder.render(builder.build_project(self.variant, host))
+            # The builder imports plantgen from tools/plantgen by itself.
+            with no_bytecode():
+                spec.loader.exec_module(builder)
+                text: str = builder.render(builder.build_project(self.variant, host))
         except SystemExit as ex:
             # The builder reports a bad input with SystemExit(message).
             raise SourceError(

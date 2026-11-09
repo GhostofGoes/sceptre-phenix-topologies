@@ -49,6 +49,31 @@ def test_configure_over_stdin_and_stdout(experiment: dict[str, Any]) -> None:
     )
 
 
+def test_the_app_leaves_no_bytecode_in_the_topology_directory(
+    experiment: dict[str, Any], tmp_path: Path
+) -> None:
+    """The app runs as root in the phenix container and imports plantgen and
+    the FUXA builder from the topology directory, the user's checkout on the
+    host: a ``__pycache__`` there would be root-owned files in it."""
+    import shutil
+
+    from cherrymountain_apps.cherrymountain.tests.conftest import ROOT
+
+    source: Path = tmp_path / "cherrymountain-brewery"
+    for part in ("plant", "tools/plantgen", "fuxa", "phenix-injects"):
+        shutil.copytree(
+            ROOT / part,
+            source / part,
+            ignore=shutil.ignore_patterns("__pycache__", "tests"),
+        )
+    app_block(experiment)["metadata"]["sourceDir"] = str(source)
+    for stage in ("configure", "pre-start"):
+        proc = run_cli(stage, experiment)
+        assert proc.returncode == 0, proc.stderr
+        experiment = json.loads(proc.stdout)
+    assert not sorted(source.rglob("__pycache__"))
+
+
 def test_failure_exits_nonzero_and_logs_json(experiment: dict[str, Any]) -> None:
     app_block(experiment)["hosts"][3]["metadata"]["type"] = "plc"
     proc = run_cli("configure", experiment)

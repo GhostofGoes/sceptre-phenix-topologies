@@ -1,0 +1,75 @@
+{
+  "label": "normal",
+  "nproc": 4,
+  "cases": [
+    {
+      "name": "webgl-720",
+      "page": "/",
+      "viewport": "1280x720",
+      "headless": true,
+      "browser_version": "153.0.8010.12",
+      "flags": [
+        "/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell.real",
+        "--enable-unsafe-swiftshader",
+        "--headless"
+      ],
+      "first_frame_ms": 565,
+      "ready": true,
+      "error": null,
+      "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "webgl": 2,
+      "console_errors": [],
+      "seconds": 4,
+      "fps": 35.4,
+      "browser_cpu_cores": 3.23,
+      "browser_rss_mib": 523,
+      "frames_received_per_s": 1.24,
+      "transport_age_ms_p50": 20,
+      "transport_age_ms_p95": 24,
+      "state_age_ms_p50": 26,
+      "state_age_ms_p95": 523,
+      "bridge_cpu_pct": 0.5,
+      "ws_kbit_per_s": 18.4,
+      "frame_bytes": 1862,
+      "jpeg_q80_frame_bytes": 78526,
+      "gltf": {
+        "groups": 8,
+        "meshes_exported": 82,
+        "meshes_loaded": 80,
+        "glb_bytes": 628908,
+        "export_ms": 139,
+        "load_ms": 18
+      }
+    },
+    {
+      "name": "svg-720",
+      "page": "/svg.html",
+      "viewport": "1280x720",
+      "headless": true,
+      "browser_version": "153.0.8010.12",
+      "flags": [
+        "/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell.real",
+        "--enable-unsafe-swiftshader",
+        "--headless"
+      ],
+      "first_frame_ms": 55,
+      "ready": true,
+      "renderer": "SVG",
+      "webgl": 0,
+      "console_errors": [],
+      "seconds": 4,
+      "fps": 1,
+      "browser_cpu_cores": 0.01,
+      "browser_rss_mib": 409,
+      "frames_received_per_s": 1,
+      "transport_age_ms_p50": 0,
+      "transport_age_ms_p95": 1,
+      "state_age_ms_p50": 14,
+      "state_age_ms_p95": 19,
+      "bridge_cpu_pct": 0.7,
+      "ws_kbit_per_s": 14.9,
+      "frame_bytes": 1858,
+      "jpeg_q80_frame_bytes": 49087
+    }
+  ]
+}

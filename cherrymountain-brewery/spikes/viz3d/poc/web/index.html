@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cellar 3D view</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {"imports": {"three": "./vendor/three.module.js", "three/addons/": "./vendor/addons/"}}
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <header class="panel title">
+    <h1>CherryMountain cellar: 3D view</h1>
+    <p>Ground truth from the simulation. White-cell display, not part of the plant.</p>
+    <p class="clock"><span id="simtime">waiting for data</span></p>
+  </header>
+  <section class="panel compare" aria-label="Truth compared with the operator view">
+    <table>
+      <thead><tr><th></th><th>Simulation truth</th><th>HMI shows</th></tr></thead>
+      <tbody id="compare"></tbody>
+    </table>
+    <p id="events" class="events"></p>
+  </section>
+  <footer class="panel status"><span id="status">connecting</span></footer>
+  <div id="stale" class="stale" hidden>NO DATA: view is stale</div>
+  <div id="nogl" class="stale" hidden>WebGL is not available in this browser</div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

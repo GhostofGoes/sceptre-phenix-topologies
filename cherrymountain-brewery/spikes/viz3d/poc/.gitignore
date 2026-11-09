@@ -1,0 +1,5 @@
+# Downloaded by fetch_vendor.sh (three.js, MIT), pinned by SHA-256.
+web/vendor/
+# Playwright output that is not evidence.
+node_modules/
+__pycache__/

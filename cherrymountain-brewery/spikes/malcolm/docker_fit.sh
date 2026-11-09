@@ -151,12 +151,14 @@ printf '\nPYTHONUNBUFFERED=1\n' >>config/process.env
 touch zeek/custom/__load__.zeek
 # Rules that fire on the test pcap, next to the default rules: a protocol-independent one (any client to
 # TCP/502, so an alert must appear if Suricata read the pcap and the alerts are shipped), and the Modbus
-# write and DNP3 direct operate that the pcap contains.
+# write and DNP3 direct operate that the pcap contains. The sids must not be 1000001 and up: Malcolm's
+# default OT rules (ELITEWOLF) use them, and Suricata rejects a custom rule with the same sid as
+# "Duplicate signature" (run 2 of the Malcolm job lost all three rules that way).
 mkdir -p suricata/rules suricata-logs
 cat >suricata/rules/cherrymountain.rules <<'RULES'
-alert tcp any any -> any 502 (msg:"CM spike TCP to Modbus port"; flow:to_server; sid:1000003; rev:1;)
-alert modbus any any -> any any (msg:"CM spike Modbus write single register"; modbus: function 6; sid:1000001; rev:1;)
-alert dnp3 any any -> any any (msg:"CM spike DNP3 direct operate"; dnp3_func:direct_operate; sid:1000002; rev:1;)
+alert tcp any any -> any 502 (msg:"CM spike TCP to Modbus port"; flow:to_server; sid:9000103; rev:1;)
+alert modbus any any -> any any (msg:"CM spike Modbus write single register"; modbus: function 6; sid:9000101; rev:1;)
+alert dnp3 any any -> any any (msg:"CM spike DNP3 direct operate"; dnp3_func:direct_operate; sid:9000102; rev:1;)
 RULES
 grep -h "JAVA_OPTS" config/opensearch.env config/logstash.env >"$EV/heap-settings.txt"
 

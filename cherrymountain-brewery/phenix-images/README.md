@@ -84,8 +84,9 @@ write.
 ## cm-otsim
 
 - **Purpose:** ot-sim field devices: the remote I/O servers (`fd-server`) that
-  speak Modbus to the PLCs and HELICS to the simulation, the DER gateway
-  (`rtu-der`, a FEP with a DNP3 outstation), and the utility DNP3 master.
+  speak Modbus to the PLCs and HELICS to the simulation, the BAS controllers
+  that speak BACnet/IP, the DER gateway (`rtu-der`, a FEP with a DNP3
+  outstation), and the utility DNP3 master.
 - **Base:** the shared noble `minbase` image plus the ot-sim build
   dependencies, 10 GB disk. The build dependencies are purged at the end;
   `libczmq4`, `libzmq5`, and `libxml2` stay.
@@ -101,8 +102,12 @@ write.
     libzmq. The build fails if the wheel's bundled libzmq survives.
   - `ot-sim.service`, which starts the CPU module after `phenix.service` and
     stays inactive until the ot-sim app injects `/etc/ot-sim/config.xml`.
-  - **No BACnet module yet.** The ot-sim BACnet module (DESIGN.md 16) is still
-    to be written; the bas-* devices get it in a later image.
+  - BACpypes3 and pydantic in the same venv, for the BACnet module of the
+    bas-* devices. The module itself is not in the image: the `cherrymountain`
+    app injects `phenix-injects/otsim/cm_otsim_bacnet.py` to
+    `/usr/local/lib/cm-otsim/` and adds it to the device's `config.xml`
+    ([phenix-injects/otsim/README.md](../phenix-injects/otsim/README.md)), so
+    a change to the module needs no image rebuild.
 - **Build:** the commands above, with `<name>` set to `cm-otsim`. The build
   needs network access: it clones ot-sim, downloads the opendnp3 archives, and
   lets the Go command download the newer toolchain a module needs
@@ -112,8 +117,9 @@ write.
   FIELD-PWR devices, rtu-der, utility-derms, and the bas-* devices (ci:
   `rio-cellar`).
 - **Pinned versions:** `OTSIM_REF=9dc33047ff9fb474e61c8931c7dac7bf98df38ef`
-  (the commit the spike and the integration test built), `helics==3.6.1`, and
-  the `pyzmq` version ot-sim's package resolves.
+  (the commit the spike and the integration test built), `helics==3.6.1`, the
+  `pyzmq` version ot-sim's package resolves, `bacpypes3==0.0.110`, and
+  `pydantic==2.11.7`.
 
 ## cm-openplc
 

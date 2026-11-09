@@ -44,8 +44,9 @@ from cherrymountain_apps.cherrymountain.render import (
     Injection,
     helics_annotation,
     rekey_wireguard,
+    bacnet_hosts,
     render_all,
-    render_telnet,
+    render_otsim,
 )
 from cherrymountain_apps.cherrymountain.sources import SourceError, Sources
 from cherrymountain_apps.cherrymountain.validation import (
@@ -143,6 +144,11 @@ class CherryMountain(AppBase):
                     self.add_annotation(
                         name, "helics/federate", helics_annotation(ctx, count)
                     )
+        # The ot-sim app annotates the devices it gives an I/O module. It gives
+        # a BACnet controller none, so this app adds the module (pre-start) and
+        # the annotation the helics app counts the federates from.
+        for name in bacnet_hosts(ctx):
+            self.add_annotation(name, "helics/federate", helics_annotation(ctx, 1))
 
     def _rekey_wireguard(self, ctx: Context) -> None:
         """Per-experiment keys for the scenario's ``wireguard`` app (DESIGN.md
@@ -224,19 +230,20 @@ class CherryMountain(AppBase):
                 self.put_inject(hostname, inject)
                 count += 1
         # The ot-sim app ran before this one, so its config.xml injections exist:
-        # add the telnet module where a device asks for it.
+        # add the modules it cannot render (telnet; I/O and BACnet for a BAS
+        # controller) where a device needs them.
         for hostname, md in self.hosts_md.items():
-            if isinstance(md, RioHost) and md.telnet is not None:
+            if isinstance(md, RioHost):
                 node: Any = self.require_node(hostname)
                 rendered: str | None = next(
                     (str(i.get("src")) for i in node.get("injections") or [] if i.get("dst") == OTSIM_CONFIG),
                     None,
                 )
                 try:
-                    telnet: list[Injection] = render_telnet(ctx, hostname, md, rendered)
+                    extras: list[Injection] = render_otsim(ctx, hostname, md, rendered)
                 except SourceError as ex:
                     raise AppError(f"{self.name} app: {hostname}: {ex}") from None
-                for inject in telnet:
+                for inject in extras:
                     self.put_inject(hostname, inject)
                     plan.setdefault(hostname, []).append(inject)
                     count += 1

@@ -1233,6 +1233,172 @@ def render_telnet(ctx: Context, hostname: str, md: RioHost, rendered: str | None
     ]
 
 
+# ---------------------------------------------------------------- ot-sim BACnet
+
+#: Where the BACnet module goes on a device (phenix-injects/otsim/).
+BACNET_MODULE: Final[str] = "/usr/local/lib/cm-otsim/cm_otsim_bacnet.py"
+#: The CPU module's command for it: the venv that holds ot-sim's Python
+#: modules also holds BACpypes3 (cm-otsim image).
+BACNET_COMMAND: Final[str] = f"/opt/otsim-venv/bin/python -I {BACNET_MODULE} {{{{config_file}}}}"
+#: Process patterns of the two modules this app adds, for SoH.
+BACNET_PROCESSES: Final[tuple[str, ...]] = ("ot-sim-io-module", "cm_otsim_bacnet.py")
+
+
+def bacnet_endpoint(ctx: Context, hostname: str) -> Any:
+    """plant.yaml's BACnet endpoint of ``hostname``, or None. The phenix
+    ot-sim app knows only Modbus and DNP3, so for such a host it renders
+    neither an I/O module nor a protocol module (DESIGN.md 12.3)."""
+    planned: Any = ctx.sources.plant().hosts.get(hostname)
+    return getattr(planned, "bacnet", None)
+
+
+def bacnet_hosts(ctx: Context) -> list[str]:
+    """The ot-sim devices of this app that serve BACnet."""
+    return [
+        name
+        for name, md in ctx.hosts.items()
+        if isinstance(md, RioHost) and bacnet_endpoint(ctx, name) is not None
+    ]
+
+
+def io_element(ctx: Context, hostname: str) -> ET.Element:
+    """The ``io`` element (ot-sim's HELICS I/O module) of a BACnet device,
+    built from plantgen's helics.json the way the phenix ot-sim app builds it
+    for a Modbus device: a subscription per point, and the writable tags under
+    the federate endpoint that receives their updates."""
+    helics: Any = ctx.sources.generated_json("helics.json")
+    spec: Any = (helics.get("io_federates") or {}).get(hostname)
+    if spec is None:
+        raise SourceError(f"helics.json has no I/O federate for {hostname}")
+    types: dict[str, str] = {
+        pub["key"]: pub["type"]
+        for fed in helics["federates"].values()
+        for pub in fed["publications"]
+    }
+    io: ET.Element = ET.Element("io", {"name": "helics-federate"})
+    ET.SubElement(io, "broker-endpoint").text = ctx.ip(ctx.app.sim_ctl.hostname, ctx.app.mgmt.interface)
+    ET.SubElement(io, "federate-name").text = str(spec["federate_name"])
+    ET.SubElement(io, "federate-log-level").text = "SUMMARY"
+    ET.SubElement(io, "end-time").text = str(int(helics["end_time_s"]))
+    for key in spec["subscriptions"]:
+        if key not in types:
+            raise SourceError(f"helics.json: no federate publishes {key}, which {hostname} subscribes to")
+        if types[key] not in ("double", "boolean"):
+            raise SourceError(f"helics.json: {key} is a {types[key]}, which ot-sim's I/O module cannot read")
+        sub: ET.Element = ET.SubElement(io, "subscription")
+        ET.SubElement(sub, "key").text = key
+        ET.SubElement(sub, "tag").text = key.split("/", 1)[1]
+        ET.SubElement(sub, "type").text = types[key]
+    endpoints: dict[str, ET.Element] = {}
+    for send in spec.get("sends") or []:
+        name: str = str(send["endpoint"])
+        if name not in endpoints:
+            endpoints[name] = ET.SubElement(io, "endpoint", {"name": name})
+        ET.SubElement(endpoints[name], "tag", {"key": str(send["tag"])}).text = str(send["tag"])
+    return io
+
+
+def bacnet_element(ctx: Context, hostname: str) -> ET.Element:
+    """The ``bacnet`` element the BACnet module reads, from plantgen's
+    ``bacnet/<host>.json`` object table. The address is the node's own, with
+    its prefix, so the module also hears the subnet's directed broadcast."""
+    doc: Any = ctx.sources.generated_json("bacnet", f"{hostname}.json")
+    endpoint: Any = doc["endpoint"]
+    address: str = ctx.ip(hostname, str(endpoint["interface"]))
+    if address != endpoint["address"]:
+        raise SourceError(
+            f"{hostname}: the topology gives {endpoint['interface']} the address {address}, "
+            f"plant.yaml gives {endpoint['address']}"
+        )
+    root: ET.Element = ET.Element("bacnet", {"name": "bacnet-server", "mode": "server"})
+    ET.SubElement(root, "endpoint").text = f"{address}/{endpoint['prefix']}:{endpoint['port']}"
+    ET.SubElement(
+        root, "device", {"instance": str(doc["device"]["instance"]), "name": str(doc["device"]["name"])}
+    )
+    for obj in doc["objects"]:
+        attrs: dict[str, str] = {
+            "type": str(obj["object_type"]),
+            "instance": str(obj["instance"]),
+            "name": str(obj["name"]),
+            "tag": str(obj["tag"]),
+        }
+        if obj.get("description"):
+            attrs["description"] = str(obj["description"])
+        if obj.get("units"):
+            attrs["units"] = str(obj["units"])
+        if obj.get("commandable"):
+            attrs["commandable"] = "true"
+        limits: Any = obj.get("range")
+        # A multi-state object's range is its state numbers, not a limit.
+        if limits and not obj.get("states"):
+            attrs["min"], attrs["max"] = (f"{float(v):g}" for v in limits)
+        element: ET.Element = ET.SubElement(root, "object", attrs)
+        for state in obj.get("states") or []:
+            ET.SubElement(element, "state").text = str(state)
+    return root
+
+
+def add_bacnet(config_xml: str, io: ET.Element, bacnet: ET.Element) -> str:
+    """config.xml with the HELICS I/O module and the BACnet module: a CPU
+    ``module`` entry and an element for each. Idempotent."""
+    root: ET.Element = ET.fromstring(config_xml)
+    cpu: ET.Element | None = root.find("cpu")
+    if cpu is None:
+        raise SourceError("the ot-sim config has no <cpu> element")
+    modules: set[str | None] = {m.get("name") for m in cpu.findall("module")}
+    if root.find("io") is None:
+        root.append(io)
+    if "i/o" not in modules:
+        ET.SubElement(cpu, "module", {"name": "i/o"}).text = "ot-sim-io-module {{config_file}}"
+    if root.find("bacnet") is None:
+        root.append(bacnet)
+    if "bacnet" not in modules:
+        ET.SubElement(cpu, "module", {"name": "bacnet"}).text = BACNET_COMMAND
+    ET.indent(root)
+    return ET.tostring(root, encoding="unicode") + "\n"
+
+
+def render_otsim(ctx: Context, hostname: str, md: RioHost, rendered: str | None) -> list[Injection]:
+    """What this app adds to an ot-sim device that the ot-sim app cannot
+    render: the telnet module, and for a BACnet controller the I/O and BACnet
+    modules. ``rendered`` is the config.xml the ot-sim app injected."""
+    bacnet: bool = bacnet_endpoint(ctx, hostname) is not None
+    if md.telnet is None and not bacnet:
+        return []
+    if rendered is None:
+        if bacnet:
+            raise SourceError(
+                "the ot-sim app injected no config.xml for this BACnet device; "
+                "the scenario must list ot-sim before cherrymountain"
+            )
+        logger.warning(f"{hostname}: no ot-sim config.xml injection; the telnet module was not added")
+        return []
+    text: str = Path(rendered).read_text(encoding="utf-8")
+    added: list[str] = []
+    injects: list[Injection] = []
+    if md.telnet is not None:
+        endpoint: str = f"{ctx.ip(hostname, md.telnet.interface)}:{md.telnet.port}"
+        text = add_telnet(text, endpoint, md.telnet.banner)
+        added.append("telnet")
+    if bacnet:
+        text = add_bacnet(text, io_element(ctx, hostname), bacnet_element(ctx, hostname))
+        added.append("I/O and BACnet")
+        injects += _shared(
+            ctx,
+            hostname,
+            "otsim",
+            [("cm_otsim_bacnet.py", BACNET_MODULE, "0644", "ot-sim BACnet module")],
+        )
+    return [
+        Injection(
+            src=write(ctx.host_dir(hostname) / "ot-sim-config.xml", text),
+            dst=OTSIM_CONFIG,
+            description=f"ot-sim config with the {' and '.join(added)} modules",
+        ),
+        *injects,
+    ]
+
+
 # ---------------------------------------------------------------- vendor persona
 
 #: Where the topology injects the vendor persona (dmz-jump, ews, vendor-ws).

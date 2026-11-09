@@ -66,10 +66,11 @@ spec:
       # from source against the system libzmq. The ci integration image
       # (tests/integration/Dockerfile.otsim) builds the same commit without DNP3.
       #
-      # BACnet: the ot-sim BACnet module (DESIGN.md 16) is not written yet, so this
-      # image has none. The bas-* devices need it; it is planned for a fork of
-      # patsec/ot-sim and waits for the owner's go-ahead. Until it lands, those
-      # devices run without a BACnet server (TODO(bacnet-module)).
+      # BACnet: ot-sim has no BACnet module, so the bas-* devices run the one in
+      # phenix-injects/otsim/ (DESIGN.md 16). The cherrymountain app injects the
+      # module file and its config; the image only carries what it imports,
+      # BACpypes3 and pydantic, in the venv of ot-sim's Python modules (the same
+      # pins as the BBMD service in cm-svc).
       export DEBIAN_FRONTEND=noninteractive
       OTSIM_REF=9dc33047ff9fb474e61c8931c7dac7bf98df38ef
       HELICS_VERSION=3.6.1
@@ -100,6 +101,7 @@ spec:
       python3 -m venv /opt/otsim-venv
       /opt/otsim-venv/bin/pip install --no-cache-dir "helics==${HELICS_VERSION}"
       /opt/otsim-venv/bin/pip install --no-cache-dir src/python
+      /opt/otsim-venv/bin/pip install --no-cache-dir "bacpypes3==0.0.110" "pydantic==2.11.7"
       # The pyzmq wheel bundles its own libzmq, which collides with the one HELICS
       # bundles: the io module segfaults, the CPU module restarts it, and the retry
       # fails with "duplicate federate name detected". Rebuild the same pyzmq
@@ -112,6 +114,8 @@ spec:
         exit 1
       fi
       /opt/otsim-venv/bin/python -c 'import helics, zmq; print(helics.helicsGetVersion(), zmq.zmq_version())'
+      # The BACnet module's own imports, isolated the way the CPU module runs it.
+      /opt/otsim-venv/bin/python -I -c 'import bacpypes3, pydantic, zmq.asyncio; print(bacpypes3.__version__)'
       for exe in ot-sim-cpu-module ot-sim-message-bus ot-sim-modbus-module ot-sim-dnp3-module \
         ot-sim-e2e-dnp3-master ot-sim-logic-module; do
         command -v "$exe" >/dev/null || { echo "missing $exe" >&2; exit 1; }
@@ -141,8 +145,9 @@ spec:
       Restart=always
       RestartSec=5
       # Hardening. The modules bind Modbus on port 502, so CAP_NET_BIND_SERVICE
-      # stays. ProtectSystem=full keeps /usr, /boot, and /etc read-only but leaves
-      # /var and /opt writable for the Python and Go modules.
+      # stays (BACnet's UDP 47808 needs none). ProtectSystem=full keeps /usr,
+      # /boot, and /etc read-only but leaves /var and /opt writable for the
+      # Python and Go modules.
       NoNewPrivileges=yes
       PrivateTmp=yes
       ProtectSystem=full
@@ -165,7 +170,7 @@ spec:
       [Install]
       WantedBy=multi-user.target
       EOF
-      mkdir -p /etc/systemd/system/multi-user.target.wants /etc/ot-sim
+      mkdir -p /etc/systemd/system/multi-user.target.wants /etc/ot-sim /usr/local/lib/cm-otsim
       ln -sf /etc/systemd/system/ot-sim.service /etc/systemd/system/multi-user.target.wants/ot-sim.service
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------

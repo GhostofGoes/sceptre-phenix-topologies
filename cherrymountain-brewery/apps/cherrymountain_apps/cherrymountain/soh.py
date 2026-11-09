@@ -26,7 +26,13 @@ from cherrymountain_apps.cherrymountain.metadata import (
     SimFederateHost,
     WazuhManagerHost,
 )
-from cherrymountain_apps.cherrymountain.render import Context, fuxa_daq, northbound
+from cherrymountain_apps.cherrymountain.render import (
+    BACNET_PROCESSES,
+    Context,
+    bacnet_endpoint,
+    fuxa_daq,
+    northbound,
+)
 
 #: Modbus function codes a read test may use (coils, discrete, holding, input).
 READ_FCS: Final[frozenset[int]] = frozenset({1, 2, 3, 4})
@@ -164,6 +170,12 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
         if modbus is not None:
             processes.append("ot-sim-modbus-module")
             listeners.append(f":{modbus.port}")
+        bacnet: Any = bacnet_endpoint(ctx, hostname)
+        if bacnet is not None:
+            # The two modules this app adds; the listener is UDP, which the
+            # soh app's port test covers (ss -lntu).
+            processes += BACNET_PROCESSES
+            listeners.append(f":{bacnet.port}")
     elif isinstance(md, SimCtlHost):
         processes.append("helics_broker")
         listeners.append(f":{ctx.app.mgmt.broker_ports[0]}")
@@ -229,13 +241,13 @@ def expected_federate_hosts(ctx: Context) -> int:
     federate in the full and lite variants): that federate reaches the broker
     on sim-ctl's own MGMT address, which is one more distinct peer. Leaving
     sim-ctl out made the check pass with one remote federate missing."""
-    plant: Any = ctx.sources.plant()
     sims: set[str] = {
         name
         for name, md in ctx.hosts.items()
         if isinstance(md, (SimCtlHost, SimFederateHost)) and ctx.federates_of(name, md)
     }
-    rios: set[str] = {
-        name for name, h in plant.hosts.items() if h.role == "rio" and h.federate
-    }
-    return len(sims | rios)
+    # Every device with an I/O module: the remote I/O, the field devices, and
+    # the BAS controllers. Counting only the remote I/O let the check pass
+    # with the other eight devices missing.
+    devices: set[str] = set(ctx.sources.generated_json("helics.json").get("io_federates") or {})
+    return len(sims | devices)

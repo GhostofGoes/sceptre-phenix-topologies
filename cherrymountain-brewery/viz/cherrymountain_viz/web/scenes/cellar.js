@@ -258,7 +258,9 @@ export function buildCellar() {
     if (d.psv_lifted && !op) lines.push([`PSV LIFTED ${fmt(d.psv_gps, 1)} g/s`, '#ff6b5e']);
     else if (d.leak_gps > 0 && !op) lines.push([`CO₂ LEAK ${fmt(d.leak_gps)} g/s`, '#ff6b5e']);
     else if (d.spund_gps > 0.05 && !op) lines.push([`spunding ${fmt(d.spund_gps, 2)} g/s`, '#9fd3ff']);
-    else if (d.kind === 'bbt' && frame && frame.cellar.air.relay_ok === false) lines.push(['carbonation inhibited', '#ffb020']);
+    else if (d.kind === 'bbt' && frame && (op ? op.relay_ok : frame.cellar.air.relay_ok) === false) {
+      lines.push(['carbonation inhibited', '#ffb020']);
+    }
     else lines.push(['']);
     return lines;
   }
@@ -279,7 +281,7 @@ export function buildCellar() {
       m.psvMat.color.setHex(d.psv_lifted && !op ? COLORS.bad : COLORS.off);
       if (m.carbMat) {
         const pct = d.carb_valve_pct ?? 0;
-        const relayOpen = f.cellar.air.relay_ok === false;
+        const relayOpen = (op ? op.relay_ok : f.cellar.air.relay_ok) === false;
         m.carbMat.color.setHex(relayOpen ? (pct > 0 ? 0xff00ff : COLORS.bad) : pct > 0 ? COLORS.warn : COLORS.off);
       }
       m.unknown.visible = !!op && !d.level_measured;
@@ -300,7 +302,9 @@ export function buildCellar() {
     });
     const relay = op ? op.relay_ok : air.relay_ok;
     relayMat.color.setHex(relay === false ? COLORS.bad : relay ? COLORS.ok : COLORS.off);
-    rioMat.color.setHex(air.relay_at_rio === false ? COLORS.bad : air.relay_at_rio ? COLORS.ok : COLORS.off);
+    // In the operator view both lamps show what the HMI shows.
+    const atRio = op ? op.relay_ok : air.relay_at_rio;
+    rioMat.color.setHex(atRio === false ? COLORS.bad : atRio ? COLORS.ok : COLORS.off);
     panelLabel.draw([
       ['bas-vent relay → rio-cellar'],
       [`${relay === false ? 'OPEN: carbonation inhibited' : 'closed: healthy'}`, relay === false ? '#ff6b5e' : '#5cc98a'],

@@ -15,6 +15,16 @@ The PLC (plc-packaging) commands each machine through its ``cmd`` register
 Until the PLC writes, a built-in operator runs the packaging shift
 (``shift_start`` to ``shift_end`` on weekdays), clears jams, and recovers from
 power loss with legal PackML commands only (Abort, Clear, Reset, Start).
+
+**Fill level and net contents** (DESIGN.md §18A). Each bottle's fill is drawn
+from a normal distribution around the filler's target. The fill-level
+inspector rejects a bottle whose fill is more than the NIST Handbook 133
+maximum allowable variation (0.5 fl oz for a 12 fl oz package) below the
+labeled contents; those rejects are the filler's ``ProdDefectiveCount``. The
+federate keeps the lot statistics a net-contents check uses (count, mean,
+standard deviation, rejects) and the quarterly barrel-equivalent variance
+that 27 CFR 25.142(d) holds to 0.5 %, and it states packaged beer in TTB
+barrels the way 27 CFR 25.158 does (a 24 x 12 fl oz case is 0.07258 barrel).
 """
 
 from __future__ import annotations
@@ -51,6 +61,19 @@ STOP_BLOCKED: int = 40
 STOP_OPERATOR: int = 50
 #: Bottles per standard US beer barrel (3,968 oz / 12 oz).
 BOTTLES_PER_BBL: float = 3968.0 / 12.0
+#: Labeled net contents of a bottle, fl oz.
+LABELED_FLOZ: float = 12.0
+#: NIST Handbook 133 (2026), Appendix A, Table 2-6: the maximum allowable
+#: variation for a package labeled more than 11.75 to 17.00 fl oz is 0.5 fl oz.
+MAV_FLOZ: float = 0.5
+#: 27 CFR 25.158(a): barrel equivalent of a case of 24 twelve-ounce bottles.
+BBL_PER_CASE_24X12: float = 0.07258
+#: 27 CFR 25.142(d): over a three-month period the barrel equivalent of the
+#: bottles filled may not vary from the labeled equivalent by more than 0.5 %.
+TTB_NET_CONTENTS_TOLERANCE_PCT: float = 0.5
+#: Half-barrel kegs (27 CFR 25.156(a): a keg over 2 % above its rated capacity
+#: is taxed on the actual quantity; the model fills to rating).
+BBL_PER_KEG: float = 0.5
 #: Filler bowl pressure below which the filler holds, psia.
 LOW_BOWL_PSIA: float = 18.0
 BOTTLE_LINE: tuple[str, ...] = ("rinser", "filler", "coder", "labeler", "packer")
@@ -66,9 +89,52 @@ class MachineSpec(BaseModel):
     kw: float = 2.0
 
 
+class FillSpec(BaseModel):
+    """The filler's fill-volume distribution (fl oz). The target sits above the
+    label so the lot averages at least the labeled quantity (Handbook 133),
+    but not so far above that the quarterly barrel equivalent drifts past the
+    0.5 % TTB tolerance (27 CFR 25.142(d)); 12.04 fl oz is 0.33 % over."""
+
+    target_floz: float = 12.04
+    sigma_floz: float = 0.20
+
+
+class FillRecord(BaseModel):
+    """Net-contents statistics of the bottles filled (a running lot)."""
+
+    count: int = 0
+    sum_floz: float = 0.0
+    sumsq_floz: float = 0.0
+    under_mav: int = 0
+    quarter: str = ""
+    quarter_bottles: int = 0
+    quarter_sum_floz: float = 0.0
+
+    @property
+    def mean_floz(self) -> float:
+        """Mean fill of the accepted bottles."""
+        return self.sum_floz / self.count if self.count else 0.0
+
+    @property
+    def std_floz(self) -> float:
+        """Sample standard deviation of the accepted fills."""
+        if self.count < 2:
+            return 0.0
+        var = (self.sumsq_floz - self.sum_floz**2 / self.count) / (self.count - 1)
+        return max(var, 0.0) ** 0.5
+
+    @property
+    def quarter_variance_pct(self) -> float:
+        """Actual against labeled barrel equivalent this quarter (25.142(d))."""
+        labeled = self.quarter_bottles * LABELED_FLOZ
+        return 100.0 * (self.quarter_sum_floz - labeled) / labeled if labeled else 0.0
+
+
 SPECS: dict[str, MachineSpec] = {
     "rinser": MachineSpec(rate_bpm=34, mtbf_min=240, mttr_min=3, kw=2.0),
-    "filler": MachineSpec(rate_bpm=30, mtbf_min=180, mttr_min=4, reject=0.005, kw=7.0),
+    # The filler's fill-level rejects come from the fill model; `reject` here
+    # covers its other defects (crowns, breakage).
+    "filler": MachineSpec(rate_bpm=30, mtbf_min=180, mttr_min=4, reject=0.002, kw=7.0),
     "coder": MachineSpec(rate_bpm=36, mtbf_min=480, mttr_min=2, kw=1.0),
     "labeler": MachineSpec(rate_bpm=33, mtbf_min=90, mttr_min=5, reject=0.003, kw=3.0),
     "packer": MachineSpec(rate_bpm=34, mtbf_min=150, mttr_min=4, kw=6.0),
@@ -90,6 +156,7 @@ class PackagingSettings(BaseModel):
     shift_start: str = "06:00"
     shift_end: str = "14:30"
     shift_weekdays: list[int] = [0, 1, 2, 3, 4]
+    fill: FillSpec = FillSpec()
 
 
 class Machine:
@@ -154,11 +221,13 @@ class PackagingFederate(Federate):
     product_open: bool
     heater: bool
     shift_days: set[str]
+    fill: FillRecord
 
     def __init__(self, cfg: FederateConfig, clock: SimClock | None = None) -> None:
         super().__init__(cfg, clock)
         self.settings = PackagingSettings.model_validate(cfg.sim)
         self.rng = random.Random(self.settings.seed)
+        self.fill = FillRecord()
         self.env = simpy.Environment()
         self.machines = {
             n: Machine(n, SPECS[n], self.rng) for n in (*BOTTLE_LINE, "kegger")
@@ -266,7 +335,9 @@ class PackagingFederate(Federate):
             if i > 0:
                 yield upstream.get(1)
             m.processed += 1
-            if self.rng.random() < m.spec.reject:
+            if self.rng.random() < m.spec.reject or (
+                m.name == "filler" and not self._fill_accepted()
+            ):
                 m.defective += 1
                 continue  # rejected bottles leave the line
             if m.name == "packer":
@@ -276,6 +347,25 @@ class PackagingFederate(Federate):
                     self.cases += 1
             else:
                 yield downstream.put(1)
+
+    def _fill_accepted(self) -> bool:
+        """Fill one bottle; the fill-level inspector rejects an unreasonable
+        minus error (more than the MAV under the labeled contents)."""
+        f = self.fill
+        spec = self.settings.fill
+        fill = self.rng.gauss(spec.target_floz, spec.sigma_floz)
+        quarter = f"{self.now.year}Q{(self.now.month - 1) // 3 + 1}"
+        if quarter != f.quarter:
+            f.quarter, f.quarter_bottles, f.quarter_sum_floz = quarter, 0, 0.0
+        if fill < LABELED_FLOZ - MAV_FLOZ:
+            f.under_mav += 1
+            return False
+        f.count += 1
+        f.sum_floz += fill
+        f.sumsq_floz += fill * fill
+        f.quarter_bottles += 1
+        f.quarter_sum_floz += fill
+        return True
 
     def _kegger(self) -> Generator[simpy.Event, Any, None]:
         m = self.machines["kegger"]
@@ -465,15 +555,38 @@ class PackagingFederate(Federate):
             "oee": availability * min(performance, 1.0) * quality,
         }
 
+    def ttb(self) -> dict[str, float | str]:
+        """Packaged beer in TTB barrels (27 CFR 25.158 cases, 25.156 kegs) and
+        the net-contents variance of 27 CFR 25.142(d)."""
+        f = self.fill
+        return {
+            "bbl_bottled": round(self.cases * BBL_PER_CASE_24X12, 5),
+            "bbl_kegged": round(self.kegs * BBL_PER_KEG, 5),
+            "quarter": f.quarter,
+            "net_contents_variance_pct": round(f.quarter_variance_pct, 3),
+            "net_contents_tolerance_pct": TTB_NET_CONTENTS_TOLERANCE_PCT,
+        }
+
     def truth(self) -> dict[str, Any]:
-        """Published values plus counts, OEE, and every machine's state."""
+        """Published values plus counts, OEE, every machine's state, the fill
+        statistics, and the TTB barrel figures."""
         doc = super().truth()
+        f = self.fill
         doc["packaging"] = {
             "bottles": self.bottles_total,
             "cases": self.cases,
             "kegs": self.kegs,
-            "bbl": self.bottles_total / BOTTLES_PER_BBL + self.kegs * 0.5,
+            "bbl": self.bottles_total / BOTTLES_PER_BBL + self.kegs * BBL_PER_KEG,
             "oee": self.oee(),
             "states": {n: m.pml.state.name for n, m in self.machines.items()},
         }
+        doc["fill"] = {
+            "labeled_floz": LABELED_FLOZ,
+            "mav_floz": MAV_FLOZ,
+            "count": f.count,
+            "mean_floz": round(f.mean_floz, 3),
+            "std_floz": round(f.std_floz, 3),
+            "under_mav_rejects": f.under_mav,
+        }
+        doc["ttb"] = self.ttb()
         return doc

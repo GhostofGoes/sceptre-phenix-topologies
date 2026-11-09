@@ -21,6 +21,18 @@ and a 300 s return-to-service delay), the BESS PCS (state of charge with
 (start on utility loss, transfer about 10 s after it, retransfer after a
 120 s stable-source timer, 300 s cool-down).
 
+**Genset exercise and records** (DESIGN.md §7.3, §18A). A remote start
+(``gen-ats.gen_start``, plc-power's weekly exercise) or a ``genset-exercise``
+event runs the set *under load*: once it is up, the ATS transfers EP-1 to it,
+the way NFPA 110 has the monthly test carry the emergency loads through the
+transfer switch, and an optional load bank adds kW. Every run is logged with
+its kind (emergency or exercise), duration, average and peak kW, whether it
+met the NFPA 110 monthly-test criteria (at least 30 minutes at not less than
+30 % of nameplate kW), and the engine's running hours: total, this calendar
+year, and the test hours this year that 40 CFR 60.4211(f) caps at 100 per
+year for an emergency engine. The log is ground truth (:meth:`truth`); the
+plant's own hour meter and test log are the records a real brewery keeps.
+
 **Tariff.** :class:`cherrymountain_sim.tariff.Meter` turns the service import
 into 15-minute demand, the monthly peak, and the SV-SGT bill.
 
@@ -30,14 +42,15 @@ demand under the target, recharge overnight to the brew-day minimum, shift
 energy into the weekday 17:00-21:00 window, soak up PV surplus). Authority is
 per point: a point the PLC or the DER gateway has written follows the write.
 
-``utility-breaker`` events open and close the utility source.
+``utility-breaker`` events open and close the utility source;
+``genset-exercise`` events start or stop a timed exercise with a load bank.
 """
 
 from __future__ import annotations
 
 import logging
 import math
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel
 
@@ -127,6 +140,36 @@ class PowerSettings(BaseModel):
     #: only when the DERMS operates the point (ot-sim's FEP Modbus client writes
     #: on a bus update, never at startup), so no write means no utility command.
     utility_dispatch_hold_s: float = 900.0
+    #: Genset nameplate (DESIGN.md §7.1), kW.
+    gen_rated_kw: float = 100.0
+    #: NFPA 110 monthly exercise: at least 30 minutes at not less than 30 % of
+    #: the nameplate kW rating (or the manufacturer's exhaust temperature).
+    nfpa110_exercise_min_s: float = 1800.0
+    nfpa110_min_load_frac: float = 0.30
+    #: 40 CFR 60.4211(f): an emergency engine may run at most 100 hours per
+    #: calendar year for maintenance checks and readiness testing.
+    epa_test_hours_cap: float = 100.0
+    #: Seconds from the start command to the ATS transfer during an exercise.
+    exercise_warmup_s: float = 8.0
+
+
+class GenRun(BaseModel):
+    """One genset run, as the plant's hour meter and test log would record it."""
+
+    kind: Literal["emergency", "exercise"]
+    started: str
+    ended: str = ""
+    duration_s: float = 0.0
+    #: Time carrying load (transferred); warm-up and cool-down do not count.
+    loaded_s: float = 0.0
+    avg_kw: float = 0.0
+    max_kw: float = 0.0
+    load_bank_kw: float = 0.0
+    #: NFPA 110 monthly test: long enough under load, and loaded enough.
+    nfpa110_duration_ok: bool = False
+    nfpa110_load_ok: bool = False
+    #: Test hours this calendar year after this run (40 CFR 60.4211(f) cap).
+    test_hours_year: float = 0.0
 
 
 class Grid(BaseModel):
@@ -154,6 +197,17 @@ class Grid(BaseModel):
     v_pu: float = 1.0
     amps: float = 0.0
     ep1_kw: float = 0.0
+    #: Exercise: EP-1 carried by the genset while the utility is healthy.
+    exercising: bool = False
+    exercise_until: float = -1.0
+    load_bank_kw: float = 0.0
+    #: Hour meter and the calendar-year counters.
+    gen_hours_total: float = 0.0
+    gen_hours_year: float = 0.0
+    gen_test_hours_year: float = 0.0
+    gen_year: int = 0
+    run: GenRun | None = None
+    run_kwh: float = 0.0
 
 
 class Flow(BaseModel):
@@ -280,12 +334,14 @@ class PowerFederate(Federate):
     auto: dict[str, Value]
     energized: dict[str, bool]
     utility_write_t: float | None
+    gen_runs: list[GenRun]
 
     def __init__(self, cfg: FederateConfig, clock: SimClock | None = None) -> None:
         super().__init__(cfg, clock)
         self.settings = PowerSettings.model_validate(cfg.sim)
         self.utility_write_t = None
         self.grid = Grid(soc_pct=self.settings.bess_soc_pct)
+        self.gen_runs = []
         self.meter = Meter()
         self.load_bus = {ld.name: ld.bus for ld in cfg.loads}
         self.load_key = {ld.name: ld.key for ld in cfg.loads}
@@ -312,10 +368,24 @@ class PowerFederate(Federate):
         return float(self.cmd(tag))
 
     def on_event(self, event: ScenarioEvent) -> None:
-        """``utility-breaker``: open or close the utility source."""
+        """``utility-breaker`` opens or closes the utility source;
+        ``genset-exercise`` starts (``action: start``, ``load_bank_kw``,
+        ``duration`` s) or stops a timed exercise under load."""
         super().on_event(event)
+        g = self.grid
         if event.type == "utility-breaker":
-            self.grid.utility_ok = event.params.get("action") == "close"
+            g.utility_ok = event.params.get("action") == "close"
+        elif event.type == "genset-exercise":
+            if event.params.get("action", "start") == "stop":
+                g.exercise_until, g.load_bank_kw = -1.0, 0.0
+                return
+            # Parse both first, so a bad value leaves the state unchanged.
+            bank = float(event.params.get("load_bank_kw", 0.0))
+            duration = float(
+                event.params.get("duration", self.settings.nfpa110_exercise_min_s)
+            )
+            g.load_bank_kw = min(max(bank, 0.0), self.settings.gen_rated_kw)
+            g.exercise_until = self.t + duration
 
     # -- dynamics ----------------------------------------------------------------------
 
@@ -365,17 +435,37 @@ class PowerFederate(Federate):
             kw for n, kw in loads.items() if self.load_bus[n] == "ep1" and e["ep1"]
         )
         if g.gen_running and g.on_emergency:
-            g.fuel_pct = max(g.fuel_pct - g.ep1_kw * 0.00002 * dt, 0.0)
+            g.fuel_pct = max(g.fuel_pct - self.gen_kw * 0.00002 * dt, 0.0)
         g.overcurrent_s = g.overcurrent_s + dt if g.amps > TRIP_AMPS else 0.0
         if g.overcurrent_s >= TRIP_DELAY_S:
             g.tripped = True
         self.meter.add(t, self.now, g.p_kw, dt)
+        self._genset_log(dt)
+
+    @property
+    def exercise_requested(self) -> bool:
+        """A remote start (plc-power) or a timed ``genset-exercise`` event."""
+        g = self.grid
+        return self.on("gen-ats.gen_start") or (
+            g.exercise_until >= 0 and self.t < g.exercise_until
+        )
+
+    @property
+    def gen_kw(self) -> float:
+        """What the genset carries: EP-1 and any load bank, while transferred."""
+        g = self.grid
+        if g.gen_running and g.on_emergency:
+            return g.ep1_kw + (g.load_bank_kw if g.exercising else 0.0)
+        return 0.0
 
     def _ats(self, msb: bool, t: float, dt: float) -> None:
         g = self.grid
         s = self.settings
+        if g.exercise_until >= 0 and t >= g.exercise_until:
+            g.exercise_until, g.load_bank_kw = -1.0, 0.0
         if not msb:
             g.utility_back_s = -1.0
+            g.exercising = False  # a real outage during a test is an outage
             if g.utility_lost_s < 0:
                 g.utility_lost_s = t
             lost = t - g.utility_lost_s
@@ -383,32 +473,80 @@ class PowerFederate(Federate):
                 g.gen_running, g.gen_start_s = True, t
             if g.gen_running and t - g.gen_start_s >= 8.0 and lost >= 10.0:
                 g.on_emergency = True
-        else:
-            g.utility_lost_s = -1.0
-            if g.on_emergency:
-                if g.utility_back_s < 0:
-                    g.utility_back_s = t
-                if t - g.utility_back_s >= s.retransfer_s:
-                    g.on_emergency = False
-                    g.gen_cooldown_s = t
-            exercise = self.on("gen-ats.gen_start")
-            if exercise and not g.gen_running:
-                g.gen_running, g.gen_start_s = True, t
-            if (
-                g.gen_running
-                and not g.on_emergency
-                and not exercise
-                and g.gen_cooldown_s >= 0
-                and t - g.gen_cooldown_s >= 300.0
-            ):
-                g.gen_running, g.gen_cooldown_s = False, -1.0
-            elif (
-                g.gen_running
-                and not g.on_emergency
-                and not exercise
-                and g.gen_cooldown_s < 0
-            ):
+            return
+        g.utility_lost_s = -1.0
+        if g.on_emergency and not g.exercising:
+            if g.utility_back_s < 0:
+                g.utility_back_s = t
+            if t - g.utility_back_s >= s.retransfer_s:
+                g.on_emergency = False
                 g.gen_cooldown_s = t
+        exercise = self.exercise_requested
+        if exercise:
+            if not g.gen_running and g.fuel_pct > 0:
+                g.gen_running, g.gen_start_s = True, t
+            # NFPA 110 has the monthly test carry the emergency loads through
+            # the transfer switch, so the ATS transfers EP-1 once the set is up.
+            if g.gen_running and t - g.gen_start_s >= s.exercise_warmup_s:
+                g.on_emergency, g.exercising = True, True
+        elif g.exercising:
+            # Test over: retransfer at once (the utility never failed), cool down.
+            g.exercising, g.on_emergency, g.gen_cooldown_s = False, False, t
+        if (
+            g.gen_running
+            and not g.on_emergency
+            and not exercise
+            and g.gen_cooldown_s >= 0
+            and t - g.gen_cooldown_s >= 300.0
+        ):
+            g.gen_running, g.gen_cooldown_s = False, -1.0
+        elif (
+            g.gen_running
+            and not g.on_emergency
+            and not exercise
+            and g.gen_cooldown_s < 0
+        ):
+            g.gen_cooldown_s = t
+
+    def _genset_log(self, dt: float) -> None:
+        """Hour meter, calendar-year counters, and the per-run test log."""
+        g = self.grid
+        s = self.settings
+        if self.now.year != g.gen_year:
+            g.gen_year = self.now.year
+            g.gen_hours_year = g.gen_test_hours_year = 0.0
+        if g.gen_running:
+            if g.run is None:
+                kind: Literal["emergency", "exercise"] = (
+                    "exercise" if self.exercise_requested else "emergency"
+                )
+                g.run = GenRun(kind=kind, started=self.now.isoformat())
+                g.run_kwh = 0.0
+            if not self.energized["msb"]:
+                g.run.kind = "emergency"  # an outage during a test is an outage run
+            hours = dt / 3600.0
+            g.gen_hours_total += hours
+            g.gen_hours_year += hours
+            if g.run.kind == "exercise":
+                g.gen_test_hours_year += hours
+            kw = self.gen_kw
+            g.run.duration_s += dt
+            if g.on_emergency:
+                g.run.loaded_s += dt
+            g.run_kwh += kw * hours
+            g.run.max_kw = max(g.run.max_kw, kw)
+            g.run.load_bank_kw = max(g.run.load_bank_kw, g.load_bank_kw)
+            return
+        if g.run is not None:
+            run = g.run
+            run.ended = self.now.isoformat()
+            run.avg_kw = g.run_kwh * 3600.0 / run.loaded_s if run.loaded_s else 0.0
+            run.nfpa110_duration_ok = run.loaded_s >= s.nfpa110_exercise_min_s
+            run.nfpa110_load_ok = run.avg_kw >= s.nfpa110_min_load_frac * s.gen_rated_kw
+            run.test_hours_year = g.gen_test_hours_year
+            self.gen_runs.append(run)
+            del self.gen_runs[:-50]
+            g.run = None
 
     def _inverters(self, msb: bool, t: float, dt: float) -> None:
         g = self.grid
@@ -503,7 +641,7 @@ class PowerFederate(Federate):
             "bess-pcs.soc_pct": g.soc_pct,
             "bess-pcs.connected": g.bess_connected,
             "bess-pcs.fault": False,
-            "gen-ats.gen_kw": g.ep1_kw if g.on_emergency and g.gen_running else 0.0,
+            "gen-ats.gen_kw": self.gen_kw,
             "gen-ats.ep1_kw": g.ep1_kw,
             "gen-ats.fuel_pct": g.fuel_pct,
             "gen-ats.gen_running": g.gen_running,
@@ -534,11 +672,24 @@ class PowerFederate(Federate):
     def truth(self) -> dict[str, Any]:
         """Published values plus the breaker, ATS, and tariff state."""
         doc = super().truth()
+        g = self.grid
         doc["power"] = {
-            "utility_ok": self.grid.utility_ok,
+            "utility_ok": g.utility_ok,
             "energized": dict(self.energized),
-            "msb_v_pu": self.grid.v_pu,
+            "msb_v_pu": g.v_pu,
             "month_peak_kw": self.meter.month_peak_kw,
             "month_to_date_usd": self.meter.month_to_date_usd,
+        }
+        # The genset's hour meter and test log (NFPA 110 8.3.4 records; the
+        # 40 CFR 60.4211(f) test-hour cap), DESIGN.md §7.3 and §18A.
+        doc["genset"] = {
+            "running": g.gen_running,
+            "exercising": g.exercising,
+            "load_bank_kw": g.load_bank_kw,
+            "hours_total": round(g.gen_hours_total, 3),
+            "hours_year": round(g.gen_hours_year, 3),
+            "test_hours_year": round(g.gen_test_hours_year, 3),
+            "test_hours_cap": self.settings.epa_test_hours_cap,
+            "runs": [r.model_dump() for r in self.gen_runs[-10:]],
         }
         return doc

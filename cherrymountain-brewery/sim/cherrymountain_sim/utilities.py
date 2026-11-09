@@ -17,10 +17,15 @@ pH/conductivity mixing model, stepped at 1 s in wall time.
   regulator.
 - **Wastewater.** A 2,000 gal neutralization tank. Net base equivalents set
   the pH through a buffered titration curve; caustic and acid dosing pumps and
-  a discharge valve (permitted at pH 6.0-9.0).
+  a discharge valve (permitted at pH 6.0-9.0). The tank keeps the record a
+  POTW pretreatment permit asks for (DESIGN.md §18A): the pH range seen at
+  the discharge point, the volume discharged today, hourly pH samples, and
+  the time the valve was commanded while the pH was outside the permit band.
 - **CIP.** The supply solution's conductivity follows the dosed chemical; the
   return lags it; return flow needs both pumps and a swing-panel route. Rinse
-  water returns to drain, carrying the residual chemical to wastewater.
+  water returns to drain, carrying the residual chemical to wastewater. Each
+  circuit run is logged as a verification record (circuit, chemical, peak
+  temperature and return conductivity, proven-flow time; DESIGN.md §5.3).
 
 As in the brewhouse, a built-in operator (``autopilot``) keeps the utilities
 running until the PLC writes.
@@ -31,7 +36,7 @@ from __future__ import annotations
 import math
 from typing import Any, ClassVar, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from cherrymountain_sim.federate import (
     Federate,
@@ -58,6 +63,15 @@ CIP_ROUTES: tuple[str, ...] = (
     "route_bbt201",
     "route_bbt202",
 )
+#: CIP verification (DESIGN.md §5.3, §6.3): a caustic wash counts as verified
+#: when the supply reached this temperature and the return this conductivity
+#: (about 1.5 % NaOH) with flow proven for at least this long.
+CIP_MIN_CAUSTIC_F: float = 160.0
+CIP_MIN_RETURN_MS: float = 40.0
+CIP_MIN_CONTACT_S: float = 600.0
+#: Records kept in the federate (ground truth carries them on).
+CIP_RECORDS: int = 20
+WWN_SAMPLES: int = 48
 
 #: Command defaults: every writable point, as the autopilot leaves them.
 AUTO_COMMANDS: dict[str, Value] = {
@@ -128,13 +142,50 @@ class Co2(BaseModel):
     supply_psig: float = 60.0
 
 
+class PhSample(BaseModel):
+    """One hourly pH sample of the neutralization tank (permit self-monitoring)."""
+
+    time: str
+    ph: float
+    level_pct: float
+    discharging: bool
+
+
 class Wastewater(BaseModel):
-    """Neutralization tank: volume and net base equivalents (mol)."""
+    """Neutralization tank: volume and net base equivalents (mol), and the
+    discharge record a pretreatment permit asks for."""
 
     liters: float = 2500.0
     capacity_l: float = 7570.0
     base_mol: float = 0.0
     discharged_l: float = 0.0
+    #: The permit band the discharge valve is permitted in (DESIGN.md §6.3).
+    permit_low: float = 6.0
+    permit_high: float = 9.0
+    day: str = ""
+    discharged_l_day: float = 0.0
+    discharge_ph_min: float = 14.0
+    discharge_ph_max: float = 0.0
+    #: Seconds the valve was commanded open while the pH was out of band (the
+    #: permissive held it shut), and how many times that began.
+    inhibited_s: float = 0.0
+    inhibit_events: int = 0
+    inhibited: bool = False
+    samples: list[PhSample] = Field(default_factory=list)
+
+
+class CipRecord(BaseModel):
+    """One CIP circuit run: the verification record of DESIGN.md §5.3."""
+
+    circuit: str
+    started: str
+    ended: str = ""
+    duration_s: float = 0.0
+    chemical: Literal["caustic", "acid", "none"] = "none"
+    max_supply_f: float = 0.0
+    max_return_ms: float = 0.0
+    flow_proven_s: float = 0.0
+    verified: bool = False
 
 
 class Cip(BaseModel):
@@ -148,6 +199,8 @@ class Cip(BaseModel):
     acid_pct: float = 80.0
     return_lpm: float = 0.0
     routes: dict[str, bool] = {}
+    run: CipRecord | None = None
+    records: list[CipRecord] = Field(default_factory=list)
 
 
 def ph_of(base_molar: float, buffer_molar: float = 0.004) -> float:
@@ -244,12 +297,13 @@ class UtilitiesFederate(Federate):
 
     def _operator(self) -> None:
         """Built-in wastewater neutralization (the rest holds its defaults)."""
-        ph = ph_of(self.wwn.base_mol / max(self.wwn.liters, 1.0))
+        w = self.wwn
+        ph = ph_of(w.base_mol / max(w.liters, 1.0))
         a = self.auto
         a["wwn.caustic_pump"] = ph < 6.5
         a["wwn.acid_pump"] = ph > 7.5
         a["wwn.discharge_valve"] = (
-            6.0 <= ph <= 9.0 and self.wwn.liters > 0.3 * self.wwn.capacity_l
+            w.permit_low <= ph <= w.permit_high and w.liters > 0.3 * w.capacity_l
         )
 
     def _glycol(self, dt: float, amb_f: float) -> None:
@@ -328,10 +382,11 @@ class UtilitiesFederate(Federate):
             target = 0.5
         c.supply_ms += (target - c.supply_ms) * min(dt / 90.0, 1.0)
         c.return_ms += (c.supply_ms - c.return_ms) * min(dt / 60.0, 1.0)
+        route = next((r for r, on in c.routes.items() if on), None)
         flowing = (
             self.on("cip.supply_pump")
             and self.on("cip.return_pump")
-            and any(c.routes.values())
+            and route is not None
             and self.bus("mcc1")
         )
         c.return_lpm = 40.0 * LPM_PER_GPM if flowing else 0.0
@@ -343,10 +398,54 @@ class UtilitiesFederate(Federate):
         )
         loss = 300.0 * (c.supply_c - (amb_f - 32) / 1.8) + (15e3 if flowing else 0.0)
         c.supply_c += (q - loss) / (400.0 * WATER_CP) * dt
+        self._cip_record(dt, route, flowing)
+
+    def _cip_record(self, dt: float, route: str | None, flowing: bool) -> None:
+        """A circuit run starts when both pumps run on a proven route and ends
+        when either stops; the record is verified by temperature, return
+        conductivity, and proven-flow time (DESIGN.md §5.3)."""
+        c = self.cip
+        if flowing:
+            if c.run is None:
+                c.run = CipRecord(
+                    circuit=(route or "").removeprefix("route_"),
+                    started=self.now.isoformat(),
+                )
+            r = c.run
+            r.duration_s += dt
+            r.flow_proven_s += dt if c.return_lpm > 5.0 * LPM_PER_GPM else 0.0
+            r.max_supply_f = max(r.max_supply_f, c.supply_c * 1.8 + 32)
+            r.max_return_ms = max(r.max_return_ms, c.return_ms)
+            if self.on("cip.caustic_dose"):
+                r.chemical = "caustic"
+            elif self.on("cip.acid_dose") and r.chemical == "none":
+                r.chemical = "acid"
+            return
+        if c.run is not None:
+            r = c.run
+            r.ended = self.now.isoformat()
+            contact_ok = r.flow_proven_s >= CIP_MIN_CONTACT_S
+            if r.chemical == "caustic":
+                r.verified = (
+                    contact_ok
+                    and r.max_supply_f >= CIP_MIN_CAUSTIC_F
+                    and r.max_return_ms >= CIP_MIN_RETURN_MS
+                )
+            else:
+                r.verified = contact_ok and r.chemical != "none"
+            c.records.append(r)
+            del c.records[:-CIP_RECORDS]
+            c.run = None
 
     def _wastewater(self, dt: float) -> None:
         w = self.wwn
         c = self.cip
+        day = self.now.date().isoformat()
+        if day != w.day:
+            w.day = day
+            w.discharged_l_day = w.inhibited_s = 0.0
+            w.inhibit_events = 0
+            w.discharge_ph_min, w.discharge_ph_max = 14.0, 0.0
         drain_lpm = self.input("brewhouse/drain.gpm", 0.0) * LPM_PER_GPM
         drain_mol = drain_lpm * -0.0005  # brewhouse rinse and trub: slightly acid
         if c.return_lpm > 0 and c.return_ms < 5.0:  # rinse water returns to drain
@@ -359,12 +458,34 @@ class UtilitiesFederate(Federate):
         if self.on("wwn.acid_pump"):
             w.base_mol -= 0.5 * dt
         ph = ph_of(w.base_mol / max(w.liters, 1.0))
-        if self.on("wwn.discharge_valve") and 6.0 <= ph <= 9.0:
+        commanded = self.on("wwn.discharge_valve")
+        permitted = w.permit_low <= ph <= w.permit_high
+        discharging = commanded and permitted and w.liters > 0
+        if discharging:
             out = min(30.0 * LPM_PER_GPM / 60.0 * dt, w.liters)
             w.base_mol -= w.base_mol * out / max(w.liters, 1.0)
             w.liters -= out
             w.discharged_l += out
+            w.discharged_l_day += out
+            w.discharge_ph_min = min(w.discharge_ph_min, ph)
+            w.discharge_ph_max = max(w.discharge_ph_max, ph)
+        inhibited = commanded and not permitted
+        if inhibited:
+            w.inhibited_s += dt
+            if not w.inhibited:
+                w.inhibit_events += 1
+        w.inhibited = inhibited
         w.liters = min(w.liters, w.capacity_l)
+        if int(self.t) % 3600 == 0:
+            w.samples.append(
+                PhSample(
+                    time=self.now.isoformat(),
+                    ph=round(ph, 2),
+                    level_pct=round(100.0 * w.liters / w.capacity_l, 1),
+                    discharging=discharging,
+                )
+            )
+            del w.samples[:-WWN_SAMPLES]
 
     # -- publications ------------------------------------------------------------------
 
@@ -448,12 +569,30 @@ class UtilitiesFederate(Federate):
         raise KeyError(f"no output {name}")
 
     def truth(self) -> dict[str, Any]:
-        """Published values plus faults and inventories."""
+        """Published values plus faults, inventories, and the compliance records
+        (the wastewater discharge log and the CIP verification records)."""
         doc = super().truth()
+        w = self.wwn
         doc["utilities"] = {
             "chiller_failed_stages": sorted(self.gly.failed),
             "co2_kg": self.co2.kg,
-            "wastewater_discharged_l": self.wwn.discharged_l,
+            "wastewater_discharged_l": w.discharged_l,
             "autopilot": self.autopilot,
+        }
+        discharged = w.discharged_l_day > 0
+        doc["wastewater"] = {
+            "permit_band": [w.permit_low, w.permit_high],
+            "day": w.day,
+            "ph": round(self.ph, 2),
+            "discharged_l_day": round(w.discharged_l_day, 1),
+            "discharge_ph_min": round(w.discharge_ph_min, 2) if discharged else None,
+            "discharge_ph_max": round(w.discharge_ph_max, 2) if discharged else None,
+            "inhibited_s": round(w.inhibited_s, 1),
+            "inhibit_events": w.inhibit_events,
+            "samples": [s.model_dump() for s in w.samples[-24:]],
+        }
+        doc["cip"] = {
+            "active": self.cip.run.model_dump() if self.cip.run else None,
+            "records": [r.model_dump() for r in self.cip.records[-10:]],
         }
         return doc

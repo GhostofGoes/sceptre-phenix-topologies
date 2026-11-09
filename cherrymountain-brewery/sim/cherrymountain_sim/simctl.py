@@ -40,12 +40,15 @@ API: str = "/api/v1"
 EVENT_TARGETS: dict[str, str] = {
     "start-batch": "brewhouse",
     "utility-breaker": "power",
+    "genset-exercise": "power",
     "chiller-fault": "utilities",
     "co2-release": "cellar",
     "jam": "packaging",
     "weather-step": "weather",
     "cip-panel": "utilities",
 }
+#: The genset's nameplate, the most a load bank may add (DESIGN.md §7.1).
+GENSET_RATED_KW: float = 100.0
 #: Most events the history keeps.
 HISTORY: int = 500
 #: Largest request body accepted, bytes.
@@ -96,6 +99,19 @@ class EventRequest(BaseModel):
             case "utility-breaker":
                 if p.get("action") not in ("open", "close"):
                     raise ValueError("utility-breaker needs action: open or close")
+            case "genset-exercise":
+                if p.get("action", "start") not in ("start", "stop"):
+                    raise ValueError("genset-exercise action is start or stop")
+                bank = p.get("load_bank_kw", 0)
+                if (
+                    not isinstance(bank, int | float)
+                    or isinstance(bank, bool)
+                    or not 0 <= bank <= GENSET_RATED_KW
+                ):
+                    raise ValueError(
+                        f"genset-exercise load_bank_kw is 0 to {GENSET_RATED_KW:.0f}"
+                    )
+                _check_duration(p, "genset-exercise")
             case "weather-step":
                 delta = p.get("delta_f")
                 if (

@@ -61,7 +61,9 @@ from there). The contract is `apps/cherrymountain_apps/simctl.py`'s:
 | `GET /api/v1/kpis` | `200 {"sim_time", "batches_completed", "batches_in_progress", "bottles_packaged", "kegs_packaged", "energy_kwh", "demand_kw", "peak_demand_kw"}` |
 
 Events (the plantevent README's table): `start-batch` (brewhouse),
-`utility-breaker` `action: open|close` (power), `chiller-fault` `compressor`,
+`utility-breaker` `action: open|close` (power), `genset-exercise`
+`action: start|stop`, `load_bank_kw` 0-100, `duration` s (power: a timed
+exercise under load, see below), `chiller-fault` `compressor`,
 `action: fail|clear` (utilities), `co2-release` `fv`, `rate: low|medium|high`,
 `duration` s (cellar), `jam` `machine`, `duration` s (packaging),
 `weather-step` `delta_f`, `duration` s (weather), and `cip-panel` `circuit`
@@ -75,6 +77,19 @@ and model state every 10 s to the in-experiment OpenSearch
 (`cherrymountain-truth-<federate>-YYYY.MM.DD`, `_bulk` API) from a background
 thread (`groundtruth.py`).
 
+## Compliance records (DESIGN.md §18A)
+
+The records a real brewery keeps for its regulators are kept in the federates
+and carried in the ground-truth documents; none of them is a new HELICS key,
+so `plant.yaml` is unchanged.
+
+| Federate | Record | Rule it stands in for |
+|---|---|---|
+| `power` | `genset`: hour meter (total, calendar year, test hours this year against the 100 h cap) and a per-run log with kind (`emergency` or `exercise`), loaded time, average and peak kW, load bank, and whether the run met the monthly-test criteria (30 min under load at 30 % of nameplate). A remote start (`gen-ats.gen_start`) or a `genset-exercise` event runs the set under load: the ATS transfers EP-1 to it, and the event's load bank adds kW | NFPA 110 (monthly exercise, records), 40 CFR 60.4211(f) (100 h/yr of testing on an emergency engine) |
+| `utilities` | `wastewater`: the permit band, today's discharged volume and the pH range seen while discharging, the time the discharge valve was commanded while the pH was out of band (and how often that began), and hourly pH samples | 40 CFR 403.5 and the POTW's rules (Metro Water Recovery forbids pH below 5.0; the brewery's permit band is 6.0-9.0) |
+| `utilities` | `cip`: one record per circuit run (circuit, chemical, peak supply temperature, peak return conductivity, proven-flow time, verified) | The CIP verification record of DESIGN.md §5.3; FDA CGMP sanitation records |
+| `packaging` | `fill`: count, mean, standard deviation, and the bottles the fill-level inspector rejected for being more than the 0.5 fl oz MAV under 12 fl oz; `ttb`: packaged barrels per the 27 CFR 25.158 case table and half-barrel kegs, and the quarterly net-contents variance against the 0.5 % tolerance | NIST Handbook 133 Table 2-6; 27 CFR 25.142(d), 25.156, 25.158 |
+
 ## Validation (`tests/`)
 
 | Test | Check |
@@ -84,6 +99,7 @@ thread (`groundtruth.py`).
 | `test_packml.py` | Transition table equals PackMLpy's, illegal commands refused, a 5,000-command fuzz and a packaging shift (jam, power loss) with legal transitions only, OEE |
 | `test_power.py` | MSB, MCC-1, LP-1, and EP-1 within ANSI C84.1 Range A from no load to 329 kW, BESS peak shaving, outage and return, the tariff's $19,140 per 50 kW-year, a monthly bill |
 | `test_plant.py` | Cellar CO₂ steady state hand calculation, purge tiers and BACnet override, RTU and cold room, weather, glycol and a chiller fault, wastewater neutralization, a brew day, ground truth documents, the event API, and all seven federates together for 20 minutes with an outage and a CO₂ release |
+| `test_compliance.py` | The genset exercise under load and its log (33 kW EP-1 meets 30 % of nameplate; the everyday 15 kW does not until a 40 kW load bank is added; an outage during a test becomes an emergency run), the wastewater discharge record (a caustic slug is inhibited and logged, the discharge stays in 6.0-9.0), a verified caustic CIP record and an unverified rinse, fill-level rejects against the Handbook 133 MAV with the lot mean at or above 12 fl oz and the quarterly variance inside the TTB 0.5 %, and the event API's validation of `genset-exercise` |
 | `test_fermentation.py`, `test_thermal.py`, `test_timebase.py`, `test_federate.py` | The cellar slice's existing tests |
 
 ## Simplifications and tuned values

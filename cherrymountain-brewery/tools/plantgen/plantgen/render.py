@@ -943,6 +943,35 @@ def _selected(tags: list[Tag], patterns: list[str]) -> list[Tag]:
     return [t for t in tags if any(fnmatch.fnmatchcase(t.name, p) for p in patterns)]
 
 
+#: BACnet object types FUXA's BACnet driver writes (FUXA 1.3.5,
+#: ``server/runtime/devices/bacnet``): for any other type its WriteProperty
+#: carries a NULL present value.
+FUXA_BACNET_WRITABLE: frozenset[str] = frozenset(
+    {
+        "analog-input",
+        "analog-output",
+        "analog-value",
+        "binary-input",
+        "binary-output",
+        "binary-value",
+    }
+)
+
+
+def bacnet_access(t: Tag, scada: Host, object_type: str) -> str:
+    """Access of one FUXA instance to a BACnet object.
+
+    Only the BAS front end (``app.role: bas``) writes BACnet: the process
+    SCADA reads the CO2 objects for its displays and never writes them
+    (DESIGN.md §10.3; a WriteProperty from it alerts). A type FUXA's driver
+    cannot write is read-only everywhere.
+    """
+    front_end: bool = (scada.app or {}).get("role") == "bas"
+    if not front_end or object_type not in FUXA_BACNET_WRITABLE:
+        return "read"
+    return access(t)
+
+
 def _fuxa_analog(entry: dict[str, Any], t: Tag, divisor: bool = True) -> None:
     if is_analog(t.type):
         if divisor:
@@ -986,7 +1015,7 @@ def fuxa_doc(plant: Plant, alloc: Allocation, scada: Host) -> dict[str, Any]:
                     "type": "Real" if is_analog(t.type) else "Bool",
                     "memaddress": str(ep.instance if ep else ""),
                     "address": o.fuxa_address,
-                    "access": access(t),
+                    "access": bacnet_access(t, scada, o.object_type),
                     "object_type": o.object_type,
                     "remote_device": host_name,
                 }

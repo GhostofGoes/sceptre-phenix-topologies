@@ -266,6 +266,21 @@ def test_detects_off_by_one_in_modbus_master(plant: Plant) -> None:
     assert any("unconfigured register" in e for e in errs)
 
 
+def test_detects_a_block_too_long_for_one_modbus_request(plant: Plant) -> None:
+    """The plugin sends each block as one request: 125 registers is the most
+    FC4 may read, so a longer block would fail on every poll."""
+    alloc = allocate(plant)
+    files = render_all(plant, alloc)
+    assert not any("one request" in e for e in checks.master_agrees(plant, alloc, files))
+    key = "openplc/plc-cellar/modbus_master.json"
+    cfg = json.loads(files[key])
+    block = next(p for p in cfg[0]["config"]["io_points"] if p["fc"] == 4)
+    block["len"] = 126
+    files[key] = json.dumps(cfg)
+    errs = checks.master_agrees(plant, alloc, files)
+    assert any("FC4" in e and "126" in e and "125" in e for e in errs)
+
+
 def test_detects_fuxa_off_by_one(plant: Plant) -> None:
     """A FUXA address that forgot the +1 is caught."""
     alloc = allocate(plant)

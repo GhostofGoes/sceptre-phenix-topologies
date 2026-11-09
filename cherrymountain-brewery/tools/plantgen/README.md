@@ -226,10 +226,18 @@ and point order, from 0 per kind. ot-sim scales analog points by
 - Tag IDs are `t_<uuid5(tag name)>`, stable across regenerations.
 - Modbus analogs are raw registers: engineering value = raw / `divisor`.
   `Int16` marks signed registers.
-- OPC UA and S7 tags leave `address` null: the `cherrymountain` app resolves the
-  node id and the DB offset of `variable` (the ST name, dots replaced by
-  underscores) from the compiled program's debug map
-  ([DESIGN.md §12.1](../../DESIGN.md#121-openplc-v4-runtime-v3-fallback)).
+- OPC UA and S7 tags leave `address` null. `fuxa/build_project.py` fills it in:
+  the OPC UA node id is `ns=2;s=<tag name>` (the node id the `cherrymountain`
+  app gives the variable in the `opcua` plugin's config,
+  [DESIGN.md §12.1](../../DESIGN.md#121-openplc-v4-runtime-v3-fallback)), and
+  the S7 address comes from `plc_iec`. FUXA applies `divisor` to Modbus tags
+  only, so the builder gives OPC UA and S7 tags the same factor as a linear
+  `scale`.
+- `access` is `read-write` for a PLC-memory setpoint or command (not for a RIO
+  output, which the program drives every scan). A BACnet tag is `read-write`
+  only on the BAS front end (`app.role: bas`), and only for an analog or
+  binary object, the types FUXA's driver can write; scada-fuxa never writes
+  BACnet. The builder gives every `read-write` tag an input box.
 - A FUXA host polls the devices in its `fuxa` list in plant.yaml (default: all
   PLCs), filtered by tag patterns. scada-fuxa reads only bas-vent's CO₂
   objects.

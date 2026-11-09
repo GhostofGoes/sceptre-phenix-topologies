@@ -247,6 +247,23 @@ def test_scada_fuxa_reads_cellar_co2_through_the_bbmds(
     assert bac["property"]["address"] == "10.20.30.10"
 
 
+def test_only_the_bas_front_end_writes_bacnet(full_files: dict[str, str]) -> None:
+    """§10.3: scada-fuxa never writes BACnet, so its copy of a commandable
+    object (the horns) is read-only; bas-fuxa writes analog and binary objects
+    but not the multi-state one, which FUXA's driver cannot write."""
+    scada = json.loads(full_files["fuxa/scada-fuxa-tags.json"])
+    bac = next(d for d in scada["devices"] if d["type"] == "BACnet")
+    assert "FAC.VENT.XA01.CMD" in {t["name"] for t in bac["tags"]}
+    assert {t["access"] for t in bac["tags"]} == {"read"}
+    bas = json.loads(full_files["fuxa/bas-fuxa-tags.json"])
+    tags = {t["name"]: t for t in bas["devices"][0]["tags"]}
+    assert tags["FAC.VENT.XA01.CMD"]["access"] == "read-write"
+    assert tags["FAC.RTU1.HS01.MODE"]["object_type"] == "multi-state-value"
+    assert tags["FAC.RTU1.HS01.MODE"]["access"] == "read"
+    writable = {t["object_type"] for t in tags.values() if t["access"] == "read-write"}
+    assert writable <= {"analog-output", "analog-value", "binary-output", "binary-value"}
+
+
 def test_bacnet_object_table(full_files: dict[str, str]) -> None:
     """Instances count from 1 per object type, in point order."""
     doc = json.loads(full_files["bacnet/bas-vent.json"])

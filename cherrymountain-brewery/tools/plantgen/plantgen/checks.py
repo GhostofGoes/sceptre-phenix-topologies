@@ -335,9 +335,25 @@ def otsim_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list
     return errs
 
 
+#: The most coils or registers one Modbus request may carry, per function
+#: code (Modbus Application Protocol 1.1b3, section 6). The modbus_master
+#: plugin sends each io_point as one request and does not split it.
+MODBUS_REQUEST_LIMIT: dict[int, int] = {1: 2000, 2: 2000, 3: 125, 4: 125, 15: 1968, 16: 123}
+
+
 def master_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[str]:
     """Expand modbus_master blocks and compare register-by-register."""
     errs = []
+    for plc in alloc.plc_rios:
+        for dev in json.loads(files[f"openplc/{plc}/modbus_master.json"]):
+            for p in dev["config"]["io_points"]:
+                limit = MODBUS_REQUEST_LIMIT.get(p["fc"], 0)
+                if p["len"] > limit:
+                    errs.append(
+                        f"modbus_master {plc} {dev['name']}: FC{p['fc']} at "
+                        f"{p['offset']} asks for {p['len']}, over the "
+                        f"{limit} one request may carry"
+                    )
     by_rio = {
         (a.tag.rio, a.rio_space, a.rio_address): a
         for a in alloc.tags.values()

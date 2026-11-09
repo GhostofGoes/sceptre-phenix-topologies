@@ -36,7 +36,7 @@ belongs to the process that starts the experiment:
 |---|---|
 | configure | Validates the metadata (strict Pydantic models), loads `plant.yaml` for `variant` through plantgen, and checks it against the topology: every plant host of the variant exists, and each of its interfaces has the plant.yaml name, address, prefix length, and VLAN. Annotates each sim node that runs federates with `helics/federate: [{broker: sim-ctl\|mgmt, fed-count: N}]`. Writes each host's `sohProfile` (processes, listeners, custom tests) into this app's host metadata, where phenix's soh app reads it |
 | pre-start | Validates again, then renders the files below into `<experiment dir>/cherrymountain/<host>/` and injects them. An injection replaces any other injection to the same destination, so a rendered file wins over a static one in the topology. `injections.json` lists what went where |
-| post-start, running | Runs `systemctl is-active` for each host's provisioning units through cc (short timeouts; never blocks on a VM that has not booted) and reads the plant KPIs from the sim-ctl event API. Writes both to `status.apps.cherrymountain` |
+| post-start, running | Runs `systemctl is-active` for each host's provisioning units through cc (short timeouts; never blocks on a VM that has not booted) and reads the plant KPIs from the sim-ctl event API. Writes both to `status.apps.cherrymountain`. miniccc runs a command without a shell, so the check is the plain unit list. phenix stops the experiment when a post-start stage fails, so post-start records an error it cannot work around (`error: <type>` in the status) instead of failing; `running` reports it to its caller |
 | cleanup | Runs the export scripts on the FUXA hosts and the historian, and copies `fuxa-export.tar.gz` (alarm history from the API, plus FUXA's `_db` with the alarm and SQLite DAQ stores) and `influx-backup.tar.gz` to `<files>/cherrymountain/<host>-<file>`. A failed export is logged and recorded, and does not fail the stage |
 
 ## Inputs it reads
@@ -254,8 +254,12 @@ python -m pytest
 
 The tests run every stage on `tests/fixtures/experiment-ci.json`, which
 `tests/build_fixtures.py` records from `phenix-configs/topology-ci.yml`,
-`scenario-ci.yml`, `phenix-ci.yml`, and `tests/fixtures/app-ci.yml`. They read
+`scenario-ci.yml`, `phenix-ci.yml`, and `tests/fixtures/app-ci.yml` (a copy of
+the scenario's own block; `test_fixtures.py` fails when the two differ). They read
 the real plantgen output, program ZIP, and FUXA builder from this repository.
+`test_chain.py` runs the real phenix user apps of each variant's scenario
+(`ot-sim`, this app, `helics`, `protonuke`, `wireguard`) in scenario order, as
+phenix does, through configure and two starts.
 `fixtures/debug_map-plc-cellar.json` is the strucpp (`fcccfbdf`) debug map of
 the committed plc-cellar program, recorded to test the OPC UA config.
 

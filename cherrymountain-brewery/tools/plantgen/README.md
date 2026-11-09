@@ -108,7 +108,9 @@ Keys follow the phenix ot-sim app: `<federate>/<device>.<point>` for device
 points, `<federate>/<output>` for other outputs. Loads
 (`plant.yaml` `loads`) add `<federate>/load.<name>.kw` publications, matching
 power subscriptions, and `power/bus.<bus>.energized` publications that each
-load's federate subscribes to. `federate_count` counts the sim federates plus
+load's federate subscribes to. `unit_outputs` add `<federate>/<unit>.<key>`
+publications (unit id in lower case, `cellar/fv101.level_pct`), and `snapshot`
+adds subscriptions to the snapshot federate (below). `federate_count` counts the sim federates plus
 one I/O federate per HELICS-backed field host; the `cherrymountain` app uses it
 for the `helics` app's broker.
 
@@ -321,6 +323,13 @@ slice it has:
 - Alarms may name `suppress`, a bit in the same unit (`XS01.ACTIVE`), area
   (`LINE.XS01.RUN`), or by full name.
 - Federate inputs and outputs may be limited to some `variants`.
+- `unit_outputs` on a federate publish one value per unit whose `model` is
+  listed, for truth no tag carries (a fermenter's fill, its relief-valve vent;
+  DESIGN.md 9.5). They follow the variant's unit list.
+- `snapshot` (`federate`, `keys`): the federate subscribes to every other
+  federate's publication whose key matches a `keys` pattern (`fnmatch`). The
+  weather federate serves those values as `GET /api/v1/state` for the white
+  cell's 3D view, and the KPI keys feed `GET /api/v1/kpis` (DESIGN.md 15.10).
 - The ntp block may give defaults per host role (`roles`).
 
 ## Checks

@@ -178,6 +178,20 @@ class FederateInput(Strict):
     variants: list[str] | None = None
 
 
+class UnitOutput(Strict):
+    """A per-unit federate output: one publication ``<federate>/<unit>.<key>``
+    for every unit of the variant whose ``model`` is listed (unit ids in lower
+    case, ``cellar/fv101.level_pct``). For truth values no transmitter
+    measures (a fermenter's fill), so no tag carries them.
+    """
+
+    key: str
+    type: Literal["double", "boolean"]
+    units: str | None = None
+    desc: str = ""
+    models: list[str]
+
+
 class FederateSpec(Strict):
     """A HELICS federate run by cherrymountain_sim."""
 
@@ -186,6 +200,18 @@ class FederateSpec(Strict):
     endpoint: str = "updates"
     outputs: list[FederateOutput] = Field(default_factory=list)
     inputs: list[FederateInput] = Field(default_factory=list)
+    unit_outputs: list[UnitOutput] = Field(default_factory=list)
+
+
+class SnapshotSpec(Strict):
+    """The ground-truth snapshot (DESIGN.md §15.10): ``federate`` subscribes to
+    every publication of the variant's other federates whose key matches one
+    of ``keys`` (fnmatch patterns), and serves them as ``GET /api/v1/state``.
+    A variant without that federate has no snapshot.
+    """
+
+    federate: str
+    keys: list[str]
 
 
 class BacnetPoint(Strict):
@@ -596,6 +622,7 @@ class PlantFile(Strict):
     soh: SohSpec | None = None
     wireguard: WireguardSpec | None = None
     scorch: ScorchSpec | None = None
+    snapshot: SnapshotSpec | None = None
     variants: dict[str, VariantSpec]
 
 
@@ -735,6 +762,8 @@ class Plant(BaseModel):
     devices: list[Device]
     tags: list[Tag]
     federates: dict[str, FederateSpec]
+    #: (area id, unit) of every unit in the variant, in plant.yaml order.
+    units: list[tuple[str, UnitSpec]] = Field(default_factory=list)
 
     @property
     def alarms(self) -> list[Alarm]:
@@ -825,6 +854,7 @@ def expand(pf: PlantFile, variant: str) -> Plant:
     federates = {n: f for n, f in pf.federates.items() if n in spec.federates}
     devices: list[Device] = []
     tags: list[Tag] = []
+    units: list[tuple[str, UnitSpec]] = []
     for area in pf.areas:
         if area.id not in spec.areas:
             continue
@@ -832,6 +862,7 @@ def expand(pf: PlantFile, variant: str) -> Plant:
         for unit in area.units:
             if allowed is not None and unit.id not in allowed:
                 continue
+            units.append((area.id, unit))
             rio = unit.rio or area.rio
             federate = unit.federate or area.federate
             unit_devices: dict[str, Device] = {}
@@ -865,6 +896,7 @@ def expand(pf: PlantFile, variant: str) -> Plant:
         devices=devices,
         tags=tags,
         federates=federates,
+        units=units,
     )
 
 

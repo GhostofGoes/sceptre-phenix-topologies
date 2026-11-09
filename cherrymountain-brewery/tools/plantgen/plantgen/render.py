@@ -387,6 +387,23 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
                     "output": out.key,
                 }
             )
+        for area_id, unit in plant.units:
+            area = next(a for a in plant.file.areas if a.id == area_id)
+            if (unit.federate or area.federate) != fname:
+                continue
+            for uo in fed.unit_outputs:
+                if unit.model not in uo.models:
+                    continue
+                name = f"{unit.id.lower()}.{uo.key}"
+                pubs.append(
+                    {
+                        "key": f"{fname}/{name}",
+                        "type": uo.type,
+                        "units": uo.units,
+                        "unit": unit.id,
+                        "output": name,
+                    }
+                )
         subs: list[dict[str, Any]] = []
         defaults: dict[str, float] = {}
         subscribe = _Subscriber(feds, subs, defaults)
@@ -459,6 +476,7 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
         else:
             entry["sim"] = plant.spec.federate_sim.get(fname, {})
         doc["federates"][fname] = entry
+    _snapshot_subscriptions(plant, doc["federates"])
     for rio in plant.hosts_by_role(*IO_ROLES):
         devs = rio_devices(plant, rio.name)
         if not devs:
@@ -483,6 +501,27 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
         }
     doc["federate_count"] = len(doc["federates"]) + len(doc["io_federates"])
     return doc
+
+
+def _snapshot_subscriptions(plant: Plant, entries: dict[str, Any]) -> None:
+    """Subscribe the snapshot federate (plant.yaml ``snapshot``) to every other
+    federate's publication that matches a pattern, after its own inputs."""
+    snap = plant.file.snapshot
+    if snap is None or snap.federate not in entries:
+        return
+    entry: dict[str, Any] = entries[snap.federate]
+    have: set[str] = {s["key"] for s in entry["subscriptions"]}
+    for fname, other in entries.items():
+        if fname == snap.federate:
+            continue
+        for pub in other["publications"]:
+            key: str = pub["key"]
+            if key in have or not any(fnmatch.fnmatchcase(key, p) for p in snap.keys):
+                continue
+            entry["subscriptions"].append(
+                {"key": key, "type": pub["type"], "units": pub["units"]}
+            )
+            have.add(key)
 
 
 class _Subscriber:

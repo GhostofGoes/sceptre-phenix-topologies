@@ -20,7 +20,7 @@ on:
       spikes:
         description: >-
           Spikes to run, space-separated (empty runs all): vyos-ipsec bbmd-netns
-          bbmd-vyos autotunnel serial malcolm-docker malcolm-mirror
+          bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror
         type: string
         default: ''
       phenix-ref:
@@ -95,7 +95,7 @@ jobs:
           SPIKES: ${{ inputs.spikes }}
         run: |
           set -euo pipefail
-          all='vyos-ipsec bbmd-netns bbmd-vyos autotunnel serial malcolm-docker malcolm-mirror'
+          all='vyos-ipsec bbmd-netns bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror'
           read -r -a want <<<"${SPIKES:-$all}"
           for n in "${want[@]}"; do
             [[ " $all " == *" $n "* ]] || { echo "::error::unknown spike '$n'"; exit 1; }
@@ -113,7 +113,7 @@ jobs:
     if: >-
       contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
       || contains(needs.plan.outputs.spikes, ' autotunnel ') || contains(needs.plan.outputs.spikes, ' serial ')
-      || contains(needs.plan.outputs.spikes, ' malcolm-mirror ')
+      || contains(needs.plan.outputs.spikes, ' serial-pr130 ') || contains(needs.plan.outputs.spikes, ' malcolm-mirror ')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -446,6 +446,63 @@ jobs:
           if-no-files-found: ignore
           overwrite: true
 
+  serial-pr130:
+    name: Spike serial (phenix PR 130)
+    needs: [plan, image-cm-spike]
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' serial-pr130 ') && needs.image-cm-spike.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+          persist-credentials: false
+
+      # The PR's serial app (src/go/app/serial.go and util/mm at activeshadow/sceptre-phenix f832ad5)
+      # applied to the fork's phenix; the PR itself is not based on the fork's e2e setup.
+      - name: Set up the lab with the PR's serial app
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          phenix-patch: cherrymountain-brewery/spikes/serial/pr130-serial.patch
+          images: cm-spike
+
+      - name: Build the ot-sim modules for the guests
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -q --no-install-recommends build-essential git socat libczmq-dev libzmq3-dev libxml2-dev pkg-config
+          sudo mkdir -p /phenix/injects
+          sudo chown "$(id -u):$(id -g)" /phenix/injects
+          OUT=/phenix/injects/otsim-rtu.tgz bash cherrymountain-brewery/spikes/serial/build_otsim.sh
+
+      - name: Run the spike
+        run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/serial/ci_pr130.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" evidence || true
+          find evidence -type f -size +50M -delete 2>/dev/null || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-serial-pr130
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
   malcolm-mirror:
     name: Spike malcolm (mirror capture)
     needs: [plan, image-cm-spike]
@@ -522,7 +579,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends iproute2 nftables tcpdump
+          sudo apt-get install -y -q --no-install-recommends iproute2 nftables tcpdump conntrack
           python3 -m venv "$RUNNER_TEMP/bbmd-venv"
           "$RUNNER_TEMP/bbmd-venv/bin/pip" install --quiet bacpypes3==0.0.110 pydantic==2.11.7
 

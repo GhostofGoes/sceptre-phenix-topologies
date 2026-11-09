@@ -52,15 +52,23 @@ def echo_check(lab: Lab, rx: str, tx: str, word: str) -> tuple[bool, str]:
         return False, str(exc)
 
 
-def otsim_rtu(lab: Lab, rio: str, chiller: str) -> None:
-    """ot-sim's own Modbus RTU master and server over the serial app's pty, in place of the stdlib stand-ins."""
+def put_config(lab: Lab, vm: str, name: str, dev: str) -> None:
+    """Write an ot-sim config to the guest with its serial device set to dev."""
+    text: str = (HERE / name).read_text().replace(DEV, dev)
+    staged: Path = lab.dir / name
+    staged.write_text(text)
+    lab.put_file(vm, f"/tmp/{name}", staged, "0644")
+
+
+def otsim_rtu(lab: Lab, rio: str, chiller: str, dev: str = DEV) -> None:
+    """ot-sim's own Modbus RTU master and server over a serial link, in place of the stdlib stand-ins."""
     lab.fact("otsim_tarball", f"{OTSIM_TARBALL}: {OTSIM_TARBALL.stat().st_size} bytes" if OTSIM_TARBALL.exists() else "missing")
     for vm in (rio, chiller):
         lab.shell(vm, "pkill -f rtu_check.py; sleep 1; pgrep -fc rtu_check.py || true")
         out: str = lab.shell(vm, "ls -l /opt/otsim-rtu.tgz && tar -xzf /opt/otsim-rtu.tgz -C /opt && ls /opt/otsim/bin")
         lab.check(f"the injected ot-sim tarball unpacks on {vm}", "ot-sim-modbus-module" in out, out[:300])
-    lab.put_file(chiller, "/tmp/otsim-chiller.xml", HERE / "otsim-chiller.xml", "0644")
-    lab.put_file(rio, "/tmp/otsim-rio.xml", HERE / "otsim-rio.xml", "0644")
+    put_config(lab, chiller, "otsim-chiller.xml", dev)
+    put_config(lab, rio, "otsim-rio.xml", dev)
     for vm in (rio, chiller):
         lab.put_file(vm, "/tmp/otsim_check.py", HERE / "otsim_check.py")
     lab.shell("bus-monitor", "rm -f /tmp/bus2.txt; (setsid nohup timeout 900 tcpdump -ni eth0 -l 'udp port 9000' >/tmp/bus2.txt 2>&1 </dev/null &); sleep 1; echo started")

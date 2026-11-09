@@ -177,7 +177,8 @@ class NetnsRunner:
         probe.plumb(GATEWAY["ops"], ["10.20.60.0/24"], attach)
 
     def flush_state(self) -> None:
-        subprocess.run(["ip", "netns", "exec", "fw", "conntrack", "-F"], capture_output=True, check=False)  # noqa: S603, S607
+        # A missing conntrack binary must not pass silently: stale entries make every stage look established.
+        sh(["ip", "netns", "exec", "fw", "conntrack", "-F"])
 
     def stop_daemons(self) -> None:
         for proc in self.procs:

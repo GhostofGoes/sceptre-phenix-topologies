@@ -2801,7 +2801,7 @@ rebroadcast reaches it.
 
 ## 17. Testing and validation
 
-- **Model unit tests (pytest, 95 in `sim/`):**
+- **Model unit tests (pytest in `sim/`, the `cm-sim-tests` hook):**
   - Fermentation: attenuation timing and CO₂ mass balance, plus published
     curve shapes.
   - IBU: compared with the published Tinseth formula at sea level (a 20.73 IBU
@@ -2815,9 +2815,11 @@ rebroadcast reaches it.
   The results are in [§9.6](#96-implementation-status-and-validation). An offline
   harness runs all seven federates together without HELICS (a 12 h run gave 2
   brews, 14,327 bottles, and a 227 kW peak). A 24 h HELICS soak has not run.
-- **plantgen consistency in CI (69 tests):** no register gaps, all three address
-  formats agree, every tag has an owner, and every alarm is rationalized.
-- **Static network check (Phase 1).** `tools/netcheck` (41 tests) traces every
+- **plantgen consistency (the `cm-plantgen-tests` hook):** no register gaps,
+  all three address formats agree, every tag has an owner, every alarm is
+  rationalized and has its deadband, and `cm-sync-check` fails when the
+  committed output, the scenario blocks, or a program ZIP is stale.
+- **Static network check (Phase 1).** `tools/netcheck` (with its own tests) traces every
   conduit of [§10.3](#103-conduit-matrix-default-deny-stateful-logged) and every
   default drop through the static routes, NAT, IPsec, and the rendered
   rulesets: each conduit must be delivered, its reply must come back, and it
@@ -2827,8 +2829,22 @@ rebroadcast reaches it.
   blocks. The prek hooks `cm-netcheck`, `cm-netcheck-tests`, and `cm-sync-check`
   (`sync.py --check`) run it in CI. It models the rules phenix renders, not VyOS
   behavior.
-- **App tests.** 94 tests of the `cherrymountain` app and `plantevent` in
-  `apps/`.
+- **App tests (the `cm-app-tests` hook).** The `cherrymountain` app and
+  `plantevent` in `apps/`, run on the recorded `ci` experiment and the `full`
+  fixture. The hook installs phenix-apps from the fork the range runs on
+  ([§16](#16-new-and-extended-software)), pinned by commit, because it is not
+  on PyPI.
+- **SOC tests (the `cm-soc-tests` hook).** The Wazuh decoders and rules against
+  sample lines, the Suricata rules and the Zeek script against the topology's
+  addresses (and against the pcaps when Suricata and Zeek are installed; CI
+  has neither, so those cases skip there), and the vendor-path scripts.
+- **What CI runs.** The Lint workflow runs `prek run --all-files`: every hook
+  above, so the plantgen, sim, app, netcheck, SOC, and sync checks all run on
+  each pull request. Three checks do not run in CI and are run by hand: the
+  Docker integration test (`tests/integration/ci_slice_docker.sh`, minutes and
+  a Docker daemon), `build_zip.sh --check` (Node and strucpp; `cm-sync-check`
+  covers the program MD5 and plugin configs without them), and the pcap
+  replays through Suricata and Zeek.
 - **Repository checks:** `prek run --all-files` locally and in the Lint
   workflow ([§2](#2-goals-and-non-goals) has the requirements). The hooks:
   - codespell, yamllint, shellcheck (warning level repository-wide, style level

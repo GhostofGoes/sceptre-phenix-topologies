@@ -329,6 +329,66 @@ pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
+# plantgen's tests: register gaps, the three address conventions, owners,
+# rationalized alarms (and their deadbands), and the generated app blocks.
+id = "cm-plantgen-tests"
+name = "pytest (plantgen)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/plantgen"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(tools/plantgen/|plant/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The simulation models against hand calculations and published values, the
+# federates, the event API, and the offline federation (DESIGN.md 9.6). HELICS
+# itself is not needed: the tests run the federates without a broker.
+id = "cm-sim-tests"
+name = "pytest (cherrymountain_sim)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/sim"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "simpy==4.1.1",
+    "opendssdirect.py==0.8.4",
+    "scipy==1.16.3",
+    "packmlpy==1.0.0",
+    "ht==1.2.0",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(sim/|plant/generated/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The cherrymountain phenix app and the plantevent SCORCH component. They need
+# phenix-apps, which is not on PyPI: it comes from the fork the range runs on
+# (DESIGN.md 16), pinned by commit. The tests read plant.yaml, plantgen, the
+# FUXA builder, and the program ZIPs (Git LFS) from this repository.
+id = "cm-app-tests"
+name = "pytest (cherrymountain app, plantevent)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/apps"
+additional_dependencies = [
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@771e8d87a64770265862468664a1368dcfcbb99d#subdirectory=src/python",
+    "Mako==1.3.10",
+    "pydantic==2.14.3",
+    "python-box==7.2.0",
+    "pyyaml==6.0.3",
+    "requests==2.32.5",
+    "pytest==9.2.0",
+    "pytest-mock==3.15.1",
+]
+files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|plc/|phenix-injects/openplc/|phenix-configs/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
 # The generated app blocks embedded in the scenarios, and the generated files
 # copied into phenix-injects/, are current (python sync.py rewrites them).
 # This runs on every CI run (--all-files), so plantgen output that changed
@@ -341,7 +401,7 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(sync(_ci)?\.py|phenix-configs/scenario-[^/]*\.ya?ml)$'
+files = '^cherrymountain-brewery/(sync(_ci)?\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|phenix-injects/(openplc|fuxa)/)'
 pass_filenames = false
 priority = "check"
 

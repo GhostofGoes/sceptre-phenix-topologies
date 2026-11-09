@@ -150,7 +150,13 @@ to pin down how the v4 runtime clamps and segments the holding registers.
 - **Network plan:** `netcheck` (see [tools/netcheck](tools/netcheck/README.md)),
   its tests, and `sync.py --check` run as local hooks, so CI fails when a
   conduit loses its rule, a rule has no conduit, an address overlaps, or
-  plantgen's output was not synced into the scenarios.
+  plantgen's output was not synced into the scenarios (or a program ZIP is
+  stale).
+- **Test suites:** the plantgen, `sim/`, `apps/`, and SOC pytest suites run as
+  hooks too (`cm-plantgen-tests`, `cm-sim-tests`, `cm-app-tests`,
+  `cm-soc-tests`). The app hook installs phenix-apps from the pinned fork
+  commit. The Docker integration test and `build_zip.sh --check` (Node) are
+  run by hand.
 
 `spikes/` and `tests/` are exempt from the stricter checks. The system tools
 that some hooks need are listed in

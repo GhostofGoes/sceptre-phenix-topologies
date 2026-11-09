@@ -53,6 +53,7 @@ cherrymountain_apps = [
 
 [tool.pytest.ini_options]
 testpaths = ["cherrymountain_apps"]
+pythonpath = ["."]
 addopts = "-p no:cacheprovider"
 
 [tool.ruff]

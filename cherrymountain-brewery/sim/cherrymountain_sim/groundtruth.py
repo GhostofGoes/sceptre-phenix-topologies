@@ -1,12 +1,25 @@
 """Ground truth to the in-experiment OpenSearch on sim-ctl (DESIGN.md §9.5).
 
 Each federate writes its true state (every published value plus model state
-from :meth:`Federate.truth`) every ``interval_s`` simulated seconds to the
+from :meth:`Federate.truth`) every ``interval_s`` federate seconds to the
 index ``<index_base>-<federate>-<YYYY.MM.DD>`` through the OpenSearch
-(Elasticsearch-compatible) ``_bulk`` API. Writes happen in a background
-thread, so a slow or absent OpenSearch never stalls the HELICS real-time
-loop; failures are logged and the oldest documents are dropped when the
-buffer is full.
+(Elasticsearch-compatible) ``_bulk`` API.
+
+**Mapping.** Before its first write the writer puts an index template for
+``<index_base>-*``. It covers this module's documents and those of the ot-sim
+ground-truth module, which uses the same index base: ``@timestamp`` is a date
+(the ot-sim module sends epoch milliseconds, which map to a number without a
+template), ``federate``, ``source``, and ``field`` are keywords (a dashboard
+groups by them), and every number is a double (a value first seen as ``0``
+would otherwise make the field an integer and truncate what follows). The
+ot-sim module's own template uses an Elasticsearch-only type and OpenSearch
+refuses it; this one has a higher priority in any case.
+
+Writes happen in a background thread, so a slow or absent OpenSearch never
+stalls the HELICS real-time loop. A batch that cannot be sent (OpenSearch is
+still starting, or restarting) is kept and sent again; the oldest documents
+are dropped only when the buffer is full. Documents OpenSearch refuses are
+logged with its reason.
 """
 
 from __future__ import annotations
@@ -17,7 +30,7 @@ import queue
 import threading
 import urllib.error
 import urllib.request
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from cherrymountain_sim.federate import Federate, GroundTruthConfig
@@ -25,6 +38,43 @@ if TYPE_CHECKING:
 LOG: logging.Logger = logging.getLogger("cherrymountain_sim.groundtruth")
 #: Documents buffered before the oldest are dropped.
 MAX_BUFFER: int = 10000
+#: Documents in one ``_bulk`` request.
+BATCH: int = 500
+#: Priority of the index template (the ot-sim module's has none, which is 0).
+TEMPLATE_PRIORITY: int = 100
+
+type Item = tuple[str, dict[str, Any]]
+
+
+def index_template(index_base: str) -> dict[str, Any]:
+    """The index template for ``<index_base>-*`` (see the module docstring)."""
+    return {
+        "index_patterns": [f"{index_base}-*"],
+        "priority": TEMPLATE_PRIORITY,
+        "template": {
+            "settings": {"number_of_replicas": 0},
+            "mappings": {
+                "dynamic_templates": [
+                    {
+                        "numbers_are_doubles": {
+                            "match_mapping_type": "long",
+                            "mapping": {"type": "double"},
+                        }
+                    }
+                ],
+                "properties": {
+                    "@timestamp": {"type": "date"},
+                    "federate": {"type": "keyword"},
+                    "variant": {"type": "keyword"},
+                    "t_s": {"type": "double"},
+                    # The ot-sim ground-truth module's documents.
+                    "source": {"type": "keyword"},
+                    "field": {"type": "keyword"},
+                    "value": {"type": "double"},
+                },
+            },
+        },
+    }
 
 
 class TruthWriter:
@@ -36,7 +86,10 @@ class TruthWriter:
     variant: str
     interval_s: float
     next_t: float
-    docs: queue.Queue[tuple[str, dict[str, Any]]]
+    docs: queue.Queue[Item]
+    #: A batch that could not be sent, to send again before anything newer.
+    retry: list[Item]
+    template_done: bool
     thread: threading.Thread | None
     stop: threading.Event
 
@@ -55,6 +108,8 @@ class TruthWriter:
         self.interval_s = interval_s
         self.next_t = 0.0
         self.docs = queue.Queue(MAX_BUFFER)
+        self.retry = []
+        self.template_done = False
         self.stop = threading.Event()
         self.thread = None
         if self.endpoint:
@@ -70,7 +125,7 @@ class TruthWriter:
             return cls(None, federate, variant)
         return cls(cfg.endpoint, federate, variant, cfg.index_base)
 
-    def document(self, fed: Federate) -> tuple[str, dict[str, Any]]:
+    def document(self, fed: Federate) -> Item:
         """(index, document) for the federate's current state."""
         now = fed.now
         doc = {
@@ -103,7 +158,7 @@ class TruthWriter:
                 pass
 
     @staticmethod
-    def bulk_body(items: list[tuple[str, dict[str, Any]]]) -> bytes:
+    def bulk_body(items: list[Item]) -> bytes:
         """NDJSON body of a ``_bulk`` request."""
         lines = []
         for index, doc in items:
@@ -111,27 +166,102 @@ class TruthWriter:
             lines.append(json.dumps(doc, default=str))
         return ("\n".join(lines) + "\n").encode()
 
-    def _flush(self) -> None:
-        items = []
-        while not self.docs.empty() and len(items) < 500:
-            items.append(self.docs.get_nowait())
-        if not items:
-            return
+    def _send(
+        self, method: str, path: str, body: bytes, ctype: str
+    ) -> tuple[Literal["ok", "refused", "unreachable"], bytes]:
+        """One request to OpenSearch: ``ok`` with the reply, ``refused`` (an
+        HTTP error) with the reply, or ``unreachable`` with the reason."""
         req = urllib.request.Request(  # noqa: S310 - http to the MGMT OpenSearch
-            f"{self.endpoint}/_bulk",
-            data=self.bulk_body(items),
-            headers={"Content-Type": "application/x-ndjson"},
-            method="POST",
+            f"{self.endpoint}{path}",
+            data=body,
+            headers={"Content-Type": ctype},
+            method=method,
         )
         try:
             with urllib.request.urlopen(req, timeout=5) as resp:  # noqa: S310
-                resp.read()
+                return "ok", resp.read()
+        except urllib.error.HTTPError as exc:
+            return "refused", exc.read()[:500]
         except (urllib.error.URLError, OSError) as exc:
-            LOG.warning("ground truth: %d documents not written: %s", len(items), exc)
+            return "unreachable", str(exc).encode()
+
+    def _put_template(self) -> bool:
+        """Put the index template; False while OpenSearch cannot be reached.
+        A refusal is logged and not tried again (the writes then go ahead with
+        OpenSearch's own mapping)."""
+        body = json.dumps(index_template(self.index_base)).encode()
+        path = f"/_index_template/{self.index_base}-cm"
+        state, reply = self._send("PUT", path, body, "application/json")
+        if state == "unreachable":
+            LOG.info("ground truth: OpenSearch is not reachable yet: %s", reply.decode())
+            return False
+        if state == "refused":
+            LOG.warning("ground truth: index template refused: %s", reply.decode(errors="replace"))
+        return True
+
+    def _flush(self) -> None:
+        """Send one batch: the batch to retry, or else up to :data:`BATCH`
+        queued documents. A batch that cannot be sent is kept for the next
+        call."""
+        if not self.template_done:
+            self.template_done = self._put_template()
+            if not self.template_done:
+                return
+        items = self.retry
+        self.retry = []
+        while len(items) < BATCH:
+            try:
+                items.append(self.docs.get_nowait())
+            except queue.Empty:
+                break
+        if not items:
+            return
+        state, reply = self._send("POST", "/_bulk", self.bulk_body(items), "application/x-ndjson")
+        if state == "unreachable":
+            self.retry = items
+            LOG.warning(
+                "ground truth: %d documents kept to send again: %s", len(items), reply.decode()
+            )
+            return
+        if state == "refused":
+            LOG.warning(
+                "ground truth: %d documents refused: %s",
+                len(items),
+                reply.decode(errors="replace"),
+            )
+            return
+        self._log_item_errors(reply, len(items))
+
+    @staticmethod
+    def _log_item_errors(reply: bytes, sent: int) -> None:
+        """Log the documents a ``_bulk`` reply reports as failed (a mapping
+        conflict, a full disk): the request itself succeeds either way."""
+        try:
+            doc = json.loads(reply)
+        except ValueError:
+            return
+        if not isinstance(doc, dict) or not doc.get("errors"):
+            return
+        failed = [
+            entry.get("index", {}).get("error")
+            for entry in doc.get("items", [])
+            if isinstance(entry, dict) and entry.get("index", {}).get("error")
+        ]
+        if failed:
+            LOG.warning(
+                "ground truth: OpenSearch rejected %d of %d documents; first reason: %s",
+                len(failed),
+                sent,
+                json.dumps(failed[0])[:300],
+            )
 
     def _loop(self) -> None:
         while not self.stop.wait(5.0):
-            self._flush()
+            try:
+                self._flush()
+            except Exception:
+                # The writer must outlive any one bad batch or reply.
+                LOG.exception("ground truth: flush failed")
 
     def close(self) -> None:
         """Flush what is left and stop the thread."""

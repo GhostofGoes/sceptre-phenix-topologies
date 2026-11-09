@@ -4,7 +4,7 @@ A small HTTP API on sim-ctl through which the SCORCH ``plantevent`` component
 and the ``cherrymountain`` app inject scenario events and read plant KPIs.
 The contract is the one ``apps/cherrymountain_apps/simctl.py`` documents::
 
-    GET  /api/v1/health   -> 200 {"status": "ok", ...}
+    GET  /api/v1/health   -> 200 {"status": "ok" | "starting" | "stalled", ...}
     POST /api/v1/events   {"event": <kind>, ...parameters} -> 202 JSON
     POST /events          the same (short form)
     GET  /api/v1/events   -> 200 {"events": [...]} (accepted events, oldest first)
@@ -35,6 +35,7 @@ import logging
 import math
 import queue
 import threading
+import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, ClassVar
@@ -66,6 +67,9 @@ HISTORY: int = 500
 MAX_BODY: int = 16 * 1024
 #: Longest ``duration`` an event may ask for, seconds (one simulated day at 1x).
 MAX_DURATION_S: float = 24 * 3600.0
+#: ``GET /health`` reports ``stalled`` when the federate's last step is older
+#: than this (it steps every second), wall seconds.
+STALLED_AFTER_S: float = 10.0
 
 
 def _check_duration(params: dict[str, Any], kind: str, *, zero_ok: bool = False) -> None:
@@ -241,6 +245,8 @@ class EventApi:
     kpis: Kpis
     state: State
     sim_time: str | None
+    #: Wall clock (Unix seconds) of the federate's last step, None before the first.
+    stepped_wall: float | None
     lock: threading.Lock
     server: ThreadingHTTPServer | None
     thread: threading.Thread | None
@@ -252,6 +258,7 @@ class EventApi:
         self.kpis = Kpis()
         self.state = State(variant=variant)
         self.sim_time = None
+        self.stepped_wall = None
         self.lock = threading.Lock()
         self.server = None
         self.thread = None
@@ -271,6 +278,7 @@ class EventApi:
         """Refresh the clock, the KPI snapshot, and (when given) the state."""
         with self.lock:
             self.sim_time = sim_time
+            self.stepped_wall = time.time()
             self.kpis = kpis
             if state is not None:
                 self.state = state
@@ -298,9 +306,28 @@ class EventApi:
         return accepted
 
     def health(self) -> dict[str, Any]:
-        """``GET /health`` reply."""
+        """``GET /health`` reply. ``status`` is ``ok`` only while the federate
+        steps: ``starting`` until its first step (the HELICS federation has not
+        started, for example because the broker still waits for a federate),
+        and ``stalled`` when the last step is more than :data:`STALLED_AFTER_S`
+        old. The API itself answers in all three, so a 200 alone does not say
+        the plant is running."""
         with self.lock:
-            return {"status": "ok", "variant": self.variant, "sim_time": self.sim_time}
+            stepped = self.stepped_wall
+            sim_time = self.sim_time
+        age = None if stepped is None else max(time.time() - stepped, 0.0)
+        if age is None:
+            status = "starting"
+        elif age > STALLED_AFTER_S:
+            status = "stalled"
+        else:
+            status = "ok"
+        return {
+            "status": status,
+            "variant": self.variant,
+            "sim_time": sim_time,
+            "step_age_s": None if age is None else round(age, 1),
+        }
 
     def kpi_reply(self) -> dict[str, Any]:
         """``GET /kpis`` reply."""

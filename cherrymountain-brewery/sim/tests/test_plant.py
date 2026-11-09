@@ -69,6 +69,28 @@ def test_purge_fans_start_at_tier_1(full: HelicsConfig) -> None:
     fed.handle_message(json.dumps([{"tag": "bas-vent.purge_fan_1", "value": True}]))
     fed.step(10.0)
     assert fed.values()["building/bas-vent.purge_fan_1"] is True
+    # ... until the write is released (a relinquish: a null value)
+    released = json.dumps([{"tag": "bas-vent.purge_fan_1", "value": None}])
+    assert fed.handle_message(released) == ["bas-vent.purge_fan_1"]
+    fed.step(10.0)
+    assert fed.values()["building/bas-vent.purge_fan_1"] is False
+
+
+@pytest.mark.parametrize("name", ["brewhouse", "utilities", "power", "building"])
+@pytest.mark.parametrize("value", ["abc", float("nan"), float("inf"), [1], {"a": 1}])
+def test_a_write_that_is_not_a_number_is_dropped(
+    full: HelicsConfig, name: str, value: object
+) -> None:
+    """These federates read commands with float() when they step, so a write
+    they cannot use is refused when it arrives; it used to stop the federate
+    at its next step, for the rest of the run."""
+    fed = build(full, name)
+    period = float(full.federates[name].period_s)
+    fed.step(period)
+    for tag in full.federates[name].accepted_updates:
+        assert fed.handle_message(json.dumps([{"tag": tag, "value": value}])) == []
+    fed.step(period)
+    assert fed.t == 2 * period
 
 
 def test_a_null_write_hands_a_point_back_to_the_controller(full: HelicsConfig) -> None:

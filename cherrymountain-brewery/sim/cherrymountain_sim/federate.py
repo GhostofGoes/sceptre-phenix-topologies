@@ -20,6 +20,7 @@ import datetime as dt
 import importlib
 import json
 import logging
+import math
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, ClassVar, Literal
@@ -241,6 +242,15 @@ class SimClock(BaseModel):
         return self.start + dt.timedelta(seconds=t_s * self.speedup)
 
 
+def typed(pub: Publication, value: Value) -> Value:
+    """``value`` in the type ``pub`` declares (boolean, double, or string)."""
+    if pub.type == "boolean":
+        return bool(value)
+    if pub.type == "string":
+        return str(value)
+    return float(value)
+
+
 class ScenarioEvent(BaseModel):
     """A scenario event from the sim-ctl event API (DESIGN.md §9.5)."""
 
@@ -351,10 +361,23 @@ class Federate:
         return True
 
     def write(self, tag: str, value: Any) -> None:
-        """Apply one write to ``<device>.<point>``."""
+        """Apply one write to ``<device>.<point>``.
+
+        ``None`` (JSON ``null``) releases the point: the last written value is
+        forgotten, and a federate with per-point authority (building, power)
+        follows its own controller there again, as after a BACnet relinquish.
+        Any other value must be a finite number or a boolean; the models read
+        commands with ``float()`` and ``bool()``, so anything else would stop
+        the federate at its next step instead of here.
+        """
         device, _, point = tag.partition(".")
         if device not in self.devices:
             raise KeyError(f"no device {device}")
+        if value is None:
+            self.commands.pop(tag, None)
+            return
+        if not isinstance(value, bool | int | float) or not math.isfinite(value):
+            raise ValueError(f"{tag}: a write must be a finite number or a boolean")
         self.commands[tag] = value
         self.external += 1
         self.last_write_t = self.t
@@ -410,8 +433,12 @@ class Federate:
         return self.point_value(pub)
 
     def values(self) -> dict[str, Value]:
-        """Every publication key and its current value."""
-        return {p.key: self.value(p) for p in self.cfg.publications}
+        """Every publication key and its current value, in the publication's
+        type, as HELICS carries it. A command a PLC wrote reads back as the
+        number ot-sim sent (1.0 for a coil), where the autopilot's is a bool;
+        without the cast a ground-truth index mapped one way rejects the
+        documents that carry the other."""
+        return {p.key: typed(p, self.value(p)) for p in self.cfg.publications}
 
     def truth(self) -> dict[str, Any]:
         """Ground-truth record: every published value (subclasses add state)."""
@@ -748,7 +775,7 @@ def run(
                 h.helicsEndpointSendBytesTo(ep, payload.encode(), dest)
             logic.outbox.clear()
             for pub, spec in pubs.values():
-                value = logic.value(spec)
+                value = typed(spec, logic.value(spec))
                 if spec.type == "boolean":
                     h.helicsPublicationPublishBoolean(pub, bool(value))
                 elif spec.type == "string":

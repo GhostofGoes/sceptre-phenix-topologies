@@ -513,9 +513,9 @@ class CellarFederate(Federate):
         match point:
             case "co2_ok":
                 # The bas-vent relay contact, hardwired into rio-cellar
-                # (DESIGN.md §6.6 #6): healthy only while the building federate
-                # reports it energized.
-                return self.input(CO2_RELAY_INPUT, 1.0) >= 0.5
+                # (DESIGN.md §6.7): healthy only while the building federate
+                # reports it energized; open until it first does.
+                return self.input(CO2_RELAY_INPUT, 0.0) >= 0.5
             case "port_closed":
                 return not bool(cmd.get(f"{device}.dose_valve", False))
             case "route_ok":

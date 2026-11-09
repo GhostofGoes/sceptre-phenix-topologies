@@ -78,9 +78,10 @@ federates:
       - { key: building/cellar.temp_f, type: double, units: degF, default: 68.0 }
       - { key: weather/pressure.kpa, type: double, units: kPa, default: 83.4 }
       - { key: brewhouse/knockout.gpm, type: double, units: gal/min, default: 0.0, variants: [full, lite] }
-      # The bas-vent gas-detection relay (1 = healthy, 0 = tripped). Without the
-      # building federate (ci) there is no gas detection and no carbonation.
-      - { key: building/vent.co2_relay_ok, type: double, default: 1.0, variants: [full, lite] }
+      # The bas-vent gas-detection relay (1 = healthy, 0 = tripped). It is
+      # de-energize to trip, so it reads open (carbonation inhibited) until the
+      # building federate first reports it. The ci variant has neither.
+      - { key: building/vent.co2_relay_ok, type: double, default: 0.0, variants: [full, lite] }
       - { key: packaging/beer.draw_gpm, type: double, units: gal/min, default: 0.0, variants: [full, lite] }
   # Full plant federates (DESIGN.md §9.2). The cellar entry above keeps its
   # ci inputs and outputs; full-plant-only I/O is scoped with `variants`.
@@ -991,6 +992,12 @@ alarm_rationale:
     action: Check the overnight recharge schedule and the dispatch settings
     response_time: 4h
   # -- facilities (BACnet, evaluated by FUXA) -----------------------------------
+  cellar-co2-purge:
+    priority: low
+    cause: Fermentation venting or a small CO2 leak raised the cellar above 5,000 ppm
+    consequence: The OSHA PEL (5,000 ppm, 8 h TWA) is exceeded; the purge fans are running
+    action: Confirm both purge fans run (FAN01 and FAN02) and limit time in the cellar until it clears
+    response_time: 30m
   cellar-co2-high:
     priority: high
     cause: Fermentation venting, a CO2 leak, or the purge fans not running
@@ -1415,6 +1422,8 @@ areas:
           - { id: ZSC01.PV, desc: Hop port closed, io: hopdoser.port_closed }
           - { id: XV01.CMD, desc: Hop port CO2 purge valve, io: hopdoser.purge_valve }
           - { id: XV02.CMD, desc: Hop dose valve, io: hopdoser.dose_valve }
+          - { id: XC01.CMD, desc: "Dry-hop dose request (operator; plc-cellar purges, doses, and clears it)", type: binary-read-write }
+          - { id: XS01.STEP, desc: "Dry-hop sequence step (0 idle, 1 CO2 purge, 2 dose)", type: analog-read, range: [0, 2], scaling: 0 }
 
       - id: XFER
         name: Transfer panel (FV to BBT)
@@ -2033,7 +2042,11 @@ areas:
           - { id: SC01.CMD, desc: Kettle hood exhaust fan speed, io: bas-vent.exhaust_pct, units: "%", range: [0, 100] }
           - { id: FAN01.PV, desc: Cellar purge fan 1 running (current switch), io: bas-vent.purge_fan_1_status }
           - { id: FAN02.PV, desc: Cellar purge fan 2 running (current switch), io: bas-vent.purge_fan_2_status }
-          - { id: AY01.TIER1, desc: "Cellar CO2 tier 1 (5,000 ppm, purge fans on)", io: bas-vent.co2_tier_1 }
+          - id: AY01.TIER1
+            desc: "Cellar CO2 tier 1 (5,000 ppm, purge fans on)"
+            io: bas-vent.co2_tier_1
+            alarms:
+              - { kind: state, limit: 1, delay: 1m, rationale: cellar-co2-purge }
           - { id: AY01.TIER2, desc: "Cellar CO2 tier 2 (15,000 ppm, carbonation inhibited)", io: bas-vent.co2_tier_2 }
           - { id: AY01.TIER3, desc: "Cellar CO2 tier 3 (30,000 ppm, evacuate)", io: bas-vent.co2_tier_3 }
           - { id: FAN01.CMD, desc: Cellar purge fan 1, io: bas-vent.purge_fan_1 }

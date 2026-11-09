@@ -7,7 +7,7 @@
   "buffer_mapping": {
     "holding_registers": {
       "qw_count": 106,
-      "mw_count": 14,
+      "mw_count": 15,
       "md_count": 0,
       "ml_count": 0
     },

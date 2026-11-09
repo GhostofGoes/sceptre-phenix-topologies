@@ -2006,6 +2006,30 @@
           "access": "read"
         },
         {
+          "id": "t_26b5b0f8-2d27-59a9-b9fd-973f98f9d511",
+          "name": "CEL.DH.XC01.CMD",
+          "label": "Dry-hop dose request (operator; plc-cellar purges, doses, and clears it)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 25,
+          "access": "read-write"
+        },
+        {
+          "id": "t_06141e21-836c-5605-887a-5ad22f3475a6",
+          "name": "CEL.DH.XS01.STEP",
+          "label": "Dry-hop sequence step (0 idle, 1 CO2 purge, 2 dose)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 121,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            2.0
+          ]
+        },
+        {
           "id": "t_0b080582-0c07-5415-8af4-0f753ff16e15",
           "name": "CEL.XFER.ZS01.PV",
           "label": "Transfer route verified (swing-panel proximity)",
@@ -2053,7 +2077,7 @@
           "label": "Transfer in progress (peer status for plc-utilities)",
           "type": "Bool",
           "memaddress": "000000",
-          "address": 25,
+          "address": 26,
           "access": "read"
         },
         {
@@ -2062,7 +2086,7 @@
           "label": "CIP permitted on the cellar circuits (peer status for plc-utilities)",
           "type": "Bool",
           "memaddress": "000000",
-          "address": 26,
+          "address": 27,
           "access": "read"
         },
         {
@@ -2080,7 +2104,7 @@
           "label": "Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock)",
           "type": "Bool",
           "memaddress": "000000",
-          "address": 27,
+          "address": 28,
           "access": "read"
         },
         {
@@ -2089,7 +2113,7 @@
           "label": "Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock): state alarm (medium)",
           "type": "Bool",
           "memaddress": "000000",
-          "address": 28,
+          "address": 29,
           "access": "read"
         }
       ]

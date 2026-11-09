@@ -673,7 +673,7 @@
       "action": "Confirm the purge fans are running and find the CO2 source before re-entry",
       "response_time_s": 900.0,
       "plc": "plc-cellar",
-      "plc_iec": "%QX3.3",
+      "plc_iec": "%QX3.4",
       "fuxa_tag_id": "t_a4fbf2b9-20c3-5af0-8e4e-54df4c3a42aa",
       "text": "Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock): state alarm"
     },
@@ -1483,6 +1483,29 @@
       "plc_iec": null,
       "fuxa_tag_id": "t_70b4581a-43d8-5578-83cc-a137de2e05a1",
       "text": "Cellar CO2 sensor 4 (low-mounted): highhigh alarm",
+      "evaluator": "fuxa",
+      "owner": "bas-vent"
+    },
+    {
+      "name": "FAC.VENT.AY01.ALM_STATE",
+      "source": "FAC.VENT.AY01.TIER1",
+      "kind": "state",
+      "limit": 1.0,
+      "units": null,
+      "setpoint": null,
+      "delay_s": 60.0,
+      "deadband": 0.0,
+      "off_delay_s": 0.0,
+      "priority": "low",
+      "fuxa_severity": "info",
+      "cause": "Fermentation venting or a small CO2 leak raised the cellar above 5,000 ppm",
+      "consequence": "The OSHA PEL (5,000 ppm, 8 h TWA) is exceeded; the purge fans are running",
+      "action": "Confirm both purge fans run (FAN01 and FAN02) and limit time in the cellar until it clears",
+      "response_time_s": 1800.0,
+      "plc": null,
+      "plc_iec": null,
+      "fuxa_tag_id": "t_deae6144-0d85-5e19-ac9f-9f758f13c6f8",
+      "text": "Cellar CO2 tier 1 (5,000 ppm, purge fans on): state alarm",
       "evaluator": "fuxa",
       "owner": "bas-vent"
     }

@@ -576,11 +576,13 @@ These counts are design estimates. The plant tag database (`plant.yaml`,
 - **Rationalization.** Each alarm has a cause, consequence, operator
   action, and time to respond. These are recorded in `plant.yaml` and
   generated into the FUXA alarm definitions.
-- **Current state.** `plant.yaml` holds 69 rationalized alarms: 4 Critical, 21
-  High, 25 Medium, and 19 Low. That is not yet the 5/15/80 target, because only
+- **Current state.** `plant.yaml` holds 70 rationalized alarms: 4 Critical, 21
+  High, 25 Medium, and 20 Low. That is not yet the 5/15/80 target, because only
   the important alarms are rationalized so far.
 - **Examples:**
-  - CO₂ ≥ 30,000 ppm: Critical.
+  - CO₂ ≥ 30,000 ppm: Critical; ≥ 15,000 ppm: High; tier 1 (≥ 5,000 ppm, the
+    OSHA PEL, purge fans running) for a minute: Low, so the operator knows the
+    cellar is above the PEL before it is an emergency.
   - FV temperature more than 2 °F from setpoint for 15 minutes: High.
   - Glycol supply above 34 °F: High.
   - Wastewater discharge inhibited: Medium.
@@ -636,9 +638,14 @@ host is in the path:
    powers the detection panel, is live. `plc-cellar` sets
    `CEL.SYS.XS01.CO2_INHIBIT` whenever the contact is open and then forces both
    BBT carbonation valves (`FCV01.OUT`) to 0 and the hop-port CO₂ purge valve
-   closed. The inhibit clears only after the contact has been closed again for
-   a release delay, so a tier that chatters does not cycle the carbonation
-   stones.
+   closed, holding a dry-hop sequence (operator request `CEL.DH.XC01.CMD`: a
+   30 s CO₂ purge, then a 60 s dose) in its purge step. The inhibit clears
+   only after the contact has been closed again for a release delay (60 s), so
+   a tier that chatters does not cycle the carbonation stones.
+   **Startup:** the contact reads open until the building federate first
+   reports it (the cellar federate's input default is 0), so carbonation starts
+   inhibited and is released 60 s after the first healthy report, as an
+   unpowered panel would behave.
 3. **Supervision (FUXA, display only).** scada-fuxa reads the CO₂ objects and
    tiers from bas-vent over BACnet (through the BBMDs) and reads
    `CO2_INHIBIT` from plc-cellar over Modbus. It alarms and displays; it never
@@ -2203,7 +2210,7 @@ exposed ranges and read 0.
 ### 12.6 Plant tag database
 
 `plant/plant.yaml` is the single source of truth. It now covers every area:
-43 hosts, 412 tags (`plant/generated/full/tags.json`), and 69 rationalized alarms
+43 hosts, 414 tags (`plant/generated/full/tags.json`), and 70 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
 ```yaml
@@ -2456,7 +2463,13 @@ explainable events):
     Wazuh rules 100411 to 100413 alert on them. An upload made some other way
     on the EWS (for example with `curl`) leaves only the network evidence.
 - Modbus or S7 writes from a host other than scada-fuxa or the EWS.
-- BACnet `WriteProperty` from outside bas-fuxa or the EWS.
+- BACnet `WriteProperty` from outside bas-fuxa or the EWS (Suricata sids
+  9000113/9000114 for Original-Unicast, Original-Broadcast, and
+  Distribute-Broadcast-To-Network, and 9000115/9000116 for a write relayed in a
+  Forwarded-NPDU from any host). **Known gap:** the Suricata rules match the
+  service at fixed offsets, so a routed NPDU (DNET present) or a segmented
+  request evades them; Zeek's `BACnet_Write_Unexpected` parses the APDU and has
+  no such gap, so it is the authoritative detection.
 - **BBMD and BDT activity.** The two BBMDs are a new lateral path between OPS
   and BAS. Zeek's `bacnet.log` records the BVLC function, so these are
   detectable:

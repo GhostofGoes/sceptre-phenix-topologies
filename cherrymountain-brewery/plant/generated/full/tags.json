@@ -2611,6 +2611,29 @@
       "helics_key": "cellar/hopdoser.dose_valve"
     },
     {
+      "name": "CEL.DH.XC01.CMD",
+      "desc": "Dry-hop dose request (operator; plc-cellar purges, doses, and clears it)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "DH",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.DH.XS01.STEP",
+      "desc": "Dry-hop sequence step (0 idle, 1 CO2 purge, 2 dose)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        2.0
+      ],
+      "scaling": 0,
+      "area": "CEL",
+      "unit": "DH",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
       "name": "CEL.XFER.ZS01.PV",
       "desc": "Transfer route verified (swing-panel proximity)",
       "type": "binary-read",
@@ -7059,7 +7082,10 @@
       "owner": "bas-vent",
       "bacnet": {
         "object_type": "binary-value"
-      }
+      },
+      "alarms": [
+        "FAC.VENT.AY01.ALM_STATE"
+      ]
     },
     {
       "name": "FAC.VENT.AY01.TIER2",

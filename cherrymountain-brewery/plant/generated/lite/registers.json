@@ -30,7 +30,7 @@
     "plc-cellar": {
       "holding_registers": {
         "qw_count": 106,
-        "mw_count": 14,
+        "mw_count": 15,
         "md_count": 0,
         "ml_count": 0
       },
@@ -3047,6 +3047,44 @@
       "scada_access": "read"
     },
     {
+      "tag": "CEL.DH.XC01.CMD",
+      "type": "binary-read-write",
+      "units": null,
+      "scaling": null,
+      "rio": null,
+      "rio_space": null,
+      "otsim_register": null,
+      "master_fc": null,
+      "master_offset": null,
+      "plc": "plc-cellar",
+      "plc_iec": "%QX3.0",
+      "slave_space": "coil",
+      "slave_read_fc": 1,
+      "slave_pdu_address": 24,
+      "fuxa_memaddress": "000000",
+      "fuxa_address": 25,
+      "scada_access": "read-write"
+    },
+    {
+      "tag": "CEL.DH.XS01.STEP",
+      "type": "analog-read",
+      "units": null,
+      "scaling": 0,
+      "rio": null,
+      "rio_space": null,
+      "otsim_register": null,
+      "master_fc": null,
+      "master_offset": null,
+      "plc": "plc-cellar",
+      "plc_iec": "%MW14",
+      "slave_space": "holding",
+      "slave_read_fc": 3,
+      "slave_pdu_address": 120,
+      "fuxa_memaddress": "400000",
+      "fuxa_address": 121,
+      "scada_access": "read"
+    },
+    {
       "tag": "CEL.XFER.ZS01.PV",
       "type": "binary-read",
       "units": null,
@@ -3133,12 +3171,12 @@
       "master_fc": null,
       "master_offset": null,
       "plc": "plc-cellar",
-      "plc_iec": "%QX3.0",
+      "plc_iec": "%QX3.1",
       "slave_space": "coil",
       "slave_read_fc": 1,
-      "slave_pdu_address": 24,
+      "slave_pdu_address": 25,
       "fuxa_memaddress": "000000",
-      "fuxa_address": 25,
+      "fuxa_address": 26,
       "scada_access": "read"
     },
     {
@@ -3152,12 +3190,12 @@
       "master_fc": null,
       "master_offset": null,
       "plc": "plc-cellar",
-      "plc_iec": "%QX3.1",
+      "plc_iec": "%QX3.2",
       "slave_space": "coil",
       "slave_read_fc": 1,
-      "slave_pdu_address": 25,
+      "slave_pdu_address": 26,
       "fuxa_memaddress": "000000",
-      "fuxa_address": 26,
+      "fuxa_address": 27,
       "scada_access": "read"
     },
     {
@@ -3190,12 +3228,12 @@
       "master_fc": null,
       "master_offset": null,
       "plc": "plc-cellar",
-      "plc_iec": "%QX3.2",
+      "plc_iec": "%QX3.3",
       "slave_space": "coil",
       "slave_read_fc": 1,
-      "slave_pdu_address": 26,
+      "slave_pdu_address": 27,
       "fuxa_memaddress": "000000",
-      "fuxa_address": 27,
+      "fuxa_address": 28,
       "scada_access": "read"
     },
     {
@@ -3209,12 +3247,12 @@
       "master_fc": null,
       "master_offset": null,
       "plc": "plc-cellar",
-      "plc_iec": "%QX3.3",
+      "plc_iec": "%QX3.4",
       "slave_space": "coil",
       "slave_read_fc": 1,
-      "slave_pdu_address": 27,
+      "slave_pdu_address": 28,
       "fuxa_memaddress": "000000",
-      "fuxa_address": 28,
+      "fuxa_address": 29,
       "scada_access": "read"
     },
     {

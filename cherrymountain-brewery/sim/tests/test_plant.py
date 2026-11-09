@@ -87,6 +87,9 @@ def test_co2_relay_trips_at_tier_2_and_on_power_loss(full: HelicsConfig) -> None
     assert bld2.values()["building/vent.co2_relay_ok"] == 0.0
 
     cel = build(full, "cellar")
+    # De-energize to trip: open until the building federate first reports.
+    assert cel.values()["cellar/gasrelay.co2_ok"] is False
+    cel.apply_input("building/vent.co2_relay_ok", 1.0)
     assert cel.values()["cellar/gasrelay.co2_ok"] is True
     cel.apply_input("building/vent.co2_relay_ok", 0.0)
     assert cel.values()["cellar/gasrelay.co2_ok"] is False

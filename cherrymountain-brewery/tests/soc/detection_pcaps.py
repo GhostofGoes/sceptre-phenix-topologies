@@ -29,7 +29,7 @@ from scapy.all import IP, TCP, UDP, Ether, Raw, wrpcap  # type: ignore[import-un
 #: What the Suricata pcap must raise: every sid of cherrymountain.rules.
 EXPECTED_SIDS: frozenset[int] = frozenset(
     {
-        9000110, 9000111, 9000112, 9000113, 9000114, 9000120, 9000121, 9000122, 9000123, 9000124,
+        9000110, 9000111, 9000112, 9000113, 9000114, 9000115, 9000116, 9000120, 9000121, 9000122, 9000123, 9000124,
         9000125, 9000126, 9000127, 9000130, 9000131, 9000132, 9000133, 9000134, 9000135, 9000136,
         9000137, 9000138, 9000139,
         9000140, 9000150, 9000151, 9000160, 9000161, 9000162, 9000163, 9000164,
@@ -150,6 +150,12 @@ FORWARDED_NPDU: bytes = bytes.fromhex("81040012") + bytes([10, 20, 30, 10, 0xBA,
 WHO_IS: bytes = bytes.fromhex("810b000c0120ffff00ff1008")
 
 
+def FORWARDED_WRITE(original: bytes) -> bytes:  # noqa: N802 (reads like the constants)
+    """An Original-Unicast request rewrapped as a Forwarded-NPDU from 10.20.20.10."""
+    npdu: bytes = original[4:]
+    return bytes([0x81, 0x04]) + struct.pack(">H", 10 + len(npdu)) + bytes([10, 20, 20, 10, 0xBA, 0xC0]) + npdu
+
+
 def suricata_pcap(path: Path) -> None:
     b: Builder = Builder()
     write_6: bytes = mbap(1, bytes([6]) + struct.pack(">HH", 2, 999))
@@ -172,8 +178,13 @@ def suricata_pcap(path: Path) -> None:
     b.udp("10.30.10.5", "10.20.30.13", FORWARDED_NPDU)
     b.udp("10.20.30.10", "10.30.10.22", READ_PROPERTY)
     b.udp("10.20.30.12", "10.30.10.22", WRITE_PROPERTY)
-    # scada-fuxa only reads the BAS devices (DESIGN.md 6.6 #6): its write alerts.
+    # scada-fuxa only reads the BAS devices (DESIGN.md 6.7): its write alerts.
     b.udp("10.20.30.10", "10.30.10.22", WRITE_PROPERTY)
+    # A write sent as Distribute-Broadcast-To-Network (0x09) is still a write, and
+    # one relayed in a Forwarded-NPDU (here by the BAS BBMD) is never expected.
+    b.udp("10.20.20.10", "10.30.10.5", bytes([0x81, 0x09]) + WRITE_PROPERTY[2:])
+    b.udp("10.30.10.5", "10.30.10.22", FORWARDED_WRITE(WRITE_PROPERTY))
+    b.udp("10.30.10.5", "10.30.10.22", FORWARDED_WRITE(WRITE_PROPERTY_MULTIPLE))
     b.udp("10.20.20.10", "10.30.10.22", WRITE_PROPERTY)
     b.udp("10.20.20.10", "10.30.10.22", WRITE_PROPERTY_MULTIPLE)
     for function in (1, 2, 5, 6, 8):

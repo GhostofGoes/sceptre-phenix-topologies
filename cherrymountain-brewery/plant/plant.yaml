@@ -2305,7 +2305,14 @@ variants:
     wireguard: true
     scorch: true
     app:
-      wazuh: { manager: wazuh }
+      # The Wazuh agents: exactly the hosts that have a conduit to wazuh on TCP
+      # 1514/1515 through fw-ot (DESIGN.md 10.3: OPS, HMI, and bas-fuxa in BAS,
+      # and the DMZ hosts) or share its SOC VLAN. Only these get the enrollment
+      # password. bas-bbmd has no conduit and runs no agent; netcheck's tests
+      # check this list against the conduit matrix.
+      wazuh:
+        manager: wazuh
+        agents: [scada-fuxa, historian, ews, ot-svc, hmi-brewhouse, hmi-packaging, bas-fuxa, dmz-vpn, dmz-jump, malcolm, soc-analyst]
 
   lite:
     description: >-

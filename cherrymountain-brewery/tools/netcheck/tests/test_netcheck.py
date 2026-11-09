@@ -220,3 +220,23 @@ def test_a_missing_inject_is_caught(tree: Path) -> None:
 
 def test_lite_checks_run_without_the_soc(tree: Path) -> None:
     assert run(tree, "lite") == []
+
+
+def test_wazuh_agents_are_the_hosts_with_a_conduit_to_the_manager(repo: Path) -> None:
+    """plant.yaml's Wazuh agent allowlist (which alone gets the enrollment
+    password) is exactly the hosts that reach wazuh on TCP 1514 through a
+    conduit, plus the hosts that share its SOC VLAN. bas-bbmd has no conduit
+    and is not an agent."""
+    import yaml
+
+    doc: dict[str, Any] = yaml.safe_load((repo / "plant" / "plant.yaml").read_text())
+    agents: set[str] = set(doc["variants"]["full"]["app"]["wazuh"]["agents"])
+    reach: set[str] = {
+        src
+        for c in conduits.CONDUITS
+        for src, dst, proto, port in conduits.expand(c, "full")
+        if dst == "wazuh" and proto == "tcp" and port == 1514
+    }
+    soc: set[str] = {n.name for n in plan.hosts_in("SOC", "full") if not n.is_router} - {"wazuh"}
+    assert agents == (reach | soc) - {"wazuh"}
+    assert "bas-bbmd" not in agents

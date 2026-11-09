@@ -4,6 +4,18 @@ metadata:
   variant: full
   wazuh:
     manager: wazuh
+    agents:
+    - scada-fuxa
+    - historian
+    - ews
+    - ot-svc
+    - hmi-brewhouse
+    - hmi-packaging
+    - bas-fuxa
+    - dmz-vpn
+    - dmz-jump
+    - malcolm
+    - soc-analyst
 hosts:
 - hostname: sim-ctl
   metadata:

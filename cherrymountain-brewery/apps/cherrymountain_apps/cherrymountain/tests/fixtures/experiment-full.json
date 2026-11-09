@@ -1761,6 +1761,32 @@
             "os_type": "linux",
             "vcpus": 2
           },
+          "injections": [
+            {
+              "description": "range-only vendor persona (the local account the Guacamole session logs in as)",
+              "dst": "/etc/cherrymountain/ridgeline.env",
+              "permissions": "0600",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/ridgeline.env"
+            },
+            {
+              "description": "create the vendor's local account",
+              "dst": "/etc/phenix/startup/70-ews-vendor.sh",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/ews/70-ews-vendor.sh"
+            },
+            {
+              "description": "the engineer's OpenPLC REST helper (program upload, start, stop)",
+              "dst": "/usr/local/lib/cm-ews/cm_plc_tool.py",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/ews/cm_plc_tool.py"
+            },
+            {
+              "description": "the plc-cellar program (full; lite runs the same code), for the engineering re-upload",
+              "dst": "/opt/cherrymountain/ews/programs/plc-cellar.zip",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/openplc/full/plc-cellar.zip"
+            }
+          ],
           "labels": {
             "zone": "ops"
           },
@@ -1988,6 +2014,92 @@
             "os_type": "linux",
             "vcpus": 4
           },
+          "injections": [
+            {
+              "description": "Wazuh rules of the baseline detections (ids 100100 to 100499)",
+              "dst": "/var/ossec/etc/rules/cherrymountain_rules.xml",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/cherrymountain_rules.xml"
+            },
+            {
+              "description": "Wazuh decoders of the baseline detections",
+              "dst": "/var/ossec/etc/decoders/cherrymountain_decoders.xml",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/cherrymountain_decoders.xml.in"
+            },
+            {
+              "description": "syslog listener settings appended to ossec.conf",
+              "dst": "/opt/cherrymountain/wazuh/ossec-extra.conf",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/ossec-extra.conf"
+            },
+            {
+              "description": "shared agent settings of the dmz group",
+              "dst": "/opt/cherrymountain/wazuh/agent-conf/dmz.conf",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/dmz.conf"
+            },
+            {
+              "description": "shared agent settings of the ops group",
+              "dst": "/opt/cherrymountain/wazuh/agent-conf/ops.conf",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/ops.conf"
+            },
+            {
+              "description": "shared agent settings of the hmi group",
+              "dst": "/opt/cherrymountain/wazuh/agent-conf/hmi.conf",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/hmi.conf"
+            },
+            {
+              "description": "shared agent settings of the bas group",
+              "dst": "/opt/cherrymountain/wazuh/agent-conf/bas.conf",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/bas.conf"
+            },
+            {
+              "description": "shared agent settings of the soc group",
+              "dst": "/opt/cherrymountain/wazuh/agent-conf/soc.conf",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/soc.conf"
+            },
+            {
+              "description": "sample log lines of the baseline detections",
+              "dst": "/opt/cherrymountain/wazuh/samples.txt",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/samples.txt"
+            },
+            {
+              "description": "Wazuh first-boot setup",
+              "dst": "/usr/local/sbin/cm-wazuh-provision",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-provision"
+            },
+            {
+              "description": "Wazuh health check for SoH and SCORCH",
+              "dst": "/usr/local/sbin/cm-wazuh-health",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-health"
+            },
+            {
+              "description": "run the baseline detections' samples through wazuh-logtest",
+              "dst": "/usr/local/sbin/cm-wazuh-selftest",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-selftest"
+            },
+            {
+              "description": "Wazuh first-boot setup unit",
+              "dst": "/etc/systemd/system/cm-wazuh-provision.service",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-provision.service"
+            },
+            {
+              "description": "set up and start the Wazuh stack",
+              "dst": "/etc/phenix/startup/65-wazuh.sh",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/65-wazuh.sh"
+            }
+          ],
           "labels": {
             "zone": "soc"
           },
@@ -2032,10 +2144,124 @@
           },
           "injections": [
             {
-              "description": "add the OpenFlow capture flow after the mirror app's OVS setup",
+              "description": "start the unit that adds the OpenFlow capture flow after the mirror app's OVS setup",
               "dst": "/etc/phenix/startup/99-zz-capture-flow.sh",
               "permissions": "0755",
               "src": "/phenix/injects/${BRANCH_NAME}/malcolm/99-zz-capture-flow.sh"
+            },
+            {
+              "description": "Malcolm settings: sizing profile, capture interface",
+              "dst": "/etc/default/cm-malcolm",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm.env"
+            },
+            {
+              "description": "Malcolm sizing profiles (full 8 vCPU / 24 GB, slim 4 vCPU / 12 GB)",
+              "dst": "/opt/cherrymountain/malcolm/profiles.sh",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/profiles.sh"
+            },
+            {
+              "description": "Suricata rules of the baseline detections (sids 9000110 to 9000199)",
+              "dst": "/opt/cherrymountain/malcolm/cherrymountain.rules",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cherrymountain.rules"
+            },
+            {
+              "description": "Zeek notices of the baseline detections",
+              "dst": "/opt/cherrymountain/malcolm/zeek/cherrymountain.zeek",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/zeek/cherrymountain.zeek"
+            },
+            {
+              "description": "zeek/custom/__load__.zeek (the compose bind mount hides the image's)",
+              "dst": "/opt/cherrymountain/malcolm/zeek/__load__.zeek",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/zeek/__load__.zeek"
+            },
+            {
+              "description": "pcap for the Malcolm pipeline self-test",
+              "dst": "/usr/local/lib/cm-malcolm/cm_selftest_pcap.py",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm_selftest_pcap.py"
+            },
+            {
+              "description": "Malcolm first-boot configuration",
+              "dst": "/usr/local/sbin/cm-malcolm-provision",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-provision"
+            },
+            {
+              "description": "start Malcolm's services",
+              "dst": "/usr/local/sbin/cm-malcolm-start",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-start"
+            },
+            {
+              "description": "stop Malcolm's services",
+              "dst": "/usr/local/sbin/cm-malcolm-stop",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-stop"
+            },
+            {
+              "description": "wait for the pcap processors' ZeroMQ subscriptions",
+              "dst": "/usr/local/sbin/cm-malcolm-wait-ready",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-wait-ready"
+            },
+            {
+              "description": "Malcolm health check for SoH and SCORCH",
+              "dst": "/usr/local/sbin/cm-malcolm-health",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-health"
+            },
+            {
+              "description": "Malcolm pipeline self-test for SCORCH",
+              "dst": "/usr/local/sbin/cm-malcolm-selftest",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-selftest"
+            },
+            {
+              "description": "OpenFlow flow and port setup for the mirror feed",
+              "dst": "/usr/local/sbin/cm-malcolm-capture",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-capture"
+            },
+            {
+              "description": "load the pre-pulled container images into Docker",
+              "dst": "/usr/local/sbin/cm-load-images",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/docker/cm-load-images"
+            },
+            {
+              "description": "image loading unit",
+              "dst": "/etc/systemd/system/cm-load-images.service",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/docker/cm-load-images.service"
+            },
+            {
+              "description": "Malcolm first-boot configuration unit",
+              "dst": "/etc/systemd/system/cm-malcolm-provision.service",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-provision.service"
+            },
+            {
+              "description": "Malcolm unit",
+              "dst": "/etc/systemd/system/cm-malcolm.service",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm.service"
+            },
+            {
+              "description": "capture port unit",
+              "dst": "/etc/systemd/system/cm-malcolm-capture.service",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-capture.service"
+            },
+            {
+              "description": "load the images, configure, and start Malcolm",
+              "dst": "/etc/phenix/startup/65-malcolm.sh",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/65-malcolm.sh"
             }
           ],
           "labels": {
@@ -2087,6 +2313,20 @@
             "os_type": "linux",
             "vcpus": 2
           },
+          "injections": [
+            {
+              "description": "open Malcolm and Wazuh for the analyst",
+              "dst": "/usr/local/bin/cm-analyst-console",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/desktop/cm-analyst-console"
+            },
+            {
+              "description": "start the consoles at login",
+              "dst": "/etc/xdg/autostart/cm-analyst.desktop",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/desktop/cm-analyst.desktop"
+            }
+          ],
           "labels": {
             "zone": "soc"
           },
@@ -2124,6 +2364,32 @@
             "os_type": "linux",
             "vcpus": 1
           },
+          "injections": [
+            {
+              "description": "forward policy: the vendor peer may reach dmz-jump on TCP 443 only",
+              "dst": "/etc/cherrymountain/nftables-wireguard.nft",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wireguard/nftables-wireguard.nft"
+            },
+            {
+              "description": "WireGuard peer watcher (events for Wazuh)",
+              "dst": "/usr/local/lib/cm-wireguard/cm_wg_watch.py",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wireguard/cm_wg_watch.py"
+            },
+            {
+              "description": "WireGuard peer watcher unit",
+              "dst": "/etc/systemd/system/cm-wg-watch.service",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wireguard/cm-wg-watch.service"
+            },
+            {
+              "description": "load the forward policy, start the watcher",
+              "dst": "/etc/phenix/startup/70-wireguard.sh",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/wireguard/70-wireguard.sh"
+            }
+          ],
           "labels": {
             "zone": "dmz"
           },
@@ -2183,6 +2449,68 @@
             "os_type": "linux",
             "vcpus": 2
           },
+          "injections": [
+            {
+              "description": "Guacamole stack: guacd, web application, PostgreSQL, TLS proxy",
+              "dst": "/opt/cherrymountain/guacamole/docker-compose.yml",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/docker-compose.yml"
+            },
+            {
+              "description": "TLS front end of the Guacamole stack",
+              "dst": "/opt/cherrymountain/guacamole/nginx.conf",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/nginx.conf"
+            },
+            {
+              "description": "SQL for the vendor account with TOTP",
+              "dst": "/usr/local/lib/cm-guacamole/cm_vendor_sql.py",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/cm_vendor_sql.py"
+            },
+            {
+              "description": "range-only vendor persona (Guacamole account, TOTP seed, EWS account)",
+              "dst": "/etc/cherrymountain/ridgeline.env",
+              "permissions": "0600",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/ridgeline.env"
+            },
+            {
+              "description": "start the Guacamole stack",
+              "dst": "/usr/local/sbin/cm-guacamole-start",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/cm-guacamole-start"
+            },
+            {
+              "description": "load the pre-pulled container images into Docker",
+              "dst": "/usr/local/sbin/cm-load-images",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/docker/cm-load-images"
+            },
+            {
+              "description": "image loading unit",
+              "dst": "/etc/systemd/system/cm-load-images.service",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/docker/cm-load-images.service"
+            },
+            {
+              "description": "Guacamole stack unit",
+              "dst": "/etc/systemd/system/cm-guacamole.service",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/cm-guacamole.service"
+            },
+            {
+              "description": "container logs of the Guacamole stack into one file for Wazuh",
+              "dst": "/etc/rsyslog.d/30-cm-guacamole.conf",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/30-cm-guacamole.conf"
+            },
+            {
+              "description": "load the images and start the Guacamole stack",
+              "dst": "/etc/phenix/startup/70-guacamole.sh",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/70-guacamole.sh"
+            }
+          ],
           "labels": {
             "zone": "dmz"
           },
@@ -2246,6 +2574,20 @@
             "os_type": "linux",
             "vcpus": 2
           },
+          "injections": [
+            {
+              "description": "range-only vendor persona (Guacamole account, TOTP seed)",
+              "dst": "/etc/cherrymountain/ridgeline.env",
+              "permissions": "0600",
+              "src": "/phenix/injects/${BRANCH_NAME}/guacamole/ridgeline.env"
+            },
+            {
+              "description": "the technician's scripted Guacamole session",
+              "dst": "/usr/local/lib/cm-desktop/cm_vendor_session.py",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/desktop/cm_vendor_session.py"
+            }
+          ],
           "labels": {
             "zone": "vendor"
           },
@@ -2674,6 +3016,11 @@
                   },
                   "pump_run": {
                     "type": "binary-read-write"
+                  }
+                },
+                "gas-relay": {
+                  "co2_ok": {
+                    "type": "binary-read"
                   }
                 },
                 "filler": {
@@ -3728,6 +4075,10 @@
                     {
                       "name": "cellar/transfer",
                       "type": "transfer-panel"
+                    },
+                    {
+                      "name": "cellar/gasrelay",
+                      "type": "gas-relay"
                     }
                   ]
                 }
@@ -4015,7 +4366,20 @@
           "metadata": {
             "variant": "full",
             "wazuh": {
-              "manager": "wazuh"
+              "manager": "wazuh",
+              "agents": [
+                "scada-fuxa",
+                "historian",
+                "ews",
+                "ot-svc",
+                "hmi-brewhouse",
+                "hmi-packaging",
+                "bas-fuxa",
+                "dmz-vpn",
+                "dmz-jump",
+                "malcolm",
+                "soc-analyst"
+              ]
             }
           },
           "hosts": [
@@ -4206,27 +4570,26 @@
             {
               "hostname": "ot-svc",
               "metadata": {
-                "type": "bbmd",
-                "instance": 9001,
-                "deviceName": "bbmd-ops",
-                "prefix": 0,
-                "peers": [
-                  "bas-bbmd"
-                ]
+                "type": "bbmd"
               }
             },
             {
               "hostname": "bas-bbmd",
               "metadata": {
-                "type": "bbmd",
-                "instance": 9002,
-                "deviceName": "bbmd-bas",
-                "peers": [
-                  "ot-svc"
-                ]
+                "type": "bbmd"
               }
             }
           ]
+        },
+        {
+          "name": "helics",
+          "metadata": {
+            "broker": {
+              "root": "sim-ctl|mgmt",
+              "log-level": "summary",
+              "log-dir": "/var/log"
+            }
+          }
         },
         {
           "name": "ntp",
@@ -5972,7 +6335,24 @@
                   "DERLINK",
                   "BAS",
                   "DMZ"
-                ]
+                ],
+                "sohProfile": {
+                  "processes": [
+                    "dockerd",
+                    "ovs-vswitchd"
+                  ],
+                  "listeners": [
+                    ":443"
+                  ],
+                  "customTests": [
+                    {
+                      "name": "malcolm-health",
+                      "executor": "bash",
+                      "testScript": "/usr/local/sbin/cm-malcolm-health\n",
+                      "testStdout": "HEALTHY"
+                    }
+                  ]
+                }
               }
             }
           ]
@@ -6686,7 +7066,8 @@
                 "chrony",
                 "dnsmasq",
                 "rsyslog",
-                "cm-bbmd"
+                "cm-bbmd",
+                "wazuh-agent"
               ],
               "bas-bbmd": [
                 "chrony",
@@ -6696,6 +7077,68 @@
                 "chrony",
                 "dnsmasq",
                 "protonuke"
+              ],
+              "dmz-vpn": [
+                "chrony",
+                "wg-quick@wg0",
+                "cm-wg-watch",
+                "wazuh-agent"
+              ],
+              "dmz-jump": [
+                "chrony",
+                "rsyslog",
+                "docker",
+                "cm-guacamole",
+                "wazuh-agent"
+              ],
+              "ews": [
+                "chrony",
+                "ssh",
+                "xrdp",
+                "wazuh-agent"
+              ],
+              "malcolm": [
+                "chrony",
+                "docker",
+                "openvswitch-switch",
+                "cm-malcolm-capture",
+                "cm-malcolm",
+                "wazuh-agent"
+              ],
+              "wazuh": [
+                "chrony",
+                "wazuh-manager",
+                "wazuh-indexer",
+                "wazuh-dashboard",
+                "filebeat"
+              ],
+              "soc-analyst": [
+                "chrony",
+                "wazuh-agent"
+              ],
+              "historian": [
+                "chrony",
+                "influxdb",
+                "telegraf",
+                "grafana-server",
+                "mosquitto",
+                "wazuh-agent"
+              ],
+              "scada-fuxa": [
+                "chrony",
+                "wazuh-agent"
+              ],
+              "bas-fuxa": [
+                "chrony",
+                "wazuh-agent"
+              ],
+              "hmi-brewhouse": [
+                "chrony",
+                "wazuh-agent"
+              ],
+              "hmi-packaging": [
+                "chrony",
+                "wazuh-agent"
               ]
             },
             "hostListeners": {
@@ -6794,7 +7237,13 @@
               "wazuh": [
                 ":443",
                 ":1514",
-                ":1515"
+                ":1515",
+                ":514",
+                ":55000",
+                ":9200"
+              ],
+              "dmz-vpn": [
+                ":51820"
               ]
             },
             "hostCustomTests": {
@@ -6842,6 +7291,12 @@
                   "executor": "bash",
                   "testScript": "err=$(timeout 5 bash -c 'exec 3<>/dev/tcp/10.20.10.12/502' 2>&1); rc=$?\nif [ \"$rc\" -eq 124 ] || printf '%s' \"$err\" | grep -qiE 'unreachable|no route'; then\n  echo DROPPED\nelse\n  echo \"ALLOWED rc=$rc $err\"\nfi\n",
                   "testStdout": "DROPPED"
+                },
+                {
+                  "name": "wg-tunnel-handshake",
+                  "executor": "bash",
+                  "testScript": "wg show wg0 latest-handshakes | awk '$2 > 0 { print \"HANDSHAKE\" }'\n",
+                  "testStdout": "HANDSHAKE"
                 }
               ],
               "utility-derms": [
@@ -6882,6 +7337,30 @@
                   "executor": "bash",
                   "testScript": "err=$(timeout 5 bash -c 'exec 3<>/dev/tcp/10.20.30.12/8443' 2>&1); rc=$?\nif [ \"$rc\" -eq 124 ] || printf '%s' \"$err\" | grep -qiE 'unreachable|no route'; then\n  echo DROPPED\nelse\n  echo \"ALLOWED rc=$rc $err\"\nfi\n",
                   "testStdout": "DROPPED"
+                },
+                {
+                  "name": "guacamole-login-page",
+                  "executor": "bash",
+                  "testScript": "curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1/\n",
+                  "testStdout": "200"
+                },
+                {
+                  "name": "guacamole-totp-extension",
+                  "executor": "bash",
+                  "testScript": "docker logs guacamole 2>&1 | grep -o 'Extension \"TOTP TFA Authentication Backend\" (totp) loaded'\n",
+                  "testStdout": "(totp) loaded"
+                },
+                {
+                  "name": "guacamole-recording-extension",
+                  "executor": "bash",
+                  "testScript": "docker logs guacamole 2>&1 | grep -o 'Extension \"Session Recording Storage\" (recording-storage) loaded'\n",
+                  "testStdout": "(recording-storage) loaded"
+                },
+                {
+                  "name": "guacamole-recordings-dir",
+                  "executor": "bash",
+                  "testScript": "stat -c '%u:%g %a' /var/lib/cm-guacamole/recordings\n",
+                  "testStdout": "1000:1001 2750"
                 }
               ],
               "dmz-vpn": [
@@ -6890,6 +7369,12 @@
                   "executor": "bash",
                   "testScript": "err=$(timeout 5 bash -c 'exec 3<>/dev/tcp/10.20.30.12/3389' 2>&1); rc=$?\nif [ \"$rc\" -eq 124 ] || printf '%s' \"$err\" | grep -qiE 'unreachable|no route'; then\n  echo DROPPED\nelse\n  echo \"ALLOWED rc=$rc $err\"\nfi\n",
                   "testStdout": "DROPPED"
+                },
+                {
+                  "name": "wg-forward-policy",
+                  "executor": "bash",
+                  "testScript": "nft list chain inet cm_wireguard forward | grep -o 'policy drop'\n",
+                  "testStdout": "policy drop"
                 }
               ],
               "hmi-brewhouse": [
@@ -6952,6 +7437,12 @@
                   "executor": "bash",
                   "testScript": "err=$(timeout 5 bash -c 'exec 3<>/dev/tcp/10.20.12.10/502' 2>&1); rc=$?\nif [ \"$rc\" -eq 124 ] || printf '%s' \"$err\" | grep -qiE 'unreachable|no route'; then\n  echo DROPPED\nelse\n  echo \"ALLOWED rc=$rc $err\"\nfi\n",
                   "testStdout": "DROPPED"
+                },
+                {
+                  "name": "vendor-account",
+                  "executor": "bash",
+                  "testScript": "getent passwd ridgeline | cut -d: -f1\n",
+                  "testStdout": "ridgeline"
                 }
               ],
               "plc-cellar": [
@@ -7014,6 +7505,12 @@
                   "executor": "bash",
                   "testScript": "err=$(timeout 5 bash -c 'exec 3<>/dev/tcp/10.20.10.12/502' 2>&1); rc=$?\nif [ \"$rc\" -eq 124 ] || printf '%s' \"$err\" | grep -qiE 'unreachable|no route'; then\n  echo DROPPED\nelse\n  echo \"ALLOWED rc=$rc $err\"\nfi\n",
                   "testStdout": "DROPPED"
+                },
+                {
+                  "name": "wazuh-health",
+                  "executor": "bash",
+                  "testScript": "/usr/local/sbin/cm-wazuh-health\n",
+                  "testStdout": "HEALTHY"
                 }
               ],
               "ot-svc": [
@@ -7145,9 +7642,243 @@
               "dmz-jump": [
                 "guacamole",
                 "guacd",
-                "postgres"
+                "postgres",
+                "guac-proxy"
+              ],
+              "malcolm": [
+                "malcolm-opensearch-1",
+                "malcolm-logstash-1",
+                "malcolm-dashboards-1",
+                "malcolm-nginx-proxy-1",
+                "malcolm-pcap-monitor-1",
+                "malcolm-zeek-live-1",
+                "malcolm-arkime-live-1",
+                "malcolm-suricata-live-1"
               ]
             }
+          }
+        },
+        {
+          "name": "scorch",
+          "metadata": {
+            "components": [
+              {
+                "name": "health-check",
+                "type": "soh",
+                "metadata": {
+                  "checks": [
+                    "custom-reachability",
+                    "services",
+                    "processes",
+                    "ports",
+                    "docker",
+                    "custom"
+                  ],
+                  "failOnError": false
+                }
+              },
+              {
+                "name": "verify-soc",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "malcolm",
+                      "configure": [
+                        {
+                          "type": "exec",
+                          "args": "/usr/local/sbin/cm-malcolm-health",
+                          "wait": true,
+                          "validator": "grep -q '^HEALTHY'"
+                        }
+                      ]
+                    },
+                    {
+                      "hostname": "wazuh",
+                      "configure": [
+                        {
+                          "type": "exec",
+                          "args": "/usr/local/sbin/cm-wazuh-health",
+                          "wait": true,
+                          "validator": "grep -q '^HEALTHY'"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "vendor-tunnel",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "vendor-ws",
+                      "start": [
+                        {
+                          "type": "exec",
+                          "args": "systemctl restart wg-quick@wg0 && sleep 8 && wg show wg0 latest-handshakes",
+                          "wait": true,
+                          "validator": "awk '$2 > 0 { found = 1 } END { exit !found }'"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "vendor-session",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "vendor-ws",
+                      "start": [
+                        {
+                          "type": "exec",
+                          "args": "python3 -I /usr/local/lib/cm-desktop/cm_vendor_session.py --connection ews-rdp --hold 90",
+                          "wait": true,
+                          "validator": "! grep -q '\"ok\":false' && grep -q '\"step\":\"sign-out\",\"ok\":true'"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "plc-reupload",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "ews",
+                      "start": [
+                        {
+                          "type": "background",
+                          "args": "python3 -I /usr/local/lib/cm-ews/cm_plc_tool.py upload --plc plc-cellar --host 10.20.10.12 --zip /opt/cherrymountain/ews/programs/plc-cellar.zip > /var/log/cm-plc-reupload.log 2>&1"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "settle",
+                "type": "pause",
+                "metadata": {
+                  "duration": "8m"
+                }
+              },
+              {
+                "name": "plc-status",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "ews",
+                      "start": [
+                        {
+                          "type": "exec",
+                          "args": "python3 -I /usr/local/lib/cm-ews/cm_plc_tool.py status --plc plc-cellar --host 10.20.10.12",
+                          "wait": true,
+                          "validator": "grep -q 'STATUS:RUNNING'"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "expect-wazuh",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "wazuh",
+                      "start": [
+                        {
+                          "type": "exec",
+                          "args": "/usr/local/sbin/cm-wazuh-expect --since 30 --export /var/lib/cm-wazuh/vendor-maintenance-alerts.jsonl 100201,100204,100205 100301,100305,100306 100311 100313 100402 100411",
+                          "wait": true,
+                          "validator": "! grep -q '^FAIL'"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "expect-malcolm",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "malcolm",
+                      "start": [
+                        {
+                          "type": "exec",
+                          "args": "/usr/local/sbin/cm-malcolm-expect --since 30 \"CM WireGuard handshake initiation\" \"CM vendor tunnel address reached the Guacamole login\" \"CM session from dmz-jump to the EWS\" \"CM OpenPLC REST session from the EWS\" CherryMountain::PLC_REST_From_EWS CherryMountain::PLC_Program_Upload_Suspected",
+                          "wait": true,
+                          "validator": "! grep -q '^FAIL'"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "analyst-review",
+                "type": "break"
+              },
+              {
+                "name": "collect-evidence",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "vendor-ws",
+                      "stop": [
+                        {
+                          "type": "recv",
+                          "args": "/var/log/cm-vendor-session.jsonl"
+                        }
+                      ]
+                    },
+                    {
+                      "hostname": "wazuh",
+                      "stop": [
+                        {
+                          "type": "recv",
+                          "args": "/var/lib/cm-wazuh/vendor-maintenance-alerts.jsonl"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ],
+            "runs": [
+              {
+                "name": "vendor-maintenance",
+                "configure": [
+                  "health-check",
+                  "verify-soc"
+                ],
+                "start": [
+                  "vendor-tunnel",
+                  "vendor-session",
+                  "plc-reupload",
+                  "settle",
+                  "plc-status",
+                  "expect-wazuh",
+                  "expect-malcolm",
+                  "analyst-review"
+                ],
+                "stop": [
+                  "collect-evidence"
+                ]
+              }
+            ]
           }
         }
       ]

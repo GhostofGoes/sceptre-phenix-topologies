@@ -126,7 +126,9 @@ class Wazuh(Closed):
     manager: Hostname = "wazuh"
     interface: Interface = "IF0"
     enrollment_port: Port = 1515
-    #: Hosts that run an agent; empty means every Linux host of the app.
+    #: Hosts that run an agent and get the enrollment password: an explicit
+    #: allowlist (plant.yaml derives it from the conduits to the manager).
+    #: Empty means none.
     agents: list[Hostname] = Field(default_factory=list)
 
 

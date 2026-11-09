@@ -261,13 +261,17 @@ def test_wazuh_agents_and_manager(ctx: Context) -> None:
     assert by_dst(plan["wazuh"])["/etc/default/cm-wazuh-manager"].permissions == "0600"
 
 
-def test_wazuh_default_agents_skip_plcs(ctx: Context) -> None:
+def test_wazuh_enrolls_only_the_listed_agents(ctx: Context) -> None:
+    """The enrollment password goes only to the allowlist; an empty list
+    configures the manager alone (no host gets the password by default)."""
     ctx.app = ctx.app.model_copy(
         update={"wazuh": Wazuh.model_validate({}, strict=True)}
     )
-    plan = render.render_wazuh(ctx)
-    assert "plc-cellar" not in plan
-    assert "scada-fuxa" in plan
+    assert set(render.render_wazuh(ctx)) == {"wazuh"}
+    ctx.app = ctx.app.model_copy(
+        update={"wazuh": Wazuh.model_validate({"agents": ["scada-fuxa"]}, strict=True)}
+    )
+    assert set(render.render_wazuh(ctx)) == {"wazuh", "scada-fuxa"}
 
 
 # ---------------------------------------------------------------- MGMT nftables

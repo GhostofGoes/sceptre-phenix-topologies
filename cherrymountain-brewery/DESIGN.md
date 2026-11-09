@@ -2398,8 +2398,14 @@ point for future adversary-emulation scenarios.
 
 **Wazuh** (GPL-2.0)
 
-- Agents run on Linux hosts in OPS, HMI, BAS (bas-fuxa), the DMZ (dmz-vpn
-  via `cm-wireguard`, dmz-jump), and the SOC.
+- Agents run on an explicit allowlist, the hosts with a conduit to wazuh on
+  TCP 1514/1515 through fw-ot or on its SOC VLAN: scada-fuxa, historian, ews,
+  ot-svc, hmi-brewhouse, hmi-packaging, bas-fuxa, dmz-vpn, dmz-jump, malcolm,
+  and soc-analyst (plant.yaml `app.wazuh.agents`, rendered into the app
+  metadata). Only these get the enrollment password; an empty list enrolls
+  nobody. bas-bbmd has no conduit and runs no agent (its BBMD traffic is
+  visible to Malcolm and its drops to the fw-ot logs), and a netcheck test keeps
+  the list equal to the conduit matrix.
 - Syslog comes from the VyOS firewalls and from the ot-svc relay.
 - PLCs and ot-sim devices have no agents, which is realistic.
 

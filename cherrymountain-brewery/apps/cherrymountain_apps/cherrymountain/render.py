@@ -1164,13 +1164,13 @@ def render_wazuh(ctx: Context) -> dict[str, list[Injection]]:
         return {}
     manager_ip: str = ctx.ip(cfg.manager, cfg.interface)
     password: str = ctx.creds.wazuh_enrollment.get_secret_value()
-    agents: list[str] = list(cfg.agents) or [
-        name
-        for name, md in ctx.hosts.items()
-        if name != cfg.manager
-        and not isinstance(md, OpenPlcHost)
-        and _os(ctx, name) == "linux"
-    ]
+    # An explicit allowlist (plant.yaml derives it from the conduits to the
+    # manager): the enrollment password goes only to hosts that can enroll.
+    agents: list[str] = list(cfg.agents)
+    if not agents:
+        logger.warning(
+            "wazuh: no agents listed (metadata.wazuh.agents); only the manager is configured"
+        )
     plan: dict[str, list[Injection]] = {}
     out: Path = ctx.host_dir(cfg.manager) / "wazuh"
     env: Path = write(

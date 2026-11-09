@@ -113,6 +113,17 @@ def test_vendor_credentials_agree_across_the_three_consumers() -> None:
     assert "VENDOR_TECH_COUNT" in hook and "VENDOR_TECH${n}_USER" in hook
 
 
+def test_technicians_can_read_the_plc_credential() -> None:
+    """cm_plc_tool.py reads /etc/default/cm-ews, which the app injects root-only. The
+    EWS hook gives it to the technicians' group, so the tool runs as the person
+    and its events name them (DESIGN.md 13)."""
+    hook = (INJECTS / "ews/70-ews-vendor.sh").read_text()
+    assert 'usermod --append --groups "$ENGINEERS" -- "$user"' in hook
+    assert 'chgrp -- "$ENGINEERS" "$PLC_CREDENTIAL"' in hook and 'chmod 0640 "$PLC_CREDENTIAL"' in hook
+    assert "PLC_CREDENTIAL=/etc/default/cm-ews" in hook
+    assert str(cm_plc_tool.DEFAULT_SETTINGS) == "/etc/default/cm-ews"
+
+
 def test_every_technician_has_a_named_account_and_own_totp() -> None:
     """One Guacamole account, TOTP key, and EWS account per technician, never shared."""
     vendor = cm_vendor_sql.Vendor.from_file(RIDGELINE)

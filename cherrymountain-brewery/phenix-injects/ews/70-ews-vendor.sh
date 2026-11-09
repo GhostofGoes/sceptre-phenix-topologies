@@ -11,11 +11,19 @@
 # reads, and cm-plc-tool logs the user). The shared account of earlier versions
 # (ridgeline) is locked when it is not on the roster.
 #
+# The technicians are in the group cm-engineers, which may read the PLCs'
+# engineering credential in /etc/default/cm-ews (the app injects it root-only).
+# They program the PLCs, so they hold that credential anyway (the OpenPLC Editor
+# asks for it), and reading it lets them run cm_plc_tool.py as themselves: its
+# cm-plc-tool events then name the person, not root.
+#
 # Re-running is safe: an existing account only gets its password set again.
 set -euo pipefail
 
 SETTINGS=/etc/cherrymountain/ridgeline.env
 LEGACY=ridgeline
+ENGINEERS=cm-engineers
+PLC_CREDENTIAL=/etc/default/cm-ews
 if [ ! -f "$SETTINGS" ]; then
   echo "70-ews-vendor: no ${SETTINGS}; no vendor account"
   exit 0
@@ -45,6 +53,7 @@ else
   passwords+=("$VENDOR_EWS_PASSWORD")
 fi
 
+groupadd --force --system -- "$ENGINEERS"
 for i in "${!users[@]}"; do
   user="${users[$i]}"
   case "$user" in
@@ -57,9 +66,14 @@ for i in "${!users[@]}"; do
     # -m copies /etc/skel, which holds the .xsession that starts Xfce for xrdp.
     useradd --create-home --shell /bin/bash --comment "Ridgeline Process Controls technician ${user}" -- "$user"
   fi
+  usermod --append --groups "$ENGINEERS" -- "$user"
   printf '%s:%s\n' "$user" "${passwords[$i]}" | chpasswd
   echo "70-ews-vendor: technician account ${user}"
 done
+if [ -f "$PLC_CREDENTIAL" ]; then
+  chgrp -- "$ENGINEERS" "$PLC_CREDENTIAL"
+  chmod 0640 "$PLC_CREDENTIAL"
+fi
 
 on_roster=false
 for user in "${users[@]}"; do
@@ -67,6 +81,7 @@ for user in "${users[@]}"; do
 done
 if [ "$on_roster" = false ] && id -u -- "$LEGACY" > /dev/null 2>&1; then
   usermod --lock --expiredate 1 -- "$LEGACY"
+  gpasswd --delete "$LEGACY" "$ENGINEERS" > /dev/null 2>&1 || true
   echo "70-ews-vendor: locked the shared account ${LEGACY}"
 fi
 

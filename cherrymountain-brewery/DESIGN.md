@@ -2869,6 +2869,17 @@ exists, and it never assumes a fixed `localhost` port.
 Each run uses `loop` with `replace` to randomize event times and
 magnitudes. Validate the configs offline with `phenix-scorch-validate`.
 
+**As built** (`scenario-full.yml`). All five runs exist. The vendor run is
+unchanged; the other four use `plantevent`, `pause`, `pcap` (the plantgen
+capture lists), `soh`, `qos`, and `cc` checks whose validators run on the
+phenix host: `utility-outage` reads gen-ats's genset-running and
+ATS-on-emergency bits over Modbus from plc-power; `cellar-co2-leak` reads
+bas-vent's purge-fan status and CO₂ tier 1 over BACnet from bas-fuxa, which
+waits on the ot-sim BACnet module; `baseline-brew-day` exports the FUXA alarm
+history and an InfluxDB backup at stop; and `packaging-shift` jams the labeler
+and the filler while `qos` adds 50 ms and 1 % loss on plc-packaging's field
+link. They do not loop with `replace` yet, and none has run.
+
 ### 15.7 Images
 
 | Image | Base | Contents | Notes |

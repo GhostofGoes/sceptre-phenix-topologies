@@ -3634,9 +3634,11 @@ spec:
   # the WireGuard tunnel, signs in to Guacamole with TOTP and works in a recorded session on
   # the EWS, and the EWS re-uploads a PLC program (benign: the program the PLC already
   # runs). The baseline detections of DESIGN.md 14 must fire; the two `expect-*` steps check
-  # them in Wazuh and Malcolm, which is Roadmap Phase 5's exit criterion. The other runs of
-  # 15.6 (baseline-brew-day, utility-outage, ...) are Phase 6 and use plantevent; this one
-  # needs no plant event, because nothing in the plant changes.
+  # them in Wazuh and Malcolm, which is Roadmap Phase 5's exit criterion. The other four
+  # runs of 15.6 drive the plant through plantevent (the sim-ctl event API): a brew day, a
+  # utility outage (the genset and ATS are read back over Modbus from plc-power), a cellar
+  # CO2 leak (the purge fan and tier 1 are read back over BACnet from bas-fuxa, which needs
+  # the ot-sim BACnet module), and a packaging shift with jams and an impaired field link.
   #
   # The validators run on the phenix host and read the command's output on stdin; a
   # validator that exits non-zero fails the step. Set PHENIX_SCORCH_HOST_VALIDATORS=0 to
@@ -3748,6 +3750,161 @@ spec:
             stop:
             - type: recv
               args: /var/lib/cm-wazuh/vendor-maintenance-alerts.jsonl
+      # --- the runs of DESIGN.md 15.6 that drive the plant (plantevent) ----------------
+      - name: pcap-baseline-brew-day
+        type: pcap
+        metadata:
+          vms:
+          - hostname: scada-fuxa
+            interface: IF0
+          - hostname: plc-brewhouse
+            interface: IF0
+          - hostname: plc-brewhouse
+            interface: IF1
+          - hostname: rio-brewhouse
+            interface: IF0
+      - name: brew-start
+        type: plantevent
+        metadata:
+          events:
+          - event: start-batch
+            recipe: fire-of-the-phenix
+      - name: brew-run
+        type: pause
+        metadata:
+          duration: 30m
+      - name: health-flows
+        type: soh
+        metadata:
+          checks:
+          - custom-reachability
+          - custom
+          failOnError: false
+      - name: export-plant-data
+        type: cc
+        metadata:
+          vms:
+          - hostname: scada-fuxa
+            stop:
+            - type: exec
+              args: /usr/local/bin/cm-export-fuxa /var/lib/cm-exports
+              wait: true
+            - type: recv
+              args: /var/lib/cm-exports/fuxa-export.tar.gz
+          - hostname: historian
+            stop:
+            - type: exec
+              args: /usr/local/bin/cm-export-historian /var/lib/cm-exports
+              wait: true
+            - type: recv
+              args: /var/lib/cm-exports/influx-backup.tar.gz
+      - name: pcap-utility-outage
+        type: pcap
+        metadata:
+          vms:
+          - hostname: rtu-der
+            interface: IF0
+          - hostname: rtu-der
+            interface: IF1
+          - hostname: plc-power
+            interface: IF1
+          - hostname: gen-ats
+            interface: IF0
+      - name: outage-open
+        type: plantevent
+        metadata:
+          events:
+          - event: utility-breaker
+            action: open
+      - name: outage-ride-through
+        type: pause
+        metadata:
+          duration: 10m
+      - name: check-on-genset
+        type: cc
+        metadata:
+          vms:
+          - hostname: plc-power
+            start:
+            - type: exec
+              args: "python3 -c 'import socket,struct;s=socket.create_connection((\"10.20.16.23\",502),5);s.sendall(struct.pack(\">HHHBBHH\",1,0,6,1,2,10001,2));r=s.recv(64);print(\"genset-running\" if r[9]&1 else \"genset-stopped\",\"ats-emergency\" if r[9]&2 else \"ats-normal\")'"
+              wait: true
+              validator: grep -q 'genset-running ats-emergency'
+      - name: outage-close
+        type: plantevent
+        metadata:
+          events:
+          - event: utility-breaker
+            action: close
+      - name: outage-restore
+        type: pause
+        metadata:
+          duration: 10m
+      - name: pcap-cellar-co2-leak
+        type: pcap
+        metadata:
+          vms:
+          - hostname: bas-fuxa
+            interface: IF0
+          - hostname: bas-vent
+            interface: IF0
+      - name: co2-release
+        type: plantevent
+        metadata:
+          events:
+          - event: co2-release
+            fv: FV-102
+            rate: high
+            duration: 600
+      - name: co2-spread
+        type: pause
+        metadata:
+          duration: 15m
+      - name: check-purge
+        type: cc
+        metadata:
+          vms:
+          - hostname: bas-fuxa
+            start:
+            - type: exec
+              args: "python3 -c 'import socket;s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.settimeout(5);s.sendto(bytes.fromhex(\"810a0011010400050a0c0c00c000011955\"),(\"10.30.10.22\",47808));r=s.recv(512);print(\"ACTIVE\" if b\"\\x3e\\x91\\x01\\x3f\" in r else \"INACTIVE\")'"
+              wait: true
+              validator: grep -q '^ACTIVE'
+            - type: exec
+              args: "python3 -c 'import socket;s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.settimeout(5);s.sendto(bytes.fromhex(\"810a0011010400050a0c0c014000011955\"),(\"10.30.10.22\",47808));r=s.recv(512);print(\"ACTIVE\" if b\"\\x3e\\x91\\x01\\x3f\" in r else \"INACTIVE\")'"
+              wait: true
+              validator: grep -q '^ACTIVE'
+      - name: pcap-packaging-shift
+        type: pcap
+        metadata:
+          vms:
+          - hostname: plc-packaging
+            interface: IF1
+          - hostname: rio-packaging
+            interface: IF0
+      - name: labeler-jam
+        type: plantevent
+        metadata:
+          events:
+          - event: jam
+            machine: labeler
+            duration: 300
+          - event: jam
+            machine: filler
+            duration: 120
+          interval: 600
+      - name: field-impairment
+        type: qos
+        metadata:
+          vms:
+          - hostname: plc-packaging
+            interface: IF1
+            delay: 50ms
+            loss: 1
+      - name: shift-run
+        type: pause
+        metadata:
+          duration: 45m
       runs:
       - name: vendor-maintenance
         configure:
@@ -3764,3 +3921,48 @@ spec:
         - analyst-review
         stop:
         - collect-evidence
+      - name: baseline-brew-day
+        configure:
+        - health-check
+        - verify-soc
+        start:
+        - pcap-baseline-brew-day
+        - brew-start
+        - brew-run
+        - health-flows
+        stop:
+        - pcap-baseline-brew-day
+        - export-plant-data
+      - name: utility-outage
+        configure:
+        - health-check
+        start:
+        - pcap-utility-outage
+        - outage-open
+        - outage-ride-through
+        - check-on-genset
+        - outage-close
+        - outage-restore
+        stop:
+        - pcap-utility-outage
+      - name: cellar-co2-leak
+        configure:
+        - health-check
+        start:
+        - pcap-cellar-co2-leak
+        - co2-release
+        - co2-spread
+        - check-purge
+        stop:
+        - pcap-cellar-co2-leak
+      - name: packaging-shift
+        configure:
+        - health-check
+        start:
+        - pcap-packaging-shift
+        - field-impairment
+        - labeler-jam
+        - shift-run
+        stop:
+        - field-impairment
+        - pcap-packaging-shift

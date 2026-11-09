@@ -397,7 +397,7 @@ jobs:
     needs: [plan, image-cm-spike]
     if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' serial ') && needs.image-cm-spike.result == 'success' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     permissions:
       contents: read
     env:
@@ -418,6 +418,14 @@ jobs:
           phenix-repository: ${{ env.PHENIX_REPOSITORY }}
           phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
           images: cm-spike
+
+      - name: Build the ot-sim modules for the guests
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -q --no-install-recommends build-essential git libczmq-dev libzmq3-dev libxml2-dev pkg-config
+          sudo mkdir -p /phenix/injects
+          sudo chown "$(id -u):$(id -g)" /phenix/injects
+          OUT=/phenix/injects/otsim-rtu.tgz bash cherrymountain-brewery/spikes/serial/build_otsim.sh
 
       - name: Run the spike
         run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/serial/ci.py

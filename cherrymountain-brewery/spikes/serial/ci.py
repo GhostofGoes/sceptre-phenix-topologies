@@ -22,6 +22,9 @@ EXP: str = "spike-serial"
 DEV: str = "/dev/ttyS10"
 POLLS: int = int(os.environ.get("SERIAL_POLLS", "600"))
 INTERVAL: float = float(os.environ.get("SERIAL_INTERVAL", "0.5"))
+OTSIM_SECONDS: int = int(os.environ.get("SERIAL_OTSIM_SECONDS", "300"))
+OTSIM_TARBALL: Path = Path("/phenix/injects/otsim-rtu.tgz")  # built by build_otsim.sh, injected by topology.yml
+OTSIM_ENV: str = "export LD_LIBRARY_PATH=/opt/otsim/lib PATH=/opt/otsim/bin:$PATH"
 
 
 def link_ready(lab: Lab, vm: str) -> tuple[bool, str]:
@@ -47,6 +50,62 @@ def echo_check(lab: Lab, rx: str, tx: str, word: str) -> tuple[bool, str]:
         return True, wait_for(f"{word} on {rx}", 30, 3, seen)
     except TimeoutError as exc:
         return False, str(exc)
+
+
+def otsim_rtu(lab: Lab, rio: str, chiller: str) -> None:
+    """ot-sim's own Modbus RTU master and server over the serial app's pty, in place of the stdlib stand-ins."""
+    lab.fact("otsim_tarball", f"{OTSIM_TARBALL}: {OTSIM_TARBALL.stat().st_size} bytes" if OTSIM_TARBALL.exists() else "missing")
+    for vm in (rio, chiller):
+        lab.shell(vm, "pkill -f rtu_check.py; sleep 1; pgrep -fc rtu_check.py || true")
+        out: str = lab.shell(vm, "ls -l /opt/otsim-rtu.tgz && tar -xzf /opt/otsim-rtu.tgz -C /opt && ls /opt/otsim/bin")
+        lab.check(f"the injected ot-sim tarball unpacks on {vm}", "ot-sim-modbus-module" in out, out[:300])
+    lab.put_file(chiller, "/tmp/otsim-chiller.xml", HERE / "otsim-chiller.xml", "0644")
+    lab.put_file(rio, "/tmp/otsim-rio.xml", HERE / "otsim-rio.xml", "0644")
+    for vm in (rio, chiller):
+        lab.put_file(vm, "/tmp/otsim_check.py", HERE / "otsim_check.py")
+    lab.shell("bus-monitor", "rm -f /tmp/bus2.txt; (setsid nohup timeout 900 tcpdump -ni eth0 -l 'udp port 9000' >/tmp/bus2.txt 2>&1 </dev/null &); sleep 1; echo started")
+    for vm, cfg in ((chiller, "otsim-chiller"), (rio, "otsim-rio")):
+        out = lab.shell(
+            vm,
+            f"{OTSIM_ENV}; cd /tmp; setsid nohup ot-sim-cpu-module /tmp/{cfg}.xml >/tmp/otsim.log 2>&1 </dev/null & sleep 12; "
+            "pgrep -a ot-sim | cut -c1-120; tail -n 3 /tmp/otsim.log | cut -c1-200",
+        )
+        lab.fact(f"otsim_start_{vm}", out)
+        lab.check(f"ot-sim runs on {vm} (message bus, CPU and Modbus modules)", out.count("ot-sim-") >= 3, out[:300])
+
+    # Values: the master polls the server over RTU; the master's loopback server shows what it read.
+    probe: str = lab.shell(rio, "python3 /tmp/otsim_check.py watch --seconds 15")
+    lab.fact("otsim_probe", probe.strip())
+    # A write on the master's side must arrive at the chiller through the master's RTU write.
+    lab.shell(rio, "python3 /tmp/otsim_check.py write 40000 77")
+    seen: str = ""
+    for _ in range(8):
+        time.sleep(2)
+        seen = lab.shell(chiller, "python3 /tmp/otsim_check.py read 40000").strip()
+        if '"value": 77' in seen:
+            break
+    lab.check("an ot-sim RTU write from rio-utilities reaches the chiller's holding register", '"value": 77' in seen, seen)
+
+    res = lab.shell_result(rio, f"python3 /tmp/otsim_check.py watch --seconds {OTSIM_SECONDS}", wait_s=OTSIM_SECONDS + 240)
+    lab.save("otsim-watch.txt", res.stdout)
+    m = re.search(r'"samples": (\d+), "errors": (\d+), "distinct": (\d+)', res.stdout)
+    samples, errors, distinct = (int(g) for g in m.groups()) if m else (0, 0, 0)
+    lab.check(
+        "the chiller's changing value reaches rio-utilities over ot-sim RTU (loopback reads, no errors)",
+        bool(m) and errors == 0 and distinct >= min(samples, 100) * 0.8,
+        res.stdout.strip()[:300],
+    )
+    log_errors: str = lab.shell(rio, "grep -c ERROR /tmp/otsim.log; grep -m3 ERROR /tmp/otsim.log | cut -c1-200")
+    n_err: int = int(log_errors.split()[0]) if log_errors.split() and log_errors.split()[0].isdigit() else -1
+    polls: int = (OTSIM_SECONDS + 40) * 2
+    lab.fact("otsim_poll_errors", f"{n_err} ERROR lines in the master's log for about {polls} register polls ({100.0 * max(n_err, 0) / polls:.2f}%)")
+    lab.check("ot-sim master poll failures under 1% at 9600 baud, 1 s period", 0 <= n_err and 100.0 * n_err / polls < 1.0, log_errors[:300])
+    lab.save("otsim-rio.log", lab.shell(rio, "tail -n 200 /tmp/otsim.log"))
+    lab.save("otsim-chiller.log", lab.shell(chiller, "tail -n 200 /tmp/otsim.log"))
+    bus: str = lab.shell("bus-monitor", "pkill tcpdump; sleep 1; grep -c UDP /tmp/bus2.txt; head -3 /tmp/bus2.txt")
+    lab.save("bus-monitor-otsim.txt", bus)
+    first: str = bus.strip().splitlines()[0] if bus.strip() else "0"
+    lab.check("the bus monitor sees the ot-sim RTU frames", first.isdigit() and int(first) > 0, bus[:300])
 
 
 def run() -> int:
@@ -99,7 +158,7 @@ def run() -> int:
         lab.save("bus-monitor.txt", bus)
         first: str = bus.strip().splitlines()[0] if bus.strip() else "0"
         lab.check("a third guest on the VLAN sees the bus frames", first.isdigit() and int(first) > 0, bus[:300])
-        lab.fact("ot_sim_rtu", "not tested: no ot-sim image in this workflow; see the README")
+        otsim_rtu(lab, a, b)
         log("done")
     finally:
         lab.collect()

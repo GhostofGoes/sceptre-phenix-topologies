@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<!-- glycol-chiller: an ot-sim Modbus RTU server on the phenix serial app's pty (the chiller's
+     controller). A logic program ramps the supply temperature so a reader sees changing values.
+     The TCP endpoint on loopback lets the spike read the server's own state. -->
+<ot-sim>
+  <message-bus>
+    <pull-endpoint>tcp://127.0.0.1:1234</pull-endpoint>
+    <pub-endpoint>tcp://127.0.0.1:5678</pub-endpoint>
+  </message-bus>
+  <cpu>
+    <module name="backplane">ot-sim-message-bus {{config_file}}</module>
+    <module name="modbus">ot-sim-modbus-module {{config_file}}</module>
+    <module name="logic">ot-sim-logic-module {{config_file}}</module>
+  </cpu>
+  <modbus name="chiller-rtu" mode="server">
+    <id>1</id>
+    <endpoint>127.0.0.1:5502</endpoint>
+    <serial>
+      <device>/dev/ttyS10</device>
+      <baud-rate>9600</baud-rate>
+    </serial>
+    <register type="input">
+      <address>30000</address>
+      <tag>chiller.temp</tag>
+    </register>
+    <register type="holding">
+      <address>40000</address>
+      <tag>chiller.setpoint</tag>
+    </register>
+  </modbus>
+  <logic name="chiller-ramp">
+    <period>1s</period>
+    <program><![CDATA[
+      temp = temp >= 120 ? 20 : temp + 1
+    ]]></program>
+    <variables>
+      <temp tag="chiller.temp">20</temp>
+    </variables>
+  </logic>
+</ot-sim>

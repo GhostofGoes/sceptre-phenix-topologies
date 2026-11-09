@@ -3,8 +3,9 @@
 # to UDP multicast on a VLAN; it is not a minimega serial port.
 # Interface keys come from phenix's v1 Interface schema (device, baud_rate,
 # udp_port); the link address is derived from address and mask, so there is no
-# link_address key. Image: cm-spike (socat, python3), built by the workflow; the
-# real range uses an ot-sim image.
+# link_address key. Image: cm-spike (socat, python3), built by the workflow. The
+# two serial nodes also get the ot-sim modules as a tarball (injections), so ot-sim's
+# own Modbus RTU runs over the link.
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
 metadata:
@@ -13,6 +14,11 @@ spec:
   nodes:
     - type: VirtualMachine
       general: {hostname: rio-utilities}
+      injections:
+        - description: ot-sim Modbus modules and their libraries (built by build_otsim.sh)
+          src: /phenix/injects/otsim-rtu.tgz
+          dst: /opt/otsim-rtu.tgz
+          permissions: "0644"
       hardware:
         os_type: linux
         drives: [{image: cm-spike.qc2, inject_partition: 1}]
@@ -24,6 +30,11 @@ spec:
           - {name: S0, vlan: SERIAL, address: 10.99.0.1, mask: 24, proto: static, type: serial, device: /dev/ttyS10, baud_rate: 9600, udp_port: 9000}
     - type: VirtualMachine
       general: {hostname: glycol-chiller}
+      injections:
+        - description: ot-sim Modbus modules and their libraries (built by build_otsim.sh)
+          src: /phenix/injects/otsim-rtu.tgz
+          dst: /opt/otsim-rtu.tgz
+          permissions: "0644"
       hardware:
         os_type: linux
         drives: [{image: cm-spike.qc2, inject_partition: 1}]

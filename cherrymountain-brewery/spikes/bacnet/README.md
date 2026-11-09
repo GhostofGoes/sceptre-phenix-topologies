@@ -87,6 +87,12 @@ Run in Docker (python:3.12-slim containers on one bridge network; no VMs).
     ReadPropertyMultiple (present-value polling), WriteProperty (present-value,
     priority 16). No SubscribeCOV. BACpypes3 handled all of them with no code.
 - **Follow-ups:**
+  - **Resolved and corrected by the [bbmd](../bbmd/README.md) spike (round 2,
+    real FUXA through BBMDs on a VyOS router).** FUXA's Who-Is goes to its
+    device `broadcastAddress` property: 255.255.255.255 when the property is
+    absent (the case below), a unicast to the device when it holds the device's
+    IP. The statement below that `whoIs()` always broadcasts held only for a
+    project without that property.
   - **FUXA connect needs an I-Am from a Who-Is broadcast.** `_connect()`
     sends `client.whoIs()` and resolves only on an `iAm` event; the
     "explicit" second call `whoIs({deviceIPAddress: <broadcastAddress>})` is

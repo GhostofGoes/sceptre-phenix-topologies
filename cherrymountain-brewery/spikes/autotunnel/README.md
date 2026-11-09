@@ -102,6 +102,31 @@ with `externalAccess` (DESIGN §15.2) and say so in §15.3.
   - Requires the fork's autotunnel loop (or the REST fallback) in whatever
     phenix the range runs on; plain upstream does neither re-creation nor a
     log line.
-  - Not tested here: a CLI-started experiment (the fork's loop is said to cover
-    it), and `vm restart` through the UI (the kill/start pair above is the same
-    C2 event).
+  - `vm restart` through the UI was not tested (the kill/start pair above is
+    the same C2 event).
+
+### Round 2: an experiment started by the phenix CLI
+
+- **Decision:** **go.** The tunnels of an experiment started with `phenix
+  experiment start` (its own process, which exited after 1 s) appear without
+  help while a separate `phenix ui` runs, carry data, and survive a `phenix ui`
+  restart. The fork's loop reads the running experiments from the store, so
+  nothing depends on which process started the experiment.
+- **Evidence** (run [42540790499](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42540790499), job "Spike autotunnel", artifact
+  `evidence-autotunnel`, directory `autotunnel-cli`; phenix `7b59270` of the
+  fork, minimega 3.3.0; all checks PASS, including the REST case of round 1
+  again):
+  - `topology-cli.yml` (sim-ctl and scada-fuxa, another name) was created, and
+    `phenix experiment start` returned after 1 s; the C2 clients registered
+    70 s after the start.
+  - phenix ui logged `startup autotunnel requested` for all four entries of
+    experiment `spike-autotunnel-cli` 3 s after the start (2026-11-09
+    00:52:36), then `waiting for the C2 client`, then created them. The stubs
+    answered through all four tunnels (host ports 58980, 54623, 64216, 50352),
+    and `GET /experiments/spike-autotunnel-cli/vms/<vm>/forwards` listed them
+    with owner `bot`.
+  - After `phenix ui` was stopped and started again, it logged `requested` for
+    the four entries again and the tunnels (minimega's, so they never went
+    away) still carried data; the forwards API listed them.
+- **Follow-ups:** none new. The DESIGN §15.3 statement that a CLI-started
+  experiment works only with the fork's loop stands; this run used the fork.

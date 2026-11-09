@@ -142,3 +142,9 @@ a browser, or a 10-minute RSS soak.
     consistent with the FUXA device address.
   - Left undone: confirm in a browser that the posted view renders in the
     editor; the 10-minute RSS sample.
+  - Round 2 (the [bbmd](../bbmd/README.md) spike): the same FUXA image and
+    `install_plugins.sh`, `secure_flow.sh` and `make_project.py` also provisioned a
+    FUXA on a lab subnet behind a VyOS firewall (`install_plugins.sh` takes
+    `ONLY="node-bacnet"`; `make_project.py` takes `--bacnet-only` and
+    `--broadcast-address none|ADDR`). The BACnet device's `broadcastAddress`
+    decides where FUXA's Who-Is goes; see that README before choosing it.

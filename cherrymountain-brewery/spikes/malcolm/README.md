@@ -48,6 +48,80 @@ Capture fails: investigate the mirror app config (`TODO(verify):` bridge
 naming in step 4) before calling no-go; the fallback is a tap-based capture
 VM per VLAN.
 
+## Result, round 2: the upload hand-off and Suricata (full stack on the runner)
+
+- **Decision:** **go.** A pcap dropped in `pcap/upload` the documented way now
+  yields Zeek logs (modbus, dnp3, bacnet and the rest) **and Suricata alerts** in
+  OpenSearch with nothing fed by hand, in 142 s on a 4 vCPU / 16 GB runner. The
+  hand-off was never broken in Malcolm; the setup was. Suricata fits: it added
+  917 MiB (peak) and one core to the trimmed stack.
+- **Why the 12-minute run had no Zeek logs** (found by running the pcap-monitor
+  and zeek images with the compose file's own environment and bind mounts, a
+  pcap in `pcap/upload`, and the processor's logging turned up):
+  1. **`zeek -r pcap local` died.** `local.zeek` loads
+     `site/custom`, and the compose file bind-mounts the checkout's
+     `./zeek/custom` (read-only) over the image's copy. In a checkout that
+     directory holds only a `.gitignore`, so the image's empty `__load__.zeek` is
+     hidden: Zeek prints `fatal error in .../local.zeek, line 209: can't open
+     .../custom/__load__.zeek`, exits 1 and writes no logs. `pcap_zeek_processor`
+     reports it as "generated no log files" at warning level. Fix: `touch
+     zeek/custom/__load__.zeek` before starting (the spike does). Direct
+     `zeek-offline` runs in the earlier spikes passed because they did not mount
+     that directory.
+  2. **Nothing was visible.** `PCAP_PIPELINE_VERBOSITY` is set empty in
+     `config/upload-common.env`, which the pcap-monitor, zeek and suricata
+     services read after `process.env`; the spike's earlier `-vv` in
+     `process.env` was overridden. Put it in `upload-common.env`; the flag and the
+     variable both count, so `-vv` is DEBUG. With it, `docker logs` shows every
+     file (`👓`, `📩`, `📫`, `📨`, `🔎`, `✅`).
+  3. **Suricata alerts: two traps.** (a) pcap-monitor publishes a pcap **once** on
+     a ZeroMQ PUB socket (port 30441, no replay), so a processor that subscribes
+     afterwards never sees the file. Suricata's processor sleeps 45 s and loads
+     the rules twice, and in one run it subscribed 8 s after the publication
+     (Zeek and Arkime had been subscribed for 50 s): Suricata read nothing. Drop
+     the pcap only when all processors log `subscribed to topic at 30441`, or
+     restart pcap-monitor afterwards (it re-publishes what is in `pcap/processed`
+     unless `PCAP_PIPELINE_IGNORE_PREEXISTING=true`); the spike now waits (117 s
+     after the services started). (b) Custom rules must not use sids 1000001 and
+     up: Malcolm's default OT rules (ELITEWOLF) use them and Suricata rejected all
+     three custom rules as `Duplicate signature`.
+- **Evidence.** Four runs of job "Spike malcolm (Docker on the runner)", artifact
+  `evidence-malcolm-docker` (Malcolm v26.10.0, Suricata 8.0.7, OpenSearch heap
+  3 GB, Logstash heap 2 GB, services OpenSearch, dashboards-helper, Dashboards,
+  Arkime, Logstash, Filebeat, pcap-monitor, Zeek, Suricata):
+  - [42540790499](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42540790499): `touch __load__.zeek` and `-vv` in place. Zeek modbus 6,
+    dnp3 2, bacnet 4 (and conn, known_*) in OpenSearch 191 s after the drop, no
+    Suricata event.
+  - [42543352420](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42543352420): Zeek in 142 s; Suricata loaded the rules but
+    rejected them (`Duplicate signature`, sid clash).
+  - [42545422322](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42545422322): rules loaded (`53387 rules successfully loaded, 0
+    failed`); Suricata subscribed after the publication and saw no pcap.
+  - [42547389340](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42547389340): **all PASS.** Zeek records in 142 s after the drop
+    (`event.provider` zeek 34, arkime 4, suricata 12). Suricata alerts: "CM spike
+    TCP to Modbus port" 10, "CM spike Modbus write single register" 1, "CM spike
+    DNP3 direct operate" 1 (`eve.json` 12 alerts, 53 387 rules loaded, the
+    ELITEWOLF and ET rules among them; none of the default rules matched the
+    synthetic traffic).
+- **Resource fit** (run 42547389340): containers peaked at **8.4 GiB** summed
+  (OpenSearch 4252 MiB, Logstash 2611, Suricata 917, Zeek 727, Arkime 483,
+  Dashboards 448, Filebeat 114, pcap-monitor 80, dashboards-helper 43; CPU peaks:
+  OpenSearch 284%, Logstash 376%, Suricata 106%, Zeek 95%) and the host used
+  **9.2 GiB of 15.98 GB**, on 4 vCPU. The images are 8.6 GB plus Suricata's.
+  Not run: NetBox with Postgres and Redis, Strelka, nginx and the upload
+  containers, and the default heaps (OpenSearch 10 GB, Logstash 3 GB).
+- **Follow-ups:**
+  - DESIGN §14 and §11: the "not yet verified" and "cause unknown" statements are
+    resolved, the spike's "archive the Zeek logs for Filebeat" workaround is not
+    needed, and Suricata is measured (917 MiB peak, one core) with the trimmed
+    stack; the `cm-malcolm` boot script must create `zeek/custom/__load__.zeek`,
+    set `PCAP_PIPELINE_VERBOSITY` in `upload-common.env`, and either start the
+    processors before the first upload or restart pcap-monitor afterwards.
+  - Custom Suricata rules for the range: sids above 9000000, never 1000001 and up.
+  - Still open from round 1: the real `cm-malcolm` VM with live capture.
+
+
+### Round 1 result (below, unchanged)
+
 ## Result (CI: Zeek in Docker, and the mirror app into a stand-in capture VM)
 
 Two CI jobs of `.github/workflows/cherrymountain-spikes.yml`: **Spike malcolm

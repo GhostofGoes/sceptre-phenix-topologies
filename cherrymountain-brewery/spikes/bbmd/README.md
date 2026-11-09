@@ -30,8 +30,14 @@ ops-client .30  ops-bbmd .5  --[ router .1 | .1 ]--  bas-bbmd .5  bas-dev .13
   - `ci.py`: phenix and minimega, the router is a **VyOS** VM (`vyos.qc2`) and
     the ACL is a VyOS 1.5 `firewall ipv4 forward filter` ruleset pushed through
     cc. The hosts are `cm-spike` guests with BACpypes3 in `/opt/bacnet`.
+- `fuxa_probe.py`: a real FUXA 1.3.5 in Docker (node-bacnet 0.2.4) joined to
+  the OPS subnet, provisioned with `../fuxa/secure_flow.sh` and
+  `../fuxa/make_project.py`; the scenario also runs it (round 2 in the Result).
+- `responder.py --broadcast-iam [--announce N]` makes the device answer a Who-Is
+  (or announce itself) with a broadcast I-Am.
 - Workflow jobs: `bbmd-netns` and `bbmd-vyos` in
-  `.github/workflows/cherrymountain-spikes.yml`.
+  `.github/workflows/cherrymountain-spikes.yml`. They need Docker on the
+  runner for FUXA (GitHub-hosted runners have it).
 
 ## Steps (what `scenario.py` does)
 
@@ -59,6 +65,104 @@ discovery. Fall back to FUXA in the BAS broadcast domain (`bas-fuxa` only), or a
 foreign-device registration the driver does not do.
 
 ## Result
+
+Two rounds. Round 2 (real FUXA and devices that broadcast their I-Am) is first; round 1 (the socket stand-in client) follows unchanged.
+
+### Round 2: real FUXA, and a device that broadcasts its I-Am
+
+- **Decision:** **go.** A real FUXA 1.3.5 (`frangoteam/fuxa:1.3.5`, digest
+  `sha256:931781ce0557304d5b3b51e3d2ddb180dd2252b5e4b9936be7fd935bf5c62a2a`,
+  node-bacnet 0.2.4 installed through `POST /api/plugins`, BACnet device
+  provisioned with `make_project.py` and `secure_flow.sh`) on the OPS subnet
+  connects through the OPS BBMD and reads a live present value from device 3003
+  behind the stateful default-drop ACL, on a VyOS VM and on a Linux router. Rule 3
+  (BAS BBMD to OPS BBMD) is **needed only for unsolicited broadcast I-Ams** and
+  is hit then; a Who-Is answered with a broadcast I-Am passes without it. Two
+  FUXA behaviors change how the design should use BACnet (below).
+- **Fixture.** FUXA runs in Docker on the runner. It starts on Docker's network
+  (npm needs it for the driver), is provisioned through its API, then moves to
+  the OPS subnet on a veth pair (a Linux bridge in the netns job; an OVS port on
+  OPS's VLAN tag in the VyOS job) and loses Docker's interface, so its only path
+  out is `fw-ot`. `fuxa_probe.py` does this; `scenario.py` runs the steps.
+- **Evidence.**
+  - VyOS router: run [42540790499](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42540790499), job "Spike bbmd (VyOS router)", artifact `evidence-bbmd-vyos`
+    (VyOS `999.202611090036`, phenix `7b59270`, BACpypes3 0.0.110; all 14
+    checks PASS). Linux router (netns): run [42543352420](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/42543352420), job "Spike bbmd (Linux router,
+    network namespaces)", artifact `evidence-bbmd-netns` (kernel
+    7.0.0-1017-azure, nftables 1.0.9; all PASS). The counters below are
+    identical on both routers.
+  - **FUXA reads 3003.** Packet capture on the container (`fuxa-capture-full.txt`):
+    FUXA sends its 8-byte Who-Is to `255.255.255.255:47808`; the OPS BBMD
+    answers with its own I-Am (instance 9001) and **device 3003 answers with a
+    unicast I-Am from 10.20.60.13 across the router**; FUXA then polls
+    ReadPropertyMultiple (19 bytes) to 10.20.60.13 once a second and gets
+    25-byte acks. `GET /api/getTagValue` returned 600, later 900 (VyOS) and
+    600, later 1000 (netns): the responder's 400 to 1200 ppm ramp.
+  - **ACL rules hit** (stage `bbmd-both-ways-device-replies`, ACL written for
+    FUXA's address, counters from the router: VyOS `show firewall ipv4 forward
+    filter`, nft counters): rule 10 (established) 18 packets; **rule 30 (OPS BBMD
+    to BAS BBMD) 1**, the Forwarded-NPDU; **rule 50 (device 3003 to FUXA) 1**, the
+    device's I-Am; rule 40 (BAS BBMD to OPS BBMD) 0; rule 20 (FUXA to device) 0,
+    because the I-Am's connection-tracking entry (same port pair) already covers
+    the reads; default drop 1 (probably the BAS BBMD's own I-Am, instance 9002, to FUXA; not
+    captured on the BAS side).
+  - **Without the BBMD rules** (stage `unicast-only`, FUXA reconnects): the tag has
+    no value (`null`). The rule-20 counter shows 1 packet and the default drop 45
+    (FUXA's polling and the forwarded Who-Is that the ACL stops).
+  - **Rule 3 and a device that broadcasts its I-Am** (`responder.py
+    --broadcast-iam`, stand-in client bound to 0.0.0.0, both routers):
+    - Answering a Who-Is: found through the OPS BBMD (`via` 10.20.30.5) with
+      only rules 20 and 30 and no rule 3: the Who-Is opened the OPS-to-BAS BBMD
+      flow (UDP 47808 to 47808), so the forwarded I-Am is that flow's reply
+      direction and the established rule passes it. Rule 40 matched 0.
+    - Unsolicited (`--announce 3`, connection tracking flushed): with rule 3
+      absent the client hears nothing (default drop 3 packets on netns, 6 on
+      VyOS); with rule 3 it hears the I-Am through the OPS BBMD, reads the
+      device, and **rule 40 matched 2 packets (netns) and 5 (VyOS)**.
+    - A client bound to its own address (what FUXA does, see below) never hears
+      the OPS BBMD's rebroadcast to 255.255.255.255, so devices that broadcast
+      their I-Am are not found by FUXA even with rule 3 (stand-in
+      `bound_to_own_address` and the FUXA run `fuxa_bcast_iam_device`: no value).
+- **FUXA and node-bacnet behavior found** (read from the driver and shown by the
+  captures):
+  1. **The Who-Is goes to the device's `broadcastAddress` property.** Without it
+     the address is 255.255.255.255 and the BBMDs are needed. With
+     `broadcastAddress` set to the device's own IP (what `make_project.py` did
+     by default) the Who-Is is a **unicast** to the device: FUXA reads 3003 with
+     only rule 20 and the established rule, no BBMD, no device-to-client rule
+     (value 700 on netns, 500 on VyOS, counters `est` 7 and 10, rule 20 1). The
+     `bacnet` spike's statement that `whoIs()` always goes to 255.255.255.255 was
+     true only for a project without that property.
+  2. **FUXA reports "connected" on the first I-Am from anything**, including the
+     OPS BBMD's own (instance 9001). A device that never answers leaves the tag
+     `null` while FUXA says connected, and FUXA sends the Who-Is once, at connect:
+     a device whose ACL rule appears later is not found until the runtime
+     reconnects (post the project again). Use the tag value, not the connection
+     state, as the health check.
+  3. **A device FUXA has not discovered is polled by broadcast**: one
+     ReadPropertyMultiple to 255.255.255.255 per second per tag group (a local run
+     counted 157 forwarded packets on rule 30 in about two and a half minutes).
+  4. node-bacnet binds the FUXA host's own address, so it hears unicast only.
+- **ACL rules the design needs** (updates round 1): rules 1, 2 and 4 stand as
+  listed there. **Rule 3 becomes: required only for devices that send
+  unsolicited broadcast I-Ams (power-up, periodic), and FUXA cannot use those
+  anyway**; for Who-Is answers it never fires. If every BAS device that FUXA
+  reads is configured by IP (one FUXA device per BACnet device, `broadcastAddress`
+  = its IP), no BBMD and only rules 4 and 2's reply direction (established) are
+  needed: two rules instead of four, and no BBMD nodes.
+- **Follow-ups:**
+  - DESIGN §10.3, §10.4, §11 and §15.2: record the `broadcastAddress` option as
+    the alternative to BBMDs and decide between them; state that rule 3 is for
+    unsolicited I-Ams only and is untestable with FUXA as the client.
+  - `make_project.py` writes `broadcastAddress` = device IP unless called with
+    `--broadcast-address none`; the FUXA boot script must choose on purpose.
+  - Decide whether one FUXA BACnet device per BAS device is acceptable (the
+    unicast option needs it; tags keep `memaddress` = the device instance).
+  - Not tested: BBMD on `ot-svc` itself, FUXA on the BAS side, foreign-device
+    registration, FUXA restart or an ACL change while connected beyond what is
+    listed.
+
+### Round 1: socket stand-in client
 
 - **Decision:** **go, with a BBMD on each side and more than the ACL the
   question assumed.** FUXA on OPS discovers BAS device 3003 across the

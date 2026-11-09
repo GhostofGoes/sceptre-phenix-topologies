@@ -18,9 +18,13 @@
 # the manager first starts, so they load with it.
 #
 # Env (from /etc/default/cm-wazuh, optional): CM_WAZUH_IP (default: the first global
-# IPv4 address). Re-running is safe: it stops early once
-# /var/lib/cm-wazuh/provisioned exists. The generated passwords are in
-# /var/lib/cm-wazuh/passwords.txt (root only).
+# IPv4 address). Re-running is safe. It stops early once
+# /var/lib/cm-wazuh/provisioned exists. Step 4 writes the marker
+# /var/lib/cm-wazuh/passwords-changed as soon as the password tool succeeds, and a
+# run that finds it keeps the certificates and skips the security initialization,
+# the keystore setup, and the password change: each of those would put the default
+# admin credentials back, or overwrite the only record of the new passwords. The
+# generated passwords are in /var/lib/cm-wazuh/passwords.txt (root only).
 #
 # TODO(verify): unverified on a VM. The commands follow Wazuh 4.14's documentation;
 # check each step on the first run, above all the password tool (step 4), which
@@ -69,6 +73,11 @@ if [ -z "$node_ip" ]; then
 fi
 log "node address ${node_ip}"
 mkdir -p "$STATE"
+PASSWORDS_MARKER="${STATE}/passwords-changed"
+passwords_changed() { [ -f "$PASSWORDS_MARKER" ]; }
+if passwords_changed; then
+  log "passwords were already changed: keeping the certificates and skipping the security initialization, keystores, and password steps"
+fi
 
 # --- 1. certificates ----------------------------------------------------------------
 cd "$TOOLS"
@@ -84,8 +93,13 @@ nodes:
     - name: dashboard
       ip: "${node_ip}"
 EOF
-rm -rf wazuh-certificates
-bash ./wazuh-certs-tool.sh -A
+if passwords_changed && [ -d wazuh-certificates ]; then
+  # New certificates would not match the running services, which have not reloaded them.
+  log "keeping the existing certificates"
+else
+  rm -rf wazuh-certificates
+  bash ./wazuh-certs-tool.sh -A
+fi
 certs="${TOOLS}/wazuh-certificates"
 
 # install_certs DIR OWNER:GROUP SRC=DST...: copy certificates into DIR, read-only.
@@ -105,18 +119,22 @@ sed -i -E "s|^network.host:.*|network.host: \"${node_ip}\"|" /etc/wazuh-indexer/
 systemctl daemon-reload
 systemctl enable --now wazuh-indexer.service
 wait_for 600 "the indexer" bash -c "(echo > /dev/tcp/${node_ip}/9200)"
-/usr/share/wazuh-indexer/bin/indexer-security-init.sh
+if ! passwords_changed; then
+  /usr/share/wazuh-indexer/bin/indexer-security-init.sh
+fi
 
 # --- 3. the manager and Filebeat -----------------------------------------------------
 install -m 0644 "${TOOLS}/filebeat.yml" /etc/filebeat/filebeat.yml
 sed -i -E "s|^(\s*hosts:).*|\1 [\"${node_ip}:9200\"]|" /etc/filebeat/filebeat.yml
 install_certs /etc/filebeat/certs root:root root-ca.pem=root-ca.pem wazuh-1.pem=filebeat.pem wazuh-1-key.pem=filebeat-key.pem
-filebeat keystore create --force
-echo admin | filebeat keystore add username --stdin --force
-echo admin | filebeat keystore add password --stdin --force
-# The manager reads the same credentials from its own keystore.
-echo admin | "${OSSEC}/bin/wazuh-keystore" -f indexer -k username
-echo admin | "${OSSEC}/bin/wazuh-keystore" -f indexer -k password
+if ! passwords_changed; then
+  filebeat keystore create --force
+  echo admin | filebeat keystore add username --stdin --force
+  echo admin | filebeat keystore add password --stdin --force
+  # The manager reads the same credentials from its own keystore.
+  echo admin | "${OSSEC}/bin/wazuh-keystore" -f indexer -k username
+  echo admin | "${OSSEC}/bin/wazuh-keystore" -f indexer -k password
+fi
 sed -i -E "s|<host>https://[^<]*</host>|<host>https://${node_ip}:9200</host>|" "$OSSEC_CONF"
 
 # cherrymountain additions to ossec.conf (once): the syslog listener, and no
@@ -147,8 +165,12 @@ for file in "${CONF}"/*.conf; do
 done
 
 # --- 4. passwords -----------------------------------------------------------------------
-(umask 077 && bash "${TOOLS}/wazuh-passwords-tool.sh" -a -au wazuh -ap wazuh > "${STATE}/passwords.txt" 2>&1)
-log "new passwords are in ${STATE}/passwords.txt"
+if ! passwords_changed; then
+  (umask 077 && bash "${TOOLS}/wazuh-passwords-tool.sh" -a -au wazuh -ap wazuh > "${STATE}/passwords.txt" 2>&1)
+  # Mark it now: from here on the default credentials no longer work.
+  touch "$PASSWORDS_MARKER"
+  log "new passwords are in ${STATE}/passwords.txt"
+fi
 systemctl restart filebeat.service wazuh-manager.service
 
 # --- 5. the dashboard -------------------------------------------------------------------

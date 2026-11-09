@@ -2,9 +2,13 @@
 Description=CherryMountain Wazuh first-boot setup (certificates, passwords, indexer, manager, dashboard)
 After=network.target
 ConditionPathExists=!/var/lib/cm-wazuh/provisioned
-# Retry forever: Restart=on-failure below is the only retry loop. The script is safe
-# to run again, because each step replaces what the last attempt left.
-StartLimitIntervalSec=0
+# Restart=on-failure below is the only retry loop, and it gives up after five starts in
+# twelve hours (a start can take up to 45 minutes), so a permanent failure ends in the
+# failed state instead of looping. The script is safe to run again: it keeps the
+# certificates and skips the password steps once /var/lib/cm-wazuh/passwords-changed
+# exists, and each other step replaces what the last attempt left.
+StartLimitIntervalSec=12h
+StartLimitBurst=5
 
 [Service]
 Type=oneshot

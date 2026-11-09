@@ -9,9 +9,10 @@ cost? **Decides:** whether a 3D view enters the design (a new white-cell
 component next to §9.5 ground truth and §15.3 autotunnel), its data path and
 node, and the scope of the first build.
 
-**Status:** go; being built as the `cm-viz` component (`viz/`). A local proof
-of concept (`poc/`) ran in this round; the spike itself, in phenix, is the
-[Spike plan](#spike-plan) below.
+**Status:** go, and **implemented** as the `cm-viz` component (`viz/`,
+[DESIGN.md §15.10](../../DESIGN.md#1510-white-cell-3d-view-cm-viz)); see
+[Implemented](#implemented). A local proof of concept (`poc/`) ran first; the
+spike in phenix, the [Spike plan](#spike-plan) below, is still to run.
 
 ## Background: how GRFICS does it
 
@@ -466,6 +467,33 @@ through a cc tunnel; VNC and Guacamole; a real 2-vCPU VM (only `taskset`);
 Chromium 150 (`cm-desktop`'s pin); the weather snapshot endpoint and its effect
 on HELICS timing; Godot, Babylon.js, and Blender (only a glTF round trip in
 three.js).
+
+## Implemented
+
+The recommendation was built as written, and the side findings were fixed:
+
+- **Snapshot.** `plant.yaml` `snapshot` lists key patterns; plantgen expands
+  them into the weather federate's subscriptions (179 in full and lite), and
+  the event API serves `GET /api/v1/state` ([DESIGN.md §9.5](../../DESIGN.md#95-scenario-events-and-ground-truth)).
+- **Side finding 1 (KPIs).** The same subscriptions make `GET /api/v1/kpis` real,
+  and it now also carries the compliance figures of §18A.
+- **Side finding 2 (relief).** Every fermenter and bright tank has a pop-action
+  PSV at the 15 psig MAWP (`sim/cherrymountain_sim/relief.py`): it vents into
+  the cellar room, reseats after 10 % blowdown, and has a lift switch on
+  rio-cellar (`CEL.PSV.ZSH01` to `ZSH06`, High alarm). Normal carbonation no
+  longer rides the relief.
+- **Side finding 3 (fill).** The cellar federate publishes each vessel's fill,
+  spunding, PSV, and leak flows as truth outputs (`plant.yaml` `unit_outputs`).
+- **Side finding 4 (cm-desktop WebGL).** Not changed: the view is rendered by
+  the white cell's browser on the host, and `svg.html` is the in-range fallback.
+- **cm-viz.** `viz/`: the bridge (`SimctlSource` in the range, the offline
+  harness for development and screenshots), the three.js page with the cellar
+  CO₂, fermenter, and plant power scenes, the SVG page, three.js 0.186.1
+  vendored in the package, a hardened loopback-only unit on sim-ctl, and the
+  `18090:8090` autotunnel entry. Tested in CI (`cm-viz-tests`) and in headless
+  Chromium (`pytest -m browser`).
+- **Still open:** the phenix run of the [Spike plan](#spike-plan), the
+  operator-view relay from the historian, and replay from OpenSearch.
 
 ## References
 

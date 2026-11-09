@@ -34,6 +34,7 @@ spec:
   - dbus
   - dnsmasq
   - ethtool
+  - gnupg
   - init
   - initramfs-tools
   - iproute2
@@ -69,7 +70,7 @@ spec:
       # ------------------------------------------------------ svc -----------------------------------------------------
       export DEBIAN_FRONTEND=noninteractive
       apt-get update
-      apt-get install -y --no-install-recommends chrony dnsmasq rsyslog python3 python3-venv
+      apt-get install -y --no-install-recommends chrony dnsmasq gnupg rsyslog python3 python3-venv
 
       # BACpypes3 for the BBMD service. The topology injects cm_bbmd.py, its
       # settings, and cm-bbmd.service; the startup hook enables the unit on ot-svc
@@ -83,8 +84,26 @@ spec:
       # keeps its default (enabled) and gets its relay config injected.
       systemctl disable dnsmasq.service
       mkdir -p /etc/cherrymountain /usr/local/lib/cm-bbmd
-      # TODO: the Wazuh agent (DESIGN.md 15.7) goes here once the cm-wazuh image
-      # pins the manager version it must match.
+      # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,
+      # because an agent must not be newer than its manager. The cherrymountain app's
+      # 80-cm-wazuh-agent.sh points it at the manager and enrolls it at boot, so the
+      # service stays disabled here.
+      WAZUH_VERSION=4.14.10-1
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      systemctl disable wazuh-agent.service
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------
       apt clean || apt-get clean || echo "unable to clean apt cache"

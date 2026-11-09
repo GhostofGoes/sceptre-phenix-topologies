@@ -1,0 +1,156 @@
+#!/bin/bash
+# First-boot configuration of Malcolm (DESIGN.md 14). Installed as
+# /usr/local/sbin/cm-malcolm-provision and run as root by
+# cm-malcolm-provision.service after cm-load-images.service has loaded the images.
+# It turns the stock Malcolm checkout in /opt/malcolm into the range's sensor:
+# live capture on the in-guest OVS port, the pinned sizing profile, range
+# credentials, our Zeek scripts, and our Suricata rules.
+#
+# It applies the four fixes of the malcolm spike that a plain checkout needs:
+#   1. zeek/custom/__load__.zeek exists. The compose file bind-mounts the
+#      checkout's zeek/custom over the image's, which hides the image's empty
+#      __load__.zeek, and `zeek -r pcap local` then dies and writes no logs.
+#   2. PCAP_PIPELINE_VERBOSITY is set in config/upload-common.env. It is blank
+#      there, and that file is read after process.env, so setting it anywhere
+#      else has no effect and the processors log nothing.
+#   3. A pcap is dropped only after every processor subscribed to pcap-monitor's
+#      ZeroMQ socket (cm-malcolm-wait-ready, used by cm-malcolm-selftest).
+#   4. Custom Suricata rules use sids from 9000101 on. Malcolm's own OT rules use
+#      1000001 and up, and Suricata drops a duplicate sid.
+#
+# Env (from /etc/default/cm-malcolm, all optional): CM_MALCOLM_PROFILE (auto,
+# full, slim), MALCOLM_ADMIN_PASSWORD, CM_CAPTURE_IFACE, CM_ZEEK_LOCAL_NETS.
+# Re-running is safe: it stops early once /var/lib/cm-malcolm/provisioned exists.
+set -euo pipefail
+
+MALCOLM_DIR="${MALCOLM_DIR:-/opt/malcolm}"
+SRC="${CM_MALCOLM_SRC:-/opt/cherrymountain/malcolm}"
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+CAPTURE_IFACE="${CM_CAPTURE_IFACE:-phenix}"
+ZEEK_LOCAL_NETS="${CM_ZEEK_LOCAL_NETS:-10.0.0.0/8,172.16.0.0/12,192.0.2.0/24,198.51.100.0/24,203.0.113.0/24}"
+IMAGE_TAG=26.10.0
+OPENSEARCH_IMAGE="ghcr.io/idaholab/malcolm/opensearch:${IMAGE_TAG}"
+# The uid and gid the containers run as (PUID and PGID in config/process.env).
+MALCOLM_UID=1000
+
+# shellcheck source=phenix-injects/malcolm/profiles.sh
+. "${SRC}/profiles.sh"
+
+log() { echo "cm-malcolm-provision: $*"; }
+
+# set_env FILE KEY VALUE: replace KEY=... or append it. A config file may lack a
+# trailing newline, so an appended line starts with one. VALUE must not hold |, &,
+# or a backslash.
+set_env() {
+  local file="$1" key="$2" value="$3"
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    printf '\n%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+# as_malcolm CMD...: run a command as the unprivileged user Malcolm's scripts need.
+as_malcolm() {
+  setpriv --reuid="${MALCOLM_UID}" --regid="${MALCOLM_UID}" --clear-groups "$@"
+}
+
+if [ -f "${STATE}/provisioned" ]; then
+  log "already provisioned"
+  exit 0
+fi
+[ -d "${MALCOLM_DIR}" ] || { log "FAIL: ${MALCOLM_DIR} is missing; this is not a cm-malcolm image"; exit 1; }
+
+profile=$(cm_malcolm_profile)
+read -r os_heap ls_heap <<< "$(cm_malcolm_heaps "$profile")"
+log "profile ${profile} (OpenSearch heap ${os_heap}, Logstash heap ${ls_heap})"
+printf '%s\n' "$profile" > "${STATE}/profile"
+
+cd "${MALCOLM_DIR}"
+
+# --- config files -----------------------------------------------------------------
+for example in config/*.env.example; do
+  target="${example%.example}"
+  [ -f "$target" ] || cp "$example" "$target"
+done
+set_env config/process.env PUID "${MALCOLM_UID}"
+set_env config/process.env PGID "${MALCOLM_UID}"
+set_env config/process.env PYTHONUNBUFFERED 1
+sed -i -E "s/-Xmx[0-9]+[gm] -Xms[0-9]+[gm]/-Xmx${os_heap} -Xms${os_heap}/" config/opensearch.env
+sed -i -E "s/-Xmx[0-9]+[gm] -Xms[0-9]+[gm]/-Xmx${ls_heap} -Xms${ls_heap}/" config/logstash.env
+
+# Fix 2: the pcap processors log nothing at their default level.
+set_env config/upload-common.env PCAP_PIPELINE_VERBOSITY -vv
+set_env config/upload-common.env PCAP_NODE_NAME malcolm
+set_env config/upload-common.env ZEEK_LOCAL_NETS "${ZEEK_LOCAL_NETS}"
+
+suricata=false
+if [ "$profile" = full ]; then
+  suricata=true
+fi
+# Live capture on the in-guest OVS port, where the mirror app delivers the
+# monitored VLANs. The port is the bridge's own interface, which the capture-flow
+# unit brings up. Frames arrive 802.1Q tagged; Zeek, Suricata, and Arkime handle it.
+set_env config/pcap-capture.env PCAP_IFACE "${CAPTURE_IFACE}"
+set_env config/pcap-capture.env PCAP_IFACE_TWEAK false
+set_env config/zeek-live.env ZEEK_LIVE_CAPTURE true
+set_env config/arkime-live.env ARKIME_LIVE_CAPTURE true
+set_env config/suricata-live.env SURICATA_LIVE_CAPTURE "$suricata"
+# No internet: the rules in the image are all there is, so no update job.
+set_env config/suricata.env SURICATA_UPDATE_RULES false
+set_env config/suricata.env SURICATA_UPDATE_SOURCES false
+# Basic authentication (htpasswd), no Keycloak or LDAP.
+set_env config/auth-common.env NGINX_AUTH_MODE basic
+if [ "$profile" = full ]; then
+  set_env config/netbox-common.env NETBOX_MODE local
+  set_env config/netbox-common.env NETBOX_ENRICHMENT true
+  set_env config/netbox-common.env NETBOX_AUTO_POPULATE true
+  set_env config/netbox-common.env NETBOX_DEFAULT_SITE CherryMountain
+else
+  set_env config/netbox-common.env NETBOX_MODE disabled
+  set_env config/pipeline.env PIPELINE_DISABLED true
+fi
+
+# --- Zeek scripts and Suricata rules -----------------------------------------------
+mkdir -p zeek/custom suricata/rules suricata-logs
+cp "${SRC}"/zeek/*.zeek zeek/custom/
+# Fix 1: the compose bind mount needs a file here whatever the scripts are.
+[ -f zeek/custom/__load__.zeek ] || touch zeek/custom/__load__.zeek
+cp "${SRC}/cherrymountain.rules" suricata/rules/cherrymountain.rules
+# Fix 4: refuse a custom rule that would clash with Malcolm's own sids.
+bad=$(grep -hEo 'sid: *[0-9]+' suricata/rules/*.rules | awk -F'[: ]+' '$2 < 9000101 { print $2 }' | sort -u | tr '\n' ' ')
+if [ -n "$bad" ]; then
+  log "FAIL: custom Suricata rules use sids below 9000101: ${bad}"
+  exit 1
+fi
+
+# --- credentials, certificates, and the OpenSearch keystore -------------------------
+password="${MALCOLM_ADMIN_PASSWORD:-}"
+if [ -z "$password" ]; then
+  password=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-20)
+  (umask 077 && printf '%s\n' "$password" > "${STATE}/admin-password")
+  log "generated the admin password; it is in ${STATE}/admin-password"
+fi
+password_hash=$(printf '%s' "$password" | openssl passwd -6 -stdin)
+# Non-interactive auth_setup writes nginx/htpasswd only from this bcrypt hash; without it
+# the file stays empty and nobody can sign in to the web UI.
+htpasswd_hash=$(printf '%s' "$password" | htpasswd -niB malcolm | cut -d: -f2)
+mkdir -p opensearch pcap/upload pcap/processed zeek-logs/upload zeek-logs/processed zeek-logs/current zeek-logs/extract_files zeek-logs/live
+chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
+# Malcolm's scripts refuse to run as root.
+as_malcolm env "PATH=/opt/malcolm-venv/bin:${PATH}" ./scripts/auth_setup \
+  --auth-noninteractive --auth-method basic \
+  --auth-admin-username malcolm --auth-admin-password-openssl "$password_hash" --auth-admin-password-htpasswd "$htpasswd_hash" \
+  --auth-arkime-password "$password" \
+  --auth-generate-webcerts --auth-generate-opensearch-internal-creds \
+  --auth-generate-netbox-passwords --auth-generate-valkey-password \
+  --auth-generate-postgres-password -f docker-compose.yml
+as_malcolm touch htadmin/metadata nginx/nginx_ldap.conf .opensearch.secondary.curlrc
+# Starting a subset of the services leaves the OpenSearch keystore uncreated.
+docker run --rm --user root --entrypoint bash -v "${MALCOLM_DIR}/opensearch:/out" "${OPENSEARCH_IMAGE}" -c \
+  '/usr/share/opensearch/bin/opensearch-keystore create && cp /usr/share/opensearch/config/opensearch.keystore /out/'
+chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
+chmod 600 config/*.env .opensearch.*.curlrc
+
+touch "${STATE}/provisioned"
+log "PASS: Malcolm is configured (${profile})"

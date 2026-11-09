@@ -1,0 +1,41 @@
+#!/bin/bash
+# Wait until Malcolm's pcap pipeline can take a pcap (DESIGN.md 14). Installed as
+# /usr/local/sbin/cm-malcolm-wait-ready.
+#
+# pcap-monitor publishes each pcap once, on a ZeroMQ PUB socket (port 30441),
+# with no replay. A processor that subscribes afterwards never sees the file: in
+# the malcolm spike Suricata's processor (it sleeps 45 s and loads its rules
+# twice) subscribed 8 s after the publication and read nothing. So a pcap goes
+# into pcap/upload only after pcap-monitor bound its publisher and every
+# processor of the profile logged "subscribed to topic".
+#
+# Usage: cm-malcolm-wait-ready [SECONDS]   (default 900)
+# Exit 0 when ready, 1 on timeout. Run as root or as a member of the docker group.
+set -euo pipefail
+
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+TIMEOUT="${1:-900}"
+
+processors=(zeek arkime)
+if [ "$(cat "${STATE}/profile")" = full ]; then
+  processors+=(suricata)
+fi
+
+ready() {
+  local name
+  docker logs malcolm-pcap-monitor-1 2>&1 | grep -q "binding publisher port" || return 1
+  for name in "${processors[@]}"; do
+    docker logs "malcolm-${name}-1" 2>&1 | grep -q "subscribed to topic" || return 1
+  done
+}
+
+deadline=$((SECONDS + TIMEOUT))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  if ready; then
+    echo "cm-malcolm-wait-ready: pcap-monitor is bound and ${processors[*]} subscribed"
+    exit 0
+  fi
+  sleep 5
+done
+echo "cm-malcolm-wait-ready: FAIL: the processors did not all subscribe within ${TIMEOUT} s" >&2
+exit 1

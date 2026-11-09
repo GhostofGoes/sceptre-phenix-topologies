@@ -1,0 +1,47 @@
+#!/bin/bash
+# Load the container images that an image build left on disk into Docker
+# (DESIGN.md 15.7: cm-guacamole and cm-malcolm). Installed as
+# /usr/local/sbin/cm-load-images and run once by cm-load-images.service.
+#
+# A phenix image build has no Docker daemon, so the INSTALL script copies each
+# image to a directory with skopeo (compressed, about half the size Docker needs)
+# and lists it in /etc/cherrymountain/images.list, one `REF DIRECTORY` per line.
+# This script copies each directory into the daemon, deletes the directory once the
+# image is in (the disk holds the compressed and the loaded copy only briefly), and
+# renames the list so the unit does not run again.
+set -euo pipefail
+
+LIST="${CM_IMAGES_LIST:-/etc/cherrymountain/images.list}"
+export HOME="${HOME:-/tmp}"
+
+if [ ! -f "$LIST" ]; then
+  echo "cm-load-images: no ${LIST}; nothing to load"
+  exit 0
+fi
+
+for _ in $(seq 1 90); do
+  if docker info > /dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+docker info > /dev/null
+
+while read -r ref dir; do
+  [ -n "$ref" ] || continue
+  if docker image inspect "$ref" > /dev/null 2>&1; then
+    echo "cm-load-images: ${ref} is already loaded"
+    rm -rf "$dir"
+    continue
+  fi
+  if [ ! -d "$dir" ]; then
+    echo "cm-load-images: FAIL: ${dir} for ${ref} is missing" >&2
+    exit 1
+  fi
+  echo "cm-load-images: loading ${ref}"
+  skopeo copy --quiet "dir:${dir}" "docker-daemon:${ref}"
+  rm -rf "$dir"
+done < "$LIST"
+
+mv "$LIST" "${LIST}.loaded"
+echo "cm-load-images: PASS: every image is loaded"

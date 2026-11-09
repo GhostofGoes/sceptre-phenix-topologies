@@ -28,6 +28,7 @@ spec:
   - curl
   - dbus
   - ethtool
+  - gnupg
   - init
   - initramfs-tools
   - iproute2
@@ -43,6 +44,7 @@ spec:
   - openssh-server
   - procps
   - rsync
+  - rsyslog
   - ssh
   - tcpdump
   - tmux
@@ -127,6 +129,27 @@ spec:
       EOF
       mkdir -p /etc/systemd/system/multi-user.target.wants /etc/cherrymountain/fuxa
       ln -sf /etc/systemd/system/fuxa.service /etc/systemd/system/multi-user.target.wants/fuxa.service
+
+      # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,
+      # because an agent must not be newer than its manager. The cherrymountain app's
+      # 80-cm-wazuh-agent.sh points it at the manager and enrolls it at boot, so the
+      # service stays disabled here.
+      WAZUH_VERSION=4.14.10-1
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      systemctl disable wazuh-agent.service
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------
       apt clean || apt-get clean || echo "unable to clean apt cache"

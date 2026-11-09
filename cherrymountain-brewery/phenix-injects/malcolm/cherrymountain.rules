@@ -1,0 +1,97 @@
+# CherryMountain Brewery baseline detections for Suricata (DESIGN.md 14).
+#
+# Malcolm loads this file from suricata/rules/ next to its own rule sets, so
+# every sid must be unique: Malcolm's default OT rules (ELITEWOLF) use 1000001
+# and up, and Suricata rejects a duplicate as "Duplicate signature" and loses
+# the rule. The range of this file is 9000110 to 9000199 (9000101 to 9000103
+# belong to the malcolm spike's test rules).
+#
+# The addresses are the plant's IP plan (DESIGN.md 10.2), written into each rule:
+# Malcolm's suricata.yaml has no variables for them. The Zeek script next to this
+# file (zeek/cherrymountain.zeek) covers the same use cases from Zeek's logs, and
+# tests/soc checks that both agree with the topology.
+#
+# Mirrored frames carry an 802.1Q tag. Suricata decodes it, so the rules need no
+# VLAN keyword.
+#
+# Writers and clients used below:
+#   scada-fuxa 10.20.30.10, ews 10.20.30.12, bas-fuxa 10.30.10.10
+#   PLCs on their field VLANs (the I/O master): 10.20.11.1, 10.20.12.1, 10.20.13.1,
+#     10.20.14.1, 10.20.16.1; rtu-der on FIELD-PWR: 10.20.16.2
+#   BBMDs: ot-svc 10.20.30.13, bas-bbmd 10.30.10.5
+#   utility-derms 192.0.2.10
+
+# --- Modbus and S7comm writes: only scada-fuxa, the EWS, a PLC, or rtu-der ---------
+
+alert modbus ![10.20.30.10,10.20.30.12,10.20.11.1,10.20.12.1,10.20.13.1,10.20.14.1,10.20.16.1,10.20.16.2] any -> any any (msg:"CM Modbus write from a host other than scada-fuxa, the EWS, a PLC, or rtu-der"; flow:established,to_server; modbus: access write; classtype:policy-violation; priority:1; metadata:cm_usecase modbus_write; sid:9000110; rev:1;)
+alert tcp ![10.20.30.10,10.20.30.12] any -> any 102 (msg:"CM S7comm Write Var from a host other than scada-fuxa or the EWS"; flow:established,to_server; content:"|03 00|"; depth:2; content:"|32 01|"; offset:7; depth:2; content:"|05|"; offset:17; depth:1; classtype:policy-violation; priority:1; metadata:cm_usecase s7_write; sid:9000111; rev:1;)
+alert tcp ![10.20.30.12] any -> any 102 (msg:"CM S7comm download, PLC control, or PLC stop from a host other than the EWS"; flow:established,to_server; content:"|03 00|"; depth:2; content:"|32 01|"; offset:7; depth:2; pcre:"/^.{17}[\x1a\x1b\x1c\x28\x29]/s"; classtype:policy-violation; priority:1; metadata:cm_usecase s7_control; sid:9000112; rev:1;)
+
+# --- OpenPLC REST (HTTPS 8443): the EWS uploads programs and starts or stops them --
+# The content is encrypted, so this sees sessions, not requests. The Zeek script
+# adds a size test that tells a program upload from a status call.
+
+alert tcp ![10.20.30.12] any -> 10.20.10.0/24 8443 (msg:"CM OpenPLC REST session from a host other than the EWS"; flow:established,to_server; threshold:type limit, track by_src, count 1, seconds 300; classtype:policy-violation; priority:1; metadata:cm_usecase plc_rest; sid:9000150; rev:1;)
+alert tcp 10.20.30.12 any -> 10.20.10.0/24 8443 (msg:"CM OpenPLC REST session from the EWS (program upload or start/stop)"; flow:established,to_server; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:3; metadata:cm_usecase plc_rest_baseline; sid:9000151; rev:1;)
+
+# --- BACnet: WriteProperty only from bas-fuxa, scada-fuxa, or the EWS -------------
+# BVLC type 0x81, function 0x0a (Original-Unicast) or 0x0b (Original-Broadcast),
+# a two-byte NPDU (no routing fields), then a confirmed request (APDU type 0) with
+# service 15 (WriteProperty) or 16 (WritePropertyMultiple).
+
+alert udp ![10.30.10.10,10.20.30.10,10.20.30.12] any -> any 47808 (msg:"CM BACnet WriteProperty from a host other than bas-fuxa, scada-fuxa, or the EWS"; content:"|81 0a|"; depth:2; content:"|00|"; offset:6; depth:1; content:"|0f|"; offset:9; depth:1; classtype:policy-violation; priority:1; metadata:cm_usecase bacnet_write; sid:9000113; rev:1;)
+alert udp ![10.30.10.10,10.20.30.10,10.20.30.12] any -> any 47808 (msg:"CM BACnet WritePropertyMultiple from a host other than bas-fuxa, scada-fuxa, or the EWS"; content:"|81 0a|"; depth:2; content:"|00|"; offset:6; depth:1; content:"|10|"; offset:9; depth:1; classtype:policy-violation; priority:1; metadata:cm_usecase bacnet_write; sid:9000114; rev:1;)
+
+# --- BBMD and BDT activity (the BBMDs are a lateral path between OPS and BAS) -----
+# BVLC functions: 0x01 Write-BDT, 0x02 Read-BDT, 0x05 Register-Foreign-Device,
+# 0x06 Read-FDT, 0x08 Delete-FDT-Entry, 0x04 Forwarded-NPDU. Only the two BBMDs
+# send any of them. A rewritten BDT redirects forwarded broadcasts, and a foreign
+# device receives copies of them.
+
+alert udp ![10.20.30.13,10.30.10.5] any -> any 47808 (msg:"CM BACnet Write-Broadcast-Distribution-Table from a host other than the BBMDs"; content:"|81 01|"; depth:2; classtype:attempted-admin; priority:1; metadata:cm_usecase bbmd_bdt; sid:9000120; rev:1;)
+alert udp ![10.20.30.13,10.30.10.5] any -> any 47808 (msg:"CM BACnet Read-Broadcast-Distribution-Table from a host other than the BBMDs"; content:"|81 02|"; depth:2; classtype:attempted-recon; priority:2; metadata:cm_usecase bbmd_bdt; sid:9000121; rev:1;)
+alert udp ![10.20.30.13,10.30.10.5] any -> any 47808 (msg:"CM BACnet Register-Foreign-Device from a host other than the BBMDs"; content:"|81 05|"; depth:2; classtype:attempted-admin; priority:1; metadata:cm_usecase bbmd_bdt; sid:9000122; rev:1;)
+alert udp ![10.20.30.13,10.30.10.5] any -> any 47808 (msg:"CM BACnet Read-Foreign-Device-Table from a host other than the BBMDs"; content:"|81 06|"; depth:2; classtype:attempted-recon; priority:2; metadata:cm_usecase bbmd_bdt; sid:9000123; rev:1;)
+alert udp ![10.20.30.13,10.30.10.5] any -> any 47808 (msg:"CM BACnet Delete-Foreign-Device-Table-Entry from a host other than the BBMDs"; content:"|81 08|"; depth:2; classtype:attempted-admin; priority:1; metadata:cm_usecase bbmd_bdt; sid:9000124; rev:1;)
+alert udp ![10.20.30.13,10.30.10.5] any -> any 47808 (msg:"CM BACnet Forwarded-NPDU from a host other than the BBMDs"; content:"|81 04|"; depth:2; classtype:attempted-admin; priority:1; metadata:cm_usecase bbmd_forwarded; sid:9000125; rev:1;)
+
+# UDP 47808 across the OPS/BAS boundary outside the BACnet rows of the conduit
+# matrix (DESIGN.md 10.3): scada-fuxa, the EWS, and ot-svc may talk to BAS.
+# The firewall drops the others, so Malcolm sees them only if a rule is wrong; the
+# drops themselves reach Wazuh through the fw-ot logs.
+
+alert udp ![10.20.30.10,10.20.30.12,10.20.30.13,10.30.10.0/24] any -> 10.30.10.0/24 47808 (msg:"CM BACnet traffic into BAS from a host outside the BACnet conduits"; threshold:type limit, track by_src, count 1, seconds 300; classtype:policy-violation; priority:1; metadata:cm_usecase bacnet_cross_zone; sid:9000126; rev:1;)
+alert udp 10.30.10.0/24 any -> ![10.30.10.0/24,10.20.30.10,10.20.30.12,10.20.30.13] 47808 (msg:"CM BACnet traffic out of BAS to a host outside the BACnet conduits"; threshold:type limit, track by_src, count 1, seconds 300; classtype:policy-violation; priority:1; metadata:cm_usecase bacnet_cross_zone; sid:9000127; rev:1;)
+
+# --- DNP3 control operations: utility-derms is the only expected master -----------
+# The DNP3 conduit crosses the IPsec tunnel and fw-edge decrypted, so Malcolm sees
+# it at rtu-der. Select, Operate, Direct Operate, and Direct Operate No Ack from
+# anyone else are an alert; the same from utility-derms is a low-priority baseline
+# event (normal operations generate known, explainable events).
+
+alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Select from a host other than utility-derms"; flow:established,to_server; dnp3_func:select; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_control; sid:9000130; rev:1;)
+alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Operate from a host other than utility-derms"; flow:established,to_server; dnp3_func:operate; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_control; sid:9000131; rev:1;)
+alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Direct Operate from a host other than utility-derms"; flow:established,to_server; dnp3_func:direct_operate; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_control; sid:9000132; rev:1;)
+alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Direct Operate No Ack from a host other than utility-derms"; flow:established,to_server; dnp3_func:direct_operate_nr; classtype:policy-violation; priority:1; metadata:cm_usecase dnp3_control; sid:9000133; rev:1;)
+alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 control operation from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_func:select; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000134; rev:1;)
+alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 control operation from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_func:operate; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000135; rev:1;)
+alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 control operation from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_func:direct_operate; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000136; rev:1;)
+alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 control operation from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_func:direct_operate_nr; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000137; rev:1;)
+
+# --- New hosts on the field VLANs ----------------------------------------------------
+# Every address of FIELD-BH, FIELD-CEL, FIELD-PKG, FIELD-UTL, DERLINK, and
+# FIELD-PWR that is not in the inventory (DESIGN.md 10.2).
+
+alert ip [10.20.11.0/24,10.20.12.0/24,10.20.13.0/24,10.20.14.0/24,10.20.15.0/24,10.20.16.0/24,!10.20.11.1,!10.20.11.10,!10.20.12.1,!10.20.12.10,!10.20.13.1,!10.20.13.10,!10.20.14.1,!10.20.14.10,!10.20.14.11,!10.20.15.1,!10.20.15.10,!10.20.16.1,!10.20.16.2,!10.20.16.20,!10.20.16.21,!10.20.16.22,!10.20.16.23] any -> any any (msg:"CM host not in the plant inventory on a field VLAN"; threshold:type limit, track by_src, count 1, seconds 3600; classtype:policy-violation; priority:1; metadata:cm_usecase new_field_host; sid:9000140; rev:1;)
+
+# --- Vendor remote access (DESIGN.md 13) ----------------------------------------------
+# The DMZ is mirrored. dmz-vpn (10.10.20.10) receives the WireGuard handshake
+# that fw-edge forwards, and the decapsulated vendor traffic (10.99.0.2) reaches
+# dmz-jump (10.10.20.11) with its tunnel address. Sessions to the EWS come from
+# dmz-jump only.
+
+alert udp any any -> 10.10.20.10 51820 (msg:"CM WireGuard handshake initiation to dmz-vpn (vendor tunnel)"; dsize:148; content:"|01 00 00 00|"; depth:4; threshold:type limit, track by_src, count 1, seconds 120; classtype:misc-activity; priority:3; metadata:cm_usecase vendor_session; sid:9000160; rev:1;)
+alert tcp 10.99.0.0/24 any -> 10.10.20.11 443 (msg:"CM vendor tunnel address reached the Guacamole login on dmz-jump"; flow:to_server,established; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:3; metadata:cm_usecase vendor_session; sid:9000161; rev:1;)
+alert ip 10.99.0.0/24 any -> !10.10.20.11 any (msg:"CM vendor tunnel traffic to a host other than dmz-jump"; threshold:type limit, track by_src, count 1, seconds 300; classtype:policy-violation; priority:1; metadata:cm_usecase vendor_session; sid:9000162; rev:1;)
+alert tcp 10.10.20.11 any -> 10.20.30.12 [3389,22] (msg:"CM session from dmz-jump to the EWS (vendor session)"; flow:to_server,established; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:3; metadata:cm_usecase vendor_session; sid:9000163; rev:1;)
+alert tcp ![10.10.20.11] any -> 10.20.30.12 [3389,22] (msg:"CM RDP or SSH to the EWS from a host other than dmz-jump"; flow:to_server,established; threshold:type limit, track by_src, count 1, seconds 300; classtype:policy-violation; priority:1; metadata:cm_usecase vendor_session; sid:9000164; rev:1;)

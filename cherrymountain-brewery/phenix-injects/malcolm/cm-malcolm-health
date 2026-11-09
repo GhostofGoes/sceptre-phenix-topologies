@@ -1,0 +1,40 @@
+#!/bin/bash
+# Health of the Malcolm sensor, for SoH custom tests and SCORCH `cc` checks
+# (DESIGN.md 15.4 and 15.6: "Malcolm Zeek logs growing"). Installed as
+# /usr/local/sbin/cm-malcolm-health. Run as root or as a member of the docker group.
+#
+# Prints one line, `HEALTHY` or `UNHEALTHY: <reason>`, and exits 0 or 1:
+#   - every container of the profile is running (the compose services, minus the
+#     one-shot ones), and
+#   - OpenSearch holds Zeek records from the last 15 minutes. The plant polls
+#     Modbus several times a second, so a live capture always has some.
+# CM_HEALTH_WINDOW (minutes, default 15) changes the window.
+set -uo pipefail
+
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+SRC="${CM_MALCOLM_SRC:-/opt/cherrymountain/malcolm}"
+WINDOW="${CM_HEALTH_WINDOW:-15}"
+
+# shellcheck source=phenix-injects/malcolm/profiles.sh
+. "${SRC}/profiles.sh"
+
+fail() {
+  echo "UNHEALTHY: $*"
+  exit 1
+}
+
+profile=$(cat "${STATE}/profile" 2> /dev/null) || fail "Malcolm is not provisioned (no ${STATE}/profile)"
+running=$(docker ps --format '{{.Names}}' 2> /dev/null) || fail "docker does not answer"
+read -r -a services <<< "opensearch $(cm_malcolm_services "$profile")"
+for service in "${services[@]}"; do
+  grep -qx "malcolm-${service}-1" <<< "$running" || fail "container malcolm-${service}-1 is not running"
+done
+
+query=$(printf '{"query":{"bool":{"filter":[{"term":{"event.provider":"zeek"}},{"range":{"@timestamp":{"gte":"now-%sm"}}}]}}}' "$WINDOW")
+count=$(docker exec malcolm-opensearch-1 sh -c \
+  "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_count' -d '${query}'" 2> /dev/null \
+  | python3 -c 'import json, sys; print(json.load(sys.stdin).get("count", 0))' 2> /dev/null) || fail "OpenSearch did not answer the count query"
+if [ "${count:-0}" -le 0 ]; then
+  fail "no Zeek records in the last ${WINDOW} minutes"
+fi
+echo "HEALTHY: profile ${profile}, ${count} Zeek records in the last ${WINDOW} minutes"

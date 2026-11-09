@@ -1,0 +1,167 @@
+# cm-wireguard: the WireGuard gateway (dmz-vpn)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-wireguard` prints),
+# so the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-wireguard.yml
+#   phenix image build -o <dir> -c -x cm-wireguard
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-wireguard.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+# The wind plant's focal image (renewables/wind/plant/phenix-images/wireguard.yml)
+# is the model; this one is rebased on noble.
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-wireguard
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - gnupg
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - python3-pydantic
+  - rsync
+  - rsyslog
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  - wireguard-tools
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_WIREGUARD
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_WIREGUARD: |
+      # ------------------------------------------------- WireGuard gateway --------------------------------------------------
+      # dmz-vpn (DESIGN.md 13). The phenix wireguard app injects /etc/wireguard/wg0.conf
+      # and enables wg-quick@wg0 at boot, so the image carries the tools, IP forwarding,
+      # and a Wazuh agent. The topology injects the rest: the nftables policy that
+      # keeps the vendor peer on dmz-jump and cm_wg_watch (peer events for Wazuh).
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y --no-install-recommends gnupg python3 python3-pydantic rsyslog wireguard-tools
+
+      # dmz-vpn forwards decapsulated tunnel traffic onto the DMZ. No NAT: dmz-jump
+      # routes 10.99.0.0/24 back through this host and sees the real tunnel address.
+      cat > /etc/sysctl.d/99-cm-forward.conf <<'EOF'
+      net.ipv4.ip_forward = 1
+      EOF
+      install -d -m 0700 /etc/wireguard
+      install -d -m 0755 /etc/cherrymountain /usr/local/lib/cm-wireguard
+
+      # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,
+      # because an agent must not be newer than its manager. The cherrymountain app's
+      # 80-cm-wazuh-agent.sh points it at the manager and enrolls it at boot, so the
+      # service stays disabled here.
+      WAZUH_VERSION=4.14.10-1
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      systemctl disable wazuh-agent.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 8G
+  variant: minbase

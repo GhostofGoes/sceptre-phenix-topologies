@@ -1,0 +1,215 @@
+# cm-guacamole: the Guacamole jump host (dmz-jump)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-guacamole` prints),
+# so the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-guacamole.yml
+#   phenix image build -o <dir> -c -x cm-guacamole
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-guacamole.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-guacamole
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - gnupg
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - openssl
+  - procps
+  - python3
+  - rsync
+  - rsyslog
+  - skopeo
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_GUACAMOLE
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_GUACAMOLE: |
+      # ------------------------------------------------ Guacamole jump host -------------------------------------------------
+      # dmz-jump (DESIGN.md 13): guacd, the Guacamole web app (TOTP and session
+      # recording extensions are inside the pinned image), PostgreSQL, and an nginx TLS
+      # front end, all as containers. The image carries Docker, the four container
+      # images as compressed on-disk copies (skopeo has no daemon to talk to at build
+      # time; cm-load-images.service loads them into Docker at first boot), the stock
+      # PostgreSQL schema, and a Wazuh agent. The topology injects the Compose file,
+      # nginx config, units, and settings; the cherrymountain app injects the
+      # connections (50-cherrymountain.sql) and /etc/default/cm-guacamole.
+      export DEBIAN_FRONTEND=noninteractive
+      GUAC_VERSION=1.6.0
+      GUAC_JDBC_SHA256=97bc5fd3d67d25c0e98a475d1dfd308a037859f549fac47171c723b7a7039366
+      apt-get update
+      apt-get install -y --no-install-recommends gnupg openssl python3 rsyslog skopeo
+
+      # Docker Engine and the Compose plugin from Docker's APT repository, pinned.
+      DOCKER_KEY_FINGERPRINT=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      DOCKER_VERSION='5:29.9.3-1~ubuntu.24.04~noble'
+      COMPOSE_VERSION='5.7.0-1~ubuntu.24.04~noble'
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/docker.asc https://download.docker.com/linux/ubuntu/gpg
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/docker.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$DOCKER_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/docker.sources <<'EOF'
+      Types: deb
+      URIs: https://download.docker.com/linux/ubuntu
+      Suites: noble
+      Components: stable
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/docker.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "docker-ce=${DOCKER_VERSION}" "docker-ce-cli=${DOCKER_VERSION}" containerd.io "docker-compose-plugin=${COMPOSE_VERSION}"
+
+      # The images stay on disk as compressed copies until the first boot.
+      install -d -m 0755 /etc/cherrymountain /var/lib/cm-guacamole/images
+      : > /etc/cherrymountain/images.list
+      for ref in guacamole/guacd:1.6.0 guacamole/guacamole:1.6.0 postgres:17.11-alpine nginx:1.30.6-alpine; do
+        dir="/var/lib/cm-guacamole/images/$(printf '%s' "$ref" | tr '/:' '__')"
+        skopeo copy --retry-times 3 --override-os linux --override-arch amd64 "docker://docker.io/${ref}" "dir:${dir}"
+        printf '%s %s\n' "$ref" "$dir" >> /etc/cherrymountain/images.list
+      done
+
+      # The stock schema only. 002-create-admin-user.sql (guacadmin with a published
+      # password) is left out: the app's 50-cherrymountain.sql creates cmadmin.
+      install -d -m 0755 /opt/cherrymountain/guacamole/initdb
+      curl -fsSL -o /tmp/guacamole-auth-jdbc.tar.gz "https://archive.apache.org/dist/guacamole/${GUAC_VERSION}/binary/guacamole-auth-jdbc-${GUAC_VERSION}.tar.gz"
+      echo "${GUAC_JDBC_SHA256}  /tmp/guacamole-auth-jdbc.tar.gz" | sha256sum -c -
+      tar -xzf /tmp/guacamole-auth-jdbc.tar.gz -C /tmp "guacamole-auth-jdbc-${GUAC_VERSION}/postgresql/schema/001-create-schema.sql"
+      install -m 0644 "/tmp/guacamole-auth-jdbc-${GUAC_VERSION}/postgresql/schema/001-create-schema.sql" /opt/cherrymountain/guacamole/initdb/001-create-schema.sql
+      rm -rf /tmp/guacamole-auth-jdbc.tar.gz "/tmp/guacamole-auth-jdbc-${GUAC_VERSION}"
+
+      # Recordings are blue-team evidence: guacd (uid 1000) writes them, the web app
+      # (gid 1001) lists them, and the Wazuh agent watches the directory.
+      install -d -m 2750 -o 1000 -g 1001 /var/lib/cm-guacamole/recordings
+      install -d -m 0700 /etc/cherrymountain/guacamole-tls
+
+      # Docker's own log rotation for the daemon and the containers without a driver.
+      cat > /etc/docker/daemon.json <<'EOF'
+      {
+        "log-driver": "local",
+        "log-opts": {
+          "max-size": "20m",
+          "max-file": "3"
+        }
+      }
+      EOF
+
+      # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,
+      # because an agent must not be newer than its manager. The cherrymountain app's
+      # 80-cm-wazuh-agent.sh points it at the manager and enrolls it at boot, so the
+      # service stays disabled here.
+      WAZUH_VERSION=4.14.10-1
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      systemctl disable wazuh-agent.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 16G
+  variant: minbase

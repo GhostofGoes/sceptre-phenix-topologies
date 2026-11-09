@@ -1,0 +1,57 @@
+[Unit]
+Description=CherryMountain Malcolm (Zeek, Suricata, Arkime, and OpenSearch on the mirror port)
+After=docker.service cm-malcolm-provision.service cm-malcolm-capture.service
+Requires=docker.service
+Wants=cm-malcolm-provision.service cm-malcolm-capture.service
+# The first boot configures Malcolm; until then there is nothing to start.
+ConditionPathExists=/var/lib/cm-malcolm/provisioned
+# Retry forever: Restart=on-failure below is the only retry loop.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=malcolm
+Group=malcolm
+SupplementaryGroups=docker
+EnvironmentFile=-/etc/default/cm-malcolm
+Environment=COMPOSE_PROJECT_NAME=malcolm
+Environment=HOME=/tmp
+Environment=DOCKER_CONFIG=/tmp/.docker
+ExecStart=/usr/local/sbin/cm-malcolm-start
+ExecStop=/usr/local/sbin/cm-malcolm-stop
+TimeoutStartSec=30min
+TimeoutStopSec=5min
+Restart=on-failure
+RestartSec=60
+
+# Hardening. The unit runs the Docker CLI as the user that owns the Malcolm
+# checkout (compose reads its 0600 config files) and may use Docker's socket
+# through the docker group. Docker itself does the privileged work.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

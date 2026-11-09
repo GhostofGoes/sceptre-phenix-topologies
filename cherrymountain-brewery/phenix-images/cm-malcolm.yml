@@ -1,0 +1,246 @@
+# cm-malcolm: Malcolm (malcolm), the largest image
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-malcolm` prints),
+# so the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-malcolm.yml
+#   phenix image build -o <dir> -c -x cm-malcolm
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-malcolm.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+# The build downloads about 10 GB of container images (the full profile's set).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-malcolm
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - apache2-utils
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - git
+  - gnupg
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - jq
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - openssl
+  - openvswitch-switch
+  - procps
+  - python3
+  - python3-pydantic
+  - python3-venv
+  - rsync
+  - rsyslog
+  - skopeo
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_MALCOLM
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_MALCOLM: |
+      # -------------------------------------------------------- Malcolm ---------------------------------------------------------
+      # malcolm (DESIGN.md 14): Docker, the pinned Malcolm checkout, the Malcolm
+      # images as compressed on-disk copies, and Open vSwitch for the mirror app's
+      # setupOVS. The topology injects everything else (phenix-injects/malcolm/): the
+      # capture-flow script, cm-malcolm.service and its scripts, the Zeek scripts, and
+      # the Suricata rules. The first boot configures Malcolm from the injected
+      # settings and loads the images into Docker (cm-load-images.service), so the same
+      # image serves both sizing profiles (full 8 vCPU / 24 GB, slim 4 vCPU / 12 GB).
+      export DEBIAN_FRONTEND=noninteractive
+      MALCOLM_TAG=v26.10.0
+      MALCOLM_SHA=36bb3a61217b8555bb9fe8918acd3b45927a5458
+      MALCOLM_IMAGE_TAG=26.10.0
+      apt-get update
+      apt-get install -y --no-install-recommends apache2-utils git gnupg jq openssl openvswitch-switch python3 python3-pydantic python3-venv rsyslog skopeo
+
+      # Docker Engine and the Compose plugin from Docker's APT repository, pinned.
+      DOCKER_KEY_FINGERPRINT=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+      DOCKER_VERSION='5:29.9.3-1~ubuntu.24.04~noble'
+      COMPOSE_VERSION='5.7.0-1~ubuntu.24.04~noble'
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/docker.asc https://download.docker.com/linux/ubuntu/gpg
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/docker.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$DOCKER_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/docker.sources <<'EOF'
+      Types: deb
+      URIs: https://download.docker.com/linux/ubuntu
+      Suites: noble
+      Components: stable
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/docker.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "docker-ce=${DOCKER_VERSION}" "docker-ce-cli=${DOCKER_VERSION}" containerd.io "docker-compose-plugin=${COMPOSE_VERSION}"
+
+      # Malcolm's own checkout (compose file, config templates, Zeek and Suricata
+      # bind mounts, the auth_setup script). Owned by uid 1000, which the containers
+      # run as (PUID in config/process.env); Malcolm's scripts refuse to run as root.
+      id -u malcolm > /dev/null 2>&1 || useradd --uid 1000 --create-home --shell /bin/bash malcolm
+      test "$(id -u malcolm)" = 1000
+      git clone --quiet --depth 1 --branch "$MALCOLM_TAG" https://github.com/idaholab/Malcolm.git /opt/malcolm
+      test "$(git -C /opt/malcolm rev-parse HEAD)" = "$MALCOLM_SHA"
+      rm -rf /opt/malcolm/.git
+      # The scripts need these in their Python (the malcolm-spike's finding).
+      python3 -m venv /opt/malcolm-venv
+      /opt/malcolm-venv/bin/pip install --no-cache-dir "kubernetes==37.0.2" "python-dotenv==1.2.4" "pyyaml==6.0.3" "requests==2.34.2" "ruamel.yaml==0.19.1"
+      chown -R 1000:1000 /opt/malcolm
+
+      # The images stay on disk as compressed copies (about half the size Docker needs)
+      # until the first boot loads them. This is every image of the full profile; the
+      # slim profile uses a subset.
+      install -d -m 0755 /etc/cherrymountain /var/lib/cm-malcolm/images
+      : > /etc/cherrymountain/images.list
+      for name in api arkime dashboards dashboards-helper file-upload filebeat-oss filescan freq htadmin logstash-oss netbox nginx-proxy opensearch pcap-monitor postgresql strelka-backend strelka-frontend strelka-manager suricata valkey zeek; do
+        ref="ghcr.io/idaholab/malcolm/${name}:${MALCOLM_IMAGE_TAG}"
+        skopeo copy --retry-times 3 --override-os linux --override-arch amd64 "docker://${ref}" "dir:/var/lib/cm-malcolm/images/${name}"
+        printf '%s %s\n' "$ref" "/var/lib/cm-malcolm/images/${name}" >> /etc/cherrymountain/images.list
+      done
+
+      # Host settings Malcolm's installer recommends (OpenSearch needs the map count).
+      cat > /etc/sysctl.d/99-cm-malcolm.conf <<'EOF'
+      fs.file-max = 2097152
+      fs.inotify.max_queued_events = 131072
+      fs.inotify.max_user_instances = 512
+      fs.inotify.max_user_watches = 131072
+      vm.max_map_count = 262144
+      vm.swappiness = 1
+      net.core.somaxconn = 65535
+      EOF
+      cat > /etc/security/limits.d/99-cm-malcolm.conf <<'EOF'
+      * soft nofile 65535
+      * hard nofile 65535
+      * soft memlock unlimited
+      * hard memlock unlimited
+      EOF
+
+      # Docker's log rotation for the daemon (Malcolm's compose file sets its own
+      # driver per container).
+      cat > /etc/docker/daemon.json <<'EOF'
+      {
+        "log-driver": "local",
+        "log-opts": {
+          "max-size": "50m",
+          "max-file": "2"
+        }
+      }
+      EOF
+
+      # Open vSwitch starts at boot; the mirror app's setupOVS script creates the
+      # bridge `phenix` and its `sniffer` GRE port, and the capture-flow script adds
+      # the OpenFlow flow (DESIGN.md 14).
+      systemctl enable openvswitch-switch.service
+
+      # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,
+      # because an agent must not be newer than its manager. The cherrymountain app's
+      # 80-cm-wazuh-agent.sh points it at the manager and enrolls it at boot, so the
+      # service stays disabled here.
+      WAZUH_VERSION=4.14.10-1
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      systemctl disable wazuh-agent.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 64G
+  variant: minbase

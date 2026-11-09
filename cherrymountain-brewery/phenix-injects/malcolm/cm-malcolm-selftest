@@ -1,0 +1,78 @@
+#!/bin/bash
+# Check that Malcolm's pcap pipeline works end to end (DESIGN.md 14, malcolm spike).
+# Installed as /usr/local/sbin/cm-malcolm-selftest; run it as root, for example
+# through a SCORCH `cc` step, once Malcolm has been up for a few minutes.
+#
+# It waits until every processor subscribed to pcap-monitor (cm-malcolm-wait-ready;
+# a pcap that arrives earlier is lost), drops a small BACnet pcap into pcap/upload
+# (the documented way), and looks for the result in OpenSearch:
+#   - Zeek records of the datagrams (event.provider zeek, source.ip the probe), and
+#   - on the full profile, the Suricata alert "CM BACnet Read-Broadcast-Distribution-Table".
+# Prints PASS or FAIL lines and exits 1 if any check fails.
+#
+# Usage: cm-malcolm-selftest [SECONDS]   (how long to wait for the records, default 600)
+set -uo pipefail
+
+MALCOLM_DIR="${MALCOLM_DIR:-/opt/malcolm}"
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+LIB="${CM_MALCOLM_LIB:-/usr/local/lib/cm-malcolm}"
+TIMEOUT="${1:-600}"
+PROBE=10.10.20.250
+MALCOLM_UID=1000
+
+status=0
+check() {
+  # check NAME RESULT(true|false) DETAIL
+  if [ "$2" = true ]; then
+    echo "PASS: $1 -- $3"
+  else
+    echo "FAIL: $1 -- $3"
+    status=1
+  fi
+}
+
+os_count() {
+  # os_count JSON-QUERY: documents that match, from the Arkime and Zeek index
+  docker exec malcolm-opensearch-1 sh -c \
+    "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_count' -d '$1'" 2> /dev/null \
+    | python3 -c 'import json, sys; print(json.load(sys.stdin).get("count", 0))' 2> /dev/null || echo 0
+}
+
+profile=$(cat "${STATE}/profile")
+cm-malcolm-wait-ready 900 || {
+  check "processors subscribed" false "see cm-malcolm-wait-ready"
+  exit 1
+}
+
+pcap="${MALCOLM_DIR}/pcap/upload/cm-selftest-$(date +%s).pcap"
+python3 "${LIB}/cm_selftest_pcap.py" "$pcap"
+chown "${MALCOLM_UID}:${MALCOLM_UID}" "$pcap"
+echo "dropped ${pcap}"
+
+zeek_query=$(printf '{"query":{"bool":{"filter":[{"term":{"event.provider":"zeek"}},{"term":{"source.ip":"%s"}}]}}}' "$PROBE")
+suricata_query='{"query":{"bool":{"filter":[{"term":{"event.provider":"suricata"}},{"wildcard":{"rule.name":"CM BACnet Read-Broadcast*"}}]}}}'
+zeek_ok=false
+suricata_ok=false
+deadline=$((SECONDS + TIMEOUT))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  if [ "$zeek_ok" != true ] && [ "$(os_count "$zeek_query")" -gt 0 ]; then
+    zeek_ok=true
+  fi
+  if [ "$profile" != full ]; then
+    suricata_ok=skip
+  elif [ "$suricata_ok" != true ] && [ "$(os_count "$suricata_query")" -gt 0 ]; then
+    suricata_ok=true
+  fi
+  if [ "$zeek_ok" = true ] && { [ "$suricata_ok" = true ] || [ "$suricata_ok" = skip ]; }; then
+    break
+  fi
+  sleep 10
+done
+
+check "Zeek records of the self-test datagrams reach OpenSearch" "$zeek_ok" "event.provider zeek, source.ip ${PROBE}"
+if [ "$suricata_ok" = skip ]; then
+  echo "SKIP: Suricata alert (the ${profile} profile does not run Suricata)"
+else
+  check "the Suricata BDT alert reaches OpenSearch" "$suricata_ok" "rule CM BACnet Read-Broadcast-Distribution-Table"
+fi
+exit "$status"

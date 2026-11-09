@@ -1,0 +1,256 @@
+# cm-desktop: the workstation desktop (HMI kiosks, corp-ws, vendor-ws, soc-analyst)
+# Built from a noble mingui image (xubuntu) with phenix image build. This is the
+# stored form of an image config (what `phenix config get image/cm-desktop`
+# prints), so the POSTBUILD_* scripts below are verbatim copies of the defaults
+# that `phenix image create` adds (src/go/api/image/constants.go); only the
+# INSTALL script is specific to this image.
+#   phenix config create phenix-images/cm-desktop.yml
+#   phenix image build -o <dir> -c -x cm-desktop
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-desktop.qc2
+#   phenix image inject-miniexe /usr/local/bin/protonuke <dir>/cm-desktop.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7),
+# and protonuke, which the protonuke app runs on corp-ws and vendor-ws.
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-desktop
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - gnupg
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - python3-pydantic
+  - rsync
+  - rsyslog
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  - wireguard-tools
+  release: noble
+  script_order:
+  - POSTBUILD_GUI
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_DESKTOP
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_DESKTOP: |
+      # ------------------------------------------------------ Desktops ------------------------------------------------------
+      # One xubuntu desktop for every workstation role (DESIGN.md 11): the HMI kiosks,
+      # corp-ws, vendor-ws (Ridgeline's technician laptop), and soc-analyst. The roles
+      # differ only in what the topology and the cherrymountain app inject: the kiosk
+      # URL and launcher (HMIs), protonuke (corp-ws and vendor-ws, added with
+      # phenix image inject-miniexe), the WireGuard config and the scripted vendor
+      # session (vendor-ws), and the console launcher (soc-analyst).
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y --no-install-recommends gnupg python3 python3-pydantic rsyslog wireguard-tools
+
+      # Chromium. Ubuntu's chromium-browser is a snap, which cannot be installed
+      # offline, so the browser comes from Debian 13 (trixie). The Debian sources sit
+      # at a low pin so that only chromium and the libraries it needs come from them,
+      # and chromium itself is held to the major version that was tested.
+      DEBIAN_KEY_FINGERPRINT=04B54C3CDCA79751B16BC6B5225629DF75B188BD
+      CHROMIUM_MAJOR=150
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/debian-trixie.asc https://ftp-master.debian.org/keys/archive-key-13.asc
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/debian-trixie.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$DEBIAN_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/debian-trixie.sources <<'EOF'
+      Types: deb
+      URIs: http://deb.debian.org/debian
+      Suites: trixie trixie-updates
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/debian-trixie.asc
+      EOF
+      # One file per pin: phenix drops blank lines from build scripts, which would
+      # merge two stanzas of one file into a single record.
+      cat > /etc/apt/preferences.d/debian-trixie <<'EOF'
+      Package: *
+      Pin: origin deb.debian.org
+      Pin-Priority: 100
+      EOF
+      cat > /etc/apt/preferences.d/chromium <<EOF
+      Package: chromium chromium-common chromium-sandbox
+      Pin: version ${CHROMIUM_MAJOR}.*
+      Pin-Priority: 990
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends chromium chromium-sandbox
+      chromium --version
+      # The range desktops log in as root (the phenix GUI convention), and Chromium
+      # refuses to start as root without --no-sandbox. The VMs have no GPU.
+      cat > /etc/chromium.d/cm-range <<'EOF'
+      export CHROMIUM_FLAGS="$CHROMIUM_FLAGS --no-sandbox --disable-gpu --disable-dev-shm-usage --password-store=basic --disable-features=Translate"
+      EOF
+
+      # Nobody is at the console to unlock a screen or wake a display: the desktops log
+      # in as root with no password, so a lock screen could never be passed.
+      install -d -m 0755 /etc/xdg/xfce4/xfconf/xfce-perchannel-xml
+      cat > /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml <<'EOF'
+      <?xml version="1.0" encoding="UTF-8"?>
+      <channel name="xfce4-screensaver" version="1.0">
+        <property name="saver" type="empty">
+          <property name="enabled" type="bool" value="false"/>
+        </property>
+        <property name="lock" type="empty">
+          <property name="enabled" type="bool" value="false"/>
+        </property>
+      </channel>
+      EOF
+      cat > /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml <<'EOF'
+      <?xml version="1.0" encoding="UTF-8"?>
+      <channel name="xfce4-power-manager" version="1.0">
+        <property name="xfce4-power-manager" type="empty">
+          <property name="dpms-enabled" type="bool" value="false"/>
+          <property name="blank-on-ac" type="int" value="0"/>
+        </property>
+      </channel>
+      EOF
+      install -d -m 0755 /etc/cherrymountain /usr/local/lib/cm-desktop
+
+      # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,
+      # because an agent must not be newer than its manager. The cherrymountain app's
+      # 80-cm-wazuh-agent.sh points it at the manager and enrolls it at boot, so the
+      # service stays disabled here.
+      WAZUH_VERSION=4.14.10-1
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      systemctl disable wazuh-agent.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_GUI: |
+      # ----------------------------------------------------- GUI ------------------------------------------------------
+      # Autologin root and resolution
+      apt-get purge -y gdm3 # messes with no-root-password login
+      mkdir -p /root/.config/xfce4/
+      echo "TerminalEmulator=xfce4-terminal" > /root/.config/xfce4/helpers.rc
+      mkdir -p /root/.config/autostart/
+      cat > /root/.config/autostart/init.desktop <<EOF
+      [Desktop Entry]
+      Name=Init
+      Type=Application
+      Exec=/root/.init.sh
+      Terminal=false
+      EOF
+      cat >> /root/.init.sh <<EOF
+      sleep 10 # wait for desktop session to be available
+      xfconf-query -c xsettings -p /Net/ThemeName -s "Adwaita-dark"
+      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVirtual-1/workspace0/last-image -s "/usr/share/backgrounds/Optical_Fibers_in_Dark_by_Elena_Stravoravdi.jpg"
+      EOF
+      chmod +x /root/.init.sh
+      # Autologin root
+      cat > /etc/lightdm/lightdm.conf <<EOF
+      [Seat:*]
+      autologin-user=root
+      autologin-user-timeout=0
+      display-setup-script=xrandr --output Virtual-1 --mode 1440x900
+      [daemon]
+      AutomaticLoginEnable=true
+      AutomaticLogin=root
+      EOF
+      sed -e '/pam_succeed_if.so/s/^#*/#/' -i /etc/pam.d/lightdm-autologin
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 24G
+  variant: mingui

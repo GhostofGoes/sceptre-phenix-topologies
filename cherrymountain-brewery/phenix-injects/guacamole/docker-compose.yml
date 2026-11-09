@@ -60,9 +60,11 @@ services:
       POSTGRESQL_USERNAME: guacamole_user
       RECORDING_SEARCH_PATH: /var/lib/guacamole/recordings
       # The proxy is the only client, so the real client address (the vendor's tunnel
-      # address) is what the login events record.
+      # address) is what the login events record. PROXY_ALLOWED_IPS_REGEX is the
+      # image's name for RemoteIpValve's internalProxies (Guacamole manual, "Running
+      # Guacamole behind a proxy"); the compose network is in 172.16/12.
       REMOTE_IP_VALVE_ENABLED: 'true'
-      REMOTE_IP_VALVE_INTERNAL_PROXIES: '172\.(1[6-9]|2[0-9]|3[01])\..*'
+      PROXY_ALLOWED_IPS_REGEX: '172\.(1[6-9]|2[0-9]|3[01])\..*'
       TOTP_ENABLED: ${TOTP_ENABLED:-true}
       TOTP_ISSUER: CherryMountain jump host
     env_file:

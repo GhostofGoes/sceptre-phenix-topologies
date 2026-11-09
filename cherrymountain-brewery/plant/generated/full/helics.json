@@ -3290,12 +3290,6 @@
           "output": "air.psig"
         },
         {
-          "key": "utilities/co2.supply_psig",
-          "type": "double",
-          "units": "psig",
-          "output": "co2.supply_psig"
-        },
-        {
           "key": "utilities/wastewater.inhibit_events",
           "type": "double",
           "units": null,

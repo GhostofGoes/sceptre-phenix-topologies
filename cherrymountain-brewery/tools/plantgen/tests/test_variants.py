@@ -548,3 +548,30 @@ def test_snapshot_subscribes_the_weather_federate(full_files: dict[str, str]) ->
         "building/load.fans.kw",
     } <= subs
     assert not any(k.startswith("weather/") for k in subs)
+
+
+def test_detects_unit_output_for_an_unknown_model(tmp_path: Path) -> None:
+    """A unit_outputs model no unit uses (a typo) would publish nothing."""
+    data = raw()
+    data["federates"]["cellar"]["unit_outputs"][0]["models"] = ["fermentr"]
+    with pytest.raises(PlantError, match=r"unknown unit model\(s\) \['fermentr'\]"):
+        generate(write_plant(tmp_path, data), "full")
+
+
+def test_detects_unit_output_that_shadows_a_device_point(tmp_path: Path) -> None:
+    """bbt201.level_pct is the bright tank's LT01 point; a truth output with
+    that key would be a second publication of one HELICS key."""
+    data = raw()
+    outputs = data["federates"]["cellar"]["unit_outputs"]
+    outputs.append({"key": "level_pct", "type": "double", "models": ["bbt"]})
+    with pytest.raises(PlantError, match=r"cellar/bbt201\.level_pct is published twice"):
+        generate(write_plant(tmp_path, data), "full")
+
+
+def test_detects_snapshot_pattern_that_matches_nothing(tmp_path: Path) -> None:
+    """A snapshot pattern with no publication behind it is a typo or a stale
+    key, and the 3D view would silently lose that data."""
+    data = raw()
+    data["snapshot"]["keys"].append("cellar/fv*.no_such_point")
+    with pytest.raises(PlantError, match=r"match no publication"):
+        generate(write_plant(tmp_path, data), "full")

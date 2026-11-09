@@ -625,6 +625,21 @@ class PlantFile(Strict):
     snapshot: SnapshotSpec | None = None
     variants: dict[str, VariantSpec]
 
+    @model_validator(mode="after")
+    def _unit_output_models_exist(self) -> PlantFile:
+        """Every ``unit_outputs`` model is a unit model some area uses, so a
+        typo cannot silently publish nothing."""
+        models = {u.model for a in self.areas for u in a.units}
+        for fname, fed in self.federates.items():
+            for uo in fed.unit_outputs:
+                unknown = sorted(set(uo.models) - models)
+                if unknown:
+                    raise ValueError(
+                        f"federates.{fname}.unit_outputs {uo.key!r}: unknown unit "
+                        f"model(s) {unknown}; have {sorted(models)}"
+                    )
+        return self
+
 
 # ---------------------------------------------------------------------------
 # Expanded records

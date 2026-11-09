@@ -476,6 +476,15 @@ def helics_doc(plant: Plant) -> dict[str, Any]:
         else:
             entry["sim"] = plant.spec.federate_sim.get(fname, {})
         doc["federates"][fname] = entry
+    for fname, entry in doc["federates"].items():
+        seen: set[str] = set()
+        for pub in entry["publications"]:
+            if pub["key"] in seen:
+                raise PlantError(
+                    f"federate {fname}: publication {pub['key']} is published twice "
+                    "(a unit_outputs key that is also a device point?)"
+                )
+            seen.add(pub["key"])
     _snapshot_subscriptions(plant, doc["federates"])
     for rio in plant.hosts_by_role(*IO_ROLES):
         devs = rio_devices(plant, rio.name)
@@ -511,17 +520,26 @@ def _snapshot_subscriptions(plant: Plant, entries: dict[str, Any]) -> None:
         return
     entry: dict[str, Any] = entries[snap.federate]
     have: set[str] = {s["key"] for s in entry["subscriptions"]}
+    used: set[str] = set()
     for fname, other in entries.items():
         if fname == snap.federate:
             continue
         for pub in other["publications"]:
             key: str = pub["key"]
-            if key in have or not any(fnmatch.fnmatchcase(key, p) for p in snap.keys):
+            hits = {p for p in snap.keys if fnmatch.fnmatchcase(key, p)}
+            used |= hits
+            if key in have or not hits:
                 continue
             entry["subscriptions"].append(
                 {"key": key, "type": pub["type"], "units": pub["units"]}
             )
             have.add(key)
+    unused = [p for p in snap.keys if p not in used]
+    if unused:
+        raise PlantError(
+            f"snapshot: key pattern(s) {unused} match no publication of another "
+            f"federate in variant {plant.variant}"
+        )
 
 
 class _Subscriber:

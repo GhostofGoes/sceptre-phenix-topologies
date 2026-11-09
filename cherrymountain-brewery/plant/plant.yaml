@@ -135,7 +135,9 @@ federates:
       - { key: glycol.supply_f, type: double, units: degF, desc: Glycol supply temperature (to cellar and brewhouse) }
       - { key: steam.psig, type: double, units: psig, desc: Steam header pressure (to brewhouse) }
       - { key: air.psig, type: double, units: psig, desc: Compressed-air header pressure (to packaging) }
-      - { key: co2.supply_psig, type: double, units: psig, desc: CO2 supply header pressure (to cellar and packaging) }
+      # The CO2 supply header pressure (to cellar and packaging) is the co2
+      # device's supply_psig point (UTL.CO2.PT02.PV), published under the same
+      # key, utilities/co2.supply_psig; an output too would publish it twice.
       - { key: wastewater.inhibit_events, type: double, desc: "Wastewater discharges inhibited for pH (40 CFR 403.5), for the KPI API" }
       - { key: cip.verified, type: double, desc: "CIP runs that met their verification limits, for the KPI API" }
       - { key: cip.unverified, type: double, desc: "CIP runs logged but not verified, for the KPI API" }

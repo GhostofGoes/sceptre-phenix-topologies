@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CherryMountain 2.5D view</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="svg.css">
+</head>
+<body class="svgpage">
+  <header class="panel top">
+    <div class="brand">
+      <h1>CherryMountain: ground truth (2.5D)</h1>
+      <p>For browsers without WebGL, VNC, and low-CPU displays. Redrawn only when a frame arrives.</p>
+    </div>
+    <nav class="tabs" aria-label="Scene">
+      <button data-scene="cellar">Cellar CO₂</button>
+      <button data-scene="fermenters">Fermenters</button>
+      <button data-scene="power">Plant power</button>
+    </nav>
+    <a class="fallback" href="index.html">3D view</a>
+  </header>
+  <section class="panel clock" aria-label="Clock and data age">
+    <div><span class="k">Sim</span> <span id="simtime">waiting for data</span></div>
+    <div><span class="k">Data</span> <span id="age" class="pill dead">no frame</span> <span id="source" class="muted"></span></div>
+  </section>
+  <main id="drawing" aria-label="2.5D drawing"></main>
+  <section class="panel findings-panel"><ul id="findings" class="findings"></ul></section>
+  <div id="stale" class="stale" hidden>NO DATA: the view is stale</div>
+  <script type="module" src="svg.js"></script>
+</body>
+</html>

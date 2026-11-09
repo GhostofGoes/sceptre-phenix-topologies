@@ -44,6 +44,7 @@ and every file starts with or carries `generator` and `variant`.
 | `phenix/ot-sim.yaml` | ci | The scenario's `ot-sim` app block |
 | `phenix/ntp.yaml` | ci | The scenario's `ntp` app block (app mode, every host listed) |
 | `phenix/cherrymountain.yaml` | ci | The scenario's `cherrymountain` app block |
+| `phenix/helics.yaml` | `helics.app_block: true` (full, lite) | The scenario's `helics` app block (root broker); ci writes its own |
 | `phenix/soh.yaml` | `soh: true` | The scenario's `soh` app block |
 | `phenix/wireguard.yaml` | `wireguard: true` | The scenario's `wireguard` app block |
 | `openplc/<plc>/modbus_master.json` | ci | OpenPLC v4 `modbus_master` plugin config |

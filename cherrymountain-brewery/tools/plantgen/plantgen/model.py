@@ -397,10 +397,15 @@ class BrokerSpec(Strict):
 
 
 class VariantHelics(Strict):
-    """Per-variant HELICS settings."""
+    """Per-variant HELICS settings.
+
+    ``app_block`` emits the scenario's ``helics`` app block
+    (``phenix/helics.yaml``); the ci scenario writes its own.
+    """
 
     broker: BrokerSpec
     end_time_s: int = 36000
+    app_block: bool = False
 
 
 class InitialStateSpec(Strict):

@@ -83,7 +83,9 @@ federates:
   # ci inputs and outputs; full-plant-only I/O is scoped with `variants`.
   weather:
     host: sim-ctl
-    period_s: 60.0
+    # Weather values change once a minute; the federate steps every second
+    # so scenario events from the event API go out within a second.
+    period_s: 1.0
     endpoint: updates
     outputs:
       - { key: ambient.temp_f, type: double, units: degF, desc: Outdoor dry-bulb temperature }
@@ -104,6 +106,8 @@ federates:
       - { key: hood.heat_kw, type: double, units: kW, desc: Kettle vapor and heat released into the brewhouse (to building) }
       - { key: knockout.gpm, type: double, units: gal/min, desc: Wort flow to the fermenter at knockout (to cellar) }
       - { key: batch.phase, type: double, desc: Active ISA-88 phase number }
+      - { key: batch.completed, type: double, desc: Brews knocked out since the start }
+      - { key: batch.active, type: double, desc: Brews in progress }
     inputs:
       - { key: weather/pressure.kpa, type: double, units: kPa, default: 83.4 }
       - { key: weather/groundwater.temp_f, type: double, units: degF, default: 58.0 }
@@ -139,6 +143,8 @@ federates:
       - { key: beer.draw_gpm, type: double, units: gal/min, desc: Beer drawn from BBT-202 by the filler and keg filler (to cellar) }
       - { key: line.state, type: double, desc: Line PackML state (PackTags StateCurrent) }
       - { key: line.bottles, type: double, desc: Bottles filled this shift }
+      - { key: bottles.total, type: double, desc: Bottles packaged since the start }
+      - { key: kegs.total, type: double, desc: Kegs filled since the start }
     inputs:
       - { key: cellar/bbt202.pressure_psia, type: double, units: psia, default: 25.0 }
       - { key: utilities/air.psig, type: double, units: psig, default: 100.0 }
@@ -151,6 +157,8 @@ federates:
       - { key: grid.kw, type: double, units: kW, desc: Net import at the utility meter (negative for export) }
       - { key: demand.kw, type: double, units: kW, desc: Rolling 15-minute demand }
       - { key: tariff.cost_usd, type: double, units: USD, desc: Month-to-date SV-SGT bill }
+      - { key: energy.kwh, type: double, units: kWh, desc: Energy imported since the start }
+      - { key: demand.peak_kw, type: double, units: kW, desc: Highest 15-minute demand since the start }
     inputs:
       - { key: weather/ghi.wm2, type: double, units: W/m2, default: 0.0 }
       - { key: weather/ambient.temp_f, type: double, units: degF, default: 75.0 }
@@ -2209,6 +2217,7 @@ variants:
       - soc-analyst
     helics: &full-helics
       broker: { hostname: sim-ctl, interface: mgmt }
+      app_block: true
       # One week; the phenix ot-sim app's default 36000 s is too short (§9.2).
       end_time_s: 604800
     ground_truth: true

@@ -74,6 +74,8 @@ def render_all(plant: Plant, alloc: Allocation) -> dict[str, str]:
         "phenix/ntp.yaml": _yaml(plant, ntp_app(plant)),
     }
     out["phenix/cherrymountain.yaml"] = _yaml(plant, apps.cherrymountain_app(plant))
+    if plant.spec.helics.app_block:
+        out["phenix/helics.yaml"] = _yaml(plant, helics_app(plant))
     if plant.spec.soh:
         out["phenix/soh.yaml"] = _yaml(plant, apps.soh_app(plant, alloc))
     if plant.spec.wireguard:
@@ -646,6 +648,25 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
             }
         )
     return {"name": "ot-sim", "metadata": md, "hosts": hosts}
+
+
+def helics_app(plant: Plant) -> dict[str, Any]:
+    """Scenario ``helics`` app block: the root broker on the broker host.
+
+    The app counts federates from the ``helics/federate`` annotations that
+    ot-sim and cherrymountain write, so it must come after both.
+    """
+    broker = plant.spec.helics.broker
+    return {
+        "name": "helics",
+        "metadata": {
+            "broker": {
+                "root": f"{broker.hostname}|{broker.interface}",
+                "log-level": "summary",
+                "log-dir": "/var/log",
+            }
+        },
+    }
 
 
 def ntp_app(plant: Plant) -> dict[str, Any]:

@@ -763,7 +763,7 @@
     },
     "weather": {
       "host": "sim-ctl",
-      "period_s": 60.0,
+      "period_s": 1.0,
       "endpoint": "weather/updates",
       "accepted_updates": [],
       "publications": [
@@ -1387,6 +1387,18 @@
           "type": "double",
           "units": null,
           "output": "batch.phase"
+        },
+        {
+          "key": "brewhouse/batch.completed",
+          "type": "double",
+          "units": null,
+          "output": "batch.completed"
+        },
+        {
+          "key": "brewhouse/batch.active",
+          "type": "double",
+          "units": null,
+          "output": "batch.active"
         },
         {
           "key": "brewhouse/load.mcc1.kw",
@@ -3066,6 +3078,18 @@
           "output": "line.bottles"
         },
         {
+          "key": "packaging/bottles.total",
+          "type": "double",
+          "units": null,
+          "output": "bottles.total"
+        },
+        {
+          "key": "packaging/kegs.total",
+          "type": "double",
+          "units": null,
+          "output": "kegs.total"
+        },
+        {
           "key": "packaging/load.line.kw",
           "type": "double",
           "units": "kW",
@@ -3528,6 +3552,18 @@
           "type": "double",
           "units": "USD",
           "output": "tariff.cost_usd"
+        },
+        {
+          "key": "power/energy.kwh",
+          "type": "double",
+          "units": "kWh",
+          "output": "energy.kwh"
+        },
+        {
+          "key": "power/demand.peak_kw",
+          "type": "double",
+          "units": "kW",
+          "output": "demand.peak_kw"
         },
         {
           "key": "power/bus.boiler.energized",

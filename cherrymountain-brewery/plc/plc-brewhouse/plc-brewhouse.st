@@ -19,7 +19,8 @@
   Equipment control that runs whatever the phase:
     - CLT and HLT levels (fill valves with hysteresis), and the HLT temperature
       (steam valve, proportional, only while the jacket is covered: the
-      low-level switch BH.HLT.LSL01.PV is on below 15 %).
+      low-level switch BH.HLT.LSL01.PV is made from 15 % up and drops below
+      it, so a dead input reads as uncovered and gives no steam).
     - The local wort boiling point from the barometric pressure
       (Clausius-Clapeyron for water, plus 0.5 degF for the extract), boil
       detection within 0.5 degF of it, and the boil timer.
@@ -178,10 +179,10 @@ PROGRAM plc_brewhouse
     hlt_fill := FALSE;
   END_IF;
   BH_HLT_XV01_CMD := hlt_fill AND BH_CLT_LT01_PV > 100;
-  IF NOT BH_HLT_LSL01_PV THEN
+  IF BH_HLT_LSL01_PV THEN
     BH_HLT_TV01_OUT := PValve(SP := BH_HLT_TT01_SP, PV := BH_HLT_TT01_PV, GAIN := 20);
   ELSE
-    BH_HLT_TV01_OUT := 0;  (* low-level switch on: jacket uncovered, no steam *)
+    BH_HLT_TV01_OUT := 0;  (* low-level switch dropped: jacket uncovered, no steam *)
   END_IF;
 
   (* ---- boiling point and boil detection --------------------------------------------- *)

@@ -17,6 +17,7 @@ sys.path.insert(0, str(ROOT / "sim"))
 
 import plcbuild  # noqa: E402 - a sibling script, not a package
 from cherrymountain_sim import brewhouse  # noqa: E402
+from cherrymountain_sim.federate import HelicsConfig, build  # noqa: E402
 from cherrymountain_sim.recipe import default as default_recipe  # noqa: E402
 
 PLCS: tuple[str, ...] = ("plc-brewhouse", "plc-cellar", "plc-packaging", "plc-utilities", "plc-power")
@@ -71,14 +72,19 @@ def test_knockout_oxygen_lands_in_the_target_band() -> None:
     assert 8.0 <= ppm <= 10.0
 
 
-def test_hlt_steam_needs_the_low_level_switch_off() -> None:
-    """hlt.low_level is on while the level is low (the jacket is uncovered),
-    so the steam valve may open only while it is off."""
-    proc = brewhouse.Process()
-    proc.hlt.liters = 0.05 * proc.hlt.capacity_l
-    assert proc.hlt.level_pct < 15.0  # the federate publishes low_level = level < 15 %
-    assert "IF NOT BH_HLT_LSL01_PV THEN\n    BH_HLT_TV01_OUT := PValve(" in BREWHOUSE
-    assert not re.search(r"IF BH_HLT_LSL01_PV THEN\s+BH_HLT_TV01_OUT := PValve\(", BREWHOUSE)
+def test_hlt_steam_needs_the_low_level_switch_made() -> None:
+    """BH.HLT.LSL01 is made while the liquor covers the steam jacket and drops
+    below 15 %, in the federate and in the program alike: steam only while it
+    is true, so a dead input gives no steam. (The federate once published the
+    opposite sense, and the PLC never heated the tank.)"""
+    fed = build(HelicsConfig.load(plcbuild.GENERATED / "full" / "helics.json"), "brewhouse")
+    assert isinstance(fed, brewhouse.BrewhouseFederate)
+    fed.proc.hlt.liters = 0.05 * fed.proc.hlt.capacity_l
+    assert fed.values()["brewhouse/hlt.low_level"] is False
+    fed.proc.hlt.liters = 0.50 * fed.proc.hlt.capacity_l
+    assert fed.values()["brewhouse/hlt.low_level"] is True
+    assert "IF BH_HLT_LSL01_PV THEN\n    BH_HLT_TV01_OUT := PValve(" in BREWHOUSE
+    assert not re.search(r"IF NOT BH_HLT_LSL01_PV THEN\s+BH_HLT_TV01_OUT := PValve\(", BREWHOUSE)
 
 
 @pytest.mark.parametrize("variant", plcbuild.VARIANTS)

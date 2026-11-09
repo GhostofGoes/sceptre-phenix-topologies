@@ -76,6 +76,12 @@ TTB_NET_CONTENTS_TOLERANCE_PCT: float = 0.5
 BBL_PER_KEG: float = 0.5
 #: Filler bowl pressure below which the filler holds, psia.
 LOW_BOWL_PSIA: float = 18.0
+#: Seconds the filler runs on what its bowl holds while the product valve is
+#: shut, before it holds on a low bowl. plc-packaging opens the valve only once
+#: it reads the filler in Execute, a scan and a poll later; with no allowance
+#: the filler held before the valve ever opened, and the PLC then kept the
+#: valve shut because the filler was not executing.
+BOWL_RESERVE_S: float = 10.0
 BOTTLE_LINE: tuple[str, ...] = ("rinser", "filler", "coder", "labeler", "packer")
 
 
@@ -172,6 +178,8 @@ class Machine:
     next_jam: float
     speed_sp: float
     wait_s: float
+    #: Seconds the filler has run with its product valve shut.
+    dry_s: float
     last_cmd: int
     last_mode: int
 
@@ -186,6 +194,7 @@ class Machine:
         self.next_jam = rng.expovariate(1.0 / (spec.mtbf_min * 60))
         self.speed_sp = spec.rate_bpm
         self.wait_s = 0.0
+        self.dry_s = 0.0
         self.last_cmd = 0
         self.last_mode = int(Mode.PRODUCTION)
 
@@ -317,9 +326,16 @@ class PackagingFederate(Federate):
                 i < len(BOTTLE_LINE) - 1 and downstream.level >= downstream.capacity
             )
             if m.name == "filler" and self.bowl_psia < LOW_BOWL_PSIA:
-                m.stop_reason = STOP_SUPPLY
-                m.apply(Command.HOLD)
+                # A shut product valve leaves what the bowl holds; a low
+                # supply behind an open valve holds the filler at once.
+                m.dry_s += 1.0
+                if self.product_open or m.dry_s >= BOWL_RESERVE_S:
+                    m.stop_reason = STOP_SUPPLY
+                    m.apply(Command.HOLD)
+                    continue
+                yield self.env.timeout(1.0)
                 continue
+            m.dry_s = 0.0
             if starved or blocked:
                 m.wait_s += 1.0
                 if m.wait_s >= SUSPEND_AFTER_S:
@@ -415,35 +431,60 @@ class PackagingFederate(Federate):
                 m.apply(Command.RESET)
             elif st == State.IDLE:
                 m.apply(Command.START)
-            elif (
-                st == State.HELD
-                and self.env.now >= m.jammed_until
-                and not (m.name == "filler" and self.bowl_psia < LOW_BOWL_PSIA)
+
+    def _recover(self) -> None:
+        """What each machine and the people at the line do themselves, whoever
+        commands the line (the autopilot or plc-packaging, which only relays
+        the operator's line command): a starved or blocked machine unsuspends
+        once it has a bottle to take or room to put one (its own sensors,
+        PackML's Suspended), the line operator clears a jam and unholds the
+        machine once the jam's time is up, and the filler unholds from a low
+        bowl once the supply is back. A Hold or Suspend that was commanded (no
+        such stop reason) stays."""
+        last = len(BOTTLE_LINE) - 1
+        for m in self.machines.values():
+            st = m.pml.state
+            if (
+                st == State.SUSPENDED
+                and m.stop_reason in (STOP_STARVED, STOP_BLOCKED)
+                and m.name in BOTTLE_LINE
             ):
+                i = BOTTLE_LINE.index(m.name)
+                starved = i > 0 and self.buffers[i].level < 1
+                blocked = i < last and self.buffers[i + 1].level >= self.buffers[i + 1].capacity
+                if not (starved or blocked):
+                    m.apply(Command.UNSUSPEND)
+            elif st != State.HELD or self.env.now < m.jammed_until:
+                continue
+            elif m.stop_reason == STOP_JAM or (
+                m.stop_reason == STOP_SUPPLY and self.supply_psia >= LOW_BOWL_PSIA
+            ):
+                m.dry_s = 0.0
                 m.apply(Command.UNHOLD)
-            elif st == State.SUSPENDED and m.stop_reason in (
-                STOP_STARVED,
-                STOP_BLOCKED,
-            ):
-                m.apply(Command.UNSUSPEND)
 
     # -- dynamics ----------------------------------------------------------------------
 
     @property
-    def bowl_psia(self) -> float:
-        """Filler bowl pressure: BBT-202 head pressure through the product valve."""
-        if not self.product_open:
-            return 0.0
+    def supply_psia(self) -> float:
+        """BBT-202 head pressure at the filler's product valve."""
         return max(self.input("cellar/bbt202.pressure_psia", 25.0) - 1.0, 0.0)
+
+    @property
+    def bowl_psia(self) -> float:
+        """Filler bowl pressure: the supply through the open product valve."""
+        return self.supply_psia if self.product_open else 0.0
 
     def advance(self, wall_dt_s: float) -> None:
         """Run the line ``wall_dt_s`` seconds."""
-        if self.input("power/bus.pkg.energized", 1.0) < 0.5:
+        powered = self.input("power/bus.pkg.energized", 1.0) >= 0.5
+        if not powered:
             for m in self.machines.values():
                 if m.pml.state not in (State.ABORTED, State.ABORTING):
                     m.apply(Command.ABORT)
         if self.autopilot:
             self._operator()
+        if powered:
+            self._recover()
         for m in self.machines.values():
             m.pml.step(wall_dt_s)
         self.env.run(until=self.env.now + wall_dt_s)

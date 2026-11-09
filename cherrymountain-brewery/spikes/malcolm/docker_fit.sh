@@ -149,9 +149,12 @@ printf '\nPYTHONUNBUFFERED=1\n' >>config/process.env
 # `zeek -r pcap local` then dies with "can't open .../custom/__load__.zeek", writes no logs, and
 # pcap_zeek_processor drops the pcap (warning level). This was the cause of the empty 12 minute wait.
 touch zeek/custom/__load__.zeek
-# A rule that fires on the test pcap's Modbus write and DNP3 direct operate, next to the default rules.
+# Rules that fire on the test pcap, next to the default rules: a protocol-independent one (any client to
+# TCP/502, so an alert must appear if Suricata read the pcap and the alerts are shipped), and the Modbus
+# write and DNP3 direct operate that the pcap contains.
 mkdir -p suricata/rules suricata-logs
 cat >suricata/rules/cherrymountain.rules <<'RULES'
+alert tcp any any -> any 502 (msg:"CM spike TCP to Modbus port"; flow:to_server; sid:1000003; rev:1;)
 alert modbus any any -> any any (msg:"CM spike Modbus write single register"; modbus: function 6; sid:1000001; rev:1;)
 alert dnp3 any any -> any any (msg:"CM spike DNP3 direct operate"; dnp3_func:direct_operate; sid:1000002; rev:1;)
 RULES
@@ -234,6 +237,12 @@ if [ "$os_ready" = true ]; then
   os_query 'arkime_sessions3-*' '{"size":0,"query":{"term":{"event.provider":"suricata"}},"aggs":{"rule":{"terms":{"field":"rule.name","size":20}}}}' >"$EV/opensearch-suricata-rules.json"
   fact suricata_alerts "$alerts after $(($(date +%s) - DROPPED)) s; rules: $(jq -c '[.aggregations.rule.buckets[]? | {(.key): .doc_count}]' "$EV/opensearch-suricata-rules.json" 2>/dev/null)"
   check "Suricata alerts from the same pcap reach OpenSearch" "$alerts" "$(jq -c '[.aggregations.prov.buckets[]? | {(.key): .doc_count}]' "$EV/opensearch-datasets-final.json" 2>/dev/null)"
+  # What Suricata wrote and what Filebeat saw (the pipeline from here is the same as for Zeek's logs).
+  {
+    echo "== suricata-logs on the host"; find suricata-logs -type f | head -n 30
+    for f in $(find suricata-logs -name eve.json | head -n 3); do echo "== $f"; wc -l "$f"; grep -m3 '"event_type":"alert"' "$f" | cut -c1-600; done
+    echo "== filebeat lines about suricata"; docker logs malcolm-filebeat-1 2>&1 | grep -i suricata | tail -n 15 | cut -c1-300
+  } >"$EV/diag-suricata.txt" 2>&1
   if [ "$found" != true ]; then
     # Diagnosis only (not a pass): what the Zeek processor and the watchers say now that they log.
     for c in zeek pcap-monitor suricata; do docker logs --tail 80 "malcolm-$c-1" >"$EV/diag-$c.log" 2>&1; done

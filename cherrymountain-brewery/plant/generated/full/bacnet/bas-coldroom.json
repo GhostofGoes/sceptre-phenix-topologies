@@ -48,7 +48,7 @@
       "description": "Cold room setpoint",
       "tag": "bas-coldroom.setpoint_f",
       "helics_key": "building/bas-coldroom.setpoint_f",
-      "commandable": false,
+      "commandable": true,
       "units": "degreesFahrenheit",
       "range": [
         28.0,

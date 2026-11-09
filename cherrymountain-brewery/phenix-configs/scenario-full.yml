@@ -842,11 +842,13 @@ spec:
               bacnet:
                 object-type: analog-value
                 units: degreesFahrenheit
+                commandable: true
             heat_sp_f:
               type: analog-read-write
               bacnet:
                 object-type: analog-value
                 units: degreesFahrenheit
+                commandable: true
             supply_fan:
               type: binary-read-write
               bacnet:
@@ -875,6 +877,7 @@ spec:
                 - occupied
                 - unoccupied
                 - standby
+                commandable: true
           coldroom:
             room_temp_f:
               type: analog-read
@@ -891,6 +894,7 @@ spec:
               bacnet:
                 object-type: analog-value
                 units: degreesFahrenheit
+                commandable: true
             door:
               type: binary-read
               bacnet:

@@ -90,7 +90,7 @@
       "description": "Occupied cooling setpoint",
       "tag": "bas-rtu-taproom.cool_sp_f",
       "helics_key": "building/bas-rtu-taproom.cool_sp_f",
-      "commandable": false,
+      "commandable": true,
       "units": "degreesFahrenheit",
       "range": [
         60.0,
@@ -104,7 +104,7 @@
       "description": "Occupied heating setpoint",
       "tag": "bas-rtu-taproom.heat_sp_f",
       "helics_key": "building/bas-rtu-taproom.heat_sp_f",
-      "commandable": false,
+      "commandable": true,
       "units": "degreesFahrenheit",
       "range": [
         50.0,
@@ -154,7 +154,7 @@
       "description": "Occupancy mode (1 occupied, 2 unoccupied, 3 standby)",
       "tag": "bas-rtu-taproom.occ_mode",
       "helics_key": "building/bas-rtu-taproom.occ_mode",
-      "commandable": false,
+      "commandable": true,
       "states": [
         "occupied",
         "unoccupied",

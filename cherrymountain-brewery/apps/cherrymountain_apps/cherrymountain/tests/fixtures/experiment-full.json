@@ -3798,14 +3798,16 @@
                     "type": "analog-read-write",
                     "bacnet": {
                       "object-type": "analog-value",
-                      "units": "degreesFahrenheit"
+                      "units": "degreesFahrenheit",
+                      "commandable": true
                     }
                   },
                   "heat_sp_f": {
                     "type": "analog-read-write",
                     "bacnet": {
                       "object-type": "analog-value",
-                      "units": "degreesFahrenheit"
+                      "units": "degreesFahrenheit",
+                      "commandable": true
                     }
                   },
                   "supply_fan": {
@@ -3844,7 +3846,8 @@
                         "occupied",
                         "unoccupied",
                         "standby"
-                      ]
+                      ],
+                      "commandable": true
                     }
                   }
                 },
@@ -3867,7 +3870,8 @@
                     "type": "analog-read-write",
                     "bacnet": {
                       "object-type": "analog-value",
-                      "units": "degreesFahrenheit"
+                      "units": "degreesFahrenheit",
+                      "commandable": true
                     }
                   },
                   "door": {

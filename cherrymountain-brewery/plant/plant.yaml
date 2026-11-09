@@ -478,6 +478,7 @@ device_types:
 hosts:
   sim-ctl:
     role: sim
+    app: { type: sim-ctl }
     interfaces:
       mgmt: { vlan: MGMT, ip: 172.16.10.1/16 }
   sim-process:
@@ -513,6 +514,7 @@ hosts:
       IF0: { vlan: OPS, ip: 10.20.30.10/24 }
   ot-svc:
     role: service
+    app: { type: bbmd }
     interfaces:
       IF0: { vlan: OPS, ip: 10.20.30.13/24 }
   # -- the rest of the full plant (DESIGN.md §10.2, §11) ----------------------
@@ -566,6 +568,7 @@ hosts:
       IF0: { vlan: DMZ, ip: 10.10.20.10/24 }
   dmz-jump:
     role: jump
+    app: { type: guacamole }
     interfaces:
       IF0: { vlan: DMZ, ip: 10.10.20.11/24 }
   fw-ot:
@@ -589,10 +592,12 @@ hosts:
       IF0: { vlan: OPS, ip: 10.20.30.12/24 }
   hmi-brewhouse:
     role: hmi
+    app: { type: hmi, view: Brewhouse }
     interfaces:
       IF0: { vlan: HMI, ip: 10.20.20.10/24 }
   hmi-packaging:
     role: hmi
+    app: { type: hmi, view: Packaging }
     interfaces:
       IF0: { vlan: HMI, ip: 10.20.20.11/24 }
   plc-brewhouse:
@@ -690,10 +695,12 @@ hosts:
       IF1: { vlan: FIELD-PWR, ip: 10.20.16.2/24 }
   bas-bbmd:
     role: bbmd
+    app: { type: bbmd }
     interfaces:
       IF0: { vlan: BAS, ip: 10.30.10.5/24 }
   bas-fuxa:
     role: scada
+    app: { type: fuxa, role: bas, project: fuxa/bas-fuxa-project.json }
     fuxa:
       - { host: bas-rtu-taproom }
       - { host: bas-coldroom }
@@ -727,6 +734,7 @@ hosts:
       IF0: { vlan: SOC, ip: 10.40.10.10/24 }
   wazuh:
     role: soc
+    app: { type: wazuh-manager }
     interfaces:
       IF0: { vlan: SOC, ip: 10.40.10.11/24 }
   soc-analyst:
@@ -2145,6 +2153,9 @@ variants:
         sim-process: { client: chrony }
         rio-cellar: { client: chrony }
         plc-cellar: { client: chrony, source: { hostname: scada-fuxa, interface: IF0 } }
+    # cherrymountain app metadata (apps/cherrymountain_apps/cherrymountain).
+    app:
+      verify: { timeout: 15 }
 
   full:
     description: >-
@@ -2269,6 +2280,8 @@ variants:
     soh: true
     wireguard: true
     scorch: true
+    app:
+      wazuh: { manager: wazuh }
 
   lite:
     description: >-

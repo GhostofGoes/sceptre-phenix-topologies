@@ -43,6 +43,7 @@ and every file starts with or carries `generator` and `variant`.
 | `helics.json` | ci | Federation: broker, federates with pub/sub/endpoint lists, ot-sim I/O federates |
 | `phenix/ot-sim.yaml` | ci | The scenario's `ot-sim` app block |
 | `phenix/ntp.yaml` | ci | The scenario's `ntp` app block (app mode, every host listed) |
+| `phenix/cherrymountain.yaml` | ci | The scenario's `cherrymountain` app block |
 | `phenix/soh.yaml` | `soh: true` | The scenario's `soh` app block |
 | `phenix/wireguard.yaml` | `wireguard: true` | The scenario's `wireguard` app block |
 | `openplc/<plc>/modbus_master.json` | ci | OpenPLC v4 `modbus_master` plugin config |
@@ -238,6 +239,21 @@ for ISA-18.2 state-based suppression). A `state` alarm is active while the
 source equals `limit`. Alarms on BACnet points have no PLC bit: `plc` and
 `plc_iec` are null, `evaluator` is `fuxa`, `owner` is the controller, and
 `fuxa_tag_id` is the source tag's ID.
+
+### `phenix/cherrymountain.yaml`
+
+The `cherrymountain` app entry: `metadata` is `{variant: <name>, ...}` plus
+the variant's `app` block in plant.yaml (ci: `verify.timeout`; full:
+`wazuh.manager`), and `hosts` lists every host the app provisions or checks
+with its `metadata.type`, grouped in the order sim-ctl, sim-federate, rio,
+openplc, fuxa, historian, hmi, guacamole, wazuh-manager, bbmd. A host's
+metadata is `hosts.<name>.app` in plant.yaml when set (bas-fuxa, the HMIs,
+dmz-jump, wazuh, the BBMD hosts), else derived from its role: `sim` →
+`sim-federate` (the HELICS broker host is `sim-ctl`), `rio`/`field`/`bas`/
+`fep`/`dnp3-master` → `rio`, `plc` → `openplc`, `scada` → `fuxa`, `historian`
+→ `historian`. The shapes are the app's metadata models
+(`apps/cherrymountain_apps/cherrymountain/metadata.py`); the tests compare the
+block with the app's `app-<variant>.yml` fixtures.
 
 ### `phenix/soh.yaml`
 

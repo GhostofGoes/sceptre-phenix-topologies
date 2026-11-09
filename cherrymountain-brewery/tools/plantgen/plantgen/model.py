@@ -297,6 +297,9 @@ class HostSpec(Strict):
     fuxa: list[FuxaSource] | None = None
     #: VyOS hosts use the ``ntp`` client and no guest agent processes.
     vyos: bool = False
+    #: Host metadata for the ``cherrymountain`` app; without it the app's
+    #: type follows the role (see plantgen.apps.APP_TYPES).
+    app: dict[str, Any] | None = None
 
 
 class Rationale(Strict):
@@ -484,6 +487,8 @@ class VariantSpec(Strict):
     soh: bool = False
     wireguard: bool = False
     scorch: bool = False
+    #: Extra app-level metadata of the ``cherrymountain`` app block.
+    app: dict[str, Any] = Field(default_factory=dict)
 
 
 class Network(Strict):

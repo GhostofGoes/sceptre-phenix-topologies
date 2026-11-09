@@ -8,6 +8,9 @@
 - ``wireguard``: the vendor tunnel with deterministic range-only keys
   (:mod:`plantgen.wgkeys`).
 - SCORCH ``pcap`` capture lists per run (DESIGN.md §15.6).
+- ``cherrymountain``: the app block listing every host the app provisions or
+  checks, with its type (DESIGN.md §16; the app's metadata models are in
+  ``apps/cherrymountain_apps/cherrymountain/metadata.py``).
 """
 
 from __future__ import annotations
@@ -285,3 +288,65 @@ def scorch_captures(plant: Plant) -> dict[str, Any]:
         if vms:
             runs[run] = {"type": "pcap", "metadata": {"vms": vms}}
     return {"runs": runs}
+
+
+#: cherrymountain app host type per plant.yaml role (hosts may override it
+#: with ``app:``). Roles not listed are not app hosts.
+APP_TYPES: dict[str, str] = {
+    "sim": "sim-federate",
+    "rio": "rio",
+    "field": "rio",
+    "bas": "rio",
+    "fep": "rio",
+    "dnp3-master": "rio",
+    "plc": "openplc",
+    "scada": "fuxa",
+    "historian": "historian",
+}
+#: Order of the host types in the block (the app's fixtures use it).
+APP_ORDER: tuple[str, ...] = (
+    "sim-ctl",
+    "sim-federate",
+    "rio",
+    "openplc",
+    "fuxa",
+    "historian",
+    "hmi",
+    "guacamole",
+    "wazuh-manager",
+    "bbmd",
+)
+
+
+def cherrymountain_app(plant: Plant) -> dict[str, Any]:
+    """Scenario ``cherrymountain`` app block for the variant.
+
+    The HELICS broker host is ``sim-ctl``; other sim hosts run federates.
+    Host metadata comes from ``hosts.<name>.app`` in plant.yaml, else from
+    the role (:data:`APP_TYPES`). App-level metadata is the variant's
+    ``app`` block plus its name.
+    """
+    broker = plant.spec.helics.broker.hostname
+    entries: list[tuple[int, int, dict[str, Any]]] = []
+    for i, host in enumerate(plant.hosts.values()):
+        if host.app is not None:
+            md = dict(host.app)
+        elif host.name == broker:
+            md = {"type": "sim-ctl"}
+        elif host.role in APP_TYPES:
+            md = {"type": APP_TYPES[host.role]}
+        else:
+            continue
+        if md.get("type") not in APP_ORDER:
+            raise PlantError(
+                f"cherrymountain app: {host.name} has type {md.get('type')}"
+            )
+        entries.append(
+            (APP_ORDER.index(md["type"]), i, {"hostname": host.name, "metadata": md})
+        )
+    hosts = [e for _, _, e in sorted(entries, key=lambda e: (e[0], e[1]))]
+    return {
+        "name": "cherrymountain",
+        "metadata": {"variant": plant.variant, **plant.spec.app},
+        "hosts": hosts,
+    }

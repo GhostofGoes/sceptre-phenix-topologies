@@ -73,6 +73,7 @@ def render_all(plant: Plant, alloc: Allocation) -> dict[str, str]:
         "phenix/ot-sim.yaml": _yaml(plant, otsim_app(plant)),
         "phenix/ntp.yaml": _yaml(plant, ntp_app(plant)),
     }
+    out["phenix/cherrymountain.yaml"] = _yaml(plant, apps.cherrymountain_app(plant))
     if plant.spec.soh:
         out["phenix/soh.yaml"] = _yaml(plant, apps.soh_app(plant, alloc))
     if plant.spec.wireguard:

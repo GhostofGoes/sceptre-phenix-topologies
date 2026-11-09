@@ -440,3 +440,28 @@ def test_bacnet_point_must_fit_its_object_type(tmp_path: Path) -> None:
     data["device_types"]["coldroom"]["door"]["type"] = "binary-read-write"
     with pytest.raises(PlantError, match="binary-input cannot carry"):
         load_file(write_plant(tmp_path, data))
+
+
+@pytest.mark.parametrize("variant", VARIANTS)
+def test_cherrymountain_app_block_matches_the_app_fixtures(variant: str) -> None:
+    """phenix/cherrymountain.yaml has the shape the app's tests use."""
+    plant = load(DEFAULT_PLANT, variant)
+    app = yaml.safe_load(
+        render_all(plant, allocate(plant))["phenix/cherrymountain.yaml"]
+    )
+    assert app["name"] == "cherrymountain"
+    assert app["metadata"]["variant"] == variant
+    hosts = {h["hostname"]: h["metadata"]["type"] for h in app["hosts"]}
+    assert hosts["sim-ctl"] == "sim-ctl" and hosts["scada-fuxa"] == "fuxa"
+    assert set(hosts) <= set(plant.hosts)
+    fixture = (
+        DEFAULT_PLANT.parents[1]
+        / "apps"
+        / "cherrymountain_apps"
+        / (f"cherrymountain/tests/fixtures/app-{variant}.yml")
+    )
+    if fixture.exists():
+        want = yaml.safe_load(fixture.read_text(encoding="utf-8"))
+        assert app["metadata"] == want["metadata"]
+        got = {h["hostname"]: h["metadata"] for h in app["hosts"]}
+        assert got == {h["hostname"]: h["metadata"] for h in want["hosts"]}

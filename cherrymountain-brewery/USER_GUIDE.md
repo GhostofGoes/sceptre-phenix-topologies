@@ -1,53 +1,79 @@
 # CherryMountain Brewery: user guide
 
-This guide takes you from an empty host to a running CherryMountain range:
-what to clone, what to build, how to start each variant, and how to check and
-use it. [README.md](README.md) describes what is in the directory, and
-[DESIGN.md](DESIGN.md) explains why it is built the way it is.
+This guide takes you from an empty host to a running CherryMountain range, and
+then shows you how to reach and use each part of it. Follow it top to bottom
+the first time. [README.md](README.md) says what is in this directory, and
+[DESIGN.md](DESIGN.md) explains why the range is built the way it is.
 
-> **The range has not booted on a real phenix host yet.** The simulation, the
-> apps, the PLC programs, and the network rules are tested offline, and the
-> cellar slice runs in Docker. Every step below comes from the files in the
-> repositories, but none has been run end to end on VMs, so expect to fix
-> things on the first boot. Start with the ci variant.
+> **Read this first.** The range has **not booted on a real phenix host yet**.
+> The simulation, the apps, the PLC programs, and the network rules are tested
+> offline, and parts of it have run in Docker and on loopback. Every step below
+> comes from the files and from the phenix, minimega, and vendor source code,
+> but nobody has run it end to end on VMs. Expect to fix things on the first
+> boot, start with the small `ci` variant, and see [Known limits](#known-limits).
 
-## What you get
+## The path in one look
 
-A notional Colorado microbrewery as an OT cyber range: a brewhouse, cellar,
-packaging line, utilities, plant power, and building automation, with FUXA as
-the SCADA and HMI, OpenPLC for the PLCs, ot-sim for the field devices, and a
-HELICS co-simulation behind them. There are three variants:
+| Step | What you do | Time, roughly |
+|---|---|---|
+| [1](#1-pick-a-variant) | Pick a variant that fits your host | |
+| [2](#2-prepare-the-host) | Install Docker, Git LFS, and Go; check KVM | 15 min |
+| [3](#3-get-the-code) | Clone four repositories | 5 min |
+| [4](#4-build-and-start-phenix) | Build the phenix container and start it | 30 min |
+| [5](#5-build-the-vm-images) | Build the VM images (4 for `ci`, 13 for `full`) | 1 h to several hours |
+| [6](#6-start-the-range) | Apply the workflow: it creates and starts the experiment | 5 min |
+| [7](#7-wait-then-check-health) | Wait for first boot, then check health | 15 to 30 min |
+| [8](#8-connect-from-your-own-computer) | Run `phenix-tunneler` on your computer and open the web pages | 5 min |
+| [9](#9-passwords) | Look up the passwords | |
+| [10](#10-a-tour-use-each-part) | Use each part: SCADA, PLCs, vendor access, SOC, white cell | |
 
-| Variant | What it runs | VMs | vCPUs | RAM |
-|---|---|---:|---:|---:|
-| `ci` | The cellar slice: sim-ctl, sim-process, rio-cellar, plc-cellar, scada-fuxa | 5 | 7 | 8 GB |
-| `lite` | The whole plant and its network, without the SOC and vendor access | 37 | 48 | 71 GB |
-| `full` | Everything, with Malcolm, Wazuh, WireGuard, and Guacamole | 43 | 67 | 113 GB |
+## 1. Pick a variant
 
-## What the host needs
+The range is a notional Colorado microbrewery: a brewhouse, cellar, packaging
+line, utilities, plant power, and building automation, with FUXA as the SCADA
+and HMI, OpenPLC for the PLCs, ot-sim for the field devices, and a HELICS
+simulation of the physics behind them.
 
-- Ubuntu 24.04 on x86-64 with `/dev/kvm`. A 4-core, 16 GB machine is enough
-  for ci. The full variant is sized for one host with 32 or more cores and
-  128 GB: most VMs idle, so its 67 vCPUs are overcommitted, but its 113 GB of
-  VM memory is not. Lite needs 71 GB for its VMs.
-- About 150 GB of free disk under `/phenix` for all the images and the
-  running VMs. The four ci images need much less.
-- Docker with the Compose plugin, Git, and [Git LFS](https://git-lfs.com/).
-- Go 1.24 or later, to build `miniccc` and `protonuke`.
-- Python 3.12 with `pydantic` and `pyyaml`, for the check scripts. Node 22 is
-  needed only if you rebuild a PLC program.
-- Internet access while you build. The running range needs none.
+| Variant | What it runs | VMs | vCPUs | RAM | Use it for |
+|---|---|---:|---:|---:|---|
+| `ci` | The cellar only: one simulation node pair, one remote I/O, one PLC, one FUXA | 5 | 7 | 8 GB | A first boot, and a laptop |
+| `lite` | The whole plant and its network, without the SOC and the vendor path | 37 | 48 | 71 GB | Process and network work |
+| `full` | Everything, with Malcolm, Wazuh, WireGuard, and Guacamole | 43 | 67 | 113 GB | Exercises with a blue team |
 
-## Get the code
+Run **one variant at a time**. They use the same VLAN numbers, and minimega
+refuses the second one. A stopped experiment of another variant may stay.
 
-The range needs a fork of phenix, because only its `phenix ui` keeps the
-tunnels to the VMs' web pages open for an experiment started from the command
-line. These are the repositories and branches the spike CI uses:
+## 2. Prepare the host
+
+You need one machine with:
+
+- **Ubuntu 24.04 on x86-64 with `/dev/kvm`.** Check with `kvm-ok` (package
+  `cpu-checker`). On a cloud VM, turn on nested virtualization.
+- **CPU and memory for the variant.** 4 cores and 16 GB run `ci`. `full` is
+  sized for 32 or more cores and 128 GB: most VMs idle, so its 67 vCPUs are
+  overcommitted, but its 113 GB of VM memory is not.
+- **Disk.** About 150 GB free under `/phenix` for all images and the running
+  VMs. The four `ci` images need about 20 GB.
+- **Software.** Docker with the Compose plugin, Git, [Git LFS](https://git-lfs.com/),
+  and Go 1.24 or later.
+- **Internet while you build.** The running range needs none.
 
 ```shell
-sudo apt install -y git-lfs
+sudo apt update
+sudo apt install -y git git-lfs cpu-checker golang-go
 git lfs install
+kvm-ok                      # must say "KVM acceleration can be used"
+docker compose version      # install Docker Engine first if this fails
+go version                  # 1.24 or later; if older, install Go from go.dev
+```
 
+## 3. Get the code
+
+The range needs a **fork of phenix** (branch `ci-e2e-minimega`). Only that fork
+keeps the port forwards to the VMs' web pages open for an experiment that is
+started from the command line.
+
+```shell
 git clone -b ci-e2e-minimega https://github.com/GhostofGoes/sceptre-phenix.git
 git clone -b ci-e2e-minimega https://github.com/GhostofGoes/sceptre-phenix-images.git
 git clone https://github.com/sandia-minimega/minimega.git
@@ -55,26 +81,23 @@ git -C minimega checkout "$(cat sceptre-phenix/.github/e2e/minimega.ref)"
 
 sudo mkdir -p /phenix && sudo chown "$USER" /phenix
 git clone -b feat-secret-topo https://github.com/GhostofGoes/sceptre-phenix-topologies.git /phenix/topologies
-cd /phenix/topologies && git lfs pull
+git -C /phenix/topologies lfs pull
 ```
 
-The phenix build below also uses
-`https://github.com/GhostofGoes/sceptre-phenix-apps` on branch
-`ci-e2e-minimega`. Docker clones it for you, so you only need your own copy to
-read it:
-
-```shell
-git clone -b ci-e2e-minimega https://github.com/GhostofGoes/sceptre-phenix-apps.git
-```
-
-Keep the topologies at `/phenix/topologies`. The `cherrymountain` app reads
+Keep the topologies at **`/phenix/topologies`**. The `cherrymountain` app reads
 `/phenix/topologies/cherrymountain-brewery` from inside the phenix container.
 
-## Build and install
+Check that Git LFS fetched the PLC programs. A file of about 130 bytes is only
+a pointer:
 
-### phenix and minimega
+```shell
+ls -l /phenix/topologies/cherrymountain-brewery/phenix-injects/openplc/plc-cellar.zip   # about 100 KB
+```
 
-Build the phenix image from the fork, with the fork's apps:
+## 4. Build and start phenix
+
+**Build the phenix image** from the fork, with the fork's apps (about 20
+minutes; it needs BuildKit, which current Docker uses by default):
 
 ```shell
 cd sceptre-phenix
@@ -84,248 +107,550 @@ docker build -f docker/Dockerfile \
   -t phenix:cherrymountain .
 ```
 
-Add the `cherrymountain` app and the `plantevent` SCORCH component on top:
+**Add the range's own app** (`cherrymountain`) and its SCORCH component
+(`plantevent`) on top:
 
 ```shell
 docker build --build-arg PHENIX_IMAGE=phenix:cherrymountain \
   -t cherrymountain-phenix /phenix/topologies/cherrymountain-brewery/apps
 ```
 
-Edit `docker/docker-compose.yml` in the phenix checkout so the `phenix`
-service uses `image: cherrymountain-phenix`, then start phenix, minimega, and
-the rest:
+**Tell Compose to use that image**, then start phenix and minimega. The
+override file saves you from editing the fork's `docker-compose.yml`:
 
 ```shell
 cd docker
+cat > docker-compose.override.yml <<'EOF'
+services:
+  phenix:
+    image: cherrymountain-phenix
+EOF
 docker compose up -d
 docker exec phenix phenix experiment apps
 ```
 
-The last command should list `cherrymountain`, `ot-sim`, `helics`, `mirror`,
-`wireguard`, and `protonuke`. The phenix UI is on port 3000 of the host.
+The last command must list `cherrymountain`, `ot-sim`, `helics`, `mirror`,
+`wireguard`, and `protonuke`. The phenix web page is now at
+`http://<host>:3000`. It has no login in this setup, so keep the host on a
+network you trust.
 
-minimega runs from its published image. The VMs also need two minimega
-programs inside them, which you build from the commit CI pins:
+**Build the two programs that go inside every VM.** `miniccc` is how phenix
+reaches into a VM; `protonuke` makes stand-in internet traffic:
 
 ```shell
-cd minimega
+cd ../../minimega
 source scripts/env.bash
 ./scripts/version.bash
 CGO_ENABLED=0 go install -ldflags="-s -w" ./cmd/miniccc ./cmd/protonuke
 cp bin/miniccc bin/protonuke /phenix/
 ```
 
-### The images
+## 5. Build the VM images
 
-Each VM role has an image config in `phenix-images/`. Build them in this
-order, so the layers you test first exist first: `cm-svc`, `cm-otsim`,
-`cm-sim`, `cm-openplc`, `cm-fuxa`, `cm-historian`, `cm-desktop`, `cm-ews`,
-`cm-guacamole`, `cm-wireguard`, `cm-wazuh`, and `cm-malcolm` (64 GB, the
-slowest). The ci variant needs only `cm-sim`, `cm-otsim`, `cm-openplc`, and
-`cm-fuxa`. Lite needs everything up to `cm-ews`.
-
-Every build is the same three commands. The third one adds `miniccc`, which
-phenix uses to reach into the VM:
+Each kind of VM has an image config in `phenix-images/`. A build is the same
+three commands for every image. It runs inside the phenix container, needs
+internet, and does not need KVM.
 
 ```shell
-for image in cm-sim cm-otsim cm-openplc cm-fuxa; do
-  docker exec phenix phenix config create /phenix/topologies/cherrymountain-brewery/phenix-images/$image.yml
-  docker exec phenix phenix image build -o /phenix/images -c -x $image
-  docker exec phenix phenix image inject-miniexe /phenix/miniccc /phenix/images/$image.qc2
-done
+build_image() {
+  docker exec phenix phenix config create "/phenix/topologies/cherrymountain-brewery/phenix-images/$1.yml"
+  docker exec phenix phenix image build -o /phenix/images -c -x "$1"
+  docker exec phenix phenix image inject-miniexe /phenix/miniccc "/phenix/images/$1.qc2"
+}
 ```
 
-Lite and full need two more steps for protonuke, which stands in for internet
-traffic:
+| Variant | Images to build, in this order |
+|---|---|
+| `ci` | `cm-sim` `cm-otsim` `cm-openplc` `cm-fuxa` |
+| `lite` | `cm-svc` `cm-otsim` `cm-sim` `cm-openplc` `cm-fuxa` `cm-historian` `cm-desktop` `cm-ews`, plus VyOS and the two protonuke steps below |
+| `full` | Everything for `lite`, then `cm-guacamole` `cm-wireguard` `cm-wazuh` `cm-malcolm` |
 
 ```shell
+for image in cm-sim cm-otsim cm-openplc cm-fuxa; do build_image "$image"; done    # ci
+```
+
+`lite` and `full` need three more things:
+
+```shell
+# protonuke, the stand-in for internet traffic
 cp /phenix/images/cm-svc.qc2 /phenix/images/cm-svc-protonuke.qc2
 docker exec phenix phenix image inject-miniexe /phenix/protonuke /phenix/images/cm-svc-protonuke.qc2
 docker exec phenix phenix image inject-miniexe /phenix/protonuke /phenix/images/cm-desktop.qc2
+
+# the VyOS router image, from the images repository (it finds /phenix/miniccc by itself)
+cd sceptre-phenix-images && sudo make vyos && sudo mv vyos.qc2 /phenix/images/
 ```
 
-They also need the VyOS router image, which comes from the images
-repository. Its Makefile finds `/phenix/miniccc` by itself:
+Things to know about image builds:
+
+- `cm-malcolm` (64 GB) is the slowest by far. `cm-desktop` and `cm-ews` install
+  a desktop and take a while too.
+- A build leaves `<name>.tar` (a cache of the base system) and `<name>.log`
+  beside the image. Read the log when a build fails. Delete the `.tar` to save
+  disk, or after you change an image's package list.
+- To rebuild an image, run `docker exec phenix phenix image delete <name>`
+  first. `phenix config create` fails when the config already exists.
+- `cm-sim` installs the simulation from this repository at the commit named by
+  `CM_REF` in `phenix-images/cm-sim.yml`, so that commit must be on GitHub.
+- [phenix-images/README.md](phenix-images/README.md) says what is in each image.
+
+## 6. Start the range
+
+One command does the whole job. `phenix workflow apply` stores every config in
+`phenix-configs/`, copies `phenix-injects/` to `/phenix/injects/<name>`, and
+creates and starts the experiment. Run it from outside the directory.
+
+Start with `ci`. The first line (`-n`) only checks and changes nothing:
 
 ```shell
-cd sceptre-phenix-images
-sudo make vyos
-sudo mv vyos.qc2 /phenix/images/
+cd /phenix
+T=/phenix/topologies/cherrymountain-brewery
+docker exec phenix phenix workflow apply -n -b cherrymountain-ci -c phenix-ci.yml $T
+docker exec phenix phenix workflow apply    -b cherrymountain-ci -c phenix-ci.yml $T
 ```
 
-[phenix-images/README.md](phenix-images/README.md) says what is in each image.
-
-### The PLC programs and FUXA projects
-
-These are generated and committed, so you only check them. The PLC programs
-are ZIP files in Git LFS:
+When `ci` works, stop it and move up:
 
 ```shell
-cd /phenix/topologies/cherrymountain-brewery
-ls -l phenix-injects/openplc/plc-cellar.zip      # about 100 KB, not 131 bytes
-python3 sync.py --check
-python3 fuxa/build_project.py --all --check
+docker exec phenix phenix experiment stop cherrymountain-ci
+docker exec phenix phenix workflow apply -b cherrymountain-lite -c phenix-lite.yml $T    # lite
+docker exec phenix phenix workflow apply $T                                              # full
 ```
 
-If you have Node 22, `plc/plc-cellar/build_zip.sh --check` and
-`plc/common/build_zip.sh --all --check` also rebuild every ZIP and compare.
-After a change to `plant/plant.yaml`, follow "Regenerate and test" in the
-README.
+| Variant | Experiment name |
+|---|---|
+| `ci` | `cherrymountain-ci` |
+| `lite` | `cherrymountain-lite` |
+| `full` | `cherrymountain-brewery` |
 
-## Start an experiment
+- Use `workflow apply`, not `phenix experiment create`. The configs find their
+  injected files through a name that only the workflow fills in.
+- To apply again over a **running** experiment, add `-f`. Applying over a
+  stopped one updates it and starts it.
+- A missing image does not stop the start: phenix marks that VM "do not boot"
+  and warns. Read the output.
 
-`phenix workflow apply` does the whole job: it stores every config in
-`phenix-configs/` (what `phenix config create` does by hand), copies
-`phenix-injects/` to `/phenix/injects/<name>`, and creates and starts the
-experiment. Use it rather than `phenix experiment create`, because the configs
-find their injected files through a name that only the workflow fills in.
-
-Start with ci. `-n` checks everything and changes nothing:
+**For `full` only, after every start,** set one option on the mirror's tunnel
+port, or Malcolm loses full-size packets. Open vSwitch runs inside the
+minimega container:
 
 ```shell
-docker exec phenix phenix workflow apply -n -b cherrymountain-ci -c phenix-ci.yml /phenix/topologies/cherrymountain-brewery
-docker exec phenix phenix workflow apply -b cherrymountain-ci -c phenix-ci.yml /phenix/topologies/cherrymountain-brewery
+docker exec minimega sh -c 'for p in $(ovs-vsctl --bare --columns=name find interface type=gre); do ovs-vsctl set interface "$p" options:df_default=false; done'
 ```
 
-That creates the experiment `cherrymountain-ci`. When it works, move on to
-lite, and then to full:
+## 7. Wait, then check health
 
-```shell
-docker exec phenix phenix workflow apply -b cherrymountain-lite -c phenix-lite.yml /phenix/topologies/cherrymountain-brewery
-docker exec phenix phenix workflow apply /phenix/topologies/cherrymountain-brewery
-```
+The VMs start in layers, and each layer waits for the one before: routers,
+the simulation, field devices, PLCs, then FUXA. Every start is a first boot:
+phenix builds each VM's disk again from its image, so give it time.
 
-The full variant's experiment is named `cherrymountain-brewery`. Add `-f` to
-apply again over a running experiment. After the first apply, the usual
-commands work too: `phenix experiment stop <name>` and
-`phenix experiment start <name>`.
+| What | Time after its VM starts |
+|---|---|
+| Routers (VyOS) | 2 to 3 min |
+| Simulation and field devices | 2 to 4 min |
+| PLCs (each compiles its program) | 3 to 8 min |
+| FUXA | 2 min after its PLCs |
+| Wazuh (`full`) | 5 to 10 min |
+| Malcolm (`full`) | 10 to 15 min |
 
-For full only: once it has started, set `options:df_default=false` on the
-host's GRE port of the mirror (`ovs-vsctl set interface <gre port>
-options:df_default=false`), or Malcolm loses full-size frames.
+Then check, in this order:
 
-## Check that it works
-
-Give it time. The PLCs compile their programs on first boot (3 to 8 minutes),
-Wazuh takes 5 to 8, and Malcolm 10 to 15.
-
-1. **VMs and state of health.** `docker exec phenix phenix vm info
-   cherrymountain-ci` lists the VMs. The SoH tab of the experiment in the
-   phenix UI shows the checks; they start 10 minutes after boot. A first pass
-   that fails only on the PLCs or Malcolm is normal. In lite and full the
-   BACnet checks fail for now, and bas-fuxa shows no values: the building
-   devices have no BACnet server until the ot-sim BACnet module is written.
-2. **The HMI.** FUXA is reached through a tunnel on a random host port. Look
-   it up, every time:
+1. **The VMs are running.**
 
    ```shell
-   docker exec phenix phenix mm -n cherrymountain-ci cc tunnel list scada-fuxa
+   docker exec phenix phenix vm info cherrymountain-ci
    ```
 
-   Take the `src port` of the row whose `dst port` is 1881 and open
-   `http://<host>:<port>`. Sign in as `admin` with `fuxa_password` from
-   `/phenix/experiments/cherrymountain-ci/cherrymountain/secrets.json`. The
-   Cellar view should show fermenter temperatures that move.
-3. **The 3D view (lite and full).** `cm-viz` shows ground truth for the white
-   cell. Look up sim-ctl's tunnel to port 8090 the same way and open
-   `http://127.0.0.1:<port>/` in a browser on the phenix host (or through
-   `ssh -L`); it refuses other host names. `/svg.html` is the same view
-   without WebGL. Do not show it to trainees.
-4. **Malcolm and Wazuh (full).** Look up the tunnels of `malcolm` and `wazuh`
-   to port 443 and open `https://<host>:<port>`. The passwords are generated
-   on first boot: on the VM's console (root, no password), read
-   `/var/lib/cm-malcolm/admin-password` (user `malcolm`) and
-   `/var/lib/cm-wazuh/passwords.txt` (user `admin`).
-5. **A first SCORCH run (full).** Run 2 is the utility outage: it opens the
-   main breaker, waits ten minutes, and checks that the generator carries the
-   emergency panel.
+   Or open `http://<host>:3000/experiment/cherrymountain-ci`. Each VM is a
+   tile; a tile with a live screenshot has booted.
+
+2. **State of health (SoH).** Open `http://<host>:3000/soh/cherrymountain-ci`.
+   The checks start about 10 minutes after the last VM has started, so the page
+   stays empty for a while. A first pass that fails only on the PLCs or on
+   Malcolm is normal: they were still starting. Run the checks again with:
 
    ```shell
-   docker exec phenix phenix experiment scorch cherrymountain-brewery --run 2
+   docker exec phenix phenix experiment trigger running cherrymountain-ci soh
    ```
 
-   The runs are, in order from 0: `vendor-maintenance`, `baseline-brew-day`,
-   `utility-outage`, `cellar-co2-leak`, and `packaging-shift`.
+3. **The simulation is running** (`lite` and `full`). With the tunneler of
+   [step 8](#8-connect-from-your-own-computer) running:
+
+   ```shell
+   curl -s http://localhost:18080/api/v1/health
+   ```
+
+   `"status": "ok"` with a `sim_time` that advances means every part of the
+   simulation has joined. `"starting"` means one has not: see
+   [Troubleshooting](#troubleshooting).
+
+4. **What the range's app saw.** It checks every VM's provisioning and reads
+   the plant's key figures every five minutes:
+
+   ```shell
+   docker exec phenix phenix config get experiment/cherrymountain-ci -o json -p | grep -A40 '"cherrymountain"'
+   ```
+
+   Look for `"provisioned": "n/m"` and, per host, `provisioned`, `pending`,
+   `failed`, or `unreachable`.
+
+If one VM never starts its control connection, every VM that waits for it
+stays down and SoH never begins: phenix has no timeout there. Open that VM's
+console (step 8) and look.
+
+## 8. Connect from your own computer
+
+The VMs are on closed networks. phenix forwards a list of their web pages for
+you, and a small program on your computer, **`phenix-tunneler`**, makes each
+one appear on a fixed local port. Your computer only needs to reach the phenix
+web page.
+
+1. **Download it.** Open `http://<host>:3000`, click the **Tunneler** tab, and
+   download the file for your system. Or fetch it directly:
+   `http://<host>:3000/downloads/tunneler/phenix-tunneler-linux-amd64`
+   (also `-darwin-arm64`, `-darwin-amd64`, `-windows-amd64.exe`).
+2. **Run it and leave it running** (no trailing slash on the address):
+
+   ```shell
+   chmod +x phenix-tunneler-linux-amd64
+   ./phenix-tunneler-linux-amd64 serve http://<host>:3000
+   ```
+
+   It prints `activated local listener on port ...` for each forward.
+3. **Open the pages** in your browser:
+
+| Open this on your computer | What it is | Variant | Sign in |
+|---|---|---|---|
+| `http://localhost:11881` | **scada-fuxa**: process SCADA and HMI | all | none to look; `admin` to edit |
+| `http://localhost:11882` | **bas-fuxa**: building automation front end | lite, full | same |
+| `http://localhost:13000` | **historian**: Grafana with process trends | lite, full | none to look; `admin` |
+| `http://localhost:18090` | **cm-viz**: the 3D view of what is really happening | lite, full | none |
+| `http://localhost:18080/api/v1/health` | **event API**: drive the plant | lite, full | none |
+| `http://localhost:13001` | **ground-truth Grafana** on sim-ctl | lite, full | none to look; `admin` |
+| `http://localhost:19200` | **ground-truth OpenSearch** | lite, full | none |
+| `https://localhost:18443` | **Malcolm**: network security monitoring | full | `malcolm` |
+| `https://localhost:18444` | **Wazuh**: SIEM | full | `admin` |
+
+Passwords are in [step 9](#9-passwords). Malcolm and Wazuh use self-signed
+certificates, so your browser warns once.
+
+Useful to know:
+
+- The ports stay the same when a VM restarts. `phenix-tunneler list` (in a
+  second terminal) shows them, and `phenix-tunneler move <id> <port>` moves one
+  that clashes with something on your computer.
+- If you turned phenix login on, add `--username <you>` to `serve`, and run
+  `phenix-tunneler activate <id>` once for each forward in `list`.
+- **Any other port of any VM:** open the VM's tile in the phenix page, click
+  the arrow ("create port forward"), choose a local port and the VM's port.
+  The tunneler picks it up at once. This is how to use a real RDP client on
+  the engineering workstation (`ews`, port 3389).
+- **A VM's screen and keyboard:** click the VM's screenshot in the phenix page.
+  Every Linux VM logs in as `root` with no password on its console. That is how
+  you reach the desktops, the HMI kiosks, and a shell on any VM.
+
+**Without the tunneler**, on the phenix host itself: each forward also listens
+on a random host port. Look it up, every time, and use the row whose `dst port`
+is the VM's port (for FUXA, 1881):
+
+```shell
+docker exec phenix phenix mm -n cherrymountain-ci cc tunnel list scada-fuxa    # then open http://<host>:<src port>
+```
+
+cm-viz answers only to the names `localhost` and `127.0.0.1`, so it works
+through the tunneler or `ssh -L`, not by the host's address.
+
+## 9. Passwords
+
+The range's app makes new passwords for each experiment and keeps them, mode
+0600, in one file on the phenix host:
+
+```shell
+sudo cat /phenix/experiments/<experiment>/cherrymountain/secrets.json
+```
+
+| For | User | Key in `secrets.json` |
+|---|---|---|
+| FUXA editor (scada-fuxa, bas-fuxa) | `admin` | `fuxa_password` |
+| OpenPLC runtime on every PLC (`https://<plc>:8443`) | `admin` | `openplc_password` |
+| Grafana, on the historian and on sim-ctl | `admin` | `grafana_password` |
+| InfluxDB on the historian | `admin` | `influx_password` (API token: `influx_token`) |
+| Guacamole administrator | `cmadmin` | `guacamole_password` |
+| Vendor technician, Guacamole | `ridgeline-akim` | `vendor_guac_password`, and a one-time code from `vendor_totp_secret` |
+| Vendor technician, on the EWS | `ridgeline-akim` | `vendor_ews_password` |
+
+Two passwords are made inside their VM on first boot. Read them on that VM's
+console:
+
+| For | User | On the VM's console |
+|---|---|---|
+| Malcolm | `malcolm` | `cat /var/lib/cm-malcolm/admin-password` |
+| Wazuh | `admin` | `grep 'user admin' /var/lib/cm-wazuh/passwords.txt` |
+
+The passwords survive a stop and start, and a new `workflow apply`. Deleting
+the experiment deletes them. A second technician, `ridgeline-jdiaz`, is in
+`vendor.json` beside `secrets.json`.
+
+## 10. A tour: use each part
+
+### Operate the plant (scada-fuxa)
+
+Open `http://localhost:11881`. The views are **Cellar**, **Brewhouse**,
+**Cellar points**, **Packaging**, **Utilities**, **Power**, and **Cellar CO2**
+(`ci` has the cellar only). Open one directly with
+`http://localhost:11881/home?viewName=Cellar`.
+
+- **Look.** Fermenter temperatures on the Cellar view should move within a
+  minute. Values that never change mean the simulation is not reaching the
+  PLCs: see [Troubleshooting](#troubleshooting).
+- **Change a value.** Without a login FUXA only shows. Click the login icon and
+  sign in as `admin`. Every value you may write has a box beside it: type and
+  press Enter. Type engineering values (`66.0` for 66 °F); bits take `1` or `0`.
+- **Acknowledge an alarm.** Open the alarm list in the header. Every alarm
+  except the lowest level stays until someone acknowledges it.
+
+| To do this | Write | On view |
+|---|---|---|
+| Change a fermenter's temperature | `CEL.FV101.TT01.SP` | Cellar |
+| Run a brewhouse phase by hand | `BH.BATCH.XC01.PHASE` (1 to 10), then `BH.BATCH.XC01.CMD` (1 start, 2 hold, 3 restart, 4 abort, 5 reset) | Brewhouse |
+| Start a cleaning (CIP) circuit | `UTL.CIP.XC01.CIRCUIT` (1 to 7), then `UTL.CIP.XC01.CMD` (1 start, 2 hold, 0 resume, 3 abort) | Utilities |
+| Start or stop the packaging line | `PKG.LINE.PACKML.CMD` (2 start, 3 stop) | Packaging |
+| Mark a vessel entry permit | `CEL.ENTRY.HS01.ENTRY` to `HS06`, `BH.ENTRY.HS01.ENTRY`, `HS02`; check `XSnn.LOCKED` | Cellar points, Brewhouse |
+| Reset the CO₂ supply shutoff after a gas alarm | `UTL.CO2.XC01.RESET` = 1 (accepted once the detection relay has been healthy 60 s; state is `UTL.CO2.XS02.SHUTOFF`) | Utilities |
+
+The plant also runs on a clock. It starts on a Wednesday at 04:30 (simulated
+local time), brew days are Monday and Wednesday at 05:00, the packaging shift
+is 06:00 to 14:30 on weekdays, and the power PLC exercises the generator on
+Wednesdays at 10:00. Fermentation runs 48 times faster than real time, so a
+two-week fermentation takes about seven hours; everything else is real time.
+
+### Building automation (bas-fuxa)
+
+Open `http://localhost:11882`. The **Building** view shows the taproom rooftop
+unit, the cold room, and ventilation with the CO₂ sensors. bas-fuxa reads three
+BACnet controllers (`bas-rtu-taproom`, `bas-coldroom`, `bas-vent`). Signed in
+as `admin`, you can command their outputs and setpoints. A command overrides
+the controller's own logic until it is released; FUXA cannot release one, the
+engineering workstation can (see below). scada-fuxa reads the same CO₂ values
+through the firewall and never writes them.
+
+### The operator stations (hmi-brewhouse, hmi-packaging)
+
+Each is a desktop that opens one FUXA view full screen. See them in the phenix
+page by clicking the VM's screenshot. They show values without a login; to
+operate from one, sign in to FUXA on it.
+
+### PLCs and field devices, from the engineering workstation
+
+The engineering workstation `ews` (10.20.30.12) has the tools. Open its screen
+from the phenix page (click its screenshot; you are `root`), or create a port
+forward to its port 3389 and use an RDP client as a technician
+([vendor access](#vendor-remote-access) has the account).
+
+| Task | Command on the EWS |
+|---|---|
+| PLC status | `python3 -I /usr/local/lib/cm-ews/cm_plc_tool.py status --plc plc-cellar --host 10.20.10.12` (expect `STATUS:RUNNING`) |
+| Read a Modbus value (fermenter 101 temperature; 6600 is 66.00 °F) | `mbpoll -m tcp -a 1 -0 -1 -t 3 -r 101 10.20.10.12` |
+| Write a Modbus setpoint | `mbpoll -m tcp -a 1 -0 -1 -t 4 -r 106 10.20.10.12 6400` |
+| Read an OPC UA value from plc-brewhouse (1680 is 168.0 °F) | `/opt/ews-venv/bin/uaread -u opc.tcp://10.20.10.11:4840/openplc/opcua -n "ns=2;s=BH.HLT.TT01.PV"` |
+| Load a PLC program again | `python3 -I /usr/local/lib/cm-ews/cm_plc_tool.py upload --plc plc-cellar --host 10.20.10.12 --zip /opt/cherrymountain/ews/programs/plc-cellar.zip` (the PLC compiles for a few minutes) |
+| Read and command a BACnet point | the BAC0 example in [phenix-injects/otsim/README.md](phenix-injects/otsim/README.md#check-it-on-a-running-range) |
+
+| PLC | Address | Protocol to SCADA |
+|---|---|---|
+| plc-brewhouse | 10.20.10.11 | OPC UA, port 4840 |
+| plc-cellar | 10.20.10.12 | Modbus TCP, port 502 |
+| plc-packaging | 10.20.10.13 | S7, port 102 (read it through FUXA; the EWS has no S7 tool) |
+| plc-utilities | 10.20.10.14 | Modbus TCP, port 502 |
+| plc-power | 10.20.10.15 | Modbus TCP, port 502 |
+
+OpenPLC has no web page of its own in this version, only an API at
+`https://<plc>:8443/api` (user `admin`). A write from the EWS to a life-safety
+point is exactly what the SOC's detections watch for, so expect an alert.
+
+### The historian
+
+Open `http://localhost:13000` (Grafana, no login needed to look). It graphs
+what FUXA records to InfluxDB: process values, alarms, and the production
+records a brewery keeps. InfluxDB itself is on the historian's port 8086 and
+MQTT on 1883; create a port forward if you want them on your computer.
+
+### Vendor remote access
+
+`full` only. *Ridgeline Process Controls*, the integrator, reaches the plant
+the way a real vendor would: a WireGuard tunnel from the internet side to
+`dmz-vpn`, then the Guacamole jump host `dmz-jump`, then the EWS.
+
+1. Open the **vendor-ws** screen from the phenix page.
+2. Check the tunnel: `wg show wg0` should list a recent handshake. If it does
+   not: `systemctl restart wg-quick@wg0`.
+3. Get the technician's one-time code:
+   `python3 -I /usr/local/lib/cm-desktop/cm_vendor_session.py --totp`. It
+   prints the account and a code that is valid for a few seconds.
+4. In the browser on vendor-ws, open `https://10.10.20.11/` and accept the
+   certificate. Sign in as `ridgeline-akim` with `vendor_guac_password`, then
+   the code.
+5. Open the connection `ews-rdp-ridgeline-akim` (a desktop) or
+   `ews-ssh-ridgeline-akim` (a shell). Guacamole logs in to the EWS for you and
+   records the session on dmz-jump under `/var/lib/cm-guacamole/recordings`.
+6. Work on the EWS as above. The technician's account can run `cm_plc_tool.py`.
+
+`cmadmin` (with `guacamole_password`) administers Guacamole. Its first sign-in
+shows a QR code to enroll a one-time-code app.
+
+### The SOC: Malcolm and Wazuh
+
+`full` only.
+
+- **Malcolm**, `https://localhost:18443`, user `malcolm`. Use `/dashboards/`
+  for the Zeek and Suricata dashboards (look for Modbus, BACnet, DNP3, and
+  OPC UA) and `/arkime/` for sessions and packets. Mirrored packets carry
+  their VLAN tag, so packet filters need `vlan and ...`.
+  - Is capture live? On the malcolm console run `cm-malcolm-health`. It should
+    print `HEALTHY` with a packet count and a count of Zeek records.
+  - `cm-malcolm-selftest` plays a test capture through Zeek and Suricata.
+- **Wazuh**, `https://localhost:18444`, user `admin`. The range's own rules
+  are ids 100100 to 100413. In Threat Hunting, filter on
+  `rule.groups: cm_vendor`, `cm_wireguard`, or `cm_firewall`. Agents appear in
+  the groups `ops`, `hmi`, `bas`, `dmz`, and `soc`.
+  - On the wazuh console, `cm-wazuh-health` checks services and agents, and
+    `cm-wazuh-selftest` feeds sample log lines through the rules.
+- **soc-analyst** is the analyst's desktop. It opens Malcolm and Wazuh in a
+  browser by itself, once both are up.
+
+### The white cell: see and drive the truth
+
+`lite` and `full`. These show what is really happening in the plant, whatever
+the operators and the SOC see. Do not show them to trainees.
+
+- **cm-viz**, `http://localhost:18090`: a 3D view with three scenes, chosen by
+  `?scene=cellar` (cellar CO₂ and life safety), `?scene=fermenters`, or
+  `?scene=power`. `/svg.html` is the same without 3D graphics.
+- **Event API**, `http://localhost:18080/api/v1/`: `health`, `kpis` (batches,
+  bottles, kegs, energy, demand, compliance figures), `state` (every value),
+  and `events` (what has been injected). [Run an exercise](#run-an-exercise)
+  shows how to post events.
+- **Ground truth**, `http://localhost:13001`: the dashboard "CherryMountain
+  ground truth" graphs the simulation's own records and lists injected events.
+  The records are in OpenSearch at `http://localhost:19200`, in indexes named
+  `cherrymountain-truth-<part>-<date>`. Each record carries the wall-clock time
+  and the simulated time, so you can line it up with Malcolm and Wazuh.
 
 ## Run an exercise
 
-The white cell drives the plant through the event API on sim-ctl (lite and
-full). SCORCH's `plantevent` component posts to it, and so can you. Look up
-sim-ctl's tunnel to port 8080, then:
+**Scripted runs** (`full`). SCORCH runs a prepared scenario and collects the
+evidence under `/phenix/images/<experiment>/files/scorch/run-<N>/`, which is
+also the Files tab of the experiment.
 
 ```shell
-curl -s http://127.0.0.1:<port>/api/v1/health
-curl -s -X POST -H 'Content-Type: application/json' \
-  -d '{"event": "co2-release", "fv": "FV-102", "rate": "high", "duration": 600}' \
-  http://127.0.0.1:<port>/api/v1/events
-curl -s http://127.0.0.1:<port>/api/v1/kpis
+docker exec -it phenix phenix experiment scorch cherrymountain-brewery --run 2
 ```
 
-The events are `start-batch`, `utility-breaker`, `genset-exercise`,
-`chiller-fault`, `co2-release`, `co2-leak`, `gas-detection`,
-`refrigerant-leak`, `bess-thermal`, `jam`, `cip-panel`, and `weather-step`.
-The [plantevent README](apps/cherrymountain_apps/plantevent/README.md) lists
-their parameters. Compare what happened (cm-viz, the ground-truth Grafana on
-sim-ctl) with what the trainees saw (FUXA, Malcolm, Wazuh).
+| Run | Name | What it does |
+|---:|---|---|
+| 0 | `vendor-maintenance` | A scripted vendor session re-uploads a PLC program; checks that Wazuh and Malcolm saw it; pauses for the analyst (type `exit` to go on, so it needs `-it`) |
+| 1 | `baseline-brew-day` | A normal day, with packet captures and exports |
+| 2 | `utility-outage` | Opens the utility breaker for ten minutes; checks that the generator carries the emergency loads |
+| 3 | `cellar-co2-leak` | Releases CO₂ at a fermenter; checks the purge fans and the alarm |
+| 4 | `packaging-shift` | Jams packaging machines on a degraded field network |
 
-The simulation plane (MGMT), the VM consoles, and the phenix host are out of
-bounds for players. Anyone who can reach the host can reach the tunnels, so
-keep it on a trusted network.
+A run blocks until it is done, 30 to 45 minutes for most.
 
-**Reset between exercises.** Stop and start the experiment. The plant starts
-again from its initial state, and the passwords stay the same because they
-live in the experiment directory:
+**Events by hand** (`lite` and `full`). Post to the event API:
 
 ```shell
-docker exec phenix phenix experiment stop cherrymountain-lite
-docker exec phenix phenix experiment start cherrymountain-lite
+api=http://localhost:18080/api/v1
+curl -s -X POST -d '{"event":"utility-breaker","action":"open"}' $api/events
+curl -s -X POST -d '{"event":"utility-breaker","action":"close"}' $api/events
+curl -s -X POST -d '{"event":"co2-release","fv":"FV-102","rate":"high","duration":600}' $api/events
+curl -s -X POST -d '{"event":"co2-leak","zone":"tank","rate":"high","duration":600}' $api/events
+curl -s -X POST -d '{"event":"jam","machine":"labeler","duration":300}' $api/events
+curl -s -X POST -d '{"event":"chiller-fault","action":"fail","compressor":1}' $api/events
+curl -s $api/kpis
 ```
 
-**Clean up.** Stopping the experiment exports FUXA's alarm history and an
-InfluxDB backup to the experiment's files. Delete the experiment when you are
-done:
+A good post answers 202; a bad one answers 400 and says why. The events are
+`start-batch`, `utility-breaker`, `genset-exercise`, `chiller-fault`,
+`co2-release`, `co2-leak`, `gas-detection`, `refrigerant-leak`, `bess-thermal`,
+`jam`, `cip-panel`, and `weather-step`. [sim/README.md](sim/README.md) lists
+every parameter.
+
+Then compare what happened (cm-viz, ground truth) with what the trainees saw
+(FUXA, Malcolm, Wazuh).
+
+**Rules of play.** The simulation network (MGMT), the VM consoles, and the
+phenix host are out of bounds for players. Anyone who can reach the phenix
+host can reach every forward, the event API included, so keep it on a network
+you trust.
+
+## Stop, reset, and clean up
 
 ```shell
-docker exec phenix phenix experiment stop cherrymountain-lite
-docker exec phenix phenix experiment delete cherrymountain-lite
+docker exec phenix phenix experiment stop cherrymountain-lite      # stop; exports FUXA history and an InfluxDB backup first
+docker exec phenix phenix experiment start cherrymountain-lite     # start again with a fresh plant and the same passwords
+docker exec phenix phenix experiment delete cherrymountain-lite    # remove it, passwords included
 ```
+
+- A stop and start gives a fresh plant. phenix builds every VM's disk again
+  from its image, so the simulation starts over, the PLCs load and compile
+  their programs again, and everything stored inside a VM is gone: the
+  historian's data, the Malcolm and Wazuh data and their two passwords, and
+  Guacamole's recordings. Export what you want to keep before you stop.
+- The exports of a stop land in `/phenix/images/<experiment>/files/cherrymountain/`.
+- After a `phenix experiment start` from the command line, the app's
+  five-minute status refresh does not run. Start with `workflow apply` or from
+  the phenix page, or refresh by hand:
+  `docker exec phenix phenix experiment trigger running <experiment> cherrymountain`.
+- The simulation ends after 7 days (24 hours in `ci`). Stop and start the
+  experiment for a longer exercise.
 
 ## Troubleshooting
 
-- **"is a Git LFS pointer; run `git lfs pull`".** The PLC ZIPs were cloned as
-  pointers. Run `git lfs pull` in `/phenix/topologies` and apply again.
-- **No `/dev/kvm`.** minimega needs hardware virtualization. Check with
-  `kvm-ok` (package `cpu-checker`); on a cloud VM, turn on nested
-  virtualization.
-- **An image build fails.** The builds download from Ubuntu, GitHub, PyPI,
-  and vendor package repositories, so read the end of the build output for
-  the URL that failed and try again. The `cm-sim` build installs the
-  simulation from this repository at the commit named by `CM_REF` in
-  `phenix-images/cm-sim.yml`, which must be pushed.
-- **The VyOS build fails.** It builds VyOS's rolling branch from source, and
-  that branch sometimes breaks for a day (a missing kernel package has
-  stopped it before). Try again later, and keep a `vyos.qc2` that works.
-- **Docker Hub rate limits.** `cm-guacamole` copies its container images from
-  Docker Hub during the build. If it is refused, wait or build from a host
-  that is signed in to Docker Hub.
-- **The port you used yesterday is dead.** Tunnel ports are random and change
-  whenever a VM restarts. Look them up again with `cc tunnel list`. If there
-  are no tunnels at all, phenix is not the fork.
-- **SoH fails on a PLC.** On the PLC's console, `journalctl -u
-  cm-openplc-provision` shows the upload and the compile.
-- **Nothing moves in FUXA.** Check the federation on sim-ctl: `/var/log`
-  holds the HELICS broker's log, and `nft list table inet cm_mgmt` shows
-  whether the MGMT policy is dropping packets.
+| Symptom | What to do |
+|---|---|
+| `... is a Git LFS pointer; run git lfs pull` | Run `git -C /phenix/topologies lfs pull`, then apply again |
+| No `/dev/kvm` | `kvm-ok`; on a cloud VM turn on nested virtualization |
+| An image build fails | Read the end of `/phenix/images/<name>.log` for the URL or package that failed, and try again. The builds download from Ubuntu, GitHub, PyPI, npm, and vendor repositories |
+| The VyOS build fails | It builds VyOS's rolling branch, which sometimes breaks for a day. Try later, and keep a `vyos.qc2` that works |
+| `workflow apply` says a second experiment cannot use the bridge or VLANs | Another variant is running. Stop it first |
+| `phenix-tunneler` lists nothing | The experiment is not running, or phenix is not the fork (the fork creates the forwards). `docker exec phenix phenix version` |
+| A page does not answer on its local port | That VM's service is still starting. Open the VM's console and check it |
+| SoH fails on a PLC | On the PLC's console: `journalctl -u cm-openplc-provision` shows the upload and the compile |
+| Nothing moves in FUXA | `curl -s http://localhost:18080/api/v1/health`. If it says `starting`, a part of the simulation has not joined: on sim-ctl read `/var/log/helics-root-broker.log`, and on the device `journalctl -u ot-sim`. `nft list table inet cm_mgmt` on either shows whether the simulation network's firewall is dropping packets |
+| bas-fuxa shows no values | On a `bas-*` console: `journalctl -u ot-sim \| grep bacnet-server` should say "first values from the message bus". [phenix-injects/otsim/README.md](phenix-injects/otsim/README.md) has more |
+| Malcolm shows no traffic | Did you set `df_default=false` after this start ([step 6](#6-start-the-range))? Then run `cm-malcolm-health` on its console |
+| SCORCH run 0 fails at `analyst-review` | Run it with `docker exec -it` |
+
+## Known limits
+
+Be ready for these. [DESIGN.md §19](DESIGN.md#19-risks-and-open-questions) has
+the full list.
+
+- **Nothing has run on VMs.** The first boot of each image is the first real
+  test of its provisioning scripts.
+- **A brew day does not start by itself with the PLCs running.** The brewhouse
+  PLC runs one phase at a time when commanded. Until the batch engine is in,
+  run the phases by hand from the Brewhouse view. The `start-batch` event only
+  works where no PLC is in control.
+- **The cellar does not move beer between vessels by itself** over several
+  days: tanks are not refilled, so a multi-day run goes static after the first
+  day.
+- **The HMI stations cannot operate without a FUXA login.** There is no
+  operator account yet, only `admin`.
+- **Malcolm and Wazuh passwords change on every start**, because they are made
+  inside VMs whose disks are new each time.
+- **One step is manual** on every start of `full`: the mirror option in
+  [step 6](#6-start-the-range).
 
 ## Where to go next
 
-- [DESIGN.md §15.9](DESIGN.md#159-operations): the operations runbook,
-  failure modes, and range security.
-- [§10](DESIGN.md#10-network-architecture): zones, addresses, and the conduit
-  matrix. [§14](DESIGN.md#14-blue-team-monitoring): detections.
+- [DESIGN.md §15.9](DESIGN.md#159-operations): the operations runbook, failure
+  modes, and the range's own security.
+- [§10](DESIGN.md#10-network-architecture): zones, addresses, and what may talk
+  to what. [§14](DESIGN.md#14-blue-team-monitoring): the detections.
 - [§15.6](DESIGN.md#156-scorch-pipelines): the SCORCH runs.
   [§15.10](DESIGN.md#1510-white-cell-3d-view-cm-viz): the 3D view.
-- [§19](DESIGN.md#19-risks-and-open-questions): what is known to be open.
-- [spikes/README.md](spikes/README.md): the experiments behind the design
-  decisions, such as [autotunnel](spikes/autotunnel/README.md) and
-  [malcolm](spikes/malcolm/README.md).
+- [sim/README.md](sim/README.md): the simulation and every event.
+- [apps/README.md](apps/README.md): the range's phenix app and its status.
+- After a change to `plant/plant.yaml`: "Regenerate and test" in
+  [README.md](README.md#regenerate-and-test).

@@ -38,6 +38,7 @@
 16. [New and extended software](#16-new-and-extended-software)
 17. [Testing and validation](#17-testing-and-validation)
 18. [Implementation roadmap](#18-implementation-roadmap)
+18A. [Regulatory and standards context](#18a-regulatory-and-standards-context)
 19. [Risks and open questions](#19-risks-and-open-questions)
 20. [Licensing](#20-licensing)
 21. [References](#21-references)
@@ -148,12 +149,20 @@ lists the hooks.
   The `caldera` app and SCORCH `caldera`/`art` components can attach to the
   DMZ, the CORP zone, or the vendor network later.
 - **Business IT.** ERP/MES, LIMS, Active Directory, and email are not
-  deployed. The CORP zone has a single workstation as the attach point.
+  deployed. The CORP zone has a single workstation as the attach point. The
+  taproom point of sale is part of this: no card-payment system is deployed,
+  so PCI DSS is out of scope, and the CORP zone is where a POS segment would
+  attach ([§18A](#18a-regulatory-and-standards-context)).
 - **Real safety instrumented systems.** Safety interlocks are modeled in
   PLC logic and simulated hardwired relays. IEC 61511 SIS design is out of
   scope.
 - **High-fidelity building energy analysis.** The building models are
   low-order (see [§8](#8-building-automation)).
+- **Regulatory paperwork.** Permits, licenses, filings, training, and the
+  written programs a real brewery keeps (TTB, OSHA, the fire code, the POTW)
+  are documented, not emulated. The range keeps the *records* the controls
+  would produce for them, so exercises can ask what an attacker could falsify
+  ([§18A](#18a-regulatory-and-standards-context)).
 
 The company, the utility (*Summit Valley Power*), the ISP (*ShadeCast
 Cable*), and the integrator (*Ridgeline Process Controls*) are fictional.
@@ -172,6 +181,8 @@ Cable*), and the integrator (*Ridgeline Process Controls*) are fictional.
 | Cellar | 4 × 30 bbl unitanks (FV-101…104), double-batched (two brews per FV); 2 × 30 bbl bright beer tanks (BBT-201/202) |
 | Packaging | 12 oz bottling line at about 1,800 bottles/h (about 5.4 bbl/h); semi-automatic keg washer/filler (½ bbl kegs); manual palletizing |
 | Taproom | about 120 seats, with a walk-in cold room for kegs |
+| Building | One single-story building of about 18,000 sq ft gross floor area (brewhouse, cellar, packaging, warehouse and cold room, taproom, office). The size is a design assumption, chosen so the building sits in the small-building class of the local benchmarking ordinance and below the state's 50,000 sq ft threshold ([§18A](#18a-regulatory-and-standards-context)) |
+| Jurisdiction | Notional. Where a rule depends on the city or county, the design uses the City and County of Denver as the representative Front Range jurisdiction (the weather is Denver TMY3) and says so; the sewer is a Metro Water Recovery member system, and water is municipal (no well) |
 | Brew schedule | About 167 brews/yr (3.2/week), run as same-day double batches: two 15 bbl brews back to back fill one 30 bbl FV. That is 1–2 double-brew days a week. A double-brew day runs about 11 h (05:00–16:00). The second mash-in starts when the MLT frees up, about 3.5–4 h after the first, and both boils finish by about 15:30, before the utility on-peak window ([§7.4](#74-utility-tariff-from-open-data)) |
 
 **Capacity check.** An IPA occupies an FV for about 14 days, plus about 1
@@ -293,18 +304,63 @@ finding to a design choice.
   that is in CIP. Every cycle records its parameters (time, temperature,
   conductivity, flow) as a verification record.
 - **CO₂ life safety.** OSHA's permissible exposure limit (PEL) is 5,000 ppm
-  as an 8-hour time-weighted average (TWA). The NIOSH short-term exposure
-  limit (STEL) is 30,000 ppm (15 min), and the NIOSH IDLH is 40,000 ppm.
+  as an 8-hour time-weighted average (TWA; 29 CFR 1910.1000 Table Z-1, which
+  sets no STEL). The NIOSH short-term exposure limit (STEL) is 30,000 ppm
+  (15 min), and the NIOSH IDLH is 40,000 ppm.
   The cellar alarm tiers are a design choice built on those limits:
   **5,000 / 15,000 / 30,000 ppm**, which start the purge fans, then alarm,
   then evacuate. Breweries report similar tiers; for example, one brewery
   in an MBAA forum discussion uses 5,000/15,000 ppm alerts. MBAA's CO₂
   safety guidance calls for detection, ventilation, and evacuation alarms,
   and here CO₂ detection is interlocked to ventilation.
+  - **Confirmed against the codes (2026-11-09).** The 2021 IFC, which the
+    Colorado Division of Fire Prevention and Control adopts unamended,
+    requires gas detection where an insulated liquid CO₂ beverage system
+    with more than 100 lb of CO₂ is indoors without ventilation: sensors
+    within 12 in of the floor, a supervisory alarm at 5,000 ppm and an alarm
+    in the room at 30,000 ppm (IFC 2021 §5307.3). The representative
+    jurisdiction goes further: the Denver Fire Department's policy *IFC 5307*
+    (effective 2020-06-15) sets exactly the three tiers used here, **5,000 ppm
+    TWA (self-resetting), 15,000 ppm (latching), and 30,000 ppm (latching,
+    strobes and horns, evacuate and call 911)**, detectors 12–24 in above the
+    floor at each point of use and each supply tank area, exhaust taken within
+    12 in of the floor at 1 cfm/ft² and held below 5,000 ppm, and, at the
+    30,000 ppm tier, **closure of an automatic CO₂ system shutoff valve that
+    fails closed on loss of power or detection**. It also requires an
+    annunciator outside the hazard area, signage, an annual operational permit,
+    and a construction permit for systems over 100 lb. The design's tiers and
+    sensor heights match; the shutoff valve and the detection coverage outside
+    the cellar do not ([§18A](#18a-regulatory-and-standards-context)).
+  - Fermenters, bright tanks, the mash tun, and the kettle are permit-required
+    confined spaces under 29 CFR 1910.146 whenever a hazardous atmosphere (CO₂
+    above the PEL, oxygen below 19.5 %) can exist in them. The entry permit,
+    attendant, atmospheric testing (oxygen, then flammables, then toxics), and
+    the one-year retention of canceled permits are procedures, not controls;
+    the range documents them and keeps the CO₂ readings that would appear on
+    a permit ([§18A](#18a-regulatory-and-standards-context)).
 - **Glycol.** About 35% propylene glycol is supplied at about 28 °F. Each
   tank has separate cone and side jacket zones.
 - **Wastewater.** Caustic and acid CIP effluent is neutralized to a
   configured permit band (pH 6.0–9.0) before discharge.
+  - **Checked against the rules (2026-11-09).** The federal pretreatment
+    standards prohibit any industrial discharge with a pH below 5.0 unless the
+    works is designed for it, heat that takes the treatment plant above 40 °C
+    (104 °F), and oxygen-demanding slugs that cause interference (40 CFR
+    403.5(b)). Metro Water Recovery's 2026 Rules and Regulations repeat these
+    for its member sewers (§6.14: pH below 5.0 prohibited for industrial
+    users; 40 °C at the plant; a slug may not exceed five times the 24-hour
+    average for more than 15 minutes) and define a significant industrial
+    user, which gets a discharge permit, at 25,000 gal/day of process
+    wastewater or 5 % of the plant's capacity, or by designation (§2 item 85).
+    At about 2,500 bbl/yr and the Brewers Association's 4–10 bbl of water per
+    bbl of beer, CherryMountain discharges a few thousand gallons a day, so it
+    is a permitted-by-designation or sector-program user rather than an SIU by
+    volume. The 6.0–9.0 band is the brewery's own permit condition; it is the
+    "typical pre-treated end-of-pipe" range the Brewers Association manual
+    gives (pH 6–9, BOD 100–400 ppm, TSS 50–500 ppm), against untreated brewery
+    effluent of pH 3–12 and BOD 600–5,000 ppm. The utilities federate keeps
+    the discharge record such a permit asks for
+    ([§9.6](#96-implementation-status-and-validation)).
 - **Compliance data.** TTB requires daily records of operations,
   including production and removals (27 CFR 25.292), kept for 3 years
   (27 CFR 25.300). It also requires a Brewer's Report of Operations
@@ -312,8 +368,38 @@ finding to a design choice.
   - CherryMountain's federal excise tax is about 2,500 bbl × $3.50/bbl
     (the reduced rate) ≈ $8,750/yr. That is under the $50,000 threshold,
     so it files quarterly, on TTB F 5130.26 or a quarterly F 5130.9.
+  - **Checked (2026-11-09).** 26 U.S.C. 5051(a)(2) sets the $3.50 rate on the
+    first 60,000 barrels for a brewer producing not more than 2,000,000
+    barrels a year, with no end date since Pub. L. 116-260; 27 CFR 25.152
+    applies it. The daily record (25.292(a)) covers materials, beer produced,
+    beer bottled and racked, removals taxpaid and tax-free, returns, losses,
+    and tests of measuring devices, with daily summaries (25.292(b)). Records
+    stay at the brewery, available to TTB in business hours, for not less than
+    three years from the date or the last entry, extendable by TTB for three
+    more; data-processing records may live elsewhere if the source records
+    stay at the brewery and the data can be retrieved within five business
+    days (25.300(a), (c), (d)). Colorado adds a three-year retention for the
+    books behind its 8.0 cents per gallon excise return, due by the 20th of the
+    following month (C.R.S. 44-3-503(1)(a), (3), (4), (6)).
+  - **Tax determination and fill.** Bottled beer is computed from the 25.158
+    case table (a case of 24 × 12 fl oz is 0.07258 barrel) to five decimals,
+    with the daily sum rounded to two (25.157). A keg is its rated size, but a
+    keg found more than 2 % over it is taxed on the actual quantity "without
+    benefit of any tolerance" (25.156). A bottle must state its net contents
+    exactly, "except for such variations in measuring as may occur in filling
+    conducted in compliance with good commercial practice," and over any
+    three-month period the barrel equivalent of the bottles filled may not
+    vary more than 0.5 % from the labeled equivalent (25.142(a), (d)). NIST
+    Handbook 133 (2026), which the state weights-and-measures program applies
+    at retail, allows an individual 12 fl oz package no more than 0.5 fl oz
+    under its label (Appendix A, Table 2-6) and requires the lot average to
+    meet the label. The packaging federate's fill-level model and TTB barrel
+    figures follow these ([§9.6](#96-implementation-status-and-validation)).
   - The historian and packaging counts are therefore compliance-grade
-    data, which raises the stakes for data integrity.
+    data, which raises the stakes for data integrity. The historian's 30-day
+    retention ([§12.4](#124-historian-and-engineering-workstation)) is
+    operational; the TTB record is the daily production report and the batch
+    records FUXA writes, which a real brewery would keep for the three years.
 - **Altitude-aware control.** Boil detection uses the local wort boiling
   point, not 212 °F. All pressure setpoints are stored as absolute pressure
   and shown as gauge pressure using the site ambient pressure
@@ -738,6 +824,19 @@ flowchart TB
     supply-side (line-side) connection or a bus rated for the sum. OpenDSS
     does not care; the note matters only when the one-line is read as an
     installation drawing.
+  - **Code editions and the storage system.** Colorado's State Electrical
+    Board adopted the 2023 NEC effective 2023-08-01 (3 CCR 710-1; a
+    municipality may be stricter). Denver's 2025 Building and Fire Code,
+    adopted 2025-06-13, is based on the 2024 I-codes with the 2021 IECC kept
+    as the energy code. The 200 kWh lithium-ion BESS would be installed to
+    NFPA 855 (2023 edition in force in most adoptions; the 2026 edition adds
+    installation-level large-scale fire testing) and the IFC's ESS section:
+    UL 9540 listing, UL 9540A fire-propagation test data, a hazard mitigation
+    analysis, an emergency response plan, explosion control to NFPA 68 or 69,
+    and commissioning and decommissioning plans submitted to the fire code
+    official. None of that is modeled; the `bess-pcs` points carry only power,
+    state of charge, connection, and a fault bit
+    ([§18A](#18a-regulatory-and-standards-context)).
 
 ### 7.3 Power control (`plc-power`)
 
@@ -775,7 +874,28 @@ flowchart TB
   the DERMS operates the point: ot-sim's FEP Modbus client writes on a bus
   update and never at startup, so the site dispatch runs until the utility
   acts.
-- **Genset exercise:** weekly, scheduled.
+- **Genset exercise:** weekly, scheduled by `plc-power` through
+  `gen-ats.gen_start` (`PWR.GEN.HS01.CMD`). The exercise runs **under load**:
+  once the set is up, the ATS transfers EP-1 to it for the duration of the
+  command and retransfers at once when the command clears, then the engine
+  cools down for 300 s. That is how NFPA 110 has the monthly test carry the
+  emergency loads through the transfer switch: at least 30 minutes at not
+  less than 30 % of nameplate kW (30 kW here) or at the manufacturer's
+  exhaust temperature, with weekly inspections, monthly transfer-switch
+  operation, an annual supplemental load test when the monthly load falls
+  short, and written records of every inspection, test, and repair (as the
+  Minnesota Department of Health summarizes the standard's Chapter 8; the
+  NFPA text itself was not read, [§21.3](#213-standards-regulations-and-safety-guidance)).
+  EP-1's rated load is 33 kW, so a brew-day exercise meets the 30 % rule and
+  an off-day exercise at about 15 kW does not. A `genset-exercise` event
+  ([§9.5](#95-scenario-events-and-ground-truth)) runs a timed test with a
+  load bank to make up the difference. The power federate logs every run
+  (kind, loaded time, average and peak kW, whether it met the criteria) and
+  the hour meter, including the calendar-year test hours that 40 CFR
+  60.4211(f) caps at 100 for an emergency engine (50 of them may be
+  non-emergency use). A utility outage during a test becomes an emergency run.
+  The log is ground truth ([§9.6](#96-implementation-status-and-validation),
+  [§18A](#18a-regulatory-and-standards-context)).
 
 ### 7.4 Utility tariff from open data
 
@@ -1027,6 +1147,27 @@ Denver weather. The implementation uses neither pvlib nor CoolProp
 - The federate therefore corrects the hourly station pressure to the
   site's 1,585 m with the barometric formula before publishing it.
 - BOPTEST `bestest_air` remains an optional upgrade for the office.
+
+**Standards the BAS stands in for.** The current BACnet standard is
+ANSI/ASHRAE 135-2024 (published 2024-12-31, folding 17 addenda into
+135-2020, including BACnet/SC configuration and certificate management). Its
+secure datalink, BACnet Secure Connect, runs over TLS in a hub-and-spoke
+topology and, in the committee's words, "eliminates BACnet/IP Broadcast
+Management Devices (BBMDs) and their configuration." The range keeps
+BACnet/IP over UDP 47808 with two BBMDs on purpose: that is what most
+installed brewery BAS look like, and the BBMDs are the attack surface and
+detection opportunity of [§5.5](#55-threat-context) and
+[§14](#14-blue-team-monitoring). BACnet/SC is the upgrade a real site would
+plan, and the range is the place to show why. The RTU's CO₂ demand-controlled
+ventilation, economizer, and occupancy schedule are the control features the
+commercial energy code requires of such a unit (Denver keeps the 2021 IECC;
+ASHRAE 90.1 and 62.1 were not read for this design, so no clause is cited).
+ASHRAE Guideline 36 (2018 for air-side systems; the 2021 edition added boiler
+and chilled-water plants) is the reference for high-performance sequences; the
+range's sequences are the simplified controller logic of
+[§9.3](#93-models). ASHRAE 223P, the semantic-tagging standard, was in public
+review in 2024 and is not used.
+See [§18A](#18a-regulatory-and-standards-context).
 
 ## 9. Simulation and co-simulation
 
@@ -1363,6 +1504,10 @@ values:
 | Peak shaving | $19,140 per 50 kW-year |
 | PackML | Matches PackMLpy's table; 5000-command fuzz |
 | Cellar CO₂ | 2627 ppm steady state at 1 g/s (3284 ppm sensed, below the purge stop); tiers clear 10 % below their limit |
+| Genset exercise (NFPA 110, 40 CFR 60.4211(f)) | A remote start transfers EP-1 and runs 33 kW for 40 min: logged as an exercise that met 30 min at 30 % of nameplate; the everyday 15 kW does not until a 40 kW load bank is added; an outage during a test is logged as an emergency run; test hours accrue against the 100 h/yr cap |
+| Wastewater discharge record (40 CFR 403.5, POTW permit) | A pH 12 caustic slug with the discharge valve commanded is inhibited (120 s inhibited, 1 event); the discharge that follows stays inside 6.0–9.0; hourly samples accumulate |
+| CIP verification record | A 60 min caustic wash on FV-102 is verified (supply past 160 °F, return past 40 mS/cm, flow proven 10 min); a 2 min rinse is logged and not verified |
+| Fill level (NIST HB 133 Table 2-6, 27 CFR 25.142(d)) | 5,000+ bottles in a shift: rejects below 11.5 fl oz under 1 %, lot mean at or above 12 fl oz, quarterly barrel-equivalent variance inside 0.5 %, packaged barrels per the 25.158 case table |
 | 12 h offline run | 2 brews, 14,327 bottles, 227 kW peak |
 
 - **IBU reference.** The check uses the published Tinseth formula. Brewtarget
@@ -1405,6 +1550,14 @@ values:
   `debug_map.json` ([§12.1](#121-openplc-v4-runtime-v3-fallback)).
 - The event API binds `127.0.0.1:8080` on the weather federate and is reached
   through the cc tunnel. The `ci` variant has none.
+- The compliance records of [§18A](#18a-regulatory-and-standards-context)
+  (the genset test log, the wastewater discharge record, the CIP verification
+  records, the fill statistics and TTB barrels) live in the federates and ride
+  in the ground-truth documents. They are not HELICS keys, so neither
+  `plant.yaml` nor the FUXA tag lists changed, and the KPI API does not carry
+  them yet; the filler's `ProdDefectiveCount` now comes from the fill model.
+  The `genset-exercise` event is new to the event API; the SCORCH `plantevent`
+  component does not know it yet.
 
 **Remaining:** the ot-sim `logic` blocks of
 [§12.3](#123-ot-sim-field-devices), and the 24 h soak. The peer reads of
@@ -2202,7 +2355,13 @@ health checks read a tag value, not the connection state
   bucket has an explicit retention of 30 days (`historian.retentionHours`, 720
   by default; 0 keeps data forever). `cm-historian-provision` passes it to
   `influx setup` and `influx bucket create`, so an existing bucket keeps the
-  retention it was created with.
+  retention it was created with. Thirty days is an operational window, not a
+  records retention: TTB wants the brewery's daily records kept at least three
+  years (27 CFR 25.300), and Colorado wants the excise books kept three years
+  (C.R.S. 44-3-503(6)). In this design those records are FUXA's daily
+  production report and batch records, not the historian; a real brewery would
+  either set the `scada` bucket's retention to cover the packaging counts for
+  three years or export them ([§18A](#18a-regulatory-and-standards-context)).
 - Telegraf runs `mqtt_consumer` for PackTags, plus host metrics.
 - Grafana is provisioned with dashboards for fermentation curves, OEE,
   energy (kWh/bbl against the BA benchmark), monthly demand cost, and
@@ -3340,6 +3499,149 @@ autotunnel, and ot-sim's own Modbus RTU).
 flushes connection tracking between stages, and a missing binary must not pass
 silently.
 
+## 18A. Regulatory and standards context
+
+This section maps the regulations, codes, and standards that would apply to
+CherryMountain if it were real onto the parts of the range they touch, and
+says for each what the range does with it. The number keeps the existing
+section anchors stable while other sections are being edited. Sources were
+read on 2026-11-09; the ones listed in [§21.3](#213-standards-regulations-and-safety-guidance)
+and [§21.4](#214-brewery-automation-case-studies-and-practice) are the ones
+actually read, and a row says so where only a secondary source could be
+reached (NFPA texts, ASHRAE 15 and 90.1, CGA G-6.5, ASME Section VIII, TTB
+rulings). Where a rule depends on the city or county, the representative
+jurisdiction of [§3.1](#31-site-and-capacity) is the City and County of
+Denver, with the sewer in a Metro Water Recovery member system.
+
+**Legend.** *Modeled*: the control, interlock, or physics is in the range.
+*Recorded*: the range produces the record the rule asks for (ground truth or
+the historian). *Documented*: described here only; a real brewery would need
+it and the notional range leaves it out on purpose. *N/A*: the rule does not
+reach a plant like this, and the row says why.
+
+### 18A.1 Alcohol: TTB and Colorado
+
+| Rule | What it requires of a brewery like this | Range |
+|---|---|---|
+| 26 U.S.C. 5051(a)(2); 27 CFR 25.152 | Federal excise at $3.50/bbl on the first 60,000 bbl for a brewer producing not more than 2,000,000 bbl a year (no end date since Pub. L. 116-260); the general rate is $18/bbl. The brewer's notice, bond, and bonded premises of Part 25 come with it | Documented. The tax estimate is in [§5.3](#53-best-practices-encoded) |
+| 27 CFR 25.292, 25.293 | Daily records of materials, beer produced, bottled, racked, removed taxpaid and tax-free, returned, lost, destroyed, and tests of measuring devices, with daily summaries | Recorded in part: the packaging federate's bottle, case, and keg counts and the batch counts; FUXA's daily production report is the record ([§12.2](#122-fuxa-two-instances)). Materials, losses, and returns are not modeled |
+| 27 CFR 25.297 | Brewer's Report of Operations, quarterly for a brewer owing not more than $50,000 a year | Documented |
+| 27 CFR 25.300 | Records kept at the brewery, available in business hours, for not less than three years (TTB may add three); data-processing copies elsewhere must be retrievable within five business days | Documented. The historian keeps 30 days ([§12.4](#124-historian-and-engineering-workstation)) |
+| 27 CFR 25.142, 25.156, 25.157, 25.158 | Bottle marks (brewer, net contents, nature, place); net contents exact except for good-commercial-practice filling variation, and the quarterly barrel equivalent within 0.5 %; a keg more than 2 % over its rating taxed on the actual quantity; bottled beer computed from the case table (24 × 12 fl oz = 0.07258 bbl) to five decimals | Modeled and Recorded: the fill-level model, the quarterly variance, and the TTB barrel figures ([§9.6](#96-implementation-status-and-validation)) |
+| 27 CFR 7.21, 7.22 | A COLA before bottling or removal, unless the beer will not be shipped in interstate or foreign commerce (7.21(c)); label changes within TTB's allowances need no new COLA | Documented. A 2,500 bbl brewery selling through Colorado wholesalers may be intrastate-only |
+| 27 CFR 7.65, 7.70; 27 CFR 16.21 | Alcohol content, if stated, within 0.3 percentage points of the label; net contents in U.S. units (metric optional, same field of vision); the Government Warning | Recorded in part: the cellar's ground truth carries each tank's ABV against the recipe's 7.1 % ([§9.6](#96-implementation-status-and-validation)) |
+| TTB Ruling 2020-2 (read through a secondary report) | A barley beer treated to remove gluten may say so with a qualifying statement, but not "gluten-free" | N/A: the flagship is a barley IPA with no such claim |
+| C.R.S. 44-3-402 | The state manufacturer's (brewery) license: brewing, and sales to wholesalers; a brewer that wants to sell to retailers or consumers directly must hold a wholesaler's license (44-3-402(1)(b)). The sales-room privileges in 44-3-402(2) and (7) are for wineries and spirits manufacturers | Documented |
+| C.R.S. 44-3-407(1)(b), 44-3-103(49) | A wholesaler's beer license may operate one sales room that sells and serves for on-premises consumption and sells sealed containers to go; the application is copied to the local licensing authority, which has 45 days to object on traffic, noise, or neighborhood grounds. This is how the taproom of a production brewery is licensed | Documented: CherryMountain is a manufacturer plus wholesaler's beer licensee with the taproom as its sales room. (The alternative, a brew pub license under 44-3-417, needs 15 % of on-premises income from food and caps wholesale sales to retailers at 300,000 gal/yr) |
+| C.R.S. 44-3-503 | State excise of 8.0 cents per gallon on malt liquor, paid by the manufacturer by the 20th of the following month on a monthly return, with three-year records | Documented |
+
+### 18A.2 Food safety: FDA and Colorado
+
+| Rule | What it requires | Range |
+|---|---|---|
+| 21 CFR 1.225–1.230 | A brewery manufactures food and must register as a food facility before operating and renew between October 1 and December 31 of each even-numbered year. It is not a "retail food establishment" (1.227) when most sales are to wholesalers; the taproom, which sells directly to consumers, would be | Documented |
+| 21 CFR 117.5(i) | Subparts C (hazard analysis and preventive controls) and G (supply chain) do not apply to the alcoholic beverages at a TTB-regulated facility, nor to prepackaged non-alcohol food under 5 % of sales; subpart B current good manufacturing practice still applies | Documented. CIP is the sanitation control a CGMP program would audit, and its runs are now Recorded ([§9.6](#96-implementation-status-and-validation)) |
+| 21 CFR Part 1 Subpart J (1.327, 1.337, 1.360) | One-up, one-down traceability records; no exclusion for alcoholic beverages; retention two years for food with a shelf life over six months, one year for 60 days to six months, six months under 60 days | Documented. Lot codes on cases and kegs would come from the date coder and the batch ID ([§6.3](#63-areas-equipment-and-control-strategies)) |
+| 6 CCR 1010-2 (Colorado Retail Food Establishment Rules) | Incorporates the 2022 FDA Food Code (as of 2023-01-18), effective 2024-03-16, for establishments that store, prepare, or package food for consumers; enforced by the local public health agency | Documented for the taproom. The cold room's 36 °F setpoint and door-open minutes are Modeled on the BAS ([§8.1](#81-spaces-equipment-and-bacnet-devices)) |
+
+### 18A.3 Life safety, fire, and equipment
+
+| Rule | What it requires | Range |
+|---|---|---|
+| 29 CFR 1910.1000 Table Z-1; NIOSH | CO₂ PEL 5,000 ppm TWA (no OSHA STEL); NIOSH REL 5,000 ppm TWA and 30,000 ppm STEL; IDLH 40,000 ppm | Modeled: the alarm tiers ([§5.3](#53-best-practices-encoded), [§6.7](#67-cellar-co2-life-safety-interlock)) |
+| 2021 IFC §5307.3 (Colorado DFPC adopts the 2021 IFC unamended) | For an insulated liquid CO₂ beverage system over 100 lb indoors: ventilation or gas detection with sensors within 12 in of the floor, a supervisory alarm at 5,000 ppm and a local alarm at 30,000 ppm | Modeled in the cellar: four low-mounted sensors, purge fans at 5,000 ppm, alarms at 15,000 and 30,000 ppm |
+| Denver Fire Department policy *IFC 5307* (effective 2020-06-15; Denver's amended §5307, with NFPA 55 Chapter 13) | Alarm set points of **5,000 ppm TWA (self-resetting), 15,000 ppm (latching), 30,000 ppm (latching)**; detectors 12–24 in above the floor at every point of use and supply tank area; exhaust within 12 in of the floor at 1 cfm/ft², negative pressure, held under 5,000 ppm; at 30,000 ppm, strobes and horns, **an automatic system shutoff valve that fails closed on loss of power or detection**, evacuation, and an annunciator and graphic map outside the hazard area; signage; construction permits over 100 lb, a separate compressed-gas permit at 686 lb of CO₂ (1,100 lb liquid), an engineered foundation and permit for bulk tanks over 2,000 lb; annual operational permit and inspection; relief valves piped outdoors; hydrostatic test dates on tanks | Modeled: the three tiers, the sensor height, the carbonation inhibit at 15,000 ppm. **Not modeled:** the 30,000 ppm automatic shutoff of the CO₂ supply (the plant has the valve, `UTL.CO2.XV01.CMD`, but no tier-3 interlock closes it), detection at the bulk tank and vaporizer, the packaging filler, and the taproom cold room and draft system, the annunciator and fire-alarm tie-in, signage, and permits. The shutoff and the extra detection are Phase 3 work ([§19](#19-risks-and-open-questions)) |
+| 29 CFR 1910.146 | Fermenters, bright tanks, the mash tun, and the kettle are permit-required confined spaces when CO₂ or oxygen deficiency can be present: a written program, an entry permit signed by the entry supervisor, an attendant, atmospheric testing in the order oxygen, flammables, toxics, rescue arrangements, and canceled permits kept one year | Documented. The range has no entry-permit interlock (for example a vessel "entry" mode that locks out its CO₂, glycol, and CIP valves); that is a Phase 3 candidate ([§19](#19-risks-and-open-questions)). The CO₂ readings an attendant would log are Recorded |
+| 29 CFR 1910.147 | Lockout/tagout procedures for servicing, training, and an annual inspection of each procedure, certified | Documented. PackML's Maintenance mode is the nearest control-system feature ([§6.3](#63-areas-equipment-and-control-strategies)) |
+| 29 CFR 1910.212; 1910.28 | Point-of-operation and nip-point guarding on the mill, conveyors, filler, and labeler; fall protection at 4 ft on the fermenter platforms and stair landings | Documented; packaging jam photo-eyes are Modeled |
+| 29 CFR 1910.1200 | Hazard communication: a written program, GHS labels, SDSs available each shift, training; the 2024 update (GHS Revision 7) with employer compliance dates of 2026-11-20 for substances and 2028-05-19 for mixtures | Documented (caustic, acid, PAA, glycol, CO₂) |
+| 29 CFR 1910.119 Appendix A; 40 CFR 68.130 | PSM and RMP list ammonia (10,000 lb), chlorine, peracetic acid above 60 % (PSM 1,000 lb; RMP 10,000 lb), nitric acid; CO₂, sodium hydroxide, phosphoric acid, and propylene glycol are not listed | N/A: no ammonia (glycol chiller), CIP chemicals below listing concentrations or quantities. Colorado has no state OSHA plan, so federal OSHA applies |
+| 40 CFR 370.10; 40 CFR 355 Appendix A | EPCRA Tier II at 10,000 lb for a hazardous chemical, or 500 lb (or the TPQ if lower) for an extremely hazardous substance: peracetic acid TPQ 500 lb, nitric acid 1,000 lb, sulfuric acid 1,000 lb; CO₂ and NaOH are not EHS | Documented. The 6,000 lb bulk CO₂ tank is under 10,000 lb; a PAA inventory over 500 lb or a caustic inventory over 10,000 lb would trigger reporting, and the CIP tank sizes are not specified |
+| 7 CCR 1101-5 (Colorado Boiler and Pressure Vessel Regulations) | Boilers and pressure vessels within the scope of ASME Sections I, IV, and VIII; an electric boiler is a boiler; steam over 15 psig is a Section I power boiler (annual internal and external inspection), steam at or under 15 psi a Section IV heating boiler (certificate inspection every two years); pressure vessels as ASME VIII scopes them | Documented. The 200 kW electric boiler runs at 15 psig and should be specified as a Section IV unit; its low-water cutoff is Modeled. Whether the 15 psig MAWP unitanks fall inside Section VIII's scope turns on U-1(c)(2), which was not read; the Brewers Association's position (not fetched) is that brewery pressure vessels do |
+| ASHRAE 15 (read through ACHR News) and EPA 40 CFR 84 Subpart C | A machinery room, with a refrigerant detector that alarms at the occupational exposure limit for an A1 refrigerant, when the charge per circuit exceeds the refrigerant concentration limit for the room; from 2026-01-01, leak-rate calculation at every top-off of an appliance holding 15 lb or more of HFC, repair within 30 days above 30 % a year for industrial process refrigeration, and annual leak inspections for 15–499 lb | Documented. The 15-ton glycol chiller's charge is not specified and there is no refrigerant leak point on `glycol-chiller`; adding one is a plant.yaml change ([§19](#19-risks-and-open-questions)) |
+| NFPA 855 (2023 edition per the ACP explainer; 2026 edition per UL) and UL 9540/9540A | ESS listed to UL 9540, UL 9540A fire-propagation test data, hazard mitigation analysis, emergency response plan, explosion control (NFPA 68 or 69), commissioning and decommissioning plans; the 2026 edition adds installation-level large-scale fire testing | Documented ([§7.2](#72-loads-notional-checked-against-54)). No cell temperature or off-gas detection on `bess-pcs` |
+| CGA G-6.5 (edition not verified) and NFPA 55 Chapter 13 | Small stationary insulated CO₂ supply systems; the Denver policy incorporates NFPA 55 Chapter 13 by reference | Documented |
+
+### 18A.4 Environment
+
+| Rule | What it requires | Range |
+|---|---|---|
+| 40 CFR 403.5 | No discharge with pH under 5.0 (unless the works is designed for it), no heat that takes the plant above 40 °C, no oxygen-demanding slug that causes interference; local limits where the POTW has a pretreatment program | Modeled: the discharge permissive at pH 6.0–9.0 |
+| Metro Water Recovery Rules and Regulations (2026): §2 item 85, §6.13, §6.14, §6.16, §6.18 | Significant industrial user at 25,000 gal/day of process wastewater, 5 % of plant capacity, or by designation; prohibited discharges as above plus a slug limit of five times the 24-hour average for 15 minutes; sector control programs; local limits; a Wastewater Discharge Information Form from every non-domestic user | Recorded: the daily discharge record and hourly pH samples a permit's self-monitoring asks for ([§9.6](#96-implementation-status-and-validation)). The WDIF, permit, surcharges (BOD and TSS), and slug control plan are Documented |
+| Colorado industrial stormwater general permit COR900000 (renewed effective 2024-07-01; read through a consultant's summary) | Coverage, or a no-exposure certification, for industrial activity exposed to stormwater (grain silo, CO₂ tank, loading dock) | Documented |
+| 5 CCR 1001-5 Regulation 3, Part A §II (APEN) | An APEN for any point with uncontrolled actual emissions of 2 tons/yr of a criteria pollutant (1 ton/yr for the nonattainment pollutant in a nonattainment area; 250 lb/yr of a non-criteria pollutant), renewed every five years; CO₂ is not a reportable pollutant (II.D.1.oo); the small gas-fired equipment exemption excludes internal combustion engines (II.D.1.k) | Documented. The electric boiler has no combustion emissions; fermentation CO₂ is exempt; the fermentation and filling ethanol are not quantified here; the 100 kW diesel is the one source that needs an APEN determination |
+| 40 CFR 60 Subpart IIII (60.4211(f)) | An emergency stationary engine: unlimited emergency hours, at most 100 hours a year of maintenance checks and readiness testing, of which at most 50 may be non-emergency use, and none of those for peak shaving | Recorded: the genset's calendar-year test hours against the 100 h cap ([§7.3](#73-power-control-plc-power)). The BESS, not the genset, does the peak shaving |
+| Water supply | Municipal supply assumed ([§3.1](#31-site-and-capacity)); a well would bring Division of Water Resources permitting and, with 25 or more regular users, public water system rules (not researched to primary sources) | N/A by assumption |
+
+### 18A.5 Electrical, DER, and energy
+
+| Rule | What it requires | Range |
+|---|---|---|
+| NFPA 70 (2023 NEC, Colorado effective 2023-08-01) Articles 700, 701, 702, 705.12 | Emergency wiring independent of other wiring; standby classifications; interconnected-source busbar limits | Documented ([§7.2](#72-loads-notional-checked-against-54)) |
+| NFPA 110 (read through the Minnesota Department of Health summary of the 2010 edition) | Weekly inspection; monthly exercise of a diesel set for at least 30 minutes at not less than 30 % of nameplate kW or the manufacturer's exhaust temperature; an annual supplemental load test (50 % for 30 minutes, then 75 % for 60 minutes) when the monthly load falls short; monthly transfer-switch operation; written records of inspections, tests, exercising, and repairs (8.3.4) | Modeled and Recorded: the exercise under load and the run log ([§7.3](#73-power-control-plc-power)) |
+| IEEE 1547-2018, IEEE 1547.1-2020, UL 1741 SB (September 2021) | Cease to energize within 2 s of an island; enter-service delay; ride-through; a communications interface; certification to SB where the jurisdiction requires it | Modeled ([§7.3](#73-power-control-plc-power), [§7.5](#75-utility-der-link)) |
+| 4 CCR 723-3 Rules 3853, 3855, 3857 | Level 1 for inverter systems up to 25 kW AC; Level 2 fast track above that, up to 2 MW on a 5–15 kV line (3 MW near a substation); certification to IEEE 1547-2018 and UL 1741 (UL 1741 SA was the transitional listing); commissioning tests per IEEE 1547.1 | Documented: 100 kW of PV and 100 kW of BESS go through Level 2 |
+| 4 CCR 723-3 Rule 3664 | Net metering for an investor-owned utility's customer up to 120 % of average annual consumption and the service entrance capacity; monthly 1:1 credit carryover; annual true-up at the utility's average hourly incremental cost | Modeled in part: the meter counts export as zero revenue ([§9.3](#93-models)); the 100 kWac array is well under 120 % of a 370 MWh/yr load |
+| NFPA 855, UL 9540 | See [§18A.3](#18a3-life-safety-fire-and-equipment) | Documented |
+| NERC CIP | Applies to Bulk Electric System facilities: transmission at 100 kV or higher and generation over 20 MVA (75 MVA aggregate), with behind-the-meter generation excluded when its net capacity to the BES is 75 MVA or less (BES definition, Inclusion I2, Exclusion E2) | N/A: a 480 V retail customer with 0.2 MW of DER. The utility DERMS link ([§7.5](#75-utility-der-link)) is a distribution matter |
+| Energize Denver (Ordinance 21-1310, passed 2021-11-22; rules V6 adopted August 2026) | Buildings of 5,000 sq ft and over: 25,000 sq ft and larger benchmark annually by June 1 in ENERGY STAR Portfolio Manager and meet EUI targets; 5,000–24,999 sq ft meet prescriptive options | Documented: at about 18,000 sq ft the brewery is in the prescriptive class. The revenue meter, PV, and HVAC points carry the data benchmarking would use |
+| Building Performance Colorado (HB21-1286) | Benchmarking and performance standards for buildings of 50,000 sq ft and larger (the threshold is confirmed only indirectly, by Denver's reference to aligning its large-building options with the state program) | N/A at 18,000 sq ft |
+
+### 18A.6 Building automation
+
+| Standard | What it says | Range |
+|---|---|---|
+| ANSI/ASHRAE 135-2024 | The current BACnet standard, including BACnet/SC configuration and certificate management | Modeled as BACnet/IP with BBMDs on purpose ([§8.3](#83-recommendation), [§10.4](#104-protocol-map)) |
+| BACnet Secure Connect (SSPC 135 whitepaper) | TLS, hub-and-spoke, no broadcasts, no BBMDs, firewall-friendly | Documented as the real-world upgrade the range deliberately does not adopt |
+| 2021 IECC / ASHRAE 90.1, 62.1 (not read) | DCV, economizer, scheduling and setback for a unit like RTU-1 | Modeled in simplified form ([§8.1](#81-spaces-equipment-and-bacnet-devices)) |
+| ASHRAE Guideline 36 (2018; 2021 added plants); 223P (public review 2024) | Standard sequences; semantic tags | Documented |
+
+### 18A.7 ICS cybersecurity
+
+| Source | What it asks for | Range |
+|---|---|---|
+| ISA/IEC 62443-3-2, 3-3 | Zones and conduits, security level targets | Modeled ([§10](#10-network-architecture)) |
+| IEC 62443-2-4:2023 (Edition 2.0, 2023-12-15) | Security program requirements for the integrator and service provider during integration and maintenance, remote access among them | Modeled in part: the vendor path has a jump host, TOTP, session recording, a tunnel allow-list, and approved-window detections ([§13](#13-vendor-remote-access), [§14](#14-blue-team-monitoring)). **Not in the range:** a per-session authorization (ticket) the brewery grants before the vendor connects, named accounts per technician, and time-boxed enablement of the vendor's tunnel peer; TOTP is not phishing-resistant MFA. These are flagged for the §13 owner ([§19](#19-risks-and-open-questions)) |
+| NIST SP 800-82r3 | OT security baseline | Modeled ([§10](#10-network-architecture), [§13](#13-vendor-remote-access), [§14](#14-blue-team-monitoring)) |
+| NIST CSF 2.0 | Govern, Identify, Protect, Detect, Respond, Recover | The Govern function (policy, roles, supplier risk) is Documented only |
+| CISA Cross-Sector CPGs 2.0 (2025-12-10) | Goals most relevant here: 2.A asset inventory, 2.E network topology, 3.A default passwords, 3.F MFA, 3.I segmentation, 3.O backups, 3.Q log collection and storage, 3.R unauthorized devices, 3.S internet-facing devices, 1.C incident response plans, 5.B incident reporting | Modeled: 2.A (plant.yaml, NetBox in Malcolm), 2.E (this document), 3.A (per-experiment secrets), 3.F (Guacamole TOTP), 3.I (§10), 3.Q (Wazuh, Malcolm), 3.R (new-host detection), 3.S (only WireGuard UDP 51820 is exposed). Documented: 3.O (exports at cleanup, no restore drill), 1.C, 5.B |
+| CISA, FBI, EPA, DOE, *Primary Mitigations to Reduce Cyber Threats to OT* (2025-05-06) | Remove OT from the public internet; change default passwords; secure remote access with a private connection, VPN, and phishing-resistant MFA; segment IT and OT with a DMZ; keep the ability to run OT manually | Modeled, with the MFA caveat above; the autopilots and the hardwired CO₂ relay are the manual-operation case ([§6.7](#67-cellar-co2-life-safety-interlock), [§9.6](#96-implementation-status-and-validation)) |
+| NSA/CISA, *Selecting and Hardening Standards-based Remote Access VPN Solutions* (2021-09-28) | Prefer standards-based (IKE/IPsec) validated VPNs, strong authentication, minimal features, prompt patching | Documented: the range uses WireGuard for the vendor and IPsec for the utility, which is a teaching contrast, not a compliance claim |
+| NERC CIP; TSA pipeline and rail directives; FDA | See [§18A.5](#18a5-electrical-der-and-energy); no pipeline or rail; FDA has no cybersecurity rule for food facilities | N/A |
+| Food and Ag-ISAC | Sector threat intelligence and practices (its report on managing end-of-life technology, written after attacks on refrigeration controllers, is on point for `glycol-chiller`) | Documented |
+| Colorado Privacy Act, C.R.S. 6-1-1304 | Applies to controllers processing data of 100,000 or more Colorado consumers a year, or 25,000 with data sales | N/A for a brewery of this size; the taproom's customer data is business IT, out of scope |
+| PCI DSS v4.0.1 | Cardholder data environment segmentation and controls | N/A: no POS is deployed ([§2](#2-goals-and-non-goals)); the CORP zone is the attach point |
+| NIST SP 800-92 Rev. 1 (draft, 2023-10-11); OMB M-21-31 (2021-08-27) | Log management planning; the federal benchmark of 12 months active plus 18 months cold storage (30 months) | Documented. Wazuh and Malcolm run their default retention in the range; a 30-month target would need storage sizing ([§19](#19-risks-and-open-questions)) |
+| CIRCIA | 72-hour covered-incident and 24-hour ransom-payment reporting once the final rule is in force; the April 2024 proposal reached the Food and Agriculture sector only through the size-based criterion, and as of this review CISA had not issued the final rule | Documented: a brewery below the small-business size standard would likely be outside it; the SOC's evidence (Malcolm, Wazuh, Guacamole recordings) is what a report would draw on |
+
+### 18A.8 Industry practice
+
+| Source | Practice | Range |
+|---|---|---|
+| Brewers Association, *Water and Wastewater: Treatment/Volume Reduction Manual* | Untreated brewery effluent pH 3–12, BOD 600–5,000 ppm, TSS 200–1,500 ppm; pre-treated end of pipe pH 6–9, BOD 100–400 ppm; fermentation and filtration waste are about 3 % of volume but 97 % of BOD, so side-stream them; equalize pH in a tank before the sewer (a Colorado small-brewer example uses a 500 gal tank) | Modeled: the neutralization tank, dosing, and permissive; the BA ratios check [§5.4](#54-energy-benchmarks-used-to-check-the-loads) |
+| MBAA CO₂ safety; Brewers Association confined-space guidance (the BA page could not be fetched) | Detection, ventilation, evacuation alarms; permit-required entry | Modeled and Documented as above |
+| ANSI/ISA-18.2-2016, ANSI/ISA-101.01-2015, ANSI/ISA-88.00.01-2010, ISA-TR88.00.02-2022 | Alarm management, HMI, batch, PackML (all current editions) | Modeled ([§5.2](#52-standards-applied), [§6.5](#65-alarm-philosophy-isa-182)) |
+
+### 18A.9 Gaps found in this review and what was done
+
+| # | Gap | Source | Disposition |
+|---|---|---|---|
+| 1 | The genset exercise ran unloaded, and nothing recorded runs or hours | NFPA 110 (monthly test under load, records); 40 CFR 60.4211(f) | Implemented in the power federate with tests; `genset-exercise` event ([§7.3](#73-power-control-plc-power)) |
+| 2 | No wastewater discharge record for the POTW permit | 40 CFR 403.5; Metro §6.14; permit self-monitoring | Implemented in the utilities federate (ground truth) |
+| 3 | CIP "verification record" of [§5.3](#53-best-practices-encoded) existed only as a sentence | FDA CGMP sanitation records; BA practice | Implemented in the utilities federate |
+| 4 | Fill-level inspection was a fixed 0.5 % reject with no net-contents basis | NIST HB 133 Table 2-6; 27 CFR 25.142(d), 25.156, 25.158 | Implemented in the packaging federate |
+| 5 | No automatic CO₂ supply shutoff at the 30,000 ppm tier | Denver DFD policy IFC 5307 | **Phase 3** (plc-utilities logic on `UTL.CO2.XV01.CMD`, [§6.6](#66-cross-system-interactions)); documented here |
+| 6 | CO₂ detection only in the cellar; none at the bulk tank and vaporizer, the filler, or the taproom cold room and draft system | Denver DFD policy IFC 5307 (every point of use and supply tank area) | **Phase 3** (plant.yaml BAS points); documented |
+| 7 | No confined-space entry interlock on the vessels | 29 CFR 1910.146 | **Phase 3** candidate (plc-cellar vessel "entry" mode); documented |
+| 8 | No refrigerant leak detection or charge record for the chiller | ASHRAE 15; 40 CFR 84 Subpart C | Documented; a plant.yaml point is the fix |
+| 9 | No BESS cell-temperature or off-gas monitoring | NFPA 855 | Documented |
+| 10 | Boiler class not stated | 7 CCR 1101-5 | Documented: specify a Section IV 15 psig unit |
+| 11 | Historian keeps 30 days; TTB and Colorado want three years of records | 27 CFR 25.300; C.R.S. 44-3-503(6) | Documented ([§12.4](#124-historian-and-engineering-workstation)); the app's `historian.retentionHours` is the knob (apps are out of this review's scope) |
+| 12 | Vendor access has no per-session approval, per-technician accounts, or time-boxed enablement; TOTP is not phishing-resistant | IEC 62443-2-4; CISA primary mitigations | Flagged for the §13 owner ([§19](#19-risks-and-open-questions)) |
+| 13 | SIEM and NSM retention not set against any target | NIST SP 800-92r1; M-21-31 | Flagged for the §14 owner |
+| 14 | Licensing, permits, registrations, training, written programs, APEN, stormwater, Tier II | TTB, Colorado LED, FDA, OSHA, DFD, CDPHE, EPCRA | Documented only (notional range) |
+| 15 | The `plantevent` SCORCH component does not know `genset-exercise` | this review | Flagged for the apps owner |
+
 ## 19. Risks and open questions
 
 | Risk | Mitigation |
@@ -3376,6 +3678,12 @@ silently.
 | plc-power has no clock: nothing on FIELD-PWR carries the time, so the on-peak window, brew-day SOC target, monthly demand reset, and genset exercise are not in the PLC | Open: expose the sim clock as a gen-ats or relay-main point (as `CEL.CLK.KI01` does for the cellar) and add the schedule to `plc-power.st` |
 | rtu-der's DNP3 map exposes the relay-main breaker and MSB feeder commands (BO 0-3) and the site's own setpoints to the utility master, because plantgen maps every FIELD-PWR point | Detection now (Suricata 9000138/9000139, Zeek `DNP3_Breaker_Command`); open: a utility-only FEP map in plantgen's `dnp3/rtu-der.json` and the ot-sim FEP config |
 | OpenPLC's `modbus_master` keeps the last input value on a lost RIO link (`error_handling: keep-last-value`), so an interlock input such as the cellar CO₂ relay holds its last state when rio-cellar is unreachable | Open: a RIO heartbeat point (a counter the RIO increments) that each PLC watches, failing its interlocks safe on a stale count ([§6.7](#67-cellar-co2-life-safety-interlock)) |
+| The CO₂ life-safety path stops at ventilation and the carbonation inhibit. The representative fire code (Denver DFD policy IFC 5307) also closes an automatic, fail-closed CO₂ supply shutoff at 30,000 ppm and wants detection at every point of use and supply tank area, not only the cellar ([§18A.3](#18a3-life-safety-fire-and-equipment)) | Open, Phase 3: a tier-3 interlock in plc-utilities on `UTL.CO2.XV01.CMD` (fail closed on loss of the detection relay), and BAS CO₂ points at the bulk tank and vaporizer, the filler, and the taproom cold room in `plant.yaml`. Until then the gap is documented |
+| Vessel entry is a permit-required confined space (29 CFR 1910.146), and nothing in the control system knows a vessel is being entered | Open, Phase 3 candidate: a per-vessel "entry" mode in plc-cellar that locks out its CO₂, glycol, and CIP valves and alarms on any write to them; documented in [§18A.3](#18a3-life-safety-fire-and-equipment) |
+| Compliance records that a real brewery keeps for three years (TTB, Colorado excise) are only in a 30-day historian and in ground truth | Documented in [§12.4](#124-historian-and-engineering-workstation) and [§18A.1](#18a1-alcohol-ttb-and-colorado); the FUXA daily report is the record of record; `historian.retentionHours` can be raised for the `scada` bucket |
+| The vendor path meets the shape of IEC 62443-2-4 remote access (jump host, MFA, recording, allow-list) but not its workflow: no per-session authorization by the brewery, no per-technician accounts, no time-boxed peer, and TOTP is not phishing-resistant ([§18A.7](#18a7-ics-cybersecurity)) | Open for the §13 owner: a vendor-session approval record (who approved, window, purpose) that Wazuh's approved-window rules read, per-technician Guacamole and EWS accounts, and a scheduled `wg set` that adds the vendor peer only inside the window |
+| SIEM and NSM retention is whatever Wazuh and Malcolm default to; no target is stated against NIST SP 800-92r1 or the M-21-31 30-month benchmark ([§18A.7](#18a7-ics-cybersecurity)) | Open for the §14 owner: state a retention target per store (Wazuh alerts and archives, Malcolm OpenSearch indices, Arkime pcap) and size the `malcolm` and `wazuh` disks to it |
+| The chiller and BESS carry no safety-monitoring points (refrigerant leak, cell temperature, off-gas) that ASHRAE 15 and NFPA 855 installations have, so those scenarios cannot be exercised | Open: `plant.yaml` points on `glycol-chiller` and `bess-pcs` with alarms, when the plant database is next edited ([§18A.3](#18a3-life-safety-fire-and-equipment)) |
 
 ## 20. Licensing
 
@@ -3576,6 +3884,210 @@ both are listed.
   CIP verification and maintenance:
   <https://oxmaint.com/industries/food-manufacturing/cip-system-maintenance-verification-beverage-plants>
 
+The sources below were read on 2026-11-09 for [§18A](#18a-regulatory-and-standards-context).
+The eCFR and TTB sites refused the review's proxy, so the Code of Federal
+Regulations was read on Cornell LII; Colorado regulations on LII's Colorado
+mirror; and Colorado statutes from the General Assembly's 2024 Title 44 PDF.
+
+*Alcohol*
+
+- 26 U.S.C. 5051 (tax on beer; $3.50 on the first 60,000 barrels for a
+  brewer producing not more than 2,000,000 barrels):
+  <https://www.law.cornell.edu/uscode/text/26/5051>
+- 27 CFR 25.142 (bottle marks and the 0.5 % quarterly net-contents
+  tolerance), 25.152 (reduced rate), 25.156 (keg beer; the 2 % rule), 25.157
+  and 25.158 (bottled beer computation and the case table), 25.292 (daily
+  records), 25.300 (retention and place of records):
+  <https://www.law.cornell.edu/cfr/text/27/25.142>,
+  <https://www.law.cornell.edu/cfr/text/27/25.152>,
+  <https://www.law.cornell.edu/cfr/text/27/25.156>,
+  <https://www.law.cornell.edu/cfr/text/27/25.157>,
+  <https://www.law.cornell.edu/cfr/text/27/25.158>,
+  <https://www.law.cornell.edu/cfr/text/27/25.292>,
+  <https://www.law.cornell.edu/cfr/text/27/25.300>
+- 27 CFR 7.21 and 7.22 (COLAs; 7.21(c) intrastate exception), 7.65 (alcohol
+  content, 0.3 point tolerance), 7.70 (net contents), 16.21 (Government
+  Warning): <https://www.law.cornell.edu/cfr/text/27/7.21>,
+  <https://www.law.cornell.edu/cfr/text/27/7.22>,
+  <https://www.law.cornell.edu/cfr/text/27/7.65>,
+  <https://www.law.cornell.edu/cfr/text/27/7.70>,
+  <https://www.law.cornell.edu/cfr/text/27/16.21>
+- TTB Ruling 2020-2 on gluten content statements, as reported by Gluten Free
+  Watchdog (the TTB site could not be fetched):
+  <https://www.glutenfreewatchdog.org/news/ttb-updated-ruling-gluten-content-statements-in-the-labeling-and-advertising-of-wine-distilled-spirits-and-malt-beverages/>
+- Colorado Revised Statutes 2024, Title 44 (the Colorado Liquor Code):
+  44-3-103(49) (sales room), 44-3-402 (manufacturer's license), 44-3-407(1)(b)
+  (wholesaler's beer license and its sales room), 44-3-417 (brew pub), 44-3-503
+  (excise tax, 8.0 cents per gallon, monthly return, three-year records):
+  <https://leg.colorado.gov/sites/default/files/images/olls/crs2024-title-44.pdf>;
+  the sections as mirrored by Colorado Public Law (current through fall 2025):
+  <https://colorado.public.law/statutes/crs_44-3-402>,
+  <https://colorado.public.law/statutes/crs_44-3-417>,
+  <https://colorado.public.law/statutes/crs_44-3-503>
+
+*Food safety*
+
+- 21 CFR 1.226, 1.227, 1.230 (food facility registration: exemptions,
+  definitions, timing and biennial renewal), 1.327 and 1.360 (traceability
+  records: exclusions and retention), 117.5(i) (the alcoholic-beverage
+  exemption from subparts C and G):
+  <https://www.law.cornell.edu/cfr/text/21/1.226>,
+  <https://www.law.cornell.edu/cfr/text/21/1.227>,
+  <https://www.law.cornell.edu/cfr/text/21/1.230>,
+  <https://www.law.cornell.edu/cfr/text/21/1.327>,
+  <https://www.law.cornell.edu/cfr/text/21/1.360>,
+  <https://www.law.cornell.edu/cfr/text/21/117.5>
+- 6 CCR 1010-2, Colorado Retail Food Establishment Rules and Regulations:
+  §2.3 applicability and §2.6 incorporation of the 2022 FDA Food Code
+  (effective 2024-03-16):
+  <https://www.law.cornell.edu/regulations/colorado/6-CCR-1010-2.3>,
+  <https://www.law.cornell.edu/regulations/colorado/6-CCR-1010-2.6>
+
+*Life safety, fire, and equipment*
+
+- 29 CFR 1910.1000 Table Z-1 (CO₂ 5,000 ppm TWA): <https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.1000TABLEZ1>;
+  NIOSH IDLH documentation for carbon dioxide (40,000 ppm):
+  <https://www.cdc.gov/niosh/idlh/124389.html>
+- 29 CFR 1910.146 (permit-required confined spaces), 1910.147 (lockout/tagout),
+  1910.212 (machine guarding), 1910.28 (fall protection), 1910.1200 (hazard
+  communication, with the 2024 GHS Revision 7 compliance dates), 1910.119
+  Appendix A (PSM threshold quantities):
+  <https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.146>,
+  <https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.147>,
+  <https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.212>,
+  <https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.28>,
+  <https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.1200>,
+  <https://www.osha.gov/laws-regs/regulations/standardnumber/1910/1910.119AppA>;
+  OSHA State Plans (Colorado has none): <https://www.osha.gov/stateplans>
+- 2021 International Fire Code §5307 as adopted by the Colorado Division of
+  Fire Prevention and Control (UpCodes mirror):
+  <https://up.codes/viewer/colorado/ifc-2021/chapter/53/compressed-gases>
+- Denver Fire Department policy, *Carbon Dioxide (CO₂) Systems Used in
+  Beverage Dispensing Applications* (IFC 5307, effective 2020-06-15: the
+  5,000/15,000/30,000 ppm set points, detector height, shutoff valve,
+  permits):
+  <https://www.denvergov.org/content/dam/denvergov/Portals/678/documents/FPB/policydocuments/Carbon_Dioxide_(CO2)_Systems_Used_in_Beverage_Dispensing_Applications_Policy.pdf>;
+  the CIRSA hazard alert that points to it:
+  <https://www.cirsa.org/wp-content/uploads/2021/03/Hazard-Alert_Carbon-Dioxide-Beverage-Systems.pdf>
+- Denver's 2025 Building and Fire Code adoption (2025-06-13; 2024 I-codes with
+  the 2021 IECC):
+  <https://www.denvergov.org/Government/Agencies-Departments-Offices/Agencies-Departments-Offices-Directory/Community-Planning-and-Development/Building-Codes-Policies-and-Guides/Building-and-Fire-Code-Adoption-Process>
+- 7 CCR 1101-5, Colorado Boiler and Pressure Vessel Regulations: §1-6
+  definitions (electric boiler; power boiler over 15 psig; Section IV at or
+  under 15 psi), §1-7 scope (ASME I, IV, VIII), §2-1 inspection schedule:
+  <https://www.law.cornell.edu/regulations/colorado/7-CCR-1101-5-1-6>,
+  <https://www.law.cornell.edu/regulations/colorado/7-CCR-1101-5-1-7>,
+  <https://www.law.cornell.edu/regulations/colorado/7-CCR-1101-5-2-1>
+- ASHRAE Standard 15 machinery-room and detector requirements, as described
+  by *ACHR News* (2023-09-06; the standard itself was not read):
+  <https://achrnews.com/articles/163224-ashrae-standard-15-2022-plays-crucial-role-in-refrigerant-transition>
+- EPA, *Leak Repair Requirements* fact sheet for the HFC Emissions Reduction
+  and Reclamation rule (40 CFR 84 Subpart C; 15 lb; 2026-01-01):
+  <https://www.epa.gov/system/files/documents/2026-01/er-r-fact-sheet-leak-repair-2026-01-13_1.pdf>
+- NFPA 855 as summarized by American Clean Power (2023 edition, January 2024):
+  <https://in.gov/counties/white/files/ACP-NFPA-855-Safety-Explainer.pdf>; UL,
+  *Understanding UL 9540A and NFPA 855* (2026 edition, Annex G.11, UL 9540A
+  edition 6): <https://www.ul.com/thecodeauthority/knowledge/understanding-UL-9540A-NFPA-855>
+- 40 CFR 370.10 (Tier II thresholds) and Appendix A to 40 CFR Part 355
+  (extremely hazardous substances), 40 CFR 68.130 (RMP regulated substances):
+  <https://www.law.cornell.edu/cfr/text/40/370.10>,
+  <https://www.law.cornell.edu/cfr/text/40/appendix-A_to_part_355>,
+  <https://www.law.cornell.edu/cfr/text/40/68.130>; EPA RMP overview:
+  <https://www.epa.gov/rmp/risk-management-program-rmp-rule-overview>
+
+*Environment*
+
+- 40 CFR 403.5 (national pretreatment prohibitions):
+  <https://www.law.cornell.edu/cfr/text/40/403.5>
+- Metro Water Recovery, *Rules and Regulations Governing the Operation, Use,
+  and Services of the System* (2026; §2 item 85 significant industrial user,
+  §6.13 deleterious wastes, §6.14 prohibited discharges, §6.16 sector control
+  programs, §6.18 local limits):
+  <https://www.metrowaterrecovery.com/wp-content/uploads/2026/04/2026-Rules-and-Regulations-remediated.pdf>;
+  its industrial pretreatment page (WDIF, permit types):
+  <https://metrowaterrecovery.com/industrial-pretreatment/>
+- Colorado industrial stormwater general permit COR900000, renewed effective
+  2024-07-01, as summarized by Trinity Consultants (the CDPHE pages could not
+  be fetched):
+  <https://trinityconsultants.com/resources/colorados-renewed-stormwater-permit-effective-july-2024/>
+- 5 CCR 1001-5, Colorado Regulation Number 3, Part A §II (APEN thresholds,
+  five-year term, exemptions):
+  <https://www.law.cornell.edu/regulations/colorado/Article-5-CCR-1001-5-A-II>
+- 40 CFR 60.4211(f) (emergency engine hours):
+  <https://www.law.cornell.edu/cfr/text/40/60.4211>
+
+*Electrical, DER, and energy*
+
+- Colorado State Electrical Board, 2023 NEC effective 2023-08-01 (DORA
+  bulletin, 2023-07-28):
+  <https://content.govdelivery.com/accounts/CODORA/bulletins/367d589>
+- NFPA 110 Chapter 8 as summarized by the Minnesota Department of Health,
+  *Inspection and Testing of Emergency Generators* (2010 edition; rev. June
+  2024): <https://www.health.mn.gov/facilities/regulation/engineering/lscgensets24.pdf>
+- Colorado PUC Rules Regulating Electric Utilities, 4 CCR 723-3: Rule 3664
+  (net metering, 120 %), 3853 (interconnection levels; Level 1 at 25 kW),
+  3855 (Level 2 fast track limits), 3857 (certification codes and standards):
+  <https://www.law.cornell.edu/regulations/colorado/4-CCR-723-3-3664>,
+  <https://www.law.cornell.edu/regulations/colorado/4-CCR-723-3-3853>,
+  <https://www.law.cornell.edu/regulations/colorado/4-CCR-723-3-3855>,
+  <https://www.law.cornell.edu/regulations/colorado/4-CCR-723-3-3857>
+- UL 1741 Supplement SB and IEEE 1547.1-2020, *pv magazine USA* (2022-03-31):
+  <https://pv-magazine-usa.com/2022/03/31/evolving-requirements-in-the-solar-storage-industry/>
+- NERC, *Bulk Electric System Definition Reference Document* (the BES
+  definition, Inclusions I1–I5, Exclusions E1–E4):
+  <https://www.nerc.com/pa/RAPA/BES%20DL/bes_phase2_reference_document_20140325_final_clean.pdf>
+- Energize Denver: the hub page (5,000 sq ft threshold, the two size classes,
+  rules adopted August 2026), the policy timeline (Ordinance 21-1310 passed
+  2021-11-22; rules V5 April 2025, V6 August 2026), and a 2022 client alert
+  (25,000 sq ft benchmarking by June 1 in Portfolio Manager):
+  <https://www.denvergov.org/Government/Agencies-Departments-Offices/Agencies-Departments-Offices-Directory/Climate-Action-Sustainability-Resiliency/High-Performance-Buildings-and-Homes/Energize-Denver-Hub>,
+  <https://www.denvergov.org/Government/Agencies-Departments-Offices/Agencies-Departments-Offices-Directory/Climate-Action-Sustainability-and-Resiliency/Denver-Climate-Regulations/Energize-Denver-Building-Performance-Policy/Energize-Denver-Policy-Timeline>,
+  <https://chambers.com/articles/client-alert-energize-denver-building-performance-requirements>
+
+*Building automation*
+
+- ANSI/ASHRAE 135-2024 published (bacnet.org, 2024-12-31):
+  <https://bacnet.org/news/ansi-ashrae-135-2024-now-published/>; the SSPC 135
+  IT Working Group whitepaper *BACnet Secure Connect* (2018):
+  <https://cdn.chipkin.com/assets/uploads/2022/Feb/BACnet-SC-Whitepaper-v10_Final_20180710_21-17-31-26.pdf>;
+  Standard 223P first public review (bacnet.org, 2024-03-22):
+  <https://bacnet.org/news/first-advisory-public-review/>
+- Pritoni et al., *Digital and Interoperable: The future of building
+  automation is on the horizon* (LBNL, 2024; Guideline 36-2018 and the 2021
+  plant sequences, Standard 135 updated in 2024):
+  <https://escholarship.org/content/qt191333wd/qt191333wd.pdf>
+
+*ICS cybersecurity*
+
+- IEC 62443-2-4:2023 (Edition 2.0, 2023-12-15): <https://webstore.iec.ch/en/publication/67631>
+- NIST Cybersecurity Framework 2.0: <https://www.nist.gov/cyberframework>
+- CISA Cross-Sector Cybersecurity Performance Goals 2.0 (released 2025-12-10):
+  <https://www.cisa.gov/cybersecurity-performance-goals-2-0-cpg-2-0>,
+  <https://content.govdelivery.com/accounts/USDHSCISA/bulletins/3ff7850>
+- CISA, FBI, EPA, DOE, *Primary Mitigations to Reduce Cyber Threats to
+  Operational Technology* (2025-05-06):
+  <https://www.cisa.gov/resources-tools/resources/primary-mitigations-reduce-cyber-threats-operational-technology>
+- CISA alert on the NSA/CISA *Selecting and Hardening Standards-based Remote
+  Access VPN Solutions* (2021-09-28):
+  <https://www.cisa.gov/news-events/alerts/2021/09/28/cisa-and-nsa-release-guidance-selecting-and-hardening-vpns>
+- CISA, CIRCIA status (NPRM 2024-04-04; final rule pending as of this review):
+  <https://www.cisa.gov/topics/cyber-threats-and-advisories/information-sharing/cyber-incident-reporting-critical-infrastructure-act-2022-circia>
+- Food and Agriculture ISAC: <https://www.foodandag-isac.org/>
+- Colorado Privacy Act applicability, C.R.S. 6-1-1304:
+  <https://colorado.public.law/statutes/crs_6-1-1304>
+- PCI Security Standards Council document library (PCI DSS v4.0.1):
+  <https://www.pcisecuritystandards.org/document_library/>
+- NIST SP 800-92 Rev. 1 (initial public draft, 2023-10-11):
+  <https://csrc.nist.gov/pubs/sp/800/92/r1/ipd>; OMB M-21-31 (2021-08-27):
+  <https://www.whitehouse.gov/wp-content/uploads/2021/08/M-21-31-Improving-the-Federal-Governments-Investigative-and-Remediation-Capabilities-Related-to-Cybersecurity-Incidents.pdf>
+
+*Weights and measures*
+
+- NIST Handbook 133, *Checking the Net Contents of Packaged Goods* (2026
+  edition; Appendix A Table 2-6, MAVs for packages labeled by liquid volume):
+  <https://www.nist.gov/pml/owm/nist-handbook-133-current-edition>,
+  <https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=960914>
+
 ### 21.4 Brewery automation case studies and practice
 
 - Stone Brewing SCADA, HMI, and MES upgrade (Inductive Automation):
@@ -3589,6 +4101,15 @@ both are listed.
   <https://brewsnews.com.au/planning-brewhouse-utilities-your-brewery-electrical-requirements>
 - Glycol chiller sizing calculator (crash and holding loads):
   <https://www.thermalcare.com/resource-center/calculators/brewery-calculator>
+- Brewers Association, *Water and Wastewater: Treatment/Volume Reduction
+  Manual* (effluent characteristics, pH equalization, side-streaming; read
+  2026-11-09 for [§18A](#18a-regulatory-and-standards-context)):
+  <https://cdn.brewersassociation.org/wp-content/uploads/2017/05/Sustainability_Water_Wastewater.pdf>
+- ANSI/ISA-18.2-2016, ANSI/ISA-101.01-2015, and ANSI/ISA-88.00.01-2010, as
+  listed current by the standards distributors (NSAI, Intertek Inform):
+  <https://shop.standards.ie/en-ie/standards/ansi-isa-18-2-2016-575481_saig_isa_isa_1316941>,
+  <https://www.intertekinform.com/en-au/standards/ansi-isa-101-01-2015-575556_saig_isa_isa_1317095/>,
+  <https://shop.standards.ie/en-ie/standards/isa-88-00-01-2010-575491_saig_isa_isa_1316961>
 
 ### 21.5 Software and platforms
 

@@ -168,7 +168,7 @@
           "fc": 4,
           "offset": "30001",
           "iec_location": "%IW114",
-          "len": 3,
+          "len": 6,
           "cycle_time_ms": 250,
           "error_handling": "keep-last-value"
         },

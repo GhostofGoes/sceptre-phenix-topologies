@@ -810,6 +810,21 @@ spec:
               type: binary-read
             gen_start:
               type: binary-read-write
+            clock_min:
+              type: analog-read
+              modbus:
+                data-type: uint16
+                scaling: 0
+            clock_day:
+              type: analog-read
+              modbus:
+                data-type: uint16
+                scaling: 0
+            clock_month:
+              type: analog-read
+              modbus:
+                data-type: uint16
+                scaling: 0
           rtu-1:
             zone_temp_f:
               type: analog-read

@@ -1653,7 +1653,29 @@
       "plc": "plc-power",
       "plc_iec": "%QX1.0",
       "fuxa_tag_id": "t_725e21ac-947d-58d2-9b1f-ce5a9211491f",
-      "text": "ATS on the emergency source: state alarm"
+      "text": "ATS on the emergency source: state alarm",
+      "suppress": "PWR.DMD.XS02.SHED"
+    },
+    {
+      "name": "PWR.DMD.XS05.ALM_STATE",
+      "source": "PWR.DMD.XS05.CLKOK",
+      "kind": "state",
+      "limit": 0.0,
+      "units": null,
+      "setpoint": null,
+      "delay_s": 300.0,
+      "deadband": 0.0,
+      "off_delay_s": 0.0,
+      "priority": "medium",
+      "fuxa_severity": "low",
+      "cause": "The ATS controller clock stopped, jumped, or reads out of range, or the power federate is not publishing it",
+      "consequence": "plc-power falls back to demand-cap dispatch only: no on-peak shift, no overnight or brew-day recharge, no monthly demand reset, no weekly genset exercise (NFPA 110 test records fall behind)",
+      "action": "Check the sim-power federate and the gen-ats clock registers (PWR.GEN.KI01 to KI03); the schedule resumes after two minutes of a steady clock",
+      "response_time_s": 3600.0,
+      "plc": "plc-power",
+      "plc_iec": "%QX1.6",
+      "fuxa_tag_id": "t_72c177a6-00f2-573c-a2d0-11ebd8021a38",
+      "text": "ATS clock trusted (in range, advancing, in step): state alarm"
     },
     {
       "name": "FAC.RTU1.TT01.ALM_HIGH",

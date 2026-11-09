@@ -5452,6 +5452,51 @@
           "access": "read"
         },
         {
+          "id": "t_1057eb65-b08e-5097-9beb-292b44ae1be2",
+          "name": "PWR.GEN.KI01.PV",
+          "label": "ATS controller clock, minute of the local day",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 118,
+          "access": "read",
+          "divisor": 1,
+          "units": "min",
+          "range": [
+            0.0,
+            1439.0
+          ]
+        },
+        {
+          "id": "t_803faded-c12a-5bdb-9598-e17f2f5103af",
+          "name": "PWR.GEN.KI02.PV",
+          "label": "ATS controller clock, local date (days since 1970-01-01)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 119,
+          "access": "read",
+          "divisor": 1,
+          "units": "d",
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_bb780728-d751-52bf-ae36-9cef28ed551b",
+          "name": "PWR.GEN.KI03.PV",
+          "label": "ATS controller clock, calendar month",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 120,
+          "access": "read",
+          "divisor": 1,
+          "units": "mo",
+          "range": [
+            1.0,
+            12.0
+          ]
+        },
+        {
           "id": "t_96da4e08-4ee5-5b01-93a9-6a14ea577a68",
           "name": "PWR.DMD.JY01.SP",
           "label": "Monthly demand cap target",
@@ -5517,11 +5562,38 @@
         {
           "id": "t_c931c0a3-8504-5acf-8e97-6d459d9f73dd",
           "name": "PWR.DMD.XS03.BREWDAY",
-          "label": "Brew day scheduled (from the batch engine)",
+          "label": "Brew day scheduled (the next 05:00 starts one; the batch engine or an operator sets it)",
           "type": "Bool",
           "memaddress": "000000",
           "address": 12,
           "access": "read-write"
+        },
+        {
+          "id": "t_1f2357ae-f3cd-5ec9-bd06-f2503592b70d",
+          "name": "PWR.DMD.XS04.EXERCISE",
+          "label": "Genset exercise in progress (ATS on the genset, utility healthy)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 13,
+          "access": "read"
+        },
+        {
+          "id": "t_e3eb3ef9-4a29-5eef-9ad0-c0f428eb76be",
+          "name": "PWR.DMD.XS05.CLKOK",
+          "label": "ATS clock trusted (in range, advancing, in step)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 14,
+          "access": "read"
+        },
+        {
+          "id": "t_72c177a6-00f2-573c-a2d0-11ebd8021a38",
+          "name": "PWR.DMD.XS05.ALM_STATE",
+          "label": "ATS clock trusted (in range, advancing, in step): state alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 15,
+          "access": "read"
         }
       ]
     },

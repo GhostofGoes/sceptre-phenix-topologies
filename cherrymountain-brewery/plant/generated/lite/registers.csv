@@ -445,9 +445,15 @@ PWR.GEN.ZS01.PV,binary-read,,,gen-ats,discrete,10002,2,10002,plc-power,%IX101.1,
 PWR.GEN.ZS01.ALM_STATE,binary-read,,,,,,,,plc-power,%QX1.0,coil,1,8,000000,9,read
 PWR.GEN.ZS02.PV,binary-read,,,gen-ats,discrete,10003,2,10003,plc-power,%IX101.2,discrete,2,810,100000,811,read
 PWR.GEN.HS01.CMD,binary-read-write,,,gen-ats,coil,1,15,1,plc-power,%QX100.6,coil,1,806,000000,807,read
+PWR.GEN.KI01.PV,analog-read,min,0,gen-ats,input,30004,4,30004,plc-power,%IW117,input,4,117,300000,118,read
+PWR.GEN.KI02.PV,analog-read,d,0,gen-ats,input,30005,4,30005,plc-power,%IW118,input,4,118,300000,119,read
+PWR.GEN.KI03.PV,analog-read,mo,0,gen-ats,input,30006,4,30006,plc-power,%IW119,input,4,119,300000,120,read
 PWR.DMD.JY01.SP,analog-read-write,kW,0,,,,,,plc-power,%MW0,holding,3,102,400000,103,read-write
 PWR.DMD.JY02.PV,analog-read,kW,0,,,,,,plc-power,%MW1,holding,3,103,400000,104,read
 PWR.DMD.EY01.SP,analog-read-write,%,0,,,,,,plc-power,%MW2,holding,3,104,400000,105,read-write
 PWR.DMD.XS01.ONPEAK,binary-read,,,,,,,,plc-power,%QX1.1,coil,1,9,000000,10,read
 PWR.DMD.XS02.SHED,binary-read,,,,,,,,plc-power,%QX1.2,coil,1,10,000000,11,read
 PWR.DMD.XS03.BREWDAY,binary-read-write,,,,,,,,plc-power,%QX1.3,coil,1,11,000000,12,read-write
+PWR.DMD.XS04.EXERCISE,binary-read,,,,,,,,plc-power,%QX1.4,coil,1,12,000000,13,read
+PWR.DMD.XS05.CLKOK,binary-read,,,,,,,,plc-power,%QX1.5,coil,1,13,000000,14,read
+PWR.DMD.XS05.ALM_STATE,binary-read,,,,,,,,plc-power,%QX1.6,coil,1,14,000000,15,read

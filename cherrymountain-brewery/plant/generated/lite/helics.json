@@ -1749,6 +1749,21 @@
           "units": null
         },
         {
+          "key": "power/gen-ats.clock_min",
+          "type": "double",
+          "units": "min"
+        },
+        {
+          "key": "power/gen-ats.clock_day",
+          "type": "double",
+          "units": "d"
+        },
+        {
+          "key": "power/gen-ats.clock_month",
+          "type": "double",
+          "units": "mo"
+        },
+        {
           "key": "power/grid.kw",
           "type": "double",
           "units": "kW"
@@ -4789,6 +4804,39 @@
           "point": "gen_start"
         },
         {
+          "key": "power/gen-ats.clock_min",
+          "type": "double",
+          "units": "min",
+          "tag": "PWR.GEN.KI01.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "clock_min"
+        },
+        {
+          "key": "power/gen-ats.clock_day",
+          "type": "double",
+          "units": "d",
+          "tag": "PWR.GEN.KI02.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "clock_day"
+        },
+        {
+          "key": "power/gen-ats.clock_month",
+          "type": "double",
+          "units": "mo",
+          "tag": "PWR.GEN.KI03.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "clock_month"
+        },
+        {
           "key": "power/grid.kw",
           "type": "double",
           "units": "kW",
@@ -6332,7 +6380,10 @@
         "power/gen-ats.gen_running",
         "power/gen-ats.on_emergency",
         "power/gen-ats.utility_ok",
-        "power/gen-ats.gen_start"
+        "power/gen-ats.gen_start",
+        "power/gen-ats.clock_min",
+        "power/gen-ats.clock_day",
+        "power/gen-ats.clock_month"
       ],
       "endpoint": "gen-ats/updates",
       "sends": [

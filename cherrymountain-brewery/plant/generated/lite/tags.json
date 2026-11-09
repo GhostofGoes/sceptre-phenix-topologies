@@ -7144,6 +7144,69 @@
       "helics_key": "power/gen-ats.gen_start"
     },
     {
+      "name": "PWR.GEN.KI01.PV",
+      "desc": "ATS controller clock, minute of the local day",
+      "type": "analog-read",
+      "units": "min",
+      "range": [
+        0.0,
+        1439.0
+      ],
+      "scaling": 0,
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "clock_min",
+      "helics_key": "power/gen-ats.clock_min"
+    },
+    {
+      "name": "PWR.GEN.KI02.PV",
+      "desc": "ATS controller clock, local date (days since 1970-01-01)",
+      "type": "analog-read",
+      "units": "d",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "clock_day",
+      "helics_key": "power/gen-ats.clock_day"
+    },
+    {
+      "name": "PWR.GEN.KI03.PV",
+      "desc": "ATS controller clock, calendar month",
+      "type": "analog-read",
+      "units": "mo",
+      "range": [
+        1.0,
+        12.0
+      ],
+      "scaling": 0,
+      "area": "PWR",
+      "unit": "GEN",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "gen-ats",
+      "federate": "power",
+      "device": "gen-ats",
+      "device_type": "gen-ats",
+      "point": "clock_month",
+      "helics_key": "power/gen-ats.clock_month"
+    },
+    {
       "name": "PWR.DMD.JY01.SP",
       "desc": "Monthly demand cap target",
       "type": "analog-read-write",
@@ -7208,12 +7271,43 @@
     },
     {
       "name": "PWR.DMD.XS03.BREWDAY",
-      "desc": "Brew day scheduled (from the batch engine)",
+      "desc": "Brew day scheduled (the next 05:00 starts one; the batch engine or an operator sets it)",
       "type": "binary-read-write",
       "area": "PWR",
       "unit": "DMD",
       "source": "plc",
       "plc": "plc-power"
+    },
+    {
+      "name": "PWR.DMD.XS04.EXERCISE",
+      "desc": "Genset exercise in progress (ATS on the genset, utility healthy)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power"
+    },
+    {
+      "name": "PWR.DMD.XS05.CLKOK",
+      "desc": "ATS clock trusted (in range, advancing, in step)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power",
+      "alarms": [
+        "PWR.DMD.XS05.ALM_STATE"
+      ]
+    },
+    {
+      "name": "PWR.DMD.XS05.ALM_STATE",
+      "desc": "ATS clock trusted (in range, advancing, in step): state alarm (medium)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "DMD",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
     },
     {
       "name": "FAC.RTU1.TT01.PV",

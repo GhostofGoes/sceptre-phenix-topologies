@@ -43,6 +43,27 @@ the bright tanks at 34 °F, and carbonates toward 2.6 vol only while the CO2
 relay (`building/vent.co2_relay_ok`) is healthy; plc-cellar takes over on its
 first write.
 
+**What stays manual with a PLC in control.** A PLC writes field points; some
+jobs have none, so the model does them when the plant's state calls for them:
+
+- *Brewhouse.* The brewer adds the recipe's boil hops by the boil time left
+  and the whirlpool hops when the PLC opens the hop doser, grains out once the
+  mash has run off and the kettle is on steam for the boil, and dumps the trub
+  left in the kettle when a knockout stops at or below 6 % (plc-brewhouse ends
+  KNOCKOUT at 5 %). That is also when a brew is counted.
+- *Packaging.* A starved or blocked machine unsuspends once it has a bottle to
+  take or room to put one, the line operator clears a jam and unholds the
+  machine when the jam's time is up, and the filler unholds from a low bowl
+  when BBT-202's pressure is back. The filler runs 10 s on what its bowl holds
+  with the product valve shut, which gives plc-packaging time to open the
+  valve after it reads Execute. A Hold or Suspend that was commanded stays.
+
+Starting a batch (the phases of plc-brewhouse) and starting, stopping, and
+resetting the packaging line stay with whoever commands the PLCs: nothing in
+the simulation does them once a PLC writes. `tests/test_plc_brewhouse.py` and
+`tests/test_plc_packaging.py` run both federates against Python ports of the
+two PLC programs.
+
 **Time.** Everything runs in wall time except the cellar's fermentation
 kinetics, which run 48x faster; exported fluxes stay real-time-equivalent
 (DESIGN.md §9.4). The clock starts at helics.json's `clock.start` (a summer
@@ -55,20 +76,33 @@ from there). The contract is `apps/cherrymountain_apps/simctl.py`'s:
 
 | Request | Reply |
 |---|---|
-| `GET /api/v1/health` | `200 {"status": "ok", "variant", "sim_time"}` |
+| `GET /api/v1/health` | `200 {"status", "variant", "sim_time", "step_age_s"}`. `status` is `ok` while the federate steps, `starting` before its first step (the HELICS federation has not started: the broker still waits for a federate), and `stalled` when the last step is more than 10 s old. The API answers in all three, so check `status`, not the 200 |
 | `POST /api/v1/events` (or `POST /events`) with `{"event": <kind>, ...}` | `202 {"accepted": true, "id", "event", "params", "target", "received"}`, `400 {"error"}` for an unknown kind or bad parameters |
 | `GET /api/v1/events` | `200 {"events": [...]}` |
-| `GET /api/v1/kpis` | `200 {"sim_time", "batches_completed", "batches_in_progress", "bottles_packaged", "kegs_packaged", "energy_kwh", "demand_kw", "peak_demand_kw"}` |
+| `GET /api/v1/kpis` | `200 {"sim_time", "batches_completed", "batches_in_progress", "bottles_packaged", "kegs_packaged", "energy_kwh", "demand_kw", "peak_demand_kw", "ttb_bbl_packaged", "fill_mean_floz", "fill_under_mav_rejects", "wastewater_inhibit_events", "cip_runs_verified", "cip_runs_unverified", "genset_hours_year", "genset_test_hours_year"}` |
+| `GET /api/v1/state` | `200 {"seq", "t_s", "sim_time", "wall_time", "variant", "values"}`: the ground-truth snapshot cm-viz reads (every key of plant.yaml `snapshot`, by HELICS key) |
 
-Events (the plantevent README's table): `start-batch` (brewhouse),
-`utility-breaker` `action: open|close` (power), `genset-exercise`
-`action: start|stop`, `load_bank_kw` 0-100, `duration` s (power: a timed
-exercise under load, see below), `chiller-fault` `compressor`,
-`action: fail|clear` (utilities), `co2-release` `fv`, `rate: low|medium|high`,
-`duration` s (cellar), `jam` `machine`, `duration` s (packaging),
-`weather-step` `delta_f`, `duration` s (weather), and `cip-panel` `circuit`
-(utilities: sets the swing panel). The weather federate forwards each event to
-`<target>/updates` as `{"event": {"type", "params", "id"}}`.
+Events, with the federate that applies each (a `duration` is in seconds, more
+than 0 and at most 86,400):
+
+| Event | Parameters | Federate |
+|---|---|---|
+| `start-batch` | `brews` 1-4 (default 2), `batch_id`, `recipe` (`fire-of-the-phenix`). It queues brews for the autopilot; with plc-brewhouse in control it starts nothing | brewhouse |
+| `utility-breaker` | `action`: `open` or `close` (required) | power |
+| `genset-exercise` | `action`: `start` (default) or `stop`; `load_bank_kw` 0-100; `duration` (default 1,800) | power |
+| `bess-thermal` | `action`: `start` (default) or `clear` | power |
+| `chiller-fault` | `action`: `fail` (default) or `clear`; `compressor` 1 (default) or 2 | utilities |
+| `refrigerant-leak` | `action`: `leak` (default), `repair`, or `recharge`; `rate`: `low`, `medium` (default), `high` | utilities |
+| `cip-panel` | `circuit`: `bh`, `fv101` to `fv104`, `bbt201`, `bbt202`, or `none` (default) | utilities |
+| `co2-release` | `fv` (required, for example `FV-102`); `rate`: `low`, `medium`, `high` (default; 2, 10, 40 g/s); `duration` (default 600) | cellar |
+| `co2-leak` | `zone`: `tank`, `filler`, or `draft` (required); `rate` as above; `duration` (default 600) | building |
+| `gas-detection` | `action`: `fail` (default) or `restore` | building |
+| `jam` | `machine`: `rinser`, `filler`, `coder`, `labeler` (default), `packer`, `kegger`; `duration` (default 300) | packaging |
+| `weather-step` | `delta_f` -60 to 60 (required); `duration` (default 0: hold until the next step) | weather |
+
+The weather federate forwards each event to `<target>/updates` as
+`{"event": {"type", "params", "id"}}`. An event is accepted (202) while the
+federation is not running, and applied when it starts.
 
 ## Ground truth
 
@@ -76,6 +110,20 @@ With `ground_truth` in helics.json, every federate writes its published values
 and model state every 10 s to the in-experiment OpenSearch
 (`cherrymountain-truth-<federate>-YYYY.MM.DD`, `_bulk` API) from a background
 thread (`groundtruth.py`).
+
+- **Time.** `@timestamp` and the date in the index name are the wall clock
+  (UTC), the clock Malcolm, Wazuh, and the ot-sim ground-truth module use, so
+  the records line up without a conversion and Grafana's default range shows
+  the run. `sim_time` holds the simulated date and time and `t_s` the federate
+  seconds.
+- **Mapping.** Before its first write each writer puts the index template
+  `cherrymountain-truth-cm` for `cherrymountain-truth-*`: dates, keywords for
+  `federate`, `source`, and `field`, and doubles for every number. It also
+  covers the ot-sim module's documents (`cherrymountain-truth-YYYY.MM.DD`,
+  one per point per second), whose own template OpenSearch refuses.
+- **Outages.** Documents taken while OpenSearch is down or still starting are
+  kept (up to 10,000 per federate) and sent when it answers. Documents it
+  rejects are logged with its reason.
 
 ## Compliance records (DESIGN.md §18A)
 
@@ -101,6 +149,9 @@ so `plant.yaml` is unchanged.
 | `test_plant.py` | Cellar CO₂ steady state hand calculation, purge tiers and BACnet override, RTU and cold room, weather, glycol and a chiller fault, wastewater neutralization, a brew day, ground truth documents, the event API, and all seven federates together for 20 minutes with an outage and a CO₂ release |
 | `test_compliance.py` | The genset exercise under load and its log (33 kW EP-1 meets 30 % of nameplate; the everyday 15 kW does not until a 40 kW load bank is added; an outage during a test becomes an emergency run), the wastewater discharge record (a caustic slug is inhibited and logged, the discharge stays in 6.0-9.0), a verified caustic CIP record and an unverified rinse, fill-level rejects against the Handbook 133 MAV with the lot mean at or above 12 fl oz and the quarterly variance inside the TTB 0.5 %, and the event API's validation of `genset-exercise` |
 | `test_fermentation.py`, `test_thermal.py`, `test_timebase.py`, `test_federate.py` | The cellar slice's existing tests |
+| `test_plc_brewhouse.py` | Two brews driven by a port of plc-brewhouse's phases: the HLT heats while its jacket is covered, each brew is counted, the tun and kettle are empty between brews, the second mash-in takes as long as the first, the hops go in, and an interrupted knockout counts once |
+| `test_plc_packaging.py` | The line driven by a port of plc-packaging: the filler runs once the PLC opens its product valve, holds on a low supply and recovers, a jam clears after its time, and a commanded Hold stays |
+| `test_groundtruth.py` | The writer against a stand-in OpenSearch (template first, documents kept through an outage, rejected documents logged), boolean and float values whoever wrote the command, and the event API's `starting`, `ok`, and `stalled` health |
 
 ## Simplifications and tuned values
 

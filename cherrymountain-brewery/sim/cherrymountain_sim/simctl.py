@@ -228,7 +228,13 @@ class EventApi:
                 ):
                     self._reply(404, {"error": "not found"})
                     return
-                length = int(self.headers.get("Content-Length") or 0)
+                try:
+                    length = int(self.headers.get("Content-Length") or 0)
+                except ValueError:
+                    length = -1
+                if length < 0:
+                    self._reply(400, {"error": "bad Content-Length"})
+                    return
                 if length > MAX_BODY:
                     self._reply(413, {"error": "body too large"})
                     return

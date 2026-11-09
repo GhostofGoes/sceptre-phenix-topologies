@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import http.client
 import json
 import urllib.request
 from pathlib import Path
@@ -202,6 +203,13 @@ def test_event_api_contract(full: HelicsConfig) -> None:
             "peak_demand_kw",
         }
         assert len(call("/api/v1/events")[1]["events"]) == 2
+        for bad in ("abc", "-1"):
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.putrequest("POST", "/api/v1/events")
+            conn.putheader("Content-Length", bad)
+            conn.endheaders()
+            assert conn.getresponse().status == 400
+            conn.close()
     finally:
         assert fed.api is not None
         fed.api.close()

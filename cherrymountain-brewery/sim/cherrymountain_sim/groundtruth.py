@@ -91,8 +91,16 @@ class TruthWriter:
         try:
             self.docs.put_nowait(item)
         except queue.Full:
-            self.docs.get_nowait()
-            self.docs.put_nowait(item)
+            # Drop the oldest document. The flush thread may drain the queue
+            # between the two calls, so neither may raise into the sim loop.
+            try:
+                self.docs.get_nowait()
+            except queue.Empty:
+                pass
+            try:
+                self.docs.put_nowait(item)
+            except queue.Full:
+                pass
 
     @staticmethod
     def bulk_body(items: list[tuple[str, dict[str, Any]]]) -> bytes:

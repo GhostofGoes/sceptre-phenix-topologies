@@ -45,7 +45,7 @@ integration, new software, testing, roadmap, risks, and references.
 
 | Path | Contents |
 |---|---|
-| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts, 428 tags, 76 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
+| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts, 491 tags, 96 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
 | `tools/plantgen/` | Generator: tags, addresses, the ot-sim, ntp, soh, wireguard, helics, and cherrymountain app blocks, HELICS lists, OpenPLC, FUXA, BACnet, DNP3, and SCORCH inputs ([README](tools/plantgen/README.md) documents every output) |
 | `sim/` | `cherrymountain_sim`: the weather, brewhouse, cellar, utilities, packaging, power (OpenDSS), and building federates, the sim-ctl event API, and an offline harness, with tests ([README](sim/README.md)) |
 | `recipes/` | `fire-of-the-phenix.json`, the flagship recipe in BeerJSON |

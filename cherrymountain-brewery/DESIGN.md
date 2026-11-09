@@ -569,6 +569,7 @@ flowchart LR
     than 1 psi above the target's equilibrium pressure, so gas that does not
     dissolve never builds up to the PSV in normal running.
   - Transfers are blocked while the source or destination is in CIP.
+  - Confined-space entry lockout per vessel ([§6.8](#68-confined-space-entry-lockout)).
 
 **Packaging**
 
@@ -598,11 +599,14 @@ flowchart LR
 - **Equipment:**
   - Glycol: a 15-ton (about 53 kW thermal) chiller with two compressor
     stages and its own controller; a glycol reservoir; supply pumps.
-  - Steam: a 200 kW electric steam boiler at 15 psig, with a low-water
-    cutoff.
+  - Steam: a 200 kW electric steam boiler, specified as an ASME Section IV
+    low-pressure steam boiler (15 psig MAWP, safety valve set at 15 psig;
+    7 CCR 1101-5), operated at 12 psig, with a low-water cutoff.
   - Compressed air: a 15 hp air compressor (about 12 kW electrical input)
     with a dryer.
-  - CO₂: a bulk CO₂ tank with a vaporizer.
+  - CO₂: a bulk CO₂ tank with a vaporizer and a fail-closed main supply
+    valve whose solenoid is wired through the gas-detection shutoff relay
+    ([§6.7](#67-cellar-co2-life-safety-interlock)).
   - Water: an RO skid (permeate flow, conductivity) and a carbon filter.
   - Wastewater neutralization: a tank with pH, caustic and acid dosing
     pumps, and a discharge valve.
@@ -615,7 +619,12 @@ flowchart LR
   - Glycol pump pressure control.
   - Boiler enable and pressure supervision. The low-water cutoff is a
     simulated hardwired trip.
-  - CO₂ low-pressure alarm.
+  - CO₂ low-pressure alarm, and the latched CO₂ supply shutoff at 30,000 ppm
+    in any area or on loss of detection, reset by the operator
+    ([§6.7](#67-cellar-co2-life-safety-interlock)).
+  - The chiller's refrigerant detector (R-410A, 45 lb charge; High alarm at the
+    1,000 ppm exposure limit) and, in ground truth, its charge record
+    ([§18A.3](#18a3-life-safety-fire-and-equipment)).
   - Wastewater: pH is dosed toward 7. The discharge valve is permitted
     only while pH is within 6.0–9.0.
   - CIP sequence: pre-rinse → caustic (about 175 °F / 80 °C, 1.5–2%) →
@@ -673,8 +682,10 @@ These counts are design estimates. The plant tag database (`plant.yaml`,
 - **Rationalization.** Each alarm has a cause, consequence, operator
   action, and time to respond. These are recorded in `plant.yaml` and
   generated into the FUXA alarm definitions.
-- **Current state.** `plant.yaml` holds 76 rationalized alarms: 4 Critical, 27
-  High, 25 Medium, and 20 Low. That is not yet the 5/15/80 target, because only
+- **Current state.** `plant.yaml` holds 96 rationalized alarms: 16 Critical,
+  33 High, 26 Medium, and 21 Low. The Critical ones are all life safety: CO₂
+  at 30,000 ppm (four cellar sensors and the three other areas), the BESS
+  off-gas detector, and the eight confined-space entry violations. That is not yet the 5/15/80 target, because only
   the important alarms are rationalized so far.
 - **Examples:**
   - CO₂ ≥ 30,000 ppm: Critical; ≥ 15,000 ppm: High; tier 1 (≥ 5,000 ppm, the
@@ -711,6 +722,7 @@ isolated demos.
 | 4 | Utilities ↔ cellar | plc-utilities reads the CIP-permit and transfer status from plc-cellar over peer Modbus (east–west L1 traffic) | CIP blocked during a transfer and vice versa |
 | 5 | Cellar → building | Fermentation CO₂ vented by spunding and blow-off, and by the vessels' relief valves, into the cellar room (CO₂ mass balance) | bas-vent purge fans start; alarms at 15,000 ppm |
 | 6 | BAS → cellar (life safety) and BAS → SCADA (display) | The bas-vent gas-detection relay is hardwired into rio-cellar (`CEL.SYS.XS01.CO2_OK`); `plc-cellar` inhibits carbonation while it is open. scada-fuxa only reads the CO₂ objects from bas-vent over BACnet, discovering it through the BBMDs ([§10.4](#104-protocol-map)) | Carbonation inhibited at ≥15,000 ppm or on loss of detection power; the process HMI shows the state. See [§6.7](#67-cellar-co2-life-safety-interlock) |
+| 6a | BAS → utilities (life safety) | bas-vent's second gas-detection relay, the CO₂ supply shutoff relay, is hardwired into rio-utilities (`UTL.CO2.XS01.CO2_OK`) and in series with the bulk CO₂ valve's solenoid; plc-utilities latches `UTL.CO2.XS02.SHUTOFF` | The bulk CO₂ supply closes at 30,000 ppm in any area or on loss of detection, and a leak on the supply piping stops. See [§6.7](#67-cellar-co2-life-safety-interlock) |
 | 7 | BBT → packaging | Product supply and BBT pressure gate the filler | Filler holds on low BBT pressure |
 | 8 | Building ↔ process | Ambient and room temperatures change jacket heat gain and chiller COP; brewhouse heat and vapor load the makeup-air unit | Summer afternoons stress the glycol plant |
 | 9 | Process + building → power | Every motor, heater, and compressor publishes kW to the power model | Feeder loading, demand peaks |
@@ -761,13 +773,112 @@ host is in the path:
 | CO₂ at or above 15,000 ppm | The relay drops: carbonation and hop-port purges are inhibited until the sensed value falls 10 % below the tier and the release delay passes |
 | rio-cellar or the FIELD-CEL link down | `plc-cellar`'s Modbus master keeps the last input values, so the inhibit holds its last state. A RIO heartbeat would let the PLC fail safe here too; it is open work ([§19](#19-risks-and-open-questions)) |
 | plc-cellar stopped | Its outputs stop updating; rio-cellar keeps the last commands. Without a PLC the cellar autopilot takes over after 300 s and honors the relay itself ([§9.6](#96-implementation-status-and-validation)) |
+| CO₂ at or above 30,000 ppm in any area (cellar, bulk tank, filler, cold room) | The shutoff relay drops: the bulk CO₂ valve closes through its solenoid, and plc-utilities latches the shutoff until the operator resets it with the relay healthy for 60 s. A leak on the supply piping stops as the header bleeds down |
+| Gas-detection panel failed (`gas-detection` event) | Both relays drop: carbonation is inhibited and the CO₂ supply shuts off (loss of detection fails closed) |
+| EP-1 dead | Both relays drop; the CO₂ supply shuts off as well as carbonation |
+| rio-utilities or the FIELD-UTL link down | The valve still closes on a trip (its solenoid is on the relay, not the RIO); plc-utilities keeps the last input values, so its latch may not set. The same RIO heartbeat would close this gap ([§19](#19-risks-and-open-questions)) |
+| plc-utilities stopped, or a rogue write of 1 to the valve's coil | None for the trip: the solenoid has no power while the relay is open. The write is detected (Suricata 9000170/9000171, Zeek `Life_Safety_Write`, [§14](#14-blue-team-monitoring)). Without a PLC the utilities autopilot latches the same way and reopens 600 s after the relay is healthy |
+
+**CO₂ supply shutoff at tier 3 (Denver IFC 5307 §IV.A.4.b, §8.c.ii).** The
+policy wants an automatic shutoff of the CO₂ supply at 30,000 ppm that fails
+closed on loss of power or of detection. It is built the same way as the
+carbonation inhibit, with a second relay:
+
+1. **Detection.** bas-vent is the gas-detection controller for every CO₂
+   area: the four cellar sensors and one low sensor each at the bulk tank and
+   vaporizer, the filler, and the cold room and draft system
+   ([§8.1](#81-spaces-equipment-and-bacnet-devices); policy §IV.A.6–7 and IFC
+   §5307.3 ask for detection at every point of use and in the supply tank
+   area). Each area has the same tiers (5,000 / 15,000 / 30,000 ppm). Tier 1
+   in a new area runs its exhaust (`FAC.VENT.FAN03.CMD`) and sets
+   `FAC.VENT.AY02.TIER1`; tier 3 anywhere sounds the horns and strobes
+   (`FAC.VENT.XA01.CMD`).
+2. **Shutoff relay (hardwired, de-energize to trip).** bas-vent's second relay
+   output is wired to a rio-utilities discrete input, `UTL.CO2.XS01.CO2_OK`,
+   *and* in series with the solenoid of the bulk CO₂ main valve
+   (`UTL.CO2.XV01.CMD`). It is closed only while no area is at tier 3, EP-1
+   powers the detection panel, and the panel is healthy. When it opens, the
+   valve closes whatever any PLC commands: the fail-closed part is in the
+   wiring, not in software. The valve's limit switch (`UTL.CO2.ZSO01.PV`)
+   reports the real position.
+3. **Latch and reset (plc-utilities).** plc-utilities drops its command and
+   latches `UTL.CO2.XS02.SHUTOFF` (High alarm) when the relay opens; only the
+   operator's reset (`UTL.CO2.XC01.RESET`, from scada-fuxa) clears it, and only
+   once the relay has been healthy for 60 s. The policy's 30,000 ppm tier is
+   latching, which this provides at the shutoff. The latch arms the first
+   time the relay is healthy after the PLC starts, so a power-up is not a
+   trip.
+
+**Why plc-utilities, not the cellar relay path.** The valve is on
+rio-utilities and belongs to plc-utilities' I/O; plc-cellar has no output
+there, and having it command the valve would put a PLC-to-PLC write over CTRL,
+a networked host, in a life-safety path, which this section rules out. The
+cellar relay trips at tier 2 (15,000 ppm) and covers only the cellar; reusing
+it would close the bulk supply at half the policy's set point and miss a
+release at the tank or the filler. A second contact from the same controller
+keeps the one-mechanism rule above: detection and the trip are in the BAS
+controller and the wiring; the PLC adds only the latch and the operator
+reset, and the valve still closes with plc-utilities stopped.
+
+**Annunciator and fire-alarm tie-in (documented, not modeled).** The policy
+asks for strobes and horns at 30,000 ppm, an annunciator panel with a graphic
+map outside the hazard areas, and supervision by the fire alarm system. The
+range has the horns and strobes as a BACnet output and shows each area's
+reading and tier on bas-fuxa and scada-fuxa; a real site would also take a
+dry contact from the detection panel into the building's fire alarm control
+unit (as a supervisory signal, and as a trouble signal on panel failure) and
+mount the annunciator at the entrance. There is no fire alarm system in the
+range, so the tie-in is a drawing note, not a point.
 
 **Simulation.** The building federate computes the relay state (tier 2 clear
 and EP-1 energized) and publishes `building/vent.co2_relay_ok`; the cellar
 federate republishes it as rio-cellar's `gasrelay.co2_ok` point. A crash of
 the bas-vent ot-sim process therefore does not drop the relay, which a real
 controller failure would: a documented simplification. In the `ci` variant
-there is no building federate and no BBT, so the point does not exist.
+there is no building federate and no BBT, so the point does not exist. The
+shutoff relay is `building/vent.co2_shutoff_ok`, which the utilities federate
+republishes as rio-utilities' `co2relay.co2_ok` and uses to gate the valve.
+The three new areas are well-mixed volumes: the tank room, the filler area
+(the filler vents half the CO₂ it draws into it), and the cold room (a draft
+leak trickle, and air exchange with the door open). A `co2-leak` event opens a
+leak on the supply piping in one of them; its flow follows the supply header
+pressure, so the shutoff stops it, and a leak upstream of the valve (the tank
+itself) is not modeled.
+
+### 6.8 Confined-space entry lockout
+
+Fermenters, bright tanks, the mash/lauter tun, and the kettle are
+permit-required confined spaces (29 CFR 1910.146). The permit program,
+attendant, atmospheric testing, and rescue are people and paper; the range
+models the part a control system can enforce:
+
+- **Entry permit bit.** When the entry supervisor issues a permit, they set the
+  vessel's `HSnn.ENTRY` from the HMI: `CEL.ENTRY.HS01..06.ENTRY` for FV-101 to
+  BBT-202 on plc-cellar, `BH.ENTRY.HS01.ENTRY` (MLT) and `HS02.ENTRY` (kettle)
+  on plc-brewhouse. `XSnn.LOCKED` shows the lockout.
+- **Lockout.** plc-cellar holds the vessel's glycol valves closed, the bright
+  tanks' carbonation stone at 0 and outlet closed, sets a fermenter's
+  spunding setpoint to ambient (head vented), and holds the dry-hop doser
+  while any fermenter is entered. Its per-vessel `CEL.ENTRY.XS1n.CIP_OK` goes
+  to 0; plc-utilities reads all six over CTRL (`UTL.CIP.XS05..XS10.PV`, a lost
+  peer reads 0) and will not run CIP into that vessel. plc-brewhouse holds the
+  vessel's steam, water, runoff, rake, whirlpool, and hop outputs off, puts a
+  running phase that uses the vessel into Holding, and refuses Start or
+  Restart of one.
+- **Violation alarm (Critical).** Each program leaves every locked-out output
+  off at the end of a scan, so a locked output found on at the top of the
+  next one was written in between, through the PLC's Modbus or OPC UA server
+  (an HMI, the EWS, or an attacker). That, or a refused phase start, latches
+  `XAnn.PV` until the entry ends. Zeek raises `Vessel_Entry_Violation` when it
+  sees the bit go to 1 in FUXA's polls, and Suricata 9000173 and Zeek's
+  `Life_Safety_Write` flag a permit written from a host other than
+  scada-fuxa (clearing a permit unlocks an occupied vessel).
+- **Limits.** The lockout is in the PLC: with a PLC stopped or bypassed
+  (writes straight to the RIO), nothing locks the valves; a real site isolates
+  them mechanically (LOTO, 29 CFR 1910.147) as well. CIP circuit 1 (brewhouse)
+  is not interlocked to the brewhouse permits, because plc-brewhouse serves OPC
+  UA only and plc-utilities has no peer path to it ([§19](#19-risks-and-open-questions)).
+  The simulation has no entrant: entry is PLC state only.
 
 ## 7. Electrical distribution and energy
 
@@ -846,9 +957,13 @@ flowchart TB
     UL 9540 listing, UL 9540A fire-propagation test data, a hazard mitigation
     analysis, an emergency response plan, explosion control to NFPA 68 or 69,
     and commissioning and decommissioning plans submitted to the fire code
-    official. None of that is modeled; the `bess-pcs` points carry only power,
-    state of charge, connection, and a fault bit
-    ([§18A](#18a-regulatory-and-standards-context)).
+    official. The paper part is not modeled. The `bess-pcs` points carry
+    power, state of charge, connection, and a fault bit, plus the BMS's
+    hottest cell temperature (`PWR.BESS.TT01.PV`; Medium at 122 °F, High at
+    140 °F, where the PCS trips) and an enclosure off-gas detector
+    (`PWR.BESS.AT01.PV`, Critical at 50 ppm), the early warning UL 9540A
+    testing is built around. A `bess-thermal` event drives a failing cell
+    toward thermal runaway ([§18A](#18a-regulatory-and-standards-context)).
 
 ### 7.3 Power control (`plc-power`)
 
@@ -1045,13 +1160,19 @@ Modbus raw value, engineering value × 10^scale.
 |---|---|---|
 | `bas-rtu-taproom` (device 3001) | Taproom/office rooftop unit (RTU-1): 10-ton DX, gas heat, economizer, CO₂ demand-controlled ventilation | AI zone temperature, AI zone CO₂, AI supply air temperature, AV occupied setpoints, AO economizer, BO supply fan, BO cooling stages 1/2, BO heat, MSV occupancy mode |
 | `bas-coldroom` (device 3002) | Walk-in cold room (kegs, 36 °F): 1.5 hp condensing unit, defrost, door switch | AI room temperature, AV setpoint, BO compressor, BO defrost, BI door, AV door-open minutes |
-| `bas-vent` (device 3003) | Brewhouse and cellar ventilation: kettle hood exhaust fan (VFD), makeup-air unit (gas), 2 cellar purge fans, 4 cellar CO₂ sensors | AI CO₂ ×4, AI MUA discharge temperature, AO exhaust speed, BO purge fans, BO MUA enable, BV CO₂ alarm tiers, BI purge-fan status |
+| `bas-vent` (device 3003) | Brewhouse and cellar ventilation, and the CO₂ gas-detection controller for the whole site: kettle hood exhaust fan (VFD), makeup-air unit (gas), 2 cellar purge fans, 4 cellar CO₂ sensors, one CO₂ sensor each at the bulk tank and vaporizer, the filler, and the cold room and draft system, the area exhaust fans, horns and strobes, and two hardwired relays (to rio-cellar and rio-utilities) | AI CO₂ ×7, AI MUA discharge temperature, AO exhaust speed, BO purge fans, BO area exhaust, BO horns and strobes, BO MUA enable, BV CO₂ alarm tiers (cellar), BV area tier 1, BV shutoff relay, BI purge-fan status |
 
 **Local logic.** Each controller runs its own interlocks in ot-sim logic,
 the way real BAS controllers do. For example, CO₂ ≥ 5,000 ppm starts the
 purge fans locally, and bas-vent's gas-detection relay, hardwired into
-rio-cellar, drops at 15,000 ppm so plc-cellar inhibits carbonation
-([§6.7](#67-cellar-co2-life-safety-interlock)). The `bas-fuxa` front end supervises,
+rio-cellar, drops at 15,000 ppm so plc-cellar inhibits carbonation; its
+second relay, hardwired into rio-utilities, drops at 30,000 ppm in any area
+and closes the bulk CO₂ supply ([§6.7](#67-cellar-co2-life-safety-interlock)).
+The new sensors sit on bas-vent rather than a new BAS device because bas-vent
+is already the gas-detection controller whose relay §6.7 relies on, one
+controller per detection system is how such panels are built, and the objects
+are appended after the cellar's, so no BACnet instance moves (no new VM, IP,
+or conduit). The `bas-fuxa` front end supervises,
 schedules, and alarms. `scada-fuxa` only reads the CO₂ objects for the process
 HMI.
 
@@ -1481,6 +1602,12 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
   - release CO₂ in the cellar
   - jam the labeler
   - step the outside temperature
+  - exercise the genset under load (`genset-exercise`), and swing the CIP
+    panel (`cip-panel`)
+  - leak CO₂ at the bulk tank, the filler, or the draft system (`co2-leak`),
+    and fail or restore the gas-detection panel (`gas-detection`)
+  - leak, repair, or recharge the chiller's refrigerant (`refrigerant-leak`)
+  - start or clear a BESS cell thermal event (`bess-thermal`)
 
   The weather federate forwards each event to the owning federate's `updates`
   endpoint. The API also serves `GET /api/v1/kpis` (batches, bottles, energy,
@@ -2396,10 +2523,19 @@ health checks read a tag value, not the connection state
   retention it was created with. Thirty days is an operational window, not a
   records retention: TTB wants the brewery's daily records kept at least three
   years (27 CFR 25.300), and Colorado wants the excise books kept three years
-  (C.R.S. 44-3-503(6)). In this design those records are FUXA's daily
-  production report and batch records, not the historian; a real brewery would
-  either set the `scada` bucket's retention to cover the packaging counts for
-  three years or export them ([§18A](#18a-regulatory-and-standards-context)).
+  (C.R.S. 44-3-503(6)). The historian therefore keeps a fourth bucket,
+  `records` (`historian.recordsBucket`), with a retention of 26,280 h, three
+  years (`historian.recordsRetentionHours`). An InfluxDB task the app renders
+  (`/etc/cherrymountain/cm-records.flux`, `cm-ttb-records`) copies, once a day,
+  the last value of each series a TTB or excise audit draws on from `scada`:
+  the packaging counts and rejects (line, filler, kegs), the bright-tank
+  levels, and the fermenters' extract (`historian.recordsTags`). That was
+  chosen over raising the `scada` retention, which would keep three years of
+  every raw sample on a 12 GB disk; the daily copy is a few thousand points a
+  year. FUXA's daily production report and batch records stay the record of
+  record; the bucket is the retrievable copy 27 CFR 25.300 allows. Not
+  verified on a VM: FUXA's DAQ field layout, as for the dashboard (TODO(verify)
+  in `render.py`).
 - Telegraf runs `mqtt_consumer` for PackTags, plus host metrics.
 - Grafana is provisioned with dashboards for fermentation curves, OEE,
   energy (kWh/bbl against the BA benchmark), monthly demand cost, and
@@ -2434,7 +2570,7 @@ exposed ranges and read 0.
 ### 12.6 Plant tag database
 
 `plant/plant.yaml` is the single source of truth. It now covers every area:
-43 hosts, 428 tags (`plant/generated/full/tags.json`), and 76 rationalized alarms
+43 hosts, 491 tags (`plant/generated/full/tags.json`), and 96 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
 ```yaml
@@ -2536,6 +2672,35 @@ the EWS's own logs, not from request contents ([§14](#14-blue-team-monitoring))
 - **Session controls.** Guacamole uses the TOTP extension, so DMZ hosts need
   time from ot-svc. Session recording goes to disk, and the recordings are
   blue-team evidence.
+- **Named accounts per technician (IEC 62443-2-4).** There is no shared vendor
+  login. The `cherrymountain` app renders a roster (`vendorTechnicians`,
+  default `akim` and `jdiaz`) into `ridgeline.env` per experiment: each
+  technician is `ridgeline-<name>` in Guacamole, with their own password and
+  TOTP key, and on the EWS, with their own password. `cm_vendor_sql.py` gives
+  each one private copies of the `ews-rdp` and `ews-ssh` connections
+  (`ews-rdp-ridgeline-akim`, recording included) that hold that technician's
+  EWS login, removes vendor credentials from the app's connections, and
+  deletes the shared `ridgeline-tech` account of earlier versions;
+  `70-ews-vendor.sh` creates the EWS accounts and locks the shared `ridgeline`
+  one. Every Guacamole login, recording, EWS session, and `cm-plc-tool` event
+  therefore names a person. Wazuh rules 100400–100402 key on the `ridgeline-`
+  prefix, and 100403 alerts on a login as the shared account. vendor-ws's
+  scripted session signs in as the first technician.
+- **MFA strength (accepted training-range risk).** TOTP is not
+  phishing-resistant: a real-time phishing proxy that relays the password and
+  the six digits gets a session, and CISA's OT mitigations ask for
+  phishing-resistant MFA on remote access. A real site would use FIDO2/WebAuthn
+  (a security key or platform authenticator bound to the jump host's origin),
+  or PIV/CAC certificates, through an identity provider in front of Guacamole
+  (its SAML or OpenID Connect extension), and keep TOTP only as a break-glass
+  factor. The range keeps TOTP on purpose: a scripted session can compute it,
+  no authenticator hardware is needed, and a stolen-seed or relay attack is a
+  scenario the SOC can be trained on. This is recorded as an accepted risk of
+  the training range, not a recommendation.
+- **Not implemented, by decision.** A per-session approval record (who
+  approved, the window, the purpose) and time-boxed enablement of the vendor's
+  WireGuard peer were excluded by the range owner; the approved-window rules
+  of [§14](#14-blue-team-monitoring) stay time-of-day based.
 - **Host access on the vendor path.** `ews`, `dmz-jump`, and `dmz-vpn` refuse
   root and empty-password SSH logins (and `ews`'s xrdp refuses root), so the
   only way in from the tunnel is the vendor account through Guacamole
@@ -2552,7 +2717,7 @@ the design keeps committed values out of running experiments where it can:
 | Secret | Where it comes from | Exposure |
 |---|---|---|
 | OpenPLC, FUXA (admin and JWT `secretCode`), InfluxDB, Grafana, Guacamole admin, Wazuh enrollment | Generated per experiment by the `cherrymountain` app (`secrets.json`, 0600); rendered files replace the static injects | None committed for full and lite. The ci slice's static `fuxa.env`, `openplc.env`, and `mysettings.json` hold fixed values, used only when the ci topology runs without the app (the Docker integration test) |
-| Vendor persona (Guacamole password, TOTP key, EWS password) | Generated per experiment and rendered as `ridgeline.env` for dmz-jump, ews, and vendor-ws | The committed `phenix-injects/guacamole/ridgeline.env` is a fallback for runs without the app |
+| Vendor persona (per technician: Guacamole password, TOTP key, EWS password) | Generated per experiment (the first technician's in `secrets.json`, the others' in `vendor.json`, 0600) and rendered as `ridgeline.env` for dmz-jump, ews, and vendor-ws | The committed `phenix-injects/guacamole/ridgeline.env` is a fallback for runs without the app |
 | WireGuard private keys | Generated per experiment at configure | The scenario's fixed-seed keys are public in the repository and are replaced unless `wireguardKeys: scenario` |
 | FUXA seed password `123456` | FUXA's own default | Changed by the provisioning script on first boot |
 | OpenSearch (ground truth), the event API, HELICS | No authentication | MGMT only, reached from the host through cc tunnels ([§15.3](#153-topology-modules-and-variants)); out of bounds for exercises |
@@ -2728,6 +2893,46 @@ explainable events):
   FIELD-PWR can reach it, so a session is lateral movement.
 - ATS transfer and load-shed events.
 - New hosts on field VLANs.
+- **Life-safety writes** ([§6.7](#67-cellar-co2-life-safety-interlock),
+  [§6.8](#68-confined-space-entry-lockout)): a coil write to rio-utilities
+  (coil 4 is the bulk CO₂ valve) from anyone but plc-utilities (9000170); a
+  write to any PLC's RIO output image, coil 800 and up, which no supervisory
+  host writes (9000171; plc-utilities coil 804 is the CO₂ valve); the CO₂
+  shutoff reset (plc-utilities coil 11, 9000172) or a confined-space entry
+  permit (plc-cellar coils 35–40, 9000173) written from anyone but scada-fuxa.
+  Suricata 7's `modbus: address` test does not match a Write Single Coil at
+  an exact address, so 9000170 takes every coil write and 9000172/9000173 match
+  the PDU bytes (function 5 only); Zeek's `Life_Safety_Write` covers the same
+  coils for Write Multiple Coils too, and the notices `CO2_Supply_Shutoff`,
+  `CO2_Supply_Shutoff_Reset`, and `Vessel_Entry_Violation` mark the state
+  changes in FUXA's polls. `tests/soc` ties every address to plantgen's
+  `registers.json`.
+
+**Log and NSM retention** (NIST SP 800-92r1; OMB M-21-31 as the reference
+model). M-21-31 asks a federal agency for 12 months of logs in active storage
+and 18 more in cold storage, and 72 hours of full packet capture. The range is
+an exercise platform: an experiment runs at most a week (the HELICS end time),
+and what must survive it is exported at cleanup or by SCORCH. So the range
+states its own targets and sizes the disks to them, and records what a real
+site would need:
+
+| Store | Range target | Mechanism | Disk and fit | A real site (M-21-31 model) |
+|---|---|---|---|---|
+| Wazuh alerts (`wazuh-alerts-*`) | 30 days | ISM policy `cm-retention-alerts` (`CM_WAZUH_ALERTS_DAYS`) | Indexer 16 GB; alerts are a small share | 12 months hot, 18 cold: about 30 months, snapshots to object storage |
+| Wazuh archives (`wazuh-archives-*`) | 7 days, the exercise | ISM policy `cm-retention-archives` (`CM_WAZUH_ARCHIVES_DAYS`) | The bulk of the 16 GB; a firewall-drop flood is the risk (rule 100104 aggregates the alerts, not the archives) | as above |
+| Malcolm OpenSearch (Zeek logs, Suricata alerts, Arkime sessions) | The exercise (7 days) | `OPENSEARCH_INDEX_SIZE_PRUNE_LIMIT=24G`: the oldest network-metadata indexes go first | 64 GB disk shared with the pcap | 12 + 18 months of the metadata, on its own storage tier |
+| Arkime full pcap | As much as fits, about a day of mirrored traffic | `MANAGE_PCAP_FILES=true`, `ARKIME_FREESPACEG=10%`: oldest pcap deleted when free space runs low | **Shortfall:** 72 h of the mirror (an estimated 1–3 Mbit/s of OT and BAS polling, so 30–100 GB) does not fit beside the indexes; SCORCH's `pcap` captures are the archive for a run | 72 hours, sized from measured mirror throughput |
+| Historian (`scada`, `bas`, `oee`) | 30 days | Bucket retention (`historian.retentionHours`) | 12 GB | per site policy |
+| Historian `records` | 3 years | Bucket retention, daily copy task ([§12.4](#124-historian-and-engineering-workstation)) | negligible | 3 years (27 CFR 25.300) |
+| Ground truth (OpenSearch on sim-ctl) | The experiment | none (the white cell's) | 16 GB; not measured over a full week | n/a (range only) |
+
+**Reconciled with 45a0747.** That commit deleted Wazuh alert and archive
+indexes after 14 days with one policy, to keep the 16 GB disk from filling.
+The split keeps that purpose: archives, the large and raw stream, now go
+after 7 days, and alerts, which an after-action review reads, stay 30.
+`CM_WAZUH_RETENTION_DAYS`, if set, still applies one value to both. The
+volumes are estimates; nothing has run on a VM, and the Malcolm settings are
+unverified on 26.10.0 ([§19](#19-risks-and-open-questions)).
 
 **Excluded** as non-OSI-licensed: Security Onion 2.4 (Elastic License 2.0)
 and EMQX 5.9+ (BSL).
@@ -3207,8 +3412,22 @@ clears those three stores without a restart.
 - The MGMT plane, the hosts' consoles, and the phenix host are out of bounds
   for players ([§10.1](#101-zones-and-conduits-purdue-model--isaiec-62443)).
 - Abnormal injects available now: utility outage, chiller fault, CO₂ release,
-  packaging jams, weather steps, a field-link impairment (`qos`), and a benign
-  vendor re-upload. **Attack injects (TODO, out of scope by
+  packaging jams, weather steps, a field-link impairment (`qos`), a benign
+  vendor re-upload, a genset exercise, a CO₂ leak at the bulk tank, filler, or
+  draft system (trips the supply shutoff at 30,000 ppm), a gas-detection panel
+  failure, a chiller refrigerant leak and recharge, and a BESS cell thermal
+  event ([§9.5](#95-scenario-events-and-ground-truth)).
+- **CO₂ supply shutoff (operator runbook).** After a tier-3 alarm or a
+  detection failure, `UTL.CO2.XS02.SHUTOFF` stays set and the bulk valve stays
+  closed. Confirm on bas-fuxa that every area is below tier 3 and the shutoff
+  relay (`FAC.VENT.XS01.SHUTOFF_OK`) is back, ventilate, then write
+  `UTL.CO2.XC01.RESET` from scada-fuxa; plc-utilities accepts it once the relay
+  has been healthy for 60 s. A reset from the EWS alerts (Suricata 9000172).
+- **Confined-space entry (operator runbook).** Set the vessel's entry permit
+  bit from scada-fuxa when the permit is issued, check `XSnn.LOCKED`, and clear
+  it when the permit is canceled. An `XAnn` Critical alarm during entry means
+  something wrote a locked output: get the entrant out, keep the lockout, and
+  hand the time to the SOC (Zeek `Vessel_Entry_Violation`). **Attack injects (TODO, out of scope by
   [§2](#2-goals-and-non-goals)):** a rogue Modbus write from the DMZ, a BDT
   rewrite of a BBMD, a DNP3 breaker CROB, and a PLC program change through the
   vendor path; each has a detection in [§14](#14-blue-team-monitoring) and
@@ -3292,10 +3511,10 @@ disables an alarm and re-enables it at expiry, logging both to the historian.
 **Log volume.** VyOS `default-log` has no rate limit, so a scan produces one
 syslog line per dropped packet. Mitigations in place: rule 100104 aggregates
 ten drops a minute from one source into one alert, and `cm-wazuh-provision`
-creates an index lifecycle (ISM) policy that deletes `wazuh-alerts-*` and
-`wazuh-archives-*` after 14 days (`CM_WAZUH_RETENTION_DAYS`) so the indexer's
-16 GB disk does not fill during a long exercise; Malcolm already ages its
-indexes out. **TODO:** Wazuh's analysisd EPS limit on the manager.
+creates index lifecycle (ISM) policies that delete `wazuh-archives-*` after 7
+days and `wazuh-alerts-*` after 30 so the indexer's 16 GB disk does not fill
+during a long exercise, and Malcolm prunes its metadata indexes at 24 GB (the
+per-store targets are in [§14](#14-blue-team-monitoring)). **TODO:** Wazuh's analysisd EPS limit on the manager.
 
 **EWS program-change detection without cm_plc_tool (TODO).** Today a change
 made with `curl` on the EWS leaves only network evidence (the REST session and
@@ -3415,7 +3634,7 @@ scene.
 | Item | Where | Purpose |
 |---|---|---|
 | `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main`, pinned by digest). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs, Guacamole connections, Wazuh enrollment, nftables MGMT policy. **post-start/running:** verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
-| `phenix-scorch-component-plantevent` | `apps/` | Drives the sim-ctl event API from SCORCH (batch, outage, chiller fault, CO₂ release, jam, weather step), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
+| `phenix-scorch-component-plantevent` | `apps/` | Drives the sim-ctl event API from SCORCH (batch, outage, genset exercise, chiller fault, CO₂ release, jam, weather step, CIP panel, CO₂ leak, gas-detection failure, refrigerant leak, BESS thermal), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
 | `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the proposed `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current (`cm-plantgen-tests`, `cm-sync-check`) |
 | `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)), tested in CI (`cm-sim-tests`) |
 | `cm-viz` | `viz/` | The white cell's 3D view of ground truth: a Python bridge from the sim-ctl snapshot to a read-only WebSocket, and a three.js page with three scenes and an SVG fallback ([§15.10](#1510-white-cell-3d-view-cm-viz)); tested in CI (`cm-viz-tests`) and in headless Chromium (`-m browser`) |
@@ -3694,7 +3913,7 @@ reach a plant like this, and the row says why.
 | 26 U.S.C. 5051(a)(2); 27 CFR 25.152 | Federal excise at $3.50/bbl on the first 60,000 bbl for a brewer producing not more than 2,000,000 bbl a year (no end date since Pub. L. 116-260); the general rate is $18/bbl. The brewer's notice, bond, and bonded premises of Part 25 come with it | Documented. The tax estimate is in [§5.3](#53-best-practices-encoded) |
 | 27 CFR 25.292, 25.293 | Daily records of materials, beer produced, bottled, racked, removed taxpaid and tax-free, returned, lost, destroyed, and tests of measuring devices, with daily summaries | Recorded in part: the packaging federate's bottle, case, and keg counts and the batch counts; FUXA's daily production report is the record ([§12.2](#122-fuxa-two-instances)). Materials, losses, and returns are not modeled |
 | 27 CFR 25.297 | Brewer's Report of Operations, quarterly for a brewer owing not more than $50,000 a year | Documented |
-| 27 CFR 25.300 | Records kept at the brewery, available in business hours, for not less than three years (TTB may add three); data-processing copies elsewhere must be retrievable within five business days | Documented. The historian keeps 30 days ([§12.4](#124-historian-and-engineering-workstation)) |
+| 27 CFR 25.300 | Records kept at the brewery, available in business hours, for not less than three years (TTB may add three); data-processing copies elsewhere must be retrievable within five business days | Recorded: the historian's `records` bucket keeps a daily copy of the packaging counts, rejects, BBT levels, and fermenter extract for three years, while the raw buckets keep 30 days ([§12.4](#124-historian-and-engineering-workstation)) |
 | 27 CFR 25.142, 25.156, 25.157, 25.158 | Bottle marks (brewer, net contents, nature, place); net contents exact except for good-commercial-practice filling variation, and the quarterly barrel equivalent within 0.5 %; a keg more than 2 % over its rating taxed on the actual quantity; bottled beer computed from the case table (24 × 12 fl oz = 0.07258 bbl) to five decimals | Modeled and Recorded: the fill-level model, the quarterly variance, and the TTB barrel figures ([§9.6](#96-implementation-status-and-validation)) |
 | 27 CFR 7.21, 7.22 | A COLA before bottling or removal, unless the beer will not be shipped in interstate or foreign commerce (7.21(c)); label changes within TTB's allowances need no new COLA | Documented. A 2,500 bbl brewery selling through Colorado wholesalers may be intrastate-only |
 | 27 CFR 7.65, 7.70; 27 CFR 16.21 | Alcohol content, if stated, within 0.3 percentage points of the label; net contents in U.S. units (metric optional, same field of vision); the Government Warning | Recorded in part: the cellar's ground truth carries each tank's ABV against the recipe's 7.1 % ([§9.6](#96-implementation-status-and-validation)) |
@@ -3718,16 +3937,16 @@ reach a plant like this, and the row says why.
 |---|---|---|
 | 29 CFR 1910.1000 Table Z-1; NIOSH | CO₂ PEL 5,000 ppm TWA (no OSHA STEL); NIOSH REL 5,000 ppm TWA and 30,000 ppm STEL; IDLH 40,000 ppm | Modeled: the alarm tiers ([§5.3](#53-best-practices-encoded), [§6.7](#67-cellar-co2-life-safety-interlock)) |
 | 2021 IFC §5307.3 (Colorado DFPC adopts the 2021 IFC unamended) | For an insulated liquid CO₂ beverage system over 100 lb indoors: ventilation or gas detection with sensors within 12 in of the floor, a supervisory alarm at 5,000 ppm and a local alarm at 30,000 ppm | Modeled in the cellar: four low-mounted sensors, purge fans at 5,000 ppm, alarms at 15,000 and 30,000 ppm |
-| Denver Fire Department policy *IFC 5307* (effective 2020-06-15; Denver's amended §5307, with NFPA 55 Chapter 13) | Alarm set points of **5,000 ppm TWA (self-resetting), 15,000 ppm (latching), 30,000 ppm (latching)**; detectors 12–24 in above the floor at every point of use and supply tank area; exhaust within 12 in of the floor at 1 cfm/ft², negative pressure, held under 5,000 ppm; at 30,000 ppm, strobes and horns, **an automatic system shutoff valve that fails closed on loss of power or detection**, evacuation, and an annunciator and graphic map outside the hazard area; signage; construction permits over 100 lb, a separate compressed-gas permit at 686 lb of CO₂ (1,100 lb liquid), an engineered foundation and permit for bulk tanks over 2,000 lb; annual operational permit and inspection; relief valves piped outdoors; hydrostatic test dates on tanks | Modeled: the three tiers, the sensor height, the carbonation inhibit at 15,000 ppm. **Not modeled:** the 30,000 ppm automatic shutoff of the CO₂ supply (the plant has the valve, `UTL.CO2.XV01.CMD`, but no tier-3 interlock closes it), detection at the bulk tank and vaporizer, the packaging filler, and the taproom cold room and draft system, the annunciator and fire-alarm tie-in, signage, and permits. The shutoff and the extra detection are Phase 3 work ([§19](#19-risks-and-open-questions)) |
-| 29 CFR 1910.146 | Fermenters, bright tanks, the mash tun, and the kettle are permit-required confined spaces when CO₂ or oxygen deficiency can be present: a written program, an entry permit signed by the entry supervisor, an attendant, atmospheric testing in the order oxygen, flammables, toxics, rescue arrangements, and canceled permits kept one year | Documented. The range has no entry-permit interlock (for example a vessel "entry" mode that locks out its CO₂, glycol, and CIP valves); that is a Phase 3 candidate ([§19](#19-risks-and-open-questions)). The CO₂ readings an attendant would log are Recorded |
+| Denver Fire Department policy *IFC 5307* (effective 2020-06-15; Denver's amended §5307, with NFPA 55 Chapter 13) | Alarm set points of **5,000 ppm TWA (self-resetting), 15,000 ppm (latching), 30,000 ppm (latching)**; detectors 12–24 in above the floor at every point of use and supply tank area; exhaust within 12 in of the floor at 1 cfm/ft², negative pressure, held under 5,000 ppm; at 30,000 ppm, strobes and horns, **an automatic system shutoff valve that fails closed on loss of power or detection**, evacuation, and an annunciator and graphic map outside the hazard area; signage; construction permits over 100 lb, a separate compressed-gas permit at 686 lb of CO₂ (1,100 lb liquid), an engineered foundation and permit for bulk tanks over 2,000 lb; annual operational permit and inspection; relief valves piped outdoors; hydrostatic test dates on tanks | Modeled: the three tiers, the sensor height, the carbonation inhibit at 15,000 ppm, and now the **automatic fail-closed supply shutoff** at 30,000 ppm (a hardwired relay in series with the bulk valve's solenoid, latched in plc-utilities until an operator reset), **detection at the bulk tank and vaporizer, the filler, and the cold room and draft system** with the same tiers, the area exhaust, and the horns and strobes ([§6.7](#67-cellar-co2-life-safety-interlock)). Documented: the annunciator with its graphic map and the fire-alarm tie-in (the range has no fire alarm system), latching of tiers 2 and 3 at the detection panel itself (the BAS tiers self-clear with a 10 % deadband; the latch is at the shutoff and in FUXA's acknowledged alarms), signage, and permits |
+| 29 CFR 1910.146 | Fermenters, bright tanks, the mash tun, and the kettle are permit-required confined spaces when CO₂ or oxygen deficiency can be present: a written program, an entry permit signed by the entry supervisor, an attendant, atmospheric testing in the order oxygen, flammables, toxics, rescue arrangements, and canceled permits kept one year | Modeled in part: a per-vessel entry permit bit on plc-cellar and plc-brewhouse locks out the vessel's CO₂, glycol, steam, outlet, and CIP, and a Critical alarm latches when a locked output is written ([§6.8](#68-confined-space-entry-lockout)). The written program, permit, attendant, testing, and rescue are Documented. The CO₂ readings an attendant would log are Recorded |
 | 29 CFR 1910.147 | Lockout/tagout procedures for servicing, training, and an annual inspection of each procedure, certified | Documented. PackML's Maintenance mode is the nearest control-system feature ([§6.3](#63-areas-equipment-and-control-strategies)) |
 | 29 CFR 1910.212; 1910.28 | Point-of-operation and nip-point guarding on the mill, conveyors, filler, and labeler; fall protection at 4 ft on the fermenter platforms and stair landings | Documented; packaging jam photo-eyes are Modeled |
 | 29 CFR 1910.1200 | Hazard communication: a written program, GHS labels, SDSs available each shift, training; the 2024 update (GHS Revision 7) with employer compliance dates of 2026-11-20 for substances and 2028-05-19 for mixtures | Documented (caustic, acid, PAA, glycol, CO₂) |
 | 29 CFR 1910.119 Appendix A; 40 CFR 68.130 | PSM and RMP list ammonia (10,000 lb), chlorine, peracetic acid above 60 % (PSM 1,000 lb; RMP 10,000 lb), nitric acid; CO₂, sodium hydroxide, phosphoric acid, and propylene glycol are not listed | N/A: no ammonia (glycol chiller), CIP chemicals below listing concentrations or quantities. Colorado has no state OSHA plan, so federal OSHA applies |
 | 40 CFR 370.10; 40 CFR 355 Appendix A | EPCRA Tier II at 10,000 lb for a hazardous chemical, or 500 lb (or the TPQ if lower) for an extremely hazardous substance: peracetic acid TPQ 500 lb, nitric acid 1,000 lb, sulfuric acid 1,000 lb; CO₂ and NaOH are not EHS | Documented. The 6,000 lb bulk CO₂ tank is under 10,000 lb; a PAA inventory over 500 lb or a caustic inventory over 10,000 lb would trigger reporting, and the CIP tank sizes are not specified |
-| 7 CCR 1101-5 (Colorado Boiler and Pressure Vessel Regulations) | Boilers and pressure vessels within the scope of ASME Sections I, IV, and VIII; an electric boiler is a boiler; steam over 15 psig is a Section I power boiler (annual internal and external inspection), steam at or under 15 psi a Section IV heating boiler (certificate inspection every two years); pressure vessels as ASME VIII scopes them | Documented. The 200 kW electric boiler runs at 15 psig and should be specified as a Section IV unit; its low-water cutoff is Modeled. Whether the 15 psig MAWP unitanks fall inside Section VIII's scope turns on U-1(c)(2), which was not read; the Brewers Association's position (not fetched) is that brewery pressure vessels do |
-| ASHRAE 15 (read through ACHR News) and EPA 40 CFR 84 Subpart C | A machinery room, with a refrigerant detector that alarms at the occupational exposure limit for an A1 refrigerant, when the charge per circuit exceeds the refrigerant concentration limit for the room; from 2026-01-01, leak-rate calculation at every top-off of an appliance holding 15 lb or more of HFC, repair within 30 days above 30 % a year for industrial process refrigeration, and annual leak inspections for 15–499 lb | Documented. The 15-ton glycol chiller's charge is not specified and there is no refrigerant leak point on `glycol-chiller`; adding one is a plant.yaml change ([§19](#19-risks-and-open-questions)) |
-| NFPA 855 (2023 edition per the ACP explainer; 2026 edition per UL) and UL 9540/9540A | ESS listed to UL 9540, UL 9540A fire-propagation test data, hazard mitigation analysis, emergency response plan, explosion control (NFPA 68 or 69), commissioning and decommissioning plans; the 2026 edition adds installation-level large-scale fire testing | Documented ([§7.2](#72-loads-notional-checked-against-54)). No cell temperature or off-gas detection on `bess-pcs` |
+| 7 CCR 1101-5 (Colorado Boiler and Pressure Vessel Regulations) | Boilers and pressure vessels within the scope of ASME Sections I, IV, and VIII; an electric boiler is a boiler; steam over 15 psig is a Section I power boiler (annual internal and external inspection), steam at or under 15 psi a Section IV heating boiler (certificate inspection every two years); pressure vessels as ASME VIII scopes them | Modeled: the 200 kW electric boiler is specified as an ASME Section IV low-pressure steam boiler, 15 psig MAWP with the safety valve set at 15 psig (`UTL.STM`), and now operates at 12 psig so it does not ride its safety valve; the valve caps the header in the simulation and its lifts are counted, and the low-water cutoff is Modeled. The certificate inspection is Documented. Whether the 15 psig MAWP unitanks fall inside Section VIII's scope turns on U-1(c)(2), which was not read; the Brewers Association's position (not fetched) is that brewery pressure vessels do |
+| ASHRAE 15 (read through ACHR News) and EPA 40 CFR 84 Subpart C | A machinery room, with a refrigerant detector that alarms at the occupational exposure limit for an A1 refrigerant, when the charge per circuit exceeds the refrigerant concentration limit for the room; from 2026-01-01, leak-rate calculation at every top-off of an appliance holding 15 lb or more of HFC, repair within 30 days above 30 % a year for industrial process refrigeration, and annual leak inspections for 15–499 lb | Modeled and Recorded: the chiller holds 45 lb of R-410A (an HFC appliance over 15 lb), its detector `UTL.CHL.AT01.PV` alarms High at the 1,000 ppm exposure limit, a large loss trips the OEM controller on low suction, and each recharge writes a ground-truth charge record with the leak rate by the annualizing method against the 30 %/yr trigger (`refrigerant-leak` event). The machinery-room requirements and the annual inspection are Documented |
+| NFPA 855 (2023 edition per the ACP explainer; 2026 edition per UL) and UL 9540/9540A | ESS listed to UL 9540, UL 9540A fire-propagation test data, hazard mitigation analysis, emergency response plan, explosion control (NFPA 68 or 69), commissioning and decommissioning plans; the 2026 edition adds installation-level large-scale fire testing | Modeled: the BMS hottest-cell temperature and an enclosure off-gas detector on `bess-pcs`, with the PCS tripping at 140 °F or on off-gas (`bess-thermal` event). Listing, test data, the hazard mitigation analysis, explosion control, and the plans are Documented ([§7.2](#72-loads-notional-checked-against-54)) |
 | CGA G-6.5 (edition not verified) and NFPA 55 Chapter 13 | Small stationary insulated CO₂ supply systems; the Denver policy incorporates NFPA 55 Chapter 13 by reference | Documented |
 
 ### 18A.4 Environment
@@ -3769,7 +3988,7 @@ reach a plant like this, and the row says why.
 | Source | What it asks for | Range |
 |---|---|---|
 | ISA/IEC 62443-3-2, 3-3 | Zones and conduits, security level targets | Modeled ([§10](#10-network-architecture)) |
-| IEC 62443-2-4:2023 (Edition 2.0, 2023-12-15) | Security program requirements for the integrator and service provider during integration and maintenance, remote access among them | Modeled in part: the vendor path has a jump host, TOTP, session recording, a tunnel allow-list, and approved-window detections ([§13](#13-vendor-remote-access), [§14](#14-blue-team-monitoring)). **Not in the range:** a per-session authorization (ticket) the brewery grants before the vendor connects, named accounts per technician, and time-boxed enablement of the vendor's tunnel peer; TOTP is not phishing-resistant MFA. These are flagged for the §13 owner ([§19](#19-risks-and-open-questions)) |
+| IEC 62443-2-4:2023 (Edition 2.0, 2023-12-15) | Security program requirements for the integrator and service provider during integration and maintenance, remote access among them | Modeled in part: the vendor path has a jump host, TOTP, session recording, a tunnel allow-list, and approved-window detections ([§13](#13-vendor-remote-access), [§14](#14-blue-team-monitoring)). Named accounts per technician are now Modeled ([§13](#13-vendor-remote-access)). TOTP is not phishing-resistant MFA: an accepted training-range risk, with FIDO2/WebAuthn as what a real site would use (§13). **Not in the range, by the owner's decision:** a per-session authorization (ticket) and time-boxed enablement of the vendor's tunnel peer |
 | NIST SP 800-82r3 | OT security baseline | Modeled ([§10](#10-network-architecture), [§13](#13-vendor-remote-access), [§14](#14-blue-team-monitoring)) |
 | NIST CSF 2.0 | Govern, Identify, Protect, Detect, Respond, Recover | The Govern function (policy, roles, supplier risk) is Documented only |
 | CISA Cross-Sector CPGs 2.0 (2025-12-10) | Goals most relevant here: 2.A asset inventory, 2.E network topology, 3.A default passwords, 3.F MFA, 3.I segmentation, 3.O backups, 3.Q log collection and storage, 3.R unauthorized devices, 3.S internet-facing devices, 1.C incident response plans, 5.B incident reporting | Modeled: 2.A (plant.yaml, NetBox in Malcolm), 2.E (this document), 3.A (per-experiment secrets), 3.F (Guacamole TOTP), 3.I (§10), 3.Q (Wazuh, Malcolm), 3.R (new-host detection), 3.S (only WireGuard UDP 51820 is exposed). Documented: 3.O (exports at cleanup, no restore drill), 1.C, 5.B |
@@ -3779,7 +3998,7 @@ reach a plant like this, and the row says why.
 | Food and Ag-ISAC | Sector threat intelligence and practices (its report on managing end-of-life technology, written after attacks on refrigeration controllers, is on point for `glycol-chiller`) | Documented |
 | Colorado Privacy Act, C.R.S. 6-1-1304 | Applies to controllers processing data of 100,000 or more Colorado consumers a year, or 25,000 with data sales | N/A for a brewery of this size; the taproom's customer data is business IT, out of scope |
 | PCI DSS v4.0.1 | Cardholder data environment segmentation and controls | N/A: no POS is deployed ([§2](#2-goals-and-non-goals)); the CORP zone is the attach point |
-| NIST SP 800-92 Rev. 1 (draft, 2023-10-11); OMB M-21-31 (2021-08-27) | Log management planning; the federal benchmark of 12 months active plus 18 months cold storage (30 months) | Documented. Wazuh and Malcolm run their default retention in the range; a 30-month target would need storage sizing ([§19](#19-risks-and-open-questions)) |
+| NIST SP 800-92 Rev. 1 (draft, 2023-10-11); OMB M-21-31 (2021-08-27) | Log management planning; the federal benchmark of 12 months active plus 18 months cold storage (30 months) | Modeled for the range: a retention target per store (Wazuh alerts 30 days and archives 7, Malcolm metadata pruned at 24 GB, Arkime pcap by free space, historian 30 days with a 3-year records bucket), with the disks sized to it; the 30-month M-21-31 model and its 72 h of full pcap are Documented as a shortfall ([§14](#14-blue-team-monitoring)) |
 | CIRCIA | 72-hour covered-incident and 24-hour ransom-payment reporting once the final rule is in force; the April 2024 proposal reached the Food and Agriculture sector only through the size-based criterion, and as of this review CISA had not issued the final rule | Documented: a brewery below the small-business size standard would likely be outside it; the SOC's evidence (Malcolm, Wazuh, Guacamole recordings) is what a report would draw on |
 
 ### 18A.8 Industry practice
@@ -3798,17 +4017,17 @@ reach a plant like this, and the row says why.
 | 2 | No wastewater discharge record for the POTW permit | 40 CFR 403.5; Metro §6.14; permit self-monitoring | Implemented in the utilities federate (ground truth) |
 | 3 | CIP "verification record" of [§5.3](#53-best-practices-encoded) existed only as a sentence | FDA CGMP sanitation records; BA practice | Implemented in the utilities federate |
 | 4 | Fill-level inspection was a fixed 0.5 % reject with no net-contents basis | NIST HB 133 Table 2-6; 27 CFR 25.142(d), 25.156, 25.158 | Implemented in the packaging federate |
-| 5 | No automatic CO₂ supply shutoff at the 30,000 ppm tier | Denver DFD policy IFC 5307 | **Phase 3** (plc-utilities logic on `UTL.CO2.XV01.CMD`, [§6.6](#66-cross-system-interactions)); documented here |
-| 6 | CO₂ detection only in the cellar; none at the bulk tank and vaporizer, the filler, or the taproom cold room and draft system | Denver DFD policy IFC 5307 (every point of use and supply tank area) | **Phase 3** (plant.yaml BAS points); documented |
-| 7 | No confined-space entry interlock on the vessels | 29 CFR 1910.146 | **Phase 3** candidate (plc-cellar vessel "entry" mode); documented |
-| 8 | No refrigerant leak detection or charge record for the chiller | ASHRAE 15; 40 CFR 84 Subpart C | Documented; a plant.yaml point is the fix |
-| 9 | No BESS cell-temperature or off-gas monitoring | NFPA 855 | Documented |
-| 10 | Boiler class not stated | 7 CCR 1101-5 | Documented: specify a Section IV 15 psig unit |
-| 11 | Historian keeps 30 days; TTB and Colorado want three years of records | 27 CFR 25.300; C.R.S. 44-3-503(6) | Documented ([§12.4](#124-historian-and-engineering-workstation)); the app's `historian.retentionHours` is the knob (apps are out of this review's scope) |
-| 12 | Vendor access has no per-session approval, per-technician accounts, or time-boxed enablement; TOTP is not phishing-resistant | IEC 62443-2-4; CISA primary mitigations | Flagged for the §13 owner ([§19](#19-risks-and-open-questions)) |
-| 13 | SIEM and NSM retention not set against any target | NIST SP 800-92r1; M-21-31 | Flagged for the §14 owner |
+| 5 | No automatic CO₂ supply shutoff at the 30,000 ppm tier | Denver DFD policy IFC 5307 | Implemented: a hardwired shutoff relay in series with the valve, latched in plc-utilities, in the sim, plant.yaml, the PLC, and the detections ([§6.7](#67-cellar-co2-life-safety-interlock)) |
+| 6 | CO₂ detection only in the cellar; none at the bulk tank and vaporizer, the filler, or the taproom cold room and draft system | Denver DFD policy IFC 5307 (every point of use and supply tank area) | Implemented on bas-vent: three sensors with the cellar's tiers, area exhaust, horns and strobes; the annunciator and fire-alarm tie-in are documented (§6.7) |
+| 7 | No confined-space entry interlock on the vessels | 29 CFR 1910.146 | Implemented in plc-cellar and plc-brewhouse, with the CIP peer bits and detections ([§6.8](#68-confined-space-entry-lockout)) |
+| 8 | No refrigerant leak detection or charge record for the chiller | ASHRAE 15; 40 CFR 84 Subpart C | Implemented: detector point, alarm, low-charge trip, charge record |
+| 9 | No BESS cell-temperature or off-gas monitoring | NFPA 855 | Implemented: cell temperature and off-gas points, alarms, PCS trip |
+| 10 | Boiler class not stated | 7 CCR 1101-5 | Implemented: Section IV, 15 psig MAWP, safety valve at 15 psig, operated at 12 psig |
+| 11 | Historian keeps 30 days; TTB and Colorado want three years of records | 27 CFR 25.300; C.R.S. 44-3-503(6) | Implemented: a 3-year `records` bucket fed daily by an InfluxDB task, not a longer raw retention ([§12.4](#124-historian-and-engineering-workstation)) |
+| 12 | Vendor access has no per-session approval, per-technician accounts, or time-boxed enablement; TOTP is not phishing-resistant | IEC 62443-2-4; CISA primary mitigations | Named accounts implemented; TOTP recorded as an accepted risk with FIDO2/WebAuthn as the real-site answer; per-session approval and time-boxed peers excluded by the owner ([§13](#13-vendor-remote-access)) |
+| 13 | SIEM and NSM retention not set against any target | NIST SP 800-92r1; M-21-31 | Implemented: per-store targets, ISM and Malcolm pruning; the pcap shortfall documented ([§14](#14-blue-team-monitoring)) |
 | 14 | Licensing, permits, registrations, training, written programs, APEN, stormwater, Tier II | TTB, Colorado LED, FDA, OSHA, DFD, CDPHE, EPCRA | Documented only (notional range) |
-| 15 | The `plantevent` SCORCH component does not know `genset-exercise` | this review | Flagged for the apps owner |
+| 15 | The `plantevent` SCORCH component does not know `genset-exercise` | this review | Implemented: plantevent posts `genset-exercise` (and `cip-panel`), and the app's KPIs carry the genset test hours left under the cap |
 
 ## 19. Risks and open questions
 
@@ -3846,12 +4065,11 @@ reach a plant like this, and the row says why.
 | plc-power has no clock: nothing on FIELD-PWR carries the time, so the on-peak window, brew-day SOC target, monthly demand reset, and genset exercise are not in the PLC | Open: expose the sim clock as a gen-ats or relay-main point (as `CEL.CLK.KI01` does for the cellar) and add the schedule to `plc-power.st` |
 | rtu-der's DNP3 map exposes the relay-main breaker and MSB feeder commands (BO 0-3) and the site's own setpoints to the utility master, because plantgen maps every FIELD-PWR point | Detection now (Suricata 9000138/9000139, Zeek `DNP3_Breaker_Command`); open: a utility-only FEP map in plantgen's `dnp3/rtu-der.json` and the ot-sim FEP config |
 | OpenPLC's `modbus_master` keeps the last input value on a lost RIO link (`error_handling: keep-last-value`), so an interlock input such as the cellar CO₂ relay holds its last state when rio-cellar is unreachable | Open: a RIO heartbeat point (a counter the RIO increments) that each PLC watches, failing its interlocks safe on a stale count ([§6.7](#67-cellar-co2-life-safety-interlock)) |
-| The CO₂ life-safety path stops at ventilation and the carbonation inhibit. The representative fire code (Denver DFD policy IFC 5307) also closes an automatic, fail-closed CO₂ supply shutoff at 30,000 ppm and wants detection at every point of use and supply tank area, not only the cellar ([§18A.3](#18a3-life-safety-fire-and-equipment)) | Open, Phase 3: a tier-3 interlock in plc-utilities on `UTL.CO2.XV01.CMD` (fail closed on loss of the detection relay), and BAS CO₂ points at the bulk tank and vaporizer, the filler, and the taproom cold room in `plant.yaml`. Until then the gap is documented |
-| Vessel entry is a permit-required confined space (29 CFR 1910.146), and nothing in the control system knows a vessel is being entered | Open, Phase 3 candidate: a per-vessel "entry" mode in plc-cellar that locks out its CO₂, glycol, and CIP valves and alarms on any write to them; documented in [§18A.3](#18a3-life-safety-fire-and-equipment) |
-| Compliance records that a real brewery keeps for three years (TTB, Colorado excise) are only in a 30-day historian and in ground truth | Documented in [§12.4](#124-historian-and-engineering-workstation) and [§18A.1](#18a1-alcohol-ttb-and-colorado); the FUXA daily report is the record of record; `historian.retentionHours` can be raised for the `scada` bucket |
-| The vendor path meets the shape of IEC 62443-2-4 remote access (jump host, MFA, recording, allow-list) but not its workflow: no per-session authorization by the brewery, no per-technician accounts, no time-boxed peer, and TOTP is not phishing-resistant ([§18A.7](#18a7-ics-cybersecurity)) | Open for the §13 owner: a vendor-session approval record (who approved, window, purpose) that Wazuh's approved-window rules read, per-technician Guacamole and EWS accounts, and a scheduled `wg set` that adds the vendor peer only inside the window |
-| SIEM and NSM retention is whatever Wazuh and Malcolm default to; no target is stated against NIST SP 800-92r1 or the M-21-31 30-month benchmark ([§18A.7](#18a7-ics-cybersecurity)) | Open for the §14 owner: state a retention target per store (Wazuh alerts and archives, Malcolm OpenSearch indices, Arkime pcap) and size the `malcolm` and `wazuh` disks to it |
-| The chiller and BESS carry no safety-monitoring points (refrigerant leak, cell temperature, off-gas) that ASHRAE 15 and NFPA 855 installations have, so those scenarios cannot be exercised | Open: `plant.yaml` points on `glycol-chiller` and `bess-pcs` with alarms, when the plant database is next edited ([§18A.3](#18a3-life-safety-fire-and-equipment)) |
+| The CO₂ supply shutoff and the entry lockout rest on inputs and peers that hold their last value: plc-utilities' latch may miss a trip while rio-utilities is unreachable (the valve still closes in its wiring), and the brewhouse CIP circuit is not interlocked to the brewhouse entry permits (plc-brewhouse has no Modbus server for a peer read) | Open: the RIO heartbeat above; for the brewhouse, a peer path (a Modbus server on plc-brewhouse, or the permit bits mirrored by FUXA) or a hardwired CIP route interlock |
+| The confined-space lockout lives in the PLC: a stopped PLC, or a write straight to the RIO, bypasses it ([§6.8](#68-confined-space-entry-lockout)) | Accepted for the range; a real site adds mechanical isolation (LOTO). The RIO-direct path is visible to Suricata 9000110/9000140 and Zeek `Field_Host_Unknown` |
+| Suricata 7's `modbus: address` test misses a Write Single Coil at an exact address, so the single-coil life-safety rules match PDU bytes and see function 5 only ([§14](#14-blue-team-monitoring)) | Zeek's `Life_Safety_Write` covers Write Multiple Coils; recheck on Malcolm's Suricata 8.0.7 |
+| The retention settings are unverified on a VM: Malcolm's `OPENSEARCH_INDEX_SIZE_PRUNE_LIMIT`, `MANAGE_PCAP_FILES`, and `ARKIME_FREESPACEG` on 26.10.0, the Wazuh archive volume under a scan, ground truth's growth over a week, and the historian records task against FUXA's DAQ field layout | Open, to check on the first VM run; the 72 h pcap target of M-21-31 does not fit the 64 GB Malcolm disk and is documented as a shortfall |
+| Per-session vendor approval and time-boxed WireGuard peers (IEC 62443-2-4) are not in the range | Excluded by the range owner; TOTP is an accepted risk ([§13](#13-vendor-remote-access)) |
 
 ## 20. Licensing
 

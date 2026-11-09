@@ -303,6 +303,26 @@ def test_full_fuxa_projects_are_built_for_both_hosts(ctx: Context) -> None:
         assert set(expect) == {d["name"] for d in project["devices"].values()}
 
 
+def test_full_fuxa_views_have_unique_names_and_the_kiosks_views_exist(ctx: Context) -> None:
+    """FUXA opens a view by its name (/home/<name>, the kiosk URL), so no two
+    views of a project may share one: plc-cellar's generated view is "Cellar
+    points" beside the hand-laid "Cellar". Every kiosk's view must exist on
+    the FUXA host it opens."""
+    from cherrymountain_apps.cherrymountain.metadata import FuxaHost
+
+    views: dict[str, list[str]] = {}
+    for host, md in ctx.hosts.items():
+        if isinstance(md, FuxaHost):
+            project = ctx.sources.fuxa_project(md.project, host)
+            views[host] = [v["name"] for v in project["hmi"]["views"]]
+            assert len(set(views[host])) == len(views[host]), (host, views[host])
+    assert {"Cellar", "Cellar points"} <= set(views["scada-fuxa"])
+    kiosks = {name: md for name, md in ctx.hosts.items() if isinstance(md, HmiHost)}
+    assert kiosks
+    for name, md in kiosks.items():
+        assert md.view in views[md.fuxa], (name, md.view)
+
+
 def test_full_ews_gets_the_openplc_credentials(ctx: Context) -> None:
     """cm_plc_tool.py on the EWS reads /etc/default/cm-ews: the same OpenPLC
     account the app creates on every PLC, root-only."""

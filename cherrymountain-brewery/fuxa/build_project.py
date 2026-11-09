@@ -572,14 +572,21 @@ def view_name(device: str) -> str:
     return device.removeprefix("plc-").capitalize()
 
 
-def build_device_view(dev: PlantDevice, tags: dict[str, PlantTag]) -> dict[str, Any]:
+def build_device_view(
+    dev: PlantDevice, tags: dict[str, PlantTag], taken: frozenset[str] = frozenset()
+) -> dict[str, Any]:
     """A generated view of one device: its process values, setpoints, and states
-    in columns (label, then value or lamp), read-only."""
+    in columns (label, then value or lamp), read-only. FUXA opens a view by its
+    name (``/home/<name>``, which the kiosks use), so a name in ``taken`` gets
+    " points" appended: plc-cellar's view is "Cellar points" next to the
+    hand-laid "Cellar" view."""
     shown: list[PlantTag] = [t for t in dev.tags if ".ALM_" not in t.name]
     columns: int = max(1, -(-len(shown) // VIEW_ROWS))
     width: int = LEFT * 2 + VIEW_COLUMN * columns
     height: int = 70 + 26 * min(len(shown), VIEW_ROWS)
     title: str = view_name(dev.name)
+    if title in taken:
+        title = f"{title} points"
     vb: ViewBuilder = ViewBuilder(tags, width=width, height=height)
     vb.text(LEFT, 28, f"{title}: {dev.name}", size=18, bold=True)
     for i, tag in enumerate(shown):
@@ -654,7 +661,13 @@ def build_plant_project(variant: str, host: str) -> Project:
     views: list[dict[str, Any]] = []
     if all(f"CEL.{fv}.TT01.PV" in tags for fv in FERMENTERS):
         views.append(build_cellar_view(tags))
-    views += [build_device_view(d, tags) for d in plant.devices]
+    hand_laid: frozenset[str] = frozenset(v["name"] for v in views)
+    views += [build_device_view(d, tags, hand_laid) for d in plant.devices]
+    names: list[str] = [v["name"] for v in views]
+    if len(set(names)) != len(names):
+        # FUXA finds a view by its name, so a second one of the same name
+        # cannot be opened by URL.
+        raise SystemExit(f"two views of {host} share a name: {sorted(names)}")
     devices: list[FuxaDevice] = [convert_plant_device(d) for d in plant.devices]
     return Project(
         name=f"cherrymountain-{variant}-{host}",

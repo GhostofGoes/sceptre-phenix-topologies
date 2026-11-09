@@ -2381,7 +2381,9 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
 - The `cherrymountain` app generates the project JSON from `plant.yaml`
   (devices, tags, alarms, DAQ settings) with `fuxa/build_project.py`: for ci
   the hand-laid Cellar view, and for full and lite a view per device (the
-  Cellar view too on scada-fuxa) for both scada-fuxa and bas-fuxa. The
+  Cellar view too on scada-fuxa) for both scada-fuxa and bas-fuxa. FUXA opens
+  a view by its name (`/home/<name>`, the kiosk URL), so the names are unique:
+  plc-cellar's generated view is "Cellar points". The
   committed copies (`fuxa/<variant>/<host>-project.json`) are checked current
   by the `cm-fuxa-check` hook. OPC UA tags address `ns=2;s=<tag>` and S7 tags
   the data blocks the app gives the `s7comm` plugin (DB1 %QW, DB2 %IW, DB3 %MW,
@@ -3728,7 +3730,7 @@ five stages) and follows the pattern of sceptre-phenix-apps:
   locally built fork image the range runs on. The BBMD config is static topology injects, not rendered by
   the app. `plantevent` finds sim-ctl's random port with `cc tunnel list`, and
   opens a tunnel if needed.
-- **Tests.** 120, run on the recorded `ci` and `full` experiments. A test fails
+- **Tests.** 121, run on the recorded `ci` and `full` experiments. A test fails
   when a recorded experiment differs from what the committed topology,
   scenario, and workflow give (`build_fixtures.py` re-records them), and one
   renders every host of the full variant in a single pre-start pass. The

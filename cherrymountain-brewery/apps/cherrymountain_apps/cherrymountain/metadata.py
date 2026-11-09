@@ -312,6 +312,10 @@ class BbmdHost(HostBase):
     """A BACpypes3 BBMD (cm-bbmd.service on ot-svc and bas-bbmd)."""
 
     type: Literal["bbmd"]
+    #: BACnet device instance of the BBMD; unique on the BACnet network.
+    instance: Annotated[int, Field(ge=0, le=4194302)]
+    #: BACnet device name; default ``bbmd-<hostname>``.
+    device_name: Name | None = None
     interface: Interface = "IF0"
     #: Listen prefix length. 0 makes the broadcast address 255.255.255.255,
     #: which the OPS BBMD needs to hear FUXA's Who-Is (DESIGN.md 10.4).

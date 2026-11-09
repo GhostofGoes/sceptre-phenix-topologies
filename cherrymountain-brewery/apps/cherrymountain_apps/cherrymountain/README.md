@@ -85,7 +85,7 @@ Host metadata, selected by `type`:
 | `hmi` | `fuxa` (`scada-fuxa`), `view` (`Overview`), `interface` (the FUXA host's, IF0) | `/etc/default/cm-kiosk`, `cm-kiosk`, XDG autostart entry |
 | `guacamole` | `connections` (`ews-rdp`, `ews-ssh`), `recording` (true), `totp` (true) | Guacamole initdb SQL (salted hash only), `/etc/default/cm-guacamole` |
 | `wazuh-manager` | | With the app's `wazuh` block: the enrollment password and boot hook |
-| `bbmd` | `interface` (IF0), `prefix` (the interface's), `port` (47808), `peers` (required) | `/etc/cherrymountain/bbmd.json` and `/etc/default/cm-bbmd` (the BDT: itself, then its peers, no masks) |
+| `bbmd` | `instance` (required), `deviceName` (`bbmd-<hostname>`), `interface` (IF0), `prefix` (the interface's), `port` (47808), `peers` (required) | `/etc/default/cm-bbmd` for cm-bbmd.service (`CM_BBMD_NAME`, `CM_BBMD_INSTANCE`, `CM_BBMD_ADDRESS`, `CM_BBMD_BDT`: itself, then its peers, no masks), the same as `/etc/cherrymountain/bbmd.json`, and the service files from `phenix-injects/bbmd/` |
 
 Every topology node with a `mgmt` NIC, listed in the app or not, gets
 `/etc/cherrymountain/nftables-mgmt.nft` and `04-cm-mgmt-nftables.sh`. The
@@ -149,12 +149,14 @@ A fuller plant (excerpt):
     - hostname: ot-svc
       metadata:
         type: bbmd
+        instance: 9001
         prefix: 0
         peers:
           - bas-bbmd
     - hostname: bas-bbmd
       metadata:
         type: bbmd
+        instance: 9002
         peers:
           - ot-svc
 ```
@@ -221,8 +223,7 @@ the committed plc-cellar program, recorded to test the OPC UA config.
 
 - **Stubs** (render and test only; no image exists yet to run them):
   historian (`cm-historian`), Guacamole (`cm-guacamole`), Wazuh (`cm-wazuh`
-  and the agent images), HMI kiosk (`cm-desktop`), and the BBMD config
-  (`cm-bbmd.service`, pending in `phenix-injects/bbmd/`). TODO(verify) notes in
+  and the agent images), and the HMI kiosk (`cm-desktop`). TODO(verify) notes in
   `render.py` mark guesses: FUXA's InfluxDB DAQ store keys, the Grafana query
   fields, the s7comm mapping types beyond `int_output`/`int_input`, and the
   Guacamole schema version.

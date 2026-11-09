@@ -273,9 +273,17 @@ def test_wazuh_default_agents_skip_plcs(ctx: Context) -> None:
 
 def test_bbmd_bdt_lists_itself_then_its_peers(ctx: Context) -> None:
     ops_md: BbmdHost = md(
-        BbmdHost, {"type": "bbmd", "prefix": 0, "peers": ["bas-bbmd"]}
+        BbmdHost, {"type": "bbmd", "instance": 9001, "prefix": 0, "peers": ["bas-bbmd"]}
     )
-    bas_md: BbmdHost = md(BbmdHost, {"type": "bbmd", "peers": ["ot-svc"]})
+    bas_md: BbmdHost = md(
+        BbmdHost,
+        {
+            "type": "bbmd",
+            "instance": 9002,
+            "deviceName": "bbmd-bas",
+            "peers": ["ot-svc"],
+        },
+    )
     ctx.hosts["ot-svc"] = ops_md
     ctx.hosts["bas-bbmd"] = bas_md
     ops = render.bbmd_config(ctx, "ot-svc", ops_md)
@@ -286,7 +294,13 @@ def test_bbmd_bdt_lists_itself_then_its_peers(ctx: Context) -> None:
     env = Path(
         by_dst(render.render_bbmd(ctx, "ot-svc", ops_md))["/etc/default/cm-bbmd"].src
     ).read_text()
-    assert 'CM_BBMD_BDT="10.20.30.13:47808 10.30.10.5:47808"' in env
+    assert "CM_BBMD_BDT=10.20.30.13:47808,10.30.10.5:47808" in env
+    assert "CM_BBMD_ADDRESS=10.20.30.13/0:47808" in env
+    assert "CM_BBMD_NAME=bbmd-ot-svc" in env
+    assert "CM_BBMD_INSTANCE=9001" in env
+    dsts = by_dst(render.render_bbmd(ctx, "bas-bbmd", bas_md))
+    assert "/usr/local/lib/cm-bbmd/cm_bbmd.py" in dsts
+    assert "CM_BBMD_NAME=bbmd-bas" in Path(dsts["/etc/default/cm-bbmd"].src).read_text()
 
 
 # ---------------------------------------------------------------- MGMT nftables

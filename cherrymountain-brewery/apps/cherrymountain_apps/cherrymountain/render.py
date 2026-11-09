@@ -1221,24 +1221,34 @@ def bbmd_config(ctx: Context, hostname: str, md: BbmdHost) -> dict[str, Any]:
 
 
 def render_bbmd(ctx: Context, hostname: str, md: BbmdHost) -> list[Injection]:
-    """The BDT config for cm-bbmd.service. The service itself lives in
-    phenix-injects/bbmd/ (another change); without it only the config is
-    injected and a warning is logged."""
+    """``/etc/default/cm-bbmd`` for cm-bbmd.service (phenix-injects/bbmd/:
+    CM_BBMD_NAME, CM_BBMD_INSTANCE, CM_BBMD_ADDRESS, and a comma-separated
+    CM_BBMD_BDT), the same BDT as JSON, and the service files themselves."""
     out: Path = ctx.host_dir(hostname) / "bbmd"
     cfg: dict[str, Any] = bbmd_config(ctx, hostname, md)
-    path: Path = write(out / "bbmd.json", to_json(cfg))
-    bdt: str = " ".join(f"{e['address']}:{e['port']}" for e in cfg["bdt"])
+    path: Path = write(
+        out / "bbmd.json",
+        to_json(
+            {
+                **cfg,
+                "name": md.device_name or f"bbmd-{hostname}",
+                "instance": md.instance,
+            }
+        ),
+    )
+    bdt: str = ",".join(f"{e['address']}:{e['port']}" for e in cfg["bdt"])
     env: Path = write(
         out / "cm-bbmd.env",
         env_file(
-            {"CM_BBMD_ADDRESS": f"{cfg['address']}:{cfg['port']}", "CM_BBMD_BDT": bdt}
+            {
+                "CM_BBMD_NAME": md.device_name or f"bbmd-{hostname}",
+                "CM_BBMD_INSTANCE": md.instance,
+                "CM_BBMD_ADDRESS": f"{cfg['address']}:{cfg['port']}",
+                "CM_BBMD_BDT": bdt,
+            }
         ),
     )
-    if not ctx.sources.has_injects_dir("bbmd"):
-        logger.warning(
-            f"{hostname}: phenix-injects/bbmd/ is missing; injecting the BDT config only"
-        )
-    return [
+    injects: list[Injection] = [
         Injection(
             src=path, dst=f"{CONF_DIR}/bbmd.json", description="BBMD address and BDT"
         ),
@@ -1248,6 +1258,31 @@ def render_bbmd(ctx: Context, hostname: str, md: BbmdHost) -> list[Injection]:
             description="BBMD settings for cm-bbmd.service",
         ),
     ]
+    if not ctx.sources.has_injects_dir("bbmd"):
+        logger.warning(
+            f"{hostname}: phenix-injects/bbmd/ is missing; injecting the BDT config only"
+        )
+        return injects
+    return injects + _shared(
+        ctx,
+        hostname,
+        "bbmd",
+        [
+            (
+                "cm_bbmd.py",
+                "/usr/local/lib/cm-bbmd/cm_bbmd.py",
+                "0644",
+                "BACpypes3 BBMD",
+            ),
+            (
+                "cm-bbmd.service",
+                "/etc/systemd/system/cm-bbmd.service",
+                "0644",
+                "BBMD unit",
+            ),
+            ("70-bbmd.sh", f"{STARTUP}/70-bbmd.sh", "0755", "start the BBMD"),
+        ],
+    )
 
 
 # ---------------------------------------------------------------- all

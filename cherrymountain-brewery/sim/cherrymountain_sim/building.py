@@ -220,12 +220,6 @@ class BuildingFederate(Federate):
         a null write relinquishes the point."""
         return self.commands.get(tag, self.local[tag])
 
-    def on_write(self, device: str, point: str, value: Any) -> None:
-        """A null write relinquishes the point: forget the override, so the
-        local logic runs it and ground truth no longer lists it."""
-        if value is None:
-            self.commands.pop(f"{device}.{point}", None)
-
     def on(self, tag: str) -> bool:
         """A binary output."""
         return bool(self.cmd(tag))

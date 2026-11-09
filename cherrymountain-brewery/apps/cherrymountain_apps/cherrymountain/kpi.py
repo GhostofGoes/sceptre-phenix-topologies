@@ -1,10 +1,10 @@
 """Plant KPIs for ``status.apps.cherrymountain`` (DESIGN.md 16).
 
 The KPIs come from the sim-ctl event API's ``GET /api/v1/kpis``, which reads
-the federates' ground truth. That endpoint is part of cherrymountain_sim's
-event API, which does not exist yet (the ci variant has no event API), so the
-reader reports ``available: false`` with a reason instead of failing the
-stage. Once the API answers, nothing here changes.
+the federates' ground truth (cherrymountain_sim's event API on sim-ctl). The
+ci variant has no event API, and the API may not answer yet during startup,
+so the reader then reports ``available: false`` with a reason instead of
+failing the stage.
 
 Expected reply (every field optional; missing ones stay null):
 

@@ -156,6 +156,8 @@ def env_file(values: dict[str, str | int]) -> str:
             raise ValueError(
                 f"environment value for {key} has a character the file cannot hold"
             )
+        # Operator-set secrets are limited to shell-safe characters
+        # (metadata.SECRET_CHARS), so only spaces need quoting here.
         lines.append(f'{key}="{text}"' if " " in text else f"{key}={text}")
     return "\n".join(lines) + "\n"
 
@@ -1008,7 +1010,7 @@ def guacamole_sql(ctx: Context, md: GuacamoleHost, salt: bytes) -> str:
 
 
 def render_guacamole(ctx: Context, hostname: str, md: GuacamoleHost) -> list[Injection]:
-    """STUB: cm-guacamole does not exist yet. The SQL and settings follow the
+    """Guacamole for the cm-guacamole image. The SQL and settings follow the
     upstream Guacamole PostgreSQL schema and docker images."""
     out: Path = ctx.host_dir(hostname) / "guacamole"
     salt_path: Path = out / "salt"
@@ -1044,8 +1046,9 @@ def render_guacamole(ctx: Context, hostname: str, md: GuacamoleHost) -> list[Inj
 
 
 def render_wazuh(ctx: Context) -> dict[str, list[Injection]]:
-    """STUB: cm-wazuh and the agent images do not exist yet. Agents enroll with
-    a range password (authd use_password)."""
+    """Wazuh manager settings for cm-wazuh and agent enrollment for the images
+    that carry the agent. Agents enroll with a range password (authd
+    use_password)."""
     cfg = ctx.app.wazuh
     if cfg is None:
         return {}

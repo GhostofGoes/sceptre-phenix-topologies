@@ -287,3 +287,14 @@ def test_env_file_refuses_unsafe_values() -> None:
     with pytest.raises(ValueError, match="FOO"):
         render.env_file({"FOO": 'a"b'})
     assert render.env_file({"A": "x y"}).splitlines()[1] == 'A="x y"'
+
+
+def test_secrets_refuse_shell_metacharacters() -> None:
+    from pydantic import ValidationError
+
+    from cherrymountain_apps.cherrymountain.metadata import Secrets
+
+    assert Secrets.model_validate({"openplcPassword": "Ok.pass-1_~"}).openplc_password is not None
+    for bad in ("a;b", "a&b", "a|b", "a b", "a*b", "a<b"):
+        with pytest.raises(ValidationError):
+            Secrets.model_validate({"openplcPassword": bad})

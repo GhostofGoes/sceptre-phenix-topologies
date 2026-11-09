@@ -13,6 +13,7 @@ strict mode, so ``"false"`` is not a bool and ``"502"`` is not a port.
 
 from __future__ import annotations
 
+import re
 from typing import Annotated, Any, ClassVar, Literal
 
 from phenix_apps.apps.scorch.app import Hostname, Interface, Name, Seconds
@@ -24,6 +25,7 @@ from pydantic import (
     Field,
     SecretStr,
     Tag,
+    field_validator,
 )
 from pydantic.alias_generators import to_camel
 
@@ -128,9 +130,23 @@ class Wazuh(Closed):
     agents: list[Hostname] = Field(default_factory=list)
 
 
+#: Characters an operator-set secret may use. The rendered env files are also
+#: sourced by shell scripts, so shell metacharacters are refused up front.
+SECRET_CHARS: re.Pattern[str] = re.compile(r"[A-Za-z0-9._~@%+=:,-]+")
+
+
 class Secrets(Closed):
     """Range-only credentials. Each one that is not set is generated once per
     experiment and kept in the experiment directory, never logged."""
+
+    @field_validator("*")
+    @classmethod
+    def _safe_chars(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not SECRET_CHARS.fullmatch(value.get_secret_value()):
+            raise ValueError(
+                "a secret may use only letters, digits, and . _ ~ @ % + = : , -"
+            )
+        return value
 
     openplc_password: SecretStr | None = None
     fuxa_password: SecretStr | None = None

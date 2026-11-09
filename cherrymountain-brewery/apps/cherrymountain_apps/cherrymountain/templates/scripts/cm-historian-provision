@@ -9,13 +9,15 @@
 # or 720h, or 0 for no expiry; the app renders 720h unless historian.retentionHours
 # says otherwise). Retention is set when a bucket is created, so a bucket that
 # already exists keeps the retention it has.
-# The influx CLI reads INFLUX_HOST, INFLUX_ORG, and INFLUX_TOKEN itself, so the
-# token never appears on a command line.
+# The influx CLI reads INFLUX_HOST, INFLUX_ORG, and INFLUX_TOKEN itself, and the
+# first-run setup posts its JSON body (admin password and operator token) to the
+# setup API on stdin, so neither secret appears on a command line.
 set -euo pipefail
 
 : "${INFLUX_HOST:?set INFLUX_HOST}" "${INFLUX_ORG:?set INFLUX_ORG}"
 : "${INFLUX_TOKEN:?set INFLUX_TOKEN}" "${INFLUX_PASSWORD:?set INFLUX_PASSWORD}"
 : "${INFLUX_BUCKETS:?set INFLUX_BUCKETS}"
+export INFLUX_HOST INFLUX_ORG INFLUX_TOKEN INFLUX_PASSWORD
 RETENTION="${INFLUX_RETENTION:-30d}"
 STATE=/var/lib/cm-historian
 
@@ -26,15 +28,31 @@ for _ in $(seq 1 120); do
   if influx ping >/dev/null 2>&1; then break; fi
   sleep 5
 done
-influx ping
+influx ping || { log "FAIL: InfluxDB did not answer on ${INFLUX_HOST} in 600 s"; exit 1; }
 
 read -r -a buckets <<< "${INFLUX_BUCKETS}"
 
 if curl -sS -m 10 "${INFLUX_HOST}/api/v2/setup" | grep -q '"allowed": *true'; then
   log "first-run setup (org ${INFLUX_ORG}, bucket ${buckets[0]})"
-  influx setup --force --username admin --password "${INFLUX_PASSWORD}" \
-    --org "${INFLUX_ORG}" --bucket "${buckets[0]}" --token "${INFLUX_TOKEN}" \
-    --retention "${RETENTION}"
+  CM_BUCKET="${buckets[0]}" CM_RETENTION="${RETENTION}" python3 -c '
+import json, os, re
+units = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
+retention = os.environ["CM_RETENTION"]
+seconds = 0
+if retention != "0":
+    parts = re.findall(r"(\d+)([smhdw])", retention)
+    if not parts or "".join(n + u for n, u in parts) != retention:
+        raise SystemExit(f"cm-historian-provision: bad INFLUX_RETENTION {retention!r}")
+    seconds = sum(int(n) * units[u] for n, u in parts)
+print(json.dumps({
+    "username": "admin",
+    "password": os.environ["INFLUX_PASSWORD"],
+    "org": os.environ["INFLUX_ORG"],
+    "bucket": os.environ["CM_BUCKET"],
+    "token": os.environ["INFLUX_TOKEN"],
+    "retentionPeriodSeconds": seconds,
+}))' | curl -fsS -m 30 -o /dev/null -H 'Content-Type: application/json' \
+    --data-binary @- "${INFLUX_HOST}/api/v2/setup"
 fi
 
 for bucket in "${buckets[@]}"; do

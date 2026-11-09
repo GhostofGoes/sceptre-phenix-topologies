@@ -15,12 +15,16 @@ work=$(mktemp -d)
 trap 'rm -rf "${work}"' EXIT
 
 mkdir -p "${out}" "${work}/export"
-token=$(curl -sS -m 20 -H 'Content-Type: application/json' \
-  -d "{\"username\":\"admin\",\"password\":\"${FUXA_ADMIN_PASSWORD:-}\"}" "${FUXA}/api/signin" 2>/dev/null \
+# The sign-in body goes on stdin, so the password never appears on a command line.
+token=$(CM_PASS="${FUXA_ADMIN_PASSWORD:-}" python3 -c '
+import json, os
+print(json.dumps({"username": "admin", "password": os.environ["CM_PASS"]}))' \
+  | curl -sS -m 20 -H 'Content-Type: application/json' --data-binary @- \
+    "${FUXA}/api/signin" 2>/dev/null \
   | python3 -c 'import json,sys; print(json.load(sys.stdin).get("data", {}).get("token", ""))' 2>/dev/null || true)
 end=$(( $(date +%s) * 1000 ))
 query=$(printf '{"start":0,"end":%s}' "${end}")
-if [ -n "${token}" ] && curl -sS -m 120 -G -H "x-access-token: ${token}" \
+if [ -n "${token}" ] && curl -fsS -m 120 -G -H "x-access-token: ${token}" \
   --data-urlencode "query=${query}" "${FUXA}/api/alarmsHistory" -o "${work}/export/alarms-history.json"; then
   echo "cm-export-fuxa: alarm history exported from the API"
 else
@@ -28,6 +32,15 @@ else
 fi
 if [ -d "${FUXA_DIR}/_db" ]; then
   cp -a "${FUXA_DIR}/_db" "${work}/export/_db"
+  # FUXA is still running, so a plain copy of a SQLite file can be torn; take
+  # a consistent online backup of each one where sqlite3 is installed.
+  if command -v sqlite3 >/dev/null; then
+    for db in "${FUXA_DIR}"/_db/*.db; do
+      [ -e "${db}" ] || continue
+      sqlite3 "${db}" ".backup '${work}/export/_db/$(basename "${db}")'" \
+        || echo "cm-export-fuxa: sqlite3 backup of ${db} failed; kept the plain copy" >&2
+    done
+  fi
 fi
 tar -czf "${out}/fuxa-export.tar.gz" -C "${work}" export
 echo "cm-export-fuxa: wrote ${out}/fuxa-export.tar.gz"

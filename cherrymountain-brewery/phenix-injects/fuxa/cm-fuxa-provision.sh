@@ -25,19 +25,26 @@ trap 'rm -rf "${WORK}"' EXIT
 
 log() { echo "cm-fuxa-provision: $*"; }
 
+# JSON bodies are built by python from the environment and sent on stdin, so
+# passwords never appear on a command line (ps, /proc/<pid>/cmdline).
 signin() {  # user pass -> token (empty on failure)
-  curl -sS -m 20 -H 'Content-Type: application/json' \
-    -d "{\"username\":\"$1\",\"password\":\"$2\"}" "${FUXA}/api/signin" 2>/dev/null \
+  CM_USER="$1" CM_PASS="$2" python3 -c '
+import json, os
+print(json.dumps({"username": os.environ["CM_USER"], "password": os.environ["CM_PASS"]}))' \
+    | curl -sS -m 20 -H 'Content-Type: application/json' --data-binary @- \
+      "${FUXA}/api/signin" 2>/dev/null \
     | python3 -c 'import json,sys; print(json.load(sys.stdin).get("data", {}).get("token", ""))' 2>/dev/null || true
 }
 
 [ -f "${PROJECT}" ] || { log "FAIL: project ${PROJECT} is missing"; exit 1; }
 
 log "waiting for FUXA on ${FUXA}"
+up=0
 for _ in $(seq 1 120); do
-  if curl -sS -m 5 -o /dev/null "${FUXA}/api/version" 2>/dev/null; then break; fi
+  if curl -sS -m 5 -o /dev/null "${FUXA}/api/version" 2>/dev/null; then up=1; break; fi
   sleep 5
 done
+[ "${up}" = 1 ] || { log "FAIL: FUXA did not answer on ${FUXA} in 600 s"; exit 1; }
 
 log "sign in as the seeded admin"
 TOKEN=$(signin admin "${SEED_PASS}")
@@ -47,10 +54,13 @@ if [ -z "${TOKEN}" ]; then
   [ -n "${TOKEN}" ] || { log "FAIL: cannot sign in; is secureEnabled true?"; exit 1; }
 else
   log "set the admin password"
-  code=$(curl -sS -m 20 -o "${WORK}/users.out" -w '%{http_code}' \
-    -H 'Content-Type: application/json' -H "x-access-token: ${TOKEN}" \
-    -d "{\"params\":{\"username\":\"admin\",\"fullname\":\"Administrator\",\"password\":\"${NEW_PASS}\",\"groups\":-1,\"info\":\"{}\"}}" \
-    "${FUXA}/api/users")
+  code=$(CM_PASS="${NEW_PASS}" python3 -c '
+import json, os
+print(json.dumps({"params": {"username": "admin", "fullname": "Administrator",
+                             "password": os.environ["CM_PASS"], "groups": -1, "info": "{}"}}))' \
+    | curl -sS -m 20 -o "${WORK}/users.out" -w '%{http_code}' \
+      -H 'Content-Type: application/json' -H "x-access-token: ${TOKEN}" \
+      --data-binary @- "${FUXA}/api/users")
   [ "${code}" = 200 ] || { log "FAIL: users API HTTP ${code}: $(cat "${WORK}/users.out")"; exit 1; }
   TOKEN=$(signin admin "${NEW_PASS}")
   [ -n "${TOKEN}" ] || { log "FAIL: new password does not work"; exit 1; }

@@ -41,20 +41,29 @@ print(doc.get(sys.argv[1], "") if isinstance(doc, dict) else "")
 ' "$1"
 }
 
+# The credentials JSON, built by python from the environment and sent on stdin,
+# so the password never appears on a command line (ps, /proc/<pid>/cmdline).
+creds_json() {
+  CM_USER="${USER_NAME}" CM_PASS="${USER_PASS}" python3 -c '
+import json, os
+print(json.dumps({"username": os.environ["CM_USER"], "password": os.environ["CM_PASS"]}))'
+}
+
 login() {
-  api -H 'Content-Type: application/json' \
-    -d "{\"username\":\"${USER_NAME}\",\"password\":\"${USER_PASS}\"}" \
+  creds_json | api -H 'Content-Type: application/json' --data-binary @- \
     "${BASE}/login" | json_field access_token
 }
 
 mkdir -p "${STATE}"
 
 log "waiting for the runtime API"
+up=0
 for _ in $(seq 1 120); do
-  if api -o /dev/null "${BASE}/version" 2>/dev/null; then break; fi
+  if api -o /dev/null "${BASE}/version" 2>/dev/null; then up=1; break; fi
   sleep 5
 done
-api "${BASE}/version"; echo
+[ "${up}" = 1 ] || { log "FAIL: the runtime API did not answer in 600 s"; exit 1; }
+api "${BASE}/version" || true; echo
 
 # Already provisioned on an earlier boot and running again: nothing to do.
 if [ -f "${STATE}/provisioned" ]; then
@@ -82,9 +91,8 @@ cp -v "${CONF}"/*.json "${WORK}/unpacked/conf/"
 (cd "${WORK}/unpacked" && zip -qr "${WORK}/program.zip" .)
 
 log "create-user (the first account on an empty database needs no auth)"
-code=$(api -o "${WORK}/cu.json" -w '%{http_code}' -H 'Content-Type: application/json' \
-  -d "{\"username\":\"${USER_NAME}\",\"password\":\"${USER_PASS}\"}" \
-  "${BASE}/create-user" || true)
+code=$(creds_json | api -o "${WORK}/cu.json" -w '%{http_code}' \
+  -H 'Content-Type: application/json' --data-binary @- "${BASE}/create-user" || true)
 log "create-user HTTP ${code}"   # 201 created; 401 or 409 means the user already exists
 
 token=""
@@ -109,21 +117,23 @@ while :; do
   log "$(( $(date +%s) - start ))s status=${st}"
   case "${st}" in
     SUCCESS) break ;;
-    FAILED) api -H "${AUTH}" "${BASE}/runtime-logs" | tail -c 2000; log "FAIL: compilation failed"; exit 1 ;;
+    FAILED) api -H "${AUTH}" "${BASE}/runtime-logs" | tail -c 2000 || true; log "FAIL: compilation failed"; exit 1 ;;
   esac
   if (( $(date +%s) - start > TIMEOUT )); then log "FAIL: compile timeout"; exit 1; fi
   sleep 5
 done
 
 log "start-plc"
-api -H "${AUTH}" "${BASE}/start-plc"; echo
+# A curl hiccup here must not fail the unit: Restart=on-failure would then
+# re-upload and recompile from scratch. The status polls decide the outcome.
+api -H "${AUTH}" "${BASE}/start-plc" || true; echo
 for _ in $(seq 1 12); do
   sleep 5
-  st=$(api -H "${AUTH}" "${BASE}/status")
+  st=$(api -H "${AUTH}" "${BASE}/status" || true)
   case "${st}" in
     *STATUS:RUNNING*) touch "${STATE}/provisioned"; log "PASS: program is running"; exit 0 ;;
   esac
 done
-api -H "${AUTH}" "${BASE}/runtime-logs" | tail -c 2000
+api -H "${AUTH}" "${BASE}/runtime-logs" | tail -c 2000 || true
 log "FAIL: PLC is not RUNNING"
 exit 1

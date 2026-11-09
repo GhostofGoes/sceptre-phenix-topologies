@@ -176,6 +176,24 @@ def test_failed_unit_is_reported(
     assert st["provisioning"]["scada-fuxa"]["state"] == "unreachable"
 
 
+def test_post_start_never_fails_the_start(
+    run_app: RunApp, mm: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """phenix stops the experiment when a post-start stage fails, so a check
+    that cannot run at all is recorded, not raised; the running stage, which
+    stops nothing, still reports it to its caller."""
+
+    def broken(self: CherryMountain, stage: str) -> None:
+        raise ConnectionRefusedError("minimega socket")
+
+    monkeypatch.setattr(CherryMountain, "_observe", broken)
+    st = status(run_app("post-start"))
+    assert st["stage"] == "post-start"
+    assert st["error"] == "ConnectionRefusedError"
+    with pytest.raises(ConnectionRefusedError):
+        run_app("running")
+
+
 def test_dry_run_observes_nothing(run_app: RunApp, mm: MagicMock) -> None:
     st = status(run_app("post-start", dryrun=True))
     assert st["dryRun"] is True

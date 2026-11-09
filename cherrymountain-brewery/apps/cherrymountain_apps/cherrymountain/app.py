@@ -258,9 +258,28 @@ class CherryMountain(AppBase):
         )
 
     def post_start(self) -> None:
-        self._observe("post-start")
+        # phenix stops the experiment when a post-start stage fails (Start's
+        # finishStart and stopFailedStart), and this stage only looks: a look
+        # that cannot be taken is recorded and logged, never raised.
+        try:
+            self._observe("post-start")
+        except Exception as ex:
+            logger.warning(
+                f"{self.name}: post-start could not check provisioning "
+                f"({type(ex).__name__}); the running stage checks again"
+            )
+            self._set_status(
+                {
+                    "stage": "post-start",
+                    "updated": utils.utc_now().isoformat(),
+                    "error": type(ex).__name__,
+                }
+            )
 
     def running(self) -> None:
+        # Safe to repeat (runPeriodically, or `phenix experiment trigger
+        # running`): every check has a short timeout, and a VM or an event API
+        # that does not answer yet is a state in the status, not a failure.
         self._observe("running")
 
     def _observe(self, stage: str) -> None:

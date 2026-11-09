@@ -299,8 +299,20 @@ class CherryMountain(AppBase):
                 {"stage": stage, "provisioning": {}, "kpis": None, "dryRun": True}
             )
             return
+        # Each check sets minimega's cc filter, which is one per namespace, for
+        # a moment: a command that phenix's soh app or a SCORCH component sends
+        # in that moment from another process goes to the wrong VM. So the
+        # running stage, which repeats for as long as the experiment runs, asks
+        # only the hosts that were not provisioned yet when it last looked.
+        settled: set[str] = (
+            self._provisioned_before()
+            if stage == "running" and config.verify.recheck == "unprovisioned"
+            else set()
+        )
         checks: dict[str, HostCheck] = {
-            name: self._check_host(name, md, config)
+            name: HostCheck(state="provisioned")
+            if name in settled
+            else self._check_host(name, md, config)
             for name, md in self.hosts_md.items()
         }
         kpis: kpi.Kpis = kpi.read(
@@ -325,6 +337,18 @@ class CherryMountain(AppBase):
         logger.info(
             f"{self.name}: {done} of {len(checks)} hosts provisioned; KPIs available: {kpis.available}"
         )
+
+    def _provisioned_before(self) -> set[str]:
+        """The hosts the status of this run already records as provisioned.
+        phenix clears status.apps at every start, so it never holds a state of
+        an earlier run."""
+        apps: Any = (self.experiment.get("status") or {}).get("apps") or {}
+        seen: Any = (apps.get(self.name) or {}).get("provisioning") or {}
+        return {
+            str(name)
+            for name, check in seen.items()
+            if isinstance(check, dict) and check.get("state") == "provisioned"
+        }
 
     def _check_host(self, name: str, md: HostBase, config: AppMetadata) -> HostCheck:
         units: list[str] = []

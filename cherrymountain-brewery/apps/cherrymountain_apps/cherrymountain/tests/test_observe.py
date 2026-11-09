@@ -176,6 +176,45 @@ def test_failed_unit_is_reported(
     assert st["provisioning"]["scada-fuxa"]["state"] == "unreachable"
 
 
+def test_running_asks_only_the_hosts_not_provisioned_yet(
+    run_app: RunApp,
+    mm: MagicMock,
+    experiment: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A check sets minimega's namespace-wide cc filter for a moment, which a
+    soh or SCORCH command from another process can run into, and the running
+    stage repeats every few minutes: a host that was provisioned is not asked
+    again. post-start, and ``verify.recheck: all``, ask every host."""
+    mm.cc_tunnel_list.return_value = []
+    experiment["status"]["apps"]["cherrymountain"] = {
+        "provisioning": {
+            "plc-cellar": {"state": "provisioned"},
+            "scada-fuxa": {"state": "pending", "detail": "x"},
+            "sim-process": {"state": "unreachable"},
+        }
+    }
+    active = dict.fromkeys(("plc-cellar", "scada-fuxa", "sim-process"), "active")
+
+    fake = FakeVms(active)
+    patch_exec(monkeypatch, fake)
+    st = status(run_app("running", exp=experiment))
+    assert sorted(vm for vm, _ in fake.commands) == ["scada-fuxa", "sim-process"]
+    assert st["provisioned"] == "3/5"
+    assert st["provisioning"]["plc-cellar"] == {"state": "provisioned"}
+
+    fake = FakeVms(active)
+    patch_exec(monkeypatch, fake)
+    run_app("post-start", exp=experiment)
+    assert len(fake.commands) == 3
+
+    app_block(experiment)["metadata"]["verify"] = {"recheck": "all"}
+    fake = FakeVms(active)
+    patch_exec(monkeypatch, fake)
+    run_app("running", exp=experiment)
+    assert len(fake.commands) == 3
+
+
 def test_post_start_never_fails_the_start(
     run_app: RunApp, mm: MagicMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:

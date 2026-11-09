@@ -87,6 +87,7 @@ App block:
 | `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment`, `vendorGuacPassword`, `vendorTotpSecret` (Base32), `vendorEwsPassword` |
 | `wireguardKeys` | `generate` or `scenario` | `generate` | `generate` replaces the scenario's `wireguard` keys (plantgen's fixed-seed keys) with per-experiment ones at configure |
 | `verify.timeout`, `verify.clientGrace` | seconds | `15`, `5` | Per-check timeouts in post-start and running |
+| `verify.recheck` | `unprovisioned` or `all` | `unprovisioned` | Which hosts `running` asks again. A check sets minimega's cc filter, which is one per namespace, for a moment; a command that phenix's soh app or a SCORCH component sends from another process in that moment goes to the wrong VM. So by default a host is not asked again once it is `provisioned` (the state is then kept until the next start), and a settled plant gets no cc commands from this app. `all` asks every host on every pass. State of health is the check for a service that stops later |
 | `vendorTechnicians` | list of short names | `[akim, jdiaz]` | Ridgeline's technicians: each gets a named Guacamole account (`ridgeline-<name>`) with its own TOTP key and its own EWS account (DESIGN.md 13). The first is the one vendor-ws's scripted session signs in as |
 | `exportOnCleanup` | bool | `true` | Run the cleanup exports |
 

@@ -197,6 +197,12 @@ class Verify(Closed):
     timeout: Seconds = 15.0
     #: Seconds to wait for a VM's C2 client before a check is skipped.
     client_grace: Seconds = 5.0
+    #: Which hosts the running stage asks again: only the ones not provisioned
+    #: yet, or all of them every time. A check sets minimega's namespace-wide
+    #: cc filter for a moment, which a command from phenix's soh app or a
+    #: SCORCH component can run into, so the default stops asking a host once
+    #: it is provisioned. post-start always asks every host.
+    recheck: Literal["unprovisioned", "all"] = "unprovisioned"
 
 
 class AppMetadata(Block):

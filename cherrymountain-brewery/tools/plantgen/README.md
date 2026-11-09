@@ -330,6 +330,9 @@ slice it has:
   federate's publication whose key matches a `keys` pattern (`fnmatch`). The
   weather federate serves those values as `GET /api/v1/state` for the white
   cell's 3D view, and the KPI keys feed `GET /api/v1/kpis` (DESIGN.md 15.10).
+  plantgen fails on a `unit_outputs` model no unit uses, on a federate that
+  would publish one key twice (a truth output shadowing a device point), and on
+  a snapshot pattern that matches no publication.
 - The ntp block may give defaults per host role (`roles`).
 
 ## Checks

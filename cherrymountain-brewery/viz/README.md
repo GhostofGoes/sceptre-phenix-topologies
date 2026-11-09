@@ -28,12 +28,25 @@ page. The white cell's browser reaches it through the autotunnel.
 
 Common to all: a scene switcher (keys 1-3), a ground-truth / operator-view
 toggle (key `o`), the simulated time and the cellar's 48× kinetic clock, the
-data age with greying out when the feed stops (3 s without a frame, or a
-snapshot older than 5 s or no longer advancing), a frame-rate cap, and a side
-panel of truth beside the operator's values with findings such as "purge fan
-commanded off while tier 1 is active".
+data age with greying out when the feed stops (5 s without a message, a state
+more than 5 s old, a snapshot no longer advancing, or an unhealthy source), a
+frame-rate cap, and a side panel of truth beside the operator's values with
+findings such as "purge fan commanded off while tier 1 is active" (held for
+5 simulated seconds where a controller has to react first). The server sends a
+frame at least once a second, and the data age is computed from the server's
+own timestamps plus the time since arrival, so clock skew between the browser
+and sim-ctl does not matter.
 
-The operator layer comes from the frame's `operator` field. The offline
+The server serves GET only (405 otherwise), checks `Host` against the loopback
+names and any `--allow-host` (DNS rebinding) and a WebSocket's `Origin` against
+`Host` (cross-site reads), allows 32 viewers, and reports a dead or failing
+poller on `/healthz` (503).
+
+The operator layer comes from the frame's `operator` field. The operator
+toggle draws everything it can from that layer (readings, sensors, tiers, jacket
+and carbonation valves, fan commands and status, the relay), but every frame
+still carries the truth: the toggle is a convenience view, not a
+confidentiality boundary. The offline
 harness fills it (the published field values, which a scenario can freeze to
 stand in for a replay). In the range it is not connected yet: the page says
 so, and FUXA (its own autotunnel) goes in a window beside it. A relay that

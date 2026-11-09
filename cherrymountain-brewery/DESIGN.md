@@ -566,8 +566,13 @@ flowchart LR
   - Cold crash ramp rate is limited so the glycol plant isn't overloaded.
   - BBT carbonation targets volumes computed from temperature and absolute
     pressure ([§9.3](#93-models)). The stone closes while the head is more
-    than 1 psi above the target's equilibrium pressure, so gas that does not
-    dissolve never builds up to the PSV in normal running.
+    than 0.5 psi above the target's equilibrium pressure at the temperature
+    setpoint (not the measured temperature, which swings with the glycol
+    hysteresis), and never lets it build past 25.6 psia: 0.5 psi under the
+    26.1 psia bbt-pressure-high alarm and about 1.5 psi under the PSV. A target
+    that would need more is clamped to the most that is reachable (2.62 vol at
+    34 °F, 2.73 at 32 °F), and AT01.SP shows the clamp. Normal carbonation
+    therefore trips neither the alarm nor the PSV.
   - Transfers are blocked while the source or destination is in CIP.
   - Confined-space entry lockout per vessel ([§6.8](#68-confined-space-entry-lockout)).
 
@@ -1667,7 +1672,7 @@ values:
 | Peak shaving | $19,140 per 50 kW-year |
 | PackML | Matches PackMLpy's table; 5000-command fuzz |
 | Cellar CO₂ | 2627 ppm steady state at 1 g/s (3284 ppm sensed, below the purge stop); tiers clear 10 % below their limit |
-| Relief valves | A 30 psig spunding setpoint holds FV-102 between 13.5 and 15.5 psig with repeated lifts, all vented gas reaching the room; a forced stone lifts the BBT PSV; normal carbonation peaks at 14.0 psig with no lift (3 h offline run) |
+| Relief valves | A 30 psig spunding setpoint holds FV-102 between 13.5 and 15.5 psig with repeated lifts, all vented gas reaching the room; a forced stone lifts the BBT PSV; normal carbonation peaks at 25.4 psia (13.3 psig) at 2.6 vol and 25.6 psia at 2.8 and 3.0 vol over 6 h, never over the 26.1 psia alarm and with no lift (`test_relief.py`) |
 | KPI API | After 2.5 h offline: 2,376 bottles, 28 kegs, 221 kWh, 128 kW demand, 21.2 TTB barrels, 12.04 fl oz mean fill (all zeros before the weather federate subscribed) |
 | Genset exercise (NFPA 110, 40 CFR 60.4211(f)) | A remote start transfers EP-1 and runs 33 kW for 40 min: logged as an exercise that met 30 min at 30 % of nameplate; the everyday 15 kW does not until a 40 kW load bank is added; an outage during a test is logged as an emergency run; test hours accrue against the 100 h/yr cap |
 | Wastewater discharge record (40 CFR 403.5, POTW permit) | A pH 12 caustic slug with the discharge valve commanded is inhibited (120 s inhibited, 1 event); the discharge that follows stays inside 6.0–9.0; hourly samples accumulate |
@@ -3551,9 +3556,16 @@ age of the data, a ground-truth / operator-view toggle, and a side panel of
 truth beside the operator's values with findings computed from the truth: a
 purge fan commanded off while tier 1 is active, a carbonation stone open while
 the CO₂ relay is open, a relief valve lifted, a spunding setpoint above the
-MAWP, a release at a vessel, a lost utility or an open main breaker. The view
-greys out and says why when no frame has arrived for 3 s, the snapshot is older
-than 5 s, or it stopped advancing. Rendering is capped at 15 frames per second
+MAWP, a release at a vessel, a lost utility or an open main breaker. Findings
+that wait on a controller (a fan starting at tier 1, a stone closing when the
+relay opens, rio-cellar seeing the relay) are reported only after 5 simulated
+seconds, so the snapshot catching the step between does not raise them. The
+view greys out and says why when no message has arrived for 5 s, the state is
+more than 5 s old, the snapshot stopped advancing, or the source is unhealthy
+(the same 5 s after which cm-viz marks a snapshot stale). The server sends a
+frame at least once a second; the state's age is the server's own send time
+minus its sample time plus the time since the message arrived, so the white
+cell's clock does not need to agree with sim-ctl's. Rendering is capped at 15 frames per second
 by default. `svg.html` draws the same frames in 2.5D for browsers without
 WebGL, VNC, and low-CPU displays, and redraws only when a frame arrives. The
 gas layer is a picture of the room's one well-mixed value, not a dispersion
@@ -3573,8 +3585,11 @@ lite) and serves them as `GET /api/v1/state` on `127.0.0.1:8080`
 comes from the cellar's per-vessel outputs (fill, spunding, PSV, and leak
 flows). `cm-viz` polls the snapshot twice a second, builds a frame (about
 4 KB of JSON), and pushes it over a read-only WebSocket; it also serves the
-page, `/frame.json`, and `/healthz` (503 while stale). It never writes to the
-event API or the plant, and it drops anything a browser sends.
+page, `/frame.json`, and `/healthz` (503 while there is no frame, it is
+stale, or the poller has stopped or cannot reach sim-ctl). It never writes to
+the event API or the plant, and it drops anything a browser sends. Any error
+in a poll (a truncated reply, a bad document) leaves the poller running: the
+last frame goes stale and the next poll retries.
 
 **Access path.** `cm-viz.service` on sim-ctl (rendered by the `cherrymountain`
 app where the weather federate runs, so full and lite, not ci) binds
@@ -3590,8 +3605,13 @@ Controls: the loopback bind; `IPAddressDeny=any` with `IPAddressAllow=localhost`
 in the unit, so the kernel drops anything else even if the bind changes; no
 link to it from any HMI or desktop; never through Guacamole, because
 `dmz-jump` is the vendor's jump host and an attack path; a page CSP that loads
-nothing off the server and an `X-Frame-Options` that stops other origins
-framing it; and a header on every page saying it is not to be shown to
+nothing off the server (`connect-src 'self'`) and an `X-Frame-Options` that
+stops other origins framing it; a `Host` check (loopback names only, plus any
+`--allow-host`) that defeats DNS rebinding; a WebSocket `Origin` check (the
+same host and port as `Host`) that stops another site's page reading frames
+through the white cell's browser; at most 32 open WebSockets; 405 for any
+method but GET and 404 for any path outside the page; and a header on every
+page saying it is not to be shown to
 trainees without a white-cell decision (a walk-down inject, the debrief). The
 autotunnel's host-wide listener ([§15.9](#159-operations)) is the remaining
 exposure, as for Grafana and the event API.
@@ -3600,6 +3620,10 @@ exposure, as for Grafana and the event API.
 in the range; the page says so and FUXA, through its own autotunnel, goes in a
 window beside it. The offline harness fills the layer with the published field
 values and can freeze them, which is how the screenshots show a replayed HMI.
+The operator toggle draws the vessel readings, jacket valves, carbonation
+valves, CO₂ sensors and tiers, fan commands and status, and the relay from
+that layer. It is a convenience for the white cell, not a confidentiality
+boundary: every frame carries the truth.
 Phase 2 (open): a relay on the phenix host that reads the historian's `scada`
 bucket through a cc tunnel and hands the operator's values to the page.
 

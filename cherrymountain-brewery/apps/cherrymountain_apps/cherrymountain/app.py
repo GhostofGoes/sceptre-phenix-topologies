@@ -41,6 +41,7 @@ from cherrymountain_apps.cherrymountain.render import (
     Context,
     Injection,
     helics_annotation,
+    rekey_wireguard,
     render_all,
 )
 from cherrymountain_apps.cherrymountain.sources import SourceError, Sources
@@ -140,6 +141,18 @@ class CherryMountain(AppBase):
                         name, "helics/federate", helics_annotation(ctx, count)
                     )
 
+    def _rekey_wireguard(self, ctx: Context) -> None:
+        """Per-experiment keys for the scenario's ``wireguard`` app (DESIGN.md
+        13). The app runs after this one, so it renders these keys."""
+        if ctx.app.wireguard_keys != "generate":
+            return
+        scenario: Any = (self.experiment.get("spec") or {}).get("scenario") or {}
+        for app in scenario.get("apps") or []:
+            if app.get("name") == "wireguard":
+                count: int = rekey_wireguard(ctx, list(app.get("hosts") or []))
+                if count:
+                    logger.info(f"{self.name}: generated WireGuard keys for {count} host(s)")
+
     def put_inject(self, hostname: str, inject: Injection) -> None:
         """Add an injection, replacing any other one to the same destination,
         so a rendered file wins over a static topology injection."""
@@ -181,6 +194,7 @@ class CherryMountain(AppBase):
         config, sources = self._validate()
         ctx: Context = self._context(config, sources)
         self._annotate_federates(ctx)
+        self._rekey_wireguard(ctx)
         for host in self.app.get("hosts") or []:
             md: HostBase | None = self.hosts_md.get(host.hostname)
             if md is None:

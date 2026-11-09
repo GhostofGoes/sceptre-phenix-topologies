@@ -11,7 +11,9 @@ mode 0600 and injected mode 0600.
 
 from __future__ import annotations
 
+import base64
 import hashlib
+import importlib
 import json
 import secrets
 import shutil
@@ -23,7 +25,7 @@ from phenix_apps.common import utils
 from phenix_apps.common.logger import logger
 from pydantic import BaseModel, ConfigDict
 
-from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, write_private
+from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, host_keys, write_private
 from cherrymountain_apps.cherrymountain.metadata import (
     AppMetadata,
     FuxaHost,
@@ -1066,6 +1068,90 @@ def render_guacamole(ctx: Context, hostname: str, md: GuacamoleHost) -> list[Inj
     ]
 
 
+# ---------------------------------------------------------------- vendor persona
+
+#: Where the topology injects the vendor persona (dmz-jump, ews, vendor-ws).
+VENDOR_ENV: Final[str] = "/etc/cherrymountain/ridgeline.env"
+VENDOR_GUAC_USER: Final[str] = "ridgeline-tech"
+VENDOR_EWS_USER: Final[str] = "ridgeline"
+
+
+def render_vendor(ctx: Context) -> dict[str, list[Injection]]:
+    """The vendor persona (DESIGN.md 13) with per-experiment credentials, for
+    every node the topology gives ``ridgeline.env``: the rendered file replaces
+    the committed one, so dmz-jump's Guacamole account, the EWS account, and the
+    vendor's scripted session agree and change with every experiment."""
+    hosts: list[str] = sorted(
+        name
+        for name, node in ctx.nodes.items()
+        if any(i.get("dst") == VENDOR_ENV for i in node.get("injections") or [])
+    )
+    if not hosts:
+        return {}
+    text: str = (
+        "# The vendor persona of this experiment, rendered by the cherrymountain app\n"
+        "# (DESIGN.md 13). Range-only, generated per experiment.\n"
+        + env_file(
+            {
+                "VENDOR_GUAC_USER": VENDOR_GUAC_USER,
+                "VENDOR_GUAC_PASSWORD": ctx.creds.vendor_guac_password.get_secret_value(),
+                "VENDOR_TOTP_SECRET": ctx.creds.vendor_totp_secret.get_secret_value(),
+                "VENDOR_EWS_USER": VENDOR_EWS_USER,
+                "VENDOR_EWS_PASSWORD": ctx.creds.vendor_ews_password.get_secret_value(),
+            }
+        )
+    )
+    out: dict[str, list[Injection]] = {}
+    for host in hosts:
+        src: Path = write(ctx.host_dir(host) / "ridgeline.env", text, private=True)
+        out[host] = [
+            Injection(
+                src=src,
+                dst=VENDOR_ENV,
+                description="vendor persona (per-experiment credentials)",
+                permissions="0600",
+            )
+        ]
+    return out
+
+
+# ---------------------------------------------------------------- WireGuard
+
+
+def rekey_wireguard(ctx: Context, wireguard_hosts: list[Any]) -> int:
+    """Replace the committed WireGuard keys of the ``wireguard`` app's hosts with
+    per-experiment ones (stored in ``wireguard.json``, 0600). Each host's private
+    key is replaced, and every peer entry that named the old public key gets the
+    new one, so any tunnel layout stays consistent. Returns the hosts rekeyed."""
+    with ctx.sources.plantgen_path():
+        wgkeys: Any = importlib.import_module("plantgen.wgkeys")
+    old_private: dict[str, str] = {}
+    for host in wireguard_hosts:
+        iface: Any = (host.get("metadata") or {}).get("interface") or {}
+        if iface.get("private_key"):
+            old_private[str(host["hostname"])] = str(iface["private_key"])
+    if not old_private:
+        return 0
+    new_private: dict[str, str] = host_keys(
+        ctx.out_dir / "wireguard.json",
+        sorted(old_private),
+        lambda: base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
+    )
+    pub_map: dict[str, str] = {
+        wgkeys.public_key(old_private[h]): wgkeys.public_key(new_private[h])
+        for h in old_private
+    }
+    for host in wireguard_hosts:
+        name: str = str(host["hostname"])
+        md: Any = host.get("metadata") or {}
+        if name in new_private:
+            md["interface"]["private_key"] = new_private[name]
+        for peer in md.get("peers") or []:
+            if peer.get("public_key") in pub_map:
+                peer["public_key"] = pub_map[peer["public_key"]]
+    return len(new_private)
+
+
 # ---------------------------------------------------------------- Wazuh
 
 
@@ -1256,7 +1342,7 @@ def render_all(ctx: Context) -> dict[str, list[Injection]]:
             add(name, renderer(ctx, name, md))
         except SourceError as ex:
             failures.append(f"{name}: {ex}")
-    for step in (render_wazuh, render_mgmt):
+    for step in (render_wazuh, render_mgmt, render_vendor):
         try:
             for name, injects in step(ctx).items():
                 add(name, injects)

@@ -68,7 +68,8 @@ App block:
 | `wazuh.manager` | hostname | `wazuh` | Wazuh manager; no `wazuh` block means no Wazuh files |
 | `wazuh.interface`, `wazuh.enrollmentPort` | interface, port | `IF0`, `1515` | Where agents enroll |
 | `wazuh.agents` | hostnames | every Linux host of the app except PLCs | Hosts that get an agent config |
-| `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment` |
+| `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment`, `vendorGuacPassword`, `vendorTotpSecret` (Base32), `vendorEwsPassword` |
+| `wireguardKeys` | `generate` or `scenario` | `generate` | `generate` replaces the scenario's `wireguard` keys (plantgen's fixed-seed keys) with per-experiment ones at configure |
 | `verify.timeout`, `verify.clientGrace` | seconds | `15`, `5` | Per-check timeouts in post-start and running |
 | `exportOnCleanup` | bool | `true` | Run the cleanup exports |
 
@@ -178,6 +179,16 @@ Range-only. A value set under `secrets` wins; every other one is generated
 once per experiment into `<experiment dir>/cherrymountain/secrets.json` (mode
 0600) and reused on restarts, so the VMs and their already-provisioned
 services agree. Files that hold one are written and injected mode 0600.
+
+- **Vendor persona.** `ridgeline.env` (the vendor's Guacamole password and
+  TOTP key, and the EWS account's password) is rendered for every node the
+  topology gives it (dmz-jump, ews, vendor-ws) and replaces the committed
+  copy, so the three always agree and change with each experiment.
+- **WireGuard.** With `wireguardKeys: generate`, configure replaces each
+  `wireguard` host's private key with one kept in
+  `<experiment dir>/cherrymountain/wireguard.json` (0600) and rewrites every
+  peer entry that named the old public key. The app must come before
+  `wireguard` in the scenario, as it does.
 SoH test scripts never hold one: a check that needs one sources the root-only
 settings file on the VM. Errors and warnings name the host and field, never
 the value.

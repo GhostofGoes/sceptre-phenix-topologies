@@ -2190,9 +2190,12 @@ the EWS's own logs, not from request contents ([§14](#14-blue-team-monitoring))
 **Controls**
 
 - **WireGuard keys and config.**
-  - `plantgen` (or the `cherrymountain` app at configure) generates the key
-    pairs and tunnel addresses (10.99.0.0/24: dmz-vpn .1, vendor-ws .2).
-    They go into the scenario metadata as range-only throwaway secrets.
+  - `plantgen` writes the tunnel addresses (10.99.0.0/24: dmz-vpn .1,
+    vendor-ws .2) and placeholder key pairs (X25519 from a fixed seed) into the
+    scenario. At configure the `cherrymountain` app replaces those keys with
+    per-experiment ones (`wireguardKeys: generate`, the default) and keeps
+    them in the experiment directory, so the committed keys never protect a
+    running range.
   - The phenix `wireguard` app only renders `/etc/wireguard/wg0.conf` from
     that metadata. With `boot: true` it enables `wg-quick@wg0`.
   - The vendor peer's AllowedIPs on dmz-vpn admit only traffic to
@@ -2230,6 +2233,17 @@ the EWS's own logs, not from request contents ([§14](#14-blue-team-monitoring))
 - **Choke point.** The only conduit from the DMZ into L3 for vendor sessions
   is `dmz-jump → ews`. Logging conduits to the SOC are separate, so the EWS
   is the single choke point into L1.
+
+**Range secrets and their exposure.** Every credential is range-only, but
+the design keeps committed values out of running experiments where it can:
+
+| Secret | Where it comes from | Exposure |
+|---|---|---|
+| OpenPLC, FUXA (admin and JWT `secretCode`), InfluxDB, Grafana, Guacamole admin, Wazuh enrollment | Generated per experiment by the `cherrymountain` app (`secrets.json`, 0600); rendered files replace the static injects | None committed for full and lite. The ci slice's static `fuxa.env`, `openplc.env`, and `mysettings.json` hold fixed values, used only when the ci topology runs without the app (the Docker integration test) |
+| Vendor persona (Guacamole password, TOTP key, EWS password) | Generated per experiment and rendered as `ridgeline.env` for dmz-jump, ews, and vendor-ws | The committed `phenix-injects/guacamole/ridgeline.env` is a fallback for runs without the app |
+| WireGuard private keys | Generated per experiment at configure | The scenario's fixed-seed keys are public in the repository and are replaced unless `wireguardKeys: scenario` |
+| FUXA seed password `123456` | FUXA's own default | Changed by the provisioning script on first boot |
+| OpenSearch (ground truth), the event API, HELICS | No authentication | MGMT only, reached from the host through cc tunnels ([§15.3](#153-topology-modules-and-variants)); out of bounds for exercises |
 
 This is the classic OT attack path (vendor credential → jump host → EWS →
 PLC). It is documented as a design teaching point and as the primary attach

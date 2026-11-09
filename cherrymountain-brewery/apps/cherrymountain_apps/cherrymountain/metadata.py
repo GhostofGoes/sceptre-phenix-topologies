@@ -156,6 +156,11 @@ class Secrets(Closed):
     grafana_password: SecretStr | None = None
     guacamole_password: SecretStr | None = None
     wazuh_enrollment: SecretStr | None = None
+    #: The vendor persona (DESIGN.md 13): the Guacamole account, its TOTP key
+    #: (RFC 6238, Base32), and the EWS account's password.
+    vendor_guac_password: SecretStr | None = None
+    vendor_totp_secret: SecretStr | None = None
+    vendor_ews_password: SecretStr | None = None
 
 
 class Verify(Closed):
@@ -179,6 +184,10 @@ class AppMetadata(Block):
     historian: Historian = Field(default_factory=Historian)
     wazuh: Wazuh | None = None
     secrets: Secrets = Field(default_factory=Secrets)
+    #: WireGuard keys of the scenario's ``wireguard`` app: ``generate`` replaces
+    #: the committed (plantgen, fixed-seed) keys with per-experiment ones at
+    #: configure; ``scenario`` keeps them.
+    wireguard_keys: Literal["generate", "scenario"] = "generate"
     verify: Verify = Field(default_factory=Verify)
     #: Export FUXA alarm history, DAQ data, and an InfluxDB backup at cleanup.
     export_on_cleanup: bool = True

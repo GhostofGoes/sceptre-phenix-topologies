@@ -111,6 +111,10 @@ class Sources:
 
     # ------------------------------------------------------------ plantgen
 
+    def plantgen_path(self) -> contextlib.AbstractContextManager[None]:
+        """``tools/plantgen`` on ``sys.path`` for the duration (plantgen modules)."""
+        return self._plantgen_path()
+
     @contextlib.contextmanager
     def _plantgen_path(self) -> Iterator[None]:
         path: str = str(self.root / "tools" / "plantgen")

@@ -178,3 +178,57 @@ def test_a_zip_built_for_another_variant_warns(ctx: Context) -> None:
         assert any("rebuild it for this variant" in line for line in lines)
     else:
         assert lines == []
+
+
+def test_full_vendor_persona_is_generated_per_experiment(ctx: Context) -> None:
+    """ridgeline.env is rendered for every node the topology gives it, with the
+    experiment's credentials (DESIGN.md 13), not the committed values."""
+    import base64
+
+    # The recorded fixture has no topology injections; give the three nodes the
+    # committed one, as topology-core and topology-remote-access do.
+    for host in ("dmz-jump", "ews", "vendor-ws"):
+        ctx.nodes[host]["injections"] = [
+            {"src": "guacamole/ridgeline.env", "dst": render.VENDOR_ENV}
+        ]
+    plan = render.render_vendor(ctx)
+    assert set(plan) == {"dmz-jump", "ews", "vendor-ws"}
+    texts = {Path(i.src).read_text() for injects in plan.values() for i in injects}
+    assert len(texts) == 1
+    values = env(Path(plan["ews"][0].src))
+    committed = env(ROOT / "phenix-injects" / "guacamole" / "ridgeline.env")
+    assert values["VENDOR_GUAC_USER"] == committed["VENDOR_GUAC_USER"]
+    for key in ("VENDOR_GUAC_PASSWORD", "VENDOR_TOTP_SECRET", "VENDOR_EWS_PASSWORD"):
+        assert values[key] and values[key] != committed[key], key
+    assert len(base64.b32decode(values["VENDOR_TOTP_SECRET"])) == 20
+    assert Path(plan["ews"][0].src).stat().st_mode & 0o077 == 0
+
+
+def test_full_wireguard_keys_are_replaced_consistently(
+    run_app: RunApp, full: dict[str, Any]
+) -> None:
+    """configure swaps the fixed-seed keys for per-experiment ones and keeps
+    each peer's public key matching the other side's new private key, and a
+    second configure keeps the same keys."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "tools" / "plantgen"))
+    try:
+        from plantgen.wgkeys import public_key
+    finally:
+        sys.path.remove(str(ROOT / "tools" / "plantgen"))
+
+    def wg_hosts(exp: Any) -> dict[str, Any]:
+        apps = exp["spec"]["scenario"]["apps"]
+        wg = next(a for a in apps if a["name"] == "wireguard")
+        return {h["hostname"]: h["metadata"] for h in wg["hosts"]}
+
+    before = copy.deepcopy(wg_hosts(full))
+    app = run_app("configure", exp=full)
+    after = wg_hosts(app.experiment)
+    for host in ("dmz-vpn", "vendor-ws"):
+        assert after[host]["interface"]["private_key"] != before[host]["interface"]["private_key"]
+    assert after["dmz-vpn"]["peers"][0]["public_key"] == public_key(after["vendor-ws"]["interface"]["private_key"])
+    assert after["vendor-ws"]["peers"][0]["public_key"] == public_key(after["dmz-vpn"]["interface"]["private_key"])
+    again = run_app("configure", exp=full)
+    assert wg_hosts(again.experiment) == after

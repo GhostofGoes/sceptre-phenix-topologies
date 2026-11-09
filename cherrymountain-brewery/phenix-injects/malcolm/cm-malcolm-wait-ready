@@ -21,11 +21,17 @@ if [ "$(cat "${STATE}/profile")" = full ]; then
   processors+=(suricata)
 fi
 
+# grep reads to EOF (no -q): with pipefail, grep -q exiting at the first match
+# kills docker logs with SIGPIPE (rc 141) on long -vv logs, a false "not ready".
+logs_have() {
+  docker logs "$1" 2>&1 | grep -F -- "$2" >/dev/null
+}
+
 ready() {
   local name
-  docker logs malcolm-pcap-monitor-1 2>&1 | grep -q "binding publisher port" || return 1
+  logs_have malcolm-pcap-monitor-1 "binding publisher port" || return 1
   for name in "${processors[@]}"; do
-    docker logs "malcolm-${name}-1" 2>&1 | grep -q "subscribed to topic" || return 1
+    logs_have "malcolm-${name}-1" "subscribed to topic" || return 1
   done
 }
 

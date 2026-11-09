@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 from typing import Annotated, ClassVar
 
-from pydantic import BaseModel, ConfigDict, StringConstraints
+from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationError
 
 Name = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")]
 #: Passwords go into SQL string literals, so only a safe alphabet is accepted.
@@ -102,6 +102,19 @@ def sql(vendor: Vendor, salt_hex: str) -> str:
                 f"  WHERE connection_name = '{connection}' AND parent_id IS NULL",
                 "  ON CONFLICT (connection_id, parameter_name) DO UPDATE SET parameter_value = EXCLUDED.parameter_value;",
             ]
+    # A missing connection makes the permission INSERTs above add no rows without an
+    # error; fail the transaction instead, so the start script does not report PASS.
+    for connection in CONNECTIONS:
+        lines += [
+            "DO $$ BEGIN",
+            "  IF NOT EXISTS (SELECT 1 FROM guacamole_connection_permission p",
+            "    JOIN guacamole_entity e ON e.entity_id = p.entity_id",
+            "    JOIN guacamole_connection c ON c.connection_id = p.connection_id",
+            f"    WHERE {where_user} AND c.connection_name = '{connection}' AND c.parent_id IS NULL) THEN",
+            f"    RAISE EXCEPTION 'cm_vendor_sql: {user} has no permission on connection {connection}';",
+            "  END IF;",
+            "END $$;",
+        ]
     lines.append("COMMIT;")
     return "\n".join(lines) + "\n"
 
@@ -111,7 +124,14 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--env", type=Path, default=Path("/etc/cherrymountain/ridgeline.env"))
     parser.add_argument("--salt", default=None, help="32 bytes of hex; random when left out")
     args: argparse.Namespace = parser.parse_args(argv)
-    vendor: Vendor = Vendor.from_file(args.env)
+    try:
+        vendor: Vendor = Vendor.from_file(args.env)
+    except ValidationError as error:
+        # Report where and what, never the input: it may be a password.
+        for err in error.errors():
+            where: str = ".".join(str(part) for part in err["loc"]) or "(file)"
+            print(f"cm_vendor_sql: {args.env}: {where}: {err['type']}", file=sys.stderr)
+        return 2
     salt: str = args.salt or secrets.token_hex(32)
     sys.stdout.write(sql(vendor, salt))
     return 0

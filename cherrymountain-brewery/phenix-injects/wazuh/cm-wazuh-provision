@@ -161,6 +161,8 @@ for group in default dmz ops hmi bas soc ctrl corp vendor inet util mgmt derlink
 done
 for file in "${CONF}"/*.conf; do
   group=$(basename "$file" .conf)
+  # agent_groups failures are tolerated above, so make sure the directory exists.
+  install -d -m 0770 -o wazuh -g wazuh "${OSSEC}/etc/shared/${group}"
   install -m 0660 -o wazuh -g wazuh "$file" "${OSSEC}/etc/shared/${group}/agent.conf"
 done
 

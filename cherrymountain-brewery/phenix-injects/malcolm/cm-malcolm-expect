@@ -10,7 +10,8 @@
 #            CherryMountain::PLC_Program_Upload_Suspected). It is matched against every
 #            field of the records, so it does not depend on Malcolm's field names.
 #   --since  how far back to look (default 30)
-# Prints one PASS or FAIL line per phrase and exits 1 if any fails.
+# Prints one PASS or FAIL line per phrase and exits 1 if any fails, 2 on a usage
+# error, and 3 when OpenSearch does not answer (an ERROR, not a missed detection).
 set -uo pipefail
 
 since=30
@@ -18,6 +19,10 @@ if [ "${1:-}" = --since ]; then
   since="${2:?--since needs a number of minutes}"
   shift 2
 fi
+[[ "$since" =~ ^[0-9]+$ ]] || {
+  echo "cm-malcolm-expect: --since needs a whole number of minutes, not ${since}" >&2
+  exit 2
+}
 [ $# -gt 0 ] || {
   echo "usage: cm-malcolm-expect [--since MINUTES] PHRASE..." >&2
   exit 2
@@ -26,12 +31,17 @@ fi
 status=0
 for phrase in "$@"; do
   escaped=$(printf '%s' "$phrase" | jq -Rs '.')
-  # The body is built with jq, because the phrase may hold characters that need escaping.
+  # The body is built with jq, because the phrase may hold characters that need
+  # escaping; inside the query_string phrase, \ and " are escaped as well.
   query=$(jq -nc --argjson phrase "$escaped" --arg since "now-${since}m" \
-    '{query: {bool: {filter: [{range: {"@timestamp": {gte: $since}}}, {query_string: {query: ("\"" + $phrase + "\"")}}]}}}')
+    '($phrase | gsub("\\\\"; "\\\\") | gsub("\""; "\\\"")) as $p
+     | {query: {bool: {filter: [{range: {"@timestamp": {gte: $since}}}, {query_string: {query: ("\"" + $p + "\"")}}]}}}')
   count=$(docker exec -i malcolm-opensearch-1 sh -c \
     "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_count' -d @-" <<< "$query" 2> /dev/null \
-    | python3 -c 'import json, sys; print(json.load(sys.stdin).get("count", 0))' 2> /dev/null || echo 0)
+    | python3 -c 'import json, sys; print(int(json.load(sys.stdin)["count"]))' 2> /dev/null) || {
+    echo "ERROR: OpenSearch did not answer a count for \"${phrase}\"" >&2
+    exit 3
+  }
   if [ "${count:-0}" -gt 0 ]; then
     echo "PASS: \"${phrase}\" found ${count} time(s) in the last ${since} minutes"
   else

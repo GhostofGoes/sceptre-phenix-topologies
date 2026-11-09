@@ -11,10 +11,14 @@ benign program re-upload:
     cm_plc_tool.py start|stop|status --plc plc-cellar --host 10.20.10.12
 
 ``upload`` signs in, uploads the program ZIP, waits for the runtime to compile it, and
-starts the PLC; it passes only if the runtime reports STATUS:RUNNING. Every action
-goes to syslog as ``cm-plc-tool: event=<action> plc=<name> host=<address>
-user=<operator>`` (events plc_upload, plc_start, plc_stop, plc_failed), which the Wazuh
-agent on the EWS ships (decoder cm-plc-tool, rules 100410 to 100413). The traffic
+starts the PLC; it passes only if the runtime reports STATUS:RUNNING. Transient REST
+errors while polling (an error page, a dropped connection) are retried a few times.
+Every action goes to syslog as ``cm-plc-tool: event=<action> plc=<name> host=<address>
+user=<account>`` (events plc_upload, plc_start, plc_stop, plc_failed), which the Wazuh
+agent on the EWS ships (decoder cm-plc-tool, rules 100410 to 100413). ``user`` is the
+account that ran the tool (SUDO_USER, else the login), which a caller cannot choose;
+``--operator`` only adds an ``operator=`` field after it, and ``plc_failed`` adds a
+``reason=``. The traffic
 itself is encrypted, so this log is where a host-side detection of a program change
 comes from; Malcolm sees the session and its size.
 
@@ -28,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import http.client
 import json
 import logging
 import logging.handlers
@@ -46,6 +51,10 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 DEFAULT_SETTINGS: Path = Path("/etc/default/cm-ews")
 REST_PORT: int = 8443
 COMPILE_TIMEOUT: float = 900.0
+#: Consecutive failed polls tolerated before a wait gives up.
+POLL_FAILURES: int = 6
+#: Errors a REST call can raise when the runtime is busy or restarting.
+TRANSIENT: tuple[type[BaseException], ...] = (OSError, ValueError, http.client.HTTPException)
 
 Name = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")]
 Address = Annotated[str, StringConstraints(pattern=r"^\d{1,3}(\.\d{1,3}){3}$")]
@@ -125,8 +134,17 @@ class Runtime:
 
     def wait_compiled(self, timeout: float) -> None:
         deadline: float = time.monotonic() + timeout
+        failures: int = 0
         while time.monotonic() < deadline:
-            status: str = str(json.loads(self.call("compilation-status")).get("status", ""))
+            try:
+                reply: object = json.loads(self.call("compilation-status"))
+                status: str = str(reply.get("status", "")) if isinstance(reply, dict) else ""
+                failures = 0
+            except TRANSIENT:
+                failures += 1
+                if failures > POLL_FAILURES:
+                    raise
+                status = ""
             if status == "SUCCESS":
                 return
             if status == "FAILED":
@@ -140,13 +158,25 @@ class Runtime:
     def wait_running(self, attempts: int = 12) -> None:
         for _ in range(attempts):
             time.sleep(5)
-            if "STATUS:RUNNING" in self.status():
-                return
+            try:
+                if "STATUS:RUNNING" in self.status():
+                    return
+            except TRANSIENT:
+                continue  # busy right after start-plc; the next poll decides
         raise RuntimeError("the PLC is not running after the start")
 
 
-def log_event(event: str, plc: Plc, operator: str) -> None:
-    logger.info("event=%s plc=%s host=%s user=%s", event, plc.name, plc.host, operator)
+def account() -> str:
+    """The account that ran the tool: the sudo caller, else the login."""
+    return os.environ.get("SUDO_USER") or getpass.getuser()
+
+
+def log_event(event: str, plc: Plc, operator: str, reason: str = "") -> None:
+    user: str = account()
+    extra: str = f" operator={operator}" if operator and operator != user else ""
+    if reason:
+        extra += " reason=" + reason.replace(" ", "_")[:120]
+    logger.info("event=%s plc=%s host=%s user=%s%s", event, plc.name, plc.host, user, extra)
 
 
 def run(action: str, plc: Plc, settings: Settings, program: Path | None, operator: str, timeout: float) -> int:
@@ -171,8 +201,16 @@ def run(action: str, plc: Plc, settings: Settings, program: Path | None, operato
             log_event(event, plc, operator)
             runtime.call("stop-plc")
         print(runtime.status())
-    except (OSError, ValueError, RuntimeError, TimeoutError, PermissionError, urllib.error.URLError) as error:
-        log_event("plc_failed", plc, operator)
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        TimeoutError,
+        PermissionError,
+        urllib.error.URLError,
+        http.client.HTTPException,
+    ) as error:
+        log_event("plc_failed", plc, operator, type(error).__name__)
         print(f"cm-plc-tool: {action} on {plc.name} failed: {type(error).__name__}: {error}", file=sys.stderr)
         return 1
     return 0
@@ -185,7 +223,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--host", required=True, help="the PLC's address on CTRL")
     parser.add_argument("--zip", type=Path, default=None, dest="program", help="the program ZIP (upload)")
     parser.add_argument("--settings", type=Path, default=DEFAULT_SETTINGS)
-    parser.add_argument("--operator", default=os.environ.get("SUDO_USER") or getpass.getuser())
+    parser.add_argument("--operator", default="", help="who the action is for (logged as operator=)")
     parser.add_argument("--compile-timeout", type=float, default=COMPILE_TIMEOUT)
     args: argparse.Namespace = parser.parse_args(argv)
 
@@ -202,6 +240,9 @@ def main(argv: list[str]) -> int:
         settings: Settings = Settings.load(args.settings)
     except ValueError:
         print(f"cm-plc-tool: no OPENPLC_PASSWORD in {args.settings} or the environment", file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"cm-plc-tool: cannot read {args.settings}: {error.strerror}", file=sys.stderr)
         return 2
     return run(args.action, plc, settings, args.program, args.operator, args.compile_timeout)
 

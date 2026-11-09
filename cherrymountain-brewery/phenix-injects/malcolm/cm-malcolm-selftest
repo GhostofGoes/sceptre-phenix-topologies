@@ -44,9 +44,14 @@ cm-malcolm-wait-ready 900 || {
   exit 1
 }
 
+# Write and chown the pcap outside the watched directory, then move it in (same
+# file system, so the rename is atomic): pcap-monitor never sees a partial or
+# root-owned file.
 pcap="${MALCOLM_DIR}/pcap/upload/cm-selftest-$(date +%s).pcap"
-python3 "${LIB}/cm_selftest_pcap.py" "$pcap"
-chown "${MALCOLM_UID}:${MALCOLM_UID}" "$pcap"
+staged="${MALCOLM_DIR}/pcap/.$(basename "$pcap").tmp"
+python3 "${LIB}/cm_selftest_pcap.py" "$staged"
+chown "${MALCOLM_UID}:${MALCOLM_UID}" "$staged"
+mv "$staged" "$pcap"
 echo "dropped ${pcap}"
 
 zeek_query=$(printf '{"query":{"bool":{"filter":[{"term":{"event.provider":"zeek"}},{"term":{"source.ip":"%s"}}]}}}' "$PROBE")

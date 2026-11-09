@@ -10,7 +10,8 @@
 #            approved window), for example 100201,100204,100205
 #   --since  how far back to look (default 30)
 #   --export write the matching alerts, one JSON object per line, to FILE
-# Prints one PASS or FAIL line per argument and exits 1 if any fails. The alerts come
+# Prints one PASS or FAIL line per argument and exits 1 if any fails, 2 on a usage
+# error, and 3 when the alerts file cannot be read. The alerts come
 # from /var/ossec/logs/alerts/alerts.json (today's file: a window that crosses
 # midnight sees only the part after it).
 set -uo pipefail
@@ -44,13 +45,23 @@ done
   exit 2
 }
 
-cutoff=$(date -u -d "${since} minutes ago" +%Y-%m-%dT%H:%M:%S)
+[[ "$since" =~ ^[0-9]+$ ]] || {
+  echo "cm-wazuh-expect: --since needs a whole number of minutes, not ${since}" >&2
+  exit 2
+}
+[ -r "$ALERTS" ] || {
+  echo "cm-wazuh-expect: ERROR: cannot read ${ALERTS}" >&2
+  exit 3
+}
+# The manager stamps alerts in its local time (with a +hhmm suffix), so the cutoff
+# is local time too; a UTC cutoff would be wrong on a VM not set to UTC.
+cutoff=$(date -d "${since} minutes ago" +%Y-%m-%dT%H:%M:%S)
 [ -z "$export_file" ] || : > "$export_file"
 status=0
 for spec in "$@"; do
   ids=$(printf '%s' "$spec" | jq -R 'split(",")')
   matches=$(jq -c --arg cutoff "$cutoff" --argjson ids "$ids" \
-    'select(.timestamp >= $cutoff and ((.rule.id | tostring) as $id | $ids | index($id)))' "$ALERTS" 2> /dev/null)
+    'select(.timestamp >= $cutoff and ((.rule.id | tostring) as $id | $ids | index($id)))' "$ALERTS")
   count=$(printf '%s' "$matches" | grep -c . || true)
   if [ "${count:-0}" -gt 0 ]; then
     last=$(printf '%s\n' "$matches" | tail -n 1 | jq -r '"rule \(.rule.id): \(.rule.description)"')

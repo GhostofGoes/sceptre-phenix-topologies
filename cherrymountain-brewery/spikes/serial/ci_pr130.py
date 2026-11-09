@@ -22,8 +22,9 @@ HERE: Path = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "ci"))
 sys.path.insert(0, str(HERE))
 
-from ci import otsim_rtu  # noqa: E402
 from vmlab import Lab, log, main_guard, sh, wait_for  # noqa: E402
+
+from ci import otsim_rtu  # noqa: E402
 
 EXP: str = "spike-serial-pr130"
 RIO: str = "rio-utilities"
@@ -93,7 +94,7 @@ def run() -> int:
         ok2, d2 = echo_between(lab, RIO, CHILLER, dev, "hello-from-chiller")
         lab.check("raw echo glycol-chiller -> rio-utilities over the QEMU serial link", ok2, d2)
 
-        otsim_rtu(lab, RIO, CHILLER, dev)
+        otsim_rtu(lab, RIO, CHILLER, dev, monitor=None)
 
         # The PR's open review item: no reconnect after a VM redeploy. Kill and start the chiller, then try again.
         lab.mm.run(f"vm kill {CHILLER}", EXP)

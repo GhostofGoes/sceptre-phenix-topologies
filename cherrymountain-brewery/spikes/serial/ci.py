@@ -60,7 +60,7 @@ def put_config(lab: Lab, vm: str, name: str, dev: str) -> None:
     lab.put_file(vm, f"/tmp/{name}", staged, "0644")
 
 
-def otsim_rtu(lab: Lab, rio: str, chiller: str, dev: str = DEV) -> None:
+def otsim_rtu(lab: Lab, rio: str, chiller: str, dev: str = DEV, monitor: str | None = "bus-monitor") -> None:
     """ot-sim's own Modbus RTU master and server over a serial link, in place of the stdlib stand-ins."""
     lab.fact("otsim_tarball", f"{OTSIM_TARBALL}: {OTSIM_TARBALL.stat().st_size} bytes" if OTSIM_TARBALL.exists() else "missing")
     for vm in (rio, chiller):
@@ -71,7 +71,8 @@ def otsim_rtu(lab: Lab, rio: str, chiller: str, dev: str = DEV) -> None:
     put_config(lab, rio, "otsim-rio.xml", dev)
     for vm in (rio, chiller):
         lab.put_file(vm, "/tmp/otsim_check.py", HERE / "otsim_check.py")
-    lab.shell("bus-monitor", "rm -f /tmp/bus2.txt; (setsid nohup timeout 900 tcpdump -ni eth0 -l 'udp port 9000' >/tmp/bus2.txt 2>&1 </dev/null &); sleep 1; echo started")
+    if monitor:
+        lab.shell(monitor, "rm -f /tmp/bus2.txt; (setsid nohup timeout 900 tcpdump -ni eth0 -l 'udp port 9000' >/tmp/bus2.txt 2>&1 </dev/null &); sleep 1; echo started")
     for vm, cfg in ((chiller, "otsim-chiller"), (rio, "otsim-rio")):
         out = lab.shell(
             vm,
@@ -110,10 +111,11 @@ def otsim_rtu(lab: Lab, rio: str, chiller: str, dev: str = DEV) -> None:
     lab.check("ot-sim master poll failures under 1% at 9600 baud, 1 s period", 0 <= n_err and 100.0 * n_err / polls < 1.0, log_errors[:300])
     lab.save("otsim-rio.log", lab.shell(rio, "tail -n 200 /tmp/otsim.log"))
     lab.save("otsim-chiller.log", lab.shell(chiller, "tail -n 200 /tmp/otsim.log"))
-    bus: str = lab.shell("bus-monitor", "pkill tcpdump; sleep 1; grep -c UDP /tmp/bus2.txt; head -3 /tmp/bus2.txt")
-    lab.save("bus-monitor-otsim.txt", bus)
-    first: str = bus.strip().splitlines()[0] if bus.strip() else "0"
-    lab.check("the bus monitor sees the ot-sim RTU frames", first.isdigit() and int(first) > 0, bus[:300])
+    if monitor:
+        bus: str = lab.shell(monitor, "pkill tcpdump; sleep 1; grep -c UDP /tmp/bus2.txt; head -3 /tmp/bus2.txt")
+        lab.save("bus-monitor-otsim.txt", bus)
+        first: str = bus.strip().splitlines()[0] if bus.strip() else "0"
+        lab.check("the bus monitor sees the ot-sim RTU frames", first.isdigit() and int(first) > 0, bus[:300])
 
 
 def run() -> int:

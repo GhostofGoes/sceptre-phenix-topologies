@@ -49,7 +49,21 @@ runs:
       shell: bash
       env:
         PATCH: ${{ inputs.phenix-patch }}
-      run: git -C phenix apply --verbose "$GITHUB_WORKSPACE/$PATCH"
+      # The path must name a .patch file inside the workspace: no absolute path,
+      # no "..", and it must resolve (symbolic links followed) under the workspace.
+      run: |
+        set -euo pipefail
+        case "$PATCH" in
+          /* | *..* | *[!A-Za-z0-9._/-]*) echo "::error::bad phenix-patch path"; exit 1 ;;
+          *.patch) ;;
+          *) echo "::error::phenix-patch must be a .patch file"; exit 1 ;;
+        esac
+        resolved=$(realpath -e "$GITHUB_WORKSPACE/$PATCH")
+        case "$resolved" in
+          "$(realpath "$GITHUB_WORKSPACE")"/*) ;;
+          *) echo "::error::phenix-patch resolves outside the workspace"; exit 1 ;;
+        esac
+        git -C phenix apply --verbose "$resolved"
 
     - name: Set up phenix and minimega
       uses: ./phenix/.github/actions/e2e-setup

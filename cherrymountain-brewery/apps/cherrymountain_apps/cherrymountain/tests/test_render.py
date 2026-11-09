@@ -5,9 +5,11 @@ experiment plus extra topology nodes."""
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -158,7 +160,18 @@ def test_s7comm_config_sizes_follow_the_slave_layout(ctx: Context) -> None:
         Path(injects["/opt/cherrymountain/openplc/conf/s7comm.json"].src).read_text()
     )
     sizes = {b["description"]: b["size_bytes"] for b in doc["data_blocks"]}
-    assert sizes == {"QW": 104 * 2, "IW": 117 * 2}
+    assert sizes == {"QW": 104 * 2, "IW": 117 * 2, "MW": 8 * 2, "IX": 101, "QX": 101}
+    numbers = {b["description"]: b["db_number"] for b in doc["data_blocks"]}
+    # The numbering fuxa/build_project.py addresses its S7 tags with.
+    spec = importlib.util.spec_from_file_location("cm_fuxa_builder", ROOT / "fuxa" / "build_project.py")
+    assert spec is not None and spec.loader is not None
+    builder = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = builder
+    try:
+        spec.loader.exec_module(builder)
+    finally:
+        sys.modules.pop(spec.name, None)
+    assert numbers == {area: db for area, (db, _) in builder.S7_DATA_BLOCKS.items()}
     assert doc["server"]["port"] == 102
 
 
@@ -208,10 +221,11 @@ def test_fuxa_daq_goes_to_the_historian_when_there_is_one(ctx: Context) -> None:
     assert settings["daqstore"]["bucket"] == "scada"
 
 
-def test_bas_fuxa_needs_a_project(ctx: Context) -> None:
+def test_ci_has_no_bas_fuxa_project(ctx: Context) -> None:
+    """The builder makes a bas-fuxa project for full and lite only."""
     host = md(FuxaHost, {"type": "fuxa", "role": "bas"})
-    with pytest.raises(SourceError, match=r"needs metadata\.project"):
-        render.render_fuxa(ctx, "scada-fuxa", host)
+    with pytest.raises(SourceError, match="only scada-fuxa"):
+        render.render_fuxa(ctx, "bas-fuxa", host)
 
 
 def test_fuxa_expected_device_must_be_in_the_project(ctx: Context) -> None:

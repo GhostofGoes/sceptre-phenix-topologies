@@ -1259,7 +1259,6 @@ spec:
       metadata:
         type: fuxa
         role: bas
-        project: fuxa/bas-fuxa-project.json
     - hostname: historian
       metadata:
         type: historian

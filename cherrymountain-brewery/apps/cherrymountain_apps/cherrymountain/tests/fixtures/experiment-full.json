@@ -2384,6 +2384,12 @@
               "src": "/phenix/injects/${BRANCH_NAME}/wireguard/cm-wg-watch.service"
             },
             {
+              "description": "rotation of the WireGuard peer event log",
+              "dst": "/etc/logrotate.d/cm-wireguard",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/wireguard/cm-wireguard.logrotate"
+            },
+            {
               "description": "load the forward policy, start the watcher",
               "dst": "/etc/phenix/startup/70-wireguard.sh",
               "permissions": "0755",
@@ -4531,8 +4537,7 @@
               "hostname": "bas-fuxa",
               "metadata": {
                 "type": "fuxa",
-                "role": "bas",
-                "project": "fuxa/bas-fuxa-project.json"
+                "role": "bas"
               }
             },
             {

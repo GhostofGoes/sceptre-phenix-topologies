@@ -1,0 +1,1931 @@
+{
+  "version": "1.01",
+  "name": "cherrymountain-lite-bas-fuxa",
+  "server": {
+    "id": "0",
+    "name": "FUXA Server",
+    "type": "FuxaServer",
+    "property": {}
+  },
+  "hmi": {
+    "layout": {
+      "start": "v_65839559-a65e-57af-aea2-343ab86c9046",
+      "navigation": {
+        "mode": "fix",
+        "type": "inline",
+        "bkcolor": "#F4F5F7",
+        "fgcolor": "#1D1D1D",
+        "items": [
+          {
+            "icon": "dashboard",
+            "view": "v_65839559-a65e-57af-aea2-343ab86c9046",
+            "link": "",
+            "text": "Building"
+          }
+        ]
+      },
+      "header": {
+        "title": "CherryMountain Brewery",
+        "alarms": "fix",
+        "infos": "hide",
+        "bkcolor": "#ffffff",
+        "fgcolor": "#000000",
+        "items": []
+      },
+      "showdev": false,
+      "zoom": "enabled"
+    },
+    "views": [
+      {
+        "id": "v_65839559-a65e-57af-aea2-343ab86c9046",
+        "name": "Building",
+        "profile": {
+          "width": 760,
+          "height": 694,
+          "bkcolor": "#f5f5f5ff",
+          "margin": 10,
+          "align": "topCenter",
+          "gridType": "fixed",
+          "viewRenderDelay": 0
+        },
+        "items": {
+          "VAL_7786d826-4b3f-5c24-8cc5-6abdb8f04c76": {
+            "id": "VAL_7786d826-4b3f-5c24-8cc5-6abdb8f04c76",
+            "type": "svg-ext-value",
+            "name": "FAC.RTU1.TT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_324f05c9-22c8-5bc4-a02f-db56a7ff0b85",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "degF",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_cfe8a924-5cb7-5e1f-949e-b36f337a1d21": {
+            "id": "VAL_cfe8a924-5cb7-5e1f-949e-b36f337a1d21",
+            "type": "svg-ext-value",
+            "name": "FAC.RTU1.AT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_88eefb47-159e-54e2-8141-8fab27b5acfa",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "ppm",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_80a1a2aa-1519-5f21-ab79-f0285c068c4b": {
+            "id": "VAL_80a1a2aa-1519-5f21-ab79-f0285c068c4b",
+            "type": "svg-ext-value",
+            "name": "FAC.RTU1.TT02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_eb61c002-b230-5fbd-955f-5afb65598072",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "degF",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_de0f91a0-34cb-52e4-8a41-428170cbe698": {
+            "id": "VAL_de0f91a0-34cb-52e4-8a41-428170cbe698",
+            "type": "svg-ext-value",
+            "name": "FAC.RTU1.JT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_f8988d2b-f0c0-5591-bf45-59d27773bc34",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "kW",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_8d2d6c7a-7af7-52b9-a8ce-affb833d566f": {
+            "id": "VAL_8d2d6c7a-7af7-52b9-a8ce-affb833d566f",
+            "type": "svg-ext-value",
+            "name": "FAC.RTU1.DMP01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_04193e7b-7572-5c1f-aa7b-1ee129488d10",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "%",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_25e2969e-c204-5ccd-b20e-7a24d4e2e273": {
+            "id": "VAL_25e2969e-c204-5ccd-b20e-7a24d4e2e273",
+            "type": "svg-ext-value",
+            "name": "FAC.RTU1.TIC01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_69baabef-a184-5bb1-a186-32940d7c400b",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "degF",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_65b86958-109d-59e1-ae09-2f4a5f12cd95": {
+            "id": "VAL_65b86958-109d-59e1-ae09-2f4a5f12cd95",
+            "type": "svg-ext-value",
+            "name": "FAC.RTU1.TIC02.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_8cb7398c-ac93-5830-9418-214a9a0d8439",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "degF",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_f5a187cc-8e3f-5dc2-b2a0-2d816b4d31a9": {
+            "id": "GSE_f5a187cc-8e3f-5dc2-b2a0-2d816b4d31a9",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.RTU1.FAN01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_eac5c051-01b5-5dca-819c-e9a99b35d239",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_e5a30ddf-345a-52bb-91e6-c992868cbe66": {
+            "id": "GSE_e5a30ddf-345a-52bb-91e6-c992868cbe66",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.RTU1.CMP01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_cc7103b0-3d49-57e4-acb0-d7536d5d3bdd",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_16117115-6cf7-5fb0-93e8-eea6556fb5c3": {
+            "id": "GSE_16117115-6cf7-5fb0-93e8-eea6556fb5c3",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.RTU1.CMP02.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_d573faf6-99b1-54a9-bb9c-0617ef8a0852",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_b70883d3-31aa-5006-ab97-74a939bcb3e4": {
+            "id": "GSE_b70883d3-31aa-5006-ab97-74a939bcb3e4",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.RTU1.HTR01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_820ab9f7-34e1-53b5-9678-aa88890a21d9",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_a1d94bf7-a22e-5538-9117-2751feb40a35": {
+            "id": "VAL_a1d94bf7-a22e-5538-9117-2751feb40a35",
+            "type": "svg-ext-value",
+            "name": "FAC.RTU1.HS01.MODE",
+            "property": {
+              "events": [],
+              "variableId": "t_de2cafa9-3832-5d21-b1cd-7149147669fd",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_3a5e1ca2-9549-5904-a231-4d3ed9d9c41a": {
+            "id": "VAL_3a5e1ca2-9549-5904-a231-4d3ed9d9c41a",
+            "type": "svg-ext-value",
+            "name": "FAC.CR.TT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_a37769c9-59cd-5637-9558-e2056ce008db",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "degF",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_5311046a-3d04-5b80-9e5d-baafdfba3e29": {
+            "id": "VAL_5311046a-3d04-5b80-9e5d-baafdfba3e29",
+            "type": "svg-ext-value",
+            "name": "FAC.CR.KQ01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_fa320566-6b58-5941-aaf2-ffc1a76d53a7",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "min",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_f47ca020-e47b-51fe-91b1-9b72783f255e": {
+            "id": "VAL_f47ca020-e47b-51fe-91b1-9b72783f255e",
+            "type": "svg-ext-value",
+            "name": "FAC.CR.TT01.SP",
+            "property": {
+              "events": [],
+              "variableId": "t_65c5c5f4-8f62-5137-a5a8-93d5c2d5b201",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "degF",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_0e8300a0-5c37-5db6-ba58-8eca53413dbe": {
+            "id": "GSE_0e8300a0-5c37-5db6-ba58-8eca53413dbe",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.CR.ZS01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_4fc10386-0df1-5196-95ac-574e8fe263d7",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_e4c564bf-71bb-5533-be62-1d5399b1b5ff": {
+            "id": "GSE_e4c564bf-71bb-5533-be62-1d5399b1b5ff",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.CR.CMP01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_0f9f3225-eca7-570e-9bbe-a5ee3804d656",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_3524e2b5-31c8-58b0-a13b-0f2f3a6507ad": {
+            "id": "GSE_3524e2b5-31c8-58b0-a13b-0f2f3a6507ad",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.CR.DEF01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_9df49321-34c3-5764-b9b3-ffe76fcae41e",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "VAL_39099c63-b715-500e-ba52-166a320c3d77": {
+            "id": "VAL_39099c63-b715-500e-ba52-166a320c3d77",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "ppm",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_6d932369-437c-524f-bfe4-cc8f39630acc": {
+            "id": "VAL_6d932369-437c-524f-bfe4-cc8f39630acc",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "ppm",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_84781060-baf7-52fe-9be8-89e330d161ca": {
+            "id": "VAL_84781060-baf7-52fe-9be8-89e330d161ca",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT03.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "ppm",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_2424a7ff-9552-5d90-af03-1ed615943c67": {
+            "id": "VAL_2424a7ff-9552-5d90-af03-1ed615943c67",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT04.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_70b4581a-43d8-5578-83cc-a137de2e05a1",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "ppm",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_88ab1d6a-e026-5c60-be7b-fbb5c551ef16": {
+            "id": "VAL_88ab1d6a-e026-5c60-be7b-fbb5c551ef16",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.TT01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_dce48ce9-2f37-558b-8df2-04a4cb10fcdc",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "degF",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_c0606922-cb83-5593-8b1b-02474df5c4a8": {
+            "id": "VAL_c0606922-cb83-5593-8b1b-02474df5c4a8",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.SC01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_cb487e38-79d5-5b7b-9cb0-f90288ee885d",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "%",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_9f89a5ff-3421-5d83-b067-3969494d0cb3": {
+            "id": "GSE_9f89a5ff-3421-5d83-b067-3969494d0cb3",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.FAN01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_38d6ffb6-5d6c-5763-8f98-444312331a94",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_4ae30596-3629-5b19-b2b5-2f719a218ad7": {
+            "id": "GSE_4ae30596-3629-5b19-b2b5-2f719a218ad7",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.FAN02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_1197242d-e278-5ca9-9cab-7877448dc71e",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_4d5951cf-f948-5963-8c24-fdb5be0b7025": {
+            "id": "GSE_4d5951cf-f948-5963-8c24-fdb5be0b7025",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.AY01.TIER1",
+            "property": {
+              "events": [],
+              "variableId": "t_deae6144-0d85-5e19-ac9f-9f758f13c6f8",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_b190787c-83f6-5ffe-9ebb-262fe3992db3": {
+            "id": "GSE_b190787c-83f6-5ffe-9ebb-262fe3992db3",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.AY01.TIER2",
+            "property": {
+              "events": [],
+              "variableId": "t_c24db5d5-0259-581a-a53e-6c5e81bc4c26",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_792f6a53-8ca3-5053-8621-794e1b055f5c": {
+            "id": "GSE_792f6a53-8ca3-5053-8621-794e1b055f5c",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.AY01.TIER3",
+            "property": {
+              "events": [],
+              "variableId": "t_fae7bec3-4596-5031-961e-8e39c2225dd4",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_0a014f1f-c2e3-5c87-9b56-fe63c8b162f0": {
+            "id": "GSE_0a014f1f-c2e3-5c87-9b56-fe63c8b162f0",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.FAN01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_77303b80-3b12-5394-b8de-7722b1971ef2",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_45cef2ec-0a32-5acd-8622-734880346a26": {
+            "id": "GSE_45cef2ec-0a32-5acd-8622-734880346a26",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.FAN02.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_d883a76c-849c-5d99-be72-ba1d2df1b1ae",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_5542cea2-c14c-5564-ba21-e376b827288c": {
+            "id": "GSE_5542cea2-c14c-5564-ba21-e376b827288c",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.MUA01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_e5bf0987-4cd0-5e28-ae10-4f6acc87caa1",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          }
+        },
+        "variables": {},
+        "svgcontent": "<svg width=\"760\" height=\"694\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\">\n <g>\n  <title>Layer 1</title>\n  <text xml:space=\"preserve\" x=\"20\" y=\"28\" font-size=\"18\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Building: bas-fuxa-bacnet</text>\n  <text xml:space=\"preserve\" x=\"20\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Taproom zone temperature</text>\n  <g id=\"VAL_7786d826-4b3f-5c24-8cc5-6abdb8f04c76\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_032c9000-64a3-5881-a958-716a618005c8\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"64\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Taproom zone CO2</text>\n  <g id=\"VAL_cfe8a924-5cb7-5e1f-949e-b36f337a1d21\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_0be52114-d8ae-5d49-b2f7-1aa0eb769c91\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 supply air temperature</text>\n  <g id=\"VAL_80a1a2aa-1519-5f21-ab79-f0285c068c4b\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9d402662-044c-535f-9dee-ad64d36ec305\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"116\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 electrical input</text>\n  <g id=\"VAL_de0f91a0-34cb-52e4-8a41-428170cbe698\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_c969c874-1b29-5207-9545-658efa4ddf6d\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 economizer damper</text>\n  <g id=\"VAL_8d2d6c7a-7af7-52b9-a8ce-affb833d566f\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e0fffce5-3a99-512a-a517-f85429210f82\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"168\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupied cooling setpoint</text>\n  <g id=\"VAL_25e2969e-c204-5ccd-b20e-7a24d4e2e273\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_49df0092-534c-5868-9d09-d0fbd11e35c9\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupied heating setpoint</text>\n  <g id=\"VAL_65b86958-109d-59e1-ae09-2f4a5f12cd95\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_278fc184-c0fd-57e7-bb65-c4e24260eb42\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 supply fan</text>\n  <g id=\"GSE_f5a187cc-8e3f-5dc2-b2a0-2d816b4d31a9\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_3c78a17f-f621-56e9-8af1-1fc4ce7d2703\" cx=\"320\" cy=\"241\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 cooling stage 1</text>\n  <g id=\"GSE_e5a30ddf-345a-52bb-91e6-c992868cbe66\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_9e3814fa-f617-5389-99b9-7979af2db75c\" cx=\"320\" cy=\"267\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 cooling stage 2</text>\n  <g id=\"GSE_16117115-6cf7-5fb0-93e8-eea6556fb5c3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_3b2d912a-44f0-5c04-8321-1c533fd1bd41\" cx=\"320\" cy=\"293\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 gas heat</text>\n  <g id=\"GSE_b70883d3-31aa-5006-ab97-74a939bcb3e4\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_766a30f7-6b3a-57f2-8e83-d21a7d66b13f\" cx=\"320\" cy=\"319\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupancy mode (1 occupied, 2 ...</text>\n  <g id=\"VAL_a1d94bf7-a22e-5538-9117-2751feb40a35\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e1ad0a9f-5796-58ff-afb8-76d0b5d393ef\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room temperature</text>\n  <g id=\"VAL_3a5e1ca2-9549-5904-a231-4d3ed9d9c41a\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_1c1832eb-af22-51ba-834d-883c9d0d3fe6\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"376\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room door open time today</text>\n  <g id=\"VAL_5311046a-3d04-5b80-9e5d-baafdfba3e29\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_4574c74f-19ee-5b30-a146-6f7596825f77\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room setpoint</text>\n  <g id=\"VAL_f47ca020-e47b-51fe-91b1-9b72783f255e\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cfc5bea9-77e2-5dd3-9349-b961dd972d7c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"428\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room door open</text>\n  <g id=\"GSE_0e8300a0-5c37-5db6-ba58-8eca53413dbe\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6a8b0185-3f21-5466-9f00-1b6b7d0cfc82\" cx=\"320\" cy=\"449\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Condensing unit compressor</text>\n  <g id=\"GSE_e4c564bf-71bb-5533-be62-1d5399b1b5ff\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_cd0b2c1f-8af5-52ba-bb78-0a7713faf7d1\" cx=\"320\" cy=\"475\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Evaporator defrost</text>\n  <g id=\"GSE_3524e2b5-31c8-58b0-a13b-0f2f3a6507ad\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_8aff41f8-0c91-58b0-be7c-03dfe979e454\" cx=\"320\" cy=\"501\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 1 (low-mounted)</text>\n  <g id=\"VAL_39099c63-b715-500e-ba52-166a320c3d77\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_2acb72c4-90c8-54e3-8fbf-d8d0000020e8\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"532\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 2 (low-mounted)</text>\n  <g id=\"VAL_6d932369-437c-524f-bfe4-cc8f39630acc\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_c9c7874f-b769-59af-9228-a0bd12e942cf\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 3 (low-mounted)</text>\n  <g id=\"VAL_84781060-baf7-52fe-9be8-89e330d161ca\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_90363c25-092e-5fa7-a81e-a3ce6e974e9c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"584\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 4 (low-mounted)</text>\n  <g id=\"VAL_2424a7ff-9552-5d90-af03-1ed615943c67\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_ed1919d8-aebf-5fc3-8c69-f59eb53be96c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"610\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Makeup-air unit discharge ...</text>\n  <g id=\"VAL_88ab1d6a-e026-5c60-be7b-fbb5c551ef16\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_1ce761a4-3fb6-52c6-b26f-e267c14bcbec\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"636\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Kettle hood exhaust fan speed</text>\n  <g id=\"VAL_c0606922-cb83-5593-8b1b-02474df5c4a8\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_96af7337-82b0-5a14-99e7-fcac9e1084f9\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"662\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 1 running ...</text>\n  <g id=\"GSE_9f89a5ff-3421-5d83-b067-3969494d0cb3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_94198671-9958-554b-83fd-c7e5d7bed65f\" cx=\"680\" cy=\"59\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 2 running ...</text>\n  <g id=\"GSE_4ae30596-3629-5b19-b2b5-2f719a218ad7\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_a5ecd091-5c6d-5cfb-8a93-9f931eeaa575\" cx=\"680\" cy=\"85\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 1 (5,000 ppm, ...</text>\n  <g id=\"GSE_4d5951cf-f948-5963-8c24-fdb5be0b7025\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_53193326-184c-5062-ba86-a3499d679eca\" cx=\"680\" cy=\"111\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 2 (15,000 ppm, ...</text>\n  <g id=\"GSE_b190787c-83f6-5ffe-9ebb-262fe3992db3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_87593be6-6fac-5dab-8c73-f222e20d1767\" cx=\"680\" cy=\"137\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 3 (30,000 ppm, ...</text>\n  <g id=\"GSE_792f6a53-8ca3-5053-8621-794e1b055f5c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_92fc3248-e7fc-53f2-964b-3ef27d831fb0\" cx=\"680\" cy=\"163\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 1</text>\n  <g id=\"GSE_0a014f1f-c2e3-5c87-9b56-fe63c8b162f0\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0180cba6-a65b-5334-a6f0-c596fc6de0d7\" cx=\"680\" cy=\"189\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 2</text>\n  <g id=\"GSE_45cef2ec-0a32-5acd-8622-734880346a26\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_63154df7-bdae-53e7-82d2-57cf521fce7c\" cx=\"680\" cy=\"215\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Makeup-air unit enable</text>\n  <g id=\"GSE_5542cea2-c14c-5564-ba21-e376b827288c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e48e1df1-a03d-58d2-b207-233330e7da13\" cx=\"680\" cy=\"241\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n </g>\n</svg>",
+        "type": "svg"
+      }
+    ]
+  },
+  "devices": {
+    "d_284defdd-4d7d-5325-85aa-ea69956fb84e": {
+      "id": "d_284defdd-4d7d-5325-85aa-ea69956fb84e",
+      "name": "bas-fuxa-bacnet",
+      "enabled": true,
+      "property": {
+        "address": "10.30.10.10",
+        "broadcastAddress": "10.30.10.255"
+      },
+      "type": "BACnet",
+      "polling": 1000,
+      "tags": {
+        "t_324f05c9-22c8-5bc4-a02f-db56a7ff0b85": {
+          "id": "t_324f05c9-22c8-5bc4-a02f-db56a7ff0b85",
+          "name": "FAC.RTU1.TT01.PV",
+          "label": "Taproom zone temperature",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "0-1",
+          "format": 2,
+          "description": "Taproom zone temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_88eefb47-159e-54e2-8141-8fab27b5acfa": {
+          "id": "t_88eefb47-159e-54e2-8141-8fab27b5acfa",
+          "name": "FAC.RTU1.AT01.PV",
+          "label": "Taproom zone CO2",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "0-2",
+          "format": 2,
+          "description": "Taproom zone CO2",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_eb61c002-b230-5fbd-955f-5afb65598072": {
+          "id": "t_eb61c002-b230-5fbd-955f-5afb65598072",
+          "name": "FAC.RTU1.TT02.PV",
+          "label": "RTU-1 supply air temperature",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "0-3",
+          "format": 2,
+          "description": "RTU-1 supply air temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_f8988d2b-f0c0-5591-bf45-59d27773bc34": {
+          "id": "t_f8988d2b-f0c0-5591-bf45-59d27773bc34",
+          "name": "FAC.RTU1.JT01.PV",
+          "label": "RTU-1 electrical input",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "0-4",
+          "format": 2,
+          "description": "RTU-1 electrical input",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_04193e7b-7572-5c1f-aa7b-1ee129488d10": {
+          "id": "t_04193e7b-7572-5c1f-aa7b-1ee129488d10",
+          "name": "FAC.RTU1.DMP01.CMD",
+          "label": "RTU-1 economizer damper",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "1-1",
+          "format": 2,
+          "description": "RTU-1 economizer damper",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_69baabef-a184-5bb1-a186-32940d7c400b": {
+          "id": "t_69baabef-a184-5bb1-a186-32940d7c400b",
+          "name": "FAC.RTU1.TIC01.SP",
+          "label": "Occupied cooling setpoint",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "2-1",
+          "format": 2,
+          "description": "Occupied cooling setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_8cb7398c-ac93-5830-9418-214a9a0d8439": {
+          "id": "t_8cb7398c-ac93-5830-9418-214a9a0d8439",
+          "name": "FAC.RTU1.TIC02.SP",
+          "label": "Occupied heating setpoint",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "2-2",
+          "format": 2,
+          "description": "Occupied heating setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_eac5c051-01b5-5dca-819c-e9a99b35d239": {
+          "id": "t_eac5c051-01b5-5dca-819c-e9a99b35d239",
+          "name": "FAC.RTU1.FAN01.CMD",
+          "label": "RTU-1 supply fan",
+          "type": "Bool",
+          "memaddress": "3001",
+          "address": "4-1",
+          "description": "RTU-1 supply fan",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_cc7103b0-3d49-57e4-acb0-d7536d5d3bdd": {
+          "id": "t_cc7103b0-3d49-57e4-acb0-d7536d5d3bdd",
+          "name": "FAC.RTU1.CMP01.CMD",
+          "label": "RTU-1 cooling stage 1",
+          "type": "Bool",
+          "memaddress": "3001",
+          "address": "4-2",
+          "description": "RTU-1 cooling stage 1",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_d573faf6-99b1-54a9-bb9c-0617ef8a0852": {
+          "id": "t_d573faf6-99b1-54a9-bb9c-0617ef8a0852",
+          "name": "FAC.RTU1.CMP02.CMD",
+          "label": "RTU-1 cooling stage 2",
+          "type": "Bool",
+          "memaddress": "3001",
+          "address": "4-3",
+          "description": "RTU-1 cooling stage 2",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_820ab9f7-34e1-53b5-9678-aa88890a21d9": {
+          "id": "t_820ab9f7-34e1-53b5-9678-aa88890a21d9",
+          "name": "FAC.RTU1.HTR01.CMD",
+          "label": "RTU-1 gas heat",
+          "type": "Bool",
+          "memaddress": "3001",
+          "address": "4-4",
+          "description": "RTU-1 gas heat",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_de2cafa9-3832-5d21-b1cd-7149147669fd": {
+          "id": "t_de2cafa9-3832-5d21-b1cd-7149147669fd",
+          "name": "FAC.RTU1.HS01.MODE",
+          "label": "Occupancy mode (1 occupied, 2 unoccupied, 3 standby)",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "19-1",
+          "format": 2,
+          "description": "Occupancy mode (1 occupied, 2 unoccupied, 3 standby)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_a37769c9-59cd-5637-9558-e2056ce008db": {
+          "id": "t_a37769c9-59cd-5637-9558-e2056ce008db",
+          "name": "FAC.CR.TT01.PV",
+          "label": "Cold room temperature",
+          "type": "Real",
+          "memaddress": "3002",
+          "address": "0-1",
+          "format": 2,
+          "description": "Cold room temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_fa320566-6b58-5941-aaf2-ffc1a76d53a7": {
+          "id": "t_fa320566-6b58-5941-aaf2-ffc1a76d53a7",
+          "name": "FAC.CR.KQ01.PV",
+          "label": "Cold room door open time today",
+          "type": "Real",
+          "memaddress": "3002",
+          "address": "2-1",
+          "format": 2,
+          "description": "Cold room door open time today",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_65c5c5f4-8f62-5137-a5a8-93d5c2d5b201": {
+          "id": "t_65c5c5f4-8f62-5137-a5a8-93d5c2d5b201",
+          "name": "FAC.CR.TT01.SP",
+          "label": "Cold room setpoint",
+          "type": "Real",
+          "memaddress": "3002",
+          "address": "2-2",
+          "format": 2,
+          "description": "Cold room setpoint",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_4fc10386-0df1-5196-95ac-574e8fe263d7": {
+          "id": "t_4fc10386-0df1-5196-95ac-574e8fe263d7",
+          "name": "FAC.CR.ZS01.PV",
+          "label": "Cold room door open",
+          "type": "Bool",
+          "memaddress": "3002",
+          "address": "3-1",
+          "description": "Cold room door open",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_0f9f3225-eca7-570e-9bbe-a5ee3804d656": {
+          "id": "t_0f9f3225-eca7-570e-9bbe-a5ee3804d656",
+          "name": "FAC.CR.CMP01.CMD",
+          "label": "Condensing unit compressor",
+          "type": "Bool",
+          "memaddress": "3002",
+          "address": "4-1",
+          "description": "Condensing unit compressor",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_9df49321-34c3-5764-b9b3-ffe76fcae41e": {
+          "id": "t_9df49321-34c3-5764-b9b3-ffe76fcae41e",
+          "name": "FAC.CR.DEF01.CMD",
+          "label": "Evaporator defrost",
+          "type": "Bool",
+          "memaddress": "3002",
+          "address": "4-2",
+          "description": "Evaporator defrost",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_123cf2ef-bec8-537c-acab-d6e593f6dc86": {
+          "id": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86",
+          "name": "FAC.VENT.AT01.PV",
+          "label": "Cellar CO2 sensor 1 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-1",
+          "format": 2,
+          "description": "Cellar CO2 sensor 1 (low-mounted)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_95e21000-194b-5dbc-96c8-9c5fa5c48566": {
+          "id": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566",
+          "name": "FAC.VENT.AT02.PV",
+          "label": "Cellar CO2 sensor 2 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-2",
+          "format": 2,
+          "description": "Cellar CO2 sensor 2 (low-mounted)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865": {
+          "id": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865",
+          "name": "FAC.VENT.AT03.PV",
+          "label": "Cellar CO2 sensor 3 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-3",
+          "format": 2,
+          "description": "Cellar CO2 sensor 3 (low-mounted)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_70b4581a-43d8-5578-83cc-a137de2e05a1": {
+          "id": "t_70b4581a-43d8-5578-83cc-a137de2e05a1",
+          "name": "FAC.VENT.AT04.PV",
+          "label": "Cellar CO2 sensor 4 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-4",
+          "format": 2,
+          "description": "Cellar CO2 sensor 4 (low-mounted)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_dce48ce9-2f37-558b-8df2-04a4cb10fcdc": {
+          "id": "t_dce48ce9-2f37-558b-8df2-04a4cb10fcdc",
+          "name": "FAC.VENT.TT01.PV",
+          "label": "Makeup-air unit discharge temperature",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-5",
+          "format": 2,
+          "description": "Makeup-air unit discharge temperature",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_cb487e38-79d5-5b7b-9cb0-f90288ee885d": {
+          "id": "t_cb487e38-79d5-5b7b-9cb0-f90288ee885d",
+          "name": "FAC.VENT.SC01.CMD",
+          "label": "Kettle hood exhaust fan speed",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "1-1",
+          "format": 2,
+          "description": "Kettle hood exhaust fan speed",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_38d6ffb6-5d6c-5763-8f98-444312331a94": {
+          "id": "t_38d6ffb6-5d6c-5763-8f98-444312331a94",
+          "name": "FAC.VENT.FAN01.PV",
+          "label": "Cellar purge fan 1 running (current switch)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "3-1",
+          "description": "Cellar purge fan 1 running (current switch)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_1197242d-e278-5ca9-9cab-7877448dc71e": {
+          "id": "t_1197242d-e278-5ca9-9cab-7877448dc71e",
+          "name": "FAC.VENT.FAN02.PV",
+          "label": "Cellar purge fan 2 running (current switch)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "3-2",
+          "description": "Cellar purge fan 2 running (current switch)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_deae6144-0d85-5e19-ac9f-9f758f13c6f8": {
+          "id": "t_deae6144-0d85-5e19-ac9f-9f758f13c6f8",
+          "name": "FAC.VENT.AY01.TIER1",
+          "label": "Cellar CO2 tier 1 (5,000 ppm, purge fans on)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-1",
+          "description": "Cellar CO2 tier 1 (5,000 ppm, purge fans on)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_c24db5d5-0259-581a-a53e-6c5e81bc4c26": {
+          "id": "t_c24db5d5-0259-581a-a53e-6c5e81bc4c26",
+          "name": "FAC.VENT.AY01.TIER2",
+          "label": "Cellar CO2 tier 2 (15,000 ppm, carbonation inhibited)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-2",
+          "description": "Cellar CO2 tier 2 (15,000 ppm, carbonation inhibited)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_fae7bec3-4596-5031-961e-8e39c2225dd4": {
+          "id": "t_fae7bec3-4596-5031-961e-8e39c2225dd4",
+          "name": "FAC.VENT.AY01.TIER3",
+          "label": "Cellar CO2 tier 3 (30,000 ppm, evacuate)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-3",
+          "description": "Cellar CO2 tier 3 (30,000 ppm, evacuate)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_77303b80-3b12-5394-b8de-7722b1971ef2": {
+          "id": "t_77303b80-3b12-5394-b8de-7722b1971ef2",
+          "name": "FAC.VENT.FAN01.CMD",
+          "label": "Cellar purge fan 1",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-1",
+          "description": "Cellar purge fan 1",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_d883a76c-849c-5d99-be72-ba1d2df1b1ae": {
+          "id": "t_d883a76c-849c-5d99-be72-ba1d2df1b1ae",
+          "name": "FAC.VENT.FAN02.CMD",
+          "label": "Cellar purge fan 2",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-2",
+          "description": "Cellar purge fan 2",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_e5bf0987-4cd0-5e28-ae10-4f6acc87caa1": {
+          "id": "t_e5bf0987-4cd0-5e28-ae10-4f6acc87caa1",
+          "name": "FAC.VENT.MUA01.CMD",
+          "label": "Makeup-air unit enable",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-3",
+          "description": "Makeup-air unit enable",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        }
+      }
+    }
+  },
+  "alarms": [
+    {
+      "name": "FAC.RTU1.TT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_324f05c9-22c8-5bc4-a02f-db56a7ff0b85"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 80.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Taproom zone temperature: high alarm",
+        "group": "FAC.RTU1",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.CR.TT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_a37769c9-59cd-5637-9558-e2056ce008db"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 42.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cold room temperature: high alarm",
+        "group": "FAC.CR",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT01.ALM_HIGH",
+      "property": {
+        "variableId": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 15000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 sensor 1 (low-mounted): high alarm",
+        "group": "FAC.VENT",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT01.ALM_HIGHHIGH",
+      "property": {
+        "variableId": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86"
+      },
+      "highhigh": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 30000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 sensor 1 (low-mounted): highhigh alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT02.ALM_HIGH",
+      "property": {
+        "variableId": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 15000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 sensor 2 (low-mounted): high alarm",
+        "group": "FAC.VENT",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT02.ALM_HIGHHIGH",
+      "property": {
+        "variableId": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566"
+      },
+      "highhigh": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 30000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 sensor 2 (low-mounted): highhigh alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT03.ALM_HIGH",
+      "property": {
+        "variableId": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 15000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 sensor 3 (low-mounted): high alarm",
+        "group": "FAC.VENT",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT03.ALM_HIGHHIGH",
+      "property": {
+        "variableId": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865"
+      },
+      "highhigh": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 30000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 sensor 3 (low-mounted): highhigh alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT04.ALM_HIGH",
+      "property": {
+        "variableId": "t_70b4581a-43d8-5578-83cc-a137de2e05a1"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 15000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 sensor 4 (low-mounted): high alarm",
+        "group": "FAC.VENT",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT04.ALM_HIGHHIGH",
+      "property": {
+        "variableId": "t_70b4581a-43d8-5578-83cc-a137de2e05a1"
+      },
+      "highhigh": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 30000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 sensor 4 (low-mounted): highhigh alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AY01.ALM_STATE",
+      "property": {
+        "variableId": "t_deae6144-0d85-5e19-ac9f-9f758f13c6f8"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1.0,
+        "max": 1.0,
+        "timedelay": 0,
+        "text": "Cellar CO2 tier 1 (5,000 ppm, purge fans on): state alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    }
+  ],
+  "charts": [],
+  "graphs": [],
+  "recipes": [],
+  "notifications": [],
+  "scripts": [],
+  "reports": [],
+  "texts": [],
+  "plugin": [],
+  "mapsLocations": []
+}

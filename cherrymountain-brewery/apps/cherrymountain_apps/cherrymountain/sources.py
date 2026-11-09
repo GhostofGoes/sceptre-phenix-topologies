@@ -240,8 +240,9 @@ class Sources:
 
     # ------------------------------------------------------------ FUXA
 
-    def fuxa_project(self, relpath: str | None) -> dict[str, Any]:
-        """A committed project file, or the one fuxa/build_project.py builds."""
+    def fuxa_project(self, relpath: str | None, host: str = "scada-fuxa") -> dict[str, Any]:
+        """A committed project file, or the one fuxa/build_project.py builds for
+        ``host`` (scada-fuxa or bas-fuxa; ci has scada-fuxa only)."""
         if relpath is not None:
             path: Path = self.require(self.root / relpath)
             try:
@@ -264,7 +265,7 @@ class Sources:
         sys.modules[spec.name] = builder
         try:
             spec.loader.exec_module(builder)
-            text: str = builder.render(builder.build_project(self.variant))
+            text: str = builder.render(builder.build_project(self.variant, host))
         except SystemExit as ex:
             # The builder reports a bad input with SystemExit(message).
             raise SourceError(

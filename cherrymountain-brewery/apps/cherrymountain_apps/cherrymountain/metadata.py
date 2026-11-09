@@ -247,7 +247,7 @@ class FuxaHost(HostBase):
     type: Literal["fuxa"]
     role: Literal["scada", "bas"] = "scada"
     #: A committed project JSON, relative to the topology directory. Without it
-    #: the app builds the project with fuxa/build_project.py (scada only).
+    #: the app builds the host's project with fuxa/build_project.py.
     project: SafeRelPath | None = None
     #: Device names the imported project must contain (verified after start).
     #: Without it, every device of the project.

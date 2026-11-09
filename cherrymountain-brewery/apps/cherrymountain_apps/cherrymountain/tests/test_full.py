@@ -252,3 +252,20 @@ def test_full_renders_every_plc_from_its_variant_zip(ctx: Context) -> None:
     )
     config = json.loads(Path(opcua).read_text())
     assert config  # built from the ZIP's debug_map.json
+
+
+def test_full_fuxa_projects_are_built_for_both_hosts(ctx: Context) -> None:
+    """scada-fuxa and bas-fuxa get the project fuxa/build_project.py builds for
+    them, equal to the committed fuxa/full/<host>-project.json, and the
+    provisioning settings expect every device of it."""
+    from cherrymountain_apps.cherrymountain.metadata import FuxaHost
+
+    for host in ("scada-fuxa", "bas-fuxa"):
+        md = ctx.hosts[host]
+        assert isinstance(md, FuxaHost)
+        injects = {i.dst: i for i in render.render_fuxa(ctx, host, md)}
+        project = json.loads(Path(injects["/etc/cherrymountain/fuxa/project.json"].src).read_text())
+        committed = json.loads((ROOT / "fuxa" / "full" / f"{host}-project.json").read_text())
+        assert project == committed, host
+        expect = env(Path(injects["/etc/default/cm-fuxa"].src))["FUXA_EXPECT_DEVICES"].split()
+        assert set(expect) == {d["name"] for d in project["devices"].values()}

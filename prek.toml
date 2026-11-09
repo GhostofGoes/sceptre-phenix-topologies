@@ -390,6 +390,20 @@ pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
+# The FUXA projects (ci, and full and lite for scada-fuxa and bas-fuxa) are what
+# fuxa/build_project.py builds from the current plantgen output.
+id = "cm-fuxa-check"
+name = "FUXA projects are current (build_project.py --all --check)"
+language = "python"
+entry = "python cherrymountain-brewery/fuxa/build_project.py --all --check"
+additional_dependencies = [
+    "pydantic==2.14.3",
+]
+files = '^cherrymountain-brewery/(fuxa/|plant/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
 # The generated app blocks embedded in the scenarios, and the generated files
 # copied into phenix-injects/, are current (python sync.py rewrites them).
 # This runs on every CI run (--all-files), so plantgen output that changed

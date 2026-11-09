@@ -2042,8 +2042,13 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
 **Provisioning**
 
 - The `cherrymountain` app generates the project JSON from `plant.yaml`
-  (devices, tags, alarms, DAQ settings) and merges it with a hand-built view
-  skeleton exported from the FUXA editor.
+  (devices, tags, alarms, DAQ settings) with `fuxa/build_project.py`: for ci
+  the hand-laid Cellar view, and for full and lite a view per device (the
+  Cellar view too on scada-fuxa) for both scada-fuxa and bas-fuxa. The
+  committed copies (`fuxa/<variant>/<host>-project.json`) are checked current
+  by the `cm-fuxa-check` hook. OPC UA tags address `ns=2;s=<tag>` and S7 tags
+  the data blocks the app gives the `s7comm` plugin (DB1 %QW, DB2 %IW, DB3 %MW,
+  DB4 %IX, DB5 %QX).
 - Tag IDs are deterministic (derived from tag names), so the views stay
   bound across regenerations.
 - `mysettings.json` goes in `server/_appdata/` and is injected with
@@ -2982,8 +2987,11 @@ five stages) and follows the pattern of sceptre-phenix-apps:
 - **Follow-ups.**
   - Per-variant PLC ZIPs with `debug_map.json` exist for all five PLCs
     (`plc/common`); the app renders each from its variant's ZIP.
-  - `fuxa/build_project.py` fails on the full tag list, and there is no
-    `bas-fuxa` project.
+  - `fuxa/build_project.py` builds the full and lite projects for scada-fuxa
+    and bas-fuxa (every device type, a generated view per device, the PLC
+    alarm bits and FUXA's own BACnet alarms); importing them into a running
+    FUXA, and the OPC UA namespace index and S7 tag types they assume, are
+    unverified.
   - Drop the static sim, OpenPLC, and FUXA topology injects once the app runs.
   - Render the `relay-main` telnet config ([§12.3](#123-ot-sim-field-devices)).
   - The HELICS federate-count SoH check counts distinct peers on the broker

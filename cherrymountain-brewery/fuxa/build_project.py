@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
-"""Build the scada-fuxa FUXA project JSON (ci variant) from plantgen output.
+"""Build the FUXA project JSON of a FUXA host from plantgen output.
 
-Reads ``plant/generated/<variant>/fuxa/scada-fuxa-tags.json`` and
-``alarms.json`` and writes ``fuxa/scada-fuxa-project.json``: one Modbus TCP
-device (``plc-cellar``), one Cellar view for FV-101 to FV-104, and one FUXA
-alarm per PLC alarm bit. Tag IDs come from plantgen, so they stay stable across
-regenerations; device, view, and gauge IDs are derived from names with UUIDv5
-for the same reason.
+Reads ``plant/generated/<variant>/fuxa/<host>-tags.json`` and ``alarms.json``.
 
-The project schema follows frangoteam/FUXA ``client/src/app/_models`` and
+* ``ci`` (scada-fuxa only): one Modbus TCP device (``plc-cellar``), one Cellar
+  view for FV-101 to FV-104, and one FUXA alarm per PLC alarm bit, written to
+  ``fuxa/scada-fuxa-project.json`` (the ci topology injects it).
+* ``full`` and ``lite``, for ``scada-fuxa`` and ``bas-fuxa``: every device of
+  the tag list (Modbus TCP, OPC UA, S7, BACnet), a generated view per device
+  (plus the Cellar view where its tags exist), and every alarm whose tag is in
+  the project: PLC alarm bits (active at 1) and the alarms FUXA evaluates itself
+  on BACnet values (DESIGN.md 6.5). Written to ``fuxa/<variant>/<host>-project.json``;
+  the cherrymountain app builds the same project at pre-start.
+
+Tag IDs come from plantgen, so they stay stable across regenerations; device,
+view, and gauge IDs are derived from names with UUIDv5 for the same reason. The
+project schema follows frangoteam/FUXA ``client/src/app/_models`` and
 ``server/runtime/project`` (see README.md for what is unverified).
 
 Usage:
-    python build_project.py [--variant ci] [--out scada-fuxa-project.json]
-    python build_project.py --check     # fail if the committed file is stale
+    python build_project.py [--variant ci] [--host scada-fuxa] [--out FILE]
+    python build_project.py --check            # the ci project is current
+    python build_project.py --all [--check]    # every variant and FUXA host
 """
 
 from __future__ import annotations
@@ -21,6 +29,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import textwrap
 import uuid
 from pathlib import Path
 from typing import Any
@@ -45,7 +54,7 @@ def uid(prefix: str, name: str) -> str:
 
 
 class PlantTag(BaseModel):
-    """One tag from scada-fuxa-tags.json (fields this builder uses)."""
+    """One tag from <host>-tags.json (fields this builder uses)."""
 
     model_config = ConfigDict(extra="ignore")
 
@@ -53,11 +62,13 @@ class PlantTag(BaseModel):
     name: str
     label: str
     type: str
-    memaddress: str
-    address: int
+    memaddress: str | None = None
+    address: int | str | None = None
     divisor: int | None = None
     units: str | None = None
     range: tuple[float, float] | None = None
+    plc_iec: str | None = None
+    access: str = "read"
 
 
 class PlantDevice(BaseModel):
@@ -83,6 +94,9 @@ class PlantAlarm(BaseModel):
     fuxa_severity: str
     fuxa_tag_id: str
     text: str
+    kind: str = "state"
+    limit: float = 1.0
+    evaluator: str | None = None
 
 
 class PlantAlarms(BaseModel):
@@ -102,13 +116,13 @@ class TagDaq(BaseModel):
 
 
 class FuxaTag(BaseModel):
-    """FUXA ``Tag`` for a Modbus device (``address`` is 1-based)."""
+    """FUXA ``Tag`` (for Modbus, ``address`` is 1-based)."""
 
     id: str
     name: str
     label: str
     type: str
-    memaddress: str
+    memaddress: str | None = None
     address: str
     divisor: int | None = None
     format: int | None = None
@@ -467,7 +481,194 @@ class Project(BaseModel):
     mapsLocations: list[Any] = Field(default_factory=list)
 
 
-def build_project(variant: str) -> Project:
+# ---------------------------------------------------------------- full and lite
+
+#: The S7 data blocks the cherrymountain app gives the ``s7comm`` plugin
+#: (render.s7comm_config): IEC area -> (DB number, bit image).
+S7_DATA_BLOCKS: dict[str, tuple[int, bool]] = {
+    "QW": (1, False),
+    "IW": (2, False),
+    "MW": (3, False),
+    "IX": (4, True),
+    "QX": (5, True),
+}
+#: The OPC UA namespace index of the plugin's ``urn:cherrymountain:opcua``
+#: (the first one it registers). TODO(verify): on a running plc-brewhouse.
+OPCUA_NAMESPACE: int = 2
+FUXA_HOSTS: tuple[str, ...] = ("scada-fuxa", "bas-fuxa")
+VARIANTS: tuple[str, ...] = ("full", "lite")
+#: Gauges per generated device view: columns of label and value.
+VIEW_ROWS: int = 24
+VIEW_COLUMN: int = 360
+
+
+def s7_address(plc_iec: str) -> tuple[str, str]:
+    """(FUXA S7 address, type) of a located variable: DB<n>.DBW<byte> or
+    DB<n>.DBX<byte>.<bit>, in the data blocks of S7_DATA_BLOCKS."""
+    area: str = plc_iec[1:3]
+    if area not in S7_DATA_BLOCKS:
+        raise SystemExit(f"{plc_iec}: no S7 data block for %{area}")
+    db, bits = S7_DATA_BLOCKS[area]
+    if bits:
+        byte, _, bit = plc_iec[3:].partition(".")
+        return f"DB{db}.DBX{int(byte)}.{int(bit)}", "Bool"
+    return f"DB{db}.DBW{int(plc_iec[3:]) * 2}", "Word"
+
+
+def convert_plant_tag(dev: PlantDevice, tag: PlantTag) -> FuxaTag:
+    """A FUXA tag for any device type of the full and lite tag lists."""
+    daq: bool = tag.name.endswith(".PV") and is_analog(tag)
+    tag_type: str = tag.type
+    memaddress: str | None = tag.memaddress
+    match dev.type:
+        case "ModbusTCP":
+            address: str = str(tag.address)
+        case "OPCUA":
+            address = f"ns={OPCUA_NAMESPACE};s={tag.name}"
+            tag_type = "Boolean" if tag.type == "Bool" else tag.type
+        case "SiemensS7":
+            if tag.plc_iec is None:
+                raise SystemExit(f"{tag.name}: an S7 tag needs plc_iec")
+            address, tag_type = s7_address(tag.plc_iec)
+            if tag.type == "Int16":
+                tag_type = "Int"
+        case "BACnet":
+            address = str(tag.address)
+        case _:
+            raise SystemExit(f"{dev.name}: unsupported device type {dev.type}")
+    return FuxaTag(
+        id=tag.id,
+        name=tag.name,
+        label=tag.label,
+        type=tag_type,
+        memaddress=memaddress,
+        address=address,
+        divisor=tag.divisor,
+        format=2 if is_analog(tag) else None,
+        description=tag.label,
+        daq=TagDaq(enabled=daq),
+    )
+
+
+def convert_plant_device(dev: PlantDevice) -> FuxaDevice:
+    props: dict[str, Any] = dict(dev.property)
+    if dev.type == "ModbusTCP":
+        props["port"] = str(props.get("port", 502))
+        props["slaveid"] = str(props.get("slaveid", 1))
+    return FuxaDevice(
+        id=uid("d_", dev.name),
+        name=dev.name,
+        property=props,
+        type=dev.type,
+        polling=dev.polling,
+        tags={t.id: convert_plant_tag(dev, t) for t in dev.tags},
+    )
+
+
+def view_name(device: str) -> str:
+    """plc-brewhouse -> Brewhouse; bas-fuxa-bacnet -> Building."""
+    if device.endswith("-bacnet"):
+        return "Building" if device.startswith("bas-") else "Cellar CO2"
+    return device.removeprefix("plc-").capitalize()
+
+
+def build_device_view(dev: PlantDevice, tags: dict[str, PlantTag]) -> dict[str, Any]:
+    """A generated view of one device: its process values, setpoints, and states
+    in columns (label, then value or lamp), read-only."""
+    shown: list[PlantTag] = [t for t in dev.tags if ".ALM_" not in t.name]
+    columns: int = max(1, -(-len(shown) // VIEW_ROWS))
+    width: int = LEFT * 2 + VIEW_COLUMN * columns
+    height: int = 70 + 26 * min(len(shown), VIEW_ROWS)
+    title: str = view_name(dev.name)
+    vb: ViewBuilder = ViewBuilder(tags, width=width, height=height)
+    vb.text(LEFT, 28, f"{title}: {dev.name}", size=18, bold=True)
+    for i, tag in enumerate(shown):
+        x0: int = LEFT + (i // VIEW_ROWS) * VIEW_COLUMN
+        y: int = 64 + 26 * (i % VIEW_ROWS)
+        vb.text(x0, y, textwrap.shorten(tag.label, 36, placeholder=" ..."), size=12)
+        if is_analog(tag):
+            digits: int = 0 if not tag.divisor or tag.divisor <= 1 else len(str(tag.divisor)) - 1
+            vb.value(x0 + 300, y, tag.name, digits=digits, unit=tag.units or "")
+        else:
+            vb.lamp(x0 + 300, y - 5, tag.name, "#1e88e5")
+    view_id: str = uid("v_", f"{dev.name}/view")
+    return {
+        "id": view_id,
+        "name": title,
+        "profile": {
+            "width": width,
+            "height": height,
+            "bkcolor": "#f5f5f5ff",
+            "margin": 10,
+            "align": "topCenter",
+            "gridType": "fixed",
+            "viewRenderDelay": 0,
+        },
+        "items": {k: g.model_dump() for k, g in vb.items.items()},
+        "variables": {},
+        "svgcontent": vb.svg_content(),
+        "type": "svg",
+    }
+
+
+def build_plant_layout(views: list[dict[str, Any]]) -> dict[str, Any]:
+    layout: dict[str, Any] = build_layout(views[0]["id"])
+    layout["navigation"]["items"] = [
+        {"icon": "dashboard", "view": v["id"], "link": "", "text": v["name"]} for v in views
+    ]
+    return layout
+
+
+FAR: float = 1.0e9
+
+
+def build_plant_alarm(alarm: PlantAlarm) -> dict[str, Any]:
+    """A PLC alarm bit (active at 1), or an alarm FUXA evaluates on a value:
+    high and highhigh from the limit up, low and lowlow from it down, state at
+    the limit. FUXA applies no delay; the PLC alarm bits carry their own."""
+    group: str = ".".join(alarm.name.split(".")[:2])
+    built: dict[str, Any] = build_alarm(alarm)
+    for level in ("highhigh", "high", "low", "info"):
+        built[level] = sub_property(alarm.fuxa_severity, level, alarm.text, group)
+    if alarm.evaluator == "fuxa":
+        sub: dict[str, Any] = built[alarm.fuxa_severity]
+        match alarm.kind:
+            case "high" | "highhigh":
+                sub["min"], sub["max"] = alarm.limit, FAR
+            case "low" | "lowlow":
+                sub["min"], sub["max"] = -FAR, alarm.limit
+            case _:
+                sub["min"], sub["max"] = alarm.limit, alarm.limit
+    return built
+
+
+def build_plant_project(variant: str, host: str) -> Project:
+    gen: Path = PLANT_GENERATED / variant
+    path: Path = gen / "fuxa" / f"{host}-tags.json"
+    if not path.is_file():
+        raise SystemExit(f"no tag list for {host} in variant {variant}")
+    plant: PlantTags = PlantTags.model_validate_json(path.read_text(encoding="utf-8"))
+    alarms: PlantAlarms = PlantAlarms.model_validate_json((gen / "alarms.json").read_text(encoding="utf-8"))
+    tags: dict[str, PlantTag] = {t.name: t for d in plant.devices for t in d.tags}
+    ids: set[str] = {t.id for t in tags.values()}
+    views: list[dict[str, Any]] = []
+    if all(f"CEL.{fv}.TT01.PV" in tags for fv in FERMENTERS):
+        views.append(build_cellar_view(tags))
+    views += [build_device_view(d, tags) for d in plant.devices]
+    devices: list[FuxaDevice] = [convert_plant_device(d) for d in plant.devices]
+    return Project(
+        name=f"cherrymountain-{variant}-{host}",
+        hmi={"layout": build_plant_layout(views), "views": views},
+        devices={d.id: d for d in devices},
+        alarms=[build_plant_alarm(a) for a in alarms.alarms if a.fuxa_tag_id in ids],
+    )
+
+
+def build_project(variant: str, host: str = "scada-fuxa") -> Project:
+    if variant != "ci":
+        return build_plant_project(variant, host)
+    if host != "scada-fuxa":
+        raise SystemExit("the ci variant has only scada-fuxa")
     gen: Path = PLANT_GENERATED / variant
     plant: PlantTags = PlantTags.model_validate_json(
         (gen / "fuxa" / "scada-fuxa-tags.json").read_text(encoding="utf-8")
@@ -496,25 +697,40 @@ def render(project: Project) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
+def output(variant: str, host: str) -> Path:
+    if variant == "ci":
+        return HERE / "scada-fuxa-project.json"
+    return HERE / variant / f"{host}-project.json"
+
+
+def write_or_check(variant: str, host: str, out: Path, check: bool) -> bool:
+    text: str = render(build_project(variant, host))
+    if check:
+        if not out.exists() or out.read_text(encoding="utf-8") != text:
+            print(f"{out} is stale; run build_project.py", file=sys.stderr)
+            return False
+        print(f"{out} is up to date")
+        return True
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(text, encoding="utf-8")
+    print(f"wrote {out}")
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     ap: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--variant", default="ci")
-    ap.add_argument("--out", type=Path, default=HERE / "scada-fuxa-project.json")
-    ap.add_argument("--check", action="store_true", help="fail if --out is stale")
+    ap.add_argument("--host", default="scada-fuxa", choices=FUXA_HOSTS)
+    ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument("--check", action="store_true", help="fail if the output is stale")
+    ap.add_argument("--all", action="store_true", help="every variant and FUXA host")
     args: argparse.Namespace = ap.parse_args(argv)
-    if args.variant != "ci" and args.out == HERE / "scada-fuxa-project.json":
-        ap.error("the default --out is the ci project; pass --out for another variant")
-
-    text: str = render(build_project(args.variant))
-    if args.check:
-        if not args.out.exists() or args.out.read_text(encoding="utf-8") != text:
-            print(f"{args.out} is stale; run build_project.py", file=sys.stderr)
-            return 1
-        print(f"{args.out} is up to date")
-        return 0
-    args.out.write_text(text, encoding="utf-8")
-    print(f"wrote {args.out}")
-    return 0
+    if args.all:
+        jobs: list[tuple[str, str]] = [("ci", "scada-fuxa")] + [(v, h) for v in VARIANTS for h in FUXA_HOSTS]
+        ok: bool = all([write_or_check(v, h, output(v, h), args.check) for v, h in jobs])
+        return 0 if ok else 1
+    out: Path = args.out or output(args.variant, args.host)
+    return 0 if write_or_check(args.variant, args.host, out, args.check) else 1
 
 
 if __name__ == "__main__":

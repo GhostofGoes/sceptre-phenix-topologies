@@ -58,7 +58,7 @@ integration, new software, testing, roadmap, risks, and references.
 | `plc/plc-cellar/` | The cellar PLC programs in Structured Text (`plc-cellar.st` for ci, `plc-cellar-plant.st` for full and lite), and the ci `build_zip.sh` |
 | `plc/common/` | The per-variant PLC builder: alarm logic generated from `alarms.json`, strucpp, and the ZIPs under `phenix-injects/openplc/<variant>/` ([README](plc/common/README.md)) |
 | `tests/integration/` | `ci_slice_docker.sh`: the cellar slice (ot-sim, OpenPLC v4.3.2, FUXA) in Docker, no KVM |
-| `fuxa/` | The generated FUXA project for scada-fuxa |
+| `fuxa/` | `build_project.py` and the FUXA projects it builds: scada-fuxa for ci, and scada-fuxa and bas-fuxa for full and lite (`fuxa/<variant>/`) |
 | `tools/lint/` | Hook scripts for prek: systemd-analyze on units and shellcheck on shell in image YAML |
 | `spikes/` | Phase 0 spike kits, each with its go/no-go result ([summary](spikes/README.md)) |
 | `apps/` | The `cherrymountain` phenix app (five stages) and the `plantevent` SCORCH component, each with its own `README.md`, with tests ([README](apps/README.md)) |
@@ -92,9 +92,10 @@ Run these from this directory after changing `plant/plant.yaml`:
 ```shell
 (cd tools/plantgen && python -m plantgen)          # rewrite plant/generated/*
 python sync.py                                       # embed the generated blocks in the scenarios, copy generated files into phenix-injects/
-python fuxa/build_project.py                         # rebuild the FUXA project
+python fuxa/build_project.py --all                   # rebuild the FUXA projects (ci; full and lite for scada-fuxa and bas-fuxa)
 python sync.py                                       # ... and copy it (run again after build_project.py)
-plc/plc-cellar/build_zip.sh                          # rebuild the OpenPLC program ZIP (needs Node 22+)
+plc/plc-cellar/build_zip.sh                          # rebuild the ci OpenPLC program ZIP (needs Node 22+)
+plc/common/build_zip.sh --all                        # rebuild the full and lite PLC ZIPs (needs Node 22+)
 ```
 
 Checks (all must pass; `prek run --all-files` covers lint and hygiene):
@@ -106,7 +107,7 @@ Checks (all must pass; `prek run --all-files` covers lint and hygiene):
 python sync.py --check                               # injects and scenarios match plantgen output (ci, full, lite)
 python tools/netcheck/run_netcheck.py                # IP plan, conduit matrix, routes, rules (full, lite)
 (cd tools/netcheck && python -m pytest)              # netcheck, sync.py, and BBMD tests
-python fuxa/build_project.py --check                 # FUXA project is current
+python fuxa/build_project.py --all --check           # FUXA projects are current
 python plc/plc-cellar/assemble.py                    # PLC program matches alarms.json and the I/O map
 plc/plc-cellar/build_zip.sh --check                  # the committed ZIP is a fresh build (needs Node 22+)
 (cd tests/integration && python -m pytest)           # ot-sim hand-render equals the phenix app

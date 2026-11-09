@@ -257,28 +257,37 @@ def opcua_config(
 
 
 def s7comm_config(layout: dict[str, Any], port: int) -> dict[str, Any]:
-    """``conf/s7comm.json``: DB1 is the %QW image, DB2 the %IW image.
+    """``conf/s7comm.json``: one data block per image, the numbering that
+    fuxa/build_project.py addresses (its ``S7_DATA_BLOCKS``): DB1 %QW, DB2 %IW,
+    DB3 %MW, DB4 %IX, DB5 %QX, each from buffer 0. The bit images take one byte
+    per eight bits (``DB4.DBX<byte>.<bit>``).
 
-    TODO(verify): the plugin's mapping types for %MW and the bit images; the
-    openplc-v4 spike only exercised ``int_output`` and ``int_input``.
+    TODO(verify): the openplc-v4 spike exercised only ``int_output`` and
+    ``int_input``; the memory and bit mappings follow the v4.3.2 plugin source
+    (s7comm_config.c), not a run.
     """
     qw: int = int(layout["holding_registers"]["qw_count"])
     iw: int = int(layout["input_registers"]["iw_count"])
+    mw: int = int(layout["holding_registers"]["mw_count"])
+    ix: int = int(layout["discrete_inputs"]["ix_bits"])
+    qx: int = int(layout["coils"]["qx_bits"])
+
+    def block(number: int, name: str, size: int, kind: str) -> dict[str, Any]:
+        return {
+            "db_number": number,
+            "description": name,
+            "size_bytes": max(size, 1),
+            "mapping": {"type": kind, "start_buffer": 0},
+        }
+
     return {
         "server": {"enabled": True, "bind_address": "0.0.0.0", "port": port},
         "data_blocks": [
-            {
-                "db_number": 1,
-                "description": "QW",
-                "size_bytes": max(qw, 1) * 2,
-                "mapping": {"type": "int_output", "start_buffer": 0},
-            },
-            {
-                "db_number": 2,
-                "description": "IW",
-                "size_bytes": max(iw, 1) * 2,
-                "mapping": {"type": "int_input", "start_buffer": 0},
-            },
+            block(1, "QW", qw * 2, "int_output"),
+            block(2, "IW", iw * 2, "int_input"),
+            block(3, "MW", mw * 2, "int_memory"),
+            block(4, "IX", -(-ix // 8), "bool_input"),
+            block(5, "QX", -(-qx // 8), "bool_output"),
         ],
     }
 
@@ -519,12 +528,8 @@ def project_devices(project: dict[str, Any]) -> list[str]:
 
 
 def render_fuxa(ctx: Context, hostname: str, md: FuxaHost) -> list[Injection]:
-    if md.project is None and md.role != "scada":
-        raise SourceError(
-            f"{hostname}: a {md.role} FUXA needs metadata.project; fuxa/build_project.py builds the scada project only"
-        )
     out: Path = ctx.host_dir(hostname) / "fuxa"
-    project: dict[str, Any] = ctx.sources.fuxa_project(md.project)
+    project: dict[str, Any] = ctx.sources.fuxa_project(md.project, hostname)
     devices: list[str] = project_devices(project)
     expect: list[str] = md.expect_devices if md.expect_devices is not None else devices
     missing: list[str] = [d for d in expect if d not in devices]
@@ -545,7 +550,7 @@ def render_fuxa(ctx: Context, hostname: str, md: FuxaHost) -> list[Injection]:
                 "FUXA_SEED_PASSWORD": "123456",
                 "FUXA_ADMIN_PASSWORD": ctx.creds.fuxa_password.get_secret_value(),
                 "FUXA_PROJECT": f"{CONF_DIR}/fuxa/project.json",
-                # Read by cm-fuxa-provision once it checks a device list instead of plc-cellar.
+                # cm-fuxa-provision requires each of these after the import.
                 "FUXA_EXPECT_DEVICES": " ".join(expect),
             }
         ),

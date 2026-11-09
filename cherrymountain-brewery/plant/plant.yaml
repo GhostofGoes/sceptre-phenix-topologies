@@ -718,7 +718,7 @@ hosts:
       IF0: { vlan: BAS, ip: 10.30.10.5/24 }
   bas-fuxa:
     role: scada
-    app: { type: fuxa, role: bas, project: fuxa/bas-fuxa-project.json }
+    app: { type: fuxa, role: bas }
     fuxa:
       - { host: bas-rtu-taproom }
       - { host: bas-coldroom }

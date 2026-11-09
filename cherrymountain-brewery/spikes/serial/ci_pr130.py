@@ -78,7 +78,7 @@ def run() -> int:
         started: str = host_socat(lab, "host-socat-after-start.txt")
         lab.fact("host_socat_after_start", started)
         lab.check("one socat runs on the minimega host between the two QEMU sockets", started.count("UNIX-CONNECT") >= 1 and "socat" in started, started[:300])
-        qemu: str = sh(["bash", "-c", "pgrep -a qemu | tr ' ' '\\n' | grep -E 'serial|chardev' | head -n 8"]).stdout
+        qemu: str = sh(["bash", "-c", "pgrep -af qemu-system | grep -oE 'chardev socket[^ ]*|device pci-serial[^ ]*' | head -n 8"]).stdout
         lab.fact("qemu_serial_flags", qemu)
         lab.save("experiment-serial-metadata.txt", lab.phenix("config", "get", f"experiment/{EXP}", "--output", "yaml", check=False))
 
@@ -103,14 +103,24 @@ def run() -> int:
         lab.fact("host_socat_after_vm_kill", after_kill)
         lab.mm.run(f"vm start {CHILLER}", EXP)
         time.sleep(20)
-        wait_for("chiller C2 after restart", 300, 5, lambda: (CHILLER in lab.cc_clients(), str(sorted(lab.cc_clients()))))
+        try:
+            wait_for("chiller C2 after restart", 420, 5, lambda: (CHILLER in lab.cc_clients(), str(sorted(lab.cc_clients()))))
+            returned: bool = True
+        except TimeoutError as exc:
+            returned = False
+            lab.fact("chiller_c2_after_restart", f"did not register within 420 s: {exc}")
+        lab.fact("chiller_vm_state_after_restart", str({k: v.get("state") for k, v in lab.vm_info().items()}))
+        qemu_cmd: str = sh(["bash", "-c", "pgrep -af 'qemu.*glycol' | cut -c1-1500"]).stdout
+        lab.save("qemu-chiller-after-restart.txt", qemu_cmd)
         after_start: str = host_socat(lab, "host-socat-after-restart.txt")
         lab.fact("host_socat_after_vm_restart", after_start)
-        port2: str = find_port(lab, CHILLER)
-        lab.shell(RIO, "pkill -f ot-sim-; sleep 1; echo stopped")
-        ok3, d3 = echo_between(lab, CHILLER, RIO, dev, "after-redeploy") if port2 else (False, "no serial port after restart")
-        lab.fact("link_after_redeploy", f"works={ok3}: {d3}")
-        lab.fact("review_item_no_reconnect", "link recovered by itself" if ok3 else "link did NOT recover after the VM was killed and started (no reconnect)")
+        lab.check("the chiller VM registers its C2 client again after vm kill and vm start", returned, "see chiller_c2_after_restart")
+        if returned:
+            port2: str = find_port(lab, CHILLER)
+            lab.shell(RIO, "pkill -f ot-sim-; sleep 1; echo stopped")
+            ok3, d3 = echo_between(lab, CHILLER, RIO, dev, "after-redeploy") if port2 else (False, "no serial port after restart")
+            lab.fact("link_after_redeploy", f"works={ok3}: {d3}")
+            lab.fact("review_item_no_reconnect", "link recovered by itself" if ok3 else "link did NOT recover after the VM was killed and started (no reconnect)")
         lab.save("host-socat-logs.txt", sh(["bash", "-c", "tail -n 40 /tmp/*_serial_*.log 2>&1 | cut -c1-250"]).stdout)
         log("done")
     finally:

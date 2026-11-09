@@ -201,10 +201,25 @@ check "OpenSearch ($OS_HEAP heap) reaches a healthy cluster" "$os_ready" "$(dock
 
 if [ "$os_ready" = true ]; then
   timeout 300 docker compose --profile malcolm up -d "${SERVICES[@]:1}" >>"$EV/steps.log" 2>&1
-  log "services started; letting the watchers settle (pcap-monitor waits 30 s)"
-  sleep 60
+  STARTED_AT=$(date +%s)
+  log "services started; waiting for the watchers (pcap-monitor sleeps 30 and 60 s, the processors 10 to 45 s)"
   # The documented path: a pcap in ./pcap/upload. The upload watcher in pcap-monitor moves it to
   # pcap/processed, pcap-monitor publishes it, and the Arkime, Zeek and Suricata processors pick it up.
+  # pcap-monitor publishes a pcap once, on a ZeroMQ PUB socket (no replay), so a processor that subscribes
+  # later never sees it. Suricata's processor sleeps 45 s and then loads the rules, and in run 3 it subscribed
+  # 8 s after the publication (Zeek and Arkime had been subscribed for 50 s): no Suricata output. Drop the pcap
+  # only when the publisher is bound and every processor has subscribed.
+  SUBSCRIBED=false
+  for _ in $(seq 1 90); do
+    SUBSCRIBED=true
+    for c in zeek arkime suricata; do
+      docker logs "malcolm-$c-1" 2>&1 | grep -q "subscribed to topic" || SUBSCRIBED=false
+    done
+    docker logs malcolm-pcap-monitor-1 2>&1 | grep -q "binding publisher port" || SUBSCRIBED=false
+    [ "$SUBSCRIBED" = true ] && break
+    sleep 5
+  done
+  fact processors_subscribed "$SUBSCRIBED (publisher bound, zeek, arkime and suricata processors subscribed) $(($(date +%s) - STARTED_AT)) s after the services started"
   cp "$EV/ics.pcap" pcap/upload/cherrymountain-ics.pcap
   DROPPED=$(date +%s)
   log "pcap dropped into pcap/upload"

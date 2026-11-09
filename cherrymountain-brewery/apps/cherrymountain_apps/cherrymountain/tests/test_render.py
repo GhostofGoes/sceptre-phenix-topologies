@@ -103,6 +103,12 @@ def test_opcua_config_from_the_debug_map(ctx: Context) -> None:
     )
     assert pv["permissions"]["operator"] == "r"
     assert variables["CEL.FV101.TT01.SP"]["permissions"]["operator"] == "rw"
+    # FUXA connects anonymously: the session must get the role that may write
+    # (the plugin's default for an anonymous session is the read-only viewer).
+    (profile,) = config["server"]["security_profiles"]
+    assert profile["auth_methods"] == ["Anonymous"]
+    assert profile["anonymous_role"] == "operator"
+    assert variables["CEL.FV101.TT01.SP"]["permissions"]["viewer"] == "r"
     assert variables["CEL.FV101.TT01.ALM_HIGH"]["datatype"] == "BOOL"
     # The plantgen Modbus configs still go in; the slave plugin is optional then.
     assert "/opt/cherrymountain/openplc/conf/modbus_master.json" in injects

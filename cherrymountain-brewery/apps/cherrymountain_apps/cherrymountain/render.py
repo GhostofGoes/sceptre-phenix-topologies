@@ -240,6 +240,13 @@ def opcua_config(
                             "security_policy": "None",
                             "security_mode": "None",
                             "auth_methods": ["Anonymous"],
+                            # FUXA signs in anonymously. The plugin gives an
+                            # anonymous session the viewer role unless the
+                            # profile names another (v4.3.2 user_manager.py),
+                            # and viewer is read-only below: without this no
+                            # setpoint, phase command, or entry permit could
+                            # be written to an OPC UA PLC.
+                            "anonymous_role": "operator",
                         }
                     ],
                 },

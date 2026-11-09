@@ -5,6 +5,13 @@ from :meth:`Federate.truth`) every ``interval_s`` federate seconds to the
 index ``<index_base>-<federate>-<YYYY.MM.DD>`` through the OpenSearch
 (Elasticsearch-compatible) ``_bulk`` API.
 
+**Time.** ``@timestamp`` is the wall clock (UTC) when the document was taken,
+and so is the date in the index name: the same clock Malcolm, Wazuh, and the
+ot-sim ground-truth module stamp their records with, so "what happened" and
+"what was observed" line up without a conversion, and the Grafana dashboard's
+default range (around now) shows the run. The simulated date and time is in
+``sim_time`` and the federate seconds in ``t_s``.
+
 **Mapping.** Before its first write the writer puts an index template for
 ``<index_base>-*``. It covers this module's documents and those of the ot-sim
 ground-truth module, which uses the same index base: ``@timestamp`` is a date
@@ -24,6 +31,7 @@ logged with its reason.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import logging
 import queue
@@ -64,6 +72,7 @@ def index_template(index_base: str) -> dict[str, Any]:
                 ],
                 "properties": {
                     "@timestamp": {"type": "date"},
+                    "sim_time": {"type": "date"},
                     "federate": {"type": "keyword"},
                     "variant": {"type": "keyword"},
                     "t_s": {"type": "double"},
@@ -125,17 +134,19 @@ class TruthWriter:
             return cls(None, federate, variant)
         return cls(cfg.endpoint, federate, variant, cfg.index_base)
 
-    def document(self, fed: Federate) -> Item:
-        """(index, document) for the federate's current state."""
-        now = fed.now
+    def document(self, fed: Federate, wall: dt.datetime | None = None) -> Item:
+        """(index, document) for the federate's current state, stamped with
+        the wall clock ``wall`` (now, UTC, when not given)."""
+        wall = wall or dt.datetime.now(dt.UTC)
         doc = {
-            "@timestamp": now.isoformat(),
+            "@timestamp": wall.isoformat(),
+            "sim_time": fed.now.isoformat(),
             "federate": self.federate,
             "variant": self.variant,
             "t_s": fed.t,
             **fed.truth(),
         }
-        return f"{self.index_base}-{self.federate}-{now:%Y.%m.%d}", doc
+        return f"{self.index_base}-{self.federate}-{wall:%Y.%m.%d}", doc
 
     def record(self, fed: Federate) -> None:
         """Queue a document every ``interval_s`` federate seconds."""

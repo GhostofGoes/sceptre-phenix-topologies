@@ -3,6 +3,7 @@ value types, and the event API's health states."""
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import threading
 import time
@@ -131,6 +132,8 @@ def test_the_writer_puts_the_template_then_the_documents(opensearch: FakeOpenSea
     index, doc = opensearch.docs[0]
     assert index.startswith("cherrymountain-truth-cellar-")
     assert doc["federate"] == "cellar" and doc["t_s"] == 0.0
+    assert doc["sim_time"].startswith("2026-07-15T04:30:00")
+    assert abs(time.time() - dt.datetime.fromisoformat(doc["@timestamp"]).timestamp()) < 60.0
 
 
 def test_documents_wait_while_opensearch_is_down(opensearch: FakeOpenSearch) -> None:

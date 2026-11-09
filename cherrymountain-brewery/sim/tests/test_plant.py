@@ -234,8 +234,13 @@ def test_truth_documents(full: HelicsConfig) -> None:
     """Ground truth: one bulk index line plus one document per record."""
     fed = build(full, "cellar")
     writer = TruthWriter(None, "cellar", "full")
-    index, doc = writer.document(fed)
-    assert index.startswith("cherrymountain-truth-cellar-2026.07.15")
+    wall = dt.datetime(2026, 11, 9, 23, 59, 30, tzinfo=dt.UTC)
+    index, doc = writer.document(fed, wall)
+    # The wall clock dates the document and its index (the clock Malcolm and
+    # Wazuh use); the simulated time rides along.
+    assert index == "cherrymountain-truth-cellar-2026.11.09"
+    assert doc["@timestamp"] == "2026-11-09T23:59:30+00:00"
+    assert doc["sim_time"] == "2026-07-15T04:30:00-06:00"
     assert doc["federate"] == "cellar" and "fermenters" in doc
     body = TruthWriter.bulk_body([(index, doc)]).decode().splitlines()
     assert json.loads(body[0]) == {"index": {"_index": index}}

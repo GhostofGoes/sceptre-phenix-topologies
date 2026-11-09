@@ -1977,7 +1977,13 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
   1. Signs in as the seeded `admin`/`123456` (`POST /api/signin`).
   2. Sets the range admin password through the users API (`groups: -1`, and
      `info` must be the JSON string `"{}"`).
-  3. POSTs the project to `/api/project` with that admin token.
+  3. POSTs the project to `/api/project` with that admin token, then reads it
+     back until every device in `FUXA_EXPECT_DEVICES` (written by the app;
+     default every device of the file) is there. A re-run first GETs
+     `/api/project` and, when FUXA already holds the same devices with the same
+     tag counts, skips the POST and the runtime restart it causes. The script
+     ran three times against a FUXA 1.3.5 container (import, skipped re-run, a
+     missing device failing).
 
   The spike ran this flow unattended, twice. The seeded password stops
   working, and tokens survive both the runtime restart and a full restart of
@@ -2868,8 +2874,6 @@ five stages) and follows the pattern of sceptre-phenix-apps:
     (`plc/common`); the other four PLCs need theirs.
   - `fuxa/build_project.py` fails on the full tag list, and there is no
     `bas-fuxa` project.
-  - `cm-fuxa-provision.sh` hardcodes `plc-cellar`; it should use
-    `FUXA_EXPECT_DEVICES`, which the app already writes.
   - Drop the static sim, OpenPLC, and FUXA topology injects once the app runs.
   - Render the `relay-main` telnet config ([§12.3](#123-ot-sim-field-devices)).
   - The HELICS federate-count SoH check counts distinct peers on the broker

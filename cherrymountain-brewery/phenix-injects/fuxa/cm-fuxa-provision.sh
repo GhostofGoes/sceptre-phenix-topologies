@@ -13,7 +13,9 @@
 #   POST /api/project -> admin only; replaces the project and restarts the
 #                        runtime
 # Re-running is safe: when the seeded password is rejected, the script signs
-# in with the range password instead.
+# in with the range password instead, and when FUXA already holds the same
+# devices and tags it does not post (and restart) again. FUXA_EXPECT_DEVICES
+# names the devices the import must produce (default: every device of the file).
 set -euo pipefail
 
 FUXA="${FUXA_URL:-http://127.0.0.1:1881}"
@@ -67,25 +69,68 @@ print(json.dumps({"params": {"username": "admin", "fullname": "Administrator",
   [ -z "$(signin admin "${SEED_PASS}")" ] || { log "FAIL: seeded password still valid"; exit 1; }
 fi
 
+# The devices the imported project must hold: FUXA_EXPECT_DEVICES (space
+# separated, written by the cherrymountain app), else every device of the file.
+EXPECT="${FUXA_EXPECT_DEVICES:-}"
+if [ -z "${EXPECT}" ]; then
+  EXPECT=$(python3 - "${PROJECT}" <<'PY'
+import json, sys
+print(" ".join(sorted(d.get("name", "") for d in json.load(open(sys.argv[1])).get("devices", {}).values())))
+PY
+)
+fi
+
+# The device set of a project file: each device name with its tag count.
+devices_of() {
+  python3 - "$1" <<'PY'
+import json, sys
+try:
+    doc = json.load(open(sys.argv[1]))
+except (OSError, ValueError):
+    sys.exit(1)
+devs = doc.get("devices", {}) if isinstance(doc, dict) else {}
+print(" ".join(sorted(f'{d.get("name")}:{len(d.get("tags") or {})}' for d in devs.values())))
+PY
+}
+
+# GET /api/project into $1; the token goes on stdin, not the command line.
+get_project() {
+  printf 'x-access-token: %s\n' "${TOKEN}" \
+    | curl -sS -m 10 -H @- "${FUXA}/api/project" -o "$1" 2>/dev/null
+}
+
+# True when every expected device is in the project file $1.
+has_expected() {
+  CM_EXPECT="${EXPECT}" python3 - "$1" <<'PY' 2>/dev/null
+import json, os, sys
+names = {d.get("name") for d in json.load(open(sys.argv[1])).get("devices", {}).values()}
+sys.exit(0 if set(os.environ["CM_EXPECT"].split()) <= names else 1)
+PY
+}
+
+# A re-run with the same devices and tags already imported skips the POST, which
+# would replace the project and restart the FUXA runtime for nothing.
+if get_project "${WORK}/before.json" \
+  && [ "$(devices_of "${WORK}/before.json" || true)" = "$(devices_of "${PROJECT}")" ] \
+  && has_expected "${WORK}/before.json"; then
+  log "PASS: the project is already imported (devices: ${EXPECT}); not posting it again"
+  exit 0
+fi
+
 log "POST /api/project (the runtime restarts)"
-code=$(curl -sS -m 120 -o "${WORK}/post.out" -w '%{http_code}' \
-  -H 'Content-Type: application/json' -H "x-access-token: ${TOKEN}" \
-  --data-binary "@${PROJECT}" "${FUXA}/api/project")
+code=$(printf 'x-access-token: %s\n' "${TOKEN}" \
+  | curl -sS -m 120 -o "${WORK}/post.out" -w '%{http_code}' \
+    -H 'Content-Type: application/json' -H @- \
+    --data-binary "@${PROJECT}" "${FUXA}/api/project")
 [ "${code}" = 200 ] || { log "FAIL: project POST HTTP ${code}: $(cat "${WORK}/post.out")"; exit 1; }
 
-log "reading the project back"
+log "reading the project back (expecting: ${EXPECT})"
 for _ in $(seq 1 30); do
   sleep 2
-  if curl -sS -m 10 -H "x-access-token: ${TOKEN}" "${FUXA}/api/project" -o "${WORK}/after.json" 2>/dev/null \
-    && python3 - "${WORK}/after.json" <<'PY' 2>/dev/null
-import json, sys
-names = [d.get("name") for d in json.load(open(sys.argv[1])).get("devices", {}).values()]
-sys.exit(0 if "plc-cellar" in names else 1)
-PY
-  then
-    log "PASS: project imported, device plc-cellar present"
+  if get_project "${WORK}/after.json" && has_expected "${WORK}/after.json"; then
+    log "PASS: project imported, devices present: ${EXPECT}"
     exit 0
   fi
 done
-log "FAIL: device plc-cellar not found after import"
+log "FAIL: devices missing after import (expected: ${EXPECT})"
 exit 1

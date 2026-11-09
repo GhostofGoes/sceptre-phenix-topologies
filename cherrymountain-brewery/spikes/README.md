@@ -25,6 +25,7 @@ README. Phase 1 should not start until the "blocking" spikes have a decision.
 | [autotunnel](autotunnel/README.md) | Can the host reach white-cell services through `phenix/startup-autotunnel` with the unique port plan, including for an experiment started by the phenix CLI? | Annotations in §15.3 | 1-2 h | pass (host ports are random; a CLI-started experiment gets its tunnels) |
 | [serial](serial/README.md) (stretch) | Does ot-sim Modbus RTU work over the phenix serial app (and over phenix PR 130's QEMU-socket serial app)? | `serial` app scope (§15.2) | 2-3 h | pass (ot-sim's own RTU works on the current app; PR 130 works until a VM is redeployed) |
 | [bbmd](bbmd/README.md) | Do BACpypes3 BBMDs let a real FUXA's broadcast Who-Is find BAS device 3003 across the VyOS OT firewall, and is the BAS-to-OPS BBMD rule needed? | BACnet conduit rules and BBMD nodes (§10.3, §11) | 2-3 h | pass (real FUXA reads 3003; rule 3 only for unsolicited I-Ams; `broadcastAddress` removes the BBMDs) |
+| [thehive](thehive/README.md) | Should the SOC add a case-management tool next to Wazuh and Malcolm, and is it TheHive? | A fourth SOC VM and the Wazuh-to-cases path (§11, §14, §20) | 1 day | no to TheHive (license fails §2/§20); conditional go for DFIR-IRIS 2.4 as optional `soc-ir` in `full`, deferred to future work (§18) |
 
 ## Round 2 (real FUXA, broadcast I-Am, Malcolm hand-off, CLI autotunnel, ot-sim RTU)
 

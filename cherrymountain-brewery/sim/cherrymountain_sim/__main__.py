@@ -1,4 +1,4 @@
-"""Run the cellar federate as ``python -m cherrymountain_sim``."""
+"""Run a federate as ``python -m cherrymountain_sim --federate NAME``."""
 
 import sys
 

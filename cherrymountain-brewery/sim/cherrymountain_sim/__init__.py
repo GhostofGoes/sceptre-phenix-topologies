@@ -1,3 +1,3 @@
-"""CherryMountain Brewery process simulation (cellar federate)."""
+"""CherryMountain Brewery simulation: HELICS federates, models, event API."""
 
-__version__: str = "0.1.0"
+__version__: str = "0.2.0"

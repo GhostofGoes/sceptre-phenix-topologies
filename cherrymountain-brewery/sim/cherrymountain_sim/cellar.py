@@ -17,6 +17,7 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from cherrymountain_sim.carbonation import BrightTank
 from cherrymountain_sim.fermentation import (
     ALE,
     CO2_PER_ETHANOL,
@@ -72,6 +73,9 @@ class Environment(BaseModel):
     glycol_supply_f: float = 28.0
     ambient_f: float = 68.0  # cellar room
     ambient_psia: float = 12.1
+    knockout_gpm: float = 0.0  # wort arriving from the brewhouse
+    beer_draw_gpm: float = 0.0  # beer leaving BBT-202 for packaging
+    co2_supply_psig: float = 60.0
 
 
 class Fluxes(BaseModel):
@@ -86,15 +90,29 @@ class Fluxes(BaseModel):
 
 
 class InitialState(BaseModel):
-    """Per-vessel initial state (from plantgen's federate config)."""
+    """Per-vessel initial state (from plantgen's federate config).
+
+    Fermenters use ``empty`` or ``fermenting``; bright tanks use ``empty``,
+    ``carbonating``, or ``serving`` with ``level_pct`` and ``co2_vol``.
+    """
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
-    phase: Literal["empty", "fermenting"] = "empty"
+    phase: Literal["empty", "fermenting", "carbonating", "serving"] = "empty"
     sim_hours: float = 0.0  # time since pitch
     temp_f: float = 66.0
     dry_hop_lb_per_bbl: float = 0.0
     spund_sp_psig: float | None = None
+    level_pct: float | None = None
+    co2_vol: float | None = None
+
+
+class Leak(BaseModel):
+    """A scenario CO2 release into the cellar room (event API)."""
+
+    unit: str
+    gps: float
+    remaining_s: float
 
 
 class Fermenter:
@@ -112,6 +130,7 @@ class Fermenter:
     fluxes: Fluxes
     co2_vented_g: float
     co2_generated_g: float
+    liquid_l: float
 
     def __init__(
         self,
@@ -153,19 +172,47 @@ class Fermenter:
         self.fluxes = Fluxes()
         self.co2_vented_g = 0.0  # running totals for mass-balance checks
         self.co2_generated_g = 0.0
+        self.liquid_l = 0.0
 
-    # -- setup ---------------------------------------------------------------
+    # -- setup -------------------------------------------------------------------------
 
     def fill_and_pitch(self, temp_f: float | None = None) -> None:
         """Fill with wort and pitch yeast (knockout)."""
-        liquid = self.cfg.volume_l * self.cfg.wort_kg_per_l
+        self._set_liquid(self.cfg.volume_l)
+        if temp_f is not None:
+            self.vessel.zone("side").temp_c = f_to_c(temp_f)
+            self.vessel.zone("cone").temp_c = f_to_c(temp_f)
+        self.state = pitch(self.cfg.wort.fermentable, self.cfg.pitch_g_l)
+
+    def _set_liquid(self, liters: float) -> None:
+        self.liquid_l = liters
+        liquid = liters * self.cfg.wort_kg_per_l
         side = self.vessel.zone("side")
         cone = self.vessel.zone("cone")
         side.liquid_kg = liquid * self.cfg.side_fraction
         cone.liquid_kg = liquid - side.liquid_kg
-        if temp_f is not None:
-            side.temp_c = cone.temp_c = f_to_c(temp_f)
-        self.state = pitch(self.cfg.wort.fermentable, self.cfg.pitch_g_l)
+
+    def receive(self, liters: float, temp_f: float) -> None:
+        """Knockout: wort arrives (oxygenated and pitched in line).
+
+        The yeast is pitched with the first wort, so the kinetic
+        concentrations hold while the vessel fills; the fluxes scale with
+        the volume in the tank. A second brew tops the vessel up.
+        """
+        if liters <= 0:
+            return
+        new = min(self.liquid_l + liters, self.cfg.volume_l)
+        zones = (self.vessel.zone("side"), self.vessel.zone("cone"))
+        if self.liquid_l <= 0:
+            for z in zones:
+                z.temp_c = f_to_c(temp_f)
+        else:  # mix the arriving wort into each zone
+            frac = (new - self.liquid_l) / new
+            for z in zones:
+                z.temp_c += frac * (f_to_c(temp_f) - z.temp_c)
+        self._set_liquid(new)
+        if self.state is None:
+            self.state = pitch(self.cfg.wort.fermentable, self.cfg.pitch_g_l)
 
     def advance_kinetics(self, sim_hours: float, temp_f: float) -> None:
         """Run the kinetics alone (isothermal), e.g. to set an initial state."""
@@ -192,7 +239,7 @@ class Fermenter:
             }
         )
 
-    # -- observables ---------------------------------------------------------
+    # -- observables -------------------------------------------------------------------
 
     @property
     def filled(self) -> bool:
@@ -230,7 +277,7 @@ class Fermenter:
         t_k = self.vessel.zone("side").temp_c + 273.15
         return psia * PA_PER_PSI * (self.cfg.headspace_l / 1000.0) / (R_GAS * t_k)
 
-    # -- dynamics ------------------------------------------------------------
+    # -- dynamics ----------------------------------------------------------------------
 
     def step(self, wall_dt_s: float, tb: TimeBase) -> Fluxes:
         """Advance ``wall_dt_s`` wall seconds.
@@ -244,7 +291,7 @@ class Fermenter:
         if self.state is not None:
             t_k = self.vessel.mean_temp_c + 273.15
             r = self.kinetics.rates(self.state, t_k)
-            vol = self.cfg.volume_l
+            vol = self.liquid_l
             co2_gps = tb.flux_per_second(CO2_PER_ETHANOL * r.ethanol * vol)
             extract_kg_per_h = max(r.sugar_consumed, 0.0) * vol / 1000.0
             heat_w = 1e3 * tb.flux_per_second(extract_kg_per_h * HEAT_KJ_PER_KG_EXTRACT)
@@ -292,6 +339,9 @@ class Cellar:
     env: Environment
     sim_hours: float
     fermenters: dict[str, Fermenter]
+    bbts: dict[str, BrightTank]
+    leaks: list[Leak]
+    knockout_target: str | None
 
     def __init__(
         self,
@@ -302,11 +352,15 @@ class Cellar:
         initial: dict[str, InitialState] | None = None,
         start_sim_hours: float = 0.0,
         cfg: FermenterConfig | None = None,
+        bbts: list[str] | None = None,
     ) -> None:
         self.tb = tb or TimeBase()
         self.env = env or Environment()
         self.sim_hours = start_sim_hours
         self.fermenters = {}
+        self.bbts = {}
+        self.leaks = []
+        self.knockout_target = None
         for unit in units:
             init = (initial or {}).get(unit) or InitialState()
             fv = Fermenter(unit, self.env, cfg, temp_f=init.temp_f)
@@ -320,17 +374,69 @@ class Cellar:
                 fv.spund_sp_psia = self.env.ambient_psia + init.spund_sp_psig
                 fv.gas_mol = fv.mol_at(fv.spund_sp_psia)
             self.fermenters[unit] = fv
+        for unit in bbts or []:
+            init = (initial or {}).get(unit) or InitialState(phase="empty", temp_f=34.0)
+            phase = init.phase if init.phase != "fermenting" else "carbonating"
+            self.bbts[unit] = BrightTank(
+                unit,
+                phase=phase,
+                temp_f=init.temp_f,
+                level_pct=init.level_pct or 0.0,
+                co2_vol=init.co2_vol or 0.0,
+                ambient_psia=self.env.ambient_psia,
+            )
+
+    def add_leak(self, unit: str, gps: float, seconds: float) -> None:
+        """Start a CO2 release at ``unit`` (scenario event)."""
+        self.leaks.append(Leak(unit=unit, gps=gps, remaining_s=seconds))
 
     def step(self, wall_dt_s: float) -> None:
-        """Advance every fermenter and the sim clock."""
+        """Advance every vessel and the sim clock."""
+        self._knockout(wall_dt_s)
         for fv in self.fermenters.values():
             fv.step(wall_dt_s, self.tb)
+        serving = next(
+            (u for u, b in self.bbts.items() if b.outlet_open and b.liquid_l > 0), None
+        )
+        for unit, bbt in self.bbts.items():
+            bbt.step(
+                wall_dt_s,
+                glycol_f=self.env.glycol_supply_f,
+                ambient_f=self.env.ambient_f,
+                draw_gpm=self.env.beer_draw_gpm if unit == serving else 0.0,
+                supply_psig=self.env.co2_supply_psig,
+            )
+        for leak in self.leaks:
+            leak.remaining_s -= wall_dt_s
+        self.leaks = [lk for lk in self.leaks if lk.remaining_s > 0]
         self.sim_hours += self.tb.kinetic_hours(wall_dt_s)
+
+    def _knockout(self, wall_dt_s: float) -> None:
+        """Route knockout wort to the first empty (or filling) fermenter."""
+        gpm = self.env.knockout_gpm
+        if gpm <= 0:
+            return
+        target = self.knockout_target
+        if target is None or (
+            self.fermenters[target].liquid_l >= self.fermenters[target].cfg.volume_l
+        ):
+            target = next(
+                (u for u, fv in self.fermenters.items() if not fv.filled), None
+            )
+            self.knockout_target = target
+        if target is not None:
+            self.fermenters[target].receive(gpm * 3.78541 / 60.0 * wall_dt_s, 64.0)
 
     @property
     def co2_vent_gps(self) -> float:
         """CO2 vented into the cellar room, g/s (to the building federate)."""
-        return sum(fv.fluxes.co2_vent_gps for fv in self.fermenters.values())
+        fv_vent = sum(fv.fluxes.co2_vent_gps for fv in self.fermenters.values())
+        return fv_vent + sum(lk.gps for lk in self.leaks)
+
+    @property
+    def co2_draw_slpm(self) -> float:
+        """CO2 drawn from the supply by the bright tanks, standard L/min."""
+        return sum(b.co2_slpm for b in self.bbts.values())
 
     @property
     def glycol_load_kw(self) -> float:

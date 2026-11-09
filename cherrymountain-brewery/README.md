@@ -41,9 +41,10 @@ integration, new software, testing, roadmap, risks, and references.
 
 | Path | Contents |
 |---|---|
-| `plant/` | `plant.yaml` tag database and the plantgen output under `plant/generated/<variant>/` |
-| `tools/plantgen/` | Generator: tags, addresses, ot-sim and ntp app blocks, HELICS, OpenPLC, and FUXA inputs |
-| `sim/` | `cherrymountain_sim`, the cellar HELICS federate |
+| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts) and the plantgen output under `plant/generated/{ci,full,lite}/` |
+| `tools/plantgen/` | Generator: tags, addresses, the ot-sim, ntp, soh, wireguard, helics, and cherrymountain app blocks, HELICS lists, OpenPLC, FUXA, BACnet, DNP3, and SCORCH inputs ([README](tools/plantgen/README.md) documents every output) |
+| `sim/` | `cherrymountain_sim`: the weather, brewhouse, cellar, utilities, packaging, power (OpenDSS), and building federates and the sim-ctl event API ([README](sim/README.md)) |
+| `recipes/` | `fire-of-the-phenix.json`, the flagship recipe in BeerJSON |
 | `phenix-ci.yml`, `phenix-configs/{topology,scenario}-ci.yml` | Workflow, topology, and scenario for the ci variant |
 | `phenix.yml`, `phenix-lite.yml`, `phenix-configs/` | Workflows for the full and lite variants; topology modules `topology-{core,soc,remote-access}.yml`, `topology-{full,lite}.yml` (they include the modules), and `scenario-{full,lite}.yml` |
 | `phenix-injects/{ot-svc,bbmd,inet-nuke,vrouter,malcolm}/` | The network phase's injects: ot-svc DNS, syslog relay, and chrony hook; the `cm-bbmd` BACnet BBMD service; inet-nuke DNS; the VyOS settings script; malcolm's capture flow |
@@ -95,7 +96,7 @@ Checks (all must pass; `prek run --all-files` covers lint and hygiene):
 
 ```shell
 (cd tools/plantgen && python -m plantgen --check && python -m pytest)
-(cd sim && python -m pytest)
+(cd sim && python -m pytest)                         # model validation and the offline federation
 python sync.py --check                               # injects and scenarios match plantgen output (ci, full, lite)
 python tools/netcheck/run_netcheck.py                # IP plan, conduit matrix, routes, rules (full, lite)
 (cd tools/netcheck && python -m pytest)              # netcheck, sync.py, and BBMD tests

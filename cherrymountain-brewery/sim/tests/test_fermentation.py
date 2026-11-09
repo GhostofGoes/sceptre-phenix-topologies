@@ -53,22 +53,30 @@ def test_mu_e0_typo_resolved() -> None:
 
 
 @pytest.mark.parametrize(
-    ("t_c", "e_max", "ea", "sugar_time_h"),
+    ("t_c", "e_max", "ea", "sugar_time_h", "da"),
     [
-        (11.0, 50.5, 0.11, 117.0),
-        (13.0, 56.8, 0.57, 105.0),
+        (11.0, 50.5, 0.11, 117.0, 0.20),
+        (13.0, 56.8, 0.57, 105.0, 0.21),
     ],
 )
 def test_lager_matches_rodman_table4(
-    t_c: float, e_max: float, ea: float, sugar_time_h: float
+    t_c: float, e_max: float, ea: float, sugar_time_h: float, da: float
 ) -> None:
-    """Isothermal lager runs reproduce Rodman and Gerogiorgis (2016) Table 4."""
+    """Isothermal lager runs reproduce Rodman and Gerogiorgis (2016) Table 4.
+
+    The diacetyl column needs k_dc = 1.27672e-4: the 1.27672e-7 that Rodman's
+    Table 2 prints gives about 0.0002 ppm here (DESIGN.md §9.3).
+    """
     run = simulate(LAGER, t_c + 273.15, 130.0, 4.0, 250.0)
-    assert max(s.ethanol for _, s in run) == pytest.approx(e_max, abs=1.0)
+    e_peak = max(s.ethanol for _, s in run)
+    assert e_peak == pytest.approx(e_max, abs=1.0)
     assert run[-1][1].ethyl_acetate == pytest.approx(ea, rel=0.15)
     # Sugar consumption time: down to 0.65 g/L (0.5% of S0).
     t_sugar = next(t for t, s in run if s.sugar <= 0.65)
     assert t_sugar == pytest.approx(sugar_time_h, abs=10.0)
+    # By-products are read at the ethanol production time (99.5 % of the peak).
+    at_done = next(s for _, s in run if s.ethanol >= 0.995 * e_peak)
+    assert at_done.diacetyl == pytest.approx(da, abs=0.03)
 
 
 def test_lager_15c_stalls_like_published() -> None:

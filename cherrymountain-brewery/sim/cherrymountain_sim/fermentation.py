@@ -13,9 +13,16 @@ Computers in Simulation* 48:65-74.
 Units: concentrations in g/L, time in hours, temperature in kelvin. Every
 temperature-dependent parameter has the form ``p = exp(A + B/T)``.
 
-Parameter decision (DESIGN.md §9.3): Rodman Table 1 prints ``B = -12667.24``
-for the maximum ethanol production rate. That is a typo; ``B = -1267.24``
-gives about 0.32 1/h at 15 °C, consistent with the other rates.
+Parameter decisions (DESIGN.md §9.3):
+
+- Rodman Table 1 prints ``B = -12667.24`` for the maximum ethanol production
+  rate. That is a typo; ``B = -1267.24`` gives about 0.32 1/h at 15 °C,
+  consistent with the other rates.
+- Rodman Table 2 prints the diacetyl production rate as ``1.27672e-7``. That
+  is a typo too: with it the model peaks near 0.001 ppm, while the paper's own
+  Fig. 5d peaks near 1.5 ppm and its Table 4 reports 0.20-0.21 ppm diacetyl at
+  the end of the 11 °C and 13 °C isothermal runs. ``1.27672e-4`` (the de
+  Andrés-Toro value) reproduces both, and the test checks Table 4.
 
 Ale adaptation (DESIGN.md §9.3): the model was fitted to lager yeast. Its
 cell-death rate is extremely temperature sensitive, so at ale temperatures
@@ -72,7 +79,7 @@ class KineticParams(Frozen):
     mu_lag: Arrhenius = Arrhenius(a=30.72, b=-9501.54)  # cell activation, 1/h
     k_s: Arrhenius = Arrhenius(a=-119.63, b=34203.95)  # affinity constant, g/L
     y_ea: Arrhenius = Arrhenius(a=89.92, b=-26589.0)  # ethyl acetate factor
-    k_dc: float = 1.27672e-7  # diacetyl production, L/(g h)
+    k_dc: float = 1.27672e-4  # diacetyl production, L/(g h); Rodman prints 1e-7
     k_dm: float = 1.13864e-3  # diacetyl consumption, L/(g h)
     temp_shift_k: float = 0.0  # ale adaptation shift (see module docstring)
     t_min_k: float = 281.15  # validated range, 8 °C

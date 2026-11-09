@@ -3153,13 +3153,14 @@ which uses the Elasticsearch-compatible API.
   ([§15.2](#152-apps)).
 - **Annotations.** `phenix/startup-autotunnel` forwards guest services to the
   host through minimega's cc tunnel. Each entry is `sport[:dhost]:dport`, and
-  `dport` is the guest port. The first number is only the label (the key) of
-  the forward, and phenix's forwards API reports it as `srcPort`. **It is not a
-  host listening port.** minimega listens on a random host port in 50000–64999
-  (`forwardPortBase` in phenix's `web/forward/forward.go`), nothing answers on
-  the labeled port, and the real port is hidden from the forwards API's JSON.
+  `dport` is the guest port. The first number, `sport`, is the port
+  **`phenix-tunneler` listens on, on the user's own machine**; phenix's
+  forwards API reports it as `srcPort`. **It is not a listening port on the
+  phenix host.** There, minimega listens on a random port in 50000–64999
+  (`forwardPortBase` in phenix's `web/forward/forward.go`), which the forwards
+  API's JSON hides.
 
-  | Node | Entries (label:guest port) | Purpose |
+  | Node | Entries (tunneler port:guest port) | Purpose |
   |---|---|---|
   | scada-fuxa | `["11881:1881"]` | FUXA |
   | bas-fuxa | `["11882:1881"]` | FUXA |
@@ -3168,15 +3169,28 @@ which uses the Elasticsearch-compatible API.
   | malcolm | `["18443:443"]` | Malcolm UI |
   | wazuh | `["18444:443"]` | Wazuh UI |
 
-  - **Finding the port.** Only `cc tunnel list <vm>` gives it: the row with
-    `dst 127.0.0.1` and `dst port <guest port>`, column `src port`. phenix's
-    `GET /experiments/{exp}/vms/{vm}/forwards` lists the forwards, but its
-    `srcPort` is the annotation label, so it cannot replace that lookup. Users
-    reach the forwards through phenix's forward/tunnel feature. Tools must look
-    the port up each run, because it changes whenever a tunnel is re-created.
-    The `plantevent` component and the `cherrymountain` app do this with
-    `cc tunnel list`, and open a tunnel when none exists. Nothing can collide
-    with phenix's own UI port, 3000.
+  - **How people reach them: `phenix-tunneler`.** The user downloads
+    `phenix-tunneler` from the Tunneler tab of the phenix UI and runs
+    `phenix-tunneler serve http://<phenix host>:3000` on their own machine. It
+    lists every forward, listens locally on each forward's `sport`, and carries
+    the traffic over a WebSocket through the phenix UI
+    (`GET /experiments/{exp}/vms/{vm}/forwards/{host}/{port}/ws`), which
+    connects it to minimega's random port. So `http://localhost:11881` is
+    always FUXA, whatever the host port is, and the user needs to reach only
+    the phenix UI. The autotunnels belong to the user `bot`: with phenix
+    authentication off (the Docker deployment's default) the tunneler activates
+    them by itself, and with it on the user runs `phenix-tunneler activate
+    <id>` once for each (`createLocalListener` in `tunneler/server.go`). The
+    `sport` values are therefore chosen above 10000, unique across the range,
+    and away from ports a workstation commonly uses.
+  - **How tools on the phenix host reach them.** Only `cc tunnel list <vm>`
+    gives the host port: the row with `dst 127.0.0.1` and `dst port <guest
+    port>`, column `src port`. phenix's `GET /experiments/{exp}/vms/{vm}/forwards`
+    lists the forwards, but its `srcPort` is the tunneler's port, so it cannot
+    replace that lookup. Tools must look the port up each run, because it
+    changes whenever a tunnel is re-created. The `plantevent` component and the
+    `cherrymountain` app do this with `cc tunnel list`, and open a tunnel when
+    none exists.
   - **Lifecycle with the fork.** With the user's phenix fork (branch
     `ci-e2e-minimega`), a loop in `phenix ui` creates the tunnels, including
     for CLI-started experiments. The loop waits for the VM's C2 client for as

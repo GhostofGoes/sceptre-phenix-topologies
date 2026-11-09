@@ -20,7 +20,9 @@
   - Wastewater neutralization: caustic below pH 6.5, acid above pH 8.5 (each
     with hysteresis), and the discharge valve only between pH 6.0 and 9.0.
   - CIP: route verification, then pre-rinse, caustic, rinse, acid, rinse,
-    sanitize. The cellar circuits also need plc-cellar's CIP permit, read
+    sanitize. A start (XC01.CMD 1) is taken only while idle or done and with
+    the route verified; a refused start is dropped, not kept for later. The
+    cellar circuits also need plc-cellar's CIP permit, read
     peer to peer (CEL.XFER.XS02.CIP_PERMIT into UTL.CIP.XS04.PV, which reads 0
     when plc-cellar is unreachable, so CIP fails safe; DESIGN.md 6.6 #4). A cellar vessel locked out
     for confined-space entry (its CEL.ENTRY.XS1n.CIP_OK, read the same way into
@@ -163,9 +165,13 @@ PROGRAM plc_utilities
   IF UTL_CIP_XC01_CMD = CIP_CMD_ABORT THEN
     cip_step := 0;
     UTL_CIP_XC01_CMD := 0;
-  ELSIF UTL_CIP_XC01_CMD = CIP_CMD_START AND (cip_step = 0 OR cip_step = CIP_STEP_DONE)
-      AND UTL_CIP_XS02_ROUTE_OK THEN
-    cip_step := 1;
+  ELSIF UTL_CIP_XC01_CMD = CIP_CMD_START THEN
+    (* A start that is refused (a wash in progress, or no verified route) is
+       dropped. Left pending, it would start a wash by itself later: when the
+       running one ends, or when someone swings a panel. *)
+    IF (cip_step = 0 OR cip_step = CIP_STEP_DONE) AND UTL_CIP_XS02_ROUTE_OK THEN
+      cip_step := 1;
+    END_IF;
     UTL_CIP_XC01_CMD := 0;
   END_IF;
   (* Hold on command, or when the route is lost or (once the pumps run) the return

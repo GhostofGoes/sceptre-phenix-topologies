@@ -105,6 +105,19 @@ def test_a_packaging_command_outlasts_two_polls_of_its_rio(variant: str) -> None
     assert int(m.group(1)) * plcbuild.SCAN_MS >= 2 * max(polls)
 
 
+def test_a_refused_cip_start_is_dropped() -> None:
+    """A CIP start that is not taken (a wash in progress, or no verified route)
+    must not stay in XC01.CMD, or the wash starts by itself later."""
+    source: str = (ROOT / "plc" / "plc-utilities" / "plc-utilities.st").read_text(encoding="utf-8")
+    assert re.search(
+        r"ELSIF UTL_CIP_XC01_CMD = CIP_CMD_START THEN\b.*?"
+        r"IF \(cip_step = 0 OR cip_step = CIP_STEP_DONE\) AND UTL_CIP_XS02_ROUTE_OK THEN\s+"
+        r"cip_step := 1;\s+END_IF;\s+UTL_CIP_XC01_CMD := 0;\s+END_IF;",
+        source,
+        re.DOTALL,
+    )
+
+
 def test_timed_steps_keep_their_time_through_a_hold() -> None:
     """No brewhouse step is timed by a TON, which restarts when a hold drops
     its input: the whirlpool would dose hops again and the mill would mill a

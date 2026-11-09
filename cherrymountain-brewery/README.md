@@ -1,24 +1,20 @@
 # CherryMountain Brewery
 
-> **Status:** in progress. The design is complete and the Phase 0 spikes are
-> done (all nine are go, and a second round closed their gaps; the decisions are
-> folded into [DESIGN.md](DESIGN.md#18-implementation-roadmap)). The **ci
-> variant** (the cellar slice, five VMs) exists: the tag database, plantgen, the
-> cellar simulation, the PLC program and its OpenPLC v4 ZIP, the FUXA project,
-> the image configs, and the topology, scenario, and workflow. Its integration
-> test passes in Docker (ot-sim, OpenPLC, FUXA), but the slice has not run on a
-> phenix host yet. **Phase 1 (network)** is implemented for the **full and lite
-> variants**: the topology modules, the VyOS conduits and static routes, ot-svc
-> and the BBMDs, and the SoH reachability and blocked-path checks.
-> `tools/netcheck` proves the conduit matrix statically (every conduit passes
-> and every other path is blocked), but no VM has run it yet. **Phase 2
-> (simulation)** is largely implemented: `plant.yaml` covers every area (43
-> hosts, 411 tags, 69 rationalized alarms), plantgen writes the ci, full, and
-> lite outputs, and seven federates pass their validation tests (remaining: the
-> cellar autopilot, ot-sim logic blocks, and a 24 h soak). The
-> **`cherrymountain` app and `plantevent`** are built (all five stages; the
-> historian, Guacamole, Wazuh, and kiosk parts are stubs). **Phase 3 (control)
-> and Phase 5 (SOC and remote access)** are next.
+> **Status:** in progress; nothing has run on a VM yet. The design is complete
+> and the Phase 0 spikes are done (all nine are go; DESIGN.md has the decisions).
+> The **ci variant** (the cellar slice, five VMs) is built and its integration
+> test passes in Docker (ot-sim, OpenPLC, FUXA). **Phase 1 (network)** is built
+> for the full and lite variants and checked statically by `tools/netcheck`.
+> **Phase 2 (simulation)** is largely built: `plant.yaml` covers every area,
+> plantgen writes the ci, full, and lite outputs, and seven federates pass their
+> tests (remaining: the cellar autopilot, ot-sim logic blocks, a 24 h soak).
+> **Phase 3 (control)** is in progress: the per-variant PLC builder and the full
+> plc-cellar program (with the hardwired CO₂ interlock) exist; the other PLC
+> programs, the FUXA batch engine, and bas-fuxa's project are next. **Phase 5
+> (SOC and remote access)** is built (images, provisioning, detections, and
+> per-experiment secrets) but not run. Every image config exists
+> ([phenix-images/README.md](phenix-images/README.md)); the ot-sim BACnet module
+> does not yet.
 
 The CherryMountain Brewery topology models a notional SCADA system for a
 Colorado microbrewery and taproom. Its flagship West Coast IPA is "Fire of the
@@ -48,23 +44,24 @@ integration, new software, testing, roadmap, risks, and references.
 
 | Path | Contents |
 |---|---|
-| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts, 411 tags, 69 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
+| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts, 412 tags, 69 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
 | `tools/plantgen/` | Generator: tags, addresses, the ot-sim, ntp, soh, wireguard, helics, and cherrymountain app blocks, HELICS lists, OpenPLC, FUXA, BACnet, DNP3, and SCORCH inputs ([README](tools/plantgen/README.md) documents every output) |
-| `sim/` | `cherrymountain_sim`: the weather, brewhouse, cellar, utilities, packaging, power (OpenDSS), and building federates, the sim-ctl event API, and an offline harness; 95 tests ([README](sim/README.md)) |
+| `sim/` | `cherrymountain_sim`: the weather, brewhouse, cellar, utilities, packaging, power (OpenDSS), and building federates, the sim-ctl event API, and an offline harness, with tests ([README](sim/README.md)) |
 | `recipes/` | `fire-of-the-phenix.json`, the flagship recipe in BeerJSON |
 | `phenix-ci.yml`, `phenix-configs/{topology,scenario}-ci.yml` | Workflow, topology, and scenario for the ci variant |
 | `phenix.yml`, `phenix-lite.yml`, `phenix-configs/` | Workflows for the full and lite variants; topology modules `topology-{core,soc,remote-access}.yml`, `topology-{full,lite}.yml` (they include the modules), and `scenario-{full,lite}.yml` |
 | `phenix-injects/{ot-svc,bbmd,inet-nuke,vrouter,malcolm}/` | The network phase's injects: ot-svc DNS, syslog relay, and chrony hook; the `cm-bbmd` BACnet BBMD service; inet-nuke DNS; the VyOS settings script; malcolm's capture flow |
 | `sync.py` | Embeds plantgen's per-variant app blocks into the scenarios and copies generated files into `phenix-injects/`; aware of Git LFS pointers. It replaces `sync_ci.py`, which now only calls it for `ci` |
-| `tools/netcheck/` | Static check of the topology, scenario, and workflow against the IP plan and conduit matrix: every conduit and every default drop; 41 tests ([README](tools/netcheck/README.md)) |
+| `tools/netcheck/` | Static check of the topology, scenario, and workflow against the IP plan and conduit matrix: every conduit and every default drop, with tests ([README](tools/netcheck/README.md)) |
 | `phenix-injects/` | Files the ci scenario injects: federate units, OpenPLC and FUXA provisioning, generated copies |
-| `phenix-images/` | Image configs for `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa`, `cm-svc` (noble), with [one README](phenix-images/README.md) that has a section per image |
-| `plc/plc-cellar/` | The cellar PLC program in Structured Text, and `build_zip.sh`, which builds its OpenPLC v4 ZIP |
+| `phenix-images/` | Image configs for every role (noble): `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa`, `cm-svc`, `cm-desktop`, `cm-ews`, `cm-historian`, `cm-guacamole`, `cm-wireguard`, `cm-malcolm`, `cm-wazuh`, with [one README](phenix-images/README.md) that has a section per image |
+| `plc/plc-cellar/` | The cellar PLC programs in Structured Text (`plc-cellar.st` for ci, `plc-cellar-plant.st` for full and lite), and the ci `build_zip.sh` |
+| `plc/common/` | The per-variant PLC builder: alarm logic generated from `alarms.json`, strucpp, and the ZIPs under `phenix-injects/openplc/<variant>/` ([README](plc/common/README.md)) |
 | `tests/integration/` | `ci_slice_docker.sh`: the cellar slice (ot-sim, OpenPLC v4.3.2, FUXA) in Docker, no KVM |
 | `fuxa/` | The generated FUXA project for scada-fuxa |
 | `tools/lint/` | Hook scripts for prek: systemd-analyze on units and shellcheck on shell in image YAML |
 | `spikes/` | Phase 0 spike kits, each with its go/no-go result ([summary](spikes/README.md)) |
-| `apps/` | The `cherrymountain` phenix app (five stages) and the `plantevent` SCORCH component, each with its own `README.md`; 94 tests ([README](apps/README.md)) |
+| `apps/` | The `cherrymountain` phenix app (five stages) and the `plantevent` SCORCH component, each with its own `README.md`, with tests ([README](apps/README.md)) |
 
 ## The ci variant
 
@@ -223,10 +220,9 @@ it matters):
   app (nothing in a topology can set it). The OpenFlow capture flow is injected
   into malcolm (`phenix-injects/malcolm/99-zz-capture-flow.sh`) until the app or
   the cm-malcolm image does it (DESIGN.md 14).
-- **Images.** Only `cm-svc` is new here (`phenix-images/cm-svc.yml`). The other
-  images the full topology names (`cm-desktop`, `cm-ews`, `cm-historian`,
-  `cm-guacamole`, `cm-wireguard`, `cm-malcolm`, `cm-wazuh`, and the prebuilt
-  `vyos`) do not have configs yet.
+- **Images.** Every image the full topology names has a config in
+  `phenix-images/` except the prebuilt `vyos`, which comes from
+  sceptre-phenix-images. None has been built on a phenix host yet.
 - **Generated blocks.** `ot-sim`, `cherrymountain`, `helics`, `ntp`, and
   `wireguard` come from plantgen through `sync.py`; the soh checks of plantgen
   are merged into the hand-written ones. Until plantgen emits one, its marker

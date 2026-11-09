@@ -1287,8 +1287,8 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
 brewhouse, cellar (with the bright tanks), utilities, packaging (PackML),
 power (OpenDSS, the tariff, and the BESS and genset), and building. It also has
 a ground-truth writer and an offline harness (`cherrymountain-local`) that runs
-every federate without HELICS. The tests (95 in `sim/`, and 69 in
-`tools/plantgen/`) check the models against hand calculations and published
+every federate without HELICS. The tests in `sim/` and `tools/plantgen/`
+(both run in CI) check the models against hand calculations and published
 values:
 
 | Check | Result |
@@ -2136,7 +2136,7 @@ exposed ranges and read 0.
 ### 12.6 Plant tag database
 
 `plant/plant.yaml` is the single source of truth. It now covers every area:
-43 hosts, 411 tags, and 69 rationalized alarms
+43 hosts, 412 tags, and 69 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
 ```yaml
@@ -2793,8 +2793,8 @@ is never hand-written.
 |---|---|---|
 | `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main`, pinned by digest). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs, Guacamole connections, Wazuh enrollment, nftables MGMT policy. **post-start/running:** verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
 | `phenix-scorch-component-plantevent` | `apps/` | Drives the sim-ctl event API from SCORCH (batch, outage, chiller fault, CO₂ release, jam, weather step), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
-| `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the proposed `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current. 69 tests |
-| `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)). 95 tests |
+| `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the proposed `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current (`cm-plantgen-tests`, `cm-sync-check`) |
+| `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)), tested in CI (`cm-sim-tests`) |
 | **ot-sim BACnet module** (upstream) | `patsec/ot-sim` (`src/python`) | BACpypes3 BACnet/IP server. Maps AI/AO/AV/BI/BO/BV/MSV objects to message-bus tags; priority arrays for commandable objects; Who-Is/I-Am (a forwarded Who-Is gets a unicast I-Am to the client); ReadProperty, WriteProperty, ReadPropertyMultiple; optional COV. FUXA calls no SubscribeCOV, and a BACpypes3 stand-in answered everything FUXA calls. No BBMD in the module: the BBMDs are separate services ([§11](#11-node-inventory-and-resources)). If the BAS BBMD were hosted in a device module instead, the module would also need BDT and Forwarded-NPDU handling on its one UDP 47808 socket |
 | BBMD service (`cm-bbmd`) | `phenix-injects/bbmd/` (BACpypes3) | A small BACpypes3 BBMD with a configurable BDT and listen prefix, run as `cm-bbmd.service` on ot-svc (`/0` prefix) and bas-bbmd. Based on the `bbmd` spike's `bbmd.py`. Its settings are static topology injects, not rendered by the app. Built; not yet run under systemd |
 | phenix `mirror` app follow-up (upstream) | `sandialabs/sceptre-phenix-apps` | In `setupOVS` mode, set `options:df_default=false` on the host's GRE port and add the capture-VM flow `in_port=sniffer,actions=output:phenix` (then `ip link set phenix up`), instead of leaving both to the image ([§14](#14-blue-team-monitoring)) |
@@ -2846,12 +2846,16 @@ five stages) and follows the pattern of sceptre-phenix-apps:
   opens a tunnel if needed.
 - **Tests.** 94, run on the recorded `ci` experiment and the `full` fixture. The
   Docker image was not built in the sandbox (proxy and disk); hadolint passes.
-- **Stubs.** Historian, Guacamole, Wazuh, and the HMI kiosk render and pass
-  their tests, but no image exists to run them, and `TODO(verify)` notes mark the
+- **Not yet run.** Historian, Guacamole, Wazuh, the HMI kiosk, and ground
+  truth render and pass their tests, and their images exist
+  ([§15.7](#157-images)), but no VM has run them; `TODO(verify)` notes mark the
   guesses.
+- **Per-experiment secrets.** Besides the service passwords, the app generates
+  the vendor persona (`ridgeline.env`) and replaces the scenario's WireGuard
+  keys at configure ([§13](#13-vendor-remote-access)).
 - **Follow-ups.**
-  - Write `debug_map.json` from the PLC build, and per-variant PLC ZIPs (the
-    `full` variant needs ZIPs for the other four PLCs).
+  - Per-variant PLC ZIPs with `debug_map.json` exist for plc-cellar
+    (`plc/common`); the other four PLCs need theirs.
   - `fuxa/build_project.py` fails on the full tag list, and there is no
     `bas-fuxa` project.
   - `cm-fuxa-provision.sh` hardcodes `plc-cellar`; it should use
@@ -2980,9 +2984,9 @@ rebroadcast reaches it.
 | 0: Spikes | **Done.** See the spike results below | Each spike has a written go/no-go decision (all nine are go) | Done, with a second round that closed the gaps |
 | 1: Network | Core topology, VyOS conduits and static routes, ot-svc, SoH reachability | All §10.3 conduits pass; blocked paths fail | **Implemented**: topology modules, rulesets, services, BBMDs, the post-boot VyOS script, and SoH probes. Validated statically by `netcheck`; the VM run is pending |
 | 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic | **Largely implemented**: `plant.yaml`, plantgen, seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). Remaining: the cellar autopilot, the peer reads of `plc-cellar`, the ot-sim `logic` blocks, and the 24 h soak |
-| 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **Next.** Only `plc-cellar` and its FUXA project exist (the `ci` slice). The `cherrymountain` app that provisions them is built ([§16](#16-new-and-extended-software)) |
-| 4: Power + BAS | OpenDSS, tariff logic, BESS/ATS, BACnet devices | Outage and CO₂ scenarios behave as in §6.6 | The power and building federates are built with Phase 2. The `plc-power` program and the ot-sim BACnet module remain |
-| 5: SOC + remote access | Malcolm, Wazuh, WireGuard, Guacamole | Baseline detections fire on the vendor-maintenance run | **Next.** Topology modules, WireGuard keys, and the Malcolm capture inject exist; the images are the work still to do |
+| 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** The per-variant PLC builder `plc/common` exists (alarms generated from `alarms.json` with deadbands), and plc-cellar has its full and lite program and ZIPs with the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)); the other four PLC programs are next. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. Open: the FUXA batch engine (so no unattended brew day through the PLC yet), views beyond the generated tag lists, and any VM run |
+| 4: Power + BAS | OpenDSS, tariff logic, BESS/ATS, BACnet devices | Outage and CO₂ scenarios behave as in §6.6 | The power and building federates are built with Phase 2. The `plc-power` program and the ot-sim BACnet module remain (the module waits on the ot-sim fork) |
+| 5: SOC + remote access | Malcolm, Wazuh, WireGuard, Guacamole | Baseline detections fire on the vendor-maintenance run | **Built, not run on a VM.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), Zeek script (checked in Malcolm's Zeek image), and Wazuh rules with their tests; per-experiment vendor and WireGuard secrets |
 | 6: Polish | SCORCH runs, Builder package, README, e2e CI, upstream PRs | Fresh `phenix workflow apply` → green SoH, with no manual steps | Not started. `plantevent` is built |
 
 **Phase 0 spikes (done).** The `ci` variant (the cellar slice) was built early

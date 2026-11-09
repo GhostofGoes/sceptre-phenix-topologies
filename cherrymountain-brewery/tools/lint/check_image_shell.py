@@ -6,6 +6,21 @@ hook cannot see them. This hook extracts each script that the repository owns
 (not the verbatim ``POSTBUILD_*`` defaults) and runs ``shellcheck`` on it,
 mapping every finding back to a line of the YAML file.
 
+It also checks what only shows up when ``phenix image build`` runs (the
+sceptre-phenix sources are ``src/go/types/version/v1/image.go``,
+``src/go/tmpl/templates/vmdb.tmpl``, and ``src/go/api/image/image.go``):
+
+* phenix joins the scripts of ``script_order`` into one script, and vmdb2 runs
+  it with ``sh -ec`` in the image's chroot. On Ubuntu ``sh`` is dash, so the
+  scripts are checked as dash, not bash.
+* vmdb2 renders that script with Jinja2 first, so ``{{``, ``{%``, and ``{#``
+  (as in ``${#name}``) start a template tag and must not appear.
+* Every ``script_order`` entry needs its script, and every script its entry.
+* ``phenix config create`` stores the file as it is. Only ``phenix image
+  create`` adds the desktop packages of the ``mingui`` variant, so a stored
+  ``mingui`` config must list them, or ``POSTBUILD_GUI`` fails on the missing
+  ``/etc/lightdm``.
+
 ``shellcheck`` comes from the ``shellcheck-py`` package, which the prek hook
 installs next to this script.
 """
@@ -18,15 +33,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-from image_scripts import Script, own_scripts
+from image_scripts import ImageSpec, Script, load_image, own_scripts
 
 SHELLCHECK_ARGS: list[str] = [
-    "--shell=bash",
+    "--shell=dash",
     "--severity=style",
     "--format=gcc",
     "--exclude=SC1090,SC1091",
 ]
 _FINDING: re.Pattern[str] = re.compile(r"^-:(?P<line>\d+):(?P<col>\d+): (?P<rest>.*)$")
+#: The start of a Jinja2 expression, statement, or comment.
+_JINJA: re.Pattern[str] = re.compile(r"\{\{|\{%|\{#")
+#: What ``phenix image create --variant mingui`` adds to an Ubuntu image
+#: (UbuntuMinGUIPackages in src/go/api/image/constants.go).
+MINGUI_PACKAGES: tuple[str, ...] = ("wmctrl", "xdotool", "xubuntu-desktop")
 
 
 def check_script(shellcheck: str, path: Path, script: Script) -> list[str]:
@@ -53,6 +73,32 @@ def check_script(shellcheck: str, path: Path, script: Script) -> list[str]:
     return findings
 
 
+def check_config(path: Path, spec: ImageSpec) -> list[str]:
+    """Return what would stop ``phenix image build`` before or while it runs the scripts."""
+    findings: list[str] = []
+    for name in spec.script_order:
+        if name not in spec.scripts:
+            findings.append(f"{path}: script_order names {name}, which spec.scripts does not have")
+    for name, text in spec.scripts.items():
+        if name not in spec.script_order:
+            findings.append(f"{path}: {name} is not in script_order, so it never runs")
+        for number, line in enumerate(text.splitlines(), start=1):
+            match: re.Match[str] | None = _JINJA.search(line)
+            if match is not None:
+                findings.append(
+                    f"{path}: [{name}] line {number}: '{match.group()}' starts a Jinja2 tag "
+                    "(vmdb2 renders the build script as a template)"
+                )
+    if spec.variant == "mingui":
+        missing: list[str] = [pkg for pkg in MINGUI_PACKAGES if pkg not in spec.packages]
+        if missing:
+            findings.append(
+                f"{path}: variant mingui needs {', '.join(missing)} in spec.packages "
+                "(only `phenix image create` adds them)"
+            )
+    return findings
+
+
 def main(argv: list[str]) -> int:
     shellcheck: str | None = shutil.which("shellcheck")
     if shellcheck is None:
@@ -61,6 +107,7 @@ def main(argv: list[str]) -> int:
     findings: list[str] = []
     for name in argv:
         path: Path = Path(name)
+        findings.extend(check_config(path, load_image(path).spec))
         for script in own_scripts(path):
             findings.extend(check_script(shellcheck, path, script))
     print("\n".join(findings))

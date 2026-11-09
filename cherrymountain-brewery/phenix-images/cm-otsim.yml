@@ -109,10 +109,13 @@ spec:
       PYZMQ_VERSION=$(/opt/otsim-venv/bin/python -c 'import zmq; print(zmq.__version__)')
       /opt/otsim-venv/bin/pip install --no-cache-dir --force-reinstall --no-deps \
         --no-binary pyzmq "pyzmq==${PYZMQ_VERSION}"
-      if compgen -G "/opt/otsim-venv/lib/python3*/site-packages/pyzmq.libs" >/dev/null; then
-        echo "pyzmq still bundles its own libzmq" >&2
-        exit 1
-      fi
+      # (vmdb2 runs these scripts with sh, which is dash: no bash builtins.)
+      for bundled in /opt/otsim-venv/lib/python3*/site-packages/pyzmq.libs; do
+        if [ -e "$bundled" ]; then
+          echo "pyzmq still bundles its own libzmq" >&2
+          exit 1
+        fi
+      done
       /opt/otsim-venv/bin/python -c 'import helics, zmq; print(helics.helicsGetVersion(), zmq.zmq_version())'
       # The BACnet module's own imports, isolated the way the CPU module runs it.
       /opt/otsim-venv/bin/python -I -c 'import bacpypes3, pydantic, zmq.asyncio; print(bacpypes3.__version__)'
@@ -124,7 +127,7 @@ spec:
 
       cd /
       rm -rf /usr/local/src/ot-sim /var/tmp/otsim-go /root/go /root/.cache
-      apt-get purge -y build-essential cmake git golang-go libboost-dev libczmq-dev libxml2-dev libzmq5-dev pkg-config python3-dev
+      apt-get purge -y build-essential cmake git golang-go libboost-dev libczmq-dev libxml2-dev libzmq3-dev pkg-config python3-dev
       apt-get autoremove -y
       ldconfig
 

@@ -13,7 +13,10 @@ hooks skip them. Only the `INSTALL_*` script of each image is ours.
 Every image is Ubuntu 24.04 (noble), qcow2, built from the
 `us.archive.ubuntu.com` mirror with the `main restricted universe multiverse`
 components. All are `minbase` except `cm-desktop` and `cm-ews`, which are
-`mingui` (xubuntu, with the phenix GUI autologin). They share this package set: `ca-certificates chrony curl dbus
+`mingui` (xubuntu, with the phenix GUI autologin). `phenix config create`
+stores a config as it is, and only `phenix image create` adds a variant's
+packages, so those two files list `xubuntu-desktop`, `wmctrl`, and `xdotool`
+themselves. They share this package set: `ca-certificates chrony curl dbus
 ethtool init initramfs-tools iproute2 iputils-ping isc-dhcp-client less
 linux-headers-generic linux-image-generic ncat net-tools netbase nftables
 openssh-server procps rsync ssh tcpdump tmux vim wget`. The sections list only
@@ -36,6 +39,26 @@ The lint hooks (see `prek.toml`) check these files against the sceptre-phenix
 `Image` schema, run shellcheck on every `INSTALL_*` script, and run
 `systemd-analyze verify` plus an exposure limit on the units those scripts
 write.
+
+How phenix runs the scripts, which every `INSTALL_*` script must allow for:
+
+- phenix joins the scripts of `script_order` into one script and drops its
+  blank lines. vmdb2 runs it with `sh -ec` in the image's chroot, and `sh` is
+  dash on Ubuntu: no bash syntax, one failed command ends the build, and a
+  variable or a `cd` of one script carries into the next.
+- vmdb2 renders the script with Jinja2 first, so `{{`, `{%`, and `{#` (as in
+  `${#name}`) must not appear.
+- The chroot has `/proc`, `/sys`, `/dev`, and the build host's `/run`, and the
+  host's `resolv.conf`. No systemd runs in it: `systemctl enable` and
+  `disable` work, and `start` does nothing.
+- With `-c`, vmdb2 keeps the debootstrapped root with the `packages` list
+  installed in `<dir>/<name>.tar` and starts the next build from it. Delete
+  that file after a change to `packages`.
+
+The image lint hook checks the first two points and the `mingui` packages.
+Build in the phenix container: `xubuntu-desktop` recommends Ubuntu's `firefox`
+package, which installs a snap through the host's snapd when the build host
+has one (`/run/snapd.socket`), and skips it when it has none.
 
 ## cm-sim
 
@@ -354,11 +377,15 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - **Base:** the phenix `mingui` variant (xubuntu, root autologin) on noble, plus
   `wireguard-tools`, `python3-pydantic`, `gnupg`, and `rsyslog`, 24 GB disk.
 - **Contents:**
-  - Chromium 150 from Debian 13 (trixie). Ubuntu's `chromium-browser` is a snap
-    shim that cannot be installed offline, so the Debian repository is added at
-    pin priority 100 (only `chromium`, `chromium-sandbox`, and the libraries they
-    need come from it), and chromium is held to major version 150. A flags file
-    in `/etc/chromium.d` adds `--no-sandbox` (the desktop runs as root) and
+  - Chromium from the xtradeb PPA (`ppa:xtradeb/apps`), which builds the
+    current release for noble against noble's own libraries. Ubuntu's
+    `chromium-browser` is a snap shim that cannot be installed offline, and
+    Debian 13's chromium (the earlier source) no longer installs on noble: it
+    needs `libharfbuzz0b` 10 and `libxcomposite1` 0.4.6, and apt does not take
+    a dependency from a low-priority source. The PPA is added at pin priority
+    100 and only `chromium`, `chromium-common`, and `chromium-sandbox` are
+    raised to 990, so nothing else comes from it. A flags file in
+    `/etc/chromium.d` adds `--no-sandbox` (the desktop runs as root) and
     `--disable-gpu`.
   - `wireguard-tools`, for `vendor-ws` (the phenix `wireguard` app injects
     `wg0.conf` and enables the tunnel).
@@ -374,9 +401,11 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   for the protonuke app.
 - **Used by:** `hmi-brewhouse`, `hmi-packaging`, `corp-ws`, `vendor-ws`,
   `soc-analyst`.
-- **Pinned versions:** Chromium `150.*` (Debian trixie), the Wazuh agent
-  `4.14.10-1`. The Debian archive key is checked against fingerprint
-  `04B54C3CDCA79751B16BC6B5225629DF75B188BD`.
+- **Pinned versions:** the Wazuh agent `4.14.10-1`. Chromium is not pinned: the
+  PPA carries only its newest build (`156.0.8078.73-1xtradeb1.2404.1` when the
+  dependencies were checked with `apt-get -s`), and the build log prints the
+  version installed. The PPA key is checked against fingerprint
+  `5301FA4FD93244FBC6F6149982BB6851C64F6880`.
 
 ## cm-ews
 
@@ -388,22 +417,25 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - **Contents:**
   - OpenPLC Editor 4.3.4, the Linux AppImage unpacked to `/opt/openplc-editor`
     (no FUSE) with a launcher that passes `--no-sandbox`.
-  - Chromium 150 from Debian 13, the same way as in `cm-desktop`, for the FUXA
-    editor and the OpenPLC REST UI.
+  - Chromium from the xtradeb PPA, the same way as in `cm-desktop`, for the
+    FUXA editor and the OpenPLC REST UI.
   - Wireshark and `mbpoll`, and a venv `/opt/ews-venv` with BAC0, pymodbus, and
     asyncua (whose command line tools `uals`, `uaread`, `uawrite`, and `uacall`
     stand in for an OPC UA client).
   - xrdp, enabled, with a polkit rule for the color-manager prompt and
     `xfce4-session` in `/etc/skel/.xsession`, so an RDP login lands in Xfce.
   - The Wazuh agent, disabled.
-  - The topology injects the vendor account (`phenix-injects/ews/`).
+  - The topology injects the vendor account setup (`phenix-injects/ews/`). It
+    creates the technicians' accounts in the group `cm-engineers`, which may
+    read the PLC credential in `/etc/default/cm-ews`, so `cm_plc_tool.py` runs
+    as the technician.
   - `INSTALL_SSHD_HARDENING`: [SSH hardening](#ssh-hardening-on-the-vendor-path),
     with password logins kept for the vendor account, and xrdp refusing root.
 - **Build:** the commands above, with `<name>` set to `cm-ews`.
 - **Used by:** `ews`.
 - **Pinned versions:** OpenPLC Editor `4.3.4` (SHA-256 `b8186372...ec75fa0`),
-  `BAC0==2026.7.25`, `pymodbus==3.16.2`, `asyncua==2.1.0`, Chromium `150.*`, the
-  Wazuh agent `4.14.10-1`. `opcua-client` is not used: its current release needs
+  `BAC0==2026.7.25`, `pymodbus==3.16.2`, `asyncua==2.1.0`, the Wazuh agent
+  `4.14.10-1` (Chromium as in `cm-desktop`). `opcua-client` is not used: its current release needs
   Python 3.14, and noble has 3.12.
 
 ## cm-historian

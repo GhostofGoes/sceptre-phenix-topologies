@@ -32,6 +32,8 @@ class ImageSpec(BaseModel):
 
     scripts: dict[str, str] = Field(default_factory=dict)
     script_order: list[str] = Field(default_factory=list)
+    variant: str = "minbase"
+    packages: list[str] = Field(default_factory=list)
 
 
 class ImageConfig(BaseModel):

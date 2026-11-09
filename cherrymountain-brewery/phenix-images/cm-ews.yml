@@ -60,8 +60,11 @@ spec:
   - vim
   - wget
   - wireshark
+  - wmctrl
+  - xdotool
   - xorgxrdp
   - xrdp
+  - xubuntu-desktop
   - zip
   release: noble
   script_order:
@@ -87,32 +90,34 @@ spec:
       apt-get install -y --no-install-recommends gnupg jq mbpoll polkitd python3 python3-pip python3-pydantic python3-venv rsyslog tshark unzip wireshark xorgxrdp xrdp zip
 
       # Chromium. Ubuntu's chromium-browser is a snap, which cannot be installed
-      # offline, so the browser comes from Debian 13 (trixie). The Debian sources sit
-      # at a low pin so that only chromium and the libraries it needs come from them,
-      # and chromium itself is held to the major version that was tested.
-      DEBIAN_KEY_FINGERPRINT=04B54C3CDCA79751B16BC6B5225629DF75B188BD
-      CHROMIUM_MAJOR=150
+      # offline, and Debian 13's chromium needs newer libraries than noble has
+      # (libharfbuzz0b 10 and libxcomposite1 0.4.6), which apt does not take from a
+      # low-priority source. The xtradeb PPA builds the current Chromium for noble
+      # against noble's own libraries. The PPA sits at a low pin, so that only
+      # chromium comes from it. It carries only its newest build: the build log
+      # records the version, and phenix-images/README.md the one that was checked.
+      XTRADEB_KEY_FINGERPRINT=5301FA4FD93244FBC6F6149982BB6851C64F6880
       install -d -m 0755 /etc/apt/keyrings
-      curl -fsSL -o /etc/apt/keyrings/debian-trixie.asc https://ftp-master.debian.org/keys/archive-key-13.asc
-      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/debian-trixie.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$DEBIAN_KEY_FINGERPRINT"
-      cat > /etc/apt/sources.list.d/debian-trixie.sources <<'EOF'
+      curl -fsSL -o /etc/apt/keyrings/xtradeb.asc "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x${XTRADEB_KEY_FINGERPRINT}"
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/xtradeb.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$XTRADEB_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/xtradeb.sources <<'EOF'
       Types: deb
-      URIs: http://deb.debian.org/debian
-      Suites: trixie trixie-updates
+      URIs: https://ppa.launchpadcontent.net/xtradeb/apps/ubuntu
+      Suites: noble
       Components: main
       Architectures: amd64
-      Signed-By: /etc/apt/keyrings/debian-trixie.asc
+      Signed-By: /etc/apt/keyrings/xtradeb.asc
       EOF
       # One file per pin: phenix drops blank lines from build scripts, which would
       # merge two stanzas of one file into a single record.
-      cat > /etc/apt/preferences.d/debian-trixie <<'EOF'
+      cat > /etc/apt/preferences.d/xtradeb <<'EOF'
       Package: *
-      Pin: origin deb.debian.org
+      Pin: release o=LP-PPA-xtradeb-apps
       Pin-Priority: 100
       EOF
-      cat > /etc/apt/preferences.d/chromium <<EOF
+      cat > /etc/apt/preferences.d/chromium <<'EOF'
       Package: chromium chromium-common chromium-sandbox
-      Pin: version ${CHROMIUM_MAJOR}.*
+      Pin: release o=LP-PPA-xtradeb-apps
       Pin-Priority: 990
       EOF
       apt-get update

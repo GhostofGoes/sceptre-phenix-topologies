@@ -1,0 +1,40 @@
+# Serial fixture for phenix PR #130 (activeshadow:serial-app): the serial app gives each VM a
+# QEMU serial device (a chardev socket on the host) and bridges the two sockets with socat on the
+# minimega host. The topology has no `type: serial` interface; the link comes from the scenario.
+# Image: cm-spike. The ot-sim tarball is injected as in topology.yml.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-serial-pr130
+spec:
+  nodes:
+    - type: VirtualMachine
+      general: {hostname: rio-utilities}
+      injections:
+        - description: ot-sim Modbus modules and their libraries (built by build_otsim.sh)
+          src: /phenix/injects/otsim-rtu.tgz
+          dst: /opt/otsim-rtu.tgz
+          permissions: "0644"
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.20.10, mask: 16, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: glycol-chiller}
+      injections:
+        - description: ot-sim Modbus modules and their libraries (built by build_otsim.sh)
+          src: /phenix/injects/otsim-rtu.tgz
+          dst: /opt/otsim-rtu.tgz
+          permissions: "0644"
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.20.11, mask: 16, proto: static, type: ethernet}

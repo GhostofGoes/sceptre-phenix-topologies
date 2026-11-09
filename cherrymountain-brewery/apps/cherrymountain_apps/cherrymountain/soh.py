@@ -36,6 +36,11 @@ from cherrymountain_apps.cherrymountain.render import (
 
 #: Modbus function codes a read test may use (coils, discrete, holding, input).
 READ_FCS: Final[frozenset[int]] = frozenset({1, 2, 3, 4})
+#: The ``pgrep -f`` pattern of the HMI kiosk. cm-kiosk waits for FUXA and then
+#: replaces itself with the browser (``exec chromium --kiosk ... <URL>``), so
+#: its own name is on a command line only until the view opens: the pattern
+#: matches the launcher while it waits and the browser's ``--kiosk`` after.
+KIOSK_PROCESS: Final[str] = "kiosk"
 #: plant.yaml roles of the ot-sim devices that serve Modbus from an I/O module.
 IO_MODULE_ROLES: Final[frozenset[str]] = frozenset({"rio", "field"})
 
@@ -214,7 +219,7 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
                     )
                 )
     elif isinstance(md, HmiHost):
-        processes.append("cm-kiosk")
+        processes.append(KIOSK_PROCESS)
     elif isinstance(md, GuacamoleHost):
         listeners.append(":443")
     elif isinstance(md, WazuhManagerHost):

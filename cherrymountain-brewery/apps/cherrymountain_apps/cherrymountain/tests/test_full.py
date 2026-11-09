@@ -140,6 +140,27 @@ def test_full_renderers_with_existing_inputs(ctx: Context) -> None:
     }
 
 
+def test_full_kiosk_soh_check_matches_the_process_that_runs(ctx: Context) -> None:
+    """SoH looks for a process with ``pgrep -f <pattern>``. cm-kiosk replaces
+    itself with the browser once FUXA answers, so no command line holds its
+    name after that: the pattern must match the launcher and the browser."""
+    import re
+
+    from cherrymountain_apps.cherrymountain import soh
+
+    hmi = ctx.hosts["hmi-brewhouse"]
+    assert isinstance(hmi, HmiHost)
+    profile = soh.profile(ctx, "hmi-brewhouse", hmi)
+    assert profile is not None
+    (pattern,) = profile["processes"]
+    script: str = render.template("scripts", "cm-kiosk").read_text()
+    (launch,) = [line for line in script.splitlines() if line.startswith("exec ")]
+    assert "cm-kiosk" not in launch  # the launcher's name does not survive the exec
+    browser: str = launch.removeprefix("exec ").replace('"${BROWSER}"', "/usr/lib/chromium/chromium")
+    for command_line in ("/bin/bash /usr/local/bin/cm-kiosk", browser):
+        assert re.search(pattern, command_line), command_line
+
+
 def test_full_sim_ctl_gets_the_ground_truth_marker(ctx: Context) -> None:
     """cm-sim starts OpenSearch and Grafana only where ground-truth.env exists:
     sim-ctl in full, never a federate node."""

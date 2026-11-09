@@ -1,0 +1,46 @@
+# Workflow for the full variant: the whole plant, 43 VMs, 67 vCPUs, 113 GB
+# (DESIGN.md 11, 15.1, and 15.3). The workflow branch defaults to the
+# directory's name, so run it with the default branch:
+#   docker exec phenix phenix workflow apply /phenix/topologies/cherrymountain-brewery
+# That creates the experiment `cherrymountain-brewery`. The lite and ci variants
+# have their own files and branches (phenix-lite.yml, phenix-ci.yml).
+#
+# The topology and scenario names are fixed: every file in phenix-configs/ is
+# stored on each apply, so configs cannot take the branch name. Inject paths
+# in the configs use /phenix/injects/${BRANCH_NAME}/.
+#
+# VLAN IDs are the DESIGN.md 10.2 plan. MIRROR (118) is the mirror app's
+# mirrorVLAN, and the non-default bridge enables phenix's Netflow tab.
+apiVersion: phenix.sandia.gov/v0
+kind: Workflow
+metadata: {}
+spec:
+  auto:
+    create: ${BRANCH_NAME}
+    update: true
+    restart: true
+  topology: cherrymountain-full
+  scenario: cherrymountain-full
+  vlans:
+    INET: 101
+    VENDOR: 102
+    UTIL: 103
+    CORP: 104
+    DMZ: 105
+    OPS: 106
+    HMI: 107
+    CTRL: 108
+    FIELD-BH: 109
+    FIELD-CEL: 110
+    FIELD-PKG: 111
+    FIELD-UTL: 112
+    DERLINK: 113
+    FIELD-PWR: 114
+    BAS: 115
+    SOC: 116
+    MGMT: 117
+    MIRROR: 118
+  vlanRange:
+    min: 100
+    max: 199
+  defaultBridge: cherrymtn

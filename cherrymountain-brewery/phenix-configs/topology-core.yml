@@ -1,0 +1,1262 @@
+# cherrymountain-core: the 37 core nodes of the CherryMountain Brewery topology
+# (DESIGN.md 10.2, 11, and 15.3): the four VyOS routers and firewalls, the
+# services (ot-svc, inet-nuke, bas-bbmd), the simulation plane, field devices,
+# PLCs, SCADA and BAS servers, HMIs, the corporate workstation, and the utility
+# DERMS. Addresses, VLANs, routes, resources, zone labels, autotunnel entries,
+# and boot order come from DESIGN.md; tools/netcheck checks this file against
+# them and against the conduit matrix.
+#
+# Node order is boot order: routers first, then ot-svc, sim-ctl, the federates,
+# field devices (delay on sim-ctl), PLCs (delay on their I/O devices), FUXA
+# (delay on the PLCs), and the HMIs (delay on scada-fuxa). Router interfaces
+# are named eth0, eth1, ... like the VyOS NICs, because the vrouter app writes
+# netem policies with the interface name; hosts use IF0, IF1, ... and mgmt.
+# The plant-specific injections (OpenPLC, FUXA, HELICS, ot-sim) are added by
+# the cherrymountain app. Inject paths use /phenix/injects/${BRANCH_NAME}/.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: cherrymountain-core
+spec:
+  nodes:
+  - commands:
+    - exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh
+    general:
+      description: ShadeCast Cable edge router (the internet); netem on the WAN legs
+      hostname: isp-rtr
+    hardware:
+      drives:
+      - image: vyos.qc2
+        inject_partition: 3
+      memory: 2048
+      os_type: vyos
+      vcpus: 1
+    injections:
+    - description: VyOS logging, Wazuh syslog, IKEv2, and NTP settings the vrouter app cannot render
+      dst: /boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/vrouter/cm-vyos-config.sh
+    labels:
+      zone: inet
+    network:
+      interfaces:
+      - address: 203.0.113.1
+        mask: 24
+        name: eth0
+        proto: static
+        type: ethernet
+        vlan: INET
+      - address: 198.51.100.1
+        mask: 24
+        name: eth1
+        proto: static
+        type: ethernet
+        vlan: VENDOR
+    type: Router
+  - commands:
+    - exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh
+    general:
+      description: Summit Valley Power router, IPsec peer of fw-edge
+      hostname: util-rtr
+    hardware:
+      drives:
+      - image: vyos.qc2
+        inject_partition: 3
+      memory: 2048
+      os_type: vyos
+      vcpus: 1
+    injections:
+    - description: VyOS logging, Wazuh syslog, IKEv2, and NTP settings the vrouter app cannot render
+      dst: /boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/vrouter/cm-vyos-config.sh
+    labels:
+      zone: inet
+    network:
+      interfaces:
+      - address: 203.0.113.3
+        mask: 24
+        name: eth0
+        proto: static
+        type: ethernet
+        vlan: INET
+      - address: 192.0.2.1
+        mask: 24
+        name: eth1
+        proto: static
+        type: ethernet
+        vlan: UTIL
+      routes:
+      - destination: 0.0.0.0/0
+        next: 203.0.113.1
+    type: Router
+  - commands:
+    - exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh
+    general:
+      description: 'IT/Internet firewall: NAT, WireGuard DNAT, IPsec to util-rtr'
+      hostname: fw-edge
+    hardware:
+      drives:
+      - image: vyos.qc2
+        inject_partition: 3
+      memory: 2048
+      os_type: vyos
+      vcpus: 1
+    injections:
+    - description: VyOS logging, Wazuh syslog, IKEv2, and NTP settings the vrouter app cannot render
+      dst: /boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/vrouter/cm-vyos-config.sh
+    labels:
+      zone: edge
+    network:
+      interfaces:
+      - address: 203.0.113.2
+        mask: 24
+        name: eth0
+        proto: static
+        type: ethernet
+        vlan: INET
+      - address: 10.10.10.1
+        mask: 24
+        name: eth1
+        proto: static
+        type: ethernet
+        vlan: CORP
+      - address: 10.10.20.1
+        mask: 24
+        name: eth2
+        proto: static
+        type: ethernet
+        vlan: DMZ
+      routes:
+      - destination: 0.0.0.0/0
+        next: 203.0.113.1
+      - destination: 10.20.0.0/16
+        next: 10.10.20.2
+      - destination: 10.30.10.0/24
+        next: 10.10.20.2
+      - destination: 10.40.10.0/24
+        next: 10.10.20.2
+    type: Firewall
+  - commands:
+    - exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh
+    general:
+      description: 'OT firewall: every zone conduit of the conduit matrix'
+      hostname: fw-ot
+    hardware:
+      drives:
+      - image: vyos.qc2
+        inject_partition: 3
+      memory: 2048
+      os_type: vyos
+      vcpus: 1
+    injections:
+    - description: VyOS logging, Wazuh syslog, IKEv2, and NTP settings the vrouter app cannot render
+      dst: /boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/vrouter/cm-vyos-config.sh
+    labels:
+      zone: ot-edge
+    network:
+      interfaces:
+      - address: 10.10.20.2
+        mask: 24
+        name: eth0
+        proto: static
+        type: ethernet
+        vlan: DMZ
+      - address: 10.20.30.1
+        mask: 24
+        name: eth1
+        proto: static
+        type: ethernet
+        vlan: OPS
+      - address: 10.20.20.1
+        mask: 24
+        name: eth2
+        proto: static
+        type: ethernet
+        vlan: HMI
+      - address: 10.20.10.1
+        mask: 24
+        name: eth3
+        proto: static
+        type: ethernet
+        vlan: CTRL
+      - address: 10.20.15.1
+        mask: 24
+        name: eth4
+        proto: static
+        type: ethernet
+        vlan: DERLINK
+      - address: 10.30.10.1
+        mask: 24
+        name: eth5
+        proto: static
+        type: ethernet
+        vlan: BAS
+      - address: 10.40.10.1
+        mask: 24
+        name: eth6
+        proto: static
+        type: ethernet
+        vlan: SOC
+      routes:
+      - destination: 0.0.0.0/0
+        next: 10.10.20.1
+    type: Firewall
+  - general:
+      description: NTP (chrony), DNS (dnsmasq), syslog relay, OPS BBMD (BACpypes3)
+      hostname: ot-svc
+    hardware:
+      drives:
+      - image: cm-svc.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    injections:
+    - description: BBMD settings for the OPS BBMD (listens on a /0 prefix for FUXA's limited broadcast)
+      dst: /etc/default/cm-bbmd
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/bbmd/ot-svc.env
+    - description: 'dnsmasq: authoritative plant zone, no upstream'
+      dst: /etc/dnsmasq.d/10-plant.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/ot-svc/dnsmasq-plant.conf
+    - description: plant host names and addresses
+      dst: /etc/cherrymountain/plant.hosts
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/ot-svc/plant.hosts
+    - description: 'rsyslog: receive UDP 514 and relay to Wazuh'
+      dst: /etc/rsyslog.d/30-cm-relay.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/ot-svc/rsyslog-relay.conf
+    - description: restrict chrony clients, start DNS and syslog
+      dst: /etc/phenix/startup/60-ot-svc.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/ot-svc/60-ot-svc.sh
+    - description: BACpypes3 BBMD service
+      dst: /usr/local/lib/cm-bbmd/cm_bbmd.py
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/bbmd/cm_bbmd.py
+    - description: BBMD service unit
+      dst: /etc/systemd/system/cm-bbmd.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/bbmd/cm-bbmd.service
+    - description: start the BBMD service at boot
+      dst: /etc/phenix/startup/70-bbmd.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/bbmd/70-bbmd.sh
+    labels:
+      zone: ops
+    network:
+      interfaces:
+      - address: 10.20.30.13
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.30.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: OPS
+    type: VirtualMachine
+  - general:
+      description: Internet web and SMTP server (protonuke), plus the public NTP and DNS stand-in
+      hostname: inet-nuke
+    hardware:
+      drives:
+      - image: cm-svc-protonuke.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    injections:
+    - description: 'dnsmasq: the internet-side names'
+      dst: /etc/dnsmasq.d/10-public.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/inet-nuke/dnsmasq-public.conf
+    - description: start dnsmasq
+      dst: /etc/phenix/startup/60-inet-nuke.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/inet-nuke/60-inet-nuke.sh
+    labels:
+      zone: inet
+    network:
+      interfaces:
+      - address: 203.0.113.10
+        gateway: 203.0.113.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: INET
+    type: VirtualMachine
+  - general:
+      description: BAS BBMD (BACpypes3); its BDT lists itself and ot-svc
+      hostname: bas-bbmd
+    hardware:
+      drives:
+      - image: cm-svc.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    injections:
+    - description: BBMD settings for the BAS BBMD
+      dst: /etc/default/cm-bbmd
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/bbmd/bas-bbmd.env
+    - description: BACpypes3 BBMD service
+      dst: /usr/local/lib/cm-bbmd/cm_bbmd.py
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/bbmd/cm_bbmd.py
+    - description: BBMD service unit
+      dst: /etc/systemd/system/cm-bbmd.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/bbmd/cm-bbmd.service
+    - description: start the BBMD service at boot
+      dst: /etc/phenix/startup/70-bbmd.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/bbmd/70-bbmd.sh
+    labels:
+      zone: bas
+    network:
+      interfaces:
+      - address: 10.30.10.5
+        dns:
+        - 10.20.30.13
+        gateway: 10.30.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: BAS
+    type: VirtualMachine
+  - annotations:
+      phenix/startup-autotunnel:
+      - 13001:3000
+      - 18080:8080
+      - 19200:9200
+    general:
+      description: HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, chronyd for MGMT
+      hostname: sim-ctl
+    hardware:
+      drives:
+      - image: cm-sim.qc2
+        inject_partition: 1
+      memory: 6144
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: mgmt
+    network:
+      interfaces:
+      - address: 172.16.10.1
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Process federates (HELICS)
+      hostname: sim-process
+    hardware:
+      drives:
+      - image: cm-sim.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: mgmt
+    network:
+      interfaces:
+      - address: 172.16.10.2
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: OpenDSS power federate (HELICS)
+      hostname: sim-power
+    hardware:
+      drives:
+      - image: cm-sim.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: mgmt
+    network:
+      interfaces:
+      - address: 172.16.10.3
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Building federate (HELICS)
+      hostname: sim-building
+    hardware:
+      drives:
+      - image: cm-sim.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: mgmt
+    network:
+      interfaces:
+      - address: 172.16.10.4
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Brewhouse remote I/O (ot-sim fd-server)
+      hostname: rio-brewhouse
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-bh
+    network:
+      interfaces:
+      - address: 10.20.11.10
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-BH
+      - address: 172.16.20.11
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Cellar remote I/O (ot-sim fd-server)
+      hostname: rio-cellar
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-cel
+    network:
+      interfaces:
+      - address: 10.20.12.10
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-CEL
+      - address: 172.16.20.12
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Packaging remote I/O (ot-sim fd-server)
+      hostname: rio-packaging
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-pkg
+    network:
+      interfaces:
+      - address: 10.20.13.10
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-PKG
+      - address: 172.16.20.13
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Utilities remote I/O (ot-sim fd-server)
+      hostname: rio-utilities
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-utl
+    network:
+      interfaces:
+      - address: 10.20.14.10
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-UTL
+      - address: 172.16.20.14
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Chiller OEM controller (ot-sim)
+      hostname: glycol-chiller
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-utl
+    network:
+      interfaces:
+      - address: 10.20.14.11
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-UTL
+      - address: 172.16.20.15
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Main breaker protective relay and meter (ot-sim, Modbus and Telnet)
+      hostname: relay-main
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-pwr
+    network:
+      interfaces:
+      - address: 10.20.16.20
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-PWR
+      - address: 172.16.20.21
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: PV inverter (ot-sim)
+      hostname: pv-inverter
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-pwr
+    network:
+      interfaces:
+      - address: 10.20.16.21
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-PWR
+      - address: 172.16.20.22
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: BESS power conversion system (ot-sim)
+      hostname: bess-pcs
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-pwr
+    network:
+      interfaces:
+      - address: 10.20.16.22
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-PWR
+      - address: 172.16.20.23
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Genset controller and ATS (ot-sim)
+      hostname: gen-ats
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: field-pwr
+    network:
+      interfaces:
+      - address: 10.20.16.23
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: FIELD-PWR
+      - address: 172.16.20.24
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: RTU-1 controller (ot-sim and BACnet device 3001)
+      hostname: bas-rtu-taproom
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: bas
+    network:
+      interfaces:
+      - address: 10.30.10.20
+        dns:
+        - 10.20.30.13
+        gateway: 10.30.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: BAS
+      - address: 172.16.20.31
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Cold room controller (ot-sim and BACnet device 3002)
+      hostname: bas-coldroom
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: bas
+    network:
+      interfaces:
+      - address: 10.30.10.21
+        dns:
+        - 10.20.30.13
+        gateway: 10.30.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: BAS
+      - address: 172.16.20.32
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: Ventilation and CO2 controller (ot-sim and BACnet device 3003)
+      hostname: bas-vent
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: bas
+    network:
+      interfaces:
+      - address: 10.30.10.22
+        dns:
+        - 10.20.30.13
+        gateway: 10.30.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: BAS
+      - address: 172.16.20.33
+        mask: 16
+        name: mgmt
+        proto: static
+        type: ethernet
+        vlan: MGMT
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: sim-ctl
+        useUUID: false
+    general:
+      description: 'DER gateway (ot-sim FEP: DNP3 outstation and Modbus client)'
+      hostname: rtu-der
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: derlink
+    network:
+      interfaces:
+      - address: 10.20.15.10
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.15.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: DERLINK
+      - address: 10.20.16.2
+        mask: 24
+        name: IF1
+        proto: static
+        type: ethernet
+        vlan: FIELD-PWR
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: rio-brewhouse
+        useUUID: false
+    general:
+      description: OpenPLC v4 (OPC UA plugin)
+      hostname: plc-brewhouse
+    hardware:
+      drives:
+      - image: cm-openplc.qc2
+        inject_partition: 1
+      memory: 2048
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: ctrl
+    network:
+      interfaces:
+      - address: 10.20.10.11
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: CTRL
+      - address: 10.20.11.1
+        mask: 24
+        name: IF1
+        proto: static
+        type: ethernet
+        vlan: FIELD-BH
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: rio-cellar
+        useUUID: false
+    general:
+      description: OpenPLC v4
+      hostname: plc-cellar
+    hardware:
+      drives:
+      - image: cm-openplc.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: ctrl
+    network:
+      interfaces:
+      - address: 10.20.10.12
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: CTRL
+      - address: 10.20.12.1
+        mask: 24
+        name: IF1
+        proto: static
+        type: ethernet
+        vlan: FIELD-CEL
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: rio-packaging
+        useUUID: false
+    general:
+      description: OpenPLC v4 (PackML, S7comm plugin)
+      hostname: plc-packaging
+    hardware:
+      drives:
+      - image: cm-openplc.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: ctrl
+    network:
+      interfaces:
+      - address: 10.20.10.13
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: CTRL
+      - address: 10.20.13.1
+        mask: 24
+        name: IF1
+        proto: static
+        type: ethernet
+        vlan: FIELD-PKG
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: rio-utilities
+        useUUID: false
+      - hostname: glycol-chiller
+        useUUID: false
+    general:
+      description: OpenPLC v4
+      hostname: plc-utilities
+    hardware:
+      drives:
+      - image: cm-openplc.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: ctrl
+    network:
+      interfaces:
+      - address: 10.20.10.14
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: CTRL
+      - address: 10.20.14.1
+        mask: 24
+        name: IF1
+        proto: static
+        type: ethernet
+        vlan: FIELD-UTL
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: relay-main
+        useUUID: false
+      - hostname: pv-inverter
+        useUUID: false
+      - hostname: bess-pcs
+        useUUID: false
+      - hostname: gen-ats
+        useUUID: false
+    general:
+      description: OpenPLC v4
+      hostname: plc-power
+    hardware:
+      drives:
+      - image: cm-openplc.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: ctrl
+    network:
+      interfaces:
+      - address: 10.20.10.15
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: CTRL
+      - address: 10.20.16.1
+        mask: 24
+        name: IF1
+        proto: static
+        type: ethernet
+        vlan: FIELD-PWR
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: rtu-der
+        useUUID: false
+    general:
+      description: Utility DERMS (ot-sim DNP3 master)
+      hostname: utility-derms
+    hardware:
+      drives:
+      - image: cm-otsim.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: util
+    network:
+      interfaces:
+      - address: 192.0.2.10
+        gateway: 192.0.2.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: UTIL
+    type: VirtualMachine
+  - annotations:
+      phenix/startup-autotunnel:
+      - 11881:1881
+    delay:
+      c2:
+      - hostname: plc-brewhouse
+        useUUID: false
+      - hostname: plc-cellar
+        useUUID: false
+      - hostname: plc-packaging
+        useUUID: false
+      - hostname: plc-utilities
+        useUUID: false
+      - hostname: plc-power
+        useUUID: false
+    general:
+      description: 'Process SCADA: FUXA, batch engine, alarms'
+      hostname: scada-fuxa
+    hardware:
+      drives:
+      - image: cm-fuxa.qc2
+        inject_partition: 1
+      memory: 4096
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: ops
+    network:
+      interfaces:
+      - address: 10.20.30.10
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.30.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: OPS
+    type: VirtualMachine
+  - annotations:
+      phenix/startup-autotunnel:
+      - 13000:3000
+    general:
+      description: InfluxDB 2, Telegraf, Grafana, Mosquitto
+      hostname: historian
+    hardware:
+      drives:
+      - image: cm-historian.qc2
+        inject_partition: 1
+      memory: 6144
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: ops
+    network:
+      interfaces:
+      - address: 10.20.30.11
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.30.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: OPS
+    type: VirtualMachine
+  - general:
+      description: 'Engineering workstation: OpenPLC Editor, Wireshark, BAC0, mbpoll, xrdp'
+      hostname: ews
+    hardware:
+      drives:
+      - image: cm-ews.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: ops
+    network:
+      interfaces:
+      - address: 10.20.30.12
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.30.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: OPS
+    type: VirtualMachine
+  - annotations:
+      phenix/startup-autotunnel:
+      - 11882:1881
+    delay:
+      c2:
+      - hostname: bas-rtu-taproom
+        useUUID: false
+      - hostname: bas-coldroom
+        useUUID: false
+      - hostname: bas-vent
+        useUUID: false
+    general:
+      description: BAS front end (FUXA instance 2)
+      hostname: bas-fuxa
+    hardware:
+      drives:
+      - image: cm-fuxa.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: bas
+    network:
+      interfaces:
+      - address: 10.30.10.10
+        dns:
+        - 10.20.30.13
+        gateway: 10.30.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: BAS
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: scada-fuxa
+        useUUID: false
+    general:
+      description: Brewhouse and cellar operator kiosk
+      hostname: hmi-brewhouse
+    hardware:
+      drives:
+      - image: cm-desktop.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: hmi
+    network:
+      interfaces:
+      - address: 10.20.20.10
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.20.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: HMI
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: scada-fuxa
+        useUUID: false
+    general:
+      description: Packaging and utilities operator kiosk
+      hostname: hmi-packaging
+    hardware:
+      drives:
+      - image: cm-desktop.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: hmi
+    network:
+      interfaces:
+      - address: 10.20.20.11
+        dns:
+        - 10.20.30.13
+        gateway: 10.20.20.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: HMI
+    type: VirtualMachine
+  - general:
+      description: Office workstation (protonuke client)
+      hostname: corp-ws
+    hardware:
+      drives:
+      - image: cm-desktop.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: corp
+    network:
+      interfaces:
+      - address: 10.10.10.10
+        dns:
+        - 203.0.113.10
+        gateway: 10.10.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: CORP
+    type: VirtualMachine

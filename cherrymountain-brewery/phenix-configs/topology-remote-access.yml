@@ -1,0 +1,105 @@
+# cherrymountain-remote-access: the vendor remote-access module (DESIGN.md 13
+# and 15.3): dmz-vpn (WireGuard gateway), dmz-jump (Guacamole), and vendor-ws.
+# Included by cherrymountain-full; the lite variant leaves it out.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: cherrymountain-remote-access
+spec:
+  nodes:
+  - general:
+      description: WireGuard gateway (DNAT target of fw-edge)
+      hostname: dmz-vpn
+    hardware:
+      drives:
+      - image: cm-wireguard.qc2
+        inject_partition: 1
+      memory: 1024
+      os_type: linux
+      vcpus: 1
+    labels:
+      zone: dmz
+    network:
+      interfaces:
+      - address: 10.10.20.10
+        dns:
+        - 10.20.30.13
+        gateway: 10.10.20.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: DMZ
+      routes:
+      - destination: 10.20.0.0/16
+        next: 10.10.20.2
+      - destination: 10.30.10.0/24
+        next: 10.10.20.2
+      - destination: 10.40.10.0/24
+        next: 10.10.20.2
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: dmz-vpn
+        useUUID: false
+    general:
+      description: Guacamole jump host (TOTP, session recording)
+      hostname: dmz-jump
+    hardware:
+      drives:
+      - image: cm-guacamole.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: dmz
+    network:
+      interfaces:
+      - address: 10.10.20.11
+        dns:
+        - 10.20.30.13
+        gateway: 10.10.20.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: DMZ
+      routes:
+      - destination: 10.20.0.0/16
+        next: 10.10.20.2
+      - destination: 10.30.10.0/24
+        next: 10.10.20.2
+      - destination: 10.40.10.0/24
+        next: 10.10.20.2
+      - destination: 10.99.0.0/24
+        next: 10.10.20.10
+    type: VirtualMachine
+  - delay:
+      c2:
+      - hostname: dmz-vpn
+        useUUID: false
+    general:
+      description: Ridgeline Process Controls technician laptop (WireGuard client, browser)
+      hostname: vendor-ws
+    hardware:
+      drives:
+      - image: cm-desktop.qc2
+        inject_partition: 1
+      memory: 3072
+      os_type: linux
+      vcpus: 2
+    labels:
+      zone: vendor
+    network:
+      interfaces:
+      - address: 198.51.100.10
+        dns:
+        - 203.0.113.10
+        gateway: 198.51.100.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: VENDOR
+    type: VirtualMachine

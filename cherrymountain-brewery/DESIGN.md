@@ -2946,6 +2946,175 @@ export `builder/cherrymountain.package.yaml` (not yet created) with its linked s
 the list of required images, apps, and files. The `builder-doc` annotation
 is never hand-written.
 
+### 15.9 Operations
+
+This subsection is the operator's runbook for the range. Items marked
+**TODO** are designed here and not built yet.
+
+**Host prerequisites.** A host with `/dev/kvm`, about 128 GB RAM and 32 cores
+for the full variant (71 GB for lite; [§11](#11-node-inventory-and-resources)),
+the phenix fork with the autotunnel loop ([§15.3](#153-topology-modules-and-variants)),
+minimega with OVS, Git LFS (the PLC ZIPs), and Docker for the phenix container.
+Image storage: twelve qcow2 images of 8 to 64 GB virtual size; compressed
+they take roughly 40 GB, and each running VM adds a copy-on-write overlay that
+grows with its writes (Malcolm and Wazuh the most). Keep about 150 GB free
+for images and overlays. **Host fit:** the full variant asks 67 vCPUs (2.1×
+overcommit on 32 cores; most nodes idle) and 113 GB of 128 GB, leaving about
+15 GB for the host, phenix, and the page cache. When memory runs short,
+in order: use the slim Malcolm profile (−12 GB), run lite (no SOC, no vendor
+path), drop the ground-truth Grafana (sim-ctl to 4 GB), and stop the
+packaging and BAS sides for exercises that do not need them.
+
+**Image build order.** `cm-svc` and `cm-otsim` first (the network and field
+layer), then `cm-sim`, `cm-openplc`, `cm-fuxa`, `cm-historian`, `cm-desktop`,
+`cm-ews`, `cm-guacamole`, `cm-wireguard`, `cm-wazuh`, and `cm-malcolm` last
+(64 GB, the slowest); the prebuilt `vyos` comes from sceptre-phenix-images.
+Run `phenix image inject-miniexe` on each, then commit to the image store.
+Rebuild `cm-sim` after a `sim/` change (move `CM_REF` first) and the PLC ZIPs
+after a `plant.yaml` change (`plc/common/build_zip.sh --all`).
+
+**Mirror step on the host.** After `phenix experiment start`, set
+`options:df_default=false` on the host's GRE port of the mirror (`ovs-vsctl
+set interface <gre port> options:df_default=false`) until the mirror app does
+it ([§14](#14-blue-team-monitoring)); without it, full-size frames are lost.
+**TODO:** a host-side helper that finds the GRE port of the experiment's
+mirror and sets the option, run by the white cell or a SCORCH `mm` step.
+
+**Boot-time budget.** The SoH app waits `startupDelay: 10m` and `c2Timeout:
+15m`. The boot order ([§15.3](#153-topology-modules-and-variants)) puts the
+routers first, then sim-ctl, the federates, the field devices, the PLCs, and
+FUXA, each waiting on C2 of the previous layer. Budget, per layer on a loaded
+host: routers 2 to 3 min (VyOS commit), sim nodes 2 min, field devices 1 to
+2 min, PLCs 3 to 8 min (the first compile of a program), FUXA 2 min, Wazuh 5
+to 8 min, Malcolm 10 to 15 min (its containers). The PLC compile and Malcolm
+can exceed `startupDelay`, so their SoH checks retry within `c2Timeout`; a
+failed first SoH pass on those two alone is expected, not a fault.
+
+**Reset between exercises.** `phenix experiment stop` then `start` gives a
+fresh plant (federates restart from the initial state, OpenPLC re-provisions,
+FUXA re-imports only when its project changed). Keep the experiment directory:
+it holds `secrets.json` and `wireguard.json`, so passwords and keys stay the
+same across restarts; delete them to rotate. Clear evidence that should not
+carry over: the Malcolm and Wazuh indexes (rebuild those VMs from their
+images, or delete the indices), the historian buckets (30-day retention), and
+the ground-truth indexes on sim-ctl. **TODO:** a `cm-reset` SCORCH run that
+clears those three stores without a restart.
+
+**White-cell guide** (the people who run an exercise):
+
+- Reach the white-cell services through the host's cc tunnels (`cc tunnel
+  list <vm>`): ground-truth Grafana and OpenSearch and the event API on
+  sim-ctl, Malcolm and Wazuh, FUXA, the historian.
+- Drive the plant with the SCORCH runs or `plantevent` (the event API);
+  compare what happened (ground truth) with what the SOC saw (Malcolm, Wazuh).
+- The MGMT plane, the hosts' consoles, and the phenix host are out of bounds
+  for players ([§10.1](#101-zones-and-conduits-purdue-model--isaiec-62443)).
+- Abnormal injects available now: utility outage, chiller fault, CO₂ release,
+  packaging jams, weather steps, a field-link impairment (`qos`), and a benign
+  vendor re-upload. **Attack injects (TODO, out of scope by
+  [§2](#2-goals-and-non-goals)):** a rogue Modbus write from the DMZ, a BDT
+  rewrite of a BBMD, a DNP3 breaker CROB, and a PLC program change through the
+  vendor path; each has a detection in [§14](#14-blue-team-monitoring) and
+  would be a SCORCH `cc` step on vendor-ws or dmz-jump.
+- **Ground truth against Malcolm (TODO):** a comparison script on the host
+  that pulls the event and state history from the ground-truth OpenSearch and
+  the alerts and Zeek notices from Malcolm for a time window, aligns them on
+  sim time and wall time (the federates stamp documents with sim time,
+  [§9.5](#95-scenario-events-and-ground-truth)), and reports each event as
+  detected, late, or missed.
+
+**Failure modes.**
+
+- *sim-ctl is a single point of failure.* It runs the HELICS root broker, the
+  weather federate, the event API, and ground truth. If it dies, every
+  federate blocks at its next time request and the field devices stop
+  updating (they hold their last values), the PLCs keep running on stale
+  inputs, and the SoH federate-count check fails. Recovery: restart sim-ctl,
+  then every federate and ot-sim device (a HELICS federation cannot rejoin a
+  new broker); `phenix experiment restart` is the simple path.
+- *ot-sim restart after "duplicate federate name".* When an ot-sim I/O module
+  dies, the CPU module restarts it and the broker still holds the old federate
+  name, so the restart fails with `duplicate federate name detected` until the
+  broker times the old one out. The pyzmq rebuild ([§12.3](#123-ot-sim-field-devices))
+  removes the known cause; if it happens, restart `ot-sim.service` after the
+  broker's timeout, or restart the federation.
+- *Stale values and quality.* Modbus has no quality flag. OpenPLC's master
+  keeps the last input value on a lost RIO link (`keep-last-value`), and peer
+  reads go to 0 (`set-to-zero`); FUXA keeps the last value of a BACnet tag
+  whose device stopped answering. Neither the PLCs nor FUXA mark a value as
+  stale today. **TODO:** a RIO heartbeat point per RIO that each PLC watches
+  (the same fix as the CO₂ relay's, [§19](#19-risks-and-open-questions)), and
+  FUXA tags that show the age of their last update.
+
+**Time synchronization.** One NTP hierarchy: `inet-nuke` is the public stand-in
+for the internet zones; `ot-svc` serves the OT zones and the DMZ; `sim-ctl`
+serves the MGMT-only field devices; the routers take time from those through
+the `ntp` app and `cm-vyos-config.sh` ([§15.2](#152-apps)). All three
+servers run from their VM clocks (no upstream), so the range agrees with
+itself, not with the real world. Guacamole's TOTP needs dmz-jump and the
+vendor's laptop within 30 s of each other: both follow the hierarchy
+(vendor-ws through inet-nuke, dmz-jump through ot-svc), and the VM clocks start
+from the host's, so they agree unless a VM is paused for a long time. Wazuh's
+approved-window rules (100204, 100205, 100305 to 100308) use the manager's wall
+clock, not the simulation clock, so a demo that moves `clock.start` does not
+move the window; the ground-truth timestamps are sim time, so comparisons must
+convert.
+
+**Range security** (the range's own exposure, not the plant's):
+
+- The autotunnel forwards listen on the phenix host on random ports
+  (50000–64999). minimega's tunnel listens on `:<port>`, every interface of the
+  host (`net.Listen("tcp", ":<port>")` in `internal/minitunnel/minitunnel.go`,
+  minimega `44638db`), so anyone
+  who can reach the host can reach FUXA, Grafana, Malcolm, Wazuh, the
+  ground-truth OpenSearch (no authentication), and the event API (no
+  authentication). Run the host on a trusted network or firewall those ports
+  to the white cell. **TODO:** bind the forwards to `127.0.0.1` in the fork's
+  loop and reach them over SSH.
+- The ground-truth OpenSearch (sim-ctl 9200, label 19200) runs with its
+  security plugin off, the event API (8080, label 18080) has no
+  authentication, and HELICS (zmq on 23405–23406 and the federate ports) has
+  none either. All three are on MGMT, which no player zone routes to, and the
+  per-host nftables MGMT policy limits who reaches them. They are accepted
+  range risks; enabling OpenSearch security and an API token are open work.
+
+**FUXA kiosk login.** The HMI kiosks open a FUXA view in secure mode, so they
+need a session; `tokenExpiresIn` is 12 h, after which the kiosk shows the
+login again. **TODO:** a view-only FUXA account for the kiosks (FUXA groups
+allow a viewer role) whose credentials `cm-kiosk` posts to `/api/signin` at
+start and again before the 12 h expiry, or a token lifetime that matches the
+exercise length.
+
+**Alarm shelving (TODO).** ISA-18.2 shelving is a FUXA feature, not a PLC one:
+an operator shelves an alarm for a fixed time (default 8 h, at most one shift)
+with a reason, the shelved alarm keeps evaluating and unshelves on expiry, and
+the shelf list is part of the shift handover. FUXA 1.3.5 can acknowledge and
+silence but has no timed shelve; the design is a FUXA server script that
+disables an alarm and re-enables it at expiry, logging both to the historian.
+
+**Log volume.** VyOS `default-log` has no rate limit, so a scan produces one
+syslog line per dropped packet. Mitigations in place: rule 100104 aggregates
+ten drops a minute from one source into one alert. **TODO:** Wazuh's
+analysisd EPS limit on the manager, and an index lifecycle (ISM) policy on the
+Wazuh indexer that deletes `wazuh-alerts-*` after 14 days so its 16 GB disk
+does not fill during a long exercise; Malcolm already ages its indexes out.
+
+**EWS program-change detection without cm_plc_tool (TODO).** Today a change
+made with `curl` on the EWS leaves only network evidence (the REST session and
+size, and now the vendor-session correlation in Zeek). The design: install
+`auditd` in cm-ews with an `execve` rule for interactive users
+(`auid>=1000`), have the Wazuh agent read `/var/log/audit/audit.log`, and add
+a rule on commands whose arguments name an OpenPLC REST path
+(`upload-file`, `start-plc`, `stop-plc`) or port 8443.
+
+**Shared shell library (decided against for now).** The wait-and-retry loops
+in the provisioning scripts look alike, but each script is injected alone into
+a different image by the topology or the app, and each has its own failure
+semantics (exit codes the units' `RestartPreventExitStatus` relies on). A
+shared `cm-lib.sh` would add an inject to every node that runs any of them and
+a coupling between scripts that ship separately, for a few dozen lines saved.
+It is not built; revisit if a fourth copy of a helper appears.
+
 ## 16. New and extended software
 
 | Item | Where | Purpose |
@@ -3201,6 +3370,8 @@ silently.
 | Hardened systemd units are verified offline only | First VM run checks `DynamicUser` with `StateDirectory`, read-only paths, and `MemoryDenyWriteExecute` at runtime (§17) |
 | `CM_REF` in `cm-sim` trails `sim/` changes (`OTSIM_REF` is pinned to the tested ot-sim `9dc33047`) | Move `CM_REF` forward with every `sim/` change the image must carry |
 | OpenDSS islanding needs a source in each island | Genset modeled as a switched Vsource; pandapower fallback |
+| Checks that need a VM and have not run (Phase 3 review) | Open, to run on the first VM: `cm-wazuh-provision`'s re-run path (the marker and StartLimit of `f4e4ceb`); whether `compilation-status` reports a stale `SUCCESS` right after an upload (the guard in §12.1 is in place either way); `cm-load-images` under `PrivateTmp`, `ProtectSystem=strict`, and `MemoryDenyWriteExecute`; whether `ovs-vsctl`/`ovs-ofctl` can write their logs under `cm-malcolm-capture.service`'s hardening; BACpypes3 with several `--bbmd` arguments; the OpenPLC upload accepting `debug_map.json` in the ZIP; the full and bas FUXA projects importing into FUXA (the ci one does), with the OPC UA namespace index 2 and the S7 tag types they assume; the new SCORCH runs; and the five PLC programs in a runtime |
+| Script tests still missing | Open: `cm_selftest_pcap.py`, `cm-load-images`, and the ot-svc chrony and dnsmasq hooks have no tests yet (`cm-vyos-config.sh` and `cm-malcolm-provision`'s sid guard now do) |
 | plc-power has no clock: nothing on FIELD-PWR carries the time, so the on-peak window, brew-day SOC target, monthly demand reset, and genset exercise are not in the PLC | Open: expose the sim clock as a gen-ats or relay-main point (as `CEL.CLK.KI01` does for the cellar) and add the schedule to `plc-power.st` |
 | rtu-der's DNP3 map exposes the relay-main breaker and MSB feeder commands (BO 0-3) and the site's own setpoints to the utility master, because plantgen maps every FIELD-PWR point | Detection now (Suricata 9000138/9000139, Zeek `DNP3_Breaker_Command`); open: a utility-only FEP map in plantgen's `dnp3/rtu-der.json` and the ot-sim FEP config |
 | OpenPLC's `modbus_master` keeps the last input value on a lost RIO link (`error_handling: keep-last-value`), so an interlock input such as the cellar CO₂ relay holds its last state when rio-cellar is unreachable | Open: a RIO heartbeat point (a counter the RIO increments) that each PLC watches, failing its interlocks safe on a stale count ([§6.7](#67-cellar-co2-life-safety-interlock)) |

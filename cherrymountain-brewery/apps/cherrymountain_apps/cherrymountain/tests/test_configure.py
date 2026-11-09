@@ -55,6 +55,17 @@ def test_configure_writes_soh_profiles(run_app: RunApp) -> None:
     modbus = plc.customTests[1]
     assert "10.20.12.10" in modbus.testScript
     assert modbus.testStdout == "modbus-ok"
+    # The PLC's own status over its REST API, not the provisioning unit's state;
+    # the credentials come from the root-only settings file, never the script.
+    running = plc.customTests[0]
+    assert running.testStdout == "STATUS:RUNNING"
+    assert "https://127.0.0.1:${OPENPLC_PORT:-8443}/api" in running.testScript
+    assert ". /etc/default/cm-openplc" in running.testScript
+    assert "systemctl" not in running.testScript
+    fuxa = host_md(app, "scada-fuxa").sohProfile.customTests[0]
+    assert fuxa.name == "fuxa-project-imported"
+    assert fuxa.testStdout == "project-ok"
+    assert "/api/project" in fuxa.testScript and "FUXA_EXPECT_DEVICES" in fuxa.testScript
 
     assert host_md(app, "scada-fuxa").sohProfile.listeners == [":1881"]
     assert host_md(app, "rio-cellar").sohProfile.processes == [

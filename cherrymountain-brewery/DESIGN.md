@@ -2663,8 +2663,13 @@ which uses the Elasticsearch-compatible API.
 - **Generated checks.** The `cherrymountain` app emits a per-host
   `sohProfile` with processes, listeners, and custom tests:
   - a Modbus read from each PLC to its RIO
-  - OpenPLC `/api/status` reports running
-  - FUXA `/api/project` contains the expected devices
+  - OpenPLC `/api/status` reports `STATUS:RUNNING`: the check signs in with
+    the range credentials from the root-only `/etc/default/cm-openplc` (sent
+    on stdin) and queries `https://127.0.0.1:8443/api/status` with `-k`, so a
+    program that stopped after provisioning fails it
+  - FUXA `/api/project` contains every device in `FUXA_EXPECT_DEVICES` (signed
+    in with the range password from `/etc/default/cm-fuxa`); checked against a
+    FUXA 1.3.5 container
   - a BACnet ReadProperty succeeds, from bas-fuxa and from scada-fuxa through
     `fw-ot`
   - FUXA on scada-fuxa returns a live value for a BACnet tag. This is the

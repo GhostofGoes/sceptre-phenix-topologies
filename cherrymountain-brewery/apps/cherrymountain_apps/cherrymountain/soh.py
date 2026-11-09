@@ -57,6 +57,39 @@ fi
 """
 
 
+#: The PLC's own status: sign in with the range credentials from the root-only
+#: settings file (on stdin, not the command line) and read /api/status over the
+#: self-signed TLS endpoint. Not the provisioning unit's state: a program that
+#: stopped after provisioning fails this check.
+OPENPLC_RUNNING: Final[str] = """\
+set -a; . /etc/default/cm-openplc; set +a
+base="https://127.0.0.1:${{OPENPLC_PORT:-{port}}}/api"
+token=$(python3 -c 'import json, os; print(json.dumps({{"username": os.environ.get("OPENPLC_USER", "admin"), "password": os.environ["OPENPLC_PASSWORD"]}}))' \\
+  | curl -ksS --max-time 10 -H 'Content-Type: application/json' --data-binary @- "${{base}}/login" \\
+  | python3 -c 'import json, sys; print(json.load(sys.stdin).get("access_token", ""))' 2>/dev/null)
+[ -n "${{token}}" ] || {{ echo "openplc-no-login"; exit 0; }}
+printf 'Authorization: Bearer %s\\n' "${{token}}" | curl -ksS --max-time 10 -H @- "${{base}}/status" | grep -o 'STATUS:RUNNING' || echo "openplc-not-running"
+"""
+
+#: The FUXA project as FUXA holds it now: sign in with the range password and
+#: check that every expected device is in GET /api/project.
+FUXA_PROJECT: Final[str] = """\
+set -a; . /etc/default/cm-fuxa; set +a
+url="${{FUXA_URL:-http://127.0.0.1:{port}}}"
+token=$(python3 -c 'import json, os; print(json.dumps({{"username": "admin", "password": os.environ["FUXA_ADMIN_PASSWORD"]}}))' \\
+  | curl -sS --max-time 10 -H 'Content-Type: application/json' --data-binary @- "${{url}}/api/signin" \\
+  | python3 -c 'import json, sys; print(json.load(sys.stdin).get("data", {{}}).get("token", ""))' 2>/dev/null)
+[ -n "${{token}}" ] || {{ echo "fuxa-no-login"; exit 0; }}
+printf 'x-access-token: %s\\n' "${{token}}" | curl -sS --max-time 10 -H @- "${{url}}/api/project" \\
+  | python3 -c '
+import json, os, sys
+names = {{d.get("name") for d in json.load(sys.stdin).get("devices", {{}}).values()}}
+want = set(os.environ.get("FUXA_EXPECT_DEVICES", "").split())
+print("project-ok" if names and want <= names else "project-missing " + " ".join(sorted(want - names)))
+'
+"""
+
+
 def _test(name: str, script: str, stdout: str) -> dict[str, str]:
     return {
         "name": name,
@@ -109,8 +142,8 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
         tests.append(
             _test(
                 "openplc-program-running",
-                "test -f /var/lib/cm-openplc/provisioned && systemctl is-active cm-openplc-provision.service\n",
-                "active",
+                OPENPLC_RUNNING.format(port=md.rest_port),
+                "STATUS:RUNNING",
             )
         )
         tests += _modbus_tests(ctx, hostname, md)
@@ -120,8 +153,8 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
         tests.append(
             _test(
                 "fuxa-project-imported",
-                "systemctl is-active cm-fuxa-provision.service\n",
-                "active",
+                FUXA_PROJECT.format(port=md.port),
+                "project-ok",
             )
         )
     elif isinstance(md, RioHost):

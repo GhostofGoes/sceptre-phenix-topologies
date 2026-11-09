@@ -194,3 +194,33 @@ def test_json_report(capsys: pytest.CaptureFixture[str]) -> None:
     first, second = (json.loads(line) for line in capsys.readouterr().out.splitlines())
     assert first == {"action": "status", "plc": "plc-cellar", "host": "10.20.10.12", "ok": True, "status": "STATUS:RUNNING", "error": ""}
     assert second["ok"] is False and second["error"] == "TimeoutError"
+
+
+class ChunkedSocket:
+    """recv() hands out the chunks in order; a None chunk is a socket timeout."""
+
+    def __init__(self, chunks: list[bytes | None]) -> None:
+        self.chunks: list[bytes | None] = chunks
+
+    def recv(self, size: int) -> bytes:
+        chunk = self.chunks.pop(0)
+        if chunk is None:
+            raise TimeoutError
+        return chunk
+
+
+def test_a_timeout_mid_frame_does_not_desync_the_reader() -> None:
+    """The hold loop polls with a 5 s timeout. A timeout after the frame header has
+    arrived must not drop the header: the next receive() resumes the same frame."""
+    big = b"4.sync,8.12345678;" * 10  # 180 bytes: a 16-bit length field
+    frame1 = bytes([0x81, 126]) + struct.pack(">H", len(big)) + big
+    frame2 = bytes([0x81, 5]) + b"0.,1.;"[:5]
+    ws = object.__new__(cm_vendor_session.WebSocket)
+    ws.buffer = b""
+    ws.sock = ChunkedSocket([frame1[:3], None, frame1[3:50], None, frame1[50:] + frame2])  # type: ignore[assignment]
+    with pytest.raises(TimeoutError):
+        ws.receive()
+    with pytest.raises(TimeoutError):
+        ws.receive()
+    assert ws.receive() == (0x1, big)
+    assert ws.receive() == (0x1, b"0.,1.")

@@ -183,15 +183,6 @@ class WebSocket:
         head, _, self.buffer = self.buffer.partition(marker)
         return head
 
-    def read_exactly(self, count: int) -> bytes:
-        while len(self.buffer) < count:
-            chunk: bytes = self.sock.recv(65536)
-            if not chunk:
-                raise OSError("the connection closed")
-            self.buffer += chunk
-        data, self.buffer = self.buffer[:count], self.buffer[count:]
-        return data
-
     def send(self, opcode: int, payload: bytes) -> None:
         """A single masked frame (clients must mask)."""
         length: int = len(payload)
@@ -206,16 +197,41 @@ class WebSocket:
         masked: bytes = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
         self.sock.sendall(head + mask + masked)
 
+    def need(self, count: int) -> None:
+        """Read until the buffer holds ``count`` bytes. A timeout leaves what has
+        arrived in the buffer, so the next call resumes the same frame."""
+        while len(self.buffer) < count:
+            chunk: bytes = self.sock.recv(65536)
+            if not chunk:
+                raise OSError("the connection closed")
+            self.buffer += chunk
+
     def receive(self) -> tuple[int, bytes]:
-        """The next frame as (opcode, payload); fragments are not used by the Guacamole server."""
-        first, second = self.read_exactly(2)
+        """The next frame as (opcode, payload); fragments are not used by the Guacamole server.
+
+        Nothing is taken from the buffer until the whole frame is there, so a socket
+        timeout in the middle of a frame (the hold loop polls with a short timeout)
+        cannot leave the reader out of step with the frame boundaries.
+        """
+        self.need(2)
+        first, second = self.buffer[0], self.buffer[1]
         length: int = second & 0x7F
+        offset: int = 2
         if length == 126:
-            length = struct.unpack(">H", self.read_exactly(2))[0]
+            self.need(4)
+            length = struct.unpack(">H", self.buffer[2:4])[0]
+            offset = 4
         elif length == 127:
-            length = struct.unpack(">Q", self.read_exactly(8))[0]
-        mask: bytes = self.read_exactly(4) if second & 0x80 else b""
-        payload: bytes = self.read_exactly(length)
+            self.need(10)
+            length = struct.unpack(">Q", self.buffer[2:10])[0]
+            offset = 10
+        masked: bool = bool(second & 0x80)
+        if masked:
+            offset += 4
+        self.need(offset + length)
+        mask: bytes = self.buffer[offset - 4 : offset] if masked else b""
+        payload: bytes = self.buffer[offset : offset + length]
+        self.buffer = self.buffer[offset + length :]
         if mask:
             payload = bytes(byte ^ mask[index % 4] for index, byte in enumerate(payload))
         return first & 0x0F, payload

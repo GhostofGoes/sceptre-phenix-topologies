@@ -85,6 +85,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        sudo apt-get update -q
         sudo apt-get install -y -q --no-install-recommends tcpdump ethtool
         sudo python3 -m venv /opt/cm-spike-venv
         sudo /opt/cm-spike-venv/bin/pip install --quiet pydantic==2.11.7

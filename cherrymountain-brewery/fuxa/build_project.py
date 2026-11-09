@@ -577,7 +577,7 @@ def build_device_view(
 ) -> dict[str, Any]:
     """A generated view of one device: its process values, setpoints, and states
     in columns (label, then value or lamp), read-only. FUXA opens a view by its
-    name (``/home/<name>``, which the kiosks use), so a name in ``taken`` gets
+    name (``/home?viewName=<name>``, which the kiosks use), so a name in ``taken`` gets
     " points" appended: plc-cellar's view is "Cellar points" next to the
     hand-laid "Cellar" view."""
     shown: list[PlantTag] = [t for t in dev.tags if ".ALM_" not in t.name]

@@ -248,7 +248,7 @@ def test_hmi_kiosk_url(ctx: Context) -> None:
     host = md(HmiHost, {"type": "hmi", "view": "Cellar"})
     injects = by_dst(render.render_hmi(ctx, "hmi-brewhouse", host))
     env = Path(injects["/etc/default/cm-kiosk"].src).read_text()
-    assert "KIOSK_URL=http://10.20.10.10:1881/home/Cellar" in env
+    assert "KIOSK_URL=http://10.20.10.10:1881/home?viewName=Cellar" in env
     assert "/etc/xdg/autostart/cm-kiosk.desktop" in injects
 
 

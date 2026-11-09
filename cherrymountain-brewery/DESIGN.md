@@ -2382,7 +2382,7 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
   (devices, tags, alarms, DAQ settings) with `fuxa/build_project.py`: for ci
   the hand-laid Cellar view, and for full and lite a view per device (the
   Cellar view too on scada-fuxa) for both scada-fuxa and bas-fuxa. FUXA opens
-  a view by its name (`/home/<name>`, the kiosk URL), so the names are unique:
+  a view by its name (`/home?viewName=<name>`, the kiosk URL), so the names are unique:
   plc-cellar's generated view is "Cellar points". The
   committed copies (`fuxa/<variant>/<host>-project.json`) are checked current
   by the `cm-fuxa-check` hook. OPC UA tags address `ns=2;s=<tag>` and S7 tags
@@ -2464,7 +2464,9 @@ health checks read a tag value, not the connection state
 ([§15.4](#154-state-of-health)).
 
 **HMIs** are Chromium kiosks, for example
-`http://10.20.30.10:1881/home/Brewhouse`.
+`http://10.20.30.10:1881/home?viewName=Brewhouse`. FUXA's home page reads the
+view from that query parameter; a name in the path (`/home/Brewhouse`) is
+routed but ignored, and the start view opens instead.
 
 ### 12.3 ot-sim field devices
 

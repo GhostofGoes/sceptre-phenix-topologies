@@ -1017,10 +1017,15 @@ def render_historian(ctx: Context, hostname: str, md: HistorianHost) -> list[Inj
 
 
 def kiosk_url(ctx: Context, md: HmiHost) -> str:
+    """The kiosk's start page. FUXA's home page takes the view to open from the
+    ``viewName`` query parameter and looks it up by name (client
+    home.component.ts at the cm-fuxa commit and in 1.3.5); a name in the path
+    (``/home/<view>``) is routed but ignored, and the project's start view
+    opens instead."""
     fuxa_md: Any = ctx.hosts.get(md.fuxa)
     port: int = fuxa_md.port if isinstance(fuxa_md, FuxaHost) else 1881
     iface: str = md.interface
-    return f"http://{ctx.ip(md.fuxa, iface)}:{port}/home/{md.view.replace(' ', '%20')}"
+    return f"http://{ctx.ip(md.fuxa, iface)}:{port}/home?viewName={md.view.replace(' ', '%20')}"
 
 
 def render_hmi(ctx: Context, hostname: str, md: HmiHost) -> list[Injection]:

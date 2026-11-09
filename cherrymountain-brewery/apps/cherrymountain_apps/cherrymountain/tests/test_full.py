@@ -123,7 +123,8 @@ def test_full_renderers_with_existing_inputs(ctx: Context) -> None:
         if i.dst == "/etc/default/cm-kiosk"
     )
     kiosk = env(Path(kiosk_env))
-    assert kiosk["KIOSK_URL"] == "http://10.20.30.10:1881/home/Brewhouse"
+    # FUXA reads the view from the viewName query parameter, not from the path.
+    assert kiosk["KIOSK_URL"] == "http://10.20.30.10:1881/home?viewName=Brewhouse"
     assert set(render.render_wazuh(ctx)) >= {
         "wazuh",
         "historian",
@@ -304,7 +305,7 @@ def test_full_fuxa_projects_are_built_for_both_hosts(ctx: Context) -> None:
 
 
 def test_full_fuxa_views_have_unique_names_and_the_kiosks_views_exist(ctx: Context) -> None:
-    """FUXA opens a view by its name (/home/<name>, the kiosk URL), so no two
+    """FUXA opens a view by its name (/home?viewName=<name>, the kiosk URL), so no two
     views of a project may share one: plc-cellar's generated view is "Cellar
     points" beside the hand-laid "Cellar". Every kiosk's view must exist on
     the FUXA host it opens."""

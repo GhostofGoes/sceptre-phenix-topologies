@@ -231,11 +231,6 @@ class BacnetPoint(Strict):
         """BACnet object type enumeration (FUXA addresses use it)."""
         return BACNET_OBJECTS[self.object_type][1]
 
-    @property
-    def commandable(self) -> bool:
-        """Outputs carry a priority array; values do when they are writable."""
-        return self.object_type in ("analog-output", "binary-output")
-
 
 class PointSpec(Strict):
     """One point of an ot-sim device type.
@@ -657,6 +652,13 @@ class Point(BaseModel):
     signed: bool = False
     written_by: str | None = None
     bacnet: BacnetPoint | None = None
+
+    @property
+    def commandable(self) -> bool:
+        """A BACnet object with a priority array: an output, or a value that
+        takes writes (a setpoint, a mode). A command overrides the controller's
+        own logic for the point until it is relinquished (DESIGN.md §8.1)."""
+        return self.bacnet is not None and is_writable(self.type)
 
 
 class Device(BaseModel):

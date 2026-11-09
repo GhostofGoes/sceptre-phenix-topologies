@@ -598,7 +598,7 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
                     bac["units"] = p.bacnet.units
                 if p.bacnet.states:
                     bac["states"] = list(p.bacnet.states)
-                if p.bacnet.commandable:
+                if p.commandable:
                     bac["commandable"] = True
                 entry["bacnet"] = bac
             elif is_analog(p.type):
@@ -1100,7 +1100,8 @@ def bacnet_doc(plant: Plant, alloc: Allocation, host: str) -> dict[str, Any]:
     objects = []
     for o in alloc.bacnet[host]:
         t = o.tag
-        spec = plant.device_types[o.device.type][o.point].bacnet
+        point = plant.device_types[o.device.type][o.point]
+        spec = point.bacnet
         entry: dict[str, Any] = {
             "object_type": o.object_type,
             "instance": o.instance,
@@ -1108,7 +1109,7 @@ def bacnet_doc(plant: Plant, alloc: Allocation, host: str) -> dict[str, Any]:
             "description": t.desc if t else "",
             "tag": f"{o.device.name}.{o.point}",
             "helics_key": f"{o.device.topic}.{o.point}",
-            "commandable": bool(spec and spec.commandable),
+            "commandable": point.commandable,
         }
         if spec and spec.units:
             entry["units"] = spec.units

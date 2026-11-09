@@ -161,19 +161,23 @@ The app's own schema, plus three things:
           bacnet:
             object-type: multi-state-value
             states: [occupied, unoccupied, standby]
+            commandable: true            # a value that takes writes
         purge_fan_1:
           type: binary-read-write
           bacnet:
             object-type: binary-output
-            commandable: true            # priority array (outputs)
+            commandable: true            # priority array (every output)
   ```
 
   Rules for the module: object instances are numbered from 1 per object type
   in device order, then point order; each object maps to the message-bus tag
   `<device>.<point>`, and writes go to the device's HELICS endpoint, exactly as
-  for Modbus. Until the app supports `bacnet`, it renders these hosts without
-  an I/O module and the `cherrymountain` app must inject the module config
-  (from `bacnet/<host>.json`).
+  for Modbus. `commandable` is set on every read-write point: an output, or a
+  value object that takes writes (a setpoint, a mode). The phenix `ot-sim` app
+  does not know `bacnet`, so it renders these hosts without an I/O module; the
+  `cherrymountain` app adds the I/O module and the BACnet module
+  (`phenix-injects/otsim/`) to their config from `helics.json` and
+  `bacnet/<host>.json`.
 
 ### `bacnet/<host>.json`
 

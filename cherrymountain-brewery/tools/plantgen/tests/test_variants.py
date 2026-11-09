@@ -140,6 +140,12 @@ def test_bacnet_host_metadata(full_files: dict[str, str]) -> None:
         "units": "partsPerMillion",
     }
     assert infra["vent"]["purge_fan_1"]["bacnet"]["commandable"] is True
+    # A value object that takes writes is commandable too; one that is only
+    # read is not.
+    assert infra["coldroom"]["setpoint_f"]["bacnet"]["commandable"] is True
+    assert infra["rtu-1"]["occ_mode"]["bacnet"]["commandable"] is True
+    assert "commandable" not in infra["vent"]["co2_tier_1"]["bacnet"]
+    assert "commandable" not in infra["coldroom"]["door_open_min"]["bacnet"]
 
 
 def test_fep_and_dnp3_master(full_files: dict[str, str]) -> None:
@@ -256,6 +262,12 @@ def test_bacnet_object_table(full_files: dict[str, str]) -> None:
     assert (tank["object_type"], tank["instance"]) == ("analog-input", 6)
     fan = next(o for o in doc["objects"] if o["name"] == "FAC.VENT.FAN01.CMD")
     assert fan["commandable"] and fan["object_type"] == "binary-output"
+    # Every object the building federate accepts a write for is commandable,
+    # and no other: the BACnet module refuses a write to the rest.
+    accepted = set(json.loads(full_files["helics.json"])["federates"]["building"]["accepted_updates"])
+    for host in ("bas-rtu-taproom", "bas-coldroom", "bas-vent"):
+        for o in json.loads(full_files[f"bacnet/{host}.json"])["objects"]:
+            assert o["commandable"] == (o["tag"] in accepted), o["name"]
 
 
 def test_bas_alarms_are_evaluated_by_fuxa(full_files: dict[str, str]) -> None:

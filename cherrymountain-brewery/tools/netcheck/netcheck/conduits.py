@@ -331,7 +331,7 @@ CONDUITS: tuple[Conduit, ...] = (
     ),
     Conduit(
         id="bbmd-3",
-        text="bas-bbmd -> ot-svc: UDP 47808 (BBMD rule 3, recommended)",
+        text="bas-bbmd -> ot-svc: UDP 47808 (BBMD rule 3, optional)",
         srcs=("bas-bbmd",),
         dsts=("ot-svc",),
         services=udp(plan.BACNET_PORT),

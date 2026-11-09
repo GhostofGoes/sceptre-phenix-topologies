@@ -68,7 +68,7 @@ spec:
       export DEBIAN_FRONTEND=noninteractive
       # CM_REF names the commit of this repository whose sim/ is installed. Move it
       # forward in the same change as any sim/ change the image must carry.
-      CM_REF=41bc2e0d9dd0467074b15a614f705b07d4f23b89
+      CM_REF=054dcf617b1dfd39f77a3cdd2b5bd5f560cd818a
       HELICS_VERSION=3.6.1
       WEBSOCKETS_VERSION=15.0.1
       OPENSEARCH_VERSION=3.9.0

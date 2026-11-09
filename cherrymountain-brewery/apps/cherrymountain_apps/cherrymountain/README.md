@@ -36,8 +36,8 @@ the phenix container (`phenix workflow apply` reads it from there):
 |---|---|
 | `plant/plant.yaml` (through `tools/plantgen`) | Hosts, interfaces, roles, federates, northbound protocols |
 | `plant/generated/<variant>/` | `helics.json`, `openplc/<plc>/modbus_*.json`, `tags.json`, `registers.json` |
-| `phenix-injects/openplc/<program>.zip` | The program ZIP `plc/<program>/build_zip.sh` builds |
-| `fuxa/build_project.py` | The scada FUXA project, built for the variant |
+| `phenix-injects/openplc/<program>.zip` (ci), `phenix-injects/openplc/<variant>/<program>.zip` (full, lite) | The program ZIPs that `plc/plc-cellar/build_zip.sh` and `plc/common/build_zip.sh` build (Git LFS; a pointer file fails pre-start with a message that says to run `git lfs pull`) |
+| `fuxa/build_project.py` | The FUXA project of each FUXA host (scada-fuxa, and bas-fuxa in full and lite), built for the variant |
 | `phenix-injects/openplc/`, `phenix-injects/fuxa/` | The provisioning scripts and units, injected as they are |
 
 plantgen and the FUXA builder are imported from `sourceDir`, not installed in
@@ -54,6 +54,7 @@ App block:
 | `simCtl.hostname` | hostname | `sim-ctl` | HELICS root broker and event API host |
 | `simCtl.eventPort` | port | `8080` | Event API port inside sim-ctl |
 | `simCtl.timeout` | seconds | `10` | Event API request timeout |
+| `simCtl.vizPort` | port | `8090` | cm-viz, the white cell's 3D view, on 127.0.0.1 in sim-ctl (DESIGN.md 15.10) |
 | `mgmt.enabled` | bool | `true` | Inject the MGMT nftables policy |
 | `mgmt.interface` | interface | `mgmt` | The topology's name of the MGMT interface. It is not the guest's device name (phenix does not rename NICs): the startup hook finds the device by the host's MGMT address |
 | `mgmt.brokerPorts` | ports | `[23404, 23405, 23406]` | HELICS broker ports on sim-ctl |
@@ -70,7 +71,7 @@ App block:
 | `historian.mqttTopicRoot` | topic | `cherrymountain/frontrange` | PackTags topic root |
 | `wazuh.manager` | hostname | `wazuh` | Wazuh manager; no `wazuh` block means no Wazuh files |
 | `wazuh.interface`, `wazuh.enrollmentPort` | interface, port | `IF0`, `1515` | Where agents enroll |
-| `wazuh.agents` | hostnames | every Linux host of the app except PLCs | Hosts that get an agent config |
+| `wazuh.agents` | hostnames | `[]` | The hosts that run an agent and get the enrollment password: an explicit allowlist (plantgen writes it from plant.yaml `app.wazuh.agents`). Empty enrolls nobody |
 | `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment`, `vendorGuacPassword`, `vendorTotpSecret` (Base32), `vendorEwsPassword` |
 | `wireguardKeys` | `generate` or `scenario` | `generate` | `generate` replaces the scenario's `wireguard` keys (plantgen's fixed-seed keys) with per-experiment ones at configure |
 | `verify.timeout`, `verify.clientGrace` | seconds | `15`, `5` | Per-check timeouts in post-start and running |
@@ -218,7 +219,6 @@ the value.
 | `no debug map for <program>` | OPC UA needs the compiled program's `debug_map.json`, in the ZIP or at `plc/<program>/debug_map.json`, or set `opcua.debugMap`. |
 | warning `the <program> ZIP was built with other plugin configs than plant/generated/<variant>` | The ZIP was built for another variant (for example the ci ZIP in full). Rebuild it with `plc/<program>/build_zip.sh` for this variant. |
 | `the debug map of <program> is not from the program in its ZIP` | Rebuild the ZIP and the debug map together. |
-| `a bas FUXA needs metadata.project` | The builder only builds the scada project; commit the BAS project and point `project` at it. |
 | `<n> host(s) could not be rendered:` and a line per host | pre-start renders every host before failing; fix each listed input. |
 | status `unreachable` for a host | Its C2 client is not up yet; `running` checks again. |
 
@@ -238,10 +238,10 @@ the committed plc-cellar program, recorded to test the OPC UA config.
 
 ## Limitations
 
-- **Stubs** (render and test only; no image exists yet to run them):
-  historian (`cm-historian`), Guacamole (`cm-guacamole`), Wazuh (`cm-wazuh`
-  and the agent images), and the HMI kiosk (`cm-desktop`). TODO(verify) notes in
-  `render.py` mark guesses: FUXA's InfluxDB DAQ store keys, the Grafana query
+- **Not run on a VM.** Every image the app renders for exists
+  (`phenix-images/`), but none of it has booted: the historian, Guacamole,
+  Wazuh, and the HMI kiosk render and pass their tests only. TODO(verify) notes
+  in `render.py` mark guesses: FUXA's InfluxDB DAQ store keys, the Grafana query
   fields, the s7comm mapping types beyond `int_output`/`int_input`, and the
   Guacamole schema version.
 - The KPIs need `GET /api/v1/kpis` from the sim-ctl event API (the weather
@@ -250,8 +250,10 @@ the committed plc-cellar program, recorded to test the OPC UA config.
   wastewater, and the genset's run and test hours that a `genset-exercise`
   event advances) go under `kpis.compliance`, with the test hours left under
   the 40 CFR 60.4211(f) cap.
-- `cm-fuxa-provision.sh` still checks for the `plc-cellar` device after
-  import; the app already writes `FUXA_EXPECT_DEVICES` for when it reads that.
-- The relay-main telnet config (DESIGN.md 12.3) is not rendered.
+- The Guacamole init SQL is injected 0644, not 0600 like the other rendered
+  files that came from a secret: PostgreSQL's entrypoint runs it as the
+  container's `postgres` user. It holds a salted hash, no password.
+- A federate that the topology still starts with its own unit (the ci slice's
+  `cm-cellar.service`) is left to that unit; the status check accepts either.
 - The HELICS federate-count SoH check counts distinct peers connected to the
   broker port, an approximation of the federate count.

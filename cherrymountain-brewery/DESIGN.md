@@ -1355,7 +1355,7 @@ flowchart LR
 
 | Federate | Host | Step | Publishes (examples) | Subscribes (examples) |
 |---|---|---|---|---|
-| `weather` | sim-ctl | 1 s (the weather itself changes each minute) | `weather/ambient.temp_f`, `weather/ghi.wm2`, `weather/pressure.kpa` | The KPI keys and the 3D view's keys (`plant.yaml` `snapshot`; 179 in full and lite), served as `GET /api/v1/state` and `/kpis` ([§9.5](#95-scenario-events-and-ground-truth)) |
+| `weather` | sim-ctl | 1 s (the weather itself changes each minute) | `weather/ambient.temp_f`, `weather/ghi.wm2`, `weather/pressure.kpa` | The KPI keys and the 3D view's keys (`plant.yaml` `snapshot`; 188 in full and lite), served as `GET /api/v1/state` and `/kpis` ([§9.5](#95-scenario-events-and-ground-truth)) |
 | `brewhouse` | sim-process | 1 s | `brewhouse/<device>.<point>`, `brewhouse/load.boiler.kw` | `brewhouse/updates` (endpoint), `power/bus.msb.energized`, `weather/pressure.kpa` |
 | `cellar` | sim-process | 1 s (kinetics compressed; exported fluxes real-time-equivalent, [§9.4](#94-time-and-initial-state)) | `cellar/fv101.temp_f`, `cellar/co2.vent_gps`, `cellar/clock.sim_hours` | `cellar/updates`, `weather/ambient.temp_f`, `weather/pressure.kpa` |
 | `utilities` | sim-process | 1 s | `utilities/glycol.supply_f`, `utilities/load.chiller.kw` | `utilities/updates`, `weather/ambient.temp_f` |
@@ -1726,8 +1726,8 @@ values:
   in the ground-truth documents. Their headline figures are federate outputs
   (no tags, no FUXA change) that the KPI API carries; the filler's
   `ProdDefectiveCount` now comes from the fill model.
-  The `genset-exercise` event is new to the event API; the SCORCH `plantevent`
-  component does not know it yet.
+  The `genset-exercise` and `cip-panel` events are in the event API, and the
+  SCORCH `plantevent` component posts both.
 
 **Remaining:** the ot-sim `logic` blocks of
 [§12.3](#123-ot-sim-field-devices), and the 24 h soak. The peer reads of
@@ -2987,6 +2987,7 @@ apply.
 ```text
 cherrymountain-brewery/
 ├── README.md
+├── USER_GUIDE.md                   # how to build, start, check, and run the range on your own host
 ├── DESIGN.md
 ├── phenix.yml                      # Workflow: full variant (topology/scenario cherrymountain-full)
 ├── phenix-lite.yml                 # Workflow: lite (apply with -b cherrymountain-lite -c phenix-lite.yml)
@@ -3007,8 +3008,10 @@ cherrymountain-brewery/
 ├── phenix-images/                  # Image configs (cm-*.yml) and README; built with phenix image build
 ├── apps/                           # cherrymountain_apps: the cherrymountain phenix app (with its script, systemd, and template files, which include the historian and federate units), the plantevent SCORCH component, simctl.py
 ├── sim/                            # cherrymountain_sim federates package and tests
-├── plc/plc-cellar/                 # plc-cellar Structured Text and the ZIP build scripts (the built ZIP is phenix-injects/openplc/plc-cellar.zip, LFS)
-├── fuxa/                           # FUXA project builder (build_project.py) and the scada-fuxa project it writes
+├── viz/                            # cherrymountain_viz: cm-viz, the white cell's 3D view, and its tests
+├── plc/<plc>/                      # the five PLC programs in Structured Text; plc/plc-cellar/ also builds the ci ZIP (phenix-injects/openplc/plc-cellar.zip, LFS)
+├── plc/common/                     # builds the full and lite ZIPs of all five PLCs (phenix-injects/openplc/<variant>/, LFS)
+├── fuxa/                           # FUXA project builder (build_project.py) and the scada-fuxa and bas-fuxa projects it writes
 ├── plant/plant.yaml                # tag database (single source of truth)
 ├── plant/generated/{ci,full,lite}/ # plantgen output (committed, checked current)
 ├── recipes/fire-of-the-phenix.json # BeerJSON
@@ -3018,7 +3021,7 @@ cherrymountain-brewery/
 ├── tools/netcheck/                 # static check of the IP plan and conduit matrix
 ├── tools/lint/                     # image-script and systemd-unit lint helpers (run by prek)
 ├── tests/{integration,soc}/        # CI-slice and render checks; SOC detection, Wazuh, vendor-access, and WireGuard tests
-├── spikes/                         # Phase 0 spike kits (bacnet, bbmd, fuxa, malcolm, openplc-v4, otsim-noble, serial, vyos-ipsec, autotunnel, ci)
+├── spikes/                         # spike kits (bacnet, bbmd, fuxa, malcolm, openplc-v4, otsim-noble, serial, vyos-ipsec, autotunnel, viz3d, thehive) and their CI images (ci)
 └── .yamllint-block-style.yml       # block-style rule for phenix YAML
 ```
 
@@ -3367,7 +3370,9 @@ is never hand-written.
 ### 15.9 Operations
 
 This subsection is the operator's runbook for the range. Items marked
-**TODO** are designed here and not built yet.
+**TODO** are designed here and not built yet. [USER_GUIDE.md](USER_GUIDE.md)
+is the step-by-step version: the repositories to clone, the builds, the first
+start of each variant, and what to check.
 
 **Host prerequisites.** A host with `/dev/kvm`, about 128 GB RAM and 32 cores
 for the full variant (71 GB for lite; [§11](#11-node-inventory-and-resources)),
@@ -3590,7 +3595,7 @@ Python (Pydantic frames, `websockets` 15).
 
 **Data path.** The weather federate on sim-ctl subscribes to the snapshot keys
 (`plant.yaml` `snapshot`: the cellar vessels and relief valves, the cellar air
-and ventilation, every power point and load, and the KPI keys; 179 in full and
+and ventilation, every power point and load, and the KPI keys; 188 in full and
 lite) and serves them as `GET /api/v1/state` on `127.0.0.1:8080`
 ([§9.5](#95-scenario-events-and-ground-truth)). Truth that no device measures
 comes from the cellar's per-vessel outputs (fill, spunding, PSV, and leak
@@ -3642,7 +3647,7 @@ bucket through a cc tunnel and hands the operator's values to the page.
 (`MemoryMax`, `CPUQuota`); the spike measured under 1 % of a core for 20
 browsers. About 2.2 MB of static files (three.js unminified) load once per
 browser; frames are about 16 to 32 kbit/s per viewer. The weather federate
-gains 179 subscriptions. sim-ctl stays 2 vCPU / 6 GB, and the host-fit budget
+gains 188 subscriptions. sim-ctl stays 2 vCPU / 6 GB, and the host-fit budget
 ([§11](#11-node-inventory-and-resources)) is unchanged. No `cm-desktop` change:
 the spike found that a range desktop needs `--enable-unsafe-swiftshader` to
 render WebGL at all, but it recommends against an in-range renderer, and the
@@ -3659,7 +3664,7 @@ WebGL context, frame rendering, and the data binding. `viz/tools/screenshots.py`
 renders the documented views from the real federates.
 
 **Not done yet.** The phenix run of the spike plan (the view through a real
-cc tunnel, frame age at the 95th percentile, the effect of the 179
+cc tunnel, frame age at the 95th percentile, the effect of the 188
 subscriptions on the federation's timing over an hour), the operator-view
 relay (phase 2), replay from the ground-truth OpenSearch, and a brewhouse
 scene.
@@ -3668,7 +3673,7 @@ scene.
 
 | Item | Where | Purpose |
 |---|---|---|
-| `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main`, pinned by digest). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs, Guacamole connections, Wazuh enrollment, nftables MGMT policy. **post-start/running:** verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
+| `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main` by default, pinned by digest; the `PHENIX_IMAGE` build argument names the locally built fork image instead). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs, Guacamole connections, Wazuh enrollment, nftables MGMT policy. **post-start/running:** verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
 | `phenix-scorch-component-plantevent` | `apps/` | Drives the sim-ctl event API from SCORCH (batch, outage, genset exercise, chiller fault, CO₂ release, jam, weather step, CIP panel, CO₂ leak, gas-detection failure, refrigerant leak, BESS thermal), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
 | `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the proposed `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current (`cm-plantgen-tests`, `cm-sync-check`) |
 | `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)), tested in CI (`cm-sim-tests`) |
@@ -3719,10 +3724,14 @@ five stages) and follows the pattern of sceptre-phenix-apps:
   secrets go in a mode-0600 `secrets.json`. The app imports plantgen and the
   FUXA project builder from the topology directory at runtime, so the code
   always matches the plant data next to it. The Dockerfile is pinned by digest
-  to `phenix:main`. The BBMD config is static topology injects, not rendered by
+  to `phenix:main` by default, and its `PHENIX_IMAGE` build argument names the
+  locally built fork image the range runs on. The BBMD config is static topology injects, not rendered by
   the app. `plantevent` finds sim-ctl's random port with `cc tunnel list`, and
   opens a tunnel if needed.
-- **Tests.** 94, run on the recorded `ci` experiment and the `full` fixture. The
+- **Tests.** 120, run on the recorded `ci` and `full` experiments. A test fails
+  when a recorded experiment differs from what the committed topology,
+  scenario, and workflow give (`build_fixtures.py` re-records them), and one
+  renders every host of the full variant in a single pre-start pass. The
   Docker image was not built in the sandbox (proxy and disk); hadolint passes.
 - **Not yet run.** Historian, Guacamole, Wazuh, the HMI kiosk, and ground
   truth render and pass their tests, and their images exist
@@ -3794,13 +3803,16 @@ rebroadcast reaches it.
   behavior.
 - **App tests (the `cm-app-tests` hook).** The `cherrymountain` app and
   `plantevent` in `apps/`, run on the recorded `ci` experiment and the `full`
-  fixture. The hook installs phenix-apps from the fork the range runs on
+  fixture, both checked current against the committed configs. The hook installs phenix-apps from the fork the range runs on
   ([§16](#16-new-and-extended-software)), pinned by commit, because it is not
   on PyPI.
 - **SOC tests (the `cm-soc-tests` hook).** The Wazuh decoders and rules against
   sample lines, the Suricata rules and the Zeek script against the topology's
   addresses (and against the pcaps when Suricata and Zeek are installed; CI
-  has neither, so those cases skip there), and the vendor-path scripts.
+  has neither, so those cases skip there), and the vendor-path scripts. One
+  test checks that every `cm-*` script a SoH test or SCORCH step of the full
+  scenario runs on a VM is injected there by the topology or rendered by the
+  app.
 - **What CI runs.** The Lint workflow runs `prek run --all-files`: every hook
   above, so the plantgen, sim, app, netcheck, SOC, and sync checks all run on
   each pull request. Three checks do not run in CI and are run by hand: the
@@ -4105,6 +4117,10 @@ reach a plant like this, and the row says why.
 | Suricata 7's `modbus: address` test misses a Write Single Coil at an exact address, so the single-coil life-safety rules match PDU bytes and see function 5 only ([§14](#14-blue-team-monitoring)) | Zeek's `Life_Safety_Write` covers Write Multiple Coils; recheck on Malcolm's Suricata 8.0.7 |
 | The retention settings are unverified on a VM: Malcolm's `OPENSEARCH_INDEX_SIZE_PRUNE_LIMIT`, `MANAGE_PCAP_FILES`, and `ARKIME_FREESPACEG` on 26.10.0, the Wazuh archive volume under a scan, ground truth's growth over a week, and the historian records task against FUXA's DAQ field layout | Open, to check on the first VM run; the 72 h pcap target of M-21-31 does not fit the 64 GB Malcolm disk and is documented as a shortfall |
 | Per-session vendor approval and time-boxed WireGuard peers (IEC 62443-2-4) are not in the range | Excluded by the range owner; TOTP is an accepted risk ([§13](#13-vendor-remote-access)) |
+| The MGMT nftables policy was rewritten after a review found that it matched the topology's interface name (`mgmt`), which no guest NIC carries, and allowed federate ports (23500–23999) the HELICS broker never assigns ([§10.1](#101-zones-and-conduits-purdue-model--isaiec-62443)) | Fixed and checked between two network namespaces with a real HELICS broker and federate. Open, for the first VM run: that the hook finds the device after `3_interfaces-start.sh` on every MGMT member, and that noble's `nft` takes `-D`. Open: pin each core's port (`--localport` in `cherrymountain_sim`, and in the ot-sim `io` module's config, which the phenix `ot-sim` app does not render) so the policy can name exact ports instead of 23407–23999 |
+| The Guacamole init SQL must be readable by the `postgres` container's own user ([§13](#13-vendor-remote-access)) | The app now injects it 0644 (it holds a salted hash, no password). Checked against the postgres image's entrypoint source, not by running the stack; open, for the first VM run: `cmadmin` and the `ews-rdp` and `ews-ssh` connections exist after the first boot of dmz-jump |
+| A technician cannot run `cm_plc_tool.py` in their own EWS session: it reads the root-only `/etc/default/cm-ews`, and the `ridgeline-<name>` accounts are ordinary users with no sudo rule. The SCORCH re-upload runs it as root through cc, so its `cm-plc-tool` events name `root`, not a person ([§13](#13-vendor-remote-access)) | Open, a decision: a sudoers rule that lets the technician accounts run the tool (its `user=` field is then `SUDO_USER`), or a group-readable credential file. Until then a technician must set `OPENPLC_PASSWORD` in the environment |
+| The ci topology still injects the static sim, OpenPLC, and FUXA files beside the app's rendered ones ([§16](#16-new-and-extended-software)) | The app replaces an injection to the same destination, and `60-cm-federates.sh` leaves the federate to the static `cm-cellar.service`; the app's status check accepts either unit. Open: drop the static injects from `topology-ci.yml` once the app has run on a VM |
 
 ## 20. Licensing
 

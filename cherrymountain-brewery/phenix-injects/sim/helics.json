@@ -402,6 +402,118 @@
           "type": "double",
           "units": "kW",
           "output": "glycol.load_kw"
+        },
+        {
+          "key": "cellar/fv101.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV101",
+          "output": "fv101.level_pct"
+        },
+        {
+          "key": "cellar/fv101.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.spund_gps"
+        },
+        {
+          "key": "cellar/fv101.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.psv_gps"
+        },
+        {
+          "key": "cellar/fv101.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.leak_gps"
+        },
+        {
+          "key": "cellar/fv102.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV102",
+          "output": "fv102.level_pct"
+        },
+        {
+          "key": "cellar/fv102.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.spund_gps"
+        },
+        {
+          "key": "cellar/fv102.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.psv_gps"
+        },
+        {
+          "key": "cellar/fv102.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.leak_gps"
+        },
+        {
+          "key": "cellar/fv103.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV103",
+          "output": "fv103.level_pct"
+        },
+        {
+          "key": "cellar/fv103.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.spund_gps"
+        },
+        {
+          "key": "cellar/fv103.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.psv_gps"
+        },
+        {
+          "key": "cellar/fv103.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.leak_gps"
+        },
+        {
+          "key": "cellar/fv104.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV104",
+          "output": "fv104.level_pct"
+        },
+        {
+          "key": "cellar/fv104.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.spund_gps"
+        },
+        {
+          "key": "cellar/fv104.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.psv_gps"
+        },
+        {
+          "key": "cellar/fv104.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.leak_gps"
         }
       ],
       "subscriptions": [],

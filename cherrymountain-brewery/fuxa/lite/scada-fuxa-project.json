@@ -4392,10 +4392,154 @@
               ]
             },
             "label": "HtmlSemaphore"
+          },
+          "GSE_d3af5e49-556f-57ef-8d4a-661a5ee4c98e": {
+            "id": "GSE_d3af5e49-556f-57ef-8d4a-661a5ee4c98e",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.PSV.ZSH01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_15bb98f2-d6ce-5e16-8fea-52bdb6d70f85",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_d27df922-1a75-5ad2-b677-166fa803c2c5": {
+            "id": "GSE_d27df922-1a75-5ad2-b677-166fa803c2c5",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.PSV.ZSH02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_98639886-1c55-50ab-90d2-10ba1664d441",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_60589a71-c9c7-50cf-b24e-a103801bc5ab": {
+            "id": "GSE_60589a71-c9c7-50cf-b24e-a103801bc5ab",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.PSV.ZSH03.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_b6902e0d-96ae-56c7-9072-191cffe809d0",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_77c2ab7c-80db-5ebf-99bc-53dc1b2e526d": {
+            "id": "GSE_77c2ab7c-80db-5ebf-99bc-53dc1b2e526d",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.PSV.ZSH04.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_275cd7a7-abff-50b4-904d-d25d4df399b3",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_57181a95-5718-53ff-b04b-444c1fde6288": {
+            "id": "GSE_57181a95-5718-53ff-b04b-444c1fde6288",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.PSV.ZSH05.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_a278835b-2915-57b1-b0df-3f039ba12611",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_603f6d97-d407-5353-987b-4c5b1b441803": {
+            "id": "GSE_603f6d97-d407-5353-987b-4c5b1b441803",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "CEL.PSV.ZSH06.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_0203d7bd-117d-5b19-bfe8-00cdbf71fc3b",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
           }
         },
         "variables": {},
-        "svgcontent": "<svg width=\"1480\" height=\"694\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\">\n <g>\n  <title>Layer 1</title>\n  <text xml:space=\"preserve\" x=\"20\" y=\"28\" font-size=\"18\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Cellar: plc-cellar</text>\n  <text xml:space=\"preserve\" x=\"20\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar simulation clock ...</text>\n  <g id=\"VAL_2b4001f7-e6ec-5615-a603-ce28bff4f0cb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e37d74eb-7f09-5eb9-92ee-d6776aa17855\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"64\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 side temperature</text>\n  <g id=\"VAL_e85301cb-96b9-5cf7-9c3c-8a497ffc56eb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_f1821422-7e82-5a60-a896-0048e491d777\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 side glycol valve command</text>\n  <g id=\"GSE_f1de4287-dd8f-5dbb-a1dc-2214b57c9f2a\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_69825333-64b9-5e78-a87c-455c49bdca19\" cx=\"320\" cy=\"111\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 cone temperature</text>\n  <g id=\"VAL_d67d4ffb-4b73-5839-b47e-16df3ea50d05\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_3c6129ba-f9f7-59a0-a8ea-40ec30f6bc4e\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 cone glycol valve command</text>\n  <g id=\"GSE_057602a1-3adc-5d8b-9d7c-34c6fec7d3f2\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_7e400110-c474-57aa-8952-fd4e3934ca39\" cx=\"320\" cy=\"163\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 head pressure (absolute)</text>\n  <g id=\"VAL_879bd2e0-ddba-5dc5-9512-835aa1dbc082\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_b2d45ffc-326d-51b9-8caf-132b38286447\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 apparent extract (sample- ...</text>\n  <g id=\"VAL_ff7a23b7-16b6-54c9-80b3-6aa524b94457\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_aadab011-fd92-51d7-81eb-2f74baea0920\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 spunding valve setpoint ...</text>\n  <g id=\"VAL_a7b5d372-722b-50a8-b621-32d90a15a25a\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_d0d729c8-7149-57ca-bb27-c5e4ec6feed3\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"246\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 spunding valve open (venting)</text>\n  <g id=\"GSE_2fc40520-d3ac-5881-bc90-b2c7849a848e\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_09570367-0bdd-5be0-8627-43e3c6edce3c\" cx=\"320\" cy=\"267\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 side temperature setpoint</text>\n  <g id=\"VAL_aaad0e72-1b1e-5bde-90f3-e1cca37c8f06\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_d4605138-dfd7-5164-8342-58cb0a111bd8\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"298\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 cone temperature setpoint</text>\n  <g id=\"VAL_fedea1c0-7e47-5aeb-9a4b-296e8ac3772b\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_b316ea9f-40fd-5928-b77b-8b1ef0c228e3\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"324\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 side temperature</text>\n  <g id=\"VAL_d78c707e-ba03-5c4d-b478-036c70e711dc\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_68964ae2-5887-5186-8058-4aeb25728a45\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 side glycol valve command</text>\n  <g id=\"GSE_8793f7f7-9236-5793-9847-4d4b579fa25b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_98967fd9-5634-5d35-b2ed-feb6f797c75b\" cx=\"320\" cy=\"371\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 cone temperature</text>\n  <g id=\"VAL_8f9e27c4-a87f-513c-a2d3-b7da79cf7d02\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_0c80b4cd-2af4-5e58-a0a0-431f84d15be1\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 cone glycol valve command</text>\n  <g id=\"GSE_af1768a6-32c4-5b13-9042-21f33610c09b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_b1207144-6bce-5d78-ad2f-e4b62671aa9d\" cx=\"320\" cy=\"423\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 head pressure (absolute)</text>\n  <g id=\"VAL_3064160d-303d-5f2a-9caa-bc726b1e9af9\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_072bead7-129c-5008-81e0-ca3424fbf606\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"454\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 apparent extract (sample- ...</text>\n  <g id=\"VAL_fa75d2e5-dd38-5e17-a8d3-88ec205d6bf9\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_ffe580d1-ec4b-55ba-adaa-4a35f10418c0\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"480\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 spunding valve setpoint ...</text>\n  <g id=\"VAL_94fa623f-2613-50cd-ac3f-a17d054a2531\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_bfe40e20-afa1-5d12-b757-c4ab7cc36aef\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"506\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 spunding valve open (venting)</text>\n  <g id=\"GSE_3f2d7c91-5218-5f72-a515-0a8e6f7514e0\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_40523440-48c5-5836-82c2-c687929f38eb\" cx=\"320\" cy=\"527\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 side temperature setpoint</text>\n  <g id=\"VAL_a1c1223e-9ef7-595e-b1f4-a8da0a4dc4b4\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_838beb58-73d3-505f-9455-0b073faa7229\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 cone temperature setpoint</text>\n  <g id=\"VAL_33d32808-6da3-5eca-a61f-ae44e335077c\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_1f6abe0e-02ea-5e17-beb8-714124fee4ac\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"584\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 side temperature</text>\n  <g id=\"VAL_14ff15d5-1a68-5551-a95c-7218b103cc34\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_5b679cbd-7e1c-5884-8706-063b31c9415b\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"610\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 side glycol valve command</text>\n  <g id=\"GSE_0c05e76b-b2cb-5d54-895f-89dc5f056cba\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e03d10e6-479f-5535-aa05-a8c4e2babbdf\" cx=\"320\" cy=\"631\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 cone temperature</text>\n  <g id=\"VAL_380d0e15-d00e-558c-b527-2ce2ea8b4823\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_10a7bc70-a559-5bb8-a7a2-bcc9337d8250\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"662\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 cone glycol valve command</text>\n  <g id=\"GSE_2e44673c-6bd1-5d02-9c7c-fc477d12363d\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_c74a86f7-23a2-5636-86f7-30ad9c31a193\" cx=\"680\" cy=\"59\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 head pressure (absolute)</text>\n  <g id=\"VAL_62c3f7f0-9645-5fd7-8d79-20e4f0feb071\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9d72dfc1-9317-5dee-9540-daa660958cf3\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 apparent extract (sample- ...</text>\n  <g id=\"VAL_be9d2d64-329c-5803-9b78-91a01ca47e81\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_caf414ee-ef6e-50af-bc08-fe35cc3b2863\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"116\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 spunding valve setpoint ...</text>\n  <g id=\"VAL_66142b44-7042-536b-b3b2-d657d4a0e513\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a991661d-eb75-5ec0-a822-c3fbc94fd048\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 spunding valve open (venting)</text>\n  <g id=\"GSE_ecb205d4-4462-5a0e-a346-07e37da72b11\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_5451f2c1-fe5c-553f-a295-93b349f0e50f\" cx=\"680\" cy=\"163\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 side temperature setpoint</text>\n  <g id=\"VAL_78698d42-f03b-5e25-a8fa-8ba57a9cf122\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e35b80e2-5b6b-5217-8f68-6dc317d2e0da\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 cone temperature setpoint</text>\n  <g id=\"VAL_55e6cdf5-4b99-5f47-a1e0-a3adb192663c\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9fc88e73-3993-5160-8461-b0afdcf27de1\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 side temperature</text>\n  <g id=\"VAL_02831fd5-8939-51cc-93b0-059c26329eae\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_6d91ff95-6d68-5df0-a567-dbcf1a704351\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"246\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 side glycol valve command</text>\n  <g id=\"GSE_b6266f44-3f9d-532e-8c0b-9e8ed2cf2fd4\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_1429b28c-a64c-5750-a96b-80175f61ff28\" cx=\"680\" cy=\"267\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 cone temperature</text>\n  <g id=\"VAL_d464384f-441a-5726-b064-502267a3c0ad\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cf462be6-0a89-5de1-a0dc-67aa7e99800b\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"298\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 cone glycol valve command</text>\n  <g id=\"GSE_eec33df1-8c67-5da1-ace7-c59b48f1bef2\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_1d641356-fe22-5f75-98cb-83e634bf6b67\" cx=\"680\" cy=\"319\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 head pressure (absolute)</text>\n  <g id=\"VAL_6d77d6cf-2c7b-58ed-9c06-ef921161841d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_f14202b2-9c52-5129-96cb-9ead17b6d493\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 apparent extract (sample- ...</text>\n  <g id=\"VAL_46886b90-238d-522c-beb1-e77e83e680db\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9553031f-7fd6-57f7-b2f5-80e6ed8f4dd0\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"376\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 spunding valve setpoint ...</text>\n  <g id=\"VAL_8da8f073-4228-5bc9-874d-008d94b2c672\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a30f3a7e-79e3-5ab4-a3ff-64a9f71a7f38\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 spunding valve open (venting)</text>\n  <g id=\"GSE_fd120420-284c-5224-ad57-31a0da4ba37e\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0db4545c-afd0-5d0f-8c6c-53935744ece9\" cx=\"680\" cy=\"423\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 side temperature setpoint</text>\n  <g id=\"VAL_607fde46-104b-57b1-8d83-51aaa752fa53\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_72d9df7e-e670-5032-8a69-d1a3de13e274\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"454\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 cone temperature setpoint</text>\n  <g id=\"VAL_c170cdfe-6b24-50a5-ba09-e86307c6811c\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_f6bf04c7-5712-5ba3-8178-d1b6a685b233\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"480\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 temperature</text>\n  <g id=\"VAL_2fa4dde5-7d2a-5c94-8c3a-716038fae2fa\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_80d937c3-d73d-5d04-964c-c05d13dfd0e4\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"506\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 head pressure (absolute)</text>\n  <g id=\"VAL_d47aa0e2-b604-55cd-b342-bc876e0e5a49\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_8a07a6af-ca6a-5e4e-9dc2-6d75352492c0\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"532\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 level</text>\n  <g id=\"VAL_d1704462-f430-57b0-9138-c5b1d911d1a2\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_35644dde-2f19-5ab8-90a7-50a76c97a69a\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 dissolved CO2 (inline meter)</text>\n  <g id=\"VAL_43c3ce6d-25b7-5ec0-9987-9f89c5d488a5\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cd98e633-c61f-572a-9d43-d142e21233af\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"584\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 carbonation stone CO2 flow</text>\n  <g id=\"VAL_ea4e13af-f11f-5f99-916c-7dc3d1092b01\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_8f29084a-7c74-5b8e-bfb1-e8068a55eb10\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"610\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 jacket glycol valve command</text>\n  <g id=\"GSE_74a38887-cb02-59c4-adb1-65c7a37fdfaf\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0b97479b-c391-50aa-82d0-a11fcdc4019a\" cx=\"680\" cy=\"631\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 outlet valve (to packaging)</text>\n  <g id=\"GSE_4a703e9e-ba71-508c-b9cb-16b8491b4e62\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6c473211-d8b0-5b90-bfe9-da696a6feb39\" cx=\"680\" cy=\"657\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 carbonation CO2 flow ...</text>\n  <g id=\"VAL_74b4f869-dfe1-59fc-b4aa-2658dbe30829\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_5be9bc59-51ee-5ba3-85b0-ef0751ab7a91\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"64\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 temperature setpoint</text>\n  <g id=\"VAL_dc5f745c-8ecf-5797-bf0e-514b2b852905\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_72dd973a-4ede-5e5a-aafa-3ebb7b4fdf6c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 carbonation target</text>\n  <g id=\"VAL_0df45e13-1192-52f5-b42a-3a88f6157389\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_ee1673f8-4cc0-57f8-a67c-87e449cde1d4\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"116\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 equilibrium head ...</text>\n  <g id=\"VAL_b8f710c7-7e40-5651-8f12-54e4a628aebb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_555b5185-afae-560f-93fb-86cb2497449d\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 temperature</text>\n  <g id=\"VAL_ce4a90b3-8e86-574e-9e09-0243cd120fd2\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a9ac1afe-6dba-5dee-a8c9-5e17bd127b10\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"168\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 head pressure (absolute)</text>\n  <g id=\"VAL_cfb33ea8-ca3b-5d43-9ae2-e41123c5855d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a9c21aa7-f167-50d6-99e5-e4780da6c60f\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 level</text>\n  <g id=\"VAL_20ab8d29-d6f6-5b45-98b0-41302f1a5878\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cea56d6c-cdaa-536e-abb3-9e2a8a36a286\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 dissolved CO2 (inline meter)</text>\n  <g id=\"VAL_d1ac5c93-cbe9-5278-89eb-c2a19a9f4085\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_429bbe8e-9279-5ecf-b77c-157a3ccf3259\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"246\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 carbonation stone CO2 flow</text>\n  <g id=\"VAL_adfa580c-c8d4-57e6-8527-1d210b31610d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_7eeec7a9-984b-54aa-a2de-3136db08ccad\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"272\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 jacket glycol valve command</text>\n  <g id=\"GSE_66402d61-7c48-5bcb-820b-365d57fd631c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_56c8b3f0-9c9b-5e6e-8f05-99ddeaedc8e6\" cx=\"1040\" cy=\"293\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 outlet valve (to packaging)</text>\n  <g id=\"GSE_69d1001e-ed51-5110-b766-da5ba7553e36\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6448c5b5-0947-56ca-a134-738a46a8e291\" cx=\"1040\" cy=\"319\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 carbonation CO2 flow ...</text>\n  <g id=\"VAL_81b895f8-f323-581d-9ce9-a3be1cd6e549\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_6cc99a16-bd09-598e-94c1-2499841d4b50\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 temperature setpoint</text>\n  <g id=\"VAL_7fb5356c-d99a-5e27-9266-18c0951f36c4\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_aa6564db-88a4-56af-9f5b-e793b375c4ab\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"376\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 carbonation target</text>\n  <g id=\"VAL_361d63ed-53d5-5468-bc14-3b70778deecb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_2cbbc62c-3695-50c0-a7ed-374952c55e06\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 equilibrium head ...</text>\n  <g id=\"VAL_2c6a5cd5-1d55-5b0c-a8f6-f5717111ec82\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_c87675b7-6aaf-541a-b2a5-49f40ff2c568\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"428\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Hop port closed</text>\n  <g id=\"GSE_687e536d-3859-5b0d-bb1e-6108dccd2739\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_2e793d3a-5be1-575e-bd4f-0dd54214c5f4\" cx=\"1040\" cy=\"449\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Hop port CO2 purge valve</text>\n  <g id=\"GSE_cb84bb60-fb2d-55fa-b379-37054cdbcfb9\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_acec0f57-1163-5ab1-b134-e47ead9909a7\" cx=\"1040\" cy=\"475\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Hop dose valve</text>\n  <g id=\"GSE_dc4caf33-918f-59bf-a1ab-a291d0c6707c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_4cbf5aa5-b20d-543f-b1f6-738656a86856\" cx=\"1040\" cy=\"501\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Dry-hop dose request (operator; ...</text>\n  <g id=\"GSE_17069d0f-e7a8-5dc5-a04d-1d46ec8ff2fa\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_76958d78-f588-5b05-aa9e-b1953d4d8026\" cx=\"1040\" cy=\"527\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Dry-hop sequence step (0 idle, 1 ...</text>\n  <g id=\"VAL_d34e1c3c-0c43-501e-8461-c68257eeeaf4\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_33af432d-c861-5e6b-86b6-23d7604f2ac6\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer route verified (swing- ...</text>\n  <g id=\"GSE_72a444d5-6f35-54b0-9ee9-851786f28a59\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_ae3f8614-e2df-5976-a2c9-ede897602cd4\" cx=\"1040\" cy=\"579\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer pump running</text>\n  <g id=\"GSE_7dda8f6e-af72-5e86-a162-3419899f68ea\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_99bf8dc1-be6c-5f43-830b-7e8024f5c0b1\" cx=\"1040\" cy=\"605\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer flow</text>\n  <g id=\"VAL_491511e1-fc1c-57b1-a724-d9f06f6cb85d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_293a74fd-a476-5106-baa6-6d1487ce66a5\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"636\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer pump run command</text>\n  <g id=\"GSE_0dab1995-9a95-5649-8f07-24d85c5c3abc\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_ac04e643-a7fb-54a7-8d64-a96978cf2078\" cx=\"1040\" cy=\"657\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer in progress (peer ...</text>\n  <g id=\"GSE_24409e2a-d0b4-5fed-bcae-9653af45bb23\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6ba7b437-549e-518d-a07a-87a4cacbfcc9\" cx=\"1400\" cy=\"59\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">CIP permitted on the cellar ...</text>\n  <g id=\"GSE_3ac088d8-42f9-5fda-a010-64e0c86d6ccf\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e758dbef-11e2-5ab5-9c92-4b75310142c6\" cx=\"1400\" cy=\"85\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 relay healthy (below ...</text>\n  <g id=\"GSE_e21504a0-d2b5-5526-b296-f35f6666fe21\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_c05f70a8-015c-5fbe-ba40-81aa7909d566\" cx=\"1400\" cy=\"111\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Carbonation inhibited by the ...</text>\n  <g id=\"GSE_f051feab-aaa2-50bd-a706-a45ba37ba48f\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_115488bc-06a0-59ec-ba61-cc68090102d2\" cx=\"1400\" cy=\"137\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n </g>\n</svg>",
+        "svgcontent": "<svg width=\"1480\" height=\"694\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\">\n <g>\n  <title>Layer 1</title>\n  <text xml:space=\"preserve\" x=\"20\" y=\"28\" font-size=\"18\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Cellar: plc-cellar</text>\n  <text xml:space=\"preserve\" x=\"20\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar simulation clock ...</text>\n  <g id=\"VAL_2b4001f7-e6ec-5615-a603-ce28bff4f0cb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e37d74eb-7f09-5eb9-92ee-d6776aa17855\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"64\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 side temperature</text>\n  <g id=\"VAL_e85301cb-96b9-5cf7-9c3c-8a497ffc56eb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_f1821422-7e82-5a60-a896-0048e491d777\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 side glycol valve command</text>\n  <g id=\"GSE_f1de4287-dd8f-5dbb-a1dc-2214b57c9f2a\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_69825333-64b9-5e78-a87c-455c49bdca19\" cx=\"320\" cy=\"111\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 cone temperature</text>\n  <g id=\"VAL_d67d4ffb-4b73-5839-b47e-16df3ea50d05\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_3c6129ba-f9f7-59a0-a8ea-40ec30f6bc4e\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 cone glycol valve command</text>\n  <g id=\"GSE_057602a1-3adc-5d8b-9d7c-34c6fec7d3f2\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_7e400110-c474-57aa-8952-fd4e3934ca39\" cx=\"320\" cy=\"163\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 head pressure (absolute)</text>\n  <g id=\"VAL_879bd2e0-ddba-5dc5-9512-835aa1dbc082\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_b2d45ffc-326d-51b9-8caf-132b38286447\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 apparent extract (sample- ...</text>\n  <g id=\"VAL_ff7a23b7-16b6-54c9-80b3-6aa524b94457\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_aadab011-fd92-51d7-81eb-2f74baea0920\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 spunding valve setpoint ...</text>\n  <g id=\"VAL_a7b5d372-722b-50a8-b621-32d90a15a25a\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_d0d729c8-7149-57ca-bb27-c5e4ec6feed3\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"246\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 spunding valve open (venting)</text>\n  <g id=\"GSE_2fc40520-d3ac-5881-bc90-b2c7849a848e\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_09570367-0bdd-5be0-8627-43e3c6edce3c\" cx=\"320\" cy=\"267\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 side temperature setpoint</text>\n  <g id=\"VAL_aaad0e72-1b1e-5bde-90f3-e1cca37c8f06\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_d4605138-dfd7-5164-8342-58cb0a111bd8\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"298\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 cone temperature setpoint</text>\n  <g id=\"VAL_fedea1c0-7e47-5aeb-9a4b-296e8ac3772b\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_b316ea9f-40fd-5928-b77b-8b1ef0c228e3\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"324\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 side temperature</text>\n  <g id=\"VAL_d78c707e-ba03-5c4d-b478-036c70e711dc\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_68964ae2-5887-5186-8058-4aeb25728a45\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 side glycol valve command</text>\n  <g id=\"GSE_8793f7f7-9236-5793-9847-4d4b579fa25b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_98967fd9-5634-5d35-b2ed-feb6f797c75b\" cx=\"320\" cy=\"371\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 cone temperature</text>\n  <g id=\"VAL_8f9e27c4-a87f-513c-a2d3-b7da79cf7d02\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_0c80b4cd-2af4-5e58-a0a0-431f84d15be1\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 cone glycol valve command</text>\n  <g id=\"GSE_af1768a6-32c4-5b13-9042-21f33610c09b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_b1207144-6bce-5d78-ad2f-e4b62671aa9d\" cx=\"320\" cy=\"423\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 head pressure (absolute)</text>\n  <g id=\"VAL_3064160d-303d-5f2a-9caa-bc726b1e9af9\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_072bead7-129c-5008-81e0-ca3424fbf606\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"454\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 apparent extract (sample- ...</text>\n  <g id=\"VAL_fa75d2e5-dd38-5e17-a8d3-88ec205d6bf9\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_ffe580d1-ec4b-55ba-adaa-4a35f10418c0\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"480\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 spunding valve setpoint ...</text>\n  <g id=\"VAL_94fa623f-2613-50cd-ac3f-a17d054a2531\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_bfe40e20-afa1-5d12-b757-c4ab7cc36aef\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"506\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 spunding valve open (venting)</text>\n  <g id=\"GSE_3f2d7c91-5218-5f72-a515-0a8e6f7514e0\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_40523440-48c5-5836-82c2-c687929f38eb\" cx=\"320\" cy=\"527\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 side temperature setpoint</text>\n  <g id=\"VAL_a1c1223e-9ef7-595e-b1f4-a8da0a4dc4b4\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_838beb58-73d3-505f-9455-0b073faa7229\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 cone temperature setpoint</text>\n  <g id=\"VAL_33d32808-6da3-5eca-a61f-ae44e335077c\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_1f6abe0e-02ea-5e17-beb8-714124fee4ac\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"584\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 side temperature</text>\n  <g id=\"VAL_14ff15d5-1a68-5551-a95c-7218b103cc34\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_5b679cbd-7e1c-5884-8706-063b31c9415b\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"610\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 side glycol valve command</text>\n  <g id=\"GSE_0c05e76b-b2cb-5d54-895f-89dc5f056cba\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e03d10e6-479f-5535-aa05-a8c4e2babbdf\" cx=\"320\" cy=\"631\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 cone temperature</text>\n  <g id=\"VAL_380d0e15-d00e-558c-b527-2ce2ea8b4823\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_10a7bc70-a559-5bb8-a7a2-bcc9337d8250\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"662\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 cone glycol valve command</text>\n  <g id=\"GSE_2e44673c-6bd1-5d02-9c7c-fc477d12363d\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_c74a86f7-23a2-5636-86f7-30ad9c31a193\" cx=\"680\" cy=\"59\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 head pressure (absolute)</text>\n  <g id=\"VAL_62c3f7f0-9645-5fd7-8d79-20e4f0feb071\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9d72dfc1-9317-5dee-9540-daa660958cf3\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 apparent extract (sample- ...</text>\n  <g id=\"VAL_be9d2d64-329c-5803-9b78-91a01ca47e81\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_caf414ee-ef6e-50af-bc08-fe35cc3b2863\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"116\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 spunding valve setpoint ...</text>\n  <g id=\"VAL_66142b44-7042-536b-b3b2-d657d4a0e513\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a991661d-eb75-5ec0-a822-c3fbc94fd048\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 spunding valve open (venting)</text>\n  <g id=\"GSE_ecb205d4-4462-5a0e-a346-07e37da72b11\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_5451f2c1-fe5c-553f-a295-93b349f0e50f\" cx=\"680\" cy=\"163\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 side temperature setpoint</text>\n  <g id=\"VAL_78698d42-f03b-5e25-a8fa-8ba57a9cf122\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e35b80e2-5b6b-5217-8f68-6dc317d2e0da\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 cone temperature setpoint</text>\n  <g id=\"VAL_55e6cdf5-4b99-5f47-a1e0-a3adb192663c\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9fc88e73-3993-5160-8461-b0afdcf27de1\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 side temperature</text>\n  <g id=\"VAL_02831fd5-8939-51cc-93b0-059c26329eae\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_6d91ff95-6d68-5df0-a567-dbcf1a704351\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"246\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 side glycol valve command</text>\n  <g id=\"GSE_b6266f44-3f9d-532e-8c0b-9e8ed2cf2fd4\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_1429b28c-a64c-5750-a96b-80175f61ff28\" cx=\"680\" cy=\"267\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 cone temperature</text>\n  <g id=\"VAL_d464384f-441a-5726-b064-502267a3c0ad\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cf462be6-0a89-5de1-a0dc-67aa7e99800b\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"298\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 cone glycol valve command</text>\n  <g id=\"GSE_eec33df1-8c67-5da1-ace7-c59b48f1bef2\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_1d641356-fe22-5f75-98cb-83e634bf6b67\" cx=\"680\" cy=\"319\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 head pressure (absolute)</text>\n  <g id=\"VAL_6d77d6cf-2c7b-58ed-9c06-ef921161841d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_f14202b2-9c52-5129-96cb-9ead17b6d493\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 apparent extract (sample- ...</text>\n  <g id=\"VAL_46886b90-238d-522c-beb1-e77e83e680db\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9553031f-7fd6-57f7-b2f5-80e6ed8f4dd0\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"376\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 spunding valve setpoint ...</text>\n  <g id=\"VAL_8da8f073-4228-5bc9-874d-008d94b2c672\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a30f3a7e-79e3-5ab4-a3ff-64a9f71a7f38\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 spunding valve open (venting)</text>\n  <g id=\"GSE_fd120420-284c-5224-ad57-31a0da4ba37e\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0db4545c-afd0-5d0f-8c6c-53935744ece9\" cx=\"680\" cy=\"423\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 side temperature setpoint</text>\n  <g id=\"VAL_607fde46-104b-57b1-8d83-51aaa752fa53\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_72d9df7e-e670-5032-8a69-d1a3de13e274\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"454\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 cone temperature setpoint</text>\n  <g id=\"VAL_c170cdfe-6b24-50a5-ba09-e86307c6811c\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_f6bf04c7-5712-5ba3-8178-d1b6a685b233\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"480\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 temperature</text>\n  <g id=\"VAL_2fa4dde5-7d2a-5c94-8c3a-716038fae2fa\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_80d937c3-d73d-5d04-964c-c05d13dfd0e4\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"506\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 head pressure (absolute)</text>\n  <g id=\"VAL_d47aa0e2-b604-55cd-b342-bc876e0e5a49\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_8a07a6af-ca6a-5e4e-9dc2-6d75352492c0\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"532\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 level</text>\n  <g id=\"VAL_d1704462-f430-57b0-9138-c5b1d911d1a2\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_35644dde-2f19-5ab8-90a7-50a76c97a69a\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 dissolved CO2 (inline meter)</text>\n  <g id=\"VAL_43c3ce6d-25b7-5ec0-9987-9f89c5d488a5\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cd98e633-c61f-572a-9d43-d142e21233af\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"584\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 carbonation stone CO2 flow</text>\n  <g id=\"VAL_ea4e13af-f11f-5f99-916c-7dc3d1092b01\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_8f29084a-7c74-5b8e-bfb1-e8068a55eb10\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"610\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 jacket glycol valve command</text>\n  <g id=\"GSE_74a38887-cb02-59c4-adb1-65c7a37fdfaf\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0b97479b-c391-50aa-82d0-a11fcdc4019a\" cx=\"680\" cy=\"631\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 outlet valve (to packaging)</text>\n  <g id=\"GSE_4a703e9e-ba71-508c-b9cb-16b8491b4e62\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6c473211-d8b0-5b90-bfe9-da696a6feb39\" cx=\"680\" cy=\"657\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 carbonation CO2 flow ...</text>\n  <g id=\"VAL_74b4f869-dfe1-59fc-b4aa-2658dbe30829\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_5be9bc59-51ee-5ba3-85b0-ef0751ab7a91\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"64\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 temperature setpoint</text>\n  <g id=\"VAL_dc5f745c-8ecf-5797-bf0e-514b2b852905\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_72dd973a-4ede-5e5a-aafa-3ebb7b4fdf6c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 carbonation target</text>\n  <g id=\"VAL_0df45e13-1192-52f5-b42a-3a88f6157389\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_ee1673f8-4cc0-57f8-a67c-87e449cde1d4\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"116\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 equilibrium head ...</text>\n  <g id=\"VAL_b8f710c7-7e40-5651-8f12-54e4a628aebb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_555b5185-afae-560f-93fb-86cb2497449d\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 temperature</text>\n  <g id=\"VAL_ce4a90b3-8e86-574e-9e09-0243cd120fd2\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a9ac1afe-6dba-5dee-a8c9-5e17bd127b10\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"168\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 head pressure (absolute)</text>\n  <g id=\"VAL_cfb33ea8-ca3b-5d43-9ae2-e41123c5855d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_a9c21aa7-f167-50d6-99e5-e4780da6c60f\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 level</text>\n  <g id=\"VAL_20ab8d29-d6f6-5b45-98b0-41302f1a5878\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cea56d6c-cdaa-536e-abb3-9e2a8a36a286\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 dissolved CO2 (inline meter)</text>\n  <g id=\"VAL_d1ac5c93-cbe9-5278-89eb-c2a19a9f4085\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_429bbe8e-9279-5ecf-b77c-157a3ccf3259\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"246\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 carbonation stone CO2 flow</text>\n  <g id=\"VAL_adfa580c-c8d4-57e6-8527-1d210b31610d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_7eeec7a9-984b-54aa-a2de-3136db08ccad\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"272\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 jacket glycol valve command</text>\n  <g id=\"GSE_66402d61-7c48-5bcb-820b-365d57fd631c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_56c8b3f0-9c9b-5e6e-8f05-99ddeaedc8e6\" cx=\"1040\" cy=\"293\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 outlet valve (to packaging)</text>\n  <g id=\"GSE_69d1001e-ed51-5110-b766-da5ba7553e36\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6448c5b5-0947-56ca-a134-738a46a8e291\" cx=\"1040\" cy=\"319\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 carbonation CO2 flow ...</text>\n  <g id=\"VAL_81b895f8-f323-581d-9ce9-a3be1cd6e549\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_6cc99a16-bd09-598e-94c1-2499841d4b50\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 temperature setpoint</text>\n  <g id=\"VAL_7fb5356c-d99a-5e27-9266-18c0951f36c4\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_aa6564db-88a4-56af-9f5b-e793b375c4ab\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"376\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 carbonation target</text>\n  <g id=\"VAL_361d63ed-53d5-5468-bc14-3b70778deecb\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_2cbbc62c-3695-50c0-a7ed-374952c55e06\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 equilibrium head ...</text>\n  <g id=\"VAL_2c6a5cd5-1d55-5b0c-a8f6-f5717111ec82\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_c87675b7-6aaf-541a-b2a5-49f40ff2c568\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"428\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Hop port closed</text>\n  <g id=\"GSE_687e536d-3859-5b0d-bb1e-6108dccd2739\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_2e793d3a-5be1-575e-bd4f-0dd54214c5f4\" cx=\"1040\" cy=\"449\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Hop port CO2 purge valve</text>\n  <g id=\"GSE_cb84bb60-fb2d-55fa-b379-37054cdbcfb9\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_acec0f57-1163-5ab1-b134-e47ead9909a7\" cx=\"1040\" cy=\"475\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Hop dose valve</text>\n  <g id=\"GSE_dc4caf33-918f-59bf-a1ab-a291d0c6707c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_4cbf5aa5-b20d-543f-b1f6-738656a86856\" cx=\"1040\" cy=\"501\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Dry-hop dose request (operator; ...</text>\n  <g id=\"GSE_17069d0f-e7a8-5dc5-a04d-1d46ec8ff2fa\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_76958d78-f588-5b05-aa9e-b1953d4d8026\" cx=\"1040\" cy=\"527\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Dry-hop sequence step (0 idle, 1 ...</text>\n  <g id=\"VAL_d34e1c3c-0c43-501e-8461-c68257eeeaf4\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_33af432d-c861-5e6b-86b6-23d7604f2ac6\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer route verified (swing- ...</text>\n  <g id=\"GSE_72a444d5-6f35-54b0-9ee9-851786f28a59\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_ae3f8614-e2df-5976-a2c9-ede897602cd4\" cx=\"1040\" cy=\"579\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer pump running</text>\n  <g id=\"GSE_7dda8f6e-af72-5e86-a162-3419899f68ea\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_99bf8dc1-be6c-5f43-830b-7e8024f5c0b1\" cx=\"1040\" cy=\"605\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer flow</text>\n  <g id=\"VAL_491511e1-fc1c-57b1-a724-d9f06f6cb85d\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_293a74fd-a476-5106-baa6-6d1487ce66a5\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"1040\" y=\"636\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"740\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer pump run command</text>\n  <g id=\"GSE_0dab1995-9a95-5649-8f07-24d85c5c3abc\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_ac04e643-a7fb-54a7-8d64-a96978cf2078\" cx=\"1040\" cy=\"657\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Transfer in progress (peer ...</text>\n  <g id=\"GSE_24409e2a-d0b4-5fed-bcae-9653af45bb23\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6ba7b437-549e-518d-a07a-87a4cacbfcc9\" cx=\"1400\" cy=\"59\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">CIP permitted on the cellar ...</text>\n  <g id=\"GSE_3ac088d8-42f9-5fda-a010-64e0c86d6ccf\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e758dbef-11e2-5ab5-9c92-4b75310142c6\" cx=\"1400\" cy=\"85\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 relay healthy (below ...</text>\n  <g id=\"GSE_e21504a0-d2b5-5526-b296-f35f6666fe21\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_c05f70a8-015c-5fbe-ba40-81aa7909d566\" cx=\"1400\" cy=\"111\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Carbonation inhibited by the ...</text>\n  <g id=\"GSE_f051feab-aaa2-50bd-a706-a45ba37ba48f\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_115488bc-06a0-59ec-ba61-cc68090102d2\" cx=\"1400\" cy=\"137\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-101 relief valve (PSV) lifted</text>\n  <g id=\"GSE_d3af5e49-556f-57ef-8d4a-661a5ee4c98e\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_9698754c-b275-5f50-99db-ee36f77433f9\" cx=\"1400\" cy=\"163\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-102 relief valve (PSV) lifted</text>\n  <g id=\"GSE_d27df922-1a75-5ad2-b677-166fa803c2c5\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_40bad0c9-4a67-510d-8847-c4ddbe0c3a1f\" cx=\"1400\" cy=\"189\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-103 relief valve (PSV) lifted</text>\n  <g id=\"GSE_60589a71-c9c7-50cf-b24e-a103801bc5ab\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_23f3ab58-f0e0-500e-8861-4ba2f2f0d185\" cx=\"1400\" cy=\"215\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">FV-104 relief valve (PSV) lifted</text>\n  <g id=\"GSE_77c2ab7c-80db-5ebf-99bc-53dc1b2e526d\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_1a6d59db-873e-51d5-a0ff-1f87fa386c93\" cx=\"1400\" cy=\"241\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-201 relief valve (PSV) lifted</text>\n  <g id=\"GSE_57181a95-5718-53ff-b04b-444c1fde6288\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6ef68c64-9c79-5e76-9969-963d4c019c37\" cx=\"1400\" cy=\"267\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"1100\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">BBT-202 relief valve (PSV) lifted</text>\n  <g id=\"GSE_603f6d97-d407-5353-987b-4c5b1b441803\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_5ce27352-0d5f-5928-a5fe-f5a2cff6f188\" cx=\"1400\" cy=\"293\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n </g>\n</svg>",
         "type": "svg"
       },
       {
@@ -11431,6 +11575,186 @@
             "interval": 60,
             "restored": false
           }
+        },
+        "t_15bb98f2-d6ce-5e16-8fea-52bdb6d70f85": {
+          "id": "t_15bb98f2-d6ce-5e16-8fea-52bdb6d70f85",
+          "name": "CEL.PSV.ZSH01.PV",
+          "label": "FV-101 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "809",
+          "description": "FV-101 relief valve (PSV) lifted",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_eee85865-76e3-5df2-9f41-11daacf22cb6": {
+          "id": "t_eee85865-76e3-5df2-9f41-11daacf22cb6",
+          "name": "CEL.PSV.ZSH01.ALM_STATE",
+          "label": "FV-101 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "30",
+          "description": "FV-101 relief valve (PSV) lifted: state alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_98639886-1c55-50ab-90d2-10ba1664d441": {
+          "id": "t_98639886-1c55-50ab-90d2-10ba1664d441",
+          "name": "CEL.PSV.ZSH02.PV",
+          "label": "FV-102 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "810",
+          "description": "FV-102 relief valve (PSV) lifted",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_646fe8f5-cc45-5e24-8716-089e106eea98": {
+          "id": "t_646fe8f5-cc45-5e24-8716-089e106eea98",
+          "name": "CEL.PSV.ZSH02.ALM_STATE",
+          "label": "FV-102 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "31",
+          "description": "FV-102 relief valve (PSV) lifted: state alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_b6902e0d-96ae-56c7-9072-191cffe809d0": {
+          "id": "t_b6902e0d-96ae-56c7-9072-191cffe809d0",
+          "name": "CEL.PSV.ZSH03.PV",
+          "label": "FV-103 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "811",
+          "description": "FV-103 relief valve (PSV) lifted",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_30f82dd2-3b2e-594d-9625-d74c3a60fb1e": {
+          "id": "t_30f82dd2-3b2e-594d-9625-d74c3a60fb1e",
+          "name": "CEL.PSV.ZSH03.ALM_STATE",
+          "label": "FV-103 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "32",
+          "description": "FV-103 relief valve (PSV) lifted: state alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_275cd7a7-abff-50b4-904d-d25d4df399b3": {
+          "id": "t_275cd7a7-abff-50b4-904d-d25d4df399b3",
+          "name": "CEL.PSV.ZSH04.PV",
+          "label": "FV-104 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "812",
+          "description": "FV-104 relief valve (PSV) lifted",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_15bb29ef-33e7-5f08-89d6-2b8204b663df": {
+          "id": "t_15bb29ef-33e7-5f08-89d6-2b8204b663df",
+          "name": "CEL.PSV.ZSH04.ALM_STATE",
+          "label": "FV-104 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "33",
+          "description": "FV-104 relief valve (PSV) lifted: state alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_a278835b-2915-57b1-b0df-3f039ba12611": {
+          "id": "t_a278835b-2915-57b1-b0df-3f039ba12611",
+          "name": "CEL.PSV.ZSH05.PV",
+          "label": "BBT-201 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "813",
+          "description": "BBT-201 relief valve (PSV) lifted",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_b6200819-4157-51e7-8b07-9e166d1ea4ba": {
+          "id": "t_b6200819-4157-51e7-8b07-9e166d1ea4ba",
+          "name": "CEL.PSV.ZSH05.ALM_STATE",
+          "label": "BBT-201 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "34",
+          "description": "BBT-201 relief valve (PSV) lifted: state alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_0203d7bd-117d-5b19-bfe8-00cdbf71fc3b": {
+          "id": "t_0203d7bd-117d-5b19-bfe8-00cdbf71fc3b",
+          "name": "CEL.PSV.ZSH06.PV",
+          "label": "BBT-202 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": "814",
+          "description": "BBT-202 relief valve (PSV) lifted",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_387410e1-079e-565f-973b-8f5f5e18f016": {
+          "id": "t_387410e1-079e-565f-973b-8f5f5e18f016",
+          "name": "CEL.PSV.ZSH06.ALM_STATE",
+          "label": "BBT-202 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": "35",
+          "description": "BBT-202 relief valve (PSV) lifted: state alarm (high)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
         }
       }
     },
@@ -16900,6 +17224,360 @@
         "timedelay": 0,
         "text": "Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock): state alarm",
         "group": "CEL.SYS",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.PSV.ZSH01.ALM_STATE",
+      "property": {
+        "variableId": "t_eee85865-76e3-5df2-9f41-11daacf22cb6"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-101 relief valve (PSV) lifted: state alarm",
+        "group": "CEL.PSV",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.PSV.ZSH02.ALM_STATE",
+      "property": {
+        "variableId": "t_646fe8f5-cc45-5e24-8716-089e106eea98"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-102 relief valve (PSV) lifted: state alarm",
+        "group": "CEL.PSV",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.PSV.ZSH03.ALM_STATE",
+      "property": {
+        "variableId": "t_30f82dd2-3b2e-594d-9625-d74c3a60fb1e"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-103 relief valve (PSV) lifted: state alarm",
+        "group": "CEL.PSV",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.PSV.ZSH04.ALM_STATE",
+      "property": {
+        "variableId": "t_15bb29ef-33e7-5f08-89d6-2b8204b663df"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "FV-104 relief valve (PSV) lifted: state alarm",
+        "group": "CEL.PSV",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.PSV.ZSH05.ALM_STATE",
+      "property": {
+        "variableId": "t_b6200819-4157-51e7-8b07-9e166d1ea4ba"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "BBT-201 relief valve (PSV) lifted: state alarm",
+        "group": "CEL.PSV",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "CEL.PSV.ZSH06.ALM_STATE",
+      "property": {
+        "variableId": "t_387410e1-079e-565f-973b-8f5f5e18f016"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1,
+        "max": 1,
+        "timedelay": 0,
+        "text": "BBT-202 relief valve (PSV) lifted: state alarm",
+        "group": "CEL.PSV",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
         "ackmode": "ackactive",
         "bkcolor": "#F9CF59",
         "color": "#000000"

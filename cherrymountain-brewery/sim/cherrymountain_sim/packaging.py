@@ -522,6 +522,14 @@ class PackagingFederate(Federate):
                 return float(self.bottles_total)
             case "kegs.total":
                 return float(self.kegs)
+            # Compliance figures for the KPI API (DESIGN.md §18A).
+            case "ttb.bbl":
+                ttb = self.ttb()
+                return float(ttb["bbl_bottled"]) + float(ttb["bbl_kegged"])
+            case "fill.mean_floz":
+                return self.fill.mean_floz
+            case "fill.under_mav":
+                return float(self.fill.under_mav)
             case "load.line.kw":
                 kw = sum(
                     self.machines[n].spec.kw

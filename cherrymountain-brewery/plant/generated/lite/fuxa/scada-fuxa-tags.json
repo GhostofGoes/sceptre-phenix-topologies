@@ -2115,6 +2115,114 @@
           "memaddress": "000000",
           "address": 29,
           "access": "read"
+        },
+        {
+          "id": "t_15bb98f2-d6ce-5e16-8fea-52bdb6d70f85",
+          "name": "CEL.PSV.ZSH01.PV",
+          "label": "FV-101 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 809,
+          "access": "read"
+        },
+        {
+          "id": "t_eee85865-76e3-5df2-9f41-11daacf22cb6",
+          "name": "CEL.PSV.ZSH01.ALM_STATE",
+          "label": "FV-101 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 30,
+          "access": "read"
+        },
+        {
+          "id": "t_98639886-1c55-50ab-90d2-10ba1664d441",
+          "name": "CEL.PSV.ZSH02.PV",
+          "label": "FV-102 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 810,
+          "access": "read"
+        },
+        {
+          "id": "t_646fe8f5-cc45-5e24-8716-089e106eea98",
+          "name": "CEL.PSV.ZSH02.ALM_STATE",
+          "label": "FV-102 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 31,
+          "access": "read"
+        },
+        {
+          "id": "t_b6902e0d-96ae-56c7-9072-191cffe809d0",
+          "name": "CEL.PSV.ZSH03.PV",
+          "label": "FV-103 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 811,
+          "access": "read"
+        },
+        {
+          "id": "t_30f82dd2-3b2e-594d-9625-d74c3a60fb1e",
+          "name": "CEL.PSV.ZSH03.ALM_STATE",
+          "label": "FV-103 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 32,
+          "access": "read"
+        },
+        {
+          "id": "t_275cd7a7-abff-50b4-904d-d25d4df399b3",
+          "name": "CEL.PSV.ZSH04.PV",
+          "label": "FV-104 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 812,
+          "access": "read"
+        },
+        {
+          "id": "t_15bb29ef-33e7-5f08-89d6-2b8204b663df",
+          "name": "CEL.PSV.ZSH04.ALM_STATE",
+          "label": "FV-104 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 33,
+          "access": "read"
+        },
+        {
+          "id": "t_a278835b-2915-57b1-b0df-3f039ba12611",
+          "name": "CEL.PSV.ZSH05.PV",
+          "label": "BBT-201 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 813,
+          "access": "read"
+        },
+        {
+          "id": "t_b6200819-4157-51e7-8b07-9e166d1ea4ba",
+          "name": "CEL.PSV.ZSH05.ALM_STATE",
+          "label": "BBT-201 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 34,
+          "access": "read"
+        },
+        {
+          "id": "t_0203d7bd-117d-5b19-bfe8-00cdbf71fc3b",
+          "name": "CEL.PSV.ZSH06.PV",
+          "label": "BBT-202 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 814,
+          "access": "read"
+        },
+        {
+          "id": "t_387410e1-079e-565f-973b-8f5f5e18f016",
+          "name": "CEL.PSV.ZSH06.ALM_STATE",
+          "label": "BBT-202 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 35,
+          "access": "read"
         }
       ]
     },

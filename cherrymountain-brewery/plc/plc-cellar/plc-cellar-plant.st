@@ -12,7 +12,9 @@
     - jacket glycol valve on/off control
     - the equilibrium head pressure for the carbonation target (Zahm-Nagel fit,
       sea-level gauge plus 14.7 psi = absolute), and carbonation-stone flow
-      proportional to the shortfall in dissolved CO2
+      proportional to the shortfall in dissolved CO2, closed while the head is
+      more than HEAD_MARGIN above that pressure, so undissolved gas never builds
+      up to the 15 psig relief valve
     - BBT-202 feeds the bottling line: its outlet opens while it holds beer
   Shared equipment:
     - the cellar CO2 life-safety interlock (DESIGN.md 6.7): CEL.SYS.XS01.CO2_OK
@@ -55,7 +57,9 @@ FUNCTION_BLOCK Carbonation
     TEMP : UINT;               (* beer temperature, degF x 100 *)
     VOL_SP : UINT;             (* target, vol x 100 *)
     VOL_PV : UINT;             (* inline meter, vol x 100 *)
+    PSIA_PV : UINT;            (* head pressure, psia x 100 *)
     INHIBIT : BOOL;            (* cellar CO2 interlock *)
+    HEAD_MARGIN : UINT := 100; (* stone closes 1 psi above equilibrium, psi x 100 *)
   END_VAR
   VAR_OUTPUT
     PSIA_SP : UINT;            (* equilibrium head pressure, psia x 100 *)
@@ -74,7 +78,7 @@ FUNCTION_BLOCK Carbonation
   PSIA_SP := REAL_TO_UINT(LIMIT(0.0, (psig_sea_level + 14.7) * 100.0, 4000.0));
   (* 100 % at 0.5 vol or more short of the target, closed at the target. *)
   shortfall := (UINT_TO_REAL(VOL_SP) - UINT_TO_REAL(VOL_PV)) / 100.0;
-  IF INHIBIT OR shortfall <= 0.0 THEN
+  IF INHIBIT OR shortfall <= 0.0 OR PSIA_PV >= PSIA_SP + HEAD_MARGIN THEN
     VALVE := 0;
   ELSE
     VALVE := REAL_TO_UINT(LIMIT(0.0, shortfall * 2000.0, 1000.0));
@@ -200,7 +204,8 @@ PROGRAM plc_cellar
   bbt201_zone(PV := CEL_BBT201_TT01_PV, SP := CEL_BBT201_TT01_SP);
   CEL_BBT201_TV01_CMD := bbt201_zone.VALVE;
   bbt201_carb(TEMP := CEL_BBT201_TT01_PV, VOL_SP := CEL_BBT201_AT01_SP,
-    VOL_PV := CEL_BBT201_AT01_PV, INHIBIT := CEL_SYS_XS01_CO2_INHIBIT);
+    VOL_PV := CEL_BBT201_AT01_PV, PSIA_PV := CEL_BBT201_PT01_PV,
+    INHIBIT := CEL_SYS_XS01_CO2_INHIBIT);
   CEL_BBT201_PT01_SP := bbt201_carb.PSIA_SP;
   CEL_BBT201_FCV01_OUT := bbt201_carb.VALVE;
   CEL_BBT201_XV01_CMD := FALSE;  (* BBT-201 is carbonating, not feeding *)
@@ -208,7 +213,8 @@ PROGRAM plc_cellar
   bbt202_zone(PV := CEL_BBT202_TT01_PV, SP := CEL_BBT202_TT01_SP);
   CEL_BBT202_TV01_CMD := bbt202_zone.VALVE;
   bbt202_carb(TEMP := CEL_BBT202_TT01_PV, VOL_SP := CEL_BBT202_AT01_SP,
-    VOL_PV := CEL_BBT202_AT01_PV, INHIBIT := CEL_SYS_XS01_CO2_INHIBIT);
+    VOL_PV := CEL_BBT202_AT01_PV, PSIA_PV := CEL_BBT202_PT01_PV,
+    INHIBIT := CEL_SYS_XS01_CO2_INHIBIT);
   CEL_BBT202_PT01_SP := bbt202_carb.PSIA_SP;
   CEL_BBT202_FCV01_OUT := bbt202_carb.VALVE;
   CEL_BBT202_XV01_CMD := CEL_BBT202_LT01_PV > BBT_FEED_MIN_LEVEL;

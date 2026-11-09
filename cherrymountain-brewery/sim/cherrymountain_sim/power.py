@@ -667,6 +667,14 @@ class PowerFederate(Federate):
                 return self.meter.month_to_date_usd
             case "energy.kwh":
                 return self.meter.total_kwh
+            case "tariff.onpeak":
+                return self.meter.tariff.onpeak(self.now)
+            case "tariff.rate_usd_kwh":
+                return self.meter.tariff.energy_rate(self.now)
+            case "genset.hours_year":
+                return self.grid.gen_hours_year
+            case "genset.test_hours_year":
+                return self.grid.gen_test_hours_year
         raise KeyError(f"no output {name}")
 
     def truth(self) -> dict[str, Any]:

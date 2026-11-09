@@ -7,6 +7,7 @@ import http.client
 import json
 import urllib.request
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -366,16 +367,69 @@ def test_cellar_autopilot_runs_until_a_plc_writes(full: HelicsConfig) -> None:
     cel.apply_input("building/vent.co2_relay_ok", 1.0)
     fv104 = cel.cellar.fermenters["FV104"]  # cold crashing at the start
     start_f = fv104.zone_temp_f("side")
+    carbonating = [u for u, b in cel.cellar.bbts.items() if float(b.read("co2_vol")) < 2.5]
+    stone_ran: set[str] = set()
     for _ in range(600):
         cel.step(1.0)
+        stone_ran |= {
+            u for u in carbonating if float(cel.cellar.bbts[u].read("co2_valve_pct")) > 0
+        }
     assert fv104.valve("side") and fv104.valve("cone")  # cooling toward 34 °F
     assert fv104.zone_temp_f("side") < start_f
     bbt = next(iter(cel.cellar.bbts.values()))
     assert 32.0 <= float(bbt.read("temp_f")) <= 37.0
-    carbonating = [b for b in cel.cellar.bbts.values() if float(b.read("co2_vol")) < 2.5]
-    assert all(float(b.read("co2_valve_pct")) > 0 for b in carbonating)
+    # The stone runs, cycling against the head-pressure limit, and the relief
+    # valve never lifts in normal carbonation.
+    assert carbonating and stone_ran == set(carbonating)
+    assert all(b.psv.lifts == 0 for b in cel.cellar.bbts.values())
     cel.apply_input("building/vent.co2_relay_ok", 0.0)
     cel.step(1.0)
     assert all(float(b.read("co2_valve_pct")) == 0.0 for b in cel.cellar.bbts.values())
     cel.write("fv101-side.valve", True)  # a PLC write: hands over
     assert not cel.autopilot
+
+
+def test_state_snapshot_and_kpis_come_from_the_subscriptions(full: HelicsConfig) -> None:
+    """The weather federate subscribes to the snapshot keys (plant.yaml
+    ``snapshot``): GET /api/v1/state serves the federation's values, and the
+    KPIs, which were zeros while it subscribed to nothing, are real."""
+    weather_cfg = full.federates["weather"]
+    subs = {s.key for s in weather_cfg.subscriptions}
+    assert {
+        "building/cellar.co2_ppm",
+        "cellar/fv102.level_pct",
+        "cellar/bbt201-psv.lifted",
+        "power/bess-pcs.soc_pct",
+        "power/energy.kwh",
+        "packaging/bottles.total",
+        "utilities/cip.verified",
+    } <= subs
+    assert not any(k.startswith("weather/") for k in subs)
+
+    lf = LocalFederation(full)
+    weather = lf.feds["weather"]
+    assert isinstance(weather, WeatherFederate)
+    weather.settings = weather.settings.model_copy(update={"event_api_port": 0})
+    port = weather.start_api("full")
+    try:
+        lf.run(900)
+
+        def get(path: str) -> dict[str, Any]:
+            url = f"http://127.0.0.1:{port}{path}"
+            with urllib.request.urlopen(url, timeout=5) as resp:  # noqa: S310
+                doc: dict[str, Any] = json.loads(resp.read())
+                return doc
+
+        state = get("/api/v1/state")
+        values = state["values"]
+        assert state["variant"] == "full" and state["seq"] == 900
+        assert state["sim_time"] == weather.clock.at(899.0).isoformat()
+        assert subs <= set(values)
+        assert "weather/ambient.temp_f" in values  # its own outputs too
+        assert values["building/cellar.co2_ppm"] == lf.values["building/cellar.co2_ppm"]
+        kpis = get("/api/v1/kpis")
+        assert kpis["energy_kwh"] > 0 and kpis["demand_kw"] > 0
+        assert {"ttb_bbl_packaged", "cip_runs_verified", "genset_test_hours_year"} <= set(kpis)
+    finally:
+        assert weather.api is not None
+        weather.api.close()

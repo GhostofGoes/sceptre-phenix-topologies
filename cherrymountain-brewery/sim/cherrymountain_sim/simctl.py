@@ -9,12 +9,19 @@ The contract is the one ``apps/cherrymountain_apps/simctl.py`` documents::
     POST /events          the same (short form)
     GET  /api/v1/events   -> 200 {"events": [...]} (accepted events, oldest first)
     GET  /api/v1/kpis     -> 200 plant KPIs
+    GET  /api/v1/state    -> 200 the ground-truth snapshot (read only; see State)
 
 The server runs in a thread of the weather federate (which runs on sim-ctl).
 Accepted events go into a queue; the federate drains it every step and
 forwards each event to the federate that owns it as an endpoint message
-``{"event": {"type": ..., "params": ..., "id": ...}}``. The KPIs are a
-snapshot the federate refreshes every step from its subscriptions.
+``{"event": {"type": ..., "params": ..., "id": ...}}``. The KPIs and the state
+are snapshots the federate builds every step from its subscriptions and
+hands over whole, so a slow client never holds up the federate.
+
+The state is ground truth for the white cell's 3D view (``cm-viz``, DESIGN.md
+§15.10): every key the weather federate subscribes to, plus its own outputs.
+It must not reach trainees, which is one more reason the server binds
+``127.0.0.1``.
 
 The server binds ``127.0.0.1`` by default: phenix's autotunnel forwards the
 guest port from ``127.0.0.1`` (DESIGN.md §15.3), and MGMT is not an exercise
@@ -173,6 +180,35 @@ class Kpis(BaseModel):
     energy_kwh: float = 0.0
     demand_kw: float = 0.0
     peak_demand_kw: float = 0.0
+    # Compliance figures (DESIGN.md §18A); the full records are in ground truth.
+    ttb_bbl_packaged: float = 0.0
+    fill_mean_floz: float = 0.0
+    fill_under_mav_rejects: int = 0
+    wastewater_inhibit_events: int = 0
+    cip_runs_verified: int = 0
+    cip_runs_unverified: int = 0
+    genset_hours_year: float = 0.0
+    genset_test_hours_year: float = 0.0
+
+
+class State(BaseModel):
+    """``GET /api/v1/state`` reply: the federation's values as the weather
+    federate holds them at the end of a step.
+
+    ``values`` maps HELICS keys (``building/cellar.co2_ppm``) to the last value
+    received. A subscription carries the publisher's value from the previous
+    step (DESIGN.md §9.2), and the building federate publishes every 10 s.
+    ``seq`` counts the steps, and ``wall_time`` is the wall clock (Unix
+    seconds) when the snapshot was taken, so a reader can tell a stalled
+    federate from a quiet plant.
+    """
+
+    seq: int = 0
+    t_s: float = 0.0
+    sim_time: str | None = None
+    wall_time: float = 0.0
+    variant: str = ""
+    values: dict[str, float | bool | str] = Field(default_factory=dict)
 
 
 class EventApi:
@@ -182,6 +218,7 @@ class EventApi:
     pending: queue.Queue[AcceptedEvent]
     history: list[AcceptedEvent]
     kpis: Kpis
+    state: State
     sim_time: str | None
     lock: threading.Lock
     server: ThreadingHTTPServer | None
@@ -192,6 +229,7 @@ class EventApi:
         self.pending = queue.Queue()
         self.history = []
         self.kpis = Kpis()
+        self.state = State(variant=variant)
         self.sim_time = None
         self.lock = threading.Lock()
         self.server = None
@@ -208,11 +246,13 @@ class EventApi:
             except queue.Empty:
                 return out
 
-    def update(self, sim_time: str, kpis: Kpis) -> None:
-        """Refresh the clock and the KPI snapshot."""
+    def update(self, sim_time: str, kpis: Kpis, state: State | None = None) -> None:
+        """Refresh the clock, the KPI snapshot, and (when given) the state."""
         with self.lock:
             self.sim_time = sim_time
             self.kpis = kpis
+            if state is not None:
+                self.state = state
 
     # -- HTTP side ---------------------------------------------------------------------
 
@@ -251,6 +291,12 @@ class EventApi:
         with self.lock:
             return {"events": [e.model_dump() for e in self.history]}
 
+    def state_reply(self) -> dict[str, Any]:
+        """``GET /state`` reply."""
+        with self.lock:
+            state = self.state
+        return state.model_dump()
+
     def serve(self, host: str = "127.0.0.1", port: int = 8080) -> int:
         """Start the HTTP server in a daemon thread; returns the bound port."""
         api = self
@@ -274,6 +320,7 @@ class EventApi:
                     f"{API}/health": api.health,
                     f"{API}/kpis": api.kpi_reply,
                     f"{API}/events": api.events_reply,
+                    f"{API}/state": api.state_reply,
                     "/events": api.events_reply,
                 }
                 handler = routes.get(self.path.split("?")[0].rstrip("/"))

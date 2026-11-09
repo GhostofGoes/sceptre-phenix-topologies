@@ -566,6 +566,13 @@ class UtilitiesFederate(Federate):
                 return 12.0 if self.air.loaded else 3.5
             case "load.ro.kw":
                 return 4.0 if self.ro_running else 0.3
+            # Compliance counters for the KPI API (DESIGN.md §18A).
+            case "wastewater.inhibit_events":
+                return float(self.wwn.inhibit_events)
+            case "cip.verified":
+                return float(sum(1 for r in self.cip.records if r.verified))
+            case "cip.unverified":
+                return float(sum(1 for r in self.cip.records if not r.verified))
         raise KeyError(f"no output {name}")
 
     def truth(self) -> dict[str, Any]:

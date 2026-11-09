@@ -2755,6 +2755,174 @@
       "generated": true
     },
     {
+      "name": "CEL.PSV.ZSH01.PV",
+      "desc": "FV-101 relief valve (PSV) lifted",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-psv",
+      "device_type": "psv",
+      "point": "lifted",
+      "helics_key": "cellar/fv101-psv.lifted",
+      "alarms": [
+        "CEL.PSV.ZSH01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.PSV.ZSH01.ALM_STATE",
+      "desc": "FV-101 relief valve (PSV) lifted: state alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.PSV.ZSH02.PV",
+      "desc": "FV-102 relief valve (PSV) lifted",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-psv",
+      "device_type": "psv",
+      "point": "lifted",
+      "helics_key": "cellar/fv102-psv.lifted",
+      "alarms": [
+        "CEL.PSV.ZSH02.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.PSV.ZSH02.ALM_STATE",
+      "desc": "FV-102 relief valve (PSV) lifted: state alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.PSV.ZSH03.PV",
+      "desc": "FV-103 relief valve (PSV) lifted",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-psv",
+      "device_type": "psv",
+      "point": "lifted",
+      "helics_key": "cellar/fv103-psv.lifted",
+      "alarms": [
+        "CEL.PSV.ZSH03.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.PSV.ZSH03.ALM_STATE",
+      "desc": "FV-103 relief valve (PSV) lifted: state alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.PSV.ZSH04.PV",
+      "desc": "FV-104 relief valve (PSV) lifted",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-psv",
+      "device_type": "psv",
+      "point": "lifted",
+      "helics_key": "cellar/fv104-psv.lifted",
+      "alarms": [
+        "CEL.PSV.ZSH04.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.PSV.ZSH04.ALM_STATE",
+      "desc": "FV-104 relief valve (PSV) lifted: state alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.PSV.ZSH05.PV",
+      "desc": "BBT-201 relief valve (PSV) lifted",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt201-psv",
+      "device_type": "psv",
+      "point": "lifted",
+      "helics_key": "cellar/bbt201-psv.lifted",
+      "alarms": [
+        "CEL.PSV.ZSH05.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.PSV.ZSH05.ALM_STATE",
+      "desc": "BBT-201 relief valve (PSV) lifted: state alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.PSV.ZSH06.PV",
+      "desc": "BBT-202 relief valve (PSV) lifted",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "bbt202-psv",
+      "device_type": "psv",
+      "point": "lifted",
+      "helics_key": "cellar/bbt202-psv.lifted",
+      "alarms": [
+        "CEL.PSV.ZSH06.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.PSV.ZSH06.ALM_STATE",
+      "desc": "BBT-202 relief valve (PSV) lifted: state alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "PSV",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
       "name": "PKG.LINE.PACKML.STATE",
       "desc": "Bottling line PackML state (StateCurrent)",
       "type": "analog-read",

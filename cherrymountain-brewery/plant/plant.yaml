@@ -83,6 +83,15 @@ federates:
       # building federate first reports it. The ci variant has neither.
       - { key: building/vent.co2_relay_ok, type: double, default: 0.0, variants: [full, lite] }
       - { key: packaging/beer.draw_gpm, type: double, units: gal/min, default: 0.0, variants: [full, lite] }
+    # Per-vessel truth (cellar/<unit>.<key>, unit in lower case): values no
+    # transmitter measures, for ground truth and the white cell's 3D view
+    # (DESIGN.md §15.10). Fermenters have no level transmitter (§6.3), so their
+    # fill is truth only; the bright tanks' level is their LT01 point.
+    unit_outputs:
+      - { key: level_pct, type: double, units: "%", desc: "Fill, % of the 30 bbl working volume (no transmitter)", models: [fermenter] }
+      - { key: spund_gps, type: double, units: g/s, desc: CO2 the spunding valve vents into the room, models: [fermenter] }
+      - { key: psv_gps, type: double, units: g/s, desc: CO2 the pressure-relief valve vents into the room, models: [fermenter, bbt] }
+      - { key: leak_gps, type: double, units: g/s, desc: "CO2 a scenario release lets out at the vessel (co2-release event)", models: [fermenter, bbt] }
   # Full plant federates (DESIGN.md §9.2). The cellar entry above keeps its
   # ci inputs and outputs; full-plant-only I/O is scoped with `variants`.
   weather:
@@ -127,6 +136,9 @@ federates:
       - { key: steam.psig, type: double, units: psig, desc: Steam header pressure (to brewhouse) }
       - { key: air.psig, type: double, units: psig, desc: Compressed-air header pressure (to packaging) }
       - { key: co2.supply_psig, type: double, units: psig, desc: CO2 supply header pressure (to cellar and packaging) }
+      - { key: wastewater.inhibit_events, type: double, desc: "Wastewater discharges inhibited for pH (40 CFR 403.5), for the KPI API" }
+      - { key: cip.verified, type: double, desc: "CIP runs that met their verification limits, for the KPI API" }
+      - { key: cip.unverified, type: double, desc: "CIP runs logged but not verified, for the KPI API" }
     inputs:
       - { key: weather/ambient.temp_f, type: double, units: degF, default: 75.0 }
       - { key: weather/groundwater.temp_f, type: double, units: degF, default: 58.0 }
@@ -149,6 +161,9 @@ federates:
       - { key: line.bottles, type: double, desc: Bottles filled this shift }
       - { key: bottles.total, type: double, desc: Bottles packaged since the start }
       - { key: kegs.total, type: double, desc: Kegs filled since the start }
+      - { key: ttb.bbl, type: double, units: bbl, desc: "Beer packaged in TTB barrels (27 CFR 25.158 cases, 25.156 kegs), for the KPI API" }
+      - { key: fill.mean_floz, type: double, units: fl oz, desc: "Mean bottle fill this lot (NIST HB 133), for the KPI API" }
+      - { key: fill.under_mav, type: double, desc: "Bottles rejected below the maximum allowable variation, for the KPI API" }
     inputs:
       - { key: cellar/bbt202.pressure_psia, type: double, units: psia, default: 25.0 }
       - { key: utilities/air.psig, type: double, units: psig, default: 100.0 }
@@ -163,6 +178,10 @@ federates:
       - { key: tariff.cost_usd, type: double, units: USD, desc: Month-to-date SV-SGT bill }
       - { key: energy.kwh, type: double, units: kWh, desc: Energy imported since the start }
       - { key: demand.peak_kw, type: double, units: kW, desc: Highest 15-minute demand since the start }
+      - { key: tariff.onpeak, type: boolean, desc: "SV-SGT on-peak window (weekdays 17:00-21:00) in effect" }
+      - { key: tariff.rate_usd_kwh, type: double, units: USD/kWh, desc: Energy rate now }
+      - { key: genset.hours_year, type: double, units: h, desc: "Genset run hours this year, for the KPI API" }
+      - { key: genset.test_hours_year, type: double, units: h, desc: "Genset maintenance and test hours this year (40 CFR 60.4211(f) cap), for the KPI API" }
     inputs:
       - { key: weather/ghi.wm2, type: double, units: W/m2, default: 0.0 }
       - { key: weather/ambient.temp_f, type: double, units: degF, default: 75.0 }
@@ -294,6 +313,10 @@ device_types:
   # and the detection panel has power. De-energize to trip.
   gas-relay:
     co2_ok: { type: binary-read }
+  # The lift switch on a vessel's pressure-relief valve (PSV, set at the 15 psig
+  # MAWP, DESIGN.md §6.3): TRUE while the valve is lifted.
+  psv:
+    lifted: { type: binary-read }
 
   # -- packaging (rio-packaging) -----------------------------------------------
   # Machine PackTags as the OEM controllers expose them (DESIGN.md §6.3).
@@ -847,6 +870,12 @@ alarm_rationale:
     consequence: Mechanical relief lifts at 15 psig; CO2 released into the cellar
     action: Close the carbonation valve and vent to the target pressure
     response_time: 10m
+  psv-lifted:
+    priority: high
+    cause: Head pressure reached the 15 psig MAWP; spunding setpoint written too high, spunding valve stuck closed, or a carbonation stone or regulator forced open
+    consequence: The relief valve vents CO2 into the cellar until the head blows down 10 %; repeated lifts raise the cellar CO2 toward the life-safety tiers
+    action: Find the gas source (spunding setpoint, stone, regulator) and stop it; check cellar CO2 and the purge fans
+    response_time: 5m
   bbt-temp-deviation:
     priority: medium
     cause: Jacket valve fault or warm glycol supply
@@ -1456,6 +1485,53 @@ areas:
             type: binary-read
             alarms:
               - { kind: state, limit: 1, delay: 0s, rationale: carbonation-inhibited }
+
+      # The lift switches of the vessels' pressure-relief valves (PSVs, set at
+      # the 15 psig MAWP, DESIGN.md §6.3), wired to rio-cellar. One unit after
+      # the others, so the fermenters' registers keep their numbers in ci and
+      # full; ci does not list it. A device's `zone` names the vessel its valve
+      # sits on.
+      - id: PSV
+        name: Cellar pressure-relief valves
+        model: relief-valves
+        devices:
+          - { name: fv101-psv, type: psv, zone: FV101 }
+          - { name: fv102-psv, type: psv, zone: FV102 }
+          - { name: fv103-psv, type: psv, zone: FV103 }
+          - { name: fv104-psv, type: psv, zone: FV104 }
+          - { name: bbt201-psv, type: psv, zone: BBT201 }
+          - { name: bbt202-psv, type: psv, zone: BBT202 }
+        tags:
+          - id: ZSH01.PV
+            desc: FV-101 relief valve (PSV) lifted
+            io: fv101-psv.lifted
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: psv-lifted }
+          - id: ZSH02.PV
+            desc: FV-102 relief valve (PSV) lifted
+            io: fv102-psv.lifted
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: psv-lifted }
+          - id: ZSH03.PV
+            desc: FV-103 relief valve (PSV) lifted
+            io: fv103-psv.lifted
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: psv-lifted }
+          - id: ZSH04.PV
+            desc: FV-104 relief valve (PSV) lifted
+            io: fv104-psv.lifted
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: psv-lifted }
+          - id: ZSH05.PV
+            desc: BBT-201 relief valve (PSV) lifted
+            io: bbt201-psv.lifted
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: psv-lifted }
+          - id: ZSH06.PV
+            desc: BBT-202 relief valve (PSV) lifted
+            io: bbt202-psv.lifted
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: psv-lifted }
 
   - id: PKG
     name: Packaging
@@ -2085,7 +2161,7 @@ soh:
     bbmd: { processes: [cm-bbmd] }
     hmi: { processes: [chromium] }
   host_profiles:
-    sim-ctl: { processes: [helics_broker], listeners: [":8080", ":9200", ":3000"] }
+    sim-ctl: { processes: [helics_broker], listeners: [":8080", ":8090", ":9200", ":3000"] }
     ot-svc: { processes: [chronyd, dnsmasq, rsyslogd, cm-bbmd], listeners: [":53"] }
     inet-nuke: { processes: [protonuke, chronyd, dnsmasq], listeners: [":80", ":443"] }
     plc-brewhouse: { listeners: [":4840"] }
@@ -2150,6 +2226,40 @@ scorch:
     utility-outage: [rtu-der|IF0, rtu-der|IF1, plc-power|IF1, gen-ats|IF0]
     cellar-co2-leak: [bas-fuxa|IF0, bas-vent|IF0]
     packaging-shift: [plc-packaging|IF1, rio-packaging|IF0]
+
+# Ground-truth snapshot for the white cell's 3D view (DESIGN.md §15.10). The
+# weather federate on sim-ctl subscribes to every publication these patterns
+# match (fnmatch, against the variant's federates) and serves the values as
+# GET /api/v1/state on the event API; the KPI keys make GET /api/v1/kpis real.
+# cm-viz on sim-ctl reads that snapshot. A variant without the weather
+# federate (ci) has no snapshot.
+snapshot:
+  federate: weather
+  keys:
+    # The cellar: vessels, relief valves, shared equipment, CO2 into the room.
+    - "cellar/fv*"
+    - "cellar/bbt*"
+    - cellar/gasrelay.co2_ok
+    - cellar/co2.vent_gps
+    - cellar/clock.sim_hours
+    # Cellar air, purge fans, and the gas-detection relay.
+    - "building/bas-vent.*"
+    - "building/cellar.*"
+    - building/vent.co2_relay_ok
+    # Glycol supply (jacket colors).
+    - utilities/glycol.supply_f
+    # Plant power: every power point, bus, and load.
+    - "power/*"
+    - "*/load.*.kw"
+    # KPIs (GET /api/v1/kpis).
+    - brewhouse/batch.completed
+    - brewhouse/batch.active
+    - packaging/bottles.total
+    - packaging/kegs.total
+    - packaging/ttb.bbl
+    - "packaging/fill.*"
+    - utilities/wastewater.inhibit_events
+    - "utilities/cip.*"
 
 # Variants (DESIGN.md §11, §15.3). Each variant lists the areas, federates,
 # and hosts it contains; plantgen emits per-variant outputs.

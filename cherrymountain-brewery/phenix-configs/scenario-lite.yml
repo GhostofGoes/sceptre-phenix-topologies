@@ -299,6 +299,9 @@ spec:
           gas-relay:
             co2_ok:
               type: binary-read
+          psv:
+            lifted:
+              type: binary-read
           filler:
             state:
               type: analog-read
@@ -1014,6 +1017,18 @@ spec:
             type: transfer-panel
           - name: cellar/gasrelay
             type: gas-relay
+          - name: cellar/fv101-psv
+            type: psv
+          - name: cellar/fv102-psv
+            type: psv
+          - name: cellar/fv103-psv
+            type: psv
+          - name: cellar/fv104-psv
+            type: psv
+          - name: cellar/bbt201-psv
+            type: psv
+          - name: cellar/bbt202-psv
+            type: psv
     - hostname: rio-packaging
       metadata:
         type: fd-server
@@ -1937,6 +1952,7 @@ spec:
         - :8080
         - :9200
         - :3000
+        - :8090
       hostCustomTests:
         corp-ws:
         - name: blocked-ot-svc-53

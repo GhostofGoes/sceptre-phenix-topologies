@@ -19,8 +19,10 @@ liter of beer. The tests hold the two within a few percent over the cellar's
 range.
 
 **Bright tank.** :class:`BrightTank` is a 30 bbl BBT with a glycol jacket, a
-carbonation stone fed by a CO2 flow valve, a headspace with relief at 15 psig
-MAWP, a top-pressure regulator while serving, and an outlet to packaging.
+carbonation stone fed by a CO2 flow valve, a headspace with a pressure-relief
+valve at the 15 psig MAWP (:mod:`cherrymountain_sim.relief`, venting into the
+cellar room), a top-pressure regulator while serving, and an outlet to
+packaging.
 """
 
 from __future__ import annotations
@@ -30,6 +32,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from cherrymountain_sim.relief import ReliefValve, ReliefValveConfig
 from cherrymountain_sim.thermal import JacketedVessel, Zone, c_to_f, f_to_c
 
 SEA_LEVEL_PSIA: float = 14.696
@@ -44,6 +47,7 @@ KH_298: float = 0.034
 KH_VANT_HOFF_K: float = 2400.0
 BEER_KG_PER_L: float = 1.010
 LITERS_PER_BBL: float = 117.348
+CO2_G_PER_MOL: float = 44.01
 #: Zahm-Nagel fit coefficients (psig, °F, volumes).
 ZN: tuple[float, float, float, float, float, float] = (
     -16.6999,
@@ -114,7 +118,7 @@ class BrightTankConfig(BaseModel):
     stone_efficiency: float = 0.6
     #: Surface exchange between headspace and beer, 1/h.
     kla_per_h: float = 0.15
-    relief_psig: float = 15.0
+    relief: ReliefValveConfig = ReliefValveConfig()
     #: Serving top pressure regulator, standard L/min at full demand.
     regulator_max_slpm: float = 150.0
 
@@ -134,7 +138,7 @@ class BrightTank:
     co2_valve_pct: float
     stone_slpm: float
     regulator_slpm: float
-    vented_mol: float
+    psv: ReliefValve
 
     def __init__(
         self,
@@ -180,7 +184,7 @@ class BrightTank:
         self.co2_valve_pct = 0.0
         self.stone_slpm = 0.0
         self.regulator_slpm = 0.0
-        self.vented_mol = 0.0
+        self.psv = ReliefValve(self.cfg.relief)
 
     # -- state -------------------------------------------------------------------------
 
@@ -296,8 +300,10 @@ class BrightTank:
             add = min(need, cap) if supply_ok else 0.0
             self.gas_mol += add
             self.regulator_slpm = add * MOLAR_VOLUME_STP_L * 60.0 / dt_s
-        relief = self.ambient_psia + self.cfg.relief_psig
-        if self.pressure_psia > relief:
-            excess = self.gas_mol - self._mol_at(relief)
-            self.gas_mol -= excess
-            self.vented_mol += excess
+        reseat_mol = self._mol_at(self.ambient_psia + self.psv.cfg.reseat_psig)
+        vent_g = self.psv.relieve(
+            self.pressure_psia - self.ambient_psia,
+            (self.gas_mol - reseat_mol) * CO2_G_PER_MOL,
+            dt_s,
+        )
+        self.gas_mol -= vent_g / CO2_G_PER_MOL

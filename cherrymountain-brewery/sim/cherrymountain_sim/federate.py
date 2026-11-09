@@ -26,6 +26,7 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from cherrymountain_sim.carbonation import site_gauge_psig
 from cherrymountain_sim.cellar import Cellar, Environment, InitialState, Sensor
 from cherrymountain_sim.timebase import DEFAULT_COMPRESSION, TimeBase
 
@@ -45,6 +46,12 @@ AUTO_CRASH_H: float = 240.0
 AUTO_HYST_F: float = 0.5
 AUTO_BBT_F: float = 34.0
 AUTO_CARB_VOL: float = 2.6
+#: The stone closes this far above the target's equilibrium head pressure, so
+#: gas that does not dissolve never builds up to the relief valve (psi).
+AUTO_CARB_HEAD_MARGIN_PSI: float = 1.0
+#: Per-vessel truth outputs (``<unit>.<name>``, plant.yaml ``unit_outputs``):
+#: values no transmitter measures, for ground truth and the 3D view.
+UNIT_OUTPUTS: frozenset[str] = frozenset({"level_pct", "spund_gps", "psv_gps", "leak_gps"})
 #: Measurement noise (standard deviation) per point, when noise is enabled.
 NOISE_SIGMA: dict[str, float] = {
     "temp_f": 0.02,
@@ -482,7 +489,9 @@ class CellarFederate(Federate):
         """What plc-cellar does, for runs without a PLC (DESIGN.md 9.6): glycol
         zones on/off around the recipe's setpoint for the fermentation stage,
         spunding sealed from the diacetyl rest, bright tanks held at 34 °F, and
-        carbonation toward 2.6 vol, stopped while the CO2 relay is open (§6.7)."""
+        carbonation toward 2.6 vol, stopped while the CO2 relay is open (§6.7)
+        and while the head is more than a psi above the target's equilibrium
+        pressure (so the relief valve does not lift in normal running)."""
         ambient = self.cellar.env.ambient_psia
         for fv in self.cellar.fermenters.values():
             if not fv.filled:
@@ -506,23 +515,54 @@ class CellarFederate(Federate):
             elif temp <= AUTO_BBT_F - AUTO_HYST_F:
                 bbt.write("valve", False)
             short = AUTO_CARB_VOL - float(bbt.read("co2_vol"))
-            bbt.write("co2_valve_pct", min(max(short * 200.0, 0.0), 100.0) if relay_ok else 0.0)
+            head_limit = (
+                site_gauge_psig(temp, AUTO_CARB_VOL, ambient)
+                + ambient
+                + AUTO_CARB_HEAD_MARGIN_PSI
+            )
+            stone = relay_ok and float(bbt.read("pressure_psia")) < head_limit
+            bbt.write("co2_valve_pct", min(max(short * 200.0, 0.0), 100.0) if stone else 0.0)
 
     def output_value(self, name: str) -> Value:
-        """Federate outputs: CO2 vented, glycol load, CO2 drawn."""
+        """Federate outputs: CO2 vented, glycol load, CO2 drawn, and the
+        per-vessel truth outputs (``fv101.level_pct``, see UNIT_OUTPUTS)."""
         if name == "co2.vent_gps":
             return self.cellar.co2_vent_gps
         if name == "glycol.load_kw":
             return self.cellar.glycol_load_kw
         if name == "co2.draw_slpm":
             return self.cellar.co2_draw_slpm
+        unit, _, field = name.partition(".")
+        if field in UNIT_OUTPUTS:
+            return self._unit_output(unit.upper(), field)
         raise KeyError(f"no output {name}")
+
+    def _unit_output(self, unit: str, field: str) -> float:
+        """A truth value of one vessel: fill, spunding vent, PSV vent, leak."""
+        cellar = self.cellar
+        if unit not in cellar.fermenters and unit not in cellar.bbts:
+            raise KeyError(f"no vessel {unit}")
+        fv = cellar.fermenters.get(unit)
+        match field:
+            case "level_pct":
+                return fv.level_pct if fv else cellar.bbts[unit].level_pct
+            case "spund_gps":
+                return fv.fluxes.co2_vent_gps if fv else 0.0
+            case "psv_gps":
+                return cellar.psv(unit).vent_gps
+            case "leak_gps":
+                return cellar.leak_gps(unit)
+        raise KeyError(f"no vessel output {field}")
 
     def point_value(self, pub: Publication) -> Value:
         """Current value for one device point (with measurement noise)."""
         if pub.device_type == "sim-clock":
             return self.cellar.sim_hours
         point = pub.point or ""
+        if pub.device_type == "psv":
+            # A relief valve's lift switch (DESIGN.md §6.3), in the PSV unit;
+            # the device's zone names the vessel the valve sits on.
+            return self.cellar.psv(pub.zone or "").open
         if pub.device_type in SHARED_TYPES:
             return self._shared(pub.device or "", point)
         if pub.device_type == "bbt":
@@ -585,8 +625,17 @@ class CellarFederate(Federate):
                 "abv": fv.cfg.wort.abv(fv.state.ethanol) if fv.state else 0.0,
                 "diacetyl": fv.state.diacetyl if fv.state else 0.0,
                 "co2_generated_g": fv.co2_generated_g,
+                "level_pct": fv.level_pct,
             }
             for unit, fv in self.cellar.fermenters.items()
+        }
+        doc["relief_valves"] = {
+            unit: {
+                "lifted": self.cellar.psv(unit).open,
+                "lifts": self.cellar.psv(unit).lifts,
+                "vented_g": round(self.cellar.psv(unit).vented_g, 1),
+            }
+            for unit in [*self.cellar.fermenters, *self.cellar.bbts]
         }
         return doc
 

@@ -14,7 +14,7 @@
           "fc": 2,
           "offset": "10001",
           "iec_location": "%IX100.0",
-          "len": 8,
+          "len": 14,
           "cycle_time_ms": 100,
           "error_handling": "keep-last-value"
         },

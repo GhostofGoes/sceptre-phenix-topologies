@@ -674,6 +674,72 @@
           "point": "co2_ok"
         },
         {
+          "key": "cellar/fv101-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH01.PV",
+          "unit": "PSV",
+          "device": "fv101-psv",
+          "device_type": "psv",
+          "zone": "FV101",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/fv102-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH02.PV",
+          "unit": "PSV",
+          "device": "fv102-psv",
+          "device_type": "psv",
+          "zone": "FV102",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/fv103-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH03.PV",
+          "unit": "PSV",
+          "device": "fv103-psv",
+          "device_type": "psv",
+          "zone": "FV103",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/fv104-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH04.PV",
+          "unit": "PSV",
+          "device": "fv104-psv",
+          "device_type": "psv",
+          "zone": "FV104",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/bbt201-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH05.PV",
+          "unit": "PSV",
+          "device": "bbt201-psv",
+          "device_type": "psv",
+          "zone": "BBT201",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/bbt202-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH06.PV",
+          "unit": "PSV",
+          "device": "bbt202-psv",
+          "device_type": "psv",
+          "zone": "BBT202",
+          "point": "lifted"
+        },
+        {
           "key": "cellar/co2.vent_gps",
           "type": "double",
           "units": "g/s",
@@ -690,6 +756,146 @@
           "type": "double",
           "units": "L/min",
           "output": "co2.draw_slpm"
+        },
+        {
+          "key": "cellar/fv101.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV101",
+          "output": "fv101.level_pct"
+        },
+        {
+          "key": "cellar/fv101.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.spund_gps"
+        },
+        {
+          "key": "cellar/fv101.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.psv_gps"
+        },
+        {
+          "key": "cellar/fv101.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.leak_gps"
+        },
+        {
+          "key": "cellar/fv102.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV102",
+          "output": "fv102.level_pct"
+        },
+        {
+          "key": "cellar/fv102.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.spund_gps"
+        },
+        {
+          "key": "cellar/fv102.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.psv_gps"
+        },
+        {
+          "key": "cellar/fv102.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.leak_gps"
+        },
+        {
+          "key": "cellar/fv103.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV103",
+          "output": "fv103.level_pct"
+        },
+        {
+          "key": "cellar/fv103.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.spund_gps"
+        },
+        {
+          "key": "cellar/fv103.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.psv_gps"
+        },
+        {
+          "key": "cellar/fv103.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.leak_gps"
+        },
+        {
+          "key": "cellar/fv104.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV104",
+          "output": "fv104.level_pct"
+        },
+        {
+          "key": "cellar/fv104.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.spund_gps"
+        },
+        {
+          "key": "cellar/fv104.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.psv_gps"
+        },
+        {
+          "key": "cellar/fv104.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.leak_gps"
+        },
+        {
+          "key": "cellar/bbt201.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "BBT201",
+          "output": "bbt201.psv_gps"
+        },
+        {
+          "key": "cellar/bbt201.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "BBT201",
+          "output": "bbt201.leak_gps"
+        },
+        {
+          "key": "cellar/bbt202.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "BBT202",
+          "output": "bbt202.psv_gps"
+        },
+        {
+          "key": "cellar/bbt202.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "BBT202",
+          "output": "bbt202.leak_gps"
         }
       ],
       "subscriptions": [
@@ -826,7 +1032,903 @@
           "output": "event"
         }
       ],
-      "subscriptions": [],
+      "subscriptions": [
+        {
+          "key": "cellar/clock.sim_hours",
+          "type": "double",
+          "units": "h"
+        },
+        {
+          "key": "cellar/fv101-side.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv101-side.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv101-cone.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv101-cone.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv101.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv101.gravity_plato",
+          "type": "double",
+          "units": "degP"
+        },
+        {
+          "key": "cellar/fv101.spund_sp_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv101.spund_open",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv102-side.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv102-side.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv102-cone.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv102-cone.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv102.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv102.gravity_plato",
+          "type": "double",
+          "units": "degP"
+        },
+        {
+          "key": "cellar/fv102.spund_sp_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv102.spund_open",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv103-side.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv103-side.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv103-cone.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv103-cone.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv103.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv103.gravity_plato",
+          "type": "double",
+          "units": "degP"
+        },
+        {
+          "key": "cellar/fv103.spund_sp_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv103.spund_open",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv104-side.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv104-side.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv104-cone.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv104-cone.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv104.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv104.gravity_plato",
+          "type": "double",
+          "units": "degP"
+        },
+        {
+          "key": "cellar/fv104.spund_sp_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv104.spund_open",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt201.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/bbt201.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/bbt201.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/bbt201.co2_vol",
+          "type": "double",
+          "units": "vol"
+        },
+        {
+          "key": "cellar/bbt201.co2_slpm",
+          "type": "double",
+          "units": "L/min"
+        },
+        {
+          "key": "cellar/bbt201.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt201.outlet_valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt201.co2_valve_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/bbt202.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/bbt202.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/bbt202.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/bbt202.co2_vol",
+          "type": "double",
+          "units": "vol"
+        },
+        {
+          "key": "cellar/bbt202.co2_slpm",
+          "type": "double",
+          "units": "L/min"
+        },
+        {
+          "key": "cellar/bbt202.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt202.outlet_valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt202.co2_valve_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/gasrelay.co2_ok",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv101-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv102-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv103-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv104-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt201-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt202-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/co2.vent_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv101.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/fv101.spund_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv101.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv101.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv102.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/fv102.spund_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv102.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv102.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv103.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/fv103.spund_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv103.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv103.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv104.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/fv104.spund_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv104.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv104.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/bbt201.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/bbt201.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/bbt202.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/bbt202.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "brewhouse/batch.completed",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "brewhouse/batch.active",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "brewhouse/load.mcc1.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/cip.supply_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "utilities/cip.return_cond_ms",
+          "type": "double",
+          "units": "mS/cm"
+        },
+        {
+          "key": "utilities/cip.return_gpm",
+          "type": "double",
+          "units": "gal/min"
+        },
+        {
+          "key": "utilities/cip.caustic_level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "utilities/cip.acid_level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "utilities/cip.return_flow",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.supply_pump",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.return_pump",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.caustic_dose",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.acid_dose",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.steam_valve_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "utilities/glycol.supply_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "utilities/wastewater.inhibit_events",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.verified",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.unverified",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "utilities/load.boiler.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.chiller.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.air.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.ro.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "packaging/bottles.total",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "packaging/kegs.total",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "packaging/ttb.bbl",
+          "type": "double",
+          "units": "bbl"
+        },
+        {
+          "key": "packaging/fill.mean_floz",
+          "type": "double",
+          "units": "fl oz"
+        },
+        {
+          "key": "packaging/fill.under_mav",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "packaging/load.line.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "packaging/load.kegwasher.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/relay-main.p_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/relay-main.q_kvar",
+          "type": "double",
+          "units": "kvar"
+        },
+        {
+          "key": "power/relay-main.v_ll",
+          "type": "double",
+          "units": "V"
+        },
+        {
+          "key": "power/relay-main.i_a",
+          "type": "double",
+          "units": "A"
+        },
+        {
+          "key": "power/relay-main.freq_hz",
+          "type": "double",
+          "units": "Hz"
+        },
+        {
+          "key": "power/relay-main.demand_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/relay-main.breaker_closed",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/relay-main.tripped",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/relay-main.close",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.boiler_closed",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.pkg_closed",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.rtu_closed",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.boiler_close",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.pkg_close",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.rtu_close",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/pv-inverter.p_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/pv-inverter.limit_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/pv-inverter.connected",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/pv-inverter.enable",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/pv-inverter.site_limit_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/pv-inverter.utility_limit_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/bess-pcs.p_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/bess-pcs.soc_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/bess-pcs.connected",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bess-pcs.fault",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bess-pcs.enable",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bess-pcs.p_sp_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/bess-pcs.utility_p_sp_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/gen-ats.gen_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/gen-ats.ep1_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/gen-ats.fuel_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/gen-ats.gen_running",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/gen-ats.on_emergency",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/gen-ats.utility_ok",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/gen-ats.gen_start",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/grid.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/demand.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/tariff.cost_usd",
+          "type": "double",
+          "units": "USD"
+        },
+        {
+          "key": "power/energy.kwh",
+          "type": "double",
+          "units": "kWh"
+        },
+        {
+          "key": "power/demand.peak_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/tariff.onpeak",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/tariff.rate_usd_kwh",
+          "type": "double",
+          "units": "USD/kWh"
+        },
+        {
+          "key": "power/genset.hours_year",
+          "type": "double",
+          "units": "h"
+        },
+        {
+          "key": "power/genset.test_hours_year",
+          "type": "double",
+          "units": "h"
+        },
+        {
+          "key": "power/bus.boiler.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.ep1.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.msb.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.mcc1.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.pkg.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.rtu.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.lp1.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_1_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_2_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_3_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_4_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.mua_discharge_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "building/bas-vent.exhaust_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "building/bas-vent.purge_fan_1_status",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.purge_fan_2_status",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_tier_1",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_tier_2",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_tier_3",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.purge_fan_1",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.purge_fan_2",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.mua_enable",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/cellar.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "building/cellar.co2_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/vent.co2_relay_ok",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "building/load.rtu.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.coldroom.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.fans.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.lighting.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.otracks.kw",
+          "type": "double",
+          "units": "kW"
+        }
+      ],
       "input_defaults": {},
       "ambient_psia": 12.1,
       "sim": {
@@ -2116,6 +3218,24 @@
           "output": "co2.supply_psig"
         },
         {
+          "key": "utilities/wastewater.inhibit_events",
+          "type": "double",
+          "units": null,
+          "output": "wastewater.inhibit_events"
+        },
+        {
+          "key": "utilities/cip.verified",
+          "type": "double",
+          "units": null,
+          "output": "cip.verified"
+        },
+        {
+          "key": "utilities/cip.unverified",
+          "type": "double",
+          "units": null,
+          "output": "cip.unverified"
+        },
+        {
           "key": "utilities/load.boiler.kw",
           "type": "double",
           "units": "kW",
@@ -3106,6 +4226,24 @@
           "output": "kegs.total"
         },
         {
+          "key": "packaging/ttb.bbl",
+          "type": "double",
+          "units": "bbl",
+          "output": "ttb.bbl"
+        },
+        {
+          "key": "packaging/fill.mean_floz",
+          "type": "double",
+          "units": "fl oz",
+          "output": "fill.mean_floz"
+        },
+        {
+          "key": "packaging/fill.under_mav",
+          "type": "double",
+          "units": null,
+          "output": "fill.under_mav"
+        },
+        {
           "key": "packaging/load.line.kw",
           "type": "double",
           "units": "kW",
@@ -3580,6 +4718,30 @@
           "type": "double",
           "units": "kW",
           "output": "demand.peak_kw"
+        },
+        {
+          "key": "power/tariff.onpeak",
+          "type": "boolean",
+          "units": null,
+          "output": "tariff.onpeak"
+        },
+        {
+          "key": "power/tariff.rate_usd_kwh",
+          "type": "double",
+          "units": "USD/kWh",
+          "output": "tariff.rate_usd_kwh"
+        },
+        {
+          "key": "power/genset.hours_year",
+          "type": "double",
+          "units": "h",
+          "output": "genset.hours_year"
+        },
+        {
+          "key": "power/genset.test_hours_year",
+          "type": "double",
+          "units": "h",
+          "output": "genset.test_hours_year"
         },
         {
           "key": "power/bus.boiler.energized",
@@ -4460,7 +5622,13 @@
         "cellar/transfer.pump_running",
         "cellar/transfer.flow_gpm",
         "cellar/transfer.pump_run",
-        "cellar/gasrelay.co2_ok"
+        "cellar/gasrelay.co2_ok",
+        "cellar/fv101-psv.lifted",
+        "cellar/fv102-psv.lifted",
+        "cellar/fv103-psv.lifted",
+        "cellar/fv104-psv.lifted",
+        "cellar/bbt201-psv.lifted",
+        "cellar/bbt202-psv.lifted"
       ],
       "endpoint": "rio-cellar/updates",
       "sends": [

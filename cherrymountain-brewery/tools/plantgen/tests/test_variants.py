@@ -479,3 +479,67 @@ def test_cherrymountain_app_block_matches_the_app_fixtures(variant: str) -> None
         assert app["metadata"] == want["metadata"]
         got = {h["hostname"]: h["metadata"] for h in app["hosts"]}
         assert got == {h["hostname"]: h["metadata"] for h in want["hosts"]}
+
+
+# -- truth outputs, relief valves, and the ground-truth snapshot ---------------
+
+
+def test_unit_outputs_follow_the_variant_units(full_files: dict[str, str]) -> None:
+    """``unit_outputs`` publish one key per unit of the listed models: the
+    fermenters' fill in every variant, the relief-valve vent on the bright
+    tanks too, and only for units the variant keeps."""
+    cellar = json.loads(full_files["helics.json"])["federates"]["cellar"]
+    keys = {p["key"]: p for p in cellar["publications"]}
+    for unit in ("fv101", "fv102", "fv103", "fv104"):
+        for name in ("level_pct", "spund_gps", "psv_gps", "leak_gps"):
+            assert keys[f"cellar/{unit}.{name}"]["output"] == f"{unit}.{name}"
+    assert "cellar/bbt201.psv_gps" in keys and "cellar/bbt201.spund_gps" not in keys
+    assert keys["cellar/bbt201.level_pct"]["device"] == "bbt201"  # LT01, not truth
+    ci = load(DEFAULT_PLANT, "ci")
+    ci_keys = {
+        p["key"]
+        for p in json.loads(render_all(ci, allocate(ci))["helics.json"])["federates"][
+            "cellar"
+        ]["publications"]
+    }
+    assert "cellar/fv101.level_pct" in ci_keys
+    assert not any(k.startswith("cellar/bbt") for k in ci_keys)
+
+
+def test_relief_valve_lift_switches_are_full_plant_only(full: Plant) -> None:
+    """Six lift switches in the appended PSV unit, each with a High alarm; ci
+    keeps its register map (test_fv_addresses_are_the_same_in_ci_and_full)."""
+    psv = [t for t in full.tags if t.unit == "PSV" and not t.generated]
+    assert [t.device.zone for t in psv if t.device] == [
+        "FV101", "FV102", "FV103", "FV104", "BBT201", "BBT202",
+    ]
+    assert all(t.alarms[0].kind == "state" and t.alarms[0].priority == "high" for t in psv)
+    assert not [t for t in load(DEFAULT_PLANT, "ci").tags if t.unit == "PSV"]
+
+
+def test_snapshot_subscribes_the_weather_federate(full_files: dict[str, str]) -> None:
+    """plant.yaml ``snapshot`` expands to the weather federate's subscriptions:
+    the KPI keys and the 3D view's keys, each published by another federate,
+    none of the weather federate's own."""
+    doc = json.loads(full_files["helics.json"])
+    subs = {s["key"] for s in doc["federates"]["weather"]["subscriptions"]}
+    published = {
+        p["key"]
+        for name, fed in doc["federates"].items()
+        if name != "weather"
+        for p in fed["publications"]
+    }
+    assert subs <= published
+    assert {
+        "brewhouse/batch.completed",
+        "packaging/bottles.total",
+        "power/energy.kwh",
+        "power/demand.peak_kw",
+        "building/cellar.co2_ppm",
+        "building/bas-vent.purge_fan_1_status",
+        "cellar/fv103-psv.lifted",
+        "cellar/fv103.level_pct",
+        "power/gen-ats.on_emergency",
+        "building/load.fans.kw",
+    } <= subs
+    assert not any(k.startswith("weather/") for k in subs)

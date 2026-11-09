@@ -17,6 +17,11 @@ knockout heat exchanger's first stage.
 each accepted event to its federate's endpoint. ``weather-step`` is applied
 here: the outdoor temperature steps by ``delta_f`` for ``duration`` seconds
 (0 holds it).
+
+**Snapshot.** plantgen subscribes the federate to the KPI keys and to every
+key the 3D view needs (plant.yaml ``snapshot``). Each step it hands the event
+API the KPIs and a :class:`~cherrymountain_sim.simctl.State`: those inputs plus
+its own outputs, for ``GET /api/v1/kpis`` and ``GET /api/v1/state``.
 """
 
 from __future__ import annotations
@@ -26,6 +31,7 @@ import datetime as dt
 import json
 import logging
 import math
+import time
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -38,7 +44,7 @@ from cherrymountain_sim.federate import (
     SimClock,
     Value,
 )
-from cherrymountain_sim.simctl import EventApi, Kpis
+from cherrymountain_sim.simctl import EventApi, Kpis, State
 
 LOG: logging.Logger = logging.getLogger("cherrymountain_sim.weather")
 G: float = 9.80665
@@ -177,6 +183,7 @@ class WeatherFederate(Federate):
     step_until: float | None
     last_event: str
     api: EventApi | None
+    seq: int
 
     def __init__(self, cfg: FederateConfig, clock: SimClock | None = None) -> None:
         super().__init__(cfg, clock)
@@ -192,6 +199,7 @@ class WeatherFederate(Federate):
         self.step_until = None
         self.last_event = ""
         self.api = None
+        self.seq = 0
 
     def start_api(self, variant: str = "") -> int:
         """Serve the event API; returns the bound port."""
@@ -233,7 +241,23 @@ class WeatherFederate(Federate):
                 self.outbox.append((self.peers[ev.target], payload))
             else:
                 LOG.warning("event %s: federate %s is not running", ev.event, ev.target)
-        self.api.update(self.now.isoformat(), self.kpis())
+        self.seq += 1
+        self.api.update(self.now.isoformat(), self.kpis(), self.state())
+
+    def state(self) -> State:
+        """The snapshot for ``GET /api/v1/state``: every input, then this
+        federate's own outputs. Called at the start of a step (before
+        :attr:`t` advances), when the inputs of the step are applied."""
+        values: dict[str, Value] = dict(self.inputs)
+        values.update(self.values())
+        return State(
+            seq=self.seq,
+            t_s=self.t,
+            sim_time=self.now.isoformat(),
+            wall_time=time.time(),
+            variant=self.api.variant if self.api else "",
+            values=values,
+        )
 
     def kpis(self) -> Kpis:
         """The KPI snapshot from the subscriptions."""
@@ -246,6 +270,18 @@ class WeatherFederate(Federate):
             energy_kwh=round(self.input("power/energy.kwh"), 1),
             demand_kw=round(self.input("power/demand.kw"), 1),
             peak_demand_kw=round(self.input("power/demand.peak_kw"), 1),
+            ttb_bbl_packaged=round(self.input("packaging/ttb.bbl"), 3),
+            fill_mean_floz=round(self.input("packaging/fill.mean_floz"), 3),
+            fill_under_mav_rejects=int(self.input("packaging/fill.under_mav")),
+            wastewater_inhibit_events=int(
+                self.input("utilities/wastewater.inhibit_events")
+            ),
+            cip_runs_verified=int(self.input("utilities/cip.verified")),
+            cip_runs_unverified=int(self.input("utilities/cip.unverified")),
+            genset_hours_year=round(self.input("power/genset.hours_year"), 2),
+            genset_test_hours_year=round(
+                self.input("power/genset.test_hours_year"), 2
+            ),
         )
 
     @property

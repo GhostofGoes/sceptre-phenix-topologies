@@ -7,6 +7,12 @@ valve (wall time). See DESIGN.md §6.3, §9.3, and §9.4.
 Simplifications: the headspace is treated as CO2 (it is purged quickly by
 fermentation gas), dissolved CO2 is not tracked, and the spunding valve is
 an ideal relief at its setpoint.
+
+Every fermenter and bright tank also has a spring-loaded pressure-relief valve
+(PSV, :class:`cherrymountain_sim.relief.ReliefValve`) at the 15 psig MAWP. It
+is the mechanical limit a written spunding setpoint cannot move: it lifts at
+its set pressure, vents CO2 into the cellar room at up to its rated capacity,
+and reseats once the head has blown down 10 %.
 """
 
 from __future__ import annotations
@@ -28,6 +34,7 @@ from cherrymountain_sim.fermentation import (
     Wort,
     pitch,
 )
+from cherrymountain_sim.relief import ReliefValve
 from cherrymountain_sim.thermal import JacketedVessel, Zone, c_to_f, f_to_c
 from cherrymountain_sim.timebase import TimeBase
 
@@ -85,6 +92,7 @@ class Fluxes(BaseModel):
 
     co2_gen_gps: float = 0.0  # CO2 evolved by fermentation, g/s
     co2_vent_gps: float = 0.0  # CO2 vented to the room by spunding, g/s
+    psv_gps: float = 0.0  # CO2 vented to the room by the relief valve, g/s
     heat_w: float = 0.0  # fermentation heat, W
     jacket_w: float = 0.0  # heat removed by the glycol jackets, W
 
@@ -127,6 +135,7 @@ class Fermenter:
     spund_sp_psia: float
     gas_mol: float
     spund_open: bool
+    psv: ReliefValve
     fluxes: Fluxes
     co2_vented_g: float
     co2_generated_g: float
@@ -170,6 +179,7 @@ class Fermenter:
         self.spund_sp_psia = env.ambient_psia + 1.0
         self.gas_mol = self.mol_at(env.ambient_psia)
         self.spund_open = False
+        self.psv = ReliefValve()
         self.fluxes = Fluxes()
         self.co2_vented_g = 0.0  # running totals for mass-balance checks
         self.co2_generated_g = 0.0
@@ -263,6 +273,11 @@ class Fermenter:
         self.vessel.zone(zone).valve_open = bool(open_)
 
     @property
+    def level_pct(self) -> float:
+        """Fill as a percentage of the 30 bbl working volume (no transmitter)."""
+        return 100.0 * self.liquid_l / self.cfg.volume_l
+
+    @property
     def gravity_plato(self) -> float:
         """Apparent extract the density meter reads (0 when empty)."""
         if self.state is None:
@@ -324,13 +339,23 @@ class Fermenter:
             self.spund_open = True
         else:
             self.spund_open = False
-        floor = self.env.ambient_psia - VACUUM_RELIEF_PSI
+        # The PSV, set at the MAWP, limits a spunding setpoint written above it.
+        ambient = self.env.ambient_psia
+        reseat = self.mol_at(ambient + self.psv.cfg.reseat_psig)
+        psv_g = self.psv.relieve(
+            self.pressure_psia - ambient,
+            (self.gas_mol - reseat) * CO2_G_PER_MOL,
+            wall_dt_s,
+        )
+        self.gas_mol -= psv_g / CO2_G_PER_MOL
+        floor = ambient - VACUUM_RELIEF_PSI
         if self.pressure_psia < floor:  # vacuum relief admits air
             self.gas_mol = self.mol_at(floor)
-        self.co2_vented_g += vent_g
+        self.co2_vented_g += vent_g + psv_g
         self.fluxes = Fluxes(
             co2_gen_gps=co2_gps,
             co2_vent_gps=vent_g / wall_dt_s,
+            psv_gps=psv_g / wall_dt_s,
             heat_w=heat_w,
             jacket_w=jacket_w,
         )
@@ -395,6 +420,16 @@ class Cellar:
         """Start a CO2 release at ``unit`` (scenario event)."""
         self.leaks.append(Leak(unit=unit, gps=gps, remaining_s=seconds))
 
+    def leak_gps(self, unit: str) -> float:
+        """CO2 a scenario release lets out at ``unit``, g/s."""
+        return sum(lk.gps for lk in self.leaks if lk.unit == unit)
+
+    def psv(self, unit: str) -> ReliefValve:
+        """The relief valve of a fermenter or bright tank."""
+        if unit in self.fermenters:
+            return self.fermenters[unit].psv
+        return self.bbts[unit].psv
+
     def step(self, wall_dt_s: float) -> None:
         """Advance every vessel and the sim clock."""
         self._knockout(wall_dt_s)
@@ -434,9 +469,14 @@ class Cellar:
 
     @property
     def co2_vent_gps(self) -> float:
-        """CO2 vented into the cellar room, g/s (to the building federate)."""
-        fv_vent = sum(fv.fluxes.co2_vent_gps for fv in self.fermenters.values())
-        return fv_vent + sum(lk.gps for lk in self.leaks)
+        """CO2 vented into the cellar room, g/s (to the building federate):
+        spunding, every relief valve, and scenario releases."""
+        fv_vent = sum(
+            fv.fluxes.co2_vent_gps + fv.fluxes.psv_gps
+            for fv in self.fermenters.values()
+        )
+        bbt_vent = sum(b.psv.vent_gps for b in self.bbts.values())
+        return fv_vent + bbt_vent + sum(lk.gps for lk in self.leaks)
 
     @property
     def co2_draw_slpm(self) -> float:

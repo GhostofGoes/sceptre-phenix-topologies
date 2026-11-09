@@ -48,8 +48,12 @@ ensure_strucpp() {
     [ -z "${STRUCPP:-}" ] || { echo "STRUCPP=${STRUCPP} is not a git checkout" >&2; exit 1; }
     log "cloning strucpp ${STRUCPP_REF:0:12} into ${dir}"
     mkdir -p "$(dirname "${dir}")"
-    git clone --quiet "${STRUCPP_URL}" "${dir}"
-    git -C "${dir}" checkout --quiet "${STRUCPP_REF}"
+    # Clone and check out beside the cache directory, then move it into place, so
+    # an interrupted clone never leaves a checkout at the wrong commit there.
+    rm -rf "${dir}.tmp"
+    git clone --quiet "${STRUCPP_URL}" "${dir}.tmp"
+    git -C "${dir}.tmp" checkout --quiet "${STRUCPP_REF}"
+    mv "${dir}.tmp" "${dir}"
   fi
   local have
   have=$(git -C "${dir}" rev-parse HEAD)
@@ -89,16 +93,36 @@ python3 -I "${here}/pack_zip.py" \
 if [ "${check}" = 1 ]; then
   # Compare entry names and contents, not raw bytes: deflate output can differ
   # between zlib builds while the archive holds the same files.
-  if python3 -I -c '
-import sys, zipfile
+  # Exit 0 when they match, 1 (listing the entries that differ) when they do not,
+  # and 3 when the committed file is not a ZIP (for example a Git LFS pointer:
+  # run `git lfs pull` rather than rebuilding over it).
+  rc=0
+  python3 -I -c '
+import hashlib, sys, zipfile
 def entries(path):
     with zipfile.ZipFile(path) as zf:
         return {i.filename: zf.read(i) for i in zf.infolist()}
-sys.exit(0 if entries(sys.argv[1]) == entries(sys.argv[2]) else 1)
-' "${target}" "${out}" 2>/dev/null; then
-    log "PASS: ${out#"${root}"/} is up to date"
-  else
-    log "FAIL: ${out#"${root}"/} differs from a fresh build; run $0" >&2
-    exit 1
-  fi
+fresh = entries(sys.argv[1])
+try:
+    committed = entries(sys.argv[2])
+except zipfile.BadZipFile:
+    with open(sys.argv[2], "rb") as fh:
+        head = fh.read(64)
+    kind = "a Git LFS pointer; run git lfs pull" if head.startswith(b"version https://git-lfs") else "not a ZIP"
+    print(f"build_zip: {sys.argv[2]} is {kind}", file=sys.stderr)
+    sys.exit(3)
+if fresh == committed:
+    sys.exit(0)
+md5 = lambda b: hashlib.md5(b).hexdigest()[:12] if b is not None else "-"
+for name in sorted(set(fresh) | set(committed)):
+    a, b = fresh.get(name), committed.get(name)
+    if a != b:
+        print(f"build_zip:   {name}: fresh {md5(a)} committed {md5(b)}", file=sys.stderr)
+sys.exit(1)
+' "${target}" "${out}" || rc=$?
+  case "${rc}" in
+    0) log "PASS: ${out#"${root}"/} is up to date" ;;
+    1) log "FAIL: ${out#"${root}"/} differs from a fresh build (entries above); run $0" >&2; exit 1 ;;
+    *) log "FAIL: cannot compare with ${out#"${root}"/}" >&2; exit "${rc}" ;;
+  esac
 fi

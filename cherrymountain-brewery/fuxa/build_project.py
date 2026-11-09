@@ -470,9 +470,9 @@ class Project(BaseModel):
 def build_project(variant: str) -> Project:
     gen: Path = PLANT_GENERATED / variant
     plant: PlantTags = PlantTags.model_validate_json(
-        (gen / "fuxa" / "scada-fuxa-tags.json").read_text()
+        (gen / "fuxa" / "scada-fuxa-tags.json").read_text(encoding="utf-8")
     )
-    alarms: PlantAlarms = PlantAlarms.model_validate_json((gen / "alarms.json").read_text())
+    alarms: PlantAlarms = PlantAlarms.model_validate_json((gen / "alarms.json").read_text(encoding="utf-8"))
     if len(plant.devices) != 1 or plant.devices[0].name != "plc-cellar":
         raise SystemExit("expected exactly one device, plc-cellar, in the tag list")
 
@@ -502,15 +502,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=HERE / "scada-fuxa-project.json")
     ap.add_argument("--check", action="store_true", help="fail if --out is stale")
     args: argparse.Namespace = ap.parse_args(argv)
+    if args.variant != "ci" and args.out == HERE / "scada-fuxa-project.json":
+        ap.error("the default --out is the ci project; pass --out for another variant")
 
     text: str = render(build_project(args.variant))
     if args.check:
-        if not args.out.exists() or args.out.read_text() != text:
+        if not args.out.exists() or args.out.read_text(encoding="utf-8") != text:
             print(f"{args.out} is stale; run build_project.py", file=sys.stderr)
             return 1
         print(f"{args.out} is up to date")
         return 0
-    args.out.write_text(text)
+    args.out.write_text(text, encoding="utf-8")
     print(f"wrote {args.out}")
     return 0
 

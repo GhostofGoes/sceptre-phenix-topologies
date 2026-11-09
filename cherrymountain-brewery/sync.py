@@ -419,10 +419,15 @@ def main(argv: list[str] | None = None) -> int:
     }
     problems: list[str] = []
     for v in chosen.values():
-        problems += sync_copies(v, args.check)
-        problems += sync_scenario(v, args.check)
-        if v.check_plc_zip:
-            problems += check_zip(v)
+        # A missing or malformed input (plantgen not run, a scenario without
+        # spec.apps, ...) is reported as a FAIL line, not a traceback.
+        try:
+            problems += sync_copies(v, args.check)
+            problems += sync_scenario(v, args.check)
+            if v.check_plc_zip:
+                problems += check_zip(v)
+        except (OSError, KeyError, TypeError, ValueError) as exc:
+            problems.append(f"{v.name}: {type(exc).__name__}: {exc}")
 
     for p in problems:
         print(f"FAIL: {p}", file=sys.stderr)

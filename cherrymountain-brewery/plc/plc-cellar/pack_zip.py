@@ -72,18 +72,23 @@ def collect(inputs: PackInputs) -> dict[str, bytes]:
 
 
 def write_zip(entries: dict[str, bytes], out: Path) -> None:
-    """Write ``entries`` as a deterministic ZIP."""
+    """Write ``entries`` as a deterministic ZIP. It is written next to ``out`` and
+    moved into place only once it is within the size limit, so a failed build never
+    leaves a bad ZIP where the committed one was."""
     out.parent.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
+    tmp: Path = out.with_name(out.name + ".tmp")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         for name, data in entries.items():
             info: zipfile.ZipInfo = zipfile.ZipInfo(name, date_time=ZIP_EPOCH)
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             info.create_system = 3
             zf.writestr(info, data, compresslevel=9)
-    size: int = out.stat().st_size
+    size: int = tmp.stat().st_size
     if size > MAX_ZIP_BYTES:
-        raise SystemExit(f"{out} is {size} bytes, over the {MAX_ZIP_BYTES} byte limit")
+        tmp.unlink()
+        raise SystemExit(f"{out} would be {size} bytes, over the {MAX_ZIP_BYTES} byte limit")
+    tmp.replace(out)
 
 
 def program_md5(defines_h: bytes) -> str:

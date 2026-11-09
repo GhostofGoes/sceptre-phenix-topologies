@@ -76,6 +76,10 @@ def verify(analyze: str, unit: Path) -> list[str]:
         line.replace(str(unit), unit.name)
         for line in (proc.stdout + proc.stderr).splitlines()
     ]
+    # verify exits 1 when it has findings; anything else (a crash, a signal, a
+    # usage error) must not read as a clean unit.
+    if proc.returncode not in (0, 1):
+        return [f"{unit.name}: systemd-analyze verify exited {proc.returncode}"]
     return list(
         dict.fromkeys(
             line

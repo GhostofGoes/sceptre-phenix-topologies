@@ -42,8 +42,9 @@ def test_configure_annotates_the_federate_node(run_app: RunApp) -> None:
     app = run_app("configure")
     annotation = app.extract_node("sim-process").annotations["helics/federate"]
     assert annotation.to_list() == [{"broker": "sim-ctl|mgmt", "fed-count": 1}]
-    # sim-ctl runs no federate in ci, so it gets no annotation.
-    assert "helics/federate" not in (app.extract_node("sim-ctl").annotations or {})
+    # sim-ctl runs no federate in ci, so it gets no annotation (and the ci
+    # topology gives it none: nothing on it listens for an autotunnel).
+    assert "helics/federate" not in (app.extract_node("sim-ctl").get("annotations") or {})
 
 
 def test_configure_writes_soh_profiles(run_app: RunApp) -> None:

@@ -503,11 +503,12 @@
             "phenix/startup-autotunnel": [
               "13001:3000",
               "18080:8080",
+              "18090:8090",
               "19200:9200"
             ]
           },
           "general": {
-            "description": "HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, chronyd for MGMT",
+            "description": "HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, cm-viz 3D view, chronyd for MGMT",
             "hostname": "sim-ctl"
           },
           "hardware": {
@@ -2088,6 +2089,12 @@
               "src": "/phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-selftest"
             },
             {
+              "description": "check that expected alerts fired, for the SCORCH vendor-maintenance run",
+              "dst": "/usr/local/sbin/cm-wazuh-expect",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-expect"
+            },
+            {
               "description": "Wazuh first-boot setup unit",
               "dst": "/etc/systemd/system/cm-wazuh-provision.service",
               "permissions": "0644",
@@ -2220,6 +2227,12 @@
               "dst": "/usr/local/sbin/cm-malcolm-selftest",
               "permissions": "0755",
               "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-selftest"
+            },
+            {
+              "description": "check that expected detections reached Malcolm, for the SCORCH vendor-maintenance run",
+              "dst": "/usr/local/sbin/cm-malcolm-expect",
+              "permissions": "0755",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-expect"
             },
             {
               "description": "OpenFlow flow and port setup for the mirror feed",
@@ -3029,6 +3042,11 @@
                     "type": "binary-read"
                   }
                 },
+                "psv": {
+                  "lifted": {
+                    "type": "binary-read"
+                  }
+                },
                 "filler": {
                   "state": {
                     "type": "analog-read",
@@ -3293,6 +3311,13 @@
                       "data-type": "uint16",
                       "scaling": 1
                     }
+                  },
+                  "refrig_ppm": {
+                    "type": "analog-read",
+                    "modbus": {
+                      "data-type": "uint16",
+                      "scaling": 0
+                    }
                   }
                 },
                 "glycol-loop": {
@@ -3398,6 +3423,9 @@
                   },
                   "main_valve": {
                     "type": "binary-read-write"
+                  },
+                  "valve_open": {
+                    "type": "binary-read"
                   }
                 },
                 "ro-skid": {
@@ -3678,6 +3706,20 @@
                       "data-type": "int16",
                       "scaling": 1
                     }
+                  },
+                  "cell_temp_f": {
+                    "type": "analog-read",
+                    "modbus": {
+                      "data-type": "uint16",
+                      "scaling": 1
+                    }
+                  },
+                  "offgas_ppm": {
+                    "type": "analog-read",
+                    "modbus": {
+                      "data-type": "uint16",
+                      "scaling": 0
+                    }
                   }
                 },
                 "gen-ats": {
@@ -3943,6 +3985,53 @@
                       "object-type": "binary-output",
                       "commandable": true
                     }
+                  },
+                  "co2_5_ppm": {
+                    "type": "analog-read",
+                    "bacnet": {
+                      "object-type": "analog-input",
+                      "units": "partsPerMillion"
+                    }
+                  },
+                  "co2_6_ppm": {
+                    "type": "analog-read",
+                    "bacnet": {
+                      "object-type": "analog-input",
+                      "units": "partsPerMillion"
+                    }
+                  },
+                  "co2_7_ppm": {
+                    "type": "analog-read",
+                    "bacnet": {
+                      "object-type": "analog-input",
+                      "units": "partsPerMillion"
+                    }
+                  },
+                  "co2_area_tier_1": {
+                    "type": "binary-read",
+                    "bacnet": {
+                      "object-type": "binary-value"
+                    }
+                  },
+                  "co2_shutoff_ok": {
+                    "type": "binary-read",
+                    "bacnet": {
+                      "object-type": "binary-value"
+                    }
+                  },
+                  "horn_strobe": {
+                    "type": "binary-read-write",
+                    "bacnet": {
+                      "object-type": "binary-output",
+                      "commandable": true
+                    }
+                  },
+                  "area_exhaust": {
+                    "type": "binary-read-write",
+                    "bacnet": {
+                      "object-type": "binary-output",
+                      "commandable": true
+                    }
                   }
                 }
               }
@@ -4085,6 +4174,30 @@
                     {
                       "name": "cellar/gasrelay",
                       "type": "gas-relay"
+                    },
+                    {
+                      "name": "cellar/fv101-psv",
+                      "type": "psv"
+                    },
+                    {
+                      "name": "cellar/fv102-psv",
+                      "type": "psv"
+                    },
+                    {
+                      "name": "cellar/fv103-psv",
+                      "type": "psv"
+                    },
+                    {
+                      "name": "cellar/fv104-psv",
+                      "type": "psv"
+                    },
+                    {
+                      "name": "cellar/bbt201-psv",
+                      "type": "psv"
+                    },
+                    {
+                      "name": "cellar/bbt202-psv",
+                      "type": "psv"
                     }
                   ]
                 }
@@ -4176,6 +4289,11 @@
                     {
                       "name": "utilities/co2",
                       "type": "co2-supply",
+                      "endpoint": "updates"
+                    },
+                    {
+                      "name": "utilities/co2relay",
+                      "type": "gas-relay",
                       "endpoint": "updates"
                     },
                     {
@@ -7244,7 +7362,8 @@
               "sim-ctl": [
                 ":8080",
                 ":9200",
-                ":3000"
+                ":3000",
+                ":8090"
               ],
               "malcolm": [
                 ":443"
@@ -7456,8 +7575,8 @@
                 {
                   "name": "vendor-account",
                   "executor": "bash",
-                  "testScript": "getent passwd ridgeline | cut -d: -f1\n",
-                  "testStdout": "ridgeline"
+                  "testScript": "getent passwd | cut -d: -f1 | grep -c '^ridgeline-'\n",
+                  "testStdout": "2"
                 }
               ],
               "plc-cellar": [
@@ -7751,7 +7870,7 @@
                       "start": [
                         {
                           "type": "exec",
-                          "args": "python3 -I /usr/local/lib/cm-desktop/cm_vendor_session.py --connection ews-rdp --hold 90",
+                          "args": "python3 -I /usr/local/lib/cm-desktop/cm_vendor_session.py --hold 90",
                           "wait": true,
                           "validator": "! grep -q '\"ok\":false' && grep -q '\"step\":\"sign-out\",\"ok\":true'"
                         }
@@ -7870,6 +7989,295 @@
                     }
                   ]
                 }
+              },
+              {
+                "name": "pcap-baseline-brew-day",
+                "type": "pcap",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "scada-fuxa",
+                      "interface": "IF0"
+                    },
+                    {
+                      "hostname": "plc-brewhouse",
+                      "interface": "IF0"
+                    },
+                    {
+                      "hostname": "plc-brewhouse",
+                      "interface": "IF1"
+                    },
+                    {
+                      "hostname": "rio-brewhouse",
+                      "interface": "IF0"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "brew-start",
+                "type": "plantevent",
+                "metadata": {
+                  "events": [
+                    {
+                      "event": "start-batch",
+                      "recipe": "fire-of-the-phenix"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "brew-run",
+                "type": "pause",
+                "metadata": {
+                  "duration": "30m"
+                }
+              },
+              {
+                "name": "health-flows",
+                "type": "soh",
+                "metadata": {
+                  "checks": [
+                    "custom-reachability",
+                    "custom"
+                  ],
+                  "failOnError": false
+                }
+              },
+              {
+                "name": "export-plant-data",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "scada-fuxa",
+                      "stop": [
+                        {
+                          "type": "exec",
+                          "args": "/usr/local/bin/cm-export-fuxa /var/lib/cm-exports",
+                          "wait": true
+                        },
+                        {
+                          "type": "recv",
+                          "args": "/var/lib/cm-exports/fuxa-export.tar.gz"
+                        }
+                      ]
+                    },
+                    {
+                      "hostname": "historian",
+                      "stop": [
+                        {
+                          "type": "exec",
+                          "args": "/usr/local/bin/cm-export-historian /var/lib/cm-exports",
+                          "wait": true
+                        },
+                        {
+                          "type": "recv",
+                          "args": "/var/lib/cm-exports/influx-backup.tar.gz"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "pcap-utility-outage",
+                "type": "pcap",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "rtu-der",
+                      "interface": "IF0"
+                    },
+                    {
+                      "hostname": "rtu-der",
+                      "interface": "IF1"
+                    },
+                    {
+                      "hostname": "plc-power",
+                      "interface": "IF1"
+                    },
+                    {
+                      "hostname": "gen-ats",
+                      "interface": "IF0"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "outage-open",
+                "type": "plantevent",
+                "metadata": {
+                  "events": [
+                    {
+                      "event": "utility-breaker",
+                      "action": "open"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "outage-ride-through",
+                "type": "pause",
+                "metadata": {
+                  "duration": "10m"
+                }
+              },
+              {
+                "name": "check-on-genset",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "plc-power",
+                      "start": [
+                        {
+                          "type": "exec",
+                          "args": "python3 -c 'import socket,struct;s=socket.create_connection((\"10.20.16.23\",502),5);s.sendall(struct.pack(\">HHHBBHH\",1,0,6,1,2,10001,2));r=s.recv(64);print(\"genset-running\" if r[9]&1 else \"genset-stopped\",\"ats-emergency\" if r[9]&2 else \"ats-normal\")'",
+                          "wait": true,
+                          "validator": "grep -q 'genset-running ats-emergency'"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "outage-close",
+                "type": "plantevent",
+                "metadata": {
+                  "events": [
+                    {
+                      "event": "utility-breaker",
+                      "action": "close"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "outage-restore",
+                "type": "pause",
+                "metadata": {
+                  "duration": "10m"
+                }
+              },
+              {
+                "name": "pcap-cellar-co2-leak",
+                "type": "pcap",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "bas-fuxa",
+                      "interface": "IF0"
+                    },
+                    {
+                      "hostname": "bas-vent",
+                      "interface": "IF0"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "co2-release",
+                "type": "plantevent",
+                "metadata": {
+                  "events": [
+                    {
+                      "event": "co2-release",
+                      "fv": "FV-102",
+                      "rate": "high",
+                      "duration": 600
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "co2-spread",
+                "type": "pause",
+                "metadata": {
+                  "duration": "15m"
+                }
+              },
+              {
+                "name": "check-purge",
+                "type": "cc",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "bas-fuxa",
+                      "start": [
+                        {
+                          "type": "exec",
+                          "args": "python3 -c 'import socket;s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.settimeout(5);s.sendto(bytes.fromhex(\"810a0011010400050a0c0c00c000011955\"),(\"10.30.10.22\",47808));r=s.recv(512);print(\"ACTIVE\" if b\"\\x3e\\x91\\x01\\x3f\" in r else \"INACTIVE\")'",
+                          "wait": true,
+                          "validator": "grep -q '^ACTIVE'"
+                        },
+                        {
+                          "type": "exec",
+                          "args": "python3 -c 'import socket;s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);s.settimeout(5);s.sendto(bytes.fromhex(\"810a0011010400050a0c0c014000011955\"),(\"10.30.10.22\",47808));r=s.recv(512);print(\"ACTIVE\" if b\"\\x3e\\x91\\x01\\x3f\" in r else \"INACTIVE\")'",
+                          "wait": true,
+                          "validator": "grep -q '^ACTIVE'"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "pcap-packaging-shift",
+                "type": "pcap",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "plc-packaging",
+                      "interface": "IF1"
+                    },
+                    {
+                      "hostname": "rio-packaging",
+                      "interface": "IF0"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "labeler-jam",
+                "type": "plantevent",
+                "metadata": {
+                  "events": [
+                    {
+                      "event": "jam",
+                      "machine": "labeler",
+                      "duration": 300
+                    },
+                    {
+                      "event": "jam",
+                      "machine": "filler",
+                      "duration": 120
+                    }
+                  ],
+                  "interval": 600
+                }
+              },
+              {
+                "name": "field-impairment",
+                "type": "qos",
+                "metadata": {
+                  "vms": [
+                    {
+                      "hostname": "plc-packaging",
+                      "interface": "IF1",
+                      "delay": "50ms",
+                      "loss": 1
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "shift-run",
+                "type": "pause",
+                "metadata": {
+                  "duration": "45m"
+                }
               }
             ],
             "runs": [
@@ -7891,6 +8299,71 @@
                 ],
                 "stop": [
                   "collect-evidence"
+                ]
+              },
+              {
+                "name": "baseline-brew-day",
+                "configure": [
+                  "health-check",
+                  "verify-soc"
+                ],
+                "start": [
+                  "pcap-baseline-brew-day",
+                  "brew-start",
+                  "brew-run",
+                  "health-flows"
+                ],
+                "stop": [
+                  "pcap-baseline-brew-day",
+                  "export-plant-data"
+                ]
+              },
+              {
+                "name": "utility-outage",
+                "configure": [
+                  "health-check"
+                ],
+                "start": [
+                  "pcap-utility-outage",
+                  "outage-open",
+                  "outage-ride-through",
+                  "check-on-genset",
+                  "outage-close",
+                  "outage-restore"
+                ],
+                "stop": [
+                  "pcap-utility-outage"
+                ]
+              },
+              {
+                "name": "cellar-co2-leak",
+                "configure": [
+                  "health-check"
+                ],
+                "start": [
+                  "pcap-cellar-co2-leak",
+                  "co2-release",
+                  "co2-spread",
+                  "check-purge"
+                ],
+                "stop": [
+                  "pcap-cellar-co2-leak"
+                ]
+              },
+              {
+                "name": "packaging-shift",
+                "configure": [
+                  "health-check"
+                ],
+                "start": [
+                  "pcap-packaging-shift",
+                  "field-impairment",
+                  "labeler-jam",
+                  "shift-run"
+                ],
+                "stop": [
+                  "field-impairment",
+                  "pcap-packaging-shift"
                 ]
               }
             ]

@@ -19,13 +19,6 @@
             "description": "HELICS root broker (started by the helics app); CI has no weather, event API, or ground-truth OpenSearch",
             "hostname": "sim-ctl"
           },
-          "annotations": {
-            "phenix/startup-autotunnel": [
-              "13001:3000",
-              "18080:8080",
-              "19200:9200"
-            ]
-          },
           "labels": {
             "zone": "mgmt"
           },

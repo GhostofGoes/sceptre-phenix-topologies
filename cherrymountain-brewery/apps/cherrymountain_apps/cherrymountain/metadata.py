@@ -38,6 +38,8 @@ AbsPath = Annotated[str, Field(pattern=r"^/(?:[\w.+@-]+/?)*$")]
 RelPath = Annotated[str, Field(pattern=r"^[\w+@-][\w.+@-]*(?:/[\w+@-][\w.+@-]*)*$")]
 #: A FUXA view name or URL path segment.
 ViewName = Annotated[str, Field(pattern=r"^[A-Za-z0-9][A-Za-z0-9 _-]{0,63}$")]
+#: A vendor technician's short name; the accounts are ``ridgeline-<name>``.
+Technician = Annotated[str, Field(pattern=r"^[a-z][a-z0-9]{1,15}$")]
 
 
 def _no_parent(value: str) -> str:
@@ -193,9 +195,23 @@ class AppMetadata(Block):
     #: the committed (plantgen, fixed-seed) keys with per-experiment ones at
     #: configure; ``scenario`` keeps them.
     wireguard_keys: Literal["generate", "scenario"] = "generate"
+    #: Ridgeline's technicians (DESIGN.md 13): each gets a named Guacamole
+    #: account with its own TOTP key and a named EWS account, instead of one
+    #: shared vendor login. The first is the one vendor-ws's scripted session
+    #: signs in as; it uses ``secrets.vendor*``, the others get generated ones.
+    vendor_technicians: Annotated[list[Technician], Field(min_length=1, max_length=8)] = Field(
+        default_factory=lambda: ["akim", "jdiaz"]
+    )
     verify: Verify = Field(default_factory=Verify)
     #: Export FUXA alarm history, DAQ data, and an InfluxDB backup at cleanup.
     export_on_cleanup: bool = True
+
+    @field_validator("vendor_technicians")
+    @classmethod
+    def _unique_technicians(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("vendorTechnicians must not repeat a name")
+        return value
 
 
 # ---------------------------------------------------------------- hosts

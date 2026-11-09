@@ -222,7 +222,7 @@
   <rule id="100400" level="8">
     <if_sid>5715</if_sid>
     <srcip>10.10.20.11</srcip>
-    <user>^ridgeline$</user>
+    <user>^ridgeline-</user>
     <description>Vendor SSH login to the EWS through the jump host (dmz-jump): $(dstuser).</description>
     <group>cm_vendor,cm_vendor_session,cm_ews,</group>
   </rule>
@@ -230,17 +230,27 @@
   <rule id="100401" level="12">
     <if_sid>5715</if_sid>
     <srcip negate="yes">10.10.20.11</srcip>
-    <user>^ridgeline$</user>
-    <description>The vendor account signed in to the EWS over SSH from $(srcip), not from the jump host.</description>
+    <user>^ridgeline-</user>
+    <description>A vendor technician's account ($(dstuser)) signed in to the EWS over SSH from $(srcip), not from the jump host.</description>
     <group>cm_vendor,cm_ews,</group>
   </rule>
 
   <rule id="100402" level="8">
     <if_sid>5501</if_sid>
     <program_name>^xrdp-sesman$</program_name>
-    <user>^ridgeline$</user>
+    <user>^ridgeline-</user>
     <description>Vendor RDP desktop session opened on the EWS for $(dstuser).</description>
     <group>cm_vendor,cm_vendor_session,cm_ews,</group>
+  </rule>
+
+  <!-- Every Ridgeline technician has a named account (ridgeline-<name>, DESIGN.md 13);
+       70-ews-vendor.sh locks the shared one of earlier versions. A login as it means
+       the lock was undone or the account was recreated. -->
+  <rule id="100403" level="12">
+    <if_sid>5715</if_sid>
+    <user>^ridgeline$</user>
+    <description>The shared vendor account signed in to the EWS from $(srcip); technicians have named accounts.</description>
+    <group>cm_vendor,cm_ews,</group>
   </rule>
 
   <!-- ===== OpenPLC program upload and start or stop from the EWS ===== -->

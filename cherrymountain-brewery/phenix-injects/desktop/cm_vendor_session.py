@@ -8,7 +8,9 @@ technician does in a browser, over the WireGuard tunnel:
 1. check that the tunnel to dmz-jump answers on TCP 443,
 2. sign in to Guacamole with the user name, the password, and a TOTP code
    (REST ``POST /api/tokens``),
-3. find the ``ews-rdp`` connection, open a session to it through the web socket
+3. find the technician's own ``ews-rdp-<account>`` connection (DESIGN.md 13: each
+   technician has a named account and copies of the EWS connections), open a
+   session to it through the web socket
    tunnel, and keep it open for ``--hold`` seconds, answering the server's sync
    messages and moving the mouse now and then, so the session is a real, recorded
    one (the step passes when the remote screen draws, and fails on an error),
@@ -20,7 +22,7 @@ ridgeline.env (injected on vendor-ws, mode 0600; range-only values). The server'
 certificate is self-signed, so it is not verified (a range-only choice, noted in the
 log). Standard library plus pydantic.
 
-Usage: cm_vendor_session.py [--url https://10.10.20.11] [--hold 60] [--connection ews-rdp]
+Usage: cm_vendor_session.py [--url https://10.10.20.11] [--hold 60] [--connection ews-rdp-<account>]
 """
 
 from __future__ import annotations
@@ -351,7 +353,7 @@ def hold_session(base: str, token: str, data_source: str, identifier: str, hold:
     return tunnel
 
 
-def run(url: str, hold: float, connection: str, env: Path, log: Path | None) -> int:
+def run(url: str, hold: float, connection: str | None, env: Path, log: Path | None) -> int:
     session: Session = Session()
     context: ssl.SSLContext = ssl.create_default_context()
     context.check_hostname = False
@@ -362,6 +364,8 @@ def run(url: str, hold: float, connection: str, env: Path, log: Path | None) -> 
     except (OSError, ValueError) as error:
         session.record("credentials", False, f"cannot read {env}: {type(error).__name__}", log)
         return 1
+    # The technician's own copy of the app's RDP connection (cm_vendor_sql.py).
+    connection = connection or f"ews-rdp-{vendor.VENDOR_GUAC_USER}"
     host: str = urlsplit(url).hostname or ""
     try:
         socket.create_connection((host, urlsplit(url).port or 443), timeout=10).close()
@@ -395,7 +399,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--hold", type=float, default=60.0, help="seconds to keep the session open")
-    parser.add_argument("--connection", default="ews-rdp")
+    parser.add_argument("--connection", default=None, help="default: ews-rdp-<the technician's account>")
     parser.add_argument("--env", type=Path, default=DEFAULT_ENV)
     parser.add_argument("--log", type=Path, default=DEFAULT_LOG)
     args: argparse.Namespace = parser.parse_args(argv)

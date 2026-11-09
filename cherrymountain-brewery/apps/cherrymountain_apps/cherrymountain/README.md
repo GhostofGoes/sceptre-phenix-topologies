@@ -71,6 +71,7 @@ App block:
 | `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment`, `vendorGuacPassword`, `vendorTotpSecret` (Base32), `vendorEwsPassword` |
 | `wireguardKeys` | `generate` or `scenario` | `generate` | `generate` replaces the scenario's `wireguard` keys (plantgen's fixed-seed keys) with per-experiment ones at configure |
 | `verify.timeout`, `verify.clientGrace` | seconds | `15`, `5` | Per-check timeouts in post-start and running |
+| `vendorTechnicians` | list of short names | `[akim, jdiaz]` | Ridgeline's technicians: each gets a named Guacamole account (`ridgeline-<name>`) with its own TOTP key and its own EWS account (DESIGN.md 13). The first is the one vendor-ws's scripted session signs in as |
 | `exportOnCleanup` | bool | `true` | Run the cleanup exports |
 
 Host metadata, selected by `type`:
@@ -181,8 +182,10 @@ once per experiment into `<experiment dir>/cherrymountain/secrets.json` (mode
 0600) and reused on restarts, so the VMs and their already-provisioned
 services agree. Files that hold one are written and injected mode 0600.
 
-- **Vendor persona.** `ridgeline.env` (the vendor's Guacamole password and
-  TOTP key, and the EWS account's password) is rendered for every node the
+- **Vendor persona.** `ridgeline.env` (per technician of `vendorTechnicians`:
+  the Guacamole password and TOTP key and the EWS password; the first one's
+  from `secrets.vendor*`, the others' kept in `<experiment dir>/cherrymountain/
+  vendor.json`, 0600) is rendered for every node the
   topology gives it (dmz-jump, ews, vendor-ws) and replaces the committed
   copy, so the three always agree and change with each experiment.
 - **WireGuard.** With `wireguardKeys: generate`, configure replaces each

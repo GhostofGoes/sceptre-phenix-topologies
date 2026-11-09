@@ -52,8 +52,8 @@
 </decoder>
 
 <!-- ===== Guacamole web app (dmz-jump) ===== -->
-<!-- ... INFO o.a.g.event.EventLoggingListener - User "ridgeline-tech" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5]. -->
-<!-- ... WARN o.a.g.event.EventLoggingListener - Authentication attempt from [10.99.0.2, 172.18.0.5] for user "ridgeline-tech" failed: Permission denied. (rejected by "totp") -->
+<!-- ... INFO o.a.g.event.EventLoggingListener - User "ridgeline-akim" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5]. -->
+<!-- ... WARN o.a.g.event.EventLoggingListener - Authentication attempt from [10.99.0.2, 172.18.0.5] for user "ridgeline-akim" failed: Permission denied. (rejected by "totp") -->
 <decoder name="cm-guacamole">
   <program_name>^guacamole$</program_name>
 </decoder>
@@ -86,7 +86,7 @@
 </decoder>
 
 <!-- ===== OpenPLC REST actions of the engineer (ews) ===== -->
-<!-- Nov  9 12:00:00 ews cm-plc-tool: event=plc_upload plc=plc-cellar host=10.20.10.12 user=ridgeline -->
+<!-- Nov  9 12:00:00 ews cm-plc-tool: event=plc_upload plc=plc-cellar host=10.20.10.12 user=ridgeline-akim -->
 <decoder name="cm-plc-tool">
   <program_name>^cm-plc-tool$</program_name>
 </decoder>

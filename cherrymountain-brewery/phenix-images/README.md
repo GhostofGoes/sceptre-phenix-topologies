@@ -251,8 +251,10 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   - The stock PostgreSQL schema (`001-create-schema.sql`, checked against the
     Apache checksum) in `/opt/cherrymountain/guacamole/initdb`. The stock
     `guacadmin` account (`002-create-admin-user.sql`) is deliberately left out;
-    the cherrymountain app's `50-cherrymountain.sql` creates `cmadmin`, and the
-    topology's `60-ridgeline.sql` creates the vendor account with TOTP.
+    the cherrymountain app's `50-cherrymountain.sql` creates `cmadmin`, and
+    `cm_vendor_sql.py` (run by `cm-guacamole-start`) creates a named account per
+    vendor technician, each with its own TOTP key and its own copies of the EWS
+    connections.
   - A recordings directory (`/var/lib/cm-guacamole/recordings`, mode 2750,
     owner uid 1000, group 1001) that guacd writes, the web app reads, and the
     Wazuh agent watches.

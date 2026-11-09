@@ -11,15 +11,16 @@
 100201,100204,100205|Nov  9 12:00:03 dmz-vpn cm-wg-watch: event=peer_up interface=wg0 peer=7bqjO1NU endpoint=198.51.100.10:51820
 100202|Nov  9 12:00:04 dmz-vpn cm-wg-watch: event=peer_down interface=wg0 peer=7bqjO1NU endpoint=198.51.100.10:51820
 100203|Nov  9 12:00:05 dmz-vpn cm-wg-watch: event=peer_roam interface=wg0 peer=7bqjO1NU endpoint=198.51.100.99:51820
-100301,100305,100306|Nov  9 12:00:06 phenix guacamole[1234]: 12:00:06.123 [http-nio-8080-exec-3] INFO  o.a.g.event.EventLoggingListener - User "ridgeline-tech" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5].
-100301,100305,100306|Nov  9 12:00:06 phenix guacamole[1234]: 12:00:06.895 [http-nio-8080-exec-3] INFO  o.a.g.event.EventLoggingListener - User "ridgeline-tech" (authenticated by "postgresql") successfully authenticated from 10.99.0.2
+100301,100305,100306|Nov  9 12:00:06 phenix guacamole[1234]: 12:00:06.123 [http-nio-8080-exec-3] INFO  o.a.g.event.EventLoggingListener - User "ridgeline-akim" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5].
+100301,100305,100306|Nov  9 12:00:06 phenix guacamole[1234]: 12:00:06.895 [http-nio-8080-exec-3] INFO  o.a.g.event.EventLoggingListener - User "ridgeline-akim" (authenticated by "postgresql") successfully authenticated from 10.99.0.2
 100302,100307,100308|Nov  9 12:00:07 phenix guacamole[1234]: 12:00:07.123 [http-nio-8080-exec-4] INFO  o.a.g.event.EventLoggingListener - User "cmadmin" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5].
-100303|Nov  9 12:00:08 phenix guacamole[1234]: 12:00:08.123 [http-nio-8080-exec-5] WARN  o.a.g.event.EventLoggingListener - Authentication attempt from [10.99.0.2, 172.18.0.5] for user "ridgeline-tech" failed: Permission denied. (rejected by "totp")
-100303|Nov  9 12:00:08 phenix guacamole[1234]: 12:00:08.408 [http-nio-8080-exec-1] WARN  o.a.g.event.EventLoggingListener - Authentication attempt from 10.99.0.2 for user "ridgeline-tech" failed: Provided TOTP code is not valid. (rejected by "totp")
+100303|Nov  9 12:00:08 phenix guacamole[1234]: 12:00:08.123 [http-nio-8080-exec-5] WARN  o.a.g.event.EventLoggingListener - Authentication attempt from [10.99.0.2, 172.18.0.5] for user "ridgeline-akim" failed: Permission denied. (rejected by "totp")
+100303|Nov  9 12:00:08 phenix guacamole[1234]: 12:00:08.408 [http-nio-8080-exec-1] WARN  o.a.g.event.EventLoggingListener - Authentication attempt from 10.99.0.2 for user "ridgeline-akim" failed: Provided TOTP code is not valid. (rejected by "totp")
 100311|Nov  9 12:00:09 phenix guacd[1]: guacd[1]: INFO:	Creating new client for protocol "rdp"
-100400|Nov  9 12:00:10 ews sshd[2222]: Accepted password for ridgeline from 10.10.20.11 port 51234 ssh2
-100401|Nov  9 12:00:11 ews sshd[2223]: Accepted password for ridgeline from 10.99.0.2 port 51235 ssh2
-100402|Nov  9 12:00:12 ews xrdp-sesman[512]: pam_unix(xrdp-sesman:session): session opened for user ridgeline(uid=1001) by (uid=0)
-100411|Nov  9 12:00:13 ews cm-plc-tool: event=plc_upload plc=plc-cellar host=10.20.10.12 user=ridgeline
-100412|Nov  9 12:00:14 ews cm-plc-tool: event=plc_start plc=plc-cellar host=10.20.10.12 user=ridgeline
-100413|Nov  9 12:00:15 ews cm-plc-tool: event=plc_failed plc=plc-cellar host=10.20.10.12 user=ridgeline
+100400|Nov  9 12:00:10 ews sshd[2222]: Accepted password for ridgeline-akim from 10.10.20.11 port 51234 ssh2
+100401|Nov  9 12:00:11 ews sshd[2223]: Accepted password for ridgeline-jdiaz from 10.99.0.2 port 51235 ssh2
+100402|Nov  9 12:00:12 ews xrdp-sesman[512]: pam_unix(xrdp-sesman:session): session opened for user ridgeline-akim(uid=1001) by (uid=0)
+100403|Nov  9 12:00:12 ews sshd[2224]: Accepted password for ridgeline from 10.10.20.11 port 51236 ssh2
+100411|Nov  9 12:00:13 ews cm-plc-tool: event=plc_upload plc=plc-cellar host=10.20.10.12 user=ridgeline-akim
+100412|Nov  9 12:00:14 ews cm-plc-tool: event=plc_start plc=plc-cellar host=10.20.10.12 user=ridgeline-akim
+100413|Nov  9 12:00:15 ews cm-plc-tool: event=plc_failed plc=plc-cellar host=10.20.10.12 user=ridgeline-akim

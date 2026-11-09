@@ -3487,8 +3487,8 @@ spec:
         - name: vendor-account
           executor: bash
           testScript: |
-            getent passwd ridgeline | cut -d: -f1
-          testStdout: ridgeline
+            getent passwd | cut -d: -f1 | grep -c '^ridgeline-'
+          testStdout: "2"
         plc-cellar:
         - name: blocked-scada-fuxa-1881
           executor: bash
@@ -3760,7 +3760,7 @@ spec:
           - hostname: vendor-ws
             start:
             - type: exec
-              args: python3 -I /usr/local/lib/cm-desktop/cm_vendor_session.py --connection ews-rdp --hold 90
+              args: python3 -I /usr/local/lib/cm-desktop/cm_vendor_session.py --hold 90
               wait: true
               validator: "! grep -q '\"ok\":false' && grep -q '\"step\":\"sign-out\",\"ok\":true'"
       - name: plc-reupload

@@ -97,7 +97,34 @@ def test_vendor_credentials_agree_across_the_three_consumers() -> None:
     assert sql_view.VENDOR_TOTP_SECRET == laptop_view.VENDOR_TOTP_SECRET
     hook = (INJECTS / "ews/70-ews-vendor.sh").read_text()
     assert "VENDOR_EWS_USER" in hook and "VENDOR_EWS_PASSWORD" in hook
-    assert sql_view.VENDOR_EWS_USER == "ridgeline"  # the account the Wazuh rules 100400 to 100402 name
+    # Named accounts (DESIGN.md 13): the Wazuh rules 100400 to 100402 match the prefix.
+    assert sql_view.VENDOR_EWS_USER == sql_view.VENDOR_GUAC_USER == "ridgeline-akim"
+    assert "VENDOR_TECH_COUNT" in hook and "VENDOR_TECH${n}_USER" in hook
+
+
+def test_every_technician_has_a_named_account_and_own_totp() -> None:
+    """One Guacamole account, TOTP key, and EWS account per technician, never shared."""
+    vendor = cm_vendor_sql.Vendor.from_file(RIDGELINE)
+    techs = vendor.technicians
+    assert len(techs) == 2
+    assert all(t.guac_user.startswith("ridgeline-") and t.ews_user == t.guac_user for t in techs)
+    assert len({t.totp_secret for t in techs}) == len(techs)
+    assert len({t.guac_password for t in techs}) == len(techs)
+
+
+def test_the_vendor_keys_must_be_the_first_technicians(tmp_path: Path) -> None:
+    bad = tmp_path / "bad.env"
+    bad.write_text(RIDGELINE.read_text().replace("VENDOR_GUAC_USER=ridgeline-akim", "VENDOR_GUAC_USER=ridgeline-jdiaz"))
+    with pytest.raises(ValueError, match="first technician"):
+        cm_vendor_sql.Vendor.from_file(bad)
+
+
+def test_a_file_without_a_roster_is_one_technician(tmp_path: Path) -> None:
+    lines = [line for line in RIDGELINE.read_text().splitlines() if not line.startswith("VENDOR_TECH")]
+    old = tmp_path / "old.env"
+    old.write_text("\n".join(lines) + "\n")
+    vendor = cm_vendor_sql.Vendor.from_file(old)
+    assert [t.guac_user for t in vendor.technicians] == [vendor.VENDOR_GUAC_USER]
 
 
 def test_the_password_hash_is_guacamoles() -> None:
@@ -117,9 +144,17 @@ def test_sql_rejects_unsafe_values(tmp_path: Path) -> None:
 
 
 def test_sql_names_the_connections_the_app_creates(repo: Path) -> None:
-    rendered = cm_vendor_sql.sql(cm_vendor_sql.Vendor.from_file(RIDGELINE), "ab" * 32)
+    """Each technician gets copies of the app's two connections, holding that
+    technician's EWS account; the app's own keep no vendor credentials, and the
+    shared login of earlier versions is deleted."""
+    vendor = cm_vendor_sql.Vendor.from_file(RIDGELINE)
+    rendered = cm_vendor_sql.sql(vendor, "ab" * 32)
     for connection in ("ews-rdp", "ews-ssh"):
         assert f"connection_name = '{connection}'" in rendered
+        for tech in vendor.technicians:
+            assert f"c.connection_name = '{connection}-{tech.guac_user}'" in rendered
+    assert "DELETE FROM guacamole_entity WHERE name = 'ridgeline-tech'" in rendered
+    assert "parameter_name IN ('username', 'password')" in rendered
     assert "guac-totp-key-secret" in rendered and "guac-totp-key-confirmed" in rendered
     assert rendered.startswith("-- Rendered") and rendered.rstrip().endswith("COMMIT;")
 

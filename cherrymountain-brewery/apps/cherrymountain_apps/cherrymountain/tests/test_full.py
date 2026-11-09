@@ -221,6 +221,15 @@ def test_full_vendor_persona_is_generated_per_experiment(ctx: Context) -> None:
     for key in ("VENDOR_GUAC_PASSWORD", "VENDOR_TOTP_SECRET", "VENDOR_EWS_PASSWORD"):
         assert values[key] and values[key] != committed[key], key
     assert len(base64.b32decode(values["VENDOR_TOTP_SECRET"])) == 20
+    # One named account per technician (DESIGN.md 13), each with its own TOTP key;
+    # the first is the scripted session's VENDOR_* account.
+    assert values["VENDOR_TECH_COUNT"] == "2"
+    assert values["VENDOR_TECH1_USER"] == values["VENDOR_GUAC_USER"] == values["VENDOR_EWS_USER"] == "ridgeline-akim"
+    assert values["VENDOR_TECH1_TOTP_SECRET"] == values["VENDOR_TOTP_SECRET"]
+    assert values["VENDOR_TECH2_USER"] == "ridgeline-jdiaz"
+    assert values["VENDOR_TECH2_TOTP_SECRET"] != values["VENDOR_TECH1_TOTP_SECRET"]
+    assert len(base64.b32decode(values["VENDOR_TECH2_TOTP_SECRET"])) == 20
+    assert render.render_vendor(ctx)["ews"][0].src and env(Path(plan["ews"][0].src))["VENDOR_TECH2_GUAC_PASSWORD"] == values["VENDOR_TECH2_GUAC_PASSWORD"]
     assert Path(plan["ews"][0].src).stat().st_mode & 0o077 == 0
 
 

@@ -26,7 +26,7 @@ from phenix_apps.common import utils
 from phenix_apps.common.logger import logger
 from pydantic import BaseModel, ConfigDict
 
-from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, host_keys, write_private
+from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, host_keys, totp_secret, write_private
 from cherrymountain_apps.cherrymountain.metadata import (
     AppMetadata,
     FuxaHost,
@@ -1193,8 +1193,33 @@ def render_telnet(ctx: Context, hostname: str, md: RioHost, rendered: str | None
 
 #: Where the topology injects the vendor persona (dmz-jump, ews, vendor-ws).
 VENDOR_ENV: Final[str] = "/etc/cherrymountain/ridgeline.env"
-VENDOR_GUAC_USER: Final[str] = "ridgeline-tech"
-VENDOR_EWS_USER: Final[str] = "ridgeline"
+#: Every technician's Guacamole and EWS account is ``ridgeline-<name>``.
+VENDOR_PREFIX: Final[str] = "ridgeline-"
+
+
+def vendor_roster(ctx: Context) -> list[dict[str, str]]:
+    """One named account per technician (DESIGN.md 13): the first uses the
+    ``secrets.vendor*`` credentials, the others per-experiment ones kept in
+    ``vendor.json`` (0600), so a restart renders the same values."""
+    techs: list[str] = list(ctx.app.vendor_technicians)
+    others: list[str] = techs[1:]
+    store: Path = ctx.out_dir / "vendor.json"
+    guac: dict[str, str] = host_keys(store, [f"{t}.guac" for t in others], lambda: secrets.token_urlsafe(24))
+    ews: dict[str, str] = host_keys(store, [f"{t}.ews" for t in others], lambda: secrets.token_urlsafe(24))
+    totp: dict[str, str] = host_keys(store, [f"{t}.totp" for t in others], totp_secret)
+    roster: list[dict[str, str]] = [
+        {
+            "user": VENDOR_PREFIX + techs[0],
+            "guac": ctx.creds.vendor_guac_password.get_secret_value(),
+            "totp": ctx.creds.vendor_totp_secret.get_secret_value(),
+            "ews": ctx.creds.vendor_ews_password.get_secret_value(),
+        }
+    ]
+    for t in others:
+        roster.append(
+            {"user": VENDOR_PREFIX + t, "guac": guac[f"{t}.guac"], "totp": totp[f"{t}.totp"], "ews": ews[f"{t}.ews"]}
+        )
+    return roster
 
 
 def render_vendor(ctx: Context) -> dict[str, list[Injection]]:
@@ -1209,18 +1234,26 @@ def render_vendor(ctx: Context) -> dict[str, list[Injection]]:
     )
     if not hosts:
         return {}
+    roster: list[dict[str, str]] = vendor_roster(ctx)
+    first: dict[str, str] = roster[0]
+    values: dict[str, str | int] = {
+        "VENDOR_GUAC_USER": first["user"],
+        "VENDOR_GUAC_PASSWORD": first["guac"],
+        "VENDOR_TOTP_SECRET": first["totp"],
+        "VENDOR_EWS_USER": first["user"],
+        "VENDOR_EWS_PASSWORD": first["ews"],
+        "VENDOR_TECH_COUNT": len(roster),
+    }
+    for n, tech in enumerate(roster, 1):
+        values[f"VENDOR_TECH{n}_USER"] = tech["user"]
+        values[f"VENDOR_TECH{n}_GUAC_PASSWORD"] = tech["guac"]
+        values[f"VENDOR_TECH{n}_TOTP_SECRET"] = tech["totp"]
+        values[f"VENDOR_TECH{n}_EWS_PASSWORD"] = tech["ews"]
     text: str = (
         "# The vendor persona of this experiment, rendered by the cherrymountain app\n"
-        "# (DESIGN.md 13). Range-only, generated per experiment.\n"
-        + env_file(
-            {
-                "VENDOR_GUAC_USER": VENDOR_GUAC_USER,
-                "VENDOR_GUAC_PASSWORD": ctx.creds.vendor_guac_password.get_secret_value(),
-                "VENDOR_TOTP_SECRET": ctx.creds.vendor_totp_secret.get_secret_value(),
-                "VENDOR_EWS_USER": VENDOR_EWS_USER,
-                "VENDOR_EWS_PASSWORD": ctx.creds.vendor_ews_password.get_secret_value(),
-            }
-        )
+        "# (DESIGN.md 13): one named Guacamole and EWS account per technician, and the\n"
+        "# first technician's again as VENDOR_* for vendor-ws's scripted session.\n"
+        "# Range-only, generated per experiment.\n" + env_file(values)
     )
     out: dict[str, list[Injection]] = {}
     for host in hosts:

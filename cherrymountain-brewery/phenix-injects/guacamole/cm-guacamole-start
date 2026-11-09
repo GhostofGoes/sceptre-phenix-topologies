@@ -9,7 +9,7 @@
 #    the web application's entrypoint treats a POSTGRES_* variable as a deprecated one.
 # 3. PostgreSQL first: on an empty data directory it runs the stock schema and the
 #    cherrymountain app's 50-cherrymountain.sql (cmadmin, the connections).
-# 4. The vendor technician's account and TOTP key (cm_vendor_sql.py, idempotent, so
+# 4. The vendor technicians' named accounts and TOTP keys (cm_vendor_sql.py, idempotent, so
 #    it runs at every start), once the database accepts connections.
 # 5. Everything else.
 #
@@ -61,7 +61,7 @@ if [ "$healthy" != true ]; then
 fi
 
 if [ -f "$RIDGELINE" ]; then
-  log "creating the vendor account"
+  log "creating the vendor technicians' named accounts"
   python3 -I "${LIB}/cm_vendor_sql.py" --env "$RIDGELINE" \
     | docker exec -i postgres psql -v ON_ERROR_STOP=1 --quiet -U guacamole_user -d guacamole_db
 else

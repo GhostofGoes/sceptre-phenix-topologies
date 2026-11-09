@@ -109,8 +109,21 @@ class BbmdConfig(BaseModel):
         ]
 
 
+def block_readline() -> None:
+    """Make ``import readline`` fail, unless readline is already loaded.
+
+    BACpypes3's console module imports readline for its history file. When
+    readline loads, ncurses calls ``setfsuid()``, which cm-bbmd.service filters
+    (``SystemCallFilter=~@privileged``), so the kernel kills the BBMD with
+    SIGSYS before it binds its port. The BBMD has no console, and BACpypes3
+    runs without readline when the import fails.
+    """
+    sys.modules.setdefault("readline", None)  # type: ignore[arg-type]
+
+
 async def serve(config: BbmdConfig) -> None:
     """Run the BBMD until the process is stopped."""
+    block_readline()
     # Imported here so the settings can be checked without BACpypes3.
     from bacpypes3.app import Application  # noqa: PLC0415
     from bacpypes3.argparse import SimpleArgumentParser  # noqa: PLC0415

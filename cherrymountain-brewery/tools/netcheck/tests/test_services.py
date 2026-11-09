@@ -60,6 +60,24 @@ def test_bad_tables_are_refused(bdt: list[str]) -> None:
         cm_bbmd.BbmdConfig(name="b", instance=7, address="10.0.0.1/24:47808", bdt=bdt)
 
 
+def test_the_bbmd_keeps_readline_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    """readline's ncurses calls setfsuid(), which cm-bbmd.service filters; a
+    filtered call kills the BBMD, so BACpypes3 must not get to import it."""
+    import sys  # noqa: PLC0415
+
+    monkeypatch.delitem(sys.modules, "readline", raising=False)
+    cm_bbmd.block_readline()
+    with pytest.raises(ImportError):
+        import readline  # noqa: F401, PLC0415
+    monkeypatch.delitem(sys.modules, "readline", raising=False)
+
+
+def test_the_bbmd_unit_filters_what_readline_calls(repo: Path) -> None:
+    """The reason block_readline exists: keep the test honest if the unit changes."""
+    unit = (repo / "phenix-injects/bbmd/cm-bbmd.service").read_text()
+    assert "SystemCallFilter=~@privileged" in unit
+
+
 def test_main_reports_missing_settings(capsys: pytest.CaptureFixture[str]) -> None:
     assert cm_bbmd.main(["--check"], {}) == 2
     assert "missing setting" in capsys.readouterr().err

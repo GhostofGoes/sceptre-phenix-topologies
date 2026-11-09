@@ -3094,10 +3094,11 @@ disables an alarm and re-enables it at expiry, logging both to the historian.
 
 **Log volume.** VyOS `default-log` has no rate limit, so a scan produces one
 syslog line per dropped packet. Mitigations in place: rule 100104 aggregates
-ten drops a minute from one source into one alert. **TODO:** Wazuh's
-analysisd EPS limit on the manager, and an index lifecycle (ISM) policy on the
-Wazuh indexer that deletes `wazuh-alerts-*` after 14 days so its 16 GB disk
-does not fill during a long exercise; Malcolm already ages its indexes out.
+ten drops a minute from one source into one alert, and `cm-wazuh-provision`
+creates an index lifecycle (ISM) policy that deletes `wazuh-alerts-*` and
+`wazuh-archives-*` after 14 days (`CM_WAZUH_RETENTION_DAYS`) so the indexer's
+16 GB disk does not fill during a long exercise; Malcolm already ages its
+indexes out. **TODO:** Wazuh's analysisd EPS limit on the manager.
 
 **EWS program-change detection without cm_plc_tool (TODO).** Today a change
 made with `curl` on the EWS leaves only network evidence (the REST session and

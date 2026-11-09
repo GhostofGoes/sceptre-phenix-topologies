@@ -27,12 +27,15 @@ HERE: Path = Path(__file__).resolve().parent
 VIZ: Path = HERE.parent
 sys.path[:0] = [str(VIZ), str(VIZ.parent / "sim")]
 
+from cherrymountain_viz.frame import HOLD_S  # noqa: E402
 from cherrymountain_viz.server import BackgroundServer  # noqa: E402
 from cherrymountain_viz.sources import LocalSource, Source, StaticSource  # noqa: E402
 
 HELICS_FULL: Path = VIZ.parent / "plant" / "generated" / "full" / "helics.json"
 #: 04:30 start + 6.5 h: late morning, with sun on the PV array.
 MIDDAY_S: float = 6.5 * 3600
+#: The fan findings appear once held for HOLD_S after the source starts.
+FANS_HELD: str = "f.findings.some((x) => x.text.includes('commanded off'))"
 
 
 class Shot(BaseModel):
@@ -58,7 +61,7 @@ SHOTS: tuple[Shot, ...] = (
         scene="cellar",
         scenario="co2-attack",
         fast_forward_s=1500.0,
-        wait="f.operator && f.operator.frozen && f.cellar.air.tiers[1]",
+        wait=f"f.operator && f.operator.frozen && f.cellar.air.tiers[1] && {FANS_HELD}",
     ),
     Shot(
         name="cellar-co2-attack-operator-view",
@@ -66,7 +69,7 @@ SHOTS: tuple[Shot, ...] = (
         scenario="co2-attack",
         fast_forward_s=1500.0,
         view="operator",
-        wait="f.operator && f.operator.frozen",
+        wait=f"f.operator && f.operator.frozen && {FANS_HELD}",
     ),
     Shot(
         name="fermenters-psv-lift",
@@ -108,6 +111,9 @@ def take(shot: Shot, out: Path) -> dict[str, object]:
     )
     served: Source = src
     if shot.stale:
+        # Two frames HOLD_S apart, so the held findings are in the frozen one.
+        src.advance_to(src.fed.t + HOLD_S + 1)
+        src.publish()
         first = src.frame()
         assert first is not None
         served = StaticSource(first.model_copy(update={"stale": True}))

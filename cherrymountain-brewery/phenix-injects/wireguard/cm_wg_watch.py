@@ -127,6 +127,12 @@ class Watcher:
             state.endpoint = endpoint
             state.handshake = max(state.handshake, peer.latest_handshake)
             state.ident = peer.ident
+        # A peer removed from the interface while up is down, not silently gone.
+        present: set[str] = {peer.public_key for peer in peers}
+        for key in [k for k in self.state if k not in present]:
+            gone: PeerState = self.state.pop(key)
+            if gone.up:
+                events.append(Event(name="peer_down", interface=self.interface, peer=gone.ident, endpoint=gone.endpoint))
         return events
 
     def seed(self, peers: list[Peer], now: float) -> None:
@@ -154,8 +160,13 @@ def read_dump(interface: str) -> str:
 
 def emit(log: Path, hostname: str, event: Event, when: float) -> None:
     line: str = event.line(hostname, when)
-    with log.open("a", encoding="utf-8") as handle:
-        handle.write(line + "\n")
+    try:
+        with log.open("a", encoding="utf-8") as handle:
+            handle.write(line + "\n")
+    except OSError as error:
+        # A full or read-only disk must not kill the loop (a restart would re-seed
+        # and lose the transition); the journal still gets the line below.
+        print(f"cm-wg-watch: cannot write {log}: {error.strerror}", file=sys.stderr, flush=True)
     print(line, flush=True)
 
 

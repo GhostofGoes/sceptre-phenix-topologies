@@ -48,6 +48,16 @@ def test_seeding_does_not_report_a_connected_peer() -> None:
     assert [e.name for e in watcher.interface_gone()] == ["peer_down"]
 
 
+def test_a_removed_peer_that_was_up_goes_down() -> None:
+    watcher = cm_wg_watch.Watcher("wg0", down_after=200)
+    now = 1_700_000_000.0
+    assert [e.name for e in watcher.step(peers(int(now) - 3), now)] == ["peer_up"]
+    gone = watcher.step([], now + 5)
+    assert [e.name for e in gone] == ["peer_down"]
+    assert gone[0].peer == "7bqjO1NU"
+    assert watcher.step([], now + 10) == []
+
+
 def test_the_event_sequence_of_a_vendor_session() -> None:
     watcher = cm_wg_watch.Watcher("wg0", down_after=200)
     now = 1_700_000_000.0

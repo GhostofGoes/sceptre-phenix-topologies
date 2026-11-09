@@ -14,7 +14,11 @@
 # The topology injects it into the router's persistent config tree and runs it
 # with a `commands` entry (cc exec through sg vyattacfg), which minimega
 # repeats at every miniccc connect, so it runs once per boot: /tmp is cleared
-# at boot, and the marker is written after a successful commit.
+# at boot, and the marker is written after a successful commit. A lock keeps
+# a second run (the next miniccc connect) from opening a parallel configure
+# session while the first one is still waiting or committing. If any step fails,
+# the rest is still committed, the marker lists the failed steps (so the next
+# connect does not loop on them), and the script exits 1 so `cc` shows it.
 #
 # TODO(verify): unverified on a VyOS VM. Check that the file shows up as
 # /config/scripts/custom/cm-vyos-config.sh, that the syslog syntax of the
@@ -26,7 +30,14 @@ WAZUH=10.40.10.11
 OT_SVC=10.20.30.13
 DONE=/tmp/cm-vyos-config.done
 
+LOCK=/tmp/cm-vyos-config.lock
+
 [ -e "$DONE" ] && exit 0
+exec 9> "$LOCK"
+if ! flock -n 9; then
+  echo "cm-vyos-config: another run holds $LOCK; leaving it to that one" >&2
+  exit 0
+fi
 
 # Wait for the vrouter app's boot config, which sets the host name.
 host=
@@ -48,8 +59,12 @@ fi
 source /opt/vyatta/etc/functions/script-template
 configure
 
+failed=()
 try() {
-  "$@" || echo "cm-vyos-config: failed: $*" >&2
+  if ! "$@"; then
+    echo "cm-vyos-config: failed: $*" >&2
+    failed+=("$*")
+  fi
 }
 
 quiet() {
@@ -82,7 +97,13 @@ esac
 
 if commit; then
   save
-  touch "$DONE"
+  if [ "${#failed[@]}" -eq 0 ]; then
+    touch "$DONE"
+  else
+    printf 'failed: %s\n' "${failed[@]}" > "$DONE"
+    echo "cm-vyos-config: committed on $host with ${#failed[@]} failed step(s); see $DONE" >&2
+    exit 1
+  fi
 else
   echo "cm-vyos-config: commit failed on $host" >&2
   exit 1

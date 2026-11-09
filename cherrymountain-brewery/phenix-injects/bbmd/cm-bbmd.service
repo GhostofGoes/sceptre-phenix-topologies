@@ -14,6 +14,8 @@ Environment=PYTHONDONTWRITEBYTECODE=1
 ExecStart=/opt/bacnet/bin/python -I /usr/local/lib/cm-bbmd/cm_bbmd.py
 Restart=always
 RestartSec=5
+# cm_bbmd.py exits 2 on bad settings, which a restart cannot fix.
+RestartPreventExitStatus=2
 
 # Hardening. The BBMD binds UDP 47808 (an unprivileged port) and talks to its
 # peer; it needs no capabilities and writes nothing.

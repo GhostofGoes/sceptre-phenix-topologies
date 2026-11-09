@@ -19,15 +19,15 @@ fi
 . "$SETTINGS"
 : "${VENDOR_EWS_USER:?set VENDOR_EWS_USER}" "${VENDOR_EWS_PASSWORD:?set VENDOR_EWS_PASSWORD}"
 case "$VENDOR_EWS_USER" in
-  *[!A-Za-z0-9._-]* | '')
+  *[!A-Za-z0-9._-]* | '' | -*)
     echo "70-ews-vendor: VENDOR_EWS_USER has a character that is not allowed" >&2
     exit 1
     ;;
 esac
 
-if ! id -u "$VENDOR_EWS_USER" > /dev/null 2>&1; then
+if ! id -u -- "$VENDOR_EWS_USER" > /dev/null 2>&1; then
   # -m copies /etc/skel, which holds the .xsession that starts Xfce for xrdp.
-  useradd --create-home --shell /bin/bash --comment "Ridgeline Process Controls technician" "$VENDOR_EWS_USER"
+  useradd --create-home --shell /bin/bash --comment "Ridgeline Process Controls technician" -- "$VENDOR_EWS_USER"
 fi
 printf '%s:%s\n' "$VENDOR_EWS_USER" "$VENDOR_EWS_PASSWORD" | chpasswd
 

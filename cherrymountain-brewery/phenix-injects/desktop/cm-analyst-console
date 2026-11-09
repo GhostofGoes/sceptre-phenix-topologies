@@ -20,13 +20,20 @@ URLS="${ANALYST_URLS:-https://10.40.10.10/ https://10.40.10.11/}"
 BROWSER="${ANALYST_BROWSER:-chromium}"
 
 read -r -a urls <<< "$URLS"
-for url in "${urls[@]}"; do
-  for _ in $(seq 1 120); do
-    if curl -ks -m 5 -o /dev/null "$url"; then
-      break
-    fi
-    sleep 5
+# One 10-minute budget for all consoles together (not 10 minutes each): poll every
+# URL that has not answered yet, and open the browser when all have or time is up.
+pending=("${urls[@]}")
+deadline=$((SECONDS + 600))
+while [ "${#pending[@]}" -gt 0 ] && [ "$SECONDS" -lt "$deadline" ]; do
+  waiting=()
+  for url in "${pending[@]}"; do
+    curl -ks -m 5 -o /dev/null "$url" || waiting+=("$url")
   done
+  pending=("${waiting[@]}")
+  [ "${#pending[@]}" -eq 0 ] || sleep 5
 done
+if [ "${#pending[@]}" -gt 0 ]; then
+  echo "cm-analyst-console: not answering yet, opening anyway: ${pending[*]}" >&2
+fi
 
 exec "$BROWSER" --no-first-run --noerrdialogs --ignore-certificate-errors "${urls[@]}"

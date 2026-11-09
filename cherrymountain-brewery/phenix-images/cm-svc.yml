@@ -76,7 +76,7 @@ spec:
       # settings, and cm-bbmd.service; the startup hook enables the unit on ot-svc
       # and bas-bbmd only. The venv path is what the unit runs.
       python3 -m venv /opt/bacnet
-      /opt/bacnet/bin/pip install --no-cache-dir "bacpypes3==0.0.110" "pydantic>=2.7"
+      /opt/bacnet/bin/pip install --no-cache-dir "bacpypes3==0.0.110" "pydantic==2.11.7"
       /opt/bacnet/bin/python -c "import bacpypes3, pydantic; print(bacpypes3.__file__)"
 
       # The startup hooks enable dnsmasq once its zone is injected; with the stock

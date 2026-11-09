@@ -1,4 +1,10 @@
-# scada-fuxa FUXA project (ci variant)
+# FUXA projects
+
+`build_project.py` builds every FUXA project of the range from plantgen's tag
+lists and alarm list. This file describes the ci project first, then
+[the full and lite projects](#the-full-and-lite-projects).
+
+## The ci project
 
 `scada-fuxa-project.json` is the project that `cm-fuxa-provision` POSTs to
 FUXA's `/api/project` on scada-fuxa ([DESIGN.md
@@ -29,6 +35,37 @@ then `../sync_ci.py` (it copies the project into `phenix-injects/fuxa/`).
   comes from `fuxa_severity` in `alarms.json`.
 - **DAQ:** PV tags store to FUXA's built-in SQLite (no historian in ci).
 
+## The full and lite projects
+
+`build_project.py --all` also writes `full/` and `lite/`: one project for
+scada-fuxa and one for bas-fuxa. The cherrymountain app builds the same
+projects at pre-start, so these files are for review and for the `--check`.
+
+- **Devices.** One per PLC, by its northbound plugin: Modbus TCP (plc-cellar,
+  plc-utilities, plc-power), OPC UA (plc-brewhouse, node ids `ns=2;s=<tag>`),
+  and S7 (plc-packaging, `DB<n>.DBW<byte>` and `DB<n>.DBX<byte>.<bit>`), plus
+  one BACnet client device for the building controllers.
+- **Scaling.** FUXA applies `divisor` in its Modbus driver only. OPC UA and S7
+  tags carry the same factor as a linear `scale` (`rawHigh` = the factor),
+  which every driver applies on reads and inverts on writes. BACnet values
+  are engineering values already.
+- **Views.** The hand-laid Cellar view, and a generated view per device:
+  Brewhouse, Cellar points, Packaging, Utilities, Power, and Cellar CO2 on
+  scada-fuxa; Building on bas-fuxa. Each row is a label and a value or lamp.
+  A tag the operator may write (`access: read-write` in the plantgen tag
+  list) also has an input box: a number in the tag's range, or 1 and 0 for a
+  bit. That is how an operator resets the CO2 supply shutoff
+  (`UTL.CO2.XC01.RESET` on Utilities), sets an entry permit
+  (`CEL.ENTRY.HS0n.ENTRY` on Cellar points, `BH.ENTRY.HS0n.ENTRY` on
+  Brewhouse), or gives a phase, CIP, or line command.
+- **Who writes BACnet.** Only bas-fuxa. The BACnet tags of scada-fuxa are
+  read-only (DESIGN.md 10.3), and so is the multi-state occupancy mode on
+  bas-fuxa, because FUXA's driver writes analog and binary objects only.
+- **Alarms.** The four plant priorities map to FUXA's four levels (critical
+  to `highhigh`). Every level but the lowest must be acknowledged. A PLC alarm
+  bit carries its own on-delay; an alarm FUXA evaluates on a BACnet value gets
+  the rationalized on-delay as `timedelay`. FUXA has no deadband.
+
 ## Checked against FUXA source
 
 Checked against `frangoteam/FUXA` at `b2972583` (server 1.3.6), the commit the
@@ -39,7 +76,15 @@ Checked against `frangoteam/FUXA` at `b2972583` (server 1.3.6), the commit the
   (`server/runtime/devices/modbus`). The Modbus TCP port is read from an
   `address:port` suffix and defaults to 502, so the `port` property is unused.
 - Alarm records and their `ackmode` keys (`float`, `ackactive`, `ackpassive`),
-  as the runtime compares them (`server/runtime/alarms`).
+  as the runtime compares them (`server/runtime/alarms`), and `timedelay` in
+  seconds.
+- Tag scaling: `divisor` is read by `server/runtime/devices/modbus` alone;
+  `scale` with `mode: linear` by `device-utils.js` for every driver.
+- The S7 address forms and types (`WORD`, `INT`, `BOOL`) in
+  `server/runtime/devices/s7`, and what a 1 or 0 written to a bit becomes in
+  the Modbus, OPC UA, S7, and BACnet drivers.
+- The BACnet driver writes `REAL` to analog objects and `ENUMERATED` to
+  binary objects at priority 16, and a NULL to any other type.
 - `POST /api/signin`, `POST /api/users` (body `{params: {...}}`, `info` a JSON
   string), and `POST /api/project`. This resolves the spike's body-shape
   question.

@@ -96,6 +96,7 @@ class PlantAlarm(BaseModel):
     text: str
     kind: str = "state"
     limit: float = 1.0
+    delay_s: float = 0.0
     evaluator: str | None = None
 
 
@@ -125,6 +126,7 @@ class FuxaTag(BaseModel):
     memaddress: str | None = None
     address: str
     divisor: int | None = None
+    scale: dict[str, Any] | None = None
     format: int | None = None
     description: str | None = None
     daq: TagDaq
@@ -241,17 +243,23 @@ class ViewBuilder:
             },
         )
 
-    def setpoint_input(self, x: int, y: int, tag_name: str, lo: float, hi: float) -> None:
+    def setpoint_input(
+        self, x: int, y: int, tag_name: str, lo: float, hi: float, scope: str = ""
+    ) -> None:
+        """An input box that shows a tag's value and writes what the operator
+        enters (FUXA multiplies by the tag's divisor). ``scope`` keeps the
+        element ids of a second view of the same tag apart."""
         tag: PlantTag = self._tag(tag_name)
-        gid: str = uid("HXI_", tag_name)
+        key: str = scope + tag_name
+        gid: str = uid("HXI_", key)
         w, h = 64, 24
         self.svg.append(
             f'<g id="{gid}" stroke="#000000" text-anchor="right" font-family="sans-serif"'
             f' font-size="14" fill="#f1f1f1ff" type="svg-ext-html_input">'
-            f'<rect id="{uid("svg_", tag_name + "/rect")}" stroke="null" fill="#ffffff"'
+            f'<rect id="{uid("svg_", key + "/rect")}" stroke="null" fill="#ffffff"'
             f' height="{h}" width="{w}" y="{y}" x="{x}" stroke-width="0"/>'
-            f'<foreignObject id="H-{uid("HXI_", tag_name + "/fo")}" width="{w}" height="{h}"'
-            f' y="{y}" x="{x}"><INPUT id="I-{uid("HXI_", tag_name + "/in")}"'
+            f'<foreignObject id="H-{uid("HXI_", key + "/fo")}" width="{w}" height="{h}"'
+            f' y="{y}" x="{x}"><INPUT id="I-{uid("HXI_", key + "/in")}"'
             f' style="width: calc(100% - 7px); height: calc(100% - 7px); text-align: right;'
             f' border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0);'
             f' vector-effect: non-scaling-stroke;" type="text"/></foreignObject></g>'
@@ -408,8 +416,17 @@ def build_layout(view_id: str) -> dict[str, Any]:
 
 # ---------------------------------------------------------------- alarms
 
-ACK_MODE: dict[str, str] = {"high": "ackactive", "low": "ackactive", "info": "float"}
+#: Per FUXA alarm level (plantgen maps critical, high, medium, and low priority
+#: to highhigh, high, low, and info): every level but the lowest stays listed
+#: until an operator acknowledges it, the critical one in the darkest red.
+ACK_MODE: dict[str, str] = {
+    "highhigh": "ackactive",
+    "high": "ackactive",
+    "low": "ackactive",
+    "info": "float",
+}
 COLORS: dict[str, tuple[str, str]] = {
+    "highhigh": ("#B71C1C", "#FFFFFF"),
     "high": ("#FF4848", "#FFFFFF"),
     "low": ("#F9CF59", "#000000"),
     "info": ("#66CCFF", "#000000"),
@@ -497,9 +514,13 @@ S7_DATA_BLOCKS: dict[str, tuple[int, bool]] = {
 OPCUA_NAMESPACE: int = 2
 FUXA_HOSTS: tuple[str, ...] = ("scada-fuxa", "bas-fuxa")
 VARIANTS: tuple[str, ...] = ("full", "lite")
-#: Gauges per generated device view: columns of label and value.
+#: Gauges per generated device view: columns of label, value, and (for a tag
+#: the operator may write) an input box.
 VIEW_ROWS: int = 24
-VIEW_COLUMN: int = 360
+VIEW_COLUMN: int = 440
+#: Offsets in a column: the value or lamp, then the input box.
+VIEW_VALUE_X: int = 300
+VIEW_INPUT_X: int = 350
 
 
 def s7_address(plc_iec: str) -> tuple[str, str]:
@@ -515,11 +536,24 @@ def s7_address(plc_iec: str) -> tuple[str, str]:
     return f"DB{db}.DBW{int(plc_iec[3:]) * 2}", "Word"
 
 
+def linear_scale(divisor: int | None) -> dict[str, Any] | None:
+    """FUXA's linear tag scale for a raw register of ``value x divisor``.
+
+    FUXA applies ``divisor`` in its Modbus driver only (``Tag.divisor``:
+    "used by Modbus"); every driver applies ``scale`` on reads and inverts it
+    on writes, so OPC UA and S7 tags carry the factor this way.
+    """
+    if not divisor or divisor == 1:
+        return None
+    return {"mode": "linear", "rawLow": 0, "rawHigh": divisor, "scaledLow": 0, "scaledHigh": 1}
+
+
 def convert_plant_tag(dev: PlantDevice, tag: PlantTag) -> FuxaTag:
     """A FUXA tag for any device type of the full and lite tag lists."""
     daq: bool = tag.name.endswith(".PV") and is_analog(tag)
     tag_type: str = tag.type
     memaddress: str | None = tag.memaddress
+    by_driver: bool = dev.type == "ModbusTCP"
     match dev.type:
         case "ModbusTCP":
             address: str = str(tag.address)
@@ -543,7 +577,8 @@ def convert_plant_tag(dev: PlantDevice, tag: PlantTag) -> FuxaTag:
         type=tag_type,
         memaddress=memaddress,
         address=address,
-        divisor=tag.divisor,
+        divisor=tag.divisor if by_driver else None,
+        scale=None if by_driver else linear_scale(tag.divisor),
         format=2 if is_analog(tag) else None,
         description=tag.label,
         daq=TagDaq(enabled=daq),
@@ -576,10 +611,12 @@ def build_device_view(
     dev: PlantDevice, tags: dict[str, PlantTag], taken: frozenset[str] = frozenset()
 ) -> dict[str, Any]:
     """A generated view of one device: its process values, setpoints, and states
-    in columns (label, then value or lamp), read-only. FUXA opens a view by its
-    name (``/home?viewName=<name>``, which the kiosks use), so a name in ``taken`` gets
-    " points" appended: plc-cellar's view is "Cellar points" next to the
-    hand-laid "Cellar" view."""
+    in columns (label, then value or lamp). A tag the operator may write
+    (``access: read-write``: setpoints, commands, entry permits, resets) also
+    gets an input box: a number in the tag's range, or 1 and 0 for a bit. FUXA
+    opens a view by its name (``/home?viewName=<name>``, which the kiosks use),
+    so a name in ``taken`` gets " points" appended: plc-cellar's view is
+    "Cellar points" next to the hand-laid "Cellar" view."""
     shown: list[PlantTag] = [t for t in dev.tags if ".ALM_" not in t.name]
     columns: int = max(1, -(-len(shown) // VIEW_ROWS))
     width: int = LEFT * 2 + VIEW_COLUMN * columns
@@ -595,9 +632,12 @@ def build_device_view(
         vb.text(x0, y, textwrap.shorten(tag.label, 36, placeholder=" ..."), size=12)
         if is_analog(tag):
             digits: int = 0 if not tag.divisor or tag.divisor <= 1 else len(str(tag.divisor)) - 1
-            vb.value(x0 + 300, y, tag.name, digits=digits, unit=tag.units or "")
+            vb.value(x0 + VIEW_VALUE_X, y, tag.name, digits=digits, unit=tag.units or "")
         else:
-            vb.lamp(x0 + 300, y - 5, tag.name, "#1e88e5")
+            vb.lamp(x0 + VIEW_VALUE_X, y - 5, tag.name, "#1e88e5")
+        if tag.access == "read-write":
+            lo, hi = tag.range if is_analog(tag) and tag.range else (0.0, 1.0)
+            vb.setpoint_input(x0 + VIEW_INPUT_X, y - 17, tag.name, lo, hi, scope=f"{dev.name}/")
     view_id: str = uid("v_", f"{dev.name}/view")
     return {
         "id": view_id,
@@ -632,13 +672,16 @@ FAR: float = 1.0e9
 def build_plant_alarm(alarm: PlantAlarm) -> dict[str, Any]:
     """A PLC alarm bit (active at 1), or an alarm FUXA evaluates on a value:
     high and highhigh from the limit up, low and lowlow from it down, state at
-    the limit. FUXA applies no delay; the PLC alarm bits carry their own."""
+    the limit. A PLC alarm bit carries its own on-delay, so FUXA adds none; an
+    alarm FUXA evaluates has no PLC behind it, so FUXA applies the rationalized
+    on-delay (``timedelay``, in seconds). FUXA has no deadband."""
     group: str = ".".join(alarm.name.split(".")[:2])
     built: dict[str, Any] = build_alarm(alarm)
     for level in ("highhigh", "high", "low", "info"):
         built[level] = sub_property(alarm.fuxa_severity, level, alarm.text, group)
     if alarm.evaluator == "fuxa":
         sub: dict[str, Any] = built[alarm.fuxa_severity]
+        sub["timedelay"] = round(alarm.delay_s)
         match alarm.kind:
             case "high" | "highhigh":
                 sub["min"], sub["max"] = alarm.limit, FAR

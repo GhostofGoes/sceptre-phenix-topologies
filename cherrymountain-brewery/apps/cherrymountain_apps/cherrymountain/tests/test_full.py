@@ -368,3 +368,43 @@ def test_full_relay_main_gets_the_telnet_module(ctx: Context, tmp_path: Path) ->
     assert root.findtext("telnet/endpoint") == "10.20.16.20:23"
     assert render.add_telnet(text, "10.20.16.20:23", "default").count("<telnet") == 1
     assert render.render_telnet(ctx, "relay-main", md, None) == []
+
+
+def test_full_restart_reads_the_config_the_ot_sim_app_just_rendered(
+    run_app: RunApp, full: dict[str, Any]
+) -> None:
+    """phenix keeps a start's injections in the stored experiment. On the next
+    start the ot-sim app appends its fresh config.xml after this app's own one
+    from the last start: the telnet module goes onto the fresh one, and one
+    injection to config.xml is left."""
+    import xml.etree.ElementTree as ET
+
+    from cherrymountain_apps.cherrymountain.tests.conftest import node
+
+    def config(modules: str) -> str:
+        return f"<ot-sim><cpu>{modules}</cpu></ot-sim>"
+
+    base = Path(full["spec"]["baseDir"])
+    stale = base / "cherrymountain" / "relay-main" / "ot-sim-config.xml"
+    fresh = base / "ot-sim" / "relay-main.xml"
+    for path, modules in (
+        (stale, '<module name="backplane">a</module><module name="last-start">b</module>'),
+        (fresh, '<module name="backplane">a</module><module name="modbus">c</module>'),
+    ):
+        path.parent.mkdir(parents=True)
+        path.write_text(config(modules))
+    relay = node(full, "relay-main")
+    relay["injections"] = [
+        *(relay.get("injections") or []),
+        {"src": str(stale), "dst": "/etc/ot-sim/config.xml"},
+        {"src": str(fresh), "dst": "/etc/ot-sim/config.xml"},
+    ]
+    app = run_app("pre-start", exp=full)
+    injects = [
+        i
+        for i in app.require_node("relay-main").injections
+        if i["dst"] == "/etc/ot-sim/config.xml"
+    ]
+    assert [i["src"] for i in injects] == [str(stale)]
+    root = ET.fromstring(stale.read_text())
+    assert [m.get("name") for m in root.find("cpu")] == ["backplane", "modbus", "telnet"]  # type: ignore[union-attr]

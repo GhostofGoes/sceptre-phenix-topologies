@@ -235,10 +235,20 @@ class CherryMountain(AppBase):
         for hostname, md in self.hosts_md.items():
             if isinstance(md, RioHost):
                 node: Any = self.require_node(hostname)
-                rendered: str | None = next(
-                    (str(i.get("src")) for i in node.get("injections") or [] if i.get("dst") == OTSIM_CONFIG),
-                    None,
-                )
+                # phenix keeps the injections of the last start in the stored
+                # experiment, so on a restart this app's own config.xml (from
+                # that start) comes first and the one the ot-sim app just
+                # rendered comes after it. Read the ot-sim app's: the last
+                # injection to config.xml that this app did not write.
+                sources: list[str] = [
+                    str(i.get("src"))
+                    for i in node.get("injections") or []
+                    if i.get("dst") == OTSIM_CONFIG
+                ]
+                fresh: list[str] = [
+                    s for s in sources if Path(s).parent != self.out_dir / hostname
+                ]
+                rendered: str | None = (fresh or sources or [None])[-1]
                 try:
                     extras: list[Injection] = render_otsim(ctx, hostname, md, rendered)
                 except SourceError as ex:

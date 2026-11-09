@@ -1015,10 +1015,6 @@ spec:
         end-time: 604800
       cpu-module:
         api-endpoint: 127.0.0.1:9101
-      ground-truth-module:
-        elastic:
-          endpoint: http://172.16.10.1:9200
-          index-base-name: cherrymountain-truth
     hosts:
     - hostname: rio-brewhouse
       metadata:

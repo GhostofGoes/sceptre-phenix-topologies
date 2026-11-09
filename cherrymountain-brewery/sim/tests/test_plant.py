@@ -33,8 +33,9 @@ def full() -> HelicsConfig:
 
 def test_cellar_co2_steady_state_hand_calc(full: HelicsConfig) -> None:
     """V·dC/dt = G·1e6 + Q·(C_out - C): 1 g/s of CO2 at ρ = 1.51 kg/m³ into
-    0.15 m³/s of infiltration settles at 420 + 6.62e-4/0.15·1e6 = 4,835 ppm,
-    just under the 5,000 ppm purge tier (sensors read 1.25x, so they purge)."""
+    0.3 m³/s of exhaust and infiltration settles at 420 + 6.62e-4/0.3·1e6 =
+    2,627 ppm; the sensors read 1.25x (3,284 ppm), below the 3,500 ppm purge
+    stop, so normal venting never cycles tier 1."""
     fed = build(full, "building")
     assert isinstance(fed, BuildingFederate)
     fed.commands["bas-vent.purge_fan_1"] = False  # hold the fans off
@@ -42,7 +43,8 @@ def test_cellar_co2_steady_state_hand_calc(full: HelicsConfig) -> None:
     fed.apply_input("cellar/co2.vent_gps", 1.0)
     for _ in range(int(12 * 3600 / 10)):
         fed.step(10.0)
-    assert fed.cel.co2_ppm == pytest.approx(420 + 1e-3 / 1.51 / 0.15 * 1e6, rel=0.01)
+    assert fed.cel.co2_ppm == pytest.approx(420 + 1e-3 / 1.51 / 0.3 * 1e6, rel=0.01)
+    assert fed.values()["building/bas-vent.co2_tier_1"] is False
 
 
 def test_purge_fans_start_at_tier_1(full: HelicsConfig) -> None:

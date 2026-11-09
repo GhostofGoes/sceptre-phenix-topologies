@@ -47,6 +47,9 @@ OUTDOOR_CO2_PPM: float = 420.0
 STRATIFICATION: float = 1.25
 SENSOR_OFFSETS: tuple[float, ...] = (0.97, 1.02, 1.0, 1.04)
 CO2_TIERS: tuple[float, ...] = (5000.0, 15000.0, 30000.0)
+# A tier clears only once the sensed value falls 10 % below its limit, so a
+# reading hovering at a threshold does not chatter the BACnet alarm.
+CO2_TIER_DEADBAND: float = 0.10
 
 
 def f_to_c(t_f: float) -> float:
@@ -66,7 +69,10 @@ class BuildingSettings(BaseModel):
     open_hour: int = 11
     close_hour: int = 22
     cellar_volume_m3: float = 1100.0
-    cellar_infiltration_m3s: float = 0.15
+    # Continuous cellar exhaust plus infiltration (about 640 cfm). At a typical
+    # 1 g/s of vented CO2 the sensors settle below the 3,500 ppm purge stop, so
+    # tier 1 trips only on real releases instead of cycling in normal running.
+    cellar_infiltration_m3s: float = 0.3
     purge_fan_m3s: float = 1.4
 
 
@@ -296,7 +302,10 @@ class BuildingFederate(Federate):
         s = self.settings
         g = self.input("cellar/co2.vent_gps", 0.0) / 1000.0 / RHO_CO2_SITE  # m3/s
         sensed = cel.co2_ppm * STRATIFICATION
-        tiers = tuple(sensed >= limit for limit in CO2_TIERS)
+        tiers = tuple(
+            sensed >= limit or (was and sensed >= limit * (1.0 - CO2_TIER_DEADBAND))
+            for limit, was in zip(CO2_TIERS, cel.tiers, strict=True)
+        )
         cel.tiers = (tiers[0], tiers[1], tiers[2])
         cel.purge = tiers[0] or (cel.purge and sensed >= 3500.0)
         self.local["bas-vent.purge_fan_1"] = cel.purge

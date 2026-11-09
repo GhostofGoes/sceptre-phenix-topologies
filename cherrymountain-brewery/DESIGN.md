@@ -1154,7 +1154,12 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
 
   The weather federate forwards each event to the owning federate's `updates`
   endpoint. The API also serves `GET /api/v1/kpis` (batches, bottles, energy,
-  demand), which the `cherrymountain` app reads.
+  demand), which the `cherrymountain` app reads. The API rejects an event with a
+  400 when a parameter is unusable, including a `duration` that is not a number
+  (a boolean counts as not a number), not positive (0 is allowed for
+  `weather-step`, where it holds the step), or longer than 24 hours. A federate
+  that still receives a bad event or message logs it and drops it, and keeps
+  stepping.
 - **Ground truth.** The ot-sim `ground-truth-module` and each federate write
   true state to an in-experiment OpenSearch node on `sim-ctl` (index
   `cherrymountain-truth-*`) over MGMT. Grafana on `sim-ctl` shows the

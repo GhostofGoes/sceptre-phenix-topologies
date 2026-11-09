@@ -209,8 +209,10 @@ class WeatherFederate(Federate):
         """``weather-step``: step the outdoor temperature."""
         super().on_event(event)
         if event.type == "weather-step":
-            self.step_f = float(event.params.get("delta_f", 0.0))
+            # Parse both first, so a bad value leaves the step unchanged.
+            delta = float(event.params.get("delta_f", 0.0))
             duration = float(event.params.get("duration", 0.0))
+            self.step_f = delta
             self.step_until = self.t + duration if duration > 0 else None
 
     def advance(self, wall_dt_s: float) -> None:
@@ -225,8 +227,7 @@ class WeatherFederate(Federate):
             scenario = ScenarioEvent(type=ev.event, params=ev.params, id=ev.id)
             self.last_event = json.dumps(ev.model_dump())
             if ev.target == self.name:
-                self.events.append(scenario)
-                self.on_event(scenario)
+                self.dispatch_event(scenario)
             elif ev.target in self.peers:
                 payload = json.dumps({"event": scenario.model_dump()})
                 self.outbox.append((self.peers[ev.target], payload))

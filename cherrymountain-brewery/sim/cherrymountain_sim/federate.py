@@ -24,7 +24,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from cherrymountain_sim.cellar import Cellar, Environment, InitialState, Sensor
 from cherrymountain_sim.timebase import DEFAULT_COMPRESSION, TimeBase
@@ -272,19 +272,40 @@ class Federate:
             LOG.warning("%s: dropping malformed message %r", self.name, payload)
             return []
         if isinstance(data, dict) and "event" in data:
-            event = ScenarioEvent.model_validate(data["event"])
-            self.events.append(event)
-            self.on_event(event)
-            return [f"event:{event.type}"]
+            try:
+                event = ScenarioEvent.model_validate(data["event"])
+            except ValidationError as exc:
+                LOG.warning("%s: dropping malformed event %r: %s", self.name, payload, exc)
+                return []
+            return [f"event:{event.type}"] if self.dispatch_event(event) else []
         applied = []
         for upd in data if isinstance(data, list) else [data]:
-            tag = str(upd.get("tag", ""))
-            if tag not in self.cfg.accepted_updates:
-                LOG.warning("%s: rejecting write to %s", self.name, tag)
+            try:
+                tag = str(upd.get("tag", ""))
+                if tag not in self.cfg.accepted_updates:
+                    LOG.warning("%s: rejecting write to %s", self.name, tag)
+                    continue
+                self.write(tag, upd.get("value"))
+            except Exception:
+                # One bad write must not kill the federate or the writes after it.
+                LOG.exception("%s: dropping bad write %r", self.name, upd)
                 continue
-            self.write(tag, upd.get("value"))
             applied.append(tag)
         return applied
+
+    def dispatch_event(self, event: ScenarioEvent) -> bool:
+        """Apply a scenario event; True when applied.
+
+        A bad event (a value :meth:`on_event` cannot use) is logged with its
+        traceback and dropped, so it cannot stop the federate.
+        """
+        try:
+            self.on_event(event)
+        except Exception:
+            LOG.exception("%s: dropping event %s %s", self.name, event.type, event.params)
+            return False
+        self.events.append(event)
+        return True
 
     def write(self, tag: str, value: Any) -> None:
         """Apply one write to ``<device>.<point>``."""
@@ -591,7 +612,10 @@ def run(
                         logic.apply_input(key, h.helicsInputGetDouble(sub))
             while h.helicsEndpointHasMessage(ep):
                 msg = h.helicsEndpointGetMessage(ep)
-                logic.handle_message(h.helicsMessageGetString(msg))
+                try:
+                    logic.handle_message(h.helicsMessageGetString(msg))
+                except Exception:
+                    LOG.exception("%s: dropping a message that could not be handled", name)
             logic.step(fcfg.period_s)
             for dest, payload in logic.outbox:
                 h.helicsEndpointSendBytesTo(ep, payload.encode(), dest)

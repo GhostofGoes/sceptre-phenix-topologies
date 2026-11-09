@@ -14,6 +14,7 @@ from cherrymountain_sim.building import BuildingFederate
 from cherrymountain_sim.federate import HelicsConfig, build
 from cherrymountain_sim.groundtruth import TruthWriter
 from cherrymountain_sim.local import LocalFederation
+from cherrymountain_sim.simctl import EventRequest
 from cherrymountain_sim.utilities import UtilitiesFederate, ph_of
 from cherrymountain_sim.weather import (
     WeatherFederate,
@@ -160,6 +161,51 @@ def test_truth_documents(full: HelicsConfig) -> None:
     assert json.loads(body[0]) == {"index": {"_index": index}}
 
 
+def test_event_durations_accept_sane_values() -> None:
+    """Durations the federates can use pass: the defaults (absent), a day, and a
+    zero weather-step (hold the step until the next one)."""
+    good: list[dict[str, object]] = [
+        {"event": "co2-release", "fv": "FV-102", "duration": 30},
+        {"event": "jam", "duration": 86400},
+        {"event": "jam", "machine": "filler", "duration": 12.5},
+        {"event": "weather-step", "delta_f": -20, "duration": 0},
+        {"event": "weather-step", "delta_f": 5.5, "duration": 3600},
+    ]
+    for body in good:
+        EventRequest.model_validate(body)
+
+
+def test_a_bad_event_or_message_does_not_stop_the_federate(
+    full: HelicsConfig, caplog: pytest.LogCaptureFixture
+) -> None:
+    """An event whose parameters the federate cannot use, a malformed event, and
+    a bad write are logged and dropped; the federate keeps stepping."""
+    fed = build(full, "cellar")
+    fed.step(1.0)
+    t0 = fed.t
+    bad_payloads: list[str] = [
+        json.dumps({"event": {"type": "co2-release", "params": {"fv": "FV-102", "duration": "ten"}}}),
+        json.dumps({"event": 5}),
+        json.dumps({"event": {"params": {}}}),
+        json.dumps([5, "x", None]),
+        json.dumps([{"tag": "fv101.spund_sp_psia", "value": "abc"}]),
+        json.dumps(7),
+    ]
+    with caplog.at_level("WARNING"):
+        for payload in bad_payloads:
+            fed.handle_message(payload)
+    assert not fed.events
+    fed.step(1.0)
+    fed.step(1.0)
+    assert fed.t == t0 + 2.0
+    # A good event after the bad ones still works.
+    good = json.dumps(
+        {"event": {"type": "co2-release", "params": {"fv": "FV-102", "duration": 30}}}
+    )
+    assert fed.handle_message(good) == ["event:co2-release"]
+    assert len(fed.events) == 1
+
+
 def test_event_api_contract(full: HelicsConfig) -> None:
     """GET /api/v1/health, POST /api/v1/events and /events, GET /api/v1/kpis,
     and 400 for a bad event (apps/cherrymountain_apps/simctl.py contract)."""
@@ -197,6 +243,18 @@ def test_event_api_contract(full: HelicsConfig) -> None:
             {"event": "start-batch", "recipe": "pilsner"},
             {"event": "start-batch", "brews": 0},
             {"event": "start-batch", "brews": "two"},
+            {"event": "co2-release", "fv": "FV-102", "duration": 0},
+            {"event": "co2-release", "fv": "FV-102", "duration": "ten"},
+            {"event": "co2-release", "fv": "FV-102", "duration": True},
+            {"event": "co2-release", "fv": "FV-102", "duration": 86401},
+            {"event": "jam", "machine": "filler", "duration": -5},
+            {"event": "jam", "duration": None},
+            {"event": "jam", "duration": float("nan")},
+            {"event": "jam", "duration": 1e9},
+            {"event": "weather-step", "delta_f": 10, "duration": -1},
+            {"event": "weather-step", "delta_f": 10, "duration": False},
+            {"event": "weather-step", "delta_f": 10, "duration": "1h"},
+            {"event": "weather-step", "delta_f": True},
         ]
         for bad in bad_params:
             assert call("/api/v1/events", bad)[0] == 400, bad

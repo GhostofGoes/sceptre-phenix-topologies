@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import queue
 import threading
 import uuid
@@ -49,6 +50,32 @@ EVENT_TARGETS: dict[str, str] = {
 HISTORY: int = 500
 #: Largest request body accepted, bytes.
 MAX_BODY: int = 16 * 1024
+#: Longest ``duration`` an event may ask for, seconds (one simulated day at 1x).
+MAX_DURATION_S: float = 24 * 3600.0
+
+
+def _check_duration(params: dict[str, Any], kind: str, *, zero_ok: bool = False) -> None:
+    """Reject a ``duration`` the target federate cannot use.
+
+    The federates read it with ``float()`` and default it when absent (co2-release
+    600 s, jam 300 s, weather-step 0 s, which holds the step), so a missing key is
+    fine. A present one must be a real number (not a bool, NaN, or infinity),
+    positive (zero too for weather-step), and at most :data:`MAX_DURATION_S`.
+    """
+    if "duration" not in params:
+        return
+    value = params["duration"]
+    low = "0 or more" if zero_ok else "more than 0"
+    if (
+        not isinstance(value, int | float)
+        or isinstance(value, bool)
+        or not math.isfinite(value)
+        or not (value >= 0 if zero_ok else value > 0)
+        or value > MAX_DURATION_S
+    ):
+        raise ValueError(
+            f"{kind} duration is a number of seconds, {low} and at most {MAX_DURATION_S:.0f}"
+        )
 
 
 class EventRequest(BaseModel):
@@ -71,13 +98,21 @@ class EventRequest(BaseModel):
                     raise ValueError("utility-breaker needs action: open or close")
             case "weather-step":
                 delta = p.get("delta_f")
-                if not isinstance(delta, int | float) or not -60 <= delta <= 60:
+                if (
+                    not isinstance(delta, int | float)
+                    or isinstance(delta, bool)
+                    or not -60 <= delta <= 60
+                ):
                     raise ValueError("weather-step needs delta_f between -60 and 60")
+                _check_duration(p, "weather-step", zero_ok=True)
             case "co2-release":
                 if not p.get("fv"):
                     raise ValueError("co2-release needs fv (for example FV-102)")
                 if p.get("rate", "high") not in ("low", "medium", "high"):
                     raise ValueError("co2-release rate is low, medium, or high")
+                _check_duration(p, "co2-release")
+            case "jam":
+                _check_duration(p, "jam")
             case "chiller-fault":
                 if p.get("action", "fail") not in ("fail", "clear"):
                     raise ValueError("chiller-fault action is fail or clear")

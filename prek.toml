@@ -313,6 +313,25 @@ pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
+# The ot-sim BACnet module of the BAS controllers against a real BACpypes3
+# client and real ZeroMQ sockets on loopback: reads that follow the message bus,
+# commands and relinquishing, refused writes, Who-Is, and a Who-Is that a BBMD
+# forwarded. bacpypes3 is the version the cm-otsim image installs.
+id = "cm-bacnet-tests"
+name = "pytest (ot-sim BACnet module)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/bacnet"
+additional_dependencies = [
+    "bacpypes3==0.0.110",
+    "pydantic==2.14.3",
+    "pytest==9.2.0",
+    "pyzmq==27.3.0",
+]
+files = '^cherrymountain-brewery/(tests/bacnet/|phenix-injects/otsim/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
 # The SOC and remote-access checks: the Wazuh decoders and rules against sample log
 # lines, the Suricata rules and the Zeek script against the topology's addresses (and
 # against Suricata itself where it is installed), and the scripts of the vendor path
@@ -406,7 +425,7 @@ additional_dependencies = [
     "pytest==9.2.0",
     "pytest-mock==3.15.1",
 ]
-files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|plc/|phenix-injects/openplc/|phenix-configs/)'
+files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|plc/|phenix-injects/(openplc|otsim)/|phenix-configs/)'
 pass_filenames = false
 priority = "check"
 

@@ -292,6 +292,10 @@ class CherryMountain(AppBase):
 
     def _check_host(self, name: str, md: HostBase, config: AppMetadata) -> HostCheck:
         units: list[str] = []
+        #: unit -> the older unit that may run in its place. A topology that
+        #: still injects cm-<federate>.service (the ci slice) runs that one, and
+        #: 60-cm-federates.sh then leaves cm-federate@<federate> alone.
+        legacy: dict[str, str] = {}
         for kind, unit in self.UNITS.items():
             if isinstance(md, kind):
                 units.append(unit)
@@ -305,21 +309,35 @@ class CherryMountain(AppBase):
                     if spec.host == name
                 ]
             )
-            units += [f"cm-federate@{f}.service" for f in ctx_feds]
+            for fed in ctx_feds:
+                units.append(f"cm-federate@{fed}.service")
+                legacy[units[-1]] = f"cm-{fed}.service"
         if not units:
             return HostCheck(state="not-checked")
+        asked: list[str] = [*units, *legacy.values()]
         try:
             resp: dict[str, Any] = self._exec(
                 name,
-                "systemctl is-active " + " ".join(units) + " || true",
+                "systemctl is-active " + " ".join(asked) + " || true",
                 config.verify.timeout,
                 config.verify.client_grace,
             )
         except Exception as ex:
             return HostCheck(state="unreachable", detail=type(ex).__name__)
-        states: list[str] = [
+        answers: list[str] = [
             s.strip() for s in str(resp.get("stdout", "")).splitlines() if s.strip()
         ]
+        states: list[str] = answers[: len(units)]
+        if len(answers) == len(asked):
+            # systemctl prints one state per unit, in order: a federate counts
+            # as its legacy unit's state when only that one runs (or failed).
+            seen: dict[str, str] = dict(zip(asked, answers, strict=True))
+            states = [
+                seen[legacy[u]]
+                if u in legacy and s != "active" and seen[legacy[u]] in ("active", "failed")
+                else s
+                for u, s in zip(units, states, strict=True)
+            ]
         if len(states) == len(units) and all(s == "active" for s in states):
             return HostCheck(state="provisioned")
         if any(s == "failed" for s in states):

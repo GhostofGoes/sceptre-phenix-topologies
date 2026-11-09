@@ -19,8 +19,9 @@ from cherrymountain_apps.cherrymountain.tests.conftest import RunApp, app_block
 class FakeVms:
     """Answers the provisioning checks the app runs through cc."""
 
-    def __init__(self, states: dict[str, str]) -> None:
-        self.states: dict[str, str] = states
+    def __init__(self, states: dict[str, str | dict[str, str]]) -> None:
+        #: vm -> one state for every unit, or a state per unit (others inactive).
+        self.states: dict[str, str | dict[str, str]] = states
         self.commands: list[tuple[str, str]] = []
 
     def __call__(
@@ -34,11 +35,12 @@ class FakeVms:
             if "is-active" in cmd
             else []
         )
-        return {
-            "exitcode": 0,
-            "stdout": "\n".join(self.states[vm] for _ in units) or self.states[vm],
-            "stderr": "",
-        }
+        state = self.states[vm]
+        if isinstance(state, dict):
+            lines = [state.get(u, "inactive") for u in units]
+        else:
+            lines = [state for _ in units] or [state]
+        return {"exitcode": 0, "stdout": "\n".join(lines), "stderr": ""}
 
 
 @pytest.fixture
@@ -77,8 +79,31 @@ def test_post_start_records_pending_and_no_kpis(
     assert "no tunnel to sim-ctl:8080" in st["kpis"]["reason"]
     assert (
         "sim-process",
-        "systemctl is-active cm-federate@cellar.service || true",
+        "systemctl is-active cm-federate@cellar.service cm-cellar.service || true",
     ) in fake.commands
+
+
+def test_a_federate_run_by_its_legacy_unit_counts_as_provisioned(
+    run_app: RunApp, mm: MagicMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The ci topology still injects cm-cellar.service, and 60-cm-federates.sh
+    then does not start cm-federate@cellar: the host is provisioned all the
+    same, and a failed legacy unit is a failure."""
+    mm.cc_tunnel_list.return_value = []
+    patch_exec(monkeypatch, FakeVms({"sim-process": {"cm-cellar.service": "active"}}))
+    assert status(run_app("post-start"))["provisioning"]["sim-process"] == {
+        "state": "provisioned"
+    }
+    patch_exec(monkeypatch, FakeVms({"sim-process": {"cm-cellar.service": "failed"}}))
+    assert status(run_app("post-start"))["provisioning"]["sim-process"] == {
+        "state": "failed",
+        "detail": "cm-federate@cellar.service",
+    }
+    patch_exec(monkeypatch, FakeVms({"sim-process": {}}))
+    assert status(run_app("post-start"))["provisioning"]["sim-process"] == {
+        "state": "pending",
+        "detail": "cm-federate@cellar.service=inactive",
+    }
 
 
 def test_running_reads_kpis_through_the_tunnel(

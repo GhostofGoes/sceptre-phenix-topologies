@@ -75,6 +75,22 @@ def test_full_plant_matches_the_topology(run_app: RunApp, full: dict[str, Any]) 
     assert "sim-ctl" in annotations
 
 
+def test_full_federate_count_includes_the_weather_federate_on_sim_ctl(
+    run_app: RunApp, full: dict[str, Any]
+) -> None:
+    """The weather federate runs on sim-ctl and reaches the broker on sim-ctl's
+    own address, which the ``ss`` count sees as one more connected peer."""
+    app = run_app("configure", exp=full)
+    plant = app.sources.plant() if app.sources else None
+    assert plant is not None
+    hosts: set[str] = {spec.host for spec in plant.federates.values()}
+    hosts |= {n for n, h in plant.hosts.items() if h.role == "rio" and h.federate}
+    assert "sim-ctl" in hosts
+    sim_ctl = next(h for h in app.app.hosts if h.hostname == "sim-ctl")
+    script: str = sim_ctl.metadata.sohProfile.customTests[0].testScript
+    assert f"want={len(hosts)}\n" in script
+
+
 def test_full_bbmds_are_checked_not_rendered(
     run_app: RunApp, full: dict[str, Any]
 ) -> None:

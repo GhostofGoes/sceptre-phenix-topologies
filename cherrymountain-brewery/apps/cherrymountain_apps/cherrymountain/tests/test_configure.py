@@ -63,7 +63,8 @@ def test_configure_writes_soh_profiles(run_app: RunApp) -> None:
     ]
     sim_ctl = host_md(app, "sim-ctl").sohProfile
     assert sim_ctl.processes == ["helics_broker"]
-    # rio-cellar and sim-process each run a federate.
+    # rio-cellar and sim-process each run a federate. sim-ctl runs none in ci, so
+    # its own address is not counted (the full variant adds it: test_full.py).
     assert "want=2" in sim_ctl.customTests[0].testScript
 
 

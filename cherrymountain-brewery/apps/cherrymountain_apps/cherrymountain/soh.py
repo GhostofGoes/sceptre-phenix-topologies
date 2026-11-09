@@ -189,14 +189,18 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
 
 def expected_federate_hosts(ctx: Context) -> int:
     """Hosts that run a HELICS federate: the sim nodes with federates, plus
-    every remote I/O device that plant.yaml backs with a federate."""
+    every remote I/O device that plant.yaml backs with a federate.
+
+    ``FEDERATE_COUNT`` counts distinct addresses connected to the broker port,
+    so sim-ctl counts as one when it hosts a federate itself (the weather
+    federate in the full and lite variants): that federate reaches the broker
+    on sim-ctl's own MGMT address, which is one more distinct peer. Leaving
+    sim-ctl out made the check pass with one remote federate missing."""
     plant: Any = ctx.sources.plant()
     sims: set[str] = {
         name
         for name, md in ctx.hosts.items()
-        if isinstance(md, (SimCtlHost, SimFederateHost))
-        and ctx.federates_of(name, md)
-        and name != ctx.app.sim_ctl.hostname
+        if isinstance(md, (SimCtlHost, SimFederateHost)) and ctx.federates_of(name, md)
     }
     rios: set[str] = {
         name for name, h in plant.hosts.items() if h.role == "rio" and h.federate

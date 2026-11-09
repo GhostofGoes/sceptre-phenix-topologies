@@ -23,8 +23,10 @@ openssh-server procps rsync ssh tcpdump tmux vim wget`. The sections list only
 what each image adds. The base is not pinned beyond the release name: apt
 versions move with noble's updates.
 
-Build any image from the repository root, on a host with phenix and
-`/dev/kvm`. Replace `<name>` with the image name:
+Build any image from the repository root, in the phenix container (it has
+vmdb2 and debootstrap; the build itself needs internet access and no
+`/dev/kvm`, and `inject-miniexe` needs minimega running). The result is
+`<dir>/<name>.qc2`. Replace `<name>` with the image name:
 
 ```shell
 phenix config create cherrymountain-brewery/phenix-images/<name>.yml

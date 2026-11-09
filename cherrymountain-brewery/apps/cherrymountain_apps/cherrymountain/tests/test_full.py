@@ -80,17 +80,20 @@ def test_full_federate_count_includes_the_weather_federate_on_sim_ctl(
     run_app: RunApp, full: dict[str, Any]
 ) -> None:
     """The weather federate runs on sim-ctl and reaches the broker on sim-ctl's
-    own address, which the ``ss`` count sees as one more connected peer. Every
-    device with an I/O module counts too: the remote I/O, the field devices,
-    and the BAS controllers (the scenario's fd-server hosts)."""
+    own address, which the ``ss`` count sees as one more connected peer. The
+    other peers are the sim nodes and every ot-sim device with an I/O module:
+    the remote I/O and the field devices (glycol-chiller, relay-main, ...),
+    which get it from the phenix ot-sim app, and the BAS controllers, which get
+    it from this app. Together they are the scenario's fd-server hosts."""
     app = run_app("configure", exp=full)
     plant = app.sources.plant() if app.sources else None
     assert plant is not None
     hosts: set[str] = {spec.host for spec in plant.federates.values()}
     assert "sim-ctl" in hosts and len(hosts) == 4
-    otsim: Any = next(a for a in full["spec"]["scenario"]["apps"] if a["name"] == "ot-sim")
+    otsim = next(a for a in full["spec"]["scenario"]["apps"] if a["name"] == "ot-sim")
     devices: set[str] = {h["hostname"] for h in otsim["hosts"] if h["metadata"]["type"] == "fd-server"}
-    assert {"rio-cellar", "glycol-chiller", "relay-main", "bas-vent"} <= devices and len(devices) == 12
+    assert {"rio-cellar", "glycol-chiller", "relay-main", "gen-ats", "bas-vent"} <= devices
+    assert len(devices) == 12
     sim_ctl = next(h for h in app.app.hosts if h.hostname == "sim-ctl")
     script: str = sim_ctl.metadata.sohProfile.customTests[0].testScript
     assert f"want={len(hosts | devices)}\n" in script

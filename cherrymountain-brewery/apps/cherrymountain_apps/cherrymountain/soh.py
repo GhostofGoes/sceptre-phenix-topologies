@@ -36,6 +36,8 @@ from cherrymountain_apps.cherrymountain.render import (
 
 #: Modbus function codes a read test may use (coils, discrete, holding, input).
 READ_FCS: Final[frozenset[int]] = frozenset({1, 2, 3, 4})
+#: plant.yaml roles of the ot-sim devices that serve Modbus from an I/O module.
+IO_MODULE_ROLES: Final[frozenset[str]] = frozenset({"rio", "field"})
 
 MODBUS_READ: Final[str] = """\
 python3 - {host} {port} {unit} {fc} {offset} <<'PY'
@@ -232,22 +234,35 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
     return out
 
 
+def io_module_hosts(plant: Any) -> set[str]:
+    """The ot-sim devices whose I/O module is a HELICS federate. The phenix
+    ot-sim app gives one to every fd-server with Modbus or DNP3 devices (the
+    remote I/O and the field devices); this app gives one to every BACnet
+    controller (``render_otsim``). Both annotate the node with
+    ``helics/federate``."""
+    return {
+        name
+        for name, h in plant.hosts.items()
+        if h.federate
+        and h.role in IO_MODULE_ROLES
+        and (h.modbus is not None or getattr(h, "bacnet", None) is not None)
+    }
+
+
 def expected_federate_hosts(ctx: Context) -> int:
     """Hosts that run a HELICS federate: the sim nodes with federates, plus
-    every remote I/O device that plant.yaml backs with a federate.
+    every ot-sim device with an I/O module (:func:`io_module_hosts`).
 
     ``FEDERATE_COUNT`` counts distinct addresses connected to the broker port,
     so sim-ctl counts as one when it hosts a federate itself (the weather
     federate in the full and lite variants): that federate reaches the broker
     on sim-ctl's own MGMT address, which is one more distinct peer. Leaving
-    sim-ctl out made the check pass with one remote federate missing."""
+    sim-ctl out made the check pass with one remote federate missing, and
+    counting only the ``rio`` role left out the field devices and the BAS
+    controllers."""
     sims: set[str] = {
         name
         for name, md in ctx.hosts.items()
         if isinstance(md, (SimCtlHost, SimFederateHost)) and ctx.federates_of(name, md)
     }
-    # Every device with an I/O module: the remote I/O, the field devices, and
-    # the BAS controllers. Counting only the remote I/O let the check pass
-    # with the other eight devices missing.
-    devices: set[str] = set(ctx.sources.generated_json("helics.json").get("io_federates") or {})
-    return len(sims | devices)
+    return len(sims | io_module_hosts(ctx.sources.plant()))

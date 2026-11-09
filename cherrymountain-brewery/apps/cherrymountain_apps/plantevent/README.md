@@ -64,10 +64,12 @@ Events (`event` selects the kind):
 |---|---|---|
 | `start-batch` | `recipe` (default `fire-of-the-phenix`), `batch_id` | Start a brew |
 | `utility-breaker` | `action`: `open` or `close` (required) | Utility outage and restoration |
-| `chiller-fault` | `compressor` (1-8, default 1), `action`: `fail` (default) or `clear` | Glycol chiller compressor fault |
+| `genset-exercise` | `action`: `start` (default) or `stop`, `load_bank_kw` (0-100, default 0), `duration` (default 1800 s, the NFPA 110 monthly minimum) | Exercise the standby genset under load; the run goes into the genset test log and the 40 CFR 60.4211(f) test hours |
+| `chiller-fault` | `compressor` (1 or 2, default 1), `action`: `fail` (default) or `clear` | Glycol chiller compressor fault |
 | `co2-release` | `fv` (`FV-102`, `BBT-201`; required), `rate`: `low`, `medium`, `high` (default), `duration` (default 600 s) | CO2 release into the cellar |
 | `jam` | `machine` (`depalletizer`, `rinser`, `filler`, `capper`, `labeler` (default), `packer`), `duration` (default 300 s) | Packaging jam |
 | `weather-step` | `delta_f` (-60 to 60, required), `duration` (default 0: hold) | Step the outside temperature |
+| `cip-panel` | `circuit`: `bh`, `fv101` .. `fv104`, `bbt201`, `bbt202`, or `none` (required) | Swing the CIP panel onto a circuit, as a cellar worker would before a CIP run |
 
 Each event is posted as JSON to `POST /api/v1/events`, with the fields above
 as keys (for example `{"event": "co2-release", "fv": "FV-102", "rate":
@@ -115,6 +117,25 @@ runs:
     cleanup: []
 ```
 
+A monthly genset exercise with a 30 kW load bank (NFPA 110 asks for 30 % of
+the 100 kW nameplate for 30 minutes; DESIGN.md 7.3).
+
+```yaml
+components:
+  - name: genset-exercise
+    type: plantevent
+    metadata:
+      events:
+        - event: genset-exercise
+          load_bank_kw: 30
+          duration: 1800
+runs:
+  - configure: []
+    start: [genset-exercise]
+    stop: []
+    cleanup: []
+```
+
 A cellar CO2 leak during a heat wave, through a fixed relay instead of the
 tunnel lookup.
 
@@ -158,9 +179,8 @@ runs).
 
 ## Limitations
 
-- The event API is part of `cherrymountain_sim` and is not implemented yet;
-  the ci variant's sim-ctl does not serve it. The contract above is what this
-  component sends.
+- The event API is part of `cherrymountain_sim` (the weather federate on
+  sim-ctl serves it); the ci variant has no weather federate and so no API.
 - A tunnel the component creates stays open until sim-ctl's C2 client goes.
 - Events are posted once; there is no retry. Use SCORCH `loop` with `replace`
   to repeat or randomize them.

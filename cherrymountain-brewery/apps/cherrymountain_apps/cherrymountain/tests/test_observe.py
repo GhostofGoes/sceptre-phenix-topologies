@@ -109,6 +109,8 @@ def test_running_reads_kpis_through_the_tunnel(
             "kegs_packaged": 2,
             "energy_kwh": 120.0,
             "demand_kw": 88.5,
+            "ttb_bbl_packaged": 13.0,
+            "genset_test_hours_year": 0.5,
         }
 
     monkeypatch.setattr(simctl.EventApi, "kpis", kpis)
@@ -124,6 +126,11 @@ def test_running_reads_kpis_through_the_tunnel(
     assert k["packaged_bbl"] == 13.0
     assert k["kwh_per_bbl"] == round(120.0 / 13.0, 2)
     assert k["demand_kw"] == 88.5
+    # The compliance figures pass through; a genset-exercise run's test hours
+    # count against the 100 h a year of 40 CFR 60.4211(f).
+    assert k["compliance"]["ttb_bbl_packaged"] == 13.0
+    assert k["compliance"]["genset_test_hours_left"] == 99.5
+    assert k["compliance"]["cip_runs_verified"] is None
 
 
 def test_failed_unit_is_reported(

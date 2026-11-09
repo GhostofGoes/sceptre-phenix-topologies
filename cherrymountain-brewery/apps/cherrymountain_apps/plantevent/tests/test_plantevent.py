@@ -26,7 +26,7 @@ README: Path = Path(__file__).parents[1] / "README.md"
 
 
 def test_readme_has_examples() -> None:
-    assert len(readme_components(README, "plantevent")) == 4
+    assert len(readme_components(README, "plantevent")) == 5
 
 
 @pytest.mark.parametrize(
@@ -53,10 +53,31 @@ def test_defaults() -> None:
     }
 
 
+def test_genset_exercise_and_cip_panel_defaults() -> None:
+    """The two events the sim-ctl API accepted before this component knew them."""
+    config, _ = validate_metadata(
+        PlantEventMetadata,
+        {"events": [{"event": "genset-exercise"}, {"event": "cip-panel", "circuit": "fv102"}]},
+        "p",
+    )
+    assert [e.model_dump() for e in config.events] == [
+        {"event": "genset-exercise", "action": "start", "load_bank_kw": 0.0, "duration": 1800.0},
+        {"event": "cip-panel", "circuit": "fv102"},
+    ]
+
+
 @pytest.mark.parametrize(
     ("metadata", "expected"),
     [
         ({}, "events: Field required"),
+        (
+            {"events": [{"event": "genset-exercise", "load_bank_kw": 150}]},
+            "load_bank_kw: Input should be less than or equal to 100",
+        ),
+        (
+            {"events": [{"event": "cip-panel", "circuit": "fv105"}]},
+            "circuit: Input should be",
+        ),
         ({"events": []}, "events: List should have at least 1 item"),
         ({"events": [{"event": "outage"}]}, "does not match any of the expected tags"),
         (

@@ -16,8 +16,16 @@ Expected reply (every field optional; missing ones stay null):
       "kegs_packaged": 20,
       "energy_kwh": 5200.0,
       "demand_kw": 180.5,
-      "peak_demand_kw": 240.0
+      "peak_demand_kw": 240.0,
+      "ttb_bbl_packaged": 41.2,
+      "genset_test_hours_year": 0.5,
+      ...
     }
+
+The compliance figures (DESIGN.md 18A) pass through unchanged: TTB barrels,
+fill inspection, wastewater inhibits, CIP verification, and the genset's run
+and test hours, which a ``genset-exercise`` event (plantevent) advances. The
+app adds the test hours left under the 40 CFR 60.4211(f) cap of 100 a year.
 """
 
 from __future__ import annotations
@@ -34,6 +42,9 @@ OZ_PER_BBL: Final[float] = 3968.0
 OZ_PER_BOTTLE: Final[float] = 12.0
 #: A half-barrel keg.
 BBL_PER_KEG: Final[float] = 0.5
+#: Maintenance and readiness-test hours a year an emergency engine may run
+#: (40 CFR 60.4211(f)(2); DESIGN.md 7.3, 18A.4).
+GENSET_TEST_HOURS_CAP: Final[float] = 100.0
 
 
 class SimKpis(BaseModel):
@@ -49,6 +60,29 @@ class SimKpis(BaseModel):
     energy_kwh: float | None = Field(default=None, ge=0)
     demand_kw: float | None = Field(default=None, ge=0)
     peak_demand_kw: float | None = Field(default=None, ge=0)
+    ttb_bbl_packaged: float | None = Field(default=None, ge=0)
+    fill_mean_floz: float | None = Field(default=None, ge=0)
+    fill_under_mav_rejects: int | None = Field(default=None, ge=0)
+    wastewater_inhibit_events: int | None = Field(default=None, ge=0)
+    cip_runs_verified: int | None = Field(default=None, ge=0)
+    cip_runs_unverified: int | None = Field(default=None, ge=0)
+    genset_hours_year: float | None = Field(default=None, ge=0)
+    genset_test_hours_year: float | None = Field(default=None, ge=0)
+
+
+class Compliance(BaseModel):
+    """The compliance figures of the KPI reply (DESIGN.md 18A)."""
+
+    ttb_bbl_packaged: float | None = None
+    fill_mean_floz: float | None = None
+    fill_under_mav_rejects: int | None = None
+    wastewater_inhibit_events: int | None = None
+    cip_runs_verified: int | None = None
+    cip_runs_unverified: int | None = None
+    genset_hours_year: float | None = None
+    genset_test_hours_year: float | None = None
+    #: Test hours left this year under the 40 CFR 60.4211(f) cap.
+    genset_test_hours_left: float | None = None
 
 
 class Kpis(BaseModel):
@@ -68,6 +102,7 @@ class Kpis(BaseModel):
     kwh_per_bbl: float | None = None
     demand_kw: float | None = None
     peak_demand_kw: float | None = None
+    compliance: Compliance | None = None
 
 
 def derive(raw: SimKpis, read_at: str) -> Kpis:
@@ -80,8 +115,16 @@ def derive(raw: SimKpis, read_at: str) -> Kpis:
     per_bbl: float | None = None
     if bbl and raw.energy_kwh is not None:
         per_bbl = round(raw.energy_kwh / bbl, 2)
+    compliance: Compliance = Compliance.model_validate(
+        raw.model_dump(include=set(Compliance.model_fields))
+    )
+    if raw.genset_test_hours_year is not None:
+        compliance.genset_test_hours_left = round(
+            max(GENSET_TEST_HOURS_CAP - raw.genset_test_hours_year, 0.0), 2
+        )
     return Kpis(
         available=True,
+        compliance=compliance,
         read_at=read_at,
         sim_time=raw.sim_time,
         batches=raw.batches_completed,

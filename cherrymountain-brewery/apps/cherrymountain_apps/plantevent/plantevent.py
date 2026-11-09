@@ -54,6 +54,26 @@ class UtilityBreaker(MetadataBlock):
     action: Literal["open", "close"]
 
 
+class GensetExercise(MetadataBlock):
+    """Start or stop a timed genset exercise under load (NFPA 110, DESIGN.md 7.3)."""
+
+    event: Literal["genset-exercise"]
+    action: Literal["start", "stop"] = "start"
+    #: A resistive load bank added to EP-1, up to the 100 kW nameplate.
+    load_bank_kw: Annotated[float, Field(ge=0, le=100, allow_inf_nan=False)] = 0.0
+    #: Seconds of the exercise; the NFPA 110 monthly minimum is 30 minutes.
+    duration: Seconds = 1800.0
+
+
+class CipPanel(MetadataBlock):
+    """Swing the CIP panel onto a circuit (or off every circuit)."""
+
+    event: Literal["cip-panel"]
+    circuit: Literal[
+        "bh", "fv101", "fv102", "fv103", "fv104", "bbt201", "bbt202", "none"
+    ]
+
+
 class ChillerFault(MetadataBlock):
     """Fail or clear a glycol chiller compressor."""
 
@@ -92,7 +112,14 @@ class WeatherStep(MetadataBlock):
 
 
 Event = Annotated[
-    StartBatch | UtilityBreaker | ChillerFault | Co2Release | Jam | WeatherStep,
+    StartBatch
+    | UtilityBreaker
+    | GensetExercise
+    | ChillerFault
+    | Co2Release
+    | Jam
+    | WeatherStep
+    | CipPanel,
     Field(discriminator="event"),
 ]
 

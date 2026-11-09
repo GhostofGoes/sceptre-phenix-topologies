@@ -234,9 +234,12 @@ the committed plc-cellar program, recorded to test the OPC UA config.
   `render.py` mark guesses: FUXA's InfluxDB DAQ store keys, the Grafana query
   fields, the s7comm mapping types beyond `int_output`/`int_input`, and the
   Guacamole schema version.
-- The KPIs need `GET /api/v1/kpis` from the sim-ctl event API, which
-  `cherrymountain_sim` does not serve yet; until then the status says
-  `available: false` and why.
+- The KPIs need `GET /api/v1/kpis` from the sim-ctl event API (the weather
+  federate serves it in full and lite); until it answers, the status says
+  `available: false` and why. Its compliance figures (TTB barrels, fill, CIP,
+  wastewater, and the genset's run and test hours that a `genset-exercise`
+  event advances) go under `kpis.compliance`, with the test hours left under
+  the 40 CFR 60.4211(f) cap.
 - `cm-fuxa-provision.sh` still checks for the `plc-cellar` device after
   import; the app already writes `FUXA_EXPECT_DEVICES` for when it reads that.
 - The relay-main telnet config (DESIGN.md 12.3) is not rendered.

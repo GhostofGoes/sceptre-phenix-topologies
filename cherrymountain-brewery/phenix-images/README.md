@@ -223,6 +223,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     with its unit (it writes a line for every tunnel handshake, new endpoint, and
     timeout, which Wazuh reads), and the startup hook. The phenix `wireguard`
     app injects `wg0.conf` and enables `wg-quick@wg0`.
+  - `INSTALL_SSHD_HARDENING`: [SSH hardening](#ssh-hardening-on-the-vendor-path),
+    with password logins off.
 - **Build:** the commands above, with `<name>` set to `cm-wireguard`.
 - **Used by:** `dmz-vpn`.
 - **Pinned versions:** the Wazuh agent `4.14.10-1`. `wireguard-tools` and
@@ -254,6 +256,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     and the settings from `phenix-injects/guacamole/`. TOTP and the recording
     storage extension are inside the pinned `guacamole/guacamole` image, and are
     switched on by environment variables.
+  - `INSTALL_SSHD_HARDENING`: [SSH hardening](#ssh-hardening-on-the-vendor-path),
+    with password logins off.
 - **Build:** the commands above, with `<name>` set to `cm-guacamole`. The build
   needs internet for Docker Hub, Docker's APT repository, and archive.apache.org.
 - **Used by:** `dmz-jump`.
@@ -380,6 +384,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     `xfce4-session` in `/etc/skel/.xsession`, so an RDP login lands in Xfce.
   - The Wazuh agent, disabled.
   - The topology injects the vendor account (`phenix-injects/ews/`).
+  - `INSTALL_SSHD_HARDENING`: [SSH hardening](#ssh-hardening-on-the-vendor-path),
+    with password logins kept for the vendor account, and xrdp refusing root.
 - **Build:** the commands above, with `<name>` set to `cm-ews`.
 - **Used by:** `ews`.
 - **Pinned versions:** OpenPLC Editor `4.3.4` (SHA-256 `b8186372...ec75fa0`),
@@ -419,3 +425,24 @@ phenix apps are not in this repository yet. When the `cherrymountain` app (and
 any other app) is added under `apps/`, it ships its own `README.md` next to its
 code, covering its metadata, stages, and tests. See the top-level
 [README](../README.md).
+
+## SSH hardening on the vendor path
+
+`cm-ews`, `cm-guacamole`, and `cm-wireguard` run `INSTALL_SSHD_HARDENING` after
+their install script (DESIGN.md 13 and 15.7). The phenix default
+`POSTBUILD_NO_ROOT_PASSWD` turns on root SSH with an empty password; the script
+adds `/etc/ssh/sshd_config.d/00-cm-hardening.conf`, which wins because sshd
+keeps the first value it reads and noble's `sshd_config` includes that
+directory first:
+
+- `PermitRootLogin no`, `PermitEmptyPasswords no`, `MaxAuthTries 3`,
+  `LoginGraceTime 30`, and no X11, agent, or TCP forwarding or tunnels.
+- `PasswordAuthentication no` on the DMZ hosts (nobody logs in over SSH);
+  `yes` on `cm-ews` for the vendor account's Guacamole SSH session. `cm-ews`
+  also sets xrdp's `AllowRootLogin=false`, because PAM's `nullok` would let
+  root in with an empty password over RDP.
+- The script runs `ssh-keygen -A` and `sshd -t`, so a bad drop-in fails the
+  build.
+
+The passwordless root console (VNC and cc) stays on every image for the white
+cell: an accepted lab-only risk, reachable only from the phenix host.

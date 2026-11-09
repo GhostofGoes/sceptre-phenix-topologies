@@ -70,6 +70,7 @@ spec:
   - POSTBUILD_PHENIX_HOSTNAME
   - POSTBUILD_PHENIX_BASE
   - INSTALL_EWS
+  - INSTALL_SSHD_HARDENING
   - POSTBUILD_APT_CLEANUP
   scripts:
     INSTALL_EWS: |
@@ -192,6 +193,37 @@ spec:
       apt-get update
       apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
       systemctl disable wazuh-agent.service
+    INSTALL_SSHD_HARDENING: |
+      # ------------------------------------------------ sshd hardening -------------------------------------------------
+      # DESIGN.md 13 and 15.7. POSTBUILD_NO_ROOT_PASSWD (a phenix default, kept verbatim)
+      # turns on root SSH logins with an empty password. This host is on the vendor
+      # path, so SSH refuses root and empty passwords here. sshd keeps the first value
+      # it reads and noble's sshd_config includes sshd_config.d/ before anything else,
+      # so this drop-in wins over the lines the default edits. The passwordless root
+      # console (VNC and cc) stays for the white cell: an accepted lab-only risk.
+      install -d -m 0755 /etc/ssh/sshd_config.d
+      grep -q '^Include /etc/ssh/sshd_config.d/\*.conf' /etc/ssh/sshd_config
+      # The vendor's Guacamole SSH connection (dmz-jump -> ews TCP 22) logs in with the
+      # vendor account's password, so password logins stay on for other users.
+      cat > /etc/ssh/sshd_config.d/00-cm-hardening.conf <<'EOF'
+      PermitRootLogin no
+      PermitEmptyPasswords no
+      PasswordAuthentication yes
+      KbdInteractiveAuthentication no
+      MaxAuthTries 3
+      LoginGraceTime 30
+      X11Forwarding no
+      AllowAgentForwarding no
+      AllowTcpForwarding no
+      PermitTunnel no
+      EOF
+      # xrdp authenticates through PAM, where the default's nullok would let root in
+      # with an empty password over RDP: refuse root there too.
+      sed -i 's/^AllowRootLogin=.*/AllowRootLogin=false/' /etc/xrdp/sesman.ini
+      grep -q '^AllowRootLogin=false' /etc/xrdp/sesman.ini
+      install -d -m 0755 /run/sshd
+      ssh-keygen -A
+      /usr/sbin/sshd -t
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------
       apt clean || apt-get clean || echo "unable to clean apt cache"

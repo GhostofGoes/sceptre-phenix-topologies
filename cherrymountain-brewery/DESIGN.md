@@ -2104,6 +2104,12 @@ the EWS's own logs, not from request contents ([§14](#14-blue-team-monitoring))
 - **Session controls.** Guacamole uses the TOTP extension, so DMZ hosts need
   time from ot-svc. Session recording goes to disk, and the recordings are
   blue-team evidence.
+- **Host access on the vendor path.** `ews`, `dmz-jump`, and `dmz-vpn` refuse
+  root and empty-password SSH logins (and `ews`'s xrdp refuses root), so the
+  only way in from the tunnel is the vendor account through Guacamole
+  ([§15.7](#157-images)). **Accepted risk:** every image keeps the phenix
+  passwordless root console (VNC and cc), which the white cell needs; it is
+  reachable only from the phenix host, never over the range network.
 - **Choke point.** The only conduit from the DMZ into L3 for vendor sessions
   is `dmz-jump → ews`. Logging conduits to the SOC are separate, so the EWS
   is the single choke point into L1.
@@ -2604,7 +2610,18 @@ magnitudes. Validate the configs offline with `phenix-scorch-validate`.
   in instead. inet-nuke also gets protonuke via `inject-miniexe` on
   `cm-svc`.
 - **Root access.** Range images follow the repo convention of a passwordless
-  root console.
+  root console (`POSTBUILD_NO_ROOT_PASSWD`, a phenix default kept verbatim),
+  which also turns on root SSH with an empty password. The hosts on the vendor
+  path, `ews`, `dmz-jump` (`cm-guacamole`), and `dmz-vpn` (`cm-wireguard`), add
+  `INSTALL_SSHD_HARDENING`: an `sshd_config.d` drop-in (it wins, because sshd
+  keeps the first value and the include comes first) with `PermitRootLogin no`,
+  `PermitEmptyPasswords no`, no forwarding, and three tries. On the DMZ hosts
+  password logins are off entirely; on `ews` they stay on for the vendor
+  account's Guacamole SSH session, and xrdp refuses root (`AllowRootLogin=false`).
+  The passwordless root console stays on every image, for the white cell's VNC
+  and cc access: an accepted lab-only risk ([§13](#13-vendor-remote-access)).
+  The other images keep the default root SSH; they sit behind `fw-ot`, which
+  passes TCP 22 only from `dmz-jump` to `ews`.
 - **Upstreaming.** Generic images (`cm-otsim`, `cm-openplc`, `cm-fuxa`) are
   candidates for upstreaming to sceptre-phenix-images.
 - **Documentation and lint.** `phenix-images/README.md` has one section per

@@ -55,9 +55,9 @@ App block:
 | `simCtl.eventPort` | port | `8080` | Event API port inside sim-ctl |
 | `simCtl.timeout` | seconds | `10` | Event API request timeout |
 | `mgmt.enabled` | bool | `true` | Inject the MGMT nftables policy |
-| `mgmt.interface` | interface | `mgmt` | The MGMT NIC name |
+| `mgmt.interface` | interface | `mgmt` | The topology's name of the MGMT interface. It is not the guest's device name (phenix does not rename NICs): the startup hook finds the device by the host's MGMT address |
 | `mgmt.brokerPorts` | ports | `[23404, 23405, 23406]` | HELICS broker ports on sim-ctl |
-| `mgmt.federatePortMin`, `mgmt.federatePortMax` | ports | `23500`, `23999` | HELICS federate core ports |
+| `mgmt.federatePortMin`, `mgmt.federatePortMax` | ports | `23407`, `23999` | HELICS federate core ports, which the broker connects back to. Nothing pins them: the broker assigns each core one, counted up per host from just above its own ports (23414 in HELICS 3.6), so keep the range starting right after the broker ports |
 | `mgmt.opensearchPort` | port | `9200` | Ground-truth OpenSearch on sim-ctl |
 | `mgmt.exclude` | hostnames | `[]` | MGMT members that keep no policy |
 | `historian.org` | name | `cherrymountain` | InfluxDB organization |
@@ -94,10 +94,14 @@ Host metadata, selected by `type`:
 | `ews` | | `/etc/default/cm-ews` (0600): the OpenPLC REST account `cm_plc_tool.py` uses, the same one the app creates on every PLC |
 
 Every topology node with a `mgmt` NIC, listed in the app or not, gets
-`/etc/cherrymountain/nftables-mgmt.nft` and `04-cm-mgmt-nftables.sh`. The
-policy only matches the MGMT interface and allows ICMP echo, HELICS, OpenSearch,
-and NTP to sim-ctl, and HELICS between federate cores; everything else on MGMT
-is dropped ([DESIGN.md 10.1](../../../DESIGN.md#101-zones-and-conduits-purdue-model--isaiec-62443)).
+`/etc/cherrymountain/nftables-mgmt.nft`, `/etc/default/cm-mgmt` (its MGMT
+address), and the startup hook `4-cm-mgmt-nftables.sh`. The policy only matches
+the MGMT interface and allows ICMP echo, HELICS, OpenSearch, and NTP to sim-ctl,
+and HELICS from the broker to the federate cores; everything else on MGMT is
+dropped ([DESIGN.md 10.1](../../../DESIGN.md#101-zones-and-conduits-purdue-model--isaiec-62443)).
+phenix does not rename a guest's NICs, so the hook runs after
+`3_interfaces-start.sh`, finds the device that holds the MGMT address, and
+passes its name to the ruleset (`nft -D mgmt_if=<device>`).
 
 ## Example
 

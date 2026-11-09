@@ -1903,9 +1903,20 @@ notional design targets):
   - A host nftables policy on every MGMT member allows only:
     - ICMP echo to sim-ctl, which the helics app's broker-wait script
       needs.
-    - HELICS zmq traffic to the broker: ports 23405–23406, plus a pinned
-      per-federate port range.
+    - HELICS zmq traffic to the broker (TCP 23404–23406), and from the broker
+      back to each federate's core (TCP 23407–23999). Nothing pins the core
+      ports: the broker hands each core one, counted up per host from just
+      above its own (23414 in HELICS 3.6.1; 23492 was also seen), so the range
+      starts right after the broker ports. An earlier range of 23500–23999
+      stopped the federation when it was tried between two network namespaces.
     - OpenSearch (9200) and NTP to sim-ctl.
+
+    The `cherrymountain` app renders the policy. phenix does not rename a
+    guest's NICs, so `mgmt` is only the topology's name for the interface: the
+    startup hook (`4-cm-mgmt-nftables.sh`, after phenix's
+    `3_interfaces-start.sh`) finds the device that holds the host's MGMT
+    address and passes its name to the ruleset. A ruleset that matched the
+    name `mgmt` would match nothing in a guest and filter nothing.
   - No node has a default route via MGMT.
   - The ot-sim CPU API binds to `127.0.0.1:9101` (`cpu-module.api-endpoint`).
     The default is `0.0.0.0` and unauthenticated.

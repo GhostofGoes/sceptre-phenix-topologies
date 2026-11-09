@@ -1466,6 +1466,7 @@ def render_mgmt(ctx: Context) -> dict[str, list[Injection]]:
                 "nftables-mgmt.nft.mako",
                 hostname=name,
                 iface=policy.interface,
+                address=members[name],
                 hub=name == hub,
                 hub_ip=members[hub],
                 peers=peers,
@@ -1474,19 +1475,32 @@ def render_mgmt(ctx: Context) -> dict[str, list[Injection]]:
                 opensearch_port=policy.opensearch_port,
             ),
         )
+        # phenix does not rename the guest's NICs, so the topology's interface
+        # name is not the device name: the hook finds the device by this address.
+        settings: Path = write(
+            ctx.host_dir(name) / "mgmt" / "cm-mgmt.env",
+            env_file({"CM_MGMT_ADDRESS": members[name]}),
+        )
         plan[name] = [
             Injection(
                 src=rules,
                 dst=f"{CONF_DIR}/nftables-mgmt.nft",
                 description="MGMT nftables policy",
             ),
+            Injection(
+                src=settings,
+                dst="/etc/default/cm-mgmt",
+                description="MGMT address, for the hook to find the device",
+            ),
             *_packaged(
                 ctx,
                 name,
                 [
                     (
-                        ("scripts", "04-cm-mgmt-nftables.sh"),
-                        f"{STARTUP}/04-cm-mgmt-nftables.sh",
+                        # After phenix's 3_interfaces-start.sh, before the helics
+                        # app's 5-wait-broker.sh.
+                        ("scripts", "4-cm-mgmt-nftables.sh"),
+                        f"{STARTUP}/4-cm-mgmt-nftables.sh",
                         "0755",
                         "load the MGMT nftables policy",
                     )

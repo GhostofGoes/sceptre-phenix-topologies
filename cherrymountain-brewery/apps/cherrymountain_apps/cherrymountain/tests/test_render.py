@@ -303,11 +303,86 @@ def test_mgmt_rulesets_parse(ctx: Context) -> None:
     for host, injects in render.render_mgmt(ctx).items():
         rules = by_dst(injects)["/etc/cherrymountain/nftables-mgmt.nft"].src
         proc = subprocess.run(
-            ["nft", "-c", "-f", rules], capture_output=True, text=True, check=False
+            ["nft", "-c", "-D", "mgmt_if=ens2", "-f", rules],
+            capture_output=True,
+            text=True,
+            check=False,
         )
         if proc.returncode != 0 and "Operation not permitted" in proc.stderr:
             pytest.skip("nft -c needs CAP_NET_ADMIN here")
         assert proc.returncode == 0, (host, proc.stderr)
+
+
+def test_mgmt_federate_ports_cover_what_helics_assigns(ctx: Context) -> None:
+    """The broker connects back to each federate core on a port it assigned:
+    HELICS 3.6 counts them up per host from the default broker port plus 10
+    (23414), and 23492 was also seen. Nothing pins them, so the allowed range
+    must start below both. A range of 23500 and up stopped the federation
+    (reproduced with two network namespaces and this ruleset)."""
+    policy = ctx.app.mgmt
+    assert max(policy.broker_ports) < policy.federate_port_min <= 23414
+    assert policy.federate_port_max >= 23492 + 64
+    for injects in render.render_mgmt(ctx).values():
+        rules = Path(by_dst(injects)["/etc/cherrymountain/nftables-mgmt.nft"].src).read_text()
+        assert f"tcp dport {policy.federate_port_min}-{policy.federate_port_max} accept" in rules
+
+
+#: Stand-ins for ip and nft: ip prints $FAKE_IP_OUTPUT, nft records its arguments.
+FAKE_IP: str = '#!/bin/sh\ncat "$FAKE_IP_OUTPUT"\n'
+FAKE_NFT: str = '#!/bin/sh\necho "$@" >> "$FAKE_NFT_LOG"\n'
+MGMT_HOOK: Path = render.template("scripts", "4-cm-mgmt-nftables.sh")
+IP_ADDR: str = (
+    "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever\n"
+    "2: ens1    inet 10.20.12.10/24 brd 10.20.12.255 scope global ens1\\       valid_lft forever\n"
+    "3: ens2    inet 172.16.20.12/16 brd 172.16.255.255 scope global ens2\\       valid_lft forever\n"
+)
+
+
+def _run_mgmt_hook(tmp_path: Path, address: str) -> tuple[subprocess.CompletedProcess[str], str]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for name, text in (("ip", FAKE_IP), ("nft", FAKE_NFT)):
+        (bin_dir / name).write_text(text)
+        (bin_dir / name).chmod(0o755)
+    (tmp_path / "ip.txt").write_text(IP_ADDR)
+    (tmp_path / "rules.nft").write_text("# rules\n")
+    (tmp_path / "cm-mgmt").write_text(f"CM_MGMT_ADDRESS={address}\n")
+    log = tmp_path / "nft.log"
+    log.write_text("")
+    proc = subprocess.run(
+        ["bash", str(MGMT_HOOK)],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            "PATH": f"{bin_dir}:/usr/bin:/bin",
+            "FAKE_IP_OUTPUT": str(tmp_path / "ip.txt"),
+            "FAKE_NFT_LOG": str(log),
+            "CM_MGMT_RULES": str(tmp_path / "rules.nft"),
+            "CM_MGMT_SETTINGS": str(tmp_path / "cm-mgmt"),
+            "CM_MGMT_WAIT": "0",
+        },
+    )
+    return proc, log.read_text()
+
+
+def test_mgmt_hook_loads_the_policy_on_the_device_with_the_mgmt_address(tmp_path: Path) -> None:
+    """phenix does not rename guest NICs: the hook passes the device that holds
+    the MGMT address (ens2 here), not the topology's interface name."""
+    proc, log = _run_mgmt_hook(tmp_path, "172.16.20.12")
+    assert proc.returncode == 0, proc.stderr
+    rules = tmp_path / "rules.nft"
+    assert log.splitlines() == [
+        f"-c -D mgmt_if=ens2 -f {rules}",
+        f"-D mgmt_if=ens2 -f {rules}",
+    ]
+
+
+def test_mgmt_hook_fails_without_loading_when_no_device_has_the_address(tmp_path: Path) -> None:
+    proc, log = _run_mgmt_hook(tmp_path, "172.16.99.99")
+    assert proc.returncode == 1
+    assert "no interface has 172.16.99.99" in proc.stderr
+    assert log == ""
 
 
 def test_env_file_refuses_unsafe_values() -> None:

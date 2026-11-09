@@ -94,13 +94,20 @@ class MgmtPolicy(Closed):
     """The nftables policy on every MGMT member (DESIGN.md 10.1)."""
 
     enabled: bool = True
+    #: The topology's name of the MGMT interface. It is not the guest's device
+    #: name (phenix does not rename NICs): the startup hook finds the device by
+    #: the host's MGMT address.
     interface: Interface = "mgmt"
     #: HELICS zmq broker ports on sim-ctl (the default zmq core ports).
     broker_ports: Annotated[list[Port], Field(min_length=1)] = Field(
         default_factory=lambda: [23404, 23405, 23406]
     )
-    #: Ports the federates' zmq cores bind (pinned per federate in the sims).
-    federate_port_min: Port = 23500
+    #: Ports the federates' zmq cores bind, which the broker connects back to.
+    #: Nothing pins them: the broker hands each core one, counted up per host
+    #: from just above its own (23414 in HELICS 3.6, the default broker port
+    #: plus 10; 23492 was also seen), so the range starts right after the
+    #: broker ports. A range that starts above 23414 stops the federation.
+    federate_port_min: Port = 23407
     federate_port_max: Port = 23999
     opensearch_port: Port = 9200
     #: Hosts with a MGMT NIC that keep no policy.

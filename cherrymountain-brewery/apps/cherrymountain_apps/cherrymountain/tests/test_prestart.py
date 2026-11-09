@@ -159,7 +159,18 @@ def test_mgmt_policy_hub_and_member(run_app: RunApp) -> None:
     assert "ip saddr @peers icmp type echo-request accept" in hub
     assert "ip daddr 172.16.10.1 icmp type echo-request accept" in member
     assert "elements = { 172.16.10.1, 172.16.10.2, 172.16.20.12 }" in member
-    assert 'iifname != "mgmt" accept' in member
+    # The device name is a variable: the topology's name (mgmt) is not the
+    # guest's device name, so the hook passes the real one (nft -D).
+    assert "iifname != $mgmt_if accept" in member
+    assert "oifname != $mgmt_if accept" in member
+    assert '"mgmt"' not in member
+    # The hook finds the device by the host's MGMT address, after phenix's
+    # 3_interfaces-start.sh and before the helics app's 5-wait-broker.sh.
+    rio = injections(app, "rio-cellar")
+    assert "CM_MGMT_ADDRESS=172.16.20.12" in Path(rio["/etc/default/cm-mgmt"].src).read_text()
+    assert "/etc/phenix/startup/4-cm-mgmt-nftables.sh" in rio
+    hook = "4-cm-mgmt-nftables.sh"
+    assert sorted(["3_interfaces-start.sh", hook, "5-wait-broker.sh"])[1] == hook
 
 
 def test_mgmt_policy_can_be_disabled(

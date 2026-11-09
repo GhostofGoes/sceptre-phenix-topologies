@@ -52,6 +52,7 @@ args = [
 exclude = { glob = [
     "**/*.DSS",
     "**/*.dss",
+    "cherrymountain-brewery/viz/cherrymountain_viz/web/vendor/**",
     "renewables/wind/plant/phenix-images/workstation/drivers/**",
     "renewables/wind/plant/phenix-injects/wind-test-harness/**",
     "renewables/wind/plant/simulation-replay/docs/**",
@@ -363,6 +364,26 @@ additional_dependencies = [
     "pytest==9.2.0",
 ]
 files = '^cherrymountain-brewery/(sim/|plant/generated/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# cm-viz, the white cell's 3D view: frames from snapshots, the server and its
+# read-only WebSocket, the sim-ctl source against the event API, and the
+# offline harness's scenarios. The headless-browser test is marked `browser`
+# and runs separately (viz/README.md).
+id = "cm-viz-tests"
+name = "pytest (cm-viz)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/viz"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "websockets==15.0.1",
+    "simpy==4.1.1",
+    "opendssdirect.py==0.8.4",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(viz/|sim/|plant/generated/)'
 pass_filenames = false
 priority = "check"
 

@@ -157,7 +157,8 @@ def test_fep_and_dnp3_master(full_files: dict[str, str]) -> None:
     for kind in ("ai", "ao", "bi", "bo"):
         idx = [p["index"] for p in dnp3["points"] if p["kind"] == kind]
         assert idx == list(range(len(idx))), kind
-    assert len(kinds) == 6 + 9 + 6 + 7  # msb + relay, pv-inverter, bess-pcs
+    # msb + relay, pv-inverter, bess-pcs (with the BMS cell temperature and off-gas)
+    assert len(kinds) == 6 + 9 + 6 + 9
 
 
 # -- OpenPLC ------------------------------------------------------------------------
@@ -248,7 +249,11 @@ def test_bacnet_object_table(full_files: dict[str, str]) -> None:
         doc["endpoint"]["address"] == "10.30.10.22" and doc["endpoint"]["prefix"] == 24
     )
     ai = [o["instance"] for o in doc["objects"] if o["object_type"] == "analog-input"]
-    assert ai == [1, 2, 3, 4, 5]
+    # The four cellar sensors, the MUA discharge, then the three areas beyond
+    # the cellar (DESIGN.md 6.7), appended so no cellar object moves.
+    assert ai == [1, 2, 3, 4, 5, 6, 7, 8]
+    tank = next(o for o in doc["objects"] if o["name"] == "FAC.VENT.AT05.PV")
+    assert (tank["object_type"], tank["instance"]) == ("analog-input", 6)
     fan = next(o for o in doc["objects"] if o["name"] == "FAC.VENT.FAN01.CMD")
     assert fan["commandable"] and fan["object_type"] == "binary-output"
 

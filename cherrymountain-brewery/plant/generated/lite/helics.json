@@ -1704,6 +1704,16 @@
           "units": "kW"
         },
         {
+          "key": "power/bess-pcs.cell_temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "power/bess-pcs.offgas_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
           "key": "power/gen-ats.gen_kw",
           "type": "double",
           "units": "kW"
@@ -1885,6 +1895,41 @@
         },
         {
           "key": "building/bas-vent.mua_enable",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_5_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_6_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_7_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_area_tier_1",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_shutoff_ok",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.horn_strobe",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.area_exhaust",
           "type": "boolean",
           "units": null
         },
@@ -2677,6 +2722,17 @@
           "point": "supply_sp_f"
         },
         {
+          "key": "utilities/chiller.refrig_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "UTL.CHL.AT01.PV",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "refrig_ppm"
+        },
+        {
           "key": "utilities/glycol.reservoir_pct",
           "type": "double",
           "units": "%",
@@ -2884,6 +2940,28 @@
           "device_type": "co2-supply",
           "zone": null,
           "point": "main_valve"
+        },
+        {
+          "key": "utilities/co2.valve_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CO2.ZSO01.PV",
+          "unit": "CO2",
+          "device": "co2",
+          "device_type": "co2-supply",
+          "zone": null,
+          "point": "valve_open"
+        },
+        {
+          "key": "utilities/co2relay.co2_ok",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CO2.XS01.CO2_OK",
+          "unit": "CO2",
+          "device": "co2relay",
+          "device_type": "gas-relay",
+          "zone": null,
+          "point": "co2_ok"
         },
         {
           "key": "utilities/ro.permeate_gpm",
@@ -3305,6 +3383,11 @@
           "key": "packaging/air.demand_scfm",
           "type": "double",
           "units": "scfm"
+        },
+        {
+          "key": "building/vent.co2_shutoff_ok",
+          "type": "double",
+          "units": null
         },
         {
           "key": "power/bus.boiler.energized",
@@ -4613,6 +4696,28 @@
           "point": "utility_p_sp_kw"
         },
         {
+          "key": "power/bess-pcs.cell_temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "PWR.BESS.TT01.PV",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "cell_temp_f"
+        },
+        {
+          "key": "power/bess-pcs.offgas_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "PWR.BESS.AT01.PV",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "offgas_ppm"
+        },
+        {
           "key": "power/gen-ats.gen_kw",
           "type": "double",
           "units": "kW",
@@ -4975,7 +5080,9 @@
         "bas-vent.exhaust_pct",
         "bas-vent.purge_fan_1",
         "bas-vent.purge_fan_2",
-        "bas-vent.mua_enable"
+        "bas-vent.mua_enable",
+        "bas-vent.horn_strobe",
+        "bas-vent.area_exhaust"
       ],
       "publications": [
         {
@@ -5331,6 +5438,83 @@
           "point": "mua_enable"
         },
         {
+          "key": "building/bas-vent.co2_5_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT05.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_5_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_6_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT06.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_6_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_7_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT07.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_7_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_area_tier_1",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.AY02.TIER1",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_area_tier_1"
+        },
+        {
+          "key": "building/bas-vent.co2_shutoff_ok",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.XS01.SHUTOFF_OK",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_shutoff_ok"
+        },
+        {
+          "key": "building/bas-vent.horn_strobe",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.XA01.CMD",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "horn_strobe"
+        },
+        {
+          "key": "building/bas-vent.area_exhaust",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.FAN03.CMD",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "area_exhaust"
+        },
+        {
           "key": "building/cellar.temp_f",
           "type": "double",
           "units": "degF",
@@ -5347,6 +5531,12 @@
           "type": "double",
           "units": null,
           "output": "vent.co2_relay_ok"
+        },
+        {
+          "key": "building/vent.co2_shutoff_ok",
+          "type": "double",
+          "units": null,
+          "output": "vent.co2_shutoff_ok"
         },
         {
           "key": "building/load.rtu.kw",
@@ -5404,6 +5594,16 @@
           "key": "brewhouse/hood.heat_kw",
           "type": "double",
           "units": "kW"
+        },
+        {
+          "key": "packaging/co2.draw_slpm",
+          "type": "double",
+          "units": "L/min"
+        },
+        {
+          "key": "utilities/co2.supply_psig",
+          "type": "double",
+          "units": "psig"
         },
         {
           "key": "power/bus.rtu.energized",
@@ -5915,6 +6115,8 @@
         "utilities/co2.tank_level_pct",
         "utilities/co2.supply_psig",
         "utilities/co2.main_valve",
+        "utilities/co2.valve_open",
+        "utilities/co2relay.co2_ok",
         "utilities/ro.permeate_gpm",
         "utilities/ro.conductivity_us",
         "utilities/ro.running",
@@ -6018,7 +6220,8 @@
         "utilities/chiller.stage2_on",
         "utilities/chiller.fault",
         "utilities/chiller.enable",
-        "utilities/chiller.supply_sp_f"
+        "utilities/chiller.supply_sp_f",
+        "utilities/chiller.refrig_ppm"
       ],
       "endpoint": "glycol-chiller/updates",
       "sends": [
@@ -6106,7 +6309,9 @@
         "power/bess-pcs.fault",
         "power/bess-pcs.enable",
         "power/bess-pcs.p_sp_kw",
-        "power/bess-pcs.utility_p_sp_kw"
+        "power/bess-pcs.utility_p_sp_kw",
+        "power/bess-pcs.cell_temp_f",
+        "power/bess-pcs.offgas_ppm"
       ],
       "endpoint": "bess-pcs/updates",
       "sends": [
@@ -6237,7 +6442,14 @@
         "building/bas-vent.co2_tier_3",
         "building/bas-vent.purge_fan_1",
         "building/bas-vent.purge_fan_2",
-        "building/bas-vent.mua_enable"
+        "building/bas-vent.mua_enable",
+        "building/bas-vent.co2_5_ppm",
+        "building/bas-vent.co2_6_ppm",
+        "building/bas-vent.co2_7_ppm",
+        "building/bas-vent.co2_area_tier_1",
+        "building/bas-vent.co2_shutoff_ok",
+        "building/bas-vent.horn_strobe",
+        "building/bas-vent.area_exhaust"
       ],
       "endpoint": "bas-vent/updates",
       "sends": [
@@ -6255,6 +6467,14 @@
         },
         {
           "tag": "bas-vent.mua_enable",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-vent.horn_strobe",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-vent.area_exhaust",
           "endpoint": "building/updates"
         }
       ]

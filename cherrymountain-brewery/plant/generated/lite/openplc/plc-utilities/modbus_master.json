@@ -22,7 +22,7 @@
           "fc": 4,
           "offset": "30001",
           "iec_location": "%IW100",
-          "len": 3,
+          "len": 4,
           "cycle_time_ms": 250,
           "error_handling": "keep-last-value"
         },
@@ -60,14 +60,14 @@
           "fc": 2,
           "offset": "10001",
           "iec_location": "%IX100.3",
-          "len": 15,
+          "len": 17,
           "cycle_time_ms": 250,
           "error_handling": "keep-last-value"
         },
         {
           "fc": 4,
           "offset": "30001",
-          "iec_location": "%IW103",
+          "iec_location": "%IW104",
           "len": 17,
           "cycle_time_ms": 250,
           "error_handling": "keep-last-value"
@@ -107,6 +107,14 @@
           "offset": "25",
           "iec_location": "%IX120.0",
           "len": 2,
+          "cycle_time_ms": 250,
+          "error_handling": "set-to-zero"
+        },
+        {
+          "fc": 1,
+          "offset": "47",
+          "iec_location": "%IX120.2",
+          "len": 6,
           "cycle_time_ms": 250,
           "error_handling": "set-to-zero"
         }

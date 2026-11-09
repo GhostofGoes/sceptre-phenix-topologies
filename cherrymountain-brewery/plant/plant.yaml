@@ -149,6 +149,11 @@ federates:
       - { key: brewhouse/drain.gpm, type: double, units: gal/min, default: 0.0 }
       - { key: packaging/co2.draw_slpm, type: double, units: L/min, default: 0.0 }
       - { key: packaging/air.demand_scfm, type: double, units: scfm, default: 10.0 }
+      # The bas-vent CO2 supply shutoff relay (1 = healthy, 0 = tripped). It is
+      # de-energize to trip and wired in series with the valve's solenoid, so
+      # the bulk CO2 valve stays closed until the building federate first
+      # reports it (DESIGN.md 6.7).
+      - { key: building/vent.co2_shutoff_ok, type: double, default: 0.0 }
   packaging:
     host: sim-process
     period_s: 1.0
@@ -194,12 +199,17 @@ federates:
       - { key: cellar.temp_f, type: double, units: degF, desc: Cellar room temperature (to cellar) }
       - { key: cellar.co2_ppm, type: double, units: ppm, desc: "Cellar room CO2, well mixed" }
       - { key: vent.co2_relay_ok, type: double, desc: "bas-vent gas-detection relay to rio-cellar: 1 below CO2 tier 2 with EP-1 powered, else 0 (to cellar)" }
+      - { key: vent.co2_shutoff_ok, type: double, desc: "bas-vent CO2 supply shutoff relay to rio-utilities: 1 while every area is below tier 3 (30,000 ppm) and detection is powered and healthy, else 0 (to utilities)" }
     inputs:
       - { key: weather/ambient.temp_f, type: double, units: degF, default: 75.0 }
       - { key: weather/ghi.wm2, type: double, units: W/m2, default: 0.0 }
       - { key: weather/clock.epoch_s, type: double, units: s, default: 0.0 }
       - { key: cellar/co2.vent_gps, type: double, units: g/s, default: 0.0 }
       - { key: brewhouse/hood.heat_kw, type: double, units: kW, default: 0.0 }
+      # CO2 the filler vents into the packaging area, and the supply pressure
+      # that drives a leak on the distribution piping (DESIGN.md 6.7).
+      - { key: packaging/co2.draw_slpm, type: double, units: L/min, default: 0.0 }
+      - { key: utilities/co2.supply_psig, type: double, units: psig, default: 60.0 }
 
 # Electrical loads (DESIGN.md §7.2). Each publisher publishes
 # `<federate>/load.<name>.kw` and subscribes to `power/bus.<bus>.energized`;
@@ -375,6 +385,9 @@ device_types:
     fault: { type: binary-read }
     enable: { type: binary-read-write }
     supply_sp_f: { type: analog-read-write, scaling: 1 }
+    # Refrigerant detector at the chiller (ASHRAE 15; R-410A, alarm at the
+    # 1,000 ppm occupational exposure limit).
+    refrig_ppm: { type: analog-read, scaling: 0 }
   glycol-loop:
     reservoir_pct: { type: analog-read, scaling: 1 }
     pump_psig: { type: analog-read, scaling: 1 }
@@ -398,6 +411,10 @@ device_types:
     tank_level_pct: { type: analog-read, scaling: 1 }
     supply_psig: { type: analog-read, scaling: 1 }
     main_valve: { type: binary-read-write }
+    # The main valve's open limit switch. The valve's solenoid is wired through
+    # the bas-vent shutoff relay, so it reads closed whatever the PLC commands
+    # while the relay is tripped (DESIGN.md 6.7).
+    valve_open: { type: binary-read }
   ro-skid:
     permeate_gpm: { type: analog-read, scaling: 1 }
     conductivity_us: { type: analog-read, scaling: 0 }
@@ -466,6 +483,11 @@ device_types:
     enable: { type: binary-read-write }
     p_sp_kw: { type: analog-read-write, scaling: 1, signed: true }
     utility_p_sp_kw: { type: analog-read-write, scaling: 1, signed: true, written_by: rtu-der }
+    # Battery management (NFPA 855, UL 9540A): the hottest cell temperature and
+    # the enclosure's off-gas (electrolyte vapor) detector, the first sign of a
+    # cell venting ahead of thermal runaway.
+    cell_temp_f: { type: analog-read, scaling: 1 }
+    offgas_ppm: { type: analog-read, scaling: 0 }
   gen-ats:
     gen_kw: { type: analog-read, scaling: 1 }
     ep1_kw: { type: analog-read, scaling: 1 }
@@ -512,6 +534,18 @@ device_types:
     purge_fan_1: { type: binary-read-write, bacnet: { object_type: binary-output } }
     purge_fan_2: { type: binary-read-write, bacnet: { object_type: binary-output } }
     mua_enable: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    # CO2 detection beyond the cellar (Denver IFC 5307: every point of use and
+    # the supply tank area; DESIGN.md 6.7, 8.1): one low-mounted sensor each at
+    # the bulk tank and vaporizer, the filler, and the cold room and draft
+    # system; the area tier-1 flag; the CO2 supply shutoff relay to
+    # rio-utilities; the horns and strobes; and the area exhaust fans.
+    co2_5_ppm: { type: analog-read, bacnet: { object_type: analog-input, units: partsPerMillion } }
+    co2_6_ppm: { type: analog-read, bacnet: { object_type: analog-input, units: partsPerMillion } }
+    co2_7_ppm: { type: analog-read, bacnet: { object_type: analog-input, units: partsPerMillion } }
+    co2_area_tier_1: { type: binary-read, bacnet: { object_type: binary-value } }
+    co2_shutoff_ok: { type: binary-read, bacnet: { object_type: binary-value } }
+    horn_strobe: { type: binary-read-write, bacnet: { object_type: binary-output } }
+    area_exhaust: { type: binary-read-write, bacnet: { object_type: binary-output } }
 
 # Hosts that own tags or appear in generated app blocks. Interface names
 # and addresses follow DESIGN.md §10.2 (IF0, IF1, ... in zone order; the
@@ -550,7 +584,7 @@ hosts:
       - { host: plc-packaging }
       - { host: plc-utilities }
       - { host: plc-power }
-      - { host: bas-vent, tags: ["FAC.VENT.AT0*", "FAC.VENT.AY01.*", "FAC.VENT.FAN0*.PV"] }
+      - { host: bas-vent, tags: ["FAC.VENT.AT0*", "FAC.VENT.AY0*", "FAC.VENT.FAN0*.PV", "FAC.VENT.XS01.*", "FAC.VENT.XA01.*"] }
     interfaces:
       IF0: { vlan: OPS, ip: 10.20.30.10/24 }
   ot-svc:
@@ -882,6 +916,12 @@ alarm_rationale:
     consequence: Carbonation drifts off target and the beer warms
     action: Check the BBT jacket valve and the glycol supply temperature
     response_time: 30m
+  vessel-entry-violation:
+    priority: critical
+    cause: "A write (HMI, EWS, or an attacker) or a phase start tried to drive a valve, steam, or motor output of a vessel locked out for confined-space entry"
+    consequence: CO2, glycol, steam, hot water, or CIP chemical into a vessel with a person inside (29 CFR 1910.146)
+    action: Confirm with the attendant that the entrant is out or safe, keep the lockout, and find who or what wrote the output
+    response_time: 1m
   carbonation-inhibited:
     priority: medium
     cause: Cellar CO2 at or above 15,000 ppm (bas-vent tier 2)
@@ -950,12 +990,24 @@ alarm_rationale:
     consequence: No CO2 for purging, carbonation, or counterpressure filling
     action: Check the bulk tank level and the vaporizer; order a delivery
     response_time: 30m
+  co2-supply-shutoff:
+    priority: high
+    cause: "CO2 at 30,000 ppm in an area (cellar, bulk tank, filler, or cold room), or the gas detection lost power or failed; the bas-vent shutoff relay dropped"
+    consequence: The bulk CO2 supply is closed (fail closed, latched); no carbonation, purging, or counterpressure filling until it is reset
+    action: Evacuate per tier 3, find and stop the release, restore detection, then reset the shutoff from the HMI once every area is clear
+    response_time: 5m
   co2-tank-low:
     priority: low
     cause: Normal consumption since the last delivery
     consequence: Supply runs out in a few days
     action: Schedule a bulk CO2 delivery
     response_time: 24h
+  refrigerant-leak:
+    priority: high
+    cause: Refrigerant leak at the glycol chiller (a fitting, brazed joint, or compressor seal)
+    consequence: R-410A above its 1,000 ppm exposure limit displaces oxygen near the unit; the charge falls, capacity drops, and the leak rate may pass the 30 %/yr repair trigger of 40 CFR 84 Subpart C
+    action: Ventilate and keep people away from the unit; have a certified technician find the leak, record the top-off and leak rate, and repair within 30 days
+    response_time: 15m
   ro-conductivity-high:
     priority: low
     cause: RO membrane fouling or a failed carbon prefilter
@@ -1017,6 +1069,24 @@ alarm_rationale:
     consequence: No peak shaving; the monthly demand peak may rise
     action: Check the PCS fault code and reset it from its panel
     response_time: 1h
+  bess-cell-temp-high:
+    priority: medium
+    cause: Cooling fault, high ambient, or a failing cell heating in the BESS enclosure
+    consequence: Accelerated aging; a cell near its limit can go into thermal runaway
+    action: Check the enclosure HVAC and the BMS cell report; reduce the dispatch or disable the BESS
+    response_time: 30m
+  bess-cell-temp-critical:
+    priority: high
+    cause: A cell well above its limit (internal short, overcharge, or cooling lost)
+    consequence: Thermal runaway is near (UL 9540A); the PCS trips the battery off line
+    action: Disable the BESS, keep people away from the enclosure, and follow the emergency response plan (NFPA 855)
+    response_time: 5m
+  bess-offgas:
+    priority: critical
+    cause: A battery cell is venting electrolyte vapor, the first stage of thermal runaway (UL 9540A)
+    consequence: Fire and a flammable-gas deflagration in the BESS enclosure; propagation to the next modules
+    action: Evacuate the area around the BESS, keep it isolated and the enclosure closed, and call the fire department per the emergency response plan
+    response_time: 1m
   bess-soc-low:
     priority: low
     cause: Discharge for peak shaving or energy shift without enough recharge
@@ -1041,6 +1111,24 @@ alarm_rationale:
     cause: Large CO2 release (blow-off, relief valve, or line break)
     consequence: Life safety; CO2 at the NIOSH STEL and approaching IDLH (40,000 ppm)
     action: Evacuate the cellar; enter only with SCBA; ventilate before re-entry
+    response_time: 1m
+  co2-area-pel:
+    priority: low
+    cause: CO2 above 5,000 ppm at the bulk tank, the filler, or the cold room and draft system (a leaking fitting, the filler's snift exhaust, or a draft line)
+    consequence: The OSHA PEL (5,000 ppm, 8 h TWA) is exceeded in that area; its exhaust fans are running
+    action: Confirm the area exhaust (FAN03) runs, limit time in the area, and check the CO2 fittings there
+    response_time: 30m
+  co2-area-high:
+    priority: high
+    cause: A CO2 leak at the bulk tank, the vaporizer, the filler, or the draft system, or the area exhaust not running
+    consequence: CO2 approaching the NIOSH short-term limit (30,000 ppm) in a point-of-use or supply area
+    action: Keep staff out of the area, confirm the exhaust, and find the source
+    response_time: 5m
+  co2-area-critical:
+    priority: critical
+    cause: Large CO2 release at the bulk tank, the vaporizer, the filler, or the draft system
+    consequence: Life safety; the horns and strobes run and the CO2 supply shutoff closes the bulk tank valve
+    action: Evacuate the area; enter only with SCBA; ventilate before re-entry and before resetting the shutoff
     response_time: 1m
   coldroom-temp-high:
     priority: medium
@@ -1213,6 +1301,29 @@ areas:
           - { id: XS01.STATE, desc: Phase state, type: analog-read, range: [0, 6], scaling: 0 }
           - { id: XS01.STEP, desc: Phase step number, type: analog-read, range: [0, 100], scaling: 0 }
           - { id: XI01.BATCH, desc: Batch number (low 16 bits), type: analog-read-write, range: [0, 65535], scaling: 0 }
+
+      # Confined-space entry of the mash/lauter tun and the kettle (29 CFR
+      # 1910.146, DESIGN.md 6.3): the permit bit locks out the vessel's steam,
+      # water, rake, and whirlpool outputs, holds any phase that uses it, and
+      # XAnn alarms when a write or a phase start tries to drive one.
+      - id: ENTRY
+        name: Confined-space entry lockout (mash/lauter tun and kettle)
+        model: entry
+        tags:
+          - { id: HS01.ENTRY, desc: "MLT entry permit issued (entry supervisor; locks the vessel out)", type: binary-read-write }
+          - { id: HS02.ENTRY, desc: "Kettle entry permit issued (entry supervisor; locks the vessel out)", type: binary-read-write }
+          - { id: XS01.LOCKED, desc: "MLT locked out for entry (steam, strike and sparge water, runoff, rake)", type: binary-read }
+          - { id: XS02.LOCKED, desc: "Kettle locked out for entry (steam, whirlpool, hop doser)", type: binary-read }
+          - id: XA01.PV
+            desc: MLT write or phase start against a locked-out output during entry
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
+          - id: XA02.PV
+            desc: Kettle write or phase start against a locked-out output during entry
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
 
   - id: CEL
     name: Cellar
@@ -1533,6 +1644,65 @@ areas:
             alarms:
               - { kind: state, limit: 1, delay: 0s, rationale: psv-lifted }
 
+      # Confined-space entry (29 CFR 1910.146, DESIGN.md 6.3). The entry
+      # supervisor sets a vessel's permit bit (HSnn.ENTRY) from the HMI when the
+      # permit is issued; plc-cellar then locks out the vessel's glycol, CO2,
+      # and outlet valves, vents its head to atmosphere, withdraws its CIP
+      # permit (XS1n.CIP_OK, read by plc-utilities), and raises XAnn when a
+      # write sets a locked-out output. Vessels in PSV order; ci does not list it.
+      - id: ENTRY
+        name: Confined-space entry lockout (cellar vessels)
+        model: entry
+        tags:
+          - { id: HS01.ENTRY, desc: "FV-101 entry permit issued (entry supervisor; locks the vessel out)", type: binary-read-write }
+          - { id: HS02.ENTRY, desc: "FV-102 entry permit issued (entry supervisor; locks the vessel out)", type: binary-read-write }
+          - { id: HS03.ENTRY, desc: "FV-103 entry permit issued (entry supervisor; locks the vessel out)", type: binary-read-write }
+          - { id: HS04.ENTRY, desc: "FV-104 entry permit issued (entry supervisor; locks the vessel out)", type: binary-read-write }
+          - { id: HS05.ENTRY, desc: "BBT-201 entry permit issued (entry supervisor; locks the vessel out)", type: binary-read-write }
+          - { id: HS06.ENTRY, desc: "BBT-202 entry permit issued (entry supervisor; locks the vessel out)", type: binary-read-write }
+          - { id: XS01.LOCKED, desc: "FV-101 locked out for entry (glycol, CO2, outlet, and CIP)", type: binary-read }
+          - { id: XS02.LOCKED, desc: "FV-102 locked out for entry (glycol, CO2, outlet, and CIP)", type: binary-read }
+          - { id: XS03.LOCKED, desc: "FV-103 locked out for entry (glycol, CO2, outlet, and CIP)", type: binary-read }
+          - { id: XS04.LOCKED, desc: "FV-104 locked out for entry (glycol, CO2, outlet, and CIP)", type: binary-read }
+          - { id: XS05.LOCKED, desc: "BBT-201 locked out for entry (glycol, CO2, outlet, and CIP)", type: binary-read }
+          - { id: XS06.LOCKED, desc: "BBT-202 locked out for entry (glycol, CO2, outlet, and CIP)", type: binary-read }
+          - { id: XS11.CIP_OK, desc: "FV-101 CIP permitted, not in entry (peer status for plc-utilities)", type: binary-read }
+          - { id: XS12.CIP_OK, desc: "FV-102 CIP permitted, not in entry (peer status for plc-utilities)", type: binary-read }
+          - { id: XS13.CIP_OK, desc: "FV-103 CIP permitted, not in entry (peer status for plc-utilities)", type: binary-read }
+          - { id: XS14.CIP_OK, desc: "FV-104 CIP permitted, not in entry (peer status for plc-utilities)", type: binary-read }
+          - { id: XS15.CIP_OK, desc: "BBT-201 CIP permitted, not in entry (peer status for plc-utilities)", type: binary-read }
+          - { id: XS16.CIP_OK, desc: "BBT-202 CIP permitted, not in entry (peer status for plc-utilities)", type: binary-read }
+          - id: XA01.PV
+            desc: FV-101 write to a locked-out valve during entry
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
+          - id: XA02.PV
+            desc: FV-102 write to a locked-out valve during entry
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
+          - id: XA03.PV
+            desc: FV-103 write to a locked-out valve during entry
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
+          - id: XA04.PV
+            desc: FV-104 write to a locked-out valve during entry
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
+          - id: XA05.PV
+            desc: BBT-201 write to a locked-out valve during entry
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
+          - id: XA06.PV
+            desc: BBT-202 write to a locked-out valve during entry
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
+
   - id: PKG
     name: Packaging
     plc: plc-packaging
@@ -1742,6 +1912,13 @@ areas:
               - { kind: state, limit: 1, delay: 0s, rationale: chiller-fault }
           - { id: HS01.CMD, desc: Chiller enable, io: chiller.enable }
           - { id: TIC01.SP, desc: Chiller supply setpoint (written to the OEM controller), io: chiller.supply_sp_f, units: degF, range: [0, 100] }
+          - id: AT01.PV
+            desc: "Refrigerant detector at the chiller (R-410A, 45 lb charge; ASHRAE 15)"
+            io: chiller.refrig_ppm
+            units: ppm
+            range: [0, 10000]
+            alarms:
+              - { kind: high, limit: 1000.0, delay: 30s, rationale: refrigerant-leak }
           - { id: TT01.SP, desc: Glycol supply setpoint (operator), type: analog-read-write, units: degF, range: [0, 100], scaling: 1 }
 
       - id: GLY
@@ -1764,7 +1941,7 @@ areas:
           - { id: PT01.SP, desc: Glycol supply pressure setpoint, type: analog-read-write, units: psig, range: [0, 100], scaling: 1 }
 
       - id: STM
-        name: Electric steam boiler (200 kW)
+        name: "Electric steam boiler (200 kW, ASME Section IV low-pressure steam, 15 psig MAWP, safety valve set at 15 psig, operated at 12 psig; 7 CCR 1101-5)"
         model: boiler
         devices:
           - { name: boiler, type: boiler }
@@ -1784,7 +1961,7 @@ areas:
             alarms:
               - { kind: state, limit: 1, delay: 0s, rationale: boiler-low-water }
           - { id: HS01.CMD, desc: Boiler enable, io: boiler.enable }
-          - { id: PC01.SP, desc: Boiler pressure setpoint, io: boiler.pressure_sp_psig, units: psig, range: [0, 30] }
+          - { id: PC01.SP, desc: "Boiler pressure setpoint (12 psig; below the 15 psig safety valve)", io: boiler.pressure_sp_psig, units: psig, range: [0, 30] }
 
       - id: AIR
         name: Air compressor and dryer
@@ -1808,6 +1985,7 @@ areas:
         model: co2-supply
         devices:
           - { name: co2, type: co2-supply }
+          - { name: co2relay, type: gas-relay }
         tags:
           - { id: PT01.PV, desc: Bulk CO2 tank pressure, io: co2.tank_psig, units: psig, range: [0, 400] }
           - id: LT01.PV
@@ -1824,7 +2002,18 @@ areas:
             range: [0, 150]
             alarms:
               - { kind: low, limit: 40.0, delay: 1m, rationale: co2-supply-low, suppress: XV01.CMD }
-          - { id: XV01.CMD, desc: CO2 main supply valve, io: co2.main_valve }
+          - { id: XV01.CMD, desc: "CO2 main supply valve (fail closed; its solenoid is wired through the shutoff relay)", io: co2.main_valve }
+          - { id: ZSO01.PV, desc: CO2 main supply valve open (limit switch), io: co2.valve_open }
+          # The bas-vent CO2 supply shutoff relay, hardwired into rio-utilities
+          # (DESIGN.md 6.7): energized (TRUE) while every area is below tier 3
+          # and detection is powered and healthy. De-energize to trip.
+          - { id: XS01.CO2_OK, desc: "CO2 shutoff relay healthy (every area below 30,000 ppm, detection powered)", io: co2relay.co2_ok }
+          - id: XS02.SHUTOFF
+            desc: "CO2 supply shut off (tier 3 or loss of detection; latched until reset)"
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: co2-supply-shutoff }
+          - { id: XC01.RESET, desc: "CO2 supply shutoff reset (operator; accepted once the relay has been healthy for 60 s)", type: binary-read-write }
 
       - id: RO
         name: RO skid and carbon filter
@@ -1917,6 +2106,14 @@ areas:
           # a lost peer reads 0, so the CIP permit fails safe.
           - { id: XS03.PV, desc: Cellar transfer in progress (peer read from plc-cellar), peer: CEL.XFER.XS01.ACTIVE }
           - { id: XS04.PV, desc: Cellar circuits permit CIP (peer read from plc-cellar), peer: CEL.XFER.XS02.CIP_PERMIT }
+          # Per vessel: not locked out for confined-space entry (DESIGN.md 6.3).
+          # A lost peer reads 0, so CIP into that vessel fails safe.
+          - { id: XS05.PV, desc: FV-101 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS11.CIP_OK }
+          - { id: XS06.PV, desc: FV-102 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS12.CIP_OK }
+          - { id: XS07.PV, desc: FV-103 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS13.CIP_OK }
+          - { id: XS08.PV, desc: FV-104 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS14.CIP_OK }
+          - { id: XS09.PV, desc: BBT-201 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS15.CIP_OK }
+          - { id: XS10.PV, desc: BBT-202 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS16.CIP_OK }
 
   - id: PWR
     name: Electrical
@@ -2001,6 +2198,21 @@ areas:
           - { id: HS01.CMD, desc: BESS enable, io: bess-pcs.enable }
           - { id: JC01.SP, desc: BESS power setpoint (plc-power dispatch), io: bess-pcs.p_sp_kw, units: kW, range: [-100, 100] }
           - { id: JC02.SP, desc: BESS utility dispatch (DERMS through rtu-der; read only here), io: bess-pcs.utility_p_sp_kw, units: kW, range: [-100, 100] }
+          - id: TT01.PV
+            desc: BESS hottest cell temperature (BMS)
+            io: bess-pcs.cell_temp_f
+            units: degF
+            range: [0, 400]
+            alarms:
+              - { kind: high, limit: 122.0, delay: 1m, rationale: bess-cell-temp-high }
+              - { kind: highhigh, limit: 140.0, delay: 0s, rationale: bess-cell-temp-critical }
+          - id: AT01.PV
+            desc: "BESS enclosure off-gas detector (electrolyte vapor; NFPA 855, UL 9540A)"
+            io: bess-pcs.offgas_ppm
+            units: ppm
+            range: [0, 1000]
+            alarms:
+              - { kind: high, limit: 50.0, delay: 0s, rationale: bess-offgas }
 
       - id: GEN
         name: Standby genset (100 kW) and ATS
@@ -2135,6 +2347,39 @@ areas:
           - { id: FAN01.CMD, desc: Cellar purge fan 1, io: bas-vent.purge_fan_1 }
           - { id: FAN02.CMD, desc: Cellar purge fan 2, io: bas-vent.purge_fan_2 }
           - { id: MUA01.CMD, desc: Makeup-air unit enable, io: bas-vent.mua_enable }
+          # CO2 beyond the cellar (DESIGN.md 6.7, 8.1).
+          - id: AT05.PV
+            desc: "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)"
+            io: bas-vent.co2_5_ppm
+            units: ppm
+            range: [0, 50000]
+            alarms:
+              - { kind: high, limit: 15000.0, delay: 30s, rationale: co2-area-high }
+              - { kind: highhigh, limit: 30000.0, delay: 0s, rationale: co2-area-critical }
+          - id: AT06.PV
+            desc: "Filler (packaging) area CO2 sensor (low-mounted)"
+            io: bas-vent.co2_6_ppm
+            units: ppm
+            range: [0, 50000]
+            alarms:
+              - { kind: high, limit: 15000.0, delay: 30s, rationale: co2-area-high }
+              - { kind: highhigh, limit: 30000.0, delay: 0s, rationale: co2-area-critical }
+          - id: AT07.PV
+            desc: "Cold room and draft system CO2 sensor (low-mounted)"
+            io: bas-vent.co2_7_ppm
+            units: ppm
+            range: [0, 50000]
+            alarms:
+              - { kind: high, limit: 15000.0, delay: 30s, rationale: co2-area-high }
+              - { kind: highhigh, limit: 30000.0, delay: 0s, rationale: co2-area-critical }
+          - id: AY02.TIER1
+            desc: "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on"
+            io: bas-vent.co2_area_tier_1
+            alarms:
+              - { kind: state, limit: 1, delay: 1m, rationale: co2-area-pel }
+          - { id: XS01.SHUTOFF_OK, desc: "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)", io: bas-vent.co2_shutoff_ok }
+          - { id: XA01.CMD, desc: "CO2 horns and strobes (tier 3 in any area)", io: bas-vent.horn_strobe }
+          - { id: FAN03.CMD, desc: "CO2 area exhaust fans (bulk tank, filler, cold room)", io: bas-vent.area_exhaust }
 
 # State of health (DESIGN.md §15.4). plantgen derives the PLC-to-field,
 # FUXA-to-PLC/BACnet, FEP, and DNP3 flows; the conduits below are the other

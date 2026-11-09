@@ -177,7 +177,7 @@ def test_cip_verification_record(full: HelicsConfig) -> None:
     _event(fed, "cip-panel", circuit="fv102")
     for tag, value in (
         ("boiler.enable", True),  # the PLC keeps the steam up for the heater
-        ("boiler.pressure_sp_psig", 15.0),
+        ("boiler.pressure_sp_psig", 12.0),
         ("cip.supply_pump", True),
         ("cip.return_pump", True),
         ("cip.caustic_dose", True),

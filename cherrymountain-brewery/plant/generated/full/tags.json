@@ -1127,6 +1127,86 @@
       "plc": "plc-brewhouse"
     },
     {
+      "name": "BH.ENTRY.HS01.ENTRY",
+      "desc": "MLT entry permit issued (entry supervisor; locks the vessel out)",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.ENTRY.HS02.ENTRY",
+      "desc": "Kettle entry permit issued (entry supervisor; locks the vessel out)",
+      "type": "binary-read-write",
+      "area": "BH",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.ENTRY.XS01.LOCKED",
+      "desc": "MLT locked out for entry (steam, strike and sparge water, runoff, rake)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.ENTRY.XS02.LOCKED",
+      "desc": "Kettle locked out for entry (steam, whirlpool, hop doser)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.ENTRY.XA01.PV",
+      "desc": "MLT write or phase start against a locked-out output during entry",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "alarms": [
+        "BH.ENTRY.XA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "BH.ENTRY.XA01.ALM_STATE",
+      "desc": "MLT write or phase start against a locked-out output during entry: state alarm (critical)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
+      "name": "BH.ENTRY.XA02.PV",
+      "desc": "Kettle write or phase start against a locked-out output during entry",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "alarms": [
+        "BH.ENTRY.XA02.ALM_STATE"
+      ]
+    },
+    {
+      "name": "BH.ENTRY.XA02.ALM_STATE",
+      "desc": "Kettle write or phase start against a locked-out output during entry: state alarm (critical)",
+      "type": "binary-read",
+      "area": "BH",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-brewhouse",
+      "generated": true
+    },
+    {
       "name": "CEL.CLK.KI01.PV",
       "desc": "Cellar simulation clock (compressed fermentation time)",
       "type": "analog-read",
@@ -2918,6 +2998,300 @@
       "type": "binary-read",
       "area": "CEL",
       "unit": "PSV",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.ENTRY.HS01.ENTRY",
+      "desc": "FV-101 entry permit issued (entry supervisor; locks the vessel out)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.HS02.ENTRY",
+      "desc": "FV-102 entry permit issued (entry supervisor; locks the vessel out)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.HS03.ENTRY",
+      "desc": "FV-103 entry permit issued (entry supervisor; locks the vessel out)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.HS04.ENTRY",
+      "desc": "FV-104 entry permit issued (entry supervisor; locks the vessel out)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.HS05.ENTRY",
+      "desc": "BBT-201 entry permit issued (entry supervisor; locks the vessel out)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.HS06.ENTRY",
+      "desc": "BBT-202 entry permit issued (entry supervisor; locks the vessel out)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS01.LOCKED",
+      "desc": "FV-101 locked out for entry (glycol, CO2, outlet, and CIP)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS02.LOCKED",
+      "desc": "FV-102 locked out for entry (glycol, CO2, outlet, and CIP)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS03.LOCKED",
+      "desc": "FV-103 locked out for entry (glycol, CO2, outlet, and CIP)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS04.LOCKED",
+      "desc": "FV-104 locked out for entry (glycol, CO2, outlet, and CIP)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS05.LOCKED",
+      "desc": "BBT-201 locked out for entry (glycol, CO2, outlet, and CIP)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS06.LOCKED",
+      "desc": "BBT-202 locked out for entry (glycol, CO2, outlet, and CIP)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS11.CIP_OK",
+      "desc": "FV-101 CIP permitted, not in entry (peer status for plc-utilities)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS12.CIP_OK",
+      "desc": "FV-102 CIP permitted, not in entry (peer status for plc-utilities)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS13.CIP_OK",
+      "desc": "FV-103 CIP permitted, not in entry (peer status for plc-utilities)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS14.CIP_OK",
+      "desc": "FV-104 CIP permitted, not in entry (peer status for plc-utilities)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS15.CIP_OK",
+      "desc": "BBT-201 CIP permitted, not in entry (peer status for plc-utilities)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XS16.CIP_OK",
+      "desc": "BBT-202 CIP permitted, not in entry (peer status for plc-utilities)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.ENTRY.XA01.PV",
+      "desc": "FV-101 write to a locked-out valve during entry",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "alarms": [
+        "CEL.ENTRY.XA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.ENTRY.XA01.ALM_STATE",
+      "desc": "FV-101 write to a locked-out valve during entry: state alarm (critical)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.ENTRY.XA02.PV",
+      "desc": "FV-102 write to a locked-out valve during entry",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "alarms": [
+        "CEL.ENTRY.XA02.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.ENTRY.XA02.ALM_STATE",
+      "desc": "FV-102 write to a locked-out valve during entry: state alarm (critical)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.ENTRY.XA03.PV",
+      "desc": "FV-103 write to a locked-out valve during entry",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "alarms": [
+        "CEL.ENTRY.XA03.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.ENTRY.XA03.ALM_STATE",
+      "desc": "FV-103 write to a locked-out valve during entry: state alarm (critical)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.ENTRY.XA04.PV",
+      "desc": "FV-104 write to a locked-out valve during entry",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "alarms": [
+        "CEL.ENTRY.XA04.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.ENTRY.XA04.ALM_STATE",
+      "desc": "FV-104 write to a locked-out valve during entry: state alarm (critical)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.ENTRY.XA05.PV",
+      "desc": "BBT-201 write to a locked-out valve during entry",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "alarms": [
+        "CEL.ENTRY.XA05.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.ENTRY.XA05.ALM_STATE",
+      "desc": "BBT-201 write to a locked-out valve during entry: state alarm (critical)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.ENTRY.XA06.PV",
+      "desc": "BBT-202 write to a locked-out valve during entry",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "alarms": [
+        "CEL.ENTRY.XA06.ALM_STATE"
+      ]
+    },
+    {
+      "name": "CEL.ENTRY.XA06.ALM_STATE",
+      "desc": "BBT-202 write to a locked-out valve during entry: state alarm (critical)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "ENTRY",
       "source": "plc",
       "plc": "plc-cellar",
       "generated": true
@@ -4728,6 +5102,40 @@
       "helics_key": "utilities/chiller.supply_sp_f"
     },
     {
+      "name": "UTL.CHL.AT01.PV",
+      "desc": "Refrigerant detector at the chiller (R-410A, 45 lb charge; ASHRAE 15)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        10000.0
+      ],
+      "scaling": 0,
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "glycol-chiller",
+      "federate": "utilities",
+      "device": "chiller",
+      "device_type": "chiller",
+      "point": "refrig_ppm",
+      "helics_key": "utilities/chiller.refrig_ppm",
+      "alarms": [
+        "UTL.CHL.AT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "UTL.CHL.AT01.ALM_HIGH",
+      "desc": "Refrigerant detector at the chiller (R-410A, 45 lb charge; ASHRAE 15): high alarm (high)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CHL",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
       "name": "UTL.CHL.TT01.SP",
       "desc": "Glycol supply setpoint (operator)",
       "type": "analog-read-write",
@@ -4978,7 +5386,7 @@
     },
     {
       "name": "UTL.STM.PC01.SP",
-      "desc": "Boiler pressure setpoint",
+      "desc": "Boiler pressure setpoint (12 psig; below the 15 psig safety valve)",
       "type": "analog-read-write",
       "units": "psig",
       "range": [
@@ -5167,7 +5575,7 @@
     },
     {
       "name": "UTL.CO2.XV01.CMD",
-      "desc": "CO2 main supply valve",
+      "desc": "CO2 main supply valve (fail closed; its solenoid is wired through the shutoff relay)",
       "type": "binary-read-write",
       "area": "UTL",
       "unit": "CO2",
@@ -5179,6 +5587,67 @@
       "device_type": "co2-supply",
       "point": "main_valve",
       "helics_key": "utilities/co2.main_valve"
+    },
+    {
+      "name": "UTL.CO2.ZSO01.PV",
+      "desc": "CO2 main supply valve open (limit switch)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "co2",
+      "device_type": "co2-supply",
+      "point": "valve_open",
+      "helics_key": "utilities/co2.valve_open"
+    },
+    {
+      "name": "UTL.CO2.XS01.CO2_OK",
+      "desc": "CO2 shutoff relay healthy (every area below 30,000 ppm, detection powered)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "io",
+      "plc": "plc-utilities",
+      "rio": "rio-utilities",
+      "federate": "utilities",
+      "device": "co2relay",
+      "device_type": "gas-relay",
+      "point": "co2_ok",
+      "helics_key": "utilities/co2relay.co2_ok"
+    },
+    {
+      "name": "UTL.CO2.XS02.SHUTOFF",
+      "desc": "CO2 supply shut off (tier 3 or loss of detection; latched until reset)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "alarms": [
+        "UTL.CO2.XS02.ALM_STATE"
+      ]
+    },
+    {
+      "name": "UTL.CO2.XS02.ALM_STATE",
+      "desc": "CO2 supply shut off (tier 3 or loss of detection; latched until reset): state alarm (high)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
+    },
+    {
+      "name": "UTL.CO2.XC01.RESET",
+      "desc": "CO2 supply shutoff reset (operator; accepted once the relay has been healthy for 60 s)",
+      "type": "binary-read-write",
+      "area": "UTL",
+      "unit": "CO2",
+      "source": "plc",
+      "plc": "plc-utilities"
     },
     {
       "name": "UTL.RO.FT01.PV",
@@ -5830,6 +6299,60 @@
       "plc": "plc-utilities"
     },
     {
+      "name": "UTL.CIP.XS05.PV",
+      "desc": "FV-101 not in entry (peer read from plc-cellar)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "peer",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XS06.PV",
+      "desc": "FV-102 not in entry (peer read from plc-cellar)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "peer",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XS07.PV",
+      "desc": "FV-103 not in entry (peer read from plc-cellar)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "peer",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XS08.PV",
+      "desc": "FV-104 not in entry (peer read from plc-cellar)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "peer",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XS09.PV",
+      "desc": "BBT-201 not in entry (peer read from plc-cellar)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "peer",
+      "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XS10.PV",
+      "desc": "BBT-202 not in entry (peer read from plc-cellar)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "peer",
+      "plc": "plc-utilities"
+    },
+    {
       "name": "PWR.MAIN.JT01.PV",
       "desc": "Service real power (import positive)",
       "type": "analog-read",
@@ -6404,6 +6927,85 @@
       "helics_key": "power/bess-pcs.utility_p_sp_kw",
       "signed": true,
       "written_by": "rtu-der"
+    },
+    {
+      "name": "PWR.BESS.TT01.PV",
+      "desc": "BESS hottest cell temperature (BMS)",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        0.0,
+        400.0
+      ],
+      "scaling": 1,
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "cell_temp_f",
+      "helics_key": "power/bess-pcs.cell_temp_f",
+      "alarms": [
+        "PWR.BESS.TT01.ALM_HIGH",
+        "PWR.BESS.TT01.ALM_HIGHHIGH"
+      ]
+    },
+    {
+      "name": "PWR.BESS.TT01.ALM_HIGH",
+      "desc": "BESS hottest cell temperature (BMS): high alarm (medium)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
+    },
+    {
+      "name": "PWR.BESS.TT01.ALM_HIGHHIGH",
+      "desc": "BESS hottest cell temperature (BMS): highhigh alarm (high)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
+    },
+    {
+      "name": "PWR.BESS.AT01.PV",
+      "desc": "BESS enclosure off-gas detector (electrolyte vapor; NFPA 855, UL 9540A)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        1000.0
+      ],
+      "scaling": 0,
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "io",
+      "plc": "plc-power",
+      "rio": "bess-pcs",
+      "federate": "power",
+      "device": "bess-pcs",
+      "device_type": "bess-pcs",
+      "point": "offgas_ppm",
+      "helics_key": "power/bess-pcs.offgas_ppm",
+      "alarms": [
+        "PWR.BESS.AT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "PWR.BESS.AT01.ALM_HIGH",
+      "desc": "BESS enclosure off-gas detector (electrolyte vapor; NFPA 855, UL 9540A): high alarm (critical)",
+      "type": "binary-read",
+      "area": "PWR",
+      "unit": "BESS",
+      "source": "plc",
+      "plc": "plc-power",
+      "generated": true
     },
     {
       "name": "PWR.GEN.JT01.PV",
@@ -7363,6 +7965,175 @@
       "device_type": "vent",
       "point": "mua_enable",
       "helics_key": "building/bas-vent.mua_enable",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.VENT.AT05.PV",
+      "desc": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        50000.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_5_ppm",
+      "helics_key": "building/bas-vent.co2_5_ppm",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "partsPerMillion"
+      },
+      "alarms": [
+        "FAC.VENT.AT05.ALM_HIGH",
+        "FAC.VENT.AT05.ALM_HIGHHIGH"
+      ]
+    },
+    {
+      "name": "FAC.VENT.AT06.PV",
+      "desc": "Filler (packaging) area CO2 sensor (low-mounted)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        50000.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_6_ppm",
+      "helics_key": "building/bas-vent.co2_6_ppm",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "partsPerMillion"
+      },
+      "alarms": [
+        "FAC.VENT.AT06.ALM_HIGH",
+        "FAC.VENT.AT06.ALM_HIGHHIGH"
+      ]
+    },
+    {
+      "name": "FAC.VENT.AT07.PV",
+      "desc": "Cold room and draft system CO2 sensor (low-mounted)",
+      "type": "analog-read",
+      "units": "ppm",
+      "range": [
+        0.0,
+        50000.0
+      ],
+      "scaling": 0,
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_7_ppm",
+      "helics_key": "building/bas-vent.co2_7_ppm",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "analog-input",
+        "units": "partsPerMillion"
+      },
+      "alarms": [
+        "FAC.VENT.AT07.ALM_HIGH",
+        "FAC.VENT.AT07.ALM_HIGHHIGH"
+      ]
+    },
+    {
+      "name": "FAC.VENT.AY02.TIER1",
+      "desc": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on",
+      "type": "binary-read",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_area_tier_1",
+      "helics_key": "building/bas-vent.co2_area_tier_1",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-value"
+      },
+      "alarms": [
+        "FAC.VENT.AY02.ALM_STATE"
+      ]
+    },
+    {
+      "name": "FAC.VENT.XS01.SHUTOFF_OK",
+      "desc": "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)",
+      "type": "binary-read",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "co2_shutoff_ok",
+      "helics_key": "building/bas-vent.co2_shutoff_ok",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-value"
+      }
+    },
+    {
+      "name": "FAC.VENT.XA01.CMD",
+      "desc": "CO2 horns and strobes (tier 3 in any area)",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "horn_strobe",
+      "helics_key": "building/bas-vent.horn_strobe",
+      "owner": "bas-vent",
+      "bacnet": {
+        "object_type": "binary-output"
+      }
+    },
+    {
+      "name": "FAC.VENT.FAN03.CMD",
+      "desc": "CO2 area exhaust fans (bulk tank, filler, cold room)",
+      "type": "binary-read-write",
+      "area": "FAC",
+      "unit": "VENT",
+      "source": "io",
+      "plc": null,
+      "rio": "bas-vent",
+      "federate": "building",
+      "device": "bas-vent",
+      "device_type": "vent",
+      "point": "area_exhaust",
+      "helics_key": "building/bas-vent.area_exhaust",
       "owner": "bas-vent",
       "bacnet": {
         "object_type": "binary-output"

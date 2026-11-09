@@ -233,6 +233,22 @@
       "plant_tag": "PWR.BESS.JC02.SP",
       "upstream": "bess-pcs",
       "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 10,
+      "tag": "bess-pcs.cell_temp_f",
+      "plant_tag": "PWR.BESS.TT01.PV",
+      "upstream": "bess-pcs",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 11,
+      "tag": "bess-pcs.offgas_ppm",
+      "plant_tag": "PWR.BESS.AT01.PV",
+      "upstream": "bess-pcs",
+      "scaling": 0
     }
   ]
 }

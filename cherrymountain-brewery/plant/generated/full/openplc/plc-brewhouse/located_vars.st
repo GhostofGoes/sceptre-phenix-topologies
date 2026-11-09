@@ -68,4 +68,12 @@ VAR
   BH_BATCH_XS01_STATE AT %MW7 : UINT; (* Phase state, None, x1 *)
   BH_BATCH_XS01_STEP AT %MW8 : UINT; (* Phase step number, None, x1 *)
   BH_BATCH_XI01_BATCH AT %MW9 : UINT; (* Batch number (low 16 bits), None, x1 *)
+  BH_ENTRY_HS01_ENTRY AT %QX1.1 : BOOL; (* MLT entry permit issued (entry supervisor; locks the vessel out) *)
+  BH_ENTRY_HS02_ENTRY AT %QX1.2 : BOOL; (* Kettle entry permit issued (entry supervisor; locks the vessel out) *)
+  BH_ENTRY_XS01_LOCKED AT %QX1.3 : BOOL; (* MLT locked out for entry (steam, strike and sparge water, runoff, rake) *)
+  BH_ENTRY_XS02_LOCKED AT %QX1.4 : BOOL; (* Kettle locked out for entry (steam, whirlpool, hop doser) *)
+  BH_ENTRY_XA01_PV AT %QX1.5 : BOOL; (* MLT write or phase start against a locked-out output during entry *)
+  BH_ENTRY_XA01_ALM_STATE AT %QX1.6 : BOOL; (* MLT write or phase start against a locked-out output during entry: state alarm (critical) *)
+  BH_ENTRY_XA02_PV AT %QX1.7 : BOOL; (* Kettle write or phase start against a locked-out output during entry *)
+  BH_ENTRY_XA02_ALM_STATE AT %QX2.0 : BOOL; (* Kettle write or phase start against a locked-out output during entry: state alarm (critical) *)
 END_VAR

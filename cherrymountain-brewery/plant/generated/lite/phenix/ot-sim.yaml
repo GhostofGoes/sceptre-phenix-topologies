@@ -470,6 +470,11 @@ metadata:
           modbus:
             data-type: uint16
             scaling: 1
+        refrig_ppm:
+          type: analog-read
+          modbus:
+            data-type: uint16
+            scaling: 0
       glycol-loop:
         reservoir_pct:
           type: analog-read
@@ -542,6 +547,8 @@ metadata:
             scaling: 1
         main_valve:
           type: binary-read-write
+        valve_open:
+          type: binary-read
       ro-skid:
         permeate_gpm:
           type: analog-read
@@ -734,6 +741,16 @@ metadata:
           modbus:
             data-type: int16
             scaling: 1
+        cell_temp_f:
+          type: analog-read
+          modbus:
+            data-type: uint16
+            scaling: 1
+        offgas_ppm:
+          type: analog-read
+          modbus:
+            data-type: uint16
+            scaling: 0
       gen-ats:
         gen_kw:
           type: analog-read
@@ -920,6 +937,39 @@ metadata:
           bacnet:
             object-type: binary-output
             commandable: true
+        co2_5_ppm:
+          type: analog-read
+          bacnet:
+            object-type: analog-input
+            units: partsPerMillion
+        co2_6_ppm:
+          type: analog-read
+          bacnet:
+            object-type: analog-input
+            units: partsPerMillion
+        co2_7_ppm:
+          type: analog-read
+          bacnet:
+            object-type: analog-input
+            units: partsPerMillion
+        co2_area_tier_1:
+          type: binary-read
+          bacnet:
+            object-type: binary-value
+        co2_shutoff_ok:
+          type: binary-read
+          bacnet:
+            object-type: binary-value
+        horn_strobe:
+          type: binary-read-write
+          bacnet:
+            object-type: binary-output
+            commandable: true
+        area_exhaust:
+          type: binary-read-write
+          bacnet:
+            object-type: binary-output
+            commandable: true
   helics:
     broker:
       hostname: sim-ctl|mgmt
@@ -1064,6 +1114,9 @@ hosts:
         endpoint: updates
       - name: utilities/co2
         type: co2-supply
+        endpoint: updates
+      - name: utilities/co2relay
+        type: gas-relay
         endpoint: updates
       - name: utilities/ro
         type: ro-skid

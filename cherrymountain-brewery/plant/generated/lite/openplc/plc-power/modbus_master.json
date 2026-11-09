@@ -114,7 +114,7 @@
           "fc": 4,
           "offset": "30001",
           "iec_location": "%IW109",
-          "len": 2,
+          "len": 4,
           "cycle_time_ms": 250,
           "error_handling": "keep-last-value"
         },
@@ -137,7 +137,7 @@
         {
           "fc": 3,
           "offset": "40002",
-          "iec_location": "%IW111",
+          "iec_location": "%IW113",
           "len": 1,
           "cycle_time_ms": 250,
           "error_handling": "keep-last-value"
@@ -167,7 +167,7 @@
         {
           "fc": 4,
           "offset": "30001",
-          "iec_location": "%IW112",
+          "iec_location": "%IW114",
           "len": 3,
           "cycle_time_ms": 250,
           "error_handling": "keep-last-value"

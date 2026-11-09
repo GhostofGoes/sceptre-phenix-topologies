@@ -448,6 +448,98 @@
           "access": "read-write",
           "object_type": "binary-output",
           "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+          "name": "FAC.VENT.AT05.PV",
+          "label": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-6",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+          "name": "FAC.VENT.AT06.PV",
+          "label": "Filler (packaging) area CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-7",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+          "name": "FAC.VENT.AT07.PV",
+          "label": "Cold room and draft system CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-8",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
+          "name": "FAC.VENT.AY02.TIER1",
+          "label": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-4",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_f0285b70-2c03-5312-9cb9-d0490368f1d9",
+          "name": "FAC.VENT.XS01.SHUTOFF_OK",
+          "label": "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-5",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_9dbd8ff8-f6dc-552c-bd10-aa059249f760",
+          "name": "FAC.VENT.XA01.CMD",
+          "label": "CO2 horns and strobes (tier 3 in any area)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-4",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
+          "name": "FAC.VENT.FAN03.CMD",
+          "label": "CO2 area exhaust fans (bulk tank, filler, cold room)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-5",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-vent"
         }
       ]
     }

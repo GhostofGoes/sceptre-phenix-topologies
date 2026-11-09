@@ -5,14 +5,26 @@
   - Glycol: the chiller's supply setpoint passed to the OEM controller (which
     stages the compressors itself), and the glycol pump speed held on supply
     pressure (proportional control).
-  - Steam, air, CO2, RO: enables and the boiler pressure setpoint. The boiler's
-    low-water cutoff is a hardwired trip; the PLC also drops the enable.
+  - Steam, air, RO: enables and the boiler pressure setpoint (12 psig: the
+    boiler is an ASME Section IV unit with its safety valve at the 15 psig
+    MAWP, DESIGN.md 18A.3). The boiler's low-water cutoff is a hardwired trip;
+    the PLC also drops the enable.
+  - CO2 supply shutoff (DESIGN.md 6.7, Denver IFC 5307): UTL.CO2.XS01.CO2_OK is
+    the bas-vent shutoff relay, hardwired and de-energize to trip (it drops at
+    30,000 ppm in any area and on loss of detection power or the detection
+    panel). The valve's solenoid is wired through the same contact, so the
+    valve fails closed without the PLC; the PLC also drops its command and
+    latches XS02.SHUTOFF, which only the operator's reset (XC01.RESET) clears,
+    and only once the relay has been healthy for CO2_RESET_DELAY. The latch
+    arms the first time the relay is healthy, so a power-up is not a trip.
   - Wastewater neutralization: caustic below pH 6.5, acid above pH 8.5 (each
     with hysteresis), and the discharge valve only between pH 6.0 and 9.0.
   - CIP: route verification, then pre-rinse, caustic, rinse, acid, rinse,
     sanitize. The cellar circuits also need plc-cellar's CIP permit, read
     peer to peer (CEL.XFER.XS02.CIP_PERMIT into UTL.CIP.XS04.PV, which reads 0
-    when plc-cellar is unreachable, so CIP fails safe; DESIGN.md 6.6 #4).
+    when plc-cellar is unreachable, so CIP fails safe; DESIGN.md 6.6 #4). A cellar vessel locked out
+    for confined-space entry (its CEL.ENTRY.XS1n.CIP_OK, read the same way into
+    UTL.CIP.XS05..XS10) is never a permitted CIP circuit.
   Alarms are generated from alarms.json by plcbuild.py at the ALARMS marker.
 
   Units: raw registers, engineering value x 10^scaling (degF x 10, psig x 10,
@@ -27,7 +39,8 @@ PROGRAM plc_utilities
     GLYCOL_SP_MAX : UINT := 400;      (* 40.0 degF *)
     PUMP_SPEED_BASE : DINT := 600;    (* 60 % at the setpoint *)
     PUMP_GAIN : DINT := 4;            (* % x 10 per psig x 10 of error *)
-    BOILER_SP : UINT := 150;          (* 15.0 psig *)
+    BOILER_SP : UINT := 120;          (* 12.0 psig, below the 15 psig safety valve *)
+    CO2_RESET_DELAY : TIME := T#60s;  (* relay healthy this long before a reset *)
     PH_CAUSTIC_ON : UINT := 650;
     PH_CAUSTIC_OFF : UINT := 700;
     PH_ACID_ON : UINT := 850;
@@ -55,6 +68,9 @@ PROGRAM plc_utilities
     cip_permit_ok : BOOL;
     cip_timer : TON;
     cip_wash : BOOL;
+    cip_vessel_ok : BOOL;
+    co2_healthy : TON;
+    co2_armed : BOOL := FALSE;
   END_VAR
 
   IF NOT started THEN
@@ -81,7 +97,22 @@ PROGRAM plc_utilities
   UTL_STM_HS01_CMD := NOT UTL_STM_LSL01_PV;
   UTL_STM_PC01_SP := BOILER_SP;
   UTL_AIR_HS01_CMD := TRUE;
-  UTL_CO2_XV01_CMD := TRUE;
+
+  (* ---- CO2 supply shutoff (DESIGN.md 6.7) ------------------------------------------ *)
+  co2_healthy(IN := UTL_CO2_XS01_CO2_OK, PT := CO2_RESET_DELAY);
+  IF co2_healthy.Q THEN
+    co2_armed := TRUE;
+  END_IF;
+  IF co2_armed AND NOT UTL_CO2_XS01_CO2_OK THEN
+    UTL_CO2_XS02_SHUTOFF := TRUE;
+  END_IF;
+  IF UTL_CO2_XC01_RESET THEN
+    IF co2_healthy.Q THEN
+      UTL_CO2_XS02_SHUTOFF := FALSE;
+    END_IF;
+    UTL_CO2_XC01_RESET := FALSE;
+  END_IF;
+  UTL_CO2_XV01_CMD := UTL_CO2_XS01_CO2_OK AND NOT UTL_CO2_XS02_SHUTOFF;
   UTL_RO_HS01_CMD := TRUE;
 
   (* ---- wastewater neutralization --------------------------------------------------- *)
@@ -113,8 +144,20 @@ PROGRAM plc_utilities
   ELSE
     cip_panel_ok := FALSE;
   END_CASE;
-  (* Cellar circuits need plc-cellar's permit (no transfer in progress). *)
-  cip_permit_ok := (UTL_CIP_XC01_CIRCUIT = 1) OR (UTL_CIP_XS04_PV AND NOT UTL_CIP_XS03_PV);
+  (* Cellar circuits need plc-cellar's permit (no transfer in progress) and the
+     vessel's own: not locked out for confined-space entry. *)
+  CASE UTL_CIP_XC01_CIRCUIT OF
+    2: cip_vessel_ok := UTL_CIP_XS05_PV;
+    3: cip_vessel_ok := UTL_CIP_XS06_PV;
+    4: cip_vessel_ok := UTL_CIP_XS07_PV;
+    5: cip_vessel_ok := UTL_CIP_XS08_PV;
+    6: cip_vessel_ok := UTL_CIP_XS09_PV;
+    7: cip_vessel_ok := UTL_CIP_XS10_PV;
+  ELSE
+    cip_vessel_ok := TRUE;
+  END_CASE;
+  cip_permit_ok := (UTL_CIP_XC01_CIRCUIT = 1)
+    OR (UTL_CIP_XS04_PV AND NOT UTL_CIP_XS03_PV AND cip_vessel_ok);
   UTL_CIP_XS02_ROUTE_OK := cip_panel_ok AND cip_permit_ok;
 
   IF UTL_CIP_XC01_CMD = CIP_CMD_ABORT THEN

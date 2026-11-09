@@ -168,6 +168,84 @@
       "tag": "bas-vent.mua_enable",
       "helics_key": "building/bas-vent.mua_enable",
       "commandable": true
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 6,
+      "name": "FAC.VENT.AT05.PV",
+      "description": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)",
+      "tag": "bas-vent.co2_5_ppm",
+      "helics_key": "building/bas-vent.co2_5_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 7,
+      "name": "FAC.VENT.AT06.PV",
+      "description": "Filler (packaging) area CO2 sensor (low-mounted)",
+      "tag": "bas-vent.co2_6_ppm",
+      "helics_key": "building/bas-vent.co2_6_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 8,
+      "name": "FAC.VENT.AT07.PV",
+      "description": "Cold room and draft system CO2 sensor (low-mounted)",
+      "tag": "bas-vent.co2_7_ppm",
+      "helics_key": "building/bas-vent.co2_7_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "binary-value",
+      "instance": 4,
+      "name": "FAC.VENT.AY02.TIER1",
+      "description": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on",
+      "tag": "bas-vent.co2_area_tier_1",
+      "helics_key": "building/bas-vent.co2_area_tier_1",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-value",
+      "instance": 5,
+      "name": "FAC.VENT.XS01.SHUTOFF_OK",
+      "description": "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)",
+      "tag": "bas-vent.co2_shutoff_ok",
+      "helics_key": "building/bas-vent.co2_shutoff_ok",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 4,
+      "name": "FAC.VENT.XA01.CMD",
+      "description": "CO2 horns and strobes (tier 3 in any area)",
+      "tag": "bas-vent.horn_strobe",
+      "helics_key": "building/bas-vent.horn_strobe",
+      "commandable": true
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 5,
+      "name": "FAC.VENT.FAN03.CMD",
+      "description": "CO2 area exhaust fans (bulk tank, filler, cold room)",
+      "tag": "bas-vent.area_exhaust",
+      "helics_key": "building/bas-vent.area_exhaust",
+      "commandable": true
     }
   ]
 }

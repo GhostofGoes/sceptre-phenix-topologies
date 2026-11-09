@@ -748,10 +748,166 @@
               ]
             },
             "label": "HtmlSemaphore"
+          },
+          "VAL_971da505-3476-59aa-ac8f-cd015e0ab69f": {
+            "id": "VAL_971da505-3476-59aa-ac8f-cd015e0ab69f",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT05.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "ppm",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_a5b7c6a0-035f-5b20-be0b-3015548ad94b": {
+            "id": "VAL_a5b7c6a0-035f-5b20-be0b-3015548ad94b",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT06.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "ppm",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "VAL_79d3ebd2-85fb-5c35-ab05-0c8bf3c84d91": {
+            "id": "VAL_79d3ebd2-85fb-5c35-ab05-0c8bf3c84d91",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT07.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "ppm",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "GSE_ea13265b-1b4f-57cf-b84f-adf10fc0b2ea": {
+            "id": "GSE_ea13265b-1b4f-57cf-b84f-adf10fc0b2ea",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.AY02.TIER1",
+            "property": {
+              "events": [],
+              "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_a5d187e4-1ca0-50f1-acfc-19593167911a": {
+            "id": "GSE_a5d187e4-1ca0-50f1-acfc-19593167911a",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.XS01.SHUTOFF_OK",
+            "property": {
+              "events": [],
+              "variableId": "t_f0285b70-2c03-5312-9cb9-d0490368f1d9",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_9f573ad7-2e71-5118-9713-560cb7feb87f": {
+            "id": "GSE_9f573ad7-2e71-5118-9713-560cb7feb87f",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.XA01.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_9dbd8ff8-f6dc-552c-bd10-aa059249f760",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "GSE_c19a6da2-a987-5eb3-8138-9ff49325d658": {
+            "id": "GSE_c19a6da2-a987-5eb3-8138-9ff49325d658",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.FAN03.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
+              "ranges": [
+                {
+                  "min": 0,
+                  "max": 0,
+                  "color": "#bdbdbd",
+                  "stroke": "#616161"
+                },
+                {
+                  "min": 1,
+                  "max": 1,
+                  "color": "#1e88e5",
+                  "stroke": "#212121"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
           }
         },
         "variables": {},
-        "svgcontent": "<svg width=\"760\" height=\"694\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\">\n <g>\n  <title>Layer 1</title>\n  <text xml:space=\"preserve\" x=\"20\" y=\"28\" font-size=\"18\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Building: bas-fuxa-bacnet</text>\n  <text xml:space=\"preserve\" x=\"20\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Taproom zone temperature</text>\n  <g id=\"VAL_7786d826-4b3f-5c24-8cc5-6abdb8f04c76\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_032c9000-64a3-5881-a958-716a618005c8\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"64\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Taproom zone CO2</text>\n  <g id=\"VAL_cfe8a924-5cb7-5e1f-949e-b36f337a1d21\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_0be52114-d8ae-5d49-b2f7-1aa0eb769c91\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 supply air temperature</text>\n  <g id=\"VAL_80a1a2aa-1519-5f21-ab79-f0285c068c4b\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9d402662-044c-535f-9dee-ad64d36ec305\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"116\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 electrical input</text>\n  <g id=\"VAL_de0f91a0-34cb-52e4-8a41-428170cbe698\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_c969c874-1b29-5207-9545-658efa4ddf6d\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 economizer damper</text>\n  <g id=\"VAL_8d2d6c7a-7af7-52b9-a8ce-affb833d566f\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e0fffce5-3a99-512a-a517-f85429210f82\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"168\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupied cooling setpoint</text>\n  <g id=\"VAL_25e2969e-c204-5ccd-b20e-7a24d4e2e273\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_49df0092-534c-5868-9d09-d0fbd11e35c9\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupied heating setpoint</text>\n  <g id=\"VAL_65b86958-109d-59e1-ae09-2f4a5f12cd95\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_278fc184-c0fd-57e7-bb65-c4e24260eb42\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 supply fan</text>\n  <g id=\"GSE_f5a187cc-8e3f-5dc2-b2a0-2d816b4d31a9\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_3c78a17f-f621-56e9-8af1-1fc4ce7d2703\" cx=\"320\" cy=\"241\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 cooling stage 1</text>\n  <g id=\"GSE_e5a30ddf-345a-52bb-91e6-c992868cbe66\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_9e3814fa-f617-5389-99b9-7979af2db75c\" cx=\"320\" cy=\"267\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 cooling stage 2</text>\n  <g id=\"GSE_16117115-6cf7-5fb0-93e8-eea6556fb5c3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_3b2d912a-44f0-5c04-8321-1c533fd1bd41\" cx=\"320\" cy=\"293\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 gas heat</text>\n  <g id=\"GSE_b70883d3-31aa-5006-ab97-74a939bcb3e4\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_766a30f7-6b3a-57f2-8e83-d21a7d66b13f\" cx=\"320\" cy=\"319\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupancy mode (1 occupied, 2 ...</text>\n  <g id=\"VAL_a1d94bf7-a22e-5538-9117-2751feb40a35\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e1ad0a9f-5796-58ff-afb8-76d0b5d393ef\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room temperature</text>\n  <g id=\"VAL_3a5e1ca2-9549-5904-a231-4d3ed9d9c41a\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_1c1832eb-af22-51ba-834d-883c9d0d3fe6\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"376\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room door open time today</text>\n  <g id=\"VAL_5311046a-3d04-5b80-9e5d-baafdfba3e29\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_4574c74f-19ee-5b30-a146-6f7596825f77\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room setpoint</text>\n  <g id=\"VAL_f47ca020-e47b-51fe-91b1-9b72783f255e\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cfc5bea9-77e2-5dd3-9349-b961dd972d7c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"428\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room door open</text>\n  <g id=\"GSE_0e8300a0-5c37-5db6-ba58-8eca53413dbe\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6a8b0185-3f21-5466-9f00-1b6b7d0cfc82\" cx=\"320\" cy=\"449\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Condensing unit compressor</text>\n  <g id=\"GSE_e4c564bf-71bb-5533-be62-1d5399b1b5ff\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_cd0b2c1f-8af5-52ba-bb78-0a7713faf7d1\" cx=\"320\" cy=\"475\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Evaporator defrost</text>\n  <g id=\"GSE_3524e2b5-31c8-58b0-a13b-0f2f3a6507ad\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_8aff41f8-0c91-58b0-be7c-03dfe979e454\" cx=\"320\" cy=\"501\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 1 (low-mounted)</text>\n  <g id=\"VAL_39099c63-b715-500e-ba52-166a320c3d77\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_2acb72c4-90c8-54e3-8fbf-d8d0000020e8\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"532\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 2 (low-mounted)</text>\n  <g id=\"VAL_6d932369-437c-524f-bfe4-cc8f39630acc\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_c9c7874f-b769-59af-9228-a0bd12e942cf\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 3 (low-mounted)</text>\n  <g id=\"VAL_84781060-baf7-52fe-9be8-89e330d161ca\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_90363c25-092e-5fa7-a81e-a3ce6e974e9c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"584\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 4 (low-mounted)</text>\n  <g id=\"VAL_2424a7ff-9552-5d90-af03-1ed615943c67\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_ed1919d8-aebf-5fc3-8c69-f59eb53be96c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"610\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Makeup-air unit discharge ...</text>\n  <g id=\"VAL_88ab1d6a-e026-5c60-be7b-fbb5c551ef16\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_1ce761a4-3fb6-52c6-b26f-e267c14bcbec\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"636\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Kettle hood exhaust fan speed</text>\n  <g id=\"VAL_c0606922-cb83-5593-8b1b-02474df5c4a8\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_96af7337-82b0-5a14-99e7-fcac9e1084f9\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"662\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 1 running ...</text>\n  <g id=\"GSE_9f89a5ff-3421-5d83-b067-3969494d0cb3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_94198671-9958-554b-83fd-c7e5d7bed65f\" cx=\"680\" cy=\"59\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 2 running ...</text>\n  <g id=\"GSE_4ae30596-3629-5b19-b2b5-2f719a218ad7\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_a5ecd091-5c6d-5cfb-8a93-9f931eeaa575\" cx=\"680\" cy=\"85\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 1 (5,000 ppm, ...</text>\n  <g id=\"GSE_4d5951cf-f948-5963-8c24-fdb5be0b7025\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_53193326-184c-5062-ba86-a3499d679eca\" cx=\"680\" cy=\"111\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 2 (15,000 ppm, ...</text>\n  <g id=\"GSE_b190787c-83f6-5ffe-9ebb-262fe3992db3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_87593be6-6fac-5dab-8c73-f222e20d1767\" cx=\"680\" cy=\"137\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 3 (30,000 ppm, ...</text>\n  <g id=\"GSE_792f6a53-8ca3-5053-8621-794e1b055f5c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_92fc3248-e7fc-53f2-964b-3ef27d831fb0\" cx=\"680\" cy=\"163\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 1</text>\n  <g id=\"GSE_0a014f1f-c2e3-5c87-9b56-fe63c8b162f0\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0180cba6-a65b-5334-a6f0-c596fc6de0d7\" cx=\"680\" cy=\"189\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 2</text>\n  <g id=\"GSE_45cef2ec-0a32-5acd-8622-734880346a26\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_63154df7-bdae-53e7-82d2-57cf521fce7c\" cx=\"680\" cy=\"215\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Makeup-air unit enable</text>\n  <g id=\"GSE_5542cea2-c14c-5564-ba21-e376b827288c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e48e1df1-a03d-58d2-b207-233330e7da13\" cx=\"680\" cy=\"241\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n </g>\n</svg>",
+        "svgcontent": "<svg width=\"760\" height=\"694\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\">\n <g>\n  <title>Layer 1</title>\n  <text xml:space=\"preserve\" x=\"20\" y=\"28\" font-size=\"18\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\" font-weight=\"bold\">Building: bas-fuxa-bacnet</text>\n  <text xml:space=\"preserve\" x=\"20\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Taproom zone temperature</text>\n  <g id=\"VAL_7786d826-4b3f-5c24-8cc5-6abdb8f04c76\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_032c9000-64a3-5881-a958-716a618005c8\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"64\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Taproom zone CO2</text>\n  <g id=\"VAL_cfe8a924-5cb7-5e1f-949e-b36f337a1d21\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_0be52114-d8ae-5d49-b2f7-1aa0eb769c91\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"90\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 supply air temperature</text>\n  <g id=\"VAL_80a1a2aa-1519-5f21-ab79-f0285c068c4b\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_9d402662-044c-535f-9dee-ad64d36ec305\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"116\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 electrical input</text>\n  <g id=\"VAL_de0f91a0-34cb-52e4-8a41-428170cbe698\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_c969c874-1b29-5207-9545-658efa4ddf6d\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"142\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 economizer damper</text>\n  <g id=\"VAL_8d2d6c7a-7af7-52b9-a8ce-affb833d566f\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e0fffce5-3a99-512a-a517-f85429210f82\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"168\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupied cooling setpoint</text>\n  <g id=\"VAL_25e2969e-c204-5ccd-b20e-7a24d4e2e273\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_49df0092-534c-5868-9d09-d0fbd11e35c9\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"194\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupied heating setpoint</text>\n  <g id=\"VAL_65b86958-109d-59e1-ae09-2f4a5f12cd95\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_278fc184-c0fd-57e7-bb65-c4e24260eb42\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"220\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 supply fan</text>\n  <g id=\"GSE_f5a187cc-8e3f-5dc2-b2a0-2d816b4d31a9\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_3c78a17f-f621-56e9-8af1-1fc4ce7d2703\" cx=\"320\" cy=\"241\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 cooling stage 1</text>\n  <g id=\"GSE_e5a30ddf-345a-52bb-91e6-c992868cbe66\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_9e3814fa-f617-5389-99b9-7979af2db75c\" cx=\"320\" cy=\"267\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 cooling stage 2</text>\n  <g id=\"GSE_16117115-6cf7-5fb0-93e8-eea6556fb5c3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_3b2d912a-44f0-5c04-8321-1c533fd1bd41\" cx=\"320\" cy=\"293\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">RTU-1 gas heat</text>\n  <g id=\"GSE_b70883d3-31aa-5006-ab97-74a939bcb3e4\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_766a30f7-6b3a-57f2-8e83-d21a7d66b13f\" cx=\"320\" cy=\"319\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Occupancy mode (1 occupied, 2 ...</text>\n  <g id=\"VAL_a1d94bf7-a22e-5538-9117-2751feb40a35\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_e1ad0a9f-5796-58ff-afb8-76d0b5d393ef\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"350\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room temperature</text>\n  <g id=\"VAL_3a5e1ca2-9549-5904-a231-4d3ed9d9c41a\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_1c1832eb-af22-51ba-834d-883c9d0d3fe6\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"376\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room door open time today</text>\n  <g id=\"VAL_5311046a-3d04-5b80-9e5d-baafdfba3e29\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_4574c74f-19ee-5b30-a146-6f7596825f77\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"402\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room setpoint</text>\n  <g id=\"VAL_f47ca020-e47b-51fe-91b1-9b72783f255e\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_cfc5bea9-77e2-5dd3-9349-b961dd972d7c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"428\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"454\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room door open</text>\n  <g id=\"GSE_0e8300a0-5c37-5db6-ba58-8eca53413dbe\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_6a8b0185-3f21-5466-9f00-1b6b7d0cfc82\" cx=\"320\" cy=\"449\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"480\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Condensing unit compressor</text>\n  <g id=\"GSE_e4c564bf-71bb-5533-be62-1d5399b1b5ff\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_cd0b2c1f-8af5-52ba-bb78-0a7713faf7d1\" cx=\"320\" cy=\"475\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"506\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Evaporator defrost</text>\n  <g id=\"GSE_3524e2b5-31c8-58b0-a13b-0f2f3a6507ad\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_8aff41f8-0c91-58b0-be7c-03dfe979e454\" cx=\"320\" cy=\"501\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"532\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 1 (low-mounted)</text>\n  <g id=\"VAL_39099c63-b715-500e-ba52-166a320c3d77\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_2acb72c4-90c8-54e3-8fbf-d8d0000020e8\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"532\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"558\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 2 (low-mounted)</text>\n  <g id=\"VAL_6d932369-437c-524f-bfe4-cc8f39630acc\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_c9c7874f-b769-59af-9228-a0bd12e942cf\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"558\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"584\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 3 (low-mounted)</text>\n  <g id=\"VAL_84781060-baf7-52fe-9be8-89e330d161ca\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_90363c25-092e-5fa7-a81e-a3ce6e974e9c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"584\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"610\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 sensor 4 (low-mounted)</text>\n  <g id=\"VAL_2424a7ff-9552-5d90-af03-1ed615943c67\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_ed1919d8-aebf-5fc3-8c69-f59eb53be96c\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"610\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"636\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Makeup-air unit discharge ...</text>\n  <g id=\"VAL_88ab1d6a-e026-5c60-be7b-fbb5c551ef16\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_1ce761a4-3fb6-52c6-b26f-e267c14bcbec\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"636\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"20\" y=\"662\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Kettle hood exhaust fan speed</text>\n  <g id=\"VAL_c0606922-cb83-5593-8b1b-02474df5c4a8\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_96af7337-82b0-5a14-99e7-fcac9e1084f9\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"320\" y=\"662\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"64\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 1 running ...</text>\n  <g id=\"GSE_9f89a5ff-3421-5d83-b067-3969494d0cb3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_94198671-9958-554b-83fd-c7e5d7bed65f\" cx=\"680\" cy=\"59\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"90\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 2 running ...</text>\n  <g id=\"GSE_4ae30596-3629-5b19-b2b5-2f719a218ad7\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_a5ecd091-5c6d-5cfb-8a93-9f931eeaa575\" cx=\"680\" cy=\"85\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"116\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 1 (5,000 ppm, ...</text>\n  <g id=\"GSE_4d5951cf-f948-5963-8c24-fdb5be0b7025\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_53193326-184c-5062-ba86-a3499d679eca\" cx=\"680\" cy=\"111\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"142\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 2 (15,000 ppm, ...</text>\n  <g id=\"GSE_b190787c-83f6-5ffe-9ebb-262fe3992db3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_87593be6-6fac-5dab-8c73-f222e20d1767\" cx=\"680\" cy=\"137\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"168\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar CO2 tier 3 (30,000 ppm, ...</text>\n  <g id=\"GSE_792f6a53-8ca3-5053-8621-794e1b055f5c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_92fc3248-e7fc-53f2-964b-3ef27d831fb0\" cx=\"680\" cy=\"163\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"194\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 1</text>\n  <g id=\"GSE_0a014f1f-c2e3-5c87-9b56-fe63c8b162f0\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_0180cba6-a65b-5334-a6f0-c596fc6de0d7\" cx=\"680\" cy=\"189\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"220\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cellar purge fan 2</text>\n  <g id=\"GSE_45cef2ec-0a32-5acd-8622-734880346a26\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_63154df7-bdae-53e7-82d2-57cf521fce7c\" cx=\"680\" cy=\"215\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"246\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Makeup-air unit enable</text>\n  <g id=\"GSE_5542cea2-c14c-5564-ba21-e376b827288c\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_e48e1df1-a03d-58d2-b207-233330e7da13\" cx=\"680\" cy=\"241\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"272\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Bulk CO2 tank and vaporizer area ...</text>\n  <g id=\"VAL_971da505-3476-59aa-ac8f-cd015e0ab69f\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_4f8cf481-94d5-5467-8da6-a02613425c72\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"272\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"298\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Filler (packaging) area CO2 ...</text>\n  <g id=\"VAL_a5b7c6a0-035f-5b20-be0b-3015548ad94b\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_dc1ee208-562a-5fa3-8c20-ea70d4321425\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"298\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"324\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">Cold room and draft system CO2 ...</text>\n  <g id=\"VAL_79d3ebd2-85fb-5c35-ab05-0c8bf3c84d91\" type=\"svg-ext-value\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"middle\"><text stroke-width=\"0\" id=\"VAL_5f223e7f-0e56-5f29-9e7d-a63582dcfb4d\" fill=\"#000000\" stroke=\"#000000\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"middle\" xml:space=\"preserve\" x=\"680\" y=\"324\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"350\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">CO2 tier 1 (5,000 ppm) at the ...</text>\n  <g id=\"GSE_ea13265b-1b4f-57cf-b84f-adf10fc0b2ea\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_a7d363d9-444f-56fd-b32e-7681a792fa32\" cx=\"680\" cy=\"345\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"376\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">CO2 supply shutoff relay ...</text>\n  <g id=\"GSE_a5d187e4-1ca0-50f1-acfc-19593167911a\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_99f0f16b-744f-5c6e-b9f5-5b92acb6b446\" cx=\"680\" cy=\"371\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"402\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">CO2 horns and strobes (tier 3 in ...</text>\n  <g id=\"GSE_9f573ad7-2e71-5118-9713-560cb7feb87f\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_8b31b78d-d810-5749-aeca-0bd7ec148b7b\" cx=\"680\" cy=\"397\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n  <text xml:space=\"preserve\" x=\"380\" y=\"428\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#212121\" stroke-width=\"0\">CO2 area exhaust fans (bulk ...</text>\n  <g id=\"GSE_c19a6da2-a987-5eb3-8138-9ff49325d658\" type=\"svg-ext-gauge_semaphore\" stroke=\"#616161\" stroke-width=\"1\"><circle id=\"GSE_26ac2b97-31ae-5615-82cc-899516406ac5\" cx=\"680\" cy=\"423\" r=\"8\" fill=\"#bdbdbd\" stroke=\"#616161\"/></g>\n </g>\n</svg>",
         "type": "svg"
       }
     ]
@@ -1258,6 +1414,114 @@
           "memaddress": "3003",
           "address": "4-3",
           "description": "Makeup-air unit enable",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b": {
+          "id": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+          "name": "FAC.VENT.AT05.PV",
+          "label": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-6",
+          "format": 2,
+          "description": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846": {
+          "id": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+          "name": "FAC.VENT.AT06.PV",
+          "label": "Filler (packaging) area CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-7",
+          "format": 2,
+          "description": "Filler (packaging) area CO2 sensor (low-mounted)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798": {
+          "id": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+          "name": "FAC.VENT.AT07.PV",
+          "label": "Cold room and draft system CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-8",
+          "format": 2,
+          "description": "Cold room and draft system CO2 sensor (low-mounted)",
+          "daq": {
+            "enabled": true,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31": {
+          "id": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
+          "name": "FAC.VENT.AY02.TIER1",
+          "label": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-4",
+          "description": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_f0285b70-2c03-5312-9cb9-d0490368f1d9": {
+          "id": "t_f0285b70-2c03-5312-9cb9-d0490368f1d9",
+          "name": "FAC.VENT.XS01.SHUTOFF_OK",
+          "label": "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-5",
+          "description": "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_9dbd8ff8-f6dc-552c-bd10-aa059249f760": {
+          "id": "t_9dbd8ff8-f6dc-552c-bd10-aa059249f760",
+          "name": "FAC.VENT.XA01.CMD",
+          "label": "CO2 horns and strobes (tier 3 in any area)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-4",
+          "description": "CO2 horns and strobes (tier 3 in any area)",
+          "daq": {
+            "enabled": false,
+            "changed": false,
+            "interval": 60,
+            "restored": false
+          }
+        },
+        "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6": {
+          "id": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
+          "name": "FAC.VENT.FAN03.CMD",
+          "label": "CO2 area exhaust fans (bulk tank, filler, cold room)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-5",
+          "description": "CO2 area exhaust fans (bulk tank, filler, cold room)",
           "daq": {
             "enabled": false,
             "changed": false,
@@ -1907,6 +2171,419 @@
         "max": 1.0,
         "timedelay": 0,
         "text": "Cellar CO2 tier 1 (5,000 ppm, purge fans on): state alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT05.ALM_HIGH",
+      "property": {
+        "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 15000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted): high alarm",
+        "group": "FAC.VENT",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT05.ALM_HIGHHIGH",
+      "property": {
+        "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b"
+      },
+      "highhigh": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 30000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted): highhigh alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT06.ALM_HIGH",
+      "property": {
+        "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 15000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Filler (packaging) area CO2 sensor (low-mounted): high alarm",
+        "group": "FAC.VENT",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT06.ALM_HIGHHIGH",
+      "property": {
+        "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846"
+      },
+      "highhigh": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 30000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Filler (packaging) area CO2 sensor (low-mounted): highhigh alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT07.ALM_HIGH",
+      "property": {
+        "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 15000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cold room and draft system CO2 sensor (low-mounted): high alarm",
+        "group": "FAC.VENT",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AT07.ALM_HIGHHIGH",
+      "property": {
+        "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798"
+      },
+      "highhigh": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 30000.0,
+        "max": 1000000000.0,
+        "timedelay": 0,
+        "text": "Cold room and draft system CO2 sensor (low-mounted): highhigh alarm",
+        "group": "FAC.VENT",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#66CCFF",
+        "color": "#000000"
+      },
+      "actions": {
+        "enabled": false,
+        "values": []
+      },
+      "value": ""
+    },
+    {
+      "name": "FAC.VENT.AY02.ALM_STATE",
+      "property": {
+        "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31"
+      },
+      "highhigh": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "float",
+        "bkcolor": "#FFFFFF",
+        "color": "#000000"
+      },
+      "high": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#FF4848",
+        "color": "#FFFFFF"
+      },
+      "low": {
+        "enabled": false,
+        "checkdelay": 1,
+        "min": null,
+        "max": null,
+        "timedelay": 0,
+        "text": "",
+        "group": "",
+        "ackmode": "ackactive",
+        "bkcolor": "#F9CF59",
+        "color": "#000000"
+      },
+      "info": {
+        "enabled": true,
+        "checkdelay": 1,
+        "min": 1.0,
+        "max": 1.0,
+        "timedelay": 0,
+        "text": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on: state alarm",
         "group": "FAC.VENT",
         "ackmode": "float",
         "bkcolor": "#66CCFF",

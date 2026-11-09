@@ -10,11 +10,23 @@ pH/conductivity mixing model, stepped at 1 s in wall time.
   here, because the chiller's points expose the stage status, not stage
   commands. A 35 % propylene glycol c_p of 3.8 kJ/(kg·K) is used (CoolProp
   ``INCOMP::MPG[0.35]`` gives about 3.75 at 28 °F; CoolProp is optional).
-- **Steam.** A 200 kW electric boiler modulating on header pressure, with a
-  storage capacity of 400 kJ/psi; the hardwired low-water cutoff trips it.
+- **Steam.** A 200 kW electric boiler (ASME Section IV low-pressure steam,
+  15 psig MAWP; DESIGN.md §18A.3) modulating on header pressure at 12 psig,
+  with a storage capacity of 400 kJ/psi; the hardwired low-water cutoff trips
+  it, and the safety valve set at 15 psig caps the header (lifts are counted).
 - **Air.** A 15 hp load/unload compressor (100/120 psig) on a 240 gal receiver.
 - **CO2.** A 6,000 lb bulk tank at about 300 psig with a 60 psig supply
-  regulator.
+  regulator. The main valve fails closed: its solenoid is wired through the
+  bas-vent shutoff relay (``co2relay.co2_ok``, de-energize to trip, dropped at
+  30,000 ppm in any area or on loss of detection; DESIGN.md §6.7), so it
+  opens only while the relay is healthy and the PLC commands it.
+- **Refrigerant.** The chiller holds 45 lb of R-410A. A ``refrigerant-leak``
+  event leaks it (the detector at the chiller reads the mechanical room's
+  concentration), ``repair`` stops the leak, and ``recharge`` tops it off and
+  writes the charge record 40 CFR 84 Subpart C asks for: the pounds added and
+  the leak rate by the annualizing method against the 30 %/yr repair trigger
+  for industrial process refrigeration. Below 85 % charge the capacity falls;
+  below 60 % the OEM controller trips on low suction (the fault bit).
 - **Wastewater.** A 2,000 gal neutralization tank. Net base equivalents set
   the pH through a buffered titration curve; caustic and acid dosing pumps and
   a discharge valve (permitted at pH 6.0-9.0). The tank keeps the record a
@@ -71,6 +83,25 @@ CIP_MIN_RETURN_MS: float = 40.0
 CIP_MIN_CONTACT_S: float = 600.0
 #: Records kept in the federate (ground truth carries them on).
 CIP_RECORDS: int = 20
+#: Boiler: ASME Section IV low-pressure steam, safety valve at the MAWP (psig).
+BOILER_MAWP_PSIG: float = 15.0
+#: The autopilot reopens the CO2 supply this long after the shutoff relay is
+#: healthy again (the operator's reset after ventilating), s.
+CO2_AUTO_RESET_S: float = 600.0
+#: Chiller refrigerant (DESIGN.md §18A.3): R-410A nameplate charge, lb.
+REFRIGERANT: str = "R-410A"
+REFRIG_NAMEPLATE_LB: float = 45.0
+#: R-410A vapor density at the site (83.4 kPa, 68 °F), kg/m3.
+REFRIG_RHO_SITE: float = 2.49
+#: The chiller's mechanical room and its ventilation.
+REFRIG_ROOM_M3: float = 150.0
+REFRIG_ROOM_M3S: float = 0.1
+#: 40 CFR 84 Subpart C leak-rate trigger for industrial process refrigeration, %/yr.
+REFRIG_LEAK_TRIGGER_PCT: float = 30.0
+#: refrigerant-leak rates by name, lb/day: a slow leak no detector sees, and a
+#: broken line.
+REFRIG_LEAK_RATES: dict[str, float] = {"low": 1.0, "medium": 20.0, "high": 2880.0}
+G_PER_LB: float = 453.59237
 WWN_SAMPLES: int = 48
 
 #: Command defaults: every writable point, as the autopilot leaves them.
@@ -80,7 +111,7 @@ AUTO_COMMANDS: dict[str, Value] = {
     "glycol.pump_run": True,
     "glycol.pump_speed_pct": 70.0,
     "boiler.enable": True,
-    "boiler.pressure_sp_psig": 15.0,
+    "boiler.pressure_sp_psig": 12.0,
     "aircomp.enable": True,
     "co2.main_valve": True,
     "ro.run": False,
@@ -122,9 +153,11 @@ class Glycol(BaseModel):
 class Boiler(BaseModel):
     """Electric steam boiler."""
 
-    psig: float = 15.0
+    psig: float = 12.0
     power_kw: float = 0.0
     low_water: bool = False
+    safety_lifts: int = 0
+    safety_lifted: bool = False
 
 
 class Air(BaseModel):
@@ -140,6 +173,35 @@ class Co2(BaseModel):
     kg: float = 1630.0
     capacity_kg: float = 2722.0
     supply_psig: float = 60.0
+    valve_open: bool = False
+    #: Seconds the shutoff relay has been healthy (for the autopilot's reset).
+    relay_healthy_s: float = 0.0
+    shutoffs: int = 0
+    relay_was_ok: bool = False
+    #: The autopilot's latch: set when a healthy relay drops, cleared once it
+    #: has been healthy again for CO2_AUTO_RESET_S (a power-up is no trip).
+    latched: bool = False
+
+
+class ChargeRecord(BaseModel):
+    """One refrigerant top-off: the record 40 CFR 84 Subpart C asks for."""
+
+    time: str
+    added_lb: float
+    full_charge_lb: float
+    days_since_last: float
+    leak_rate_pct_yr: float
+    exceeds_trigger: bool
+
+
+class Refrigerant(BaseModel):
+    """The chiller's refrigerant charge, a leak, and the room's concentration."""
+
+    charge_lb: float = REFRIG_NAMEPLATE_LB
+    leak_lb_day: float = 0.0
+    room_ppm: float = 0.0
+    last_service_t: float = 0.0
+    records: list[ChargeRecord] = Field(default_factory=list)
 
 
 class PhSample(BaseModel):
@@ -224,6 +286,7 @@ class UtilitiesFederate(Federate):
     co2: Co2
     wwn: Wastewater
     cip: Cip
+    ref: Refrigerant
     ro_running: bool
 
     def __init__(self, cfg: FederateConfig, clock: SimClock | None = None) -> None:
@@ -236,6 +299,7 @@ class UtilitiesFederate(Federate):
         self.co2 = Co2()
         self.wwn = Wastewater()
         self.cip = Cip(routes=dict.fromkeys(CIP_ROUTES, False))
+        self.ref = Refrigerant()
         self.ro_running = False
 
     @property
@@ -264,7 +328,10 @@ class UtilitiesFederate(Federate):
 
     def on_event(self, event: ScenarioEvent) -> None:
         """``chiller-fault`` fails or clears a compressor stage; ``cip-panel``
-        sets the swing panel (``circuit``: bh, fv101, ..., or none)."""
+        sets the swing panel (``circuit``: bh, fv101, ..., or none);
+        ``refrigerant-leak`` leaks the chiller's charge (``action: leak``,
+        ``rate`` low, medium, high, or lb/day), stops it (``repair``), or tops
+        it off and writes the charge record (``recharge``)."""
         super().on_event(event)
         if event.type == "chiller-fault":
             stage = int(event.params.get("compressor", 1))  # 1 or 2 (simctl checks)
@@ -278,6 +345,54 @@ class UtilitiesFederate(Federate):
                 self.cip.routes[route] = route == f"route_{circuit}"
         elif event.type == "low-water":
             self.blr.low_water = event.params.get("action", "trip") == "trip"
+        elif event.type == "refrigerant-leak":
+            action = event.params.get("action", "leak")
+            if action == "repair":
+                self.ref.leak_lb_day = 0.0
+            elif action == "recharge":
+                self._recharge()
+            else:
+                rate = event.params.get("rate", "medium")
+                lb = REFRIG_LEAK_RATES.get(str(rate))
+                self.ref.leak_lb_day = float(rate) if lb is None else lb
+
+    def _recharge(self) -> None:
+        """Top the charge off to nameplate and record the leak rate
+        (annualizing method: added / full charge x 365 / days since the last
+        top-off or service, 40 CFR 84 Subpart C)."""
+        r = self.ref
+        added = REFRIG_NAMEPLATE_LB - r.charge_lb
+        days = max((self.t - r.last_service_t) / 86400.0, 1.0 / 24.0)
+        rate = added / REFRIG_NAMEPLATE_LB * min(365.0 / days, 365.0) * 100.0
+        r.records.append(
+            ChargeRecord(
+                time=self.now.isoformat(),
+                added_lb=round(added, 2),
+                full_charge_lb=REFRIG_NAMEPLATE_LB,
+                days_since_last=round(days, 3),
+                leak_rate_pct_yr=round(rate, 1),
+                exceeds_trigger=rate > REFRIG_LEAK_TRIGGER_PCT,
+            )
+        )
+        del r.records[:-20]
+        r.charge_lb = REFRIG_NAMEPLATE_LB
+        r.last_service_t = self.t
+
+    @property
+    def co2_relay_ok(self) -> bool:
+        """The bas-vent CO2 supply shutoff relay (DESIGN.md §6.7): healthy only
+        while the building federate reports it energized; open until it does."""
+        return self.input("building/vent.co2_shutoff_ok", 0.0) >= 0.5
+
+    @property
+    def charge_fraction(self) -> float:
+        """Refrigerant charge as a fraction of nameplate."""
+        return self.ref.charge_lb / REFRIG_NAMEPLATE_LB
+
+    @property
+    def low_charge_trip(self) -> bool:
+        """The OEM controller's low-suction trip below 60 % charge."""
+        return self.charge_fraction < 0.6
 
     # -- dynamics ----------------------------------------------------------------------
 
@@ -287,6 +402,7 @@ class UtilitiesFederate(Federate):
         amb_f = self.input("weather/ambient.temp_f", 75.0)
         if self.autopilot:
             self._operator()
+        self._refrigerant(dt)
         self._glycol(dt, amb_f)
         self._steam(dt)
         self._air(dt)
@@ -305,13 +421,27 @@ class UtilitiesFederate(Federate):
         a["wwn.discharge_valve"] = (
             w.permit_low <= ph <= w.permit_high and w.liters > 0.3 * w.capacity_l
         )
+        # The CO2 supply shutoff latches: the operator reopens the valve only
+        # once the relay has been healthy for CO2_AUTO_RESET_S (DESIGN.md §6.7).
+        a["co2.main_valve"] = not self.co2.latched
+
+    def _refrigerant(self, dt: float) -> None:
+        """Leak the charge into the chiller's room; the detector reads the
+        well-mixed concentration there."""
+        r = self.ref
+        lb = min(r.leak_lb_day / 86400.0 * dt, r.charge_lb)
+        r.charge_lb -= lb
+        gps = lb * G_PER_LB / dt if dt > 0 else 0.0
+        g = gps / 1000.0 / REFRIG_RHO_SITE
+        r.room_ppm += (g * 1e6 - REFRIG_ROOM_M3S * r.room_ppm) / REFRIG_ROOM_M3 * dt
+        r.room_ppm = max(r.room_ppm, 0.0)
 
     def _glycol(self, dt: float, amb_f: float) -> None:
         g = self.gly
         sp = self.num("chiller.supply_sp_f")
         t_f = g.temp_c * 1.8 + 32
         powered = self.bus("ep1")
-        enabled = self.on("chiller.enable") and powered
+        enabled = self.on("chiller.enable") and powered and not self.low_charge_trip
         g.stage1 = (
             enabled
             and 1 not in g.failed
@@ -322,7 +452,11 @@ class UtilitiesFederate(Federate):
             and 2 not in g.failed
             and (t_f > sp + 3.0 or (g.stage2 and t_f > sp + 1.0))
         )
-        cap_kw = 26.5 * max(1.0 - 0.008 * (amb_f - 95.0), 0.5)
+        cap_kw = (
+            26.5
+            * max(1.0 - 0.008 * (amb_f - 95.0), 0.5)
+            * min(self.charge_fraction / 0.85, 1.0)
+        )
         cop = min(max(3.2 + 0.04 * (95.0 - amb_f), 2.0), 5.0)
         q_chill = cap_kw * (int(g.stage1) + int(g.stage2))
         g.chiller_kw = q_chill / cop + (1.5 if q_chill > 0 else 0.0)
@@ -349,7 +483,14 @@ class UtilitiesFederate(Federate):
         sp = self.num("boiler.pressure_sp_psig")
         q = min(max(200.0 * (sp + 1.0 - b.psig) / 2.0, 0.0), 200.0) if firing else 0.0
         b.power_kw = q / 0.98
-        b.psig = min(max(b.psig + (q - demand - 2.0) / 400.0 * dt, 0.0), 20.0)
+        b.psig = max(b.psig + (q - demand - 2.0) / 400.0 * dt, 0.0)
+        # The safety valve, set at the 15 psig MAWP, caps the header.
+        lifted = b.psig > BOILER_MAWP_PSIG
+        if lifted:
+            b.psig = BOILER_MAWP_PSIG
+            if not b.safety_lifted:
+                b.safety_lifts += 1
+        b.safety_lifted = lifted
 
     def _air(self, dt: float) -> None:
         a = self.air
@@ -364,7 +505,17 @@ class UtilitiesFederate(Federate):
         slpm = self.input("cellar/co2.draw_slpm", 0.0) + self.input(
             "packaging/co2.draw_slpm", 0.0
         )
-        if self.on("co2.main_valve") and c.kg > 0.01 * c.capacity_kg:
+        relay = self.co2_relay_ok
+        c.relay_healthy_s = c.relay_healthy_s + dt if relay else 0.0
+        if c.relay_was_ok and not relay:
+            c.shutoffs += 1
+            c.latched = True
+        elif c.latched and c.relay_healthy_s >= CO2_AUTO_RESET_S:
+            c.latched = False
+        c.relay_was_ok = relay
+        # Fail closed: the solenoid is powered through the relay contact.
+        c.valve_open = self.on("co2.main_valve") and relay
+        if c.valve_open and c.kg > 0.01 * c.capacity_kg:
             c.kg = max(c.kg - slpm / 60.0 * CO2_KG_PER_SL * dt, 0.0)
             c.supply_psig = max(60.0 - 0.02 * slpm, 0.0)
         else:
@@ -502,13 +653,16 @@ class UtilitiesFederate(Federate):
         g, b, a, c, w, k = self.gly, self.blr, self.air, self.co2, self.wwn, self.cip
         if pub.device == "cippanel":
             return k.routes.get(pub.point or "", False)
+        if pub.device_type == "gas-relay":
+            return self.co2_relay_ok
         values: dict[str, Value] = {
             "chiller.supply_f": g.temp_c * 1.8 + 32,
             "chiller.return_f": g.return_c * 1.8 + 32,
             "chiller.power_kw": g.chiller_kw,
             "chiller.stage1_on": g.stage1,
             "chiller.stage2_on": g.stage2,
-            "chiller.fault": bool(g.failed),
+            "chiller.fault": bool(g.failed) or self.low_charge_trip,
+            "chiller.refrig_ppm": self.ref.room_ppm,
             "glycol.reservoir_pct": 85.0,
             "glycol.pump_psig": g.pump_psig,
             "glycol.pump_running": g.pump_psig > 1.0,
@@ -522,6 +676,7 @@ class UtilitiesFederate(Federate):
             "co2.tank_psig": 300.0 if c.kg > 0 else 0.0,
             "co2.tank_level_pct": 100.0 * c.kg / c.capacity_kg,
             "co2.supply_psig": c.supply_psig,
+            "co2.valve_open": c.valve_open,
             "ro.permeate_gpm": 10.0 if self.ro_running else 0.0,
             "ro.conductivity_us": 12.0 if self.ro_running else 0.0,
             "ro.running": self.ro_running,
@@ -583,6 +738,7 @@ class UtilitiesFederate(Federate):
         doc["utilities"] = {
             "chiller_failed_stages": sorted(self.gly.failed),
             "co2_kg": self.co2.kg,
+            "boiler_safety_lifts": self.blr.safety_lifts,
             "wastewater_discharged_l": w.discharged_l,
             "autopilot": self.autopilot,
         }
@@ -597,6 +753,22 @@ class UtilitiesFederate(Federate):
             "inhibited_s": round(w.inhibited_s, 1),
             "inhibit_events": w.inhibit_events,
             "samples": [s.model_dump() for s in w.samples[-24:]],
+        }
+        doc["co2_supply"] = {
+            "shutoff_relay_ok": self.co2_relay_ok,
+            "valve_open": self.co2.valve_open,
+            "shutoffs": self.co2.shutoffs,
+            "autopilot_latched": self.co2.latched,
+        }
+        r = self.ref
+        doc["refrigerant"] = {
+            "refrigerant": REFRIGERANT,
+            "full_charge_lb": REFRIG_NAMEPLATE_LB,
+            "charge_lb": round(r.charge_lb, 2),
+            "leak_lb_day": r.leak_lb_day,
+            "room_ppm": round(r.room_ppm, 1),
+            "leak_rate_trigger_pct_yr": REFRIG_LEAK_TRIGGER_PCT,
+            "records": [x.model_dump() for x in r.records[-10:]],
         }
         doc["cip"] = {
             "active": self.cip.run.model_dump() if self.cip.run else None,

@@ -53,6 +53,10 @@ EVENT_TARGETS: dict[str, str] = {
     "jam": "packaging",
     "weather-step": "weather",
     "cip-panel": "utilities",
+    "co2-leak": "building",
+    "gas-detection": "building",
+    "refrigerant-leak": "utilities",
+    "bess-thermal": "power",
 }
 #: The genset's nameplate, the most a load bank may add (DESIGN.md §7.1).
 GENSET_RATED_KW: float = 100.0
@@ -134,6 +138,23 @@ class EventRequest(BaseModel):
                 if p.get("rate", "high") not in ("low", "medium", "high"):
                     raise ValueError("co2-release rate is low, medium, or high")
                 _check_duration(p, "co2-release")
+            case "co2-leak":
+                if p.get("zone") not in ("tank", "filler", "draft"):
+                    raise ValueError("co2-leak needs zone: tank, filler, or draft")
+                if p.get("rate", "high") not in ("low", "medium", "high"):
+                    raise ValueError("co2-leak rate is low, medium, or high")
+                _check_duration(p, "co2-leak")
+            case "gas-detection":
+                if p.get("action", "fail") not in ("fail", "restore"):
+                    raise ValueError("gas-detection action is fail or restore")
+            case "refrigerant-leak":
+                if p.get("action", "leak") not in ("leak", "repair", "recharge"):
+                    raise ValueError("refrigerant-leak action is leak, repair, or recharge")
+                if p.get("rate", "medium") not in ("low", "medium", "high"):
+                    raise ValueError("refrigerant-leak rate is low, medium, or high")
+            case "bess-thermal":
+                if p.get("action", "start") not in ("start", "clear"):
+                    raise ValueError("bess-thermal action is start or clear")
             case "jam":
                 _check_duration(p, "jam")
             case "chiller-fault":

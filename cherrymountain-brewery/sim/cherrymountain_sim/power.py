@@ -42,6 +42,14 @@ demand under the target, recharge overnight to the brew-day minimum, shift
 energy into the weekday 17:00-21:00 window, soak up PV surplus). Authority is
 per point: a point the PLC or the DER gateway has written follows the write.
 
+**BESS safety** (NFPA 855, UL 9540A; DESIGN.md §18A.3). The BMS reports the
+hottest cell, which runs a few degrees above the enclosure (held near 77 °F
+by its HVAC) plus the I²R heating of the dispatch, and the enclosure's off-gas
+detector. A ``bess-thermal`` event starts a failing cell heating (about
+1 °F/s); past 176 °F it vents electrolyte, and the off-gas reading climbs.
+The PCS faults and opens at 140 °F or on off-gas, the way a BMS trips the
+battery off line; ``action: clear`` stands the event down (a replaced module).
+
 ``utility-breaker`` events open and close the utility source;
 ``genset-exercise`` events start or stop a timed exercise with a load bank.
 """
@@ -208,6 +216,11 @@ class Grid(BaseModel):
     gen_year: int = 0
     run: GenRun | None = None
     run_kwh: float = 0.0
+    #: BESS battery management: hottest cell, off-gas, the runaway event.
+    cell_f: float = 80.0
+    offgas_ppm: float = 0.0
+    cell_runaway: bool = False
+    bess_fault: bool = False
 
 
 class Flow(BaseModel):
@@ -375,6 +388,12 @@ class PowerFederate(Federate):
         g = self.grid
         if event.type == "utility-breaker":
             g.utility_ok = event.params.get("action") == "close"
+        elif event.type == "bess-thermal":
+            if event.params.get("action", "start") == "clear":
+                g.cell_runaway, g.bess_fault = False, False
+                g.cell_f, g.offgas_ppm = 80.0, 0.0
+            else:
+                g.cell_runaway = True
         elif event.type == "genset-exercise":
             if event.params.get("action", "start") == "stop":
                 g.exercise_until, g.load_bank_kw = -1.0, 0.0
@@ -580,7 +599,8 @@ class PowerFederate(Federate):
             if utility_active
             else self.num("bess-pcs.p_sp_kw")
         )
-        if not (g.bess_connected and self.on("bess-pcs.enable")):
+        self._bms(dt)
+        if not (g.bess_connected and self.on("bess-pcs.enable")) or g.bess_fault:
             sp = 0.0
         sp = min(max(sp, -100.0), 100.0)
         if sp > 0 and g.soc_pct <= 10.0 or sp < 0 and g.soc_pct >= 95.0:
@@ -588,6 +608,22 @@ class PowerFederate(Federate):
         g.bess_kw = sp
         energy = sp * dt / 3600.0
         g.soc_pct -= (energy / 0.95 if sp > 0 else energy * 0.95) / 200.0 * 100.0
+
+    def _bms(self, dt: float) -> None:
+        """The hottest cell and the off-gas detector; the PCS trips at 140 °F
+        or on off-gas (latched until a bess-thermal clear)."""
+        g = self.grid
+        if g.cell_runaway:
+            g.cell_f = min(g.cell_f + 1.0 * dt, 900.0)
+        else:
+            target = 80.0 + 0.08 * abs(g.bess_kw)
+            g.cell_f += (target - g.cell_f) * min(dt / 1800.0, 1.0)
+        if g.cell_f > 176.0:
+            g.offgas_ppm = min(g.offgas_ppm + 5.0 * dt, 1000.0)
+        else:
+            g.offgas_ppm = max(g.offgas_ppm - 0.5 * dt, 0.0)
+        if g.cell_f >= 140.0 or g.offgas_ppm >= 50.0:
+            g.bess_fault = True
 
     def on_write(self, device: str, point: str, value: Value) -> None:
         """Note when the utility last dispatched the BESS (any value, 0 kW too)."""
@@ -640,7 +676,9 @@ class PowerFederate(Federate):
             "bess-pcs.p_kw": g.bess_kw,
             "bess-pcs.soc_pct": g.soc_pct,
             "bess-pcs.connected": g.bess_connected,
-            "bess-pcs.fault": False,
+            "bess-pcs.fault": g.bess_fault,
+            "bess-pcs.cell_temp_f": g.cell_f,
+            "bess-pcs.offgas_ppm": g.offgas_ppm,
             "gen-ats.gen_kw": self.gen_kw,
             "gen-ats.ep1_kw": g.ep1_kw,
             "gen-ats.fuel_pct": g.fuel_pct,
@@ -683,6 +721,9 @@ class PowerFederate(Federate):
         g = self.grid
         doc["power"] = {
             "utility_ok": g.utility_ok,
+            "bess_cell_f": round(g.cell_f, 1),
+            "bess_offgas_ppm": round(g.offgas_ppm, 1),
+            "bess_cell_runaway": g.cell_runaway,
             "energized": dict(self.energized),
             "msb_v_pu": g.v_pu,
             "month_peak_kw": self.meter.month_peak_kw,

@@ -19,6 +19,13 @@
     - The local wort boiling point from the barometric pressure
       (Clausius-Clapeyron for water, plus 0.5 degF for the extract), boil
       detection within 0.5 degF of it, and the boil timer.
+  Confined-space entry (29 CFR 1910.146, DESIGN.md 6.3): BH.ENTRY.HS01.ENTRY
+  (mash/lauter tun) and HS02.ENTRY (kettle) lock out the vessel's steam, water,
+  runoff, rake, whirlpool, and hop outputs. A phase that uses a locked vessel
+  (MLT: 3-6; kettle: 6-9) does not start or restart, and holds if it is
+  running; a refused start, or a locked output found written between scans,
+  latches the vessel's critical XAnn alarm until the entry ends. CIP circuit 1
+  (brewhouse) is not interlocked: plc-utilities has no peer path to this PLC.
   Alarms are generated from alarms.json by plcbuild.py at the ALARMS marker;
   the mash deviation alarm is enabled only while a mash step holds
   (BH.MLT.XS01.ACTIVE).
@@ -71,6 +78,9 @@ PROGRAM plc_brewhouse
     p_kpa : REAL;
     t_boil_k : REAL;
     t_boil_f : REAL;
+    want : UINT;
+    blocked_mlt : BOOL;
+    blocked_ktl : BOOL;
   END_VAR
 
   IF NOT started THEN
@@ -86,8 +96,31 @@ PROGRAM plc_brewhouse
   BH_MLT_TT01_SP := LIMIT(320, BH_MLT_TT01_SP, 1800);
   BH_KO_TT02_SP := LIMIT(320, BH_KO_TT02_SP, 1000);
 
+  (* ---- confined-space entry: a locked output on at the top of the scan was
+     written since the last one (the program leaves them off). ------------- *)
+  BH_ENTRY_XA01_PV := BH_ENTRY_XS01_LOCKED AND (BH_ENTRY_XA01_PV OR BH_MLT_XV01_CMD
+    OR BH_MLT_HS01_CMD OR BH_MLT_TV01_OUT > 0 OR BH_MLT_FV01_OUT > 0
+    OR BH_MLT_FV02_OUT > 0 OR BH_MLT_SC01_OUT > 0);
+  BH_ENTRY_XA02_PV := BH_ENTRY_XS02_LOCKED AND (BH_ENTRY_XA02_PV OR BH_KTL_XV01_CMD
+    OR BH_KTL_XV02_CMD OR BH_KTL_TV01_OUT > 0);
+  BH_ENTRY_XS01_LOCKED := BH_ENTRY_HS01_ENTRY;
+  BH_ENTRY_XS02_LOCKED := BH_ENTRY_HS02_ENTRY;
+
   (* ---- phase commands -------------------------------------------------------------- *)
   cmd := BH_BATCH_XC01_CMD;
+  (* Start and Restart of a phase that uses a locked-out vessel are refused. *)
+  IF cmd = 1 THEN
+    want := BH_BATCH_XC01_PHASE;
+  ELSE
+    want := active;
+  END_IF;
+  blocked_mlt := BH_ENTRY_XS01_LOCKED AND want >= 3 AND want <= 6;
+  blocked_ktl := BH_ENTRY_XS02_LOCKED AND want >= 6 AND want <= 9;
+  IF (cmd = 1 OR cmd = 3) AND (blocked_mlt OR blocked_ktl) THEN
+    BH_ENTRY_XA01_PV := BH_ENTRY_XA01_PV OR blocked_mlt;
+    BH_ENTRY_XA02_PV := BH_ENTRY_XA02_PV OR blocked_ktl;
+    cmd := 0;
+  END_IF;
   BH_BATCH_XC01_CMD := 0;
   IF BH_BATCH_XS01_STATE = 2 THEN
     BH_BATCH_XS01_STATE := 3;     (* Holding -> Held *)
@@ -236,6 +269,25 @@ PROGRAM plc_brewhouse
   ELSE
     step_timer(IN := FALSE, PT := T#0s);
     hop_timer(IN := FALSE, PT := T#0s);
+  END_IF;
+  (* ---- entry lockout: the locked vessel's outputs off, its phase held -------- *)
+  IF BH_ENTRY_XS01_LOCKED THEN
+    BH_MLT_XV01_CMD := FALSE;
+    BH_MLT_HS01_CMD := FALSE;
+    BH_MLT_TV01_OUT := 0;
+    BH_MLT_FV01_OUT := 0;
+    BH_MLT_FV02_OUT := 0;
+    BH_MLT_SC01_OUT := 0;
+  END_IF;
+  IF BH_ENTRY_XS02_LOCKED THEN
+    BH_KTL_XV01_CMD := FALSE;
+    BH_KTL_XV02_CMD := FALSE;
+    BH_KTL_TV01_OUT := 0;
+  END_IF;
+  IF running AND ((BH_ENTRY_XS01_LOCKED AND active >= 3 AND active <= 6)
+      OR (BH_ENTRY_XS02_LOCKED AND active >= 6 AND active <= 9)) THEN
+    BH_BATCH_XS01_STATE := 2;     (* Holding *)
+    complete := FALSE;
   END_IF;
   IF complete THEN
     BH_BATCH_XS01_STATE := 5;

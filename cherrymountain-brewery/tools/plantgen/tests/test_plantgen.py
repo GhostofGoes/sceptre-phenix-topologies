@@ -462,11 +462,12 @@ def test_alarm_deadbands_and_off_delays(tmp_path: Path) -> None:
 def test_peer_reads_land_on_the_other_plcs_coils() -> None:
     """plc-utilities reads plc-cellar's transfer and CIP-permit bits over CTRL
     (DESIGN.md 6.6 #4): FC1 from the coils plc-cellar's modbus_slave serves, into
-    %IX120.0 up, and a lost peer reads 0."""
+    %IX120.0 up, and a lost peer reads 0. The per-vessel entry bits (CIP into a
+    vessel locked out for confined-space entry, DESIGN.md 6.3) come the same way."""
     full = load(DEFAULT_PLANT, "full")
     alloc = allocate(full)
     reads = {r.tag: r for r in alloc.peer_reads["plc-utilities"]}
-    assert set(reads) == {"UTL.CIP.XS03.PV", "UTL.CIP.XS04.PV"}
+    assert set(reads) == {f"UTL.CIP.XS{n:02d}.PV" for n in range(3, 11)}
     for read in reads.values():
         src = alloc.tags[read.source]
         assert (src.slave_space, src.slave_address) == ("coil", read.coil)
@@ -474,7 +475,8 @@ def test_peer_reads_land_on_the_other_plcs_coils() -> None:
     files = render_all(full, alloc)
     peer = next(d for d in json.loads(files["openplc/plc-utilities/modbus_master.json"]) if d["name"] == "plc-cellar")
     assert peer["config"]["host"] == "10.20.10.12"
-    assert [(p["fc"], p["error_handling"]) for p in peer["config"]["io_points"]] == [(1, "set-to-zero")]
+    points = [(p["fc"], p["error_handling"]) for p in peer["config"]["io_points"]]
+    assert points and set(points) == {(1, "set-to-zero")}
 
 
 def test_a_peer_read_must_name_another_plcs_bit(tmp_path: Path) -> None:

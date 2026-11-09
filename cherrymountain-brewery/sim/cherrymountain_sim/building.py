@@ -15,11 +15,23 @@ Low-order models from DESIGN.md §8.3, stepped every 10 s:
   83.4 kPa and 68 °F (the sea-level 1.83 kg/m³ would be 22 % off). The four
   sensors sit low, so they read the well-mixed value times a stratification
   factor (1.25) plus a per-sensor offset.
+- **CO2 beyond the cellar** (Denver IFC 5307: every point of use and the
+  supply tank area; DESIGN.md §6.7). Three more well-mixed areas with one
+  low sensor each: the bulk tank and vaporizer room, the filler area (the
+  filler vents half the CO2 it draws for pre-evacuation and counterpressure
+  into the room), and the cold room with the draft system (a small background
+  leak, and air exchange while the door is open). A ``co2-leak`` event opens a
+  leak on the supply piping in one area; its flow follows the supply header
+  pressure, so the CO2 supply shutoff stops it.
 
 Each controller's local logic runs here, the way the BAS controllers would run
 it in their ot-sim logic module: RTU staging and economizer, the cold-room
 thermostat and defrost, the CO2 tiers (5,000 ppm starts the purge fans,
-15,000 inhibits carbonation, 30,000 evacuates), and the kettle hood exhaust.
+15,000 inhibits carbonation, 30,000 evacuates), the area exhaust and the
+horns and strobes, the two de-energize-to-trip relays (tier 2 in the cellar
+to rio-cellar; tier 3 anywhere, or loss of detection, to the CO2 supply
+shutoff on rio-utilities), and the kettle hood exhaust. A ``gas-detection``
+event fails the detection panel (both relays drop) or restores it.
 A BACnet write to a point overrides the local logic for that point, as a
 priority-array write above the controller's own priority would.
 """
@@ -36,6 +48,7 @@ from cherrymountain_sim.federate import (
     Federate,
     FederateConfig,
     Publication,
+    ScenarioEvent,
     SimClock,
     Value,
 )
@@ -50,6 +63,16 @@ CO2_TIERS: tuple[float, ...] = (5000.0, 15000.0, 30000.0)
 # A tier clears only once the sensed value falls 10 % below its limit, so a
 # reading hovering at a threshold does not chatter the BACnet alarm.
 CO2_TIER_DEADBAND: float = 0.10
+#: Sensed CO2 below which a purge or area exhaust stops, ppm.
+PURGE_STOP_PPM: float = 3500.0
+#: co2-leak and co2-release rates by name, g/s.
+LEAK_RATES: dict[str, float] = {"low": 2.0, "medium": 10.0, "high": 40.0}
+#: Supply header pressure the leak rates are quoted at, psig.
+LEAK_REF_PSIG: float = 60.0
+#: CO2 density at 0 °C and 1 atm, g per standard liter.
+CO2_G_PER_SL: float = 1.977
+#: Fraction of the filler's CO2 draw vented into the filler area.
+FILLER_VENT_FRACTION: float = 0.5
 
 
 def f_to_c(t_f: float) -> float:
@@ -108,6 +131,36 @@ class ColdRoom(BaseModel):
     compressor: bool = False
 
 
+class Co2Area(BaseModel):
+    """A well-mixed area with one low CO2 sensor (bulk tank, filler, draft)."""
+
+    sensor: int
+    volume_m3: float
+    base_m3s: float
+    exhaust_m3s: float
+    background_gps: float = 0.0
+    co2_ppm: float = 450.0
+    tiers: tuple[bool, bool, bool] = (False, False, False)
+    leak_gps: float = 0.0
+    leak_until: float = -1.0
+
+
+def default_areas() -> dict[str, Co2Area]:
+    """The three CO2 areas beyond the cellar (DESIGN.md §6.7, §8.1).
+
+    The tank room (about 100 m³) has louvers and an exhaust fan sized near
+    the 1 cfm/ft² of the Denver policy; the filler area is part of the
+    packaging hall's general ventilation; the cold room exchanges little air
+    except while its door is open, and its draft system leaks a trickle."""
+    return {
+        "tank": Co2Area(sensor=5, volume_m3=100.0, base_m3s=0.05, exhaust_m3s=0.25),
+        "filler": Co2Area(sensor=6, volume_m3=1200.0, base_m3s=0.8, exhaust_m3s=1.0),
+        "draft": Co2Area(
+            sensor=7, volume_m3=60.0, base_m3s=0.01, exhaust_m3s=0.15, background_gps=0.01
+        ),
+    }
+
+
 class Cellar(BaseModel):
     """Cellar room and brewhouse ventilation."""
 
@@ -116,6 +169,10 @@ class Cellar(BaseModel):
     tiers: tuple[bool, bool, bool] = (False, False, False)
     purge: bool = False
     mua_c: float = 20.0
+    areas: dict[str, Co2Area] = {}
+    area_exhaust: bool = False
+    #: The detection panel (sensors, controller, relays) is healthy.
+    detection_ok: bool = True
 
 
 class BuildingFederate(Federate):
@@ -135,7 +192,7 @@ class BuildingFederate(Federate):
         self.rng = random.Random(self.settings.seed)
         self.tap = Taproom()
         self.cold = ColdRoom()
-        self.cel = Cellar()
+        self.cel = Cellar(areas=default_areas())
         self.local = {
             "bas-rtu-taproom.econ_pct": 20.0,
             "bas-rtu-taproom.cool_sp_f": 74.0,
@@ -152,6 +209,8 @@ class BuildingFederate(Federate):
             "bas-vent.purge_fan_1": False,
             "bas-vent.purge_fan_2": False,
             "bas-vent.mua_enable": False,
+            "bas-vent.horn_strobe": False,
+            "bas-vent.area_exhaust": False,
         }
 
     def cmd(self, tag: str) -> Value:
@@ -169,6 +228,22 @@ class BuildingFederate(Federate):
     def bus(self, name: str) -> bool:
         """Whether a power bus is energized."""
         return self.input(f"power/bus.{name}.energized", 1.0) >= 0.5
+
+    def on_event(self, event: ScenarioEvent) -> None:
+        """``co2-leak`` opens a leak on the CO2 supply piping in one area
+        (``zone``: tank, filler, or draft; ``rate``: low, medium, high, or g/s;
+        ``duration`` s, default 600); ``gas-detection`` fails (``action:
+        fail``) or restores the detection panel."""
+        super().on_event(event)
+        if event.type == "co2-leak":
+            area = self.cel.areas[str(event.params.get("zone", "tank"))]
+            rate = event.params.get("rate", "high")
+            gps = LEAK_RATES.get(str(rate))
+            gps = float(rate) if gps is None else gps
+            seconds = float(event.params.get("duration", 600.0))
+            area.leak_gps, area.leak_until = gps, self.t + seconds
+        elif event.type == "gas-detection":
+            self.cel.detection_ok = event.params.get("action", "fail") == "restore"
 
     @property
     def occupied(self) -> bool:
@@ -196,6 +271,7 @@ class BuildingFederate(Federate):
             self._taproom(h, t_out_c, ghi)
             self._coldroom(h, t_out_c)
             self._cellar(h, t_out_c)
+            self._areas(h)
 
     def _taproom(self, dt: float, t_out: float, ghi: float) -> None:
         tap = self.tap
@@ -307,7 +383,7 @@ class BuildingFederate(Federate):
             for limit, was in zip(CO2_TIERS, cel.tiers, strict=True)
         )
         cel.tiers = (tiers[0], tiers[1], tiers[2])
-        cel.purge = tiers[0] or (cel.purge and sensed >= 3500.0)
+        cel.purge = tiers[0] or (cel.purge and sensed >= PURGE_STOP_PPM)
         self.local["bas-vent.purge_fan_1"] = cel.purge
         self.local["bas-vent.purge_fan_2"] = cel.purge
         fans = sum(
@@ -328,6 +404,56 @@ class BuildingFederate(Federate):
         self.local["bas-vent.mua_enable"] = self.num("bas-vent.exhaust_pct") > 30.0
         cel.mua_c = max(t_out, 18.3) if self.on("bas-vent.mua_enable") else t_out
 
+    def _areas(self, dt: float) -> None:
+        """The bulk tank, filler, and draft areas: CO2 balance, tiers, the area
+        exhaust (on at tier 1 in any area, off below 3,500 ppm everywhere),
+        and the horns and strobes (tier 3 in any area, the cellar included)."""
+        cel = self.cel
+        ep1 = self.bus("ep1")
+        supply = min(max(self.input("utilities/co2.supply_psig", LEAK_REF_PSIG), 0.0), 100.0)
+        filler_gps = (
+            self.input("packaging/co2.draw_slpm", 0.0) / 60.0 * CO2_G_PER_SL * FILLER_VENT_FRACTION
+        )
+        door = self.t < self.cold.door_until
+        exhaust = self.on("bas-vent.area_exhaust") and ep1
+        for name, a in cel.areas.items():
+            if self.t >= a.leak_until:
+                a.leak_gps = 0.0
+            gps = a.background_gps + a.leak_gps * supply / LEAK_REF_PSIG
+            if name == "filler":
+                gps += filler_gps
+            q = a.base_m3s + (a.exhaust_m3s if exhaust else 0.0)
+            if name == "draft" and door:
+                q += 0.3
+            g = gps / 1000.0 / RHO_CO2_SITE
+            a.co2_ppm += (g * 1e6 + q * (OUTDOOR_CO2_PPM - a.co2_ppm)) / a.volume_m3 * dt
+            sensed = a.co2_ppm * STRATIFICATION
+            tiers = tuple(
+                sensed >= limit or (was and sensed >= limit * (1.0 - CO2_TIER_DEADBAND))
+                for limit, was in zip(CO2_TIERS, a.tiers, strict=True)
+            )
+            a.tiers = (tiers[0], tiers[1], tiers[2])
+        tier1 = any(a.tiers[0] for a in cel.areas.values())
+        cel.area_exhaust = tier1 or (
+            cel.area_exhaust
+            and any(a.co2_ppm * STRATIFICATION >= PURGE_STOP_PPM for a in cel.areas.values())
+        )
+        self.local["bas-vent.area_exhaust"] = cel.area_exhaust
+        self.local["bas-vent.horn_strobe"] = self.tier3_anywhere and cel.detection_ok
+
+    @property
+    def tier3_anywhere(self) -> bool:
+        """Tier 3 (30,000 ppm) in the cellar or in any other area."""
+        return self.cel.tiers[2] or any(a.tiers[2] for a in self.cel.areas.values())
+
+    @property
+    def shutoff_ok(self) -> bool:
+        """The CO2 supply shutoff relay to rio-utilities (de-energize to trip):
+        energized only while no area is at tier 3, EP-1 powers the detection
+        panel, and the panel is healthy (Denver IFC 5307: fail closed on loss
+        of power or detection)."""
+        return not self.tier3_anywhere and self.bus("ep1") and self.cel.detection_ok
+
     # -- publications ------------------------------------------------------------------
 
     def sensor_ppm(self, i: int) -> float:
@@ -341,9 +467,17 @@ class BuildingFederate(Federate):
             return self.cmd(tag)
         point = pub.point or ""
         if point.startswith("co2_") and point.endswith("_ppm"):
-            return self.sensor_ppm(int(point.split("_")[1]))
+            n = int(point.split("_")[1])
+            area = next((a for a in self.cel.areas.values() if a.sensor == n), None)
+            if area is not None:
+                return area.co2_ppm * STRATIFICATION
+            return self.sensor_ppm(n)
         if point.startswith("co2_tier_"):
             return self.cel.tiers[int(point[-1]) - 1]
+        if point == "co2_area_tier_1":
+            return any(a.tiers[0] for a in self.cel.areas.values())
+        if point == "co2_shutoff_ok":
+            return self.shutoff_ok
         ep1 = self.bus("ep1")
         values: dict[str, Value] = {
             "bas-rtu-taproom.zone_temp_f": c_to_f(self.tap.t_air_c),
@@ -372,7 +506,13 @@ class BuildingFederate(Federate):
                 # The gas-detection relay to rio-cellar is de-energize to trip: it
                 # drops at tier 2 (15,000 ppm) and when EP-1, which feeds the
                 # detection panel, is dead (DESIGN.md §6.6 #6).
-                return 1.0 if (not self.cel.tiers[1]) and self.bus("ep1") else 0.0
+                return (
+                    1.0
+                    if (not self.cel.tiers[1]) and self.bus("ep1") and self.cel.detection_ok
+                    else 0.0
+                )
+            case "vent.co2_shutoff_ok":
+                return 1.0 if self.shutoff_ok else 0.0
             case "load.rtu.kw":
                 return self.tap.power_kw
             case "load.coldroom.kw":
@@ -383,7 +523,7 @@ class BuildingFederate(Federate):
                 ex = self.num("bas-vent.exhaust_pct") / 100
                 purge = sum(
                     0.75
-                    for k in ("bas-vent.purge_fan_1", "bas-vent.purge_fan_2")
+                    for k in ("bas-vent.purge_fan_1", "bas-vent.purge_fan_2", "bas-vent.area_exhaust")
                     if self.on(k)
                 )
                 return (
@@ -402,6 +542,16 @@ class BuildingFederate(Federate):
         doc = super().truth()
         doc["building"] = {
             "cellar_co2_ppm_mixed": self.cel.co2_ppm,
+            "co2_areas": {
+                name: {
+                    "co2_ppm_mixed": round(a.co2_ppm, 1),
+                    "tiers": list(a.tiers),
+                    "leak_gps": a.leak_gps,
+                }
+                for name, a in self.cel.areas.items()
+            },
+            "co2_detection_ok": self.cel.detection_ok,
+            "co2_shutoff_relay_ok": self.shutoff_ok,
             "taproom_people": self.people,
             "overrides": sorted(self.commands),
         }

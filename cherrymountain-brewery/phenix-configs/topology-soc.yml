@@ -69,6 +69,10 @@ spec:
       dst: /usr/local/sbin/cm-wazuh-selftest
       permissions: '0755'
       src: /phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-selftest
+    - description: check that expected alerts fired, for the SCORCH vendor-maintenance run
+      dst: /usr/local/sbin/cm-wazuh-expect
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-expect
     - description: Wazuh first-boot setup unit
       dst: /etc/systemd/system/cm-wazuh-provision.service
       permissions: '0644'
@@ -157,6 +161,10 @@ spec:
       dst: /usr/local/sbin/cm-malcolm-selftest
       permissions: '0755'
       src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-selftest
+    - description: check that expected detections reached Malcolm, for the SCORCH vendor-maintenance run
+      dst: /usr/local/sbin/cm-malcolm-expect
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-expect
     - description: OpenFlow flow and port setup for the mirror feed
       dst: /usr/local/sbin/cm-malcolm-capture
       permissions: '0755'

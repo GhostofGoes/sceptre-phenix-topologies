@@ -28,7 +28,14 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=strict
-ReadWritePaths=/etc /var/ossec /var/lib/cm-wazuh /opt/cherrymountain/wazuh /usr/share/wazuh-indexer /usr/share/wazuh-dashboard /var/lib/wazuh-indexer /var/log
+# systemd creates the state directories before it builds the mount namespace. As
+# ReadWritePaths= they would have to exist already (the unit fails with 226/NAMESPACE
+# otherwise), and no package or image script makes them: /var/lib/cm-wazuh holds
+# the markers and passwords.txt, and /var/lib/filebeat is Filebeat's path.data, where
+# `filebeat keystore` writes filebeat.keystore.
+StateDirectory=cm-wazuh filebeat
+StateDirectoryMode=0750
+ReadWritePaths=/etc /var/ossec /opt/cherrymountain/wazuh /usr/share/wazuh-indexer /usr/share/wazuh-dashboard /var/lib/wazuh-indexer /var/log
 ProtectHome=yes
 ProtectProc=invisible
 ProcSubset=pid

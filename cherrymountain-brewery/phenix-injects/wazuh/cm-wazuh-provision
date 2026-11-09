@@ -8,13 +8,14 @@
 # indexer, the manager, and the dashboard:
 #   1. certificates for the three components (wazuh-certs-tool.sh)
 #   2. the indexer: certificates, address, start, security initialization
-#   3. the manager and Filebeat: certificates, keystores, indexer address, start
-#   4. new passwords for the indexer and API users (wazuh-passwords-tool.sh)
-#   5. the dashboard: certificates, indexer address, start
+#   3. the manager and Filebeat: certificates, keystores, indexer address, start,
+#      and the cherrymountain additions: agent groups and their shared settings,
+#      the syslog listener, and no vulnerability detection or update check (the VMs
+#      have no internet)
+#   4. the dashboard: certificates, indexer address, start
+#   5. new passwords for the indexer and API users (wazuh-passwords-tool.sh), last,
+#      as in Wazuh's guide: the tool updates the dashboard's keystore and wazuh.yml
 #   6. index retention (ISM) policies: alerts 30 days, archives 7 (DESIGN.md 14)
-#   6. the cherrymountain additions: agent groups and their shared settings, the
-#      syslog listener, and no vulnerability detection or update check (the VMs have
-#      no internet)
 # The rules and decoders are injected into /var/ossec/etc/{rules,decoders}/ before
 # the manager first starts, so they load with it.
 #
@@ -37,6 +38,8 @@ CONF="${TOOLS}/agent-conf"
 STATE="${CM_WAZUH_STATE:-/var/lib/cm-wazuh}"
 OSSEC=/var/ossec
 OSSEC_CONF="${OSSEC}/etc/ossec.conf"
+# The dashboard's Wazuh API connection (user wazuh-wui), written at its first start.
+WUI_CONF=/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
 
 log() { echo "cm-wazuh-provision: $*"; }
 
@@ -167,20 +170,35 @@ for file in "${CONF}"/*.conf; do
   install -m 0660 -o wazuh -g wazuh "$file" "${OSSEC}/etc/shared/${group}/agent.conf"
 done
 
-# --- 4. passwords -----------------------------------------------------------------------
-if ! passwords_changed; then
-  (umask 077 && bash "${TOOLS}/wazuh-passwords-tool.sh" -a -au wazuh -ap wazuh > "${STATE}/passwords.txt" 2>&1)
-  # Mark it now: from here on the default credentials no longer work.
-  touch "$PASSWORDS_MARKER"
-  log "new passwords are in ${STATE}/passwords.txt"
-fi
-systemctl restart filebeat.service wazuh-manager.service
-
-# --- 5. the dashboard -------------------------------------------------------------------
+# --- 4. the dashboard -------------------------------------------------------------------
+# Before the passwords, as in Wazuh's guide: the password tool restarts the
+# dashboard, and it writes the new wazuh-wui API password into the dashboard's
+# wazuh.yml, which the dashboard creates at its first start.
 install_certs /etc/wazuh-dashboard/certs wazuh-dashboard:wazuh-dashboard \
   root-ca.pem=root-ca.pem dashboard.pem=dashboard.pem dashboard-key.pem=dashboard-key.pem
 sed -i -E "s|^opensearch.hosts:.*|opensearch.hosts: https://${node_ip}:9200|" /etc/wazuh-dashboard/opensearch_dashboards.yml
 systemctl enable --now wazuh-dashboard.service
+wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:443/'
+wait_for 300 "the dashboard's wazuh.yml" test -f "$WUI_CONF" || log "WARNING: ${WUI_CONF} is missing; the wazuh-wui password is set once it exists"
+
+# --- 5. passwords -----------------------------------------------------------------------
+if ! passwords_changed; then
+  # -A (--api) is required with -au and -ap: without it the tool prints its help
+  # and exits 1.
+  (umask 077 && bash "${TOOLS}/wazuh-passwords-tool.sh" -A -a -au wazuh -ap wazuh > "${STATE}/passwords.txt" 2>&1)
+  # Mark it now: from here on the default credentials no longer work.
+  touch "$PASSWORDS_MARKER"
+  log "new passwords are in ${STATE}/passwords.txt"
+fi
+# The tool waits only 60 s for wazuh.yml. If the file came later, the dashboard
+# still holds the default wazuh-wui password and cannot reach the Wazuh API.
+wui_password=$(sed -n 's/.*The password for Wazuh API user wazuh-wui is //p' "${STATE}/passwords.txt" 2> /dev/null | tail -n 1)
+if [ -n "$wui_password" ] && [ -f "$WUI_CONF" ] && ! grep -qF "password: \"${wui_password}\"" "$WUI_CONF"; then
+  sed -i "s|password: .*|password: \"${wui_password}\"|g" "$WUI_CONF"
+  log "set the wazuh-wui password in ${WUI_CONF}"
+fi
+# The dashboard reads wazuh.yml when it starts.
+systemctl restart filebeat.service wazuh-manager.service wazuh-dashboard.service
 wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:443/'
 
 # --- 6. index retention -----------------------------------------------------------------

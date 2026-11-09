@@ -2049,7 +2049,7 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 | bas-rtu-taproom | BAS + MGMT | RTU-1 controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
 | bas-coldroom | BAS + MGMT | Cold room controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
 | bas-vent | BAS + MGMT | Ventilation and CO₂ controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
-| sim-ctl | MGMT | HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, chronyd for MGMT | cm-sim | 2 / 6 |
+| sim-ctl | MGMT | HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, cm-viz 3D view, chronyd for MGMT | cm-sim | 2 / 6 |
 | sim-process | MGMT | Process federates | cm-sim | 2 / 3 |
 | sim-power | MGMT | OpenDSS federate | cm-sim | 2 / 3 |
 | sim-building | MGMT | Building federate | cm-sim | 2 / 3 |
@@ -2935,7 +2935,7 @@ which uses the Elasticsearch-compatible API.
   | scada-fuxa | `["11881:1881"]` | FUXA |
   | bas-fuxa | `["11882:1881"]` | FUXA |
   | historian | `["13000:3000"]` | Grafana |
-  | sim-ctl | `["13001:3000", "18080:8080", "19200:9200"]` | Grafana, event API (used by SCORCH `plantevent`), OpenSearch |
+  | sim-ctl | `["13001:3000", "18080:8080", "18090:8090", "19200:9200"]` | Grafana, event API (used by SCORCH `plantevent`), the cm-viz 3D view ([§15.10](#1510-white-cell-3d-view-cm-viz)), OpenSearch |
   | malcolm | `["18443:443"]` | Malcolm UI |
   | wazuh | `["18444:443"]` | Wazuh UI |
 
@@ -3092,7 +3092,7 @@ link. They do not loop with `replace` yet, and none has run.
 | `cm-openplc` | noble minbase | OpenPLC v4.3.2 runtime (native install), boot provisioning script, build toolchain (the runtime compiles uploads on the VM) | Program ZIPs are built outside the image by `plc/<plc>/build_zip.sh`. No v3 image: the spike chose v4 |
 | `cm-fuxa` | noble minbase | Node 22, FUXA pinned by commit (there is no 1.3.6 tag), drivers installed into `server/_pkg/runtime` at build (`modbus-serial@8.0.19`, `node-opcua@2.149.0`, `node-snap7@1.0.9`, `node-bacnet@0.2.4`), systemd unit, project-import script | Used by scada-fuxa and bas-fuxa |
 | `cm-otsim` | noble minbase | Pinned `patsec/ot-sim` built from source (pyzmq built from source, C++ DNP3 module, the E2E DNP3 master, the Go toolchain download), HELICS, systemd unit; the app renders the nftables MGMT policy. The BACnet module is a placeholder until the ot-sim module exists ([§16](#16-new-and-extended-software)) | Replaces the prebuilt focal image, which has no service unit. One image for every ot-sim node, DNP3 included ([§12.3](#123-ot-sim-field-devices)) |
-| `cm-sim` | noble minbase, 16G | HELICS 3.6 + pyhelics, OpenDSSDirect.py (`~=0.8.4`), SimPy, cherrymountain_sim, chrony, nftables. The models do not use CoolProp or pvlib, and SciPy, PackMLpy, and `ht` are needed only by the tests ([§9.6](#96-implementation-status-and-validation)). Single-node OpenSearch 3.9 (ground truth, security plugin off) and Grafana 12 with the OpenSearch data source plugin, started only where the app injects `ground-truth.env` (sim-ctl in full and lite) | Built |
+| `cm-sim` | noble minbase, 16G | HELICS 3.6 + pyhelics, OpenDSSDirect.py (`~=0.8.4`), SimPy, cherrymountain_sim, cm-viz with its vendored three.js and `websockets` 15 ([§15.10](#1510-white-cell-3d-view-cm-viz)), chrony, nftables. The models do not use CoolProp or pvlib, and SciPy, PackMLpy, and `ht` are needed only by the tests ([§9.6](#96-implementation-status-and-validation)). Single-node OpenSearch 3.9 (ground truth, security plugin off) and Grafana 12 with the OpenSearch data source plugin, started only where the app injects `ground-truth.env` (sim-ctl in full and lite) | Built |
 | `cm-historian` | noble minbase | InfluxDB 2 OSS, Telegraf, Grafana, Mosquitto, Wazuh agent | |
 | `cm-desktop` | noble mingui | Chromium (kiosk), WireGuard tools, protonuke, Wazuh agent | Role injections: HMI, corp, vendor, analyst |
 | `cm-ews` | noble mingui | OpenPLC Editor, Wireshark, mbpoll, BAC0, pymodbus, asyncua CLI tools, xrdp, Wazuh agent | |
@@ -3312,6 +3312,103 @@ shared `cm-lib.sh` would add an inject to every node that runs any of them and
 a coupling between scripts that ship separately, for a few dozen lines saved.
 It is not built; revisit if a fourth copy of a helper appears.
 
+### 15.10 White-cell 3D view (cm-viz)
+
+The [viz3d spike](spikes/viz3d/README.md) recommended a GRFICS-style view in
+which attacks have visible physical consequences, built from open-source parts
+and rendered by the white cell's own browser. `cm-viz` (`viz/`) is that view.
+
+**What it shows.** Three scenes over the same frames:
+
+| Scene | Contents |
+|---|---|
+| Cellar CO₂ ([§6.7](#67-cellar-co2-life-safety-interlock)) | The room; the four low sensors in tier colors; a gas layer whose height and color follow the sensed ppm; the HMI's layer as a dashed outline when it disagrees with the truth; the purge fans, which spin only when they really run; strobes and the tier-3 horn; bas-vent's relay and the rio-cellar contact; the BBTs' carbonation-inhibit lamps; leak plumes |
+| Fermenters ([§6.3](#63-areas-equipment-and-control-strategies)) | Fill (truth only for FVs) and temperature color; the head-pressure band against the 15 psig MAWP; glycol jacket valves and the glycol header tinted by supply temperature; spunding vents; PSV lifts with a vent plume; the CO₂ inhibit on the BBTs |
+| Plant power ([§7](#7-electrical-distribution-and-energy)) | Utility, T-1, and relay-main's breaker; PV and its curtailment; the BESS state of charge and charge or discharge; the MSB with each bus's loads; the genset, the ATS position, EP-1; the tariff window. Chevrons move along each conductor with the flow and grey out on a dead bus |
+
+Every scene has the simulated time and the cellar's 48× kinetic clock, the
+age of the data, a ground-truth / operator-view toggle, and a side panel of
+truth beside the operator's values with findings computed from the truth: a
+purge fan commanded off while tier 1 is active, a carbonation stone open while
+the CO₂ relay is open, a relief valve lifted, a spunding setpoint above the
+MAWP, a release at a vessel, a lost utility or an open main breaker. The view
+greys out and says why when no frame has arrived for 3 s, the snapshot is older
+than 5 s, or it stopped advancing. Rendering is capped at 15 frames per second
+by default. `svg.html` draws the same frames in 2.5D for browsers without
+WebGL, VNC, and low-CPU displays, and redraws only when a frame arrives. The
+gas layer is a picture of the room's one well-mixed value, not a dispersion
+model ([§8.3](#83-recommendation)); the page and `viz/README.md` say so.
+
+**Technology.** three.js 0.186.1 (MIT), vendored unmodified in the package
+(`viz/cherrymountain_viz/web/vendor/three`, with its license; the npm tarball's
+SHA-256 is in `viz/README.md`), so the air-gapped range loads nothing from a
+CDN. The geometry is built in code; there are no binary assets. The bridge is
+Python (Pydantic frames, `websockets` 15).
+
+**Data path.** The weather federate on sim-ctl subscribes to the snapshot keys
+(`plant.yaml` `snapshot`: the cellar vessels and relief valves, the cellar air
+and ventilation, every power point and load, and the KPI keys; 179 in full and
+lite) and serves them as `GET /api/v1/state` on `127.0.0.1:8080`
+([§9.5](#95-scenario-events-and-ground-truth)). Truth that no device measures
+comes from the cellar's per-vessel outputs (fill, spunding, PSV, and leak
+flows). `cm-viz` polls the snapshot twice a second, builds a frame (about
+4 KB of JSON), and pushes it over a read-only WebSocket; it also serves the
+page, `/frame.json`, and `/healthz` (503 while stale). It never writes to the
+event API or the plant, and it drops anything a browser sends.
+
+**Access path.** `cm-viz.service` on sim-ctl (rendered by the `cherrymountain`
+app where the weather federate runs, so full and lite, not ci) binds
+`127.0.0.1:8090`. sim-ctl's autotunnel adds `18090:8090`
+([§15.3](#153-topology-modules-and-variants)); the white cell finds the host
+port with `cc tunnel list sim-ctl` and opens it in a browser on the phenix
+host, which renders with that machine's GPU. Nothing new listens on MGMT or
+any range network, and netcheck's conduit matrix is unchanged.
+
+**Ground-truth leakage control.** The view is ground truth, so showing it
+during an exercise removes the detection problem the exercise is about.
+Controls: the loopback bind; `IPAddressDeny=any` with `IPAddressAllow=localhost`
+in the unit, so the kernel drops anything else even if the bind changes; no
+link to it from any HMI or desktop; never through Guacamole, because
+`dmz-jump` is the vendor's jump host and an attack path; a page CSP that loads
+nothing off the server and an `X-Frame-Options` that stops other origins
+framing it; and a header on every page saying it is not to be shown to
+trainees without a white-cell decision (a walk-down inject, the debrief). The
+autotunnel's host-wide listener ([§15.9](#159-operations)) is the remaining
+exposure, as for Grafana and the event API.
+
+**Operator view.** Phase 1 (now): the frame's operator layer is not connected
+in the range; the page says so and FUXA, through its own autotunnel, goes in a
+window beside it. The offline harness fills the layer with the published field
+values and can freeze them, which is how the screenshots show a replayed HMI.
+Phase 2 (open): a relay on the phenix host that reads the historian's `scada`
+bucket through a cc tunnel and hands the operator's values to the page.
+
+**Resources.** `cm-viz` is capped at 256 MiB and half a core
+(`MemoryMax`, `CPUQuota`); the spike measured under 1 % of a core for 20
+browsers. About 2.2 MB of static files (three.js unminified) load once per
+browser; frames are about 16 to 32 kbit/s per viewer. The weather federate
+gains 179 subscriptions. sim-ctl stays 2 vCPU / 6 GB, and the host-fit budget
+([§11](#11-node-inventory-and-resources)) is unchanged. No `cm-desktop` change:
+the spike found that a range desktop needs `--enable-unsafe-swiftshader` to
+render WebGL at all, but it recommends against an in-range renderer, and the
+page is unreachable from range desktops; `svg.html` is the in-range fallback if
+one is ever wanted.
+
+**Tests.** `viz/tests` (the `cm-viz-tests` hook): frames from snapshots and
+the findings; the server's pages, headers, path handling, health, and a
+WebSocket that ignores input; `SimctlSource` against the real event API,
+including staleness; and the offline scenarios. `test_browser.py` (marked
+`browser`, run with `pytest -m browser` where Node and Playwright are
+installed; not in CI) loads every scene in headless Chromium and checks the
+WebGL context, frame rendering, and the data binding. `viz/tools/screenshots.py`
+renders the documented views from the real federates.
+
+**Not done yet.** The phenix run of the spike plan (the view through a real
+cc tunnel, frame age at the 95th percentile, the effect of the 179
+subscriptions on the federation's timing over an hour), the operator-view
+relay (phase 2), replay from the ground-truth OpenSearch, and a brewhouse
+scene.
+
 ## 16. New and extended software
 
 | Item | Where | Purpose |
@@ -3320,6 +3417,7 @@ It is not built; revisit if a fourth copy of a helper appears.
 | `phenix-scorch-component-plantevent` | `apps/` | Drives the sim-ctl event API from SCORCH (batch, outage, chiller fault, CO₂ release, jam, weather step), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
 | `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the proposed `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current (`cm-plantgen-tests`, `cm-sync-check`) |
 | `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)), tested in CI (`cm-sim-tests`) |
+| `cm-viz` | `viz/` | The white cell's 3D view of ground truth: a Python bridge from the sim-ctl snapshot to a read-only WebSocket, and a three.js page with three scenes and an SVG fallback ([§15.10](#1510-white-cell-3d-view-cm-viz)); tested in CI (`cm-viz-tests`) and in headless Chromium (`-m browser`) |
 | **ot-sim BACnet module** (upstream) | `patsec/ot-sim` (`src/python`) | BACpypes3 BACnet/IP server. Maps AI/AO/AV/BI/BO/BV/MSV objects to message-bus tags; priority arrays for commandable objects; Who-Is/I-Am (a forwarded Who-Is gets a unicast I-Am to the client); ReadProperty, WriteProperty, ReadPropertyMultiple; optional COV. FUXA calls no SubscribeCOV, and a BACpypes3 stand-in answered everything FUXA calls. No BBMD in the module: the BBMDs are separate services ([§11](#11-node-inventory-and-resources)). If the BAS BBMD were hosted in a device module instead, the module would also need BDT and Forwarded-NPDU handling on its one UDP 47808 socket |
 | BBMD service (`cm-bbmd`) | `phenix-injects/bbmd/` (BACpypes3) | A small BACpypes3 BBMD with a configurable BDT and listen prefix, run as `cm-bbmd.service` on ot-svc (`/0` prefix) and bas-bbmd. Based on the `bbmd` spike's `bbmd.py`. Its settings are static topology injects, not rendered by the app. Built; not yet run under systemd |
 | phenix `mirror` app follow-up (upstream) | `sandialabs/sceptre-phenix-apps` | In `setupOVS` mode, set `options:df_default=false` on the host's GRE port and add the capture-VM flow `in_port=sniffer,actions=output:phenix` (then `ip link set phenix up`), instead of leaving both to the image ([§14](#14-blue-team-monitoring)) |
@@ -3409,6 +3507,8 @@ rebroadcast reaches it.
 
 ## 17. Testing and validation
 
+- **3D view (pytest in `viz/`, the `cm-viz-tests` hook; the browser test
+  with `-m browser`):** see [§15.10](#1510-white-cell-3d-view-cm-viz).
 - **Model unit tests (pytest in `sim/`, the `cm-sim-tests` hook):**
   - Fermentation: attenuation timing and CO₂ mass balance, plus published
     curve shapes.
@@ -3512,7 +3612,7 @@ rebroadcast reaches it.
 | 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** All five PLC programs and their full and lite ZIPs are built by `plc/common` (alarms generated from `alarms.json` with deadbands, C++ checked; none run in an OpenPLC runtime yet), including the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)) and the peer reads. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. Open: the FUXA batch engine (so no unattended brew day through the PLC yet), views beyond the generated tag lists, and any VM run |
 | 4: Power + BAS | OpenDSS, tariff logic, BESS/ATS, BACnet devices | Outage and CO₂ scenarios behave as in §6.6 | **Partly built.** The power and building federates are built with Phase 2, and the `plc-power` program (load shed, staged restoration, BESS demand-cap dispatch) is built; its on-peak window and genset exercise wait on a clock point ([§19](#19-risks-and-open-questions)). The ot-sim BACnet module remains (it waits on the ot-sim fork) |
 | 5: SOC + remote access | Malcolm, Wazuh, WireGuard, Guacamole | Baseline detections fire on the vendor-maintenance run | **Built, not run on a VM.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), Zeek script (checked in Malcolm's Zeek image), and Wazuh rules with their tests; per-experiment vendor and WireGuard secrets |
-| 6: Polish | SCORCH runs, Builder package, README, e2e CI, upstream PRs | Fresh `phenix workflow apply` → green SoH, with no manual steps | **Started.** `plantevent` and the four plant-driving SCORCH runs of the full scenario are built ([§15.6](#156-scorch-pipelines)), with the operations runbook ([§15.9](#159-operations)) and the plantgen, sim, app, netcheck, and SOC suites in prek and CI. Open: the Builder package, an e2e run on a VM, and the upstream PRs |
+| 6: Polish | SCORCH runs, Builder package, README, e2e CI, upstream PRs, the white-cell 3D view | Fresh `phenix workflow apply` → green SoH, with no manual steps | **Started.** The 3D view (`cm-viz`) is built and tested offline with its snapshot, relief valves, vessel truth, and real KPIs ([§15.10](#1510-white-cell-3d-view-cm-viz)); its phenix run and the operator-view relay are open. `plantevent` and the four plant-driving SCORCH runs of the full scenario are built ([§15.6](#156-scorch-pipelines)), with the operations runbook ([§15.9](#159-operations)) and the plantgen, sim, app, netcheck, and SOC suites in prek and CI. Open: the Builder package, an e2e run on a VM, and the upstream PRs |
 
 **Phase 0 spikes (done).** The `ci` variant (the cellar slice) was built early
 as the integration vehicle. It covers part of phases 1 to 3 for one slice and
@@ -3531,6 +3631,7 @@ autotunnel, and ot-sim's own Modbus RTU).
 | IPsec + DNP3 through VyOS | Go, using phenix as is. The build is VyOS rolling | Image and conduit notes ([§10.3](#103-conduit-matrix-default-deny-stateful-logged), [§15.7](#157-images)) | ot-sim DNP3 across the tunnel (a link-status stub was used) |
 | Autotunnel | Go, with the fork's loop. Host ports are random. Round 2: a CLI-started experiment gets its tunnels, which survive a `phenix ui` restart | Annotations, port lookup with `cc tunnel list` ([§15.3](#153-topology-modules-and-variants), [§15.6](#156-scorch-pipelines)) | `vm restart` through the UI |
 | Serial (stretch) | Go. Round 2: ot-sim's own Modbus RTU runs over the current serial app (0 errors in about 680 polls). PR #130's app works until a VM is redeployed | `serial` app row ([§15.2](#152-apps)), ot-sim serial note ([§12.3](#123-ot-sim-field-devices)) | PR #130 after a reconnect fix; the missing C2 client after a redeploy |
+| 3D view (viz3d) | Go, locally: three.js renders with no GPU (SwiftShader, llvmpipe) when Chromium opts in, and the federates drive it through a WebSocket bridge. Built as `cm-viz` | The snapshot endpoint, the PSV model, vessel truth outputs, real KPIs, `cm-viz` and its autotunnel ([§9.5](#95-scenario-events-and-ground-truth), [§15.10](#1510-white-cell-3d-view-cm-viz)) | The phenix run: a real cc tunnel, frame age, and federation timing with the new subscriptions |
 
 **Running the spike kits.** The netns BBMD runner needs the `conntrack` tool: it
 flushes connection tracking between stages, and a missing binary must not pass

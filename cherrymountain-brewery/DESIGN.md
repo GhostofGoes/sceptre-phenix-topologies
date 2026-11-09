@@ -541,7 +541,12 @@ flowchart LR
 - **Equipment:** each FV has cone and side glycol zones (solenoid valves
   plus RTDs), a pressure transmitter, an automatic spunding valve, a
   sample-port density meter, and a CIP spray ball. Mechanical pressure
-  relief and vacuum relief valves are not PLC-controlled. Each BBT has a
+  relief and vacuum relief valves are not PLC-controlled; each pressure-relief
+  valve (PSV) has a lift switch wired to rio-cellar (`CEL.PSV.ZSH01.PV` to
+  `ZSH06.PV`, FV-101 to BBT-202, full and lite) that alarms High. FVs have
+  no level transmitter: the batch engine knows the volume from knockout, and
+  the fill is simulation truth only ([§9.5](#95-scenario-events-and-ground-truth)).
+  Each BBT has a
   jacket zone, level, pressure, temperature, a carbonation stone with a CO₂
   flow controller, and a pressure regulator. Shared equipment: a dry-hop
   doser (CO₂-purged hop port) and transfer valves with route verification.
@@ -552,11 +557,16 @@ flowchart LR
     gravity. Setpoints are stored as absolute pressure (12 psig on site ≈
     24.1 psia) and displayed as gauge pressure.
   - Vessels are rated 15 psig MAWP, and mechanical relief valves are set
-    at 15 psig.
+    at 15 psig. A PSV pops at 15 psig, vents CO₂ into the cellar room at up to
+    25 g/s, and reseats at 13.5 psig (10 % blowdown). It is the limit a
+    written spunding setpoint cannot move: a setpoint above the MAWP ends in
+    repeated lifts and rising room CO₂, not unbounded vessel pressure.
   - The dry-hop sequence purges with CO₂ before dosing.
   - Cold crash ramp rate is limited so the glycol plant isn't overloaded.
   - BBT carbonation targets volumes computed from temperature and absolute
-    pressure ([§9.3](#93-models)).
+    pressure ([§9.3](#93-models)). The stone closes while the head is more
+    than 1 psi above the target's equilibrium pressure, so gas that does not
+    dissolve never builds up to the PSV in normal running.
   - Transfers are blocked while the source or destination is in CIP.
 
 **Packaging**
@@ -662,7 +672,7 @@ These counts are design estimates. The plant tag database (`plant.yaml`,
 - **Rationalization.** Each alarm has a cause, consequence, operator
   action, and time to respond. These are recorded in `plant.yaml` and
   generated into the FUXA alarm definitions.
-- **Current state.** `plant.yaml` holds 70 rationalized alarms: 4 Critical, 21
+- **Current state.** `plant.yaml` holds 76 rationalized alarms: 4 Critical, 27
   High, 25 Medium, and 20 Low. That is not yet the 5/15/80 target, because only
   the important alarms are rationalized so far.
 - **Examples:**
@@ -670,6 +680,7 @@ These counts are design estimates. The plant tag database (`plant.yaml`,
     OSHA PEL, purge fans running) for a minute: Low, so the operator knows the
     cellar is above the PEL before it is an emergency.
   - FV temperature more than 2 °F from setpoint for 15 minutes: High.
+  - A vessel's relief valve lifted (its lift switch): High, at once.
   - Glycol supply above 34 °F: High.
   - Wastewater discharge inhibited: Medium.
   - Bottling line held more than 10 minutes: Low.
@@ -697,7 +708,7 @@ isolated demos.
 | 2 | Brewhouse → utilities | Steam demand (mash, boil); HLT/CLT draw; glycol load spike at knockout (HX stage 2) | Boiler kW swings; chiller stages up |
 | 3 | Cellar → utilities | Glycol demand from jacket valves; CO₂ draw for purge and carbonation; CIP requests | Glycol supply temperature rises during a crash |
 | 4 | Utilities ↔ cellar | plc-utilities reads the CIP-permit and transfer status from plc-cellar over peer Modbus (east–west L1 traffic) | CIP blocked during a transfer and vice versa |
-| 5 | Cellar → building | Fermentation CO₂ vented by spunding and blow-off into the cellar room (CO₂ mass balance) | bas-vent purge fans start; alarms at 15,000 ppm |
+| 5 | Cellar → building | Fermentation CO₂ vented by spunding and blow-off, and by the vessels' relief valves, into the cellar room (CO₂ mass balance) | bas-vent purge fans start; alarms at 15,000 ppm |
 | 6 | BAS → cellar (life safety) and BAS → SCADA (display) | The bas-vent gas-detection relay is hardwired into rio-cellar (`CEL.SYS.XS01.CO2_OK`); `plc-cellar` inhibits carbonation while it is open. scada-fuxa only reads the CO₂ objects from bas-vent over BACnet, discovering it through the BBMDs ([§10.4](#104-protocol-map)) | Carbonation inhibited at ≥15,000 ppm or on loss of detection power; the process HMI shows the state. See [§6.7](#67-cellar-co2-life-safety-interlock) |
 | 7 | BBT → packaging | Product supply and BBT pressure gate the filler | Filler holds on low BBT pressure |
 | 8 | Building ↔ process | Ambient and room temperatures change jacket heat gain and chiller COP; brewhouse heat and vapor load the makeup-air unit | Summer afternoons stress the glycol plant |
@@ -1217,7 +1228,7 @@ flowchart LR
 
 | Federate | Host | Step | Publishes (examples) | Subscribes (examples) |
 |---|---|---|---|---|
-| `weather` | sim-ctl | 1 s (the weather itself changes each minute) | `weather/ambient.temp_f`, `weather/ghi.wm2`, `weather/pressure.kpa` | — |
+| `weather` | sim-ctl | 1 s (the weather itself changes each minute) | `weather/ambient.temp_f`, `weather/ghi.wm2`, `weather/pressure.kpa` | The KPI keys and the 3D view's keys (`plant.yaml` `snapshot`; 179 in full and lite), served as `GET /api/v1/state` and `/kpis` ([§9.5](#95-scenario-events-and-ground-truth)) |
 | `brewhouse` | sim-process | 1 s | `brewhouse/<device>.<point>`, `brewhouse/load.boiler.kw` | `brewhouse/updates` (endpoint), `power/bus.msb.energized`, `weather/pressure.kpa` |
 | `cellar` | sim-process | 1 s (kinetics compressed; exported fluxes real-time-equivalent, [§9.4](#94-time-and-initial-state)) | `cellar/fv101.temp_f`, `cellar/co2.vent_gps`, `cellar/clock.sim_hours` | `cellar/updates`, `weather/ambient.temp_f`, `weather/pressure.kpa` |
 | `utilities` | sim-process | 1 s | `utilities/glycol.supply_f`, `utilities/load.chiller.kw` | `utilities/updates`, `weather/ambient.temp_f` |
@@ -1354,6 +1365,18 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
     Henry's law (k_H(298 K) ≈ 0.034 mol·kg⁻¹·bar⁻¹, with van 't Hoff
     temperature dependence).
 
+**Relief valves** (`cellar`, `sim/cherrymountain_sim/relief.py`)
+
+- Every FV and BBT has a pop-action PSV: it lifts when the head reaches
+  15 psig, vents at most its rated 25 g/s (the BBT's worst credible inflow,
+  the stone fully open plus the serving regulator, is about 11.4 g/s), and
+  reseats once the head is down to 13.5 psig. A lift shorter than a step
+  still shows as lifted for that step.
+- The vented CO₂ goes into the cellar room, so the building federate's CO₂
+  balance and the [§6.7](#67-cellar-co2-life-safety-interlock) interlock see
+  it. A 30 psig spunding setpoint on an active FV makes the PSV lift every few
+  minutes; a stone forced open on a BBT lifts it within the hour.
+
 **Glycol plant** (`utilities`)
 
 - Reservoir energy balance: m·c_p·dT/dt = ΣQ_jackets + Q_HX2 − Q_chiller.
@@ -1460,7 +1483,15 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
 
   The weather federate forwards each event to the owning federate's `updates`
   endpoint. The API also serves `GET /api/v1/kpis` (batches, bottles, energy,
-  demand), which the `cherrymountain` app reads. The API rejects an event with a
+  demand, and the compliance figures of [§18A](#18a-regulatory-and-standards-context):
+  TTB barrels, mean fill and under-fill rejects, inhibited wastewater
+  discharges, verified and unverified CIP runs, genset hours and test hours),
+  which the `cherrymountain` app reads, and `GET /api/v1/state`, the
+  ground-truth snapshot for the white cell's 3D view
+  ([§15.10](#1510-white-cell-3d-view-cm-viz)). Both are built from the weather
+  federate's subscriptions, which plantgen derives from `plant.yaml`
+  `snapshot` (the KPI keys were published all along, but nothing subscribed,
+  so the KPIs read zero until this was added). The API rejects an event with a
   400 when a parameter is unusable, including a `duration` that is not a number
   (a boolean counts as not a number), not positive (0 is allowed for
   `weather-step`, where it holds the step), or longer than 24 hours. A federate
@@ -1471,6 +1502,10 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
   `cherrymountain-truth-*`) over MGMT. Grafana on `sim-ctl` shows the
   white-cell view. The host reaches both, and the event API, through
   `phenix/startup-autotunnel` port forwards ([§15.3](#153-topology-modules-and-variants)).
+- **Truth no device measures.** The cellar federate publishes, per vessel,
+  `cellar/<unit>.level_pct` (FVs: the fill, which has no transmitter),
+  `spund_gps`, `psv_gps`, and `leak_gps` (plant.yaml `unit_outputs`); the
+  BBTs' level is their `LT01` point. No ot-sim device subscribes to them.
 - **Separation.** Ground truth is deliberately separate from the blue team's
   Malcolm view, so exercises can compare "what happened" with "what was
   observed".
@@ -1504,6 +1539,8 @@ values:
 | Peak shaving | $19,140 per 50 kW-year |
 | PackML | Matches PackMLpy's table; 5000-command fuzz |
 | Cellar CO₂ | 2627 ppm steady state at 1 g/s (3284 ppm sensed, below the purge stop); tiers clear 10 % below their limit |
+| Relief valves | A 30 psig spunding setpoint holds FV-102 between 13.5 and 15.5 psig with repeated lifts, all vented gas reaching the room; a forced stone lifts the BBT PSV; normal carbonation peaks at 14.0 psig with no lift (3 h offline run) |
+| KPI API | After 2.5 h offline: 2,376 bottles, 28 kegs, 221 kWh, 128 kW demand, 21.2 TTB barrels, 12.04 fl oz mean fill (all zeros before the weather federate subscribed) |
 | Genset exercise (NFPA 110, 40 CFR 60.4211(f)) | A remote start transfers EP-1 and runs 33 kW for 40 min: logged as an exercise that met 30 min at 30 % of nameplate; the everyday 15 kW does not until a 40 kW load bank is added; an outage during a test is logged as an emergency run; test hours accrue against the 100 h/yr cap |
 | Wastewater discharge record (40 CFR 403.5, POTW permit) | A pH 12 caustic slug with the discharge valve commanded is inhibited (120 s inhibited, 1 event); the discharge that follows stays inside 6.0–9.0; hourly samples accumulate |
 | CIP verification record | A 60 min caustic wash on FV-102 is verified (supply past 160 °F, return past 40 mS/cm, flow proven 10 min); a 2 min rinse is logged and not verified |
@@ -1553,9 +1590,9 @@ values:
 - The compliance records of [§18A](#18a-regulatory-and-standards-context)
   (the genset test log, the wastewater discharge record, the CIP verification
   records, the fill statistics and TTB barrels) live in the federates and ride
-  in the ground-truth documents. They are not HELICS keys, so neither
-  `plant.yaml` nor the FUXA tag lists changed, and the KPI API does not carry
-  them yet; the filler's `ProdDefectiveCount` now comes from the fill model.
+  in the ground-truth documents. Their headline figures are federate outputs
+  (no tags, no FUXA change) that the KPI API carries; the filler's
+  `ProdDefectiveCount` now comes from the fill model.
   The `genset-exercise` event is new to the event API; the SCORCH `plantevent`
   component does not know it yet.
 
@@ -2396,7 +2433,7 @@ exposed ranges and read 0.
 ### 12.6 Plant tag database
 
 `plant/plant.yaml` is the single source of truth. It now covers every area:
-43 hosts, 414 tags (`plant/generated/full/tags.json`), and 70 rationalized alarms
+43 hosts, 428 tags (`plant/generated/full/tags.json`), and 76 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
 ```yaml

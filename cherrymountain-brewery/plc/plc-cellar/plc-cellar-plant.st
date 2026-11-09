@@ -10,11 +10,16 @@
       to the RIO as absolute pressure every scan
   Per bright tank BBT-201 and BBT-202:
     - jacket glycol valve on/off control
-    - the equilibrium head pressure for the carbonation target (Zahm-Nagel fit,
-      sea-level gauge plus 14.7 psi = absolute), and carbonation-stone flow
+    - the equilibrium head pressure for the carbonation target at the
+      temperature setpoint (Zahm-Nagel fit, sea-level gauge plus 14.7 psi =
+      absolute; the setpoint, not the measured temperature, so the limit does
+      not swing with the glycol hysteresis), and carbonation-stone flow
       proportional to the shortfall in dissolved CO2, closed while the head is
-      more than HEAD_MARGIN above that pressure, so undissolved gas never builds
-      up to the 15 psig relief valve
+      more than HEAD_MARGIN above that pressure or at HEAD_MAX (0.5 psi under
+      the 26.1 psia high-pressure alarm), so neither that alarm nor the 15 psig
+      relief valve trips in normal running. A target whose equilibrium is above
+      HEAD_MAX - HEAD_MARGIN cannot be reached, so AT01.SP is clamped to the
+      most that can (VOL_MAX, solved from the same fit), and the HMI shows it.
     - BBT-202 feeds the bottling line: its outlet opens while it holds beer
   Shared equipment:
     - the cellar CO2 life-safety interlock (DESIGN.md 6.7): CEL.SYS.XS01.CO2_OK
@@ -60,31 +65,44 @@ END_FUNCTION_BLOCK
 (* Carbonation for one bright tank. *)
 FUNCTION_BLOCK Carbonation
   VAR_INPUT
-    TEMP : UINT;               (* beer temperature, degF x 100 *)
+    TEMP_SP : UINT;            (* temperature setpoint, degF x 100 *)
     VOL_SP : UINT;             (* target, vol x 100 *)
     VOL_PV : UINT;             (* inline meter, vol x 100 *)
     PSIA_PV : UINT;            (* head pressure, psia x 100 *)
     INHIBIT : BOOL;            (* cellar CO2 interlock *)
-    HEAD_MARGIN : UINT := 100; (* stone closes 1 psi above equilibrium, psi x 100 *)
+    HEAD_MARGIN : UINT := 50;  (* stone closes 0.5 psi above equilibrium, psi x 100 *)
+    HEAD_MAX : UINT := 2560;   (* and never above 25.6 psia, psia x 100 *)
   END_VAR
   VAR_OUTPUT
     PSIA_SP : UINT;            (* equilibrium head pressure, psia x 100 *)
     VALVE : UINT;              (* stone flow valve, % x 10 *)
+    VOL_MAX : UINT;            (* most reachable under HEAD_MAX, vol x 100 *)
   END_VAR
   VAR
     temp_f : REAL;
     vol : REAL;
     psig_sea_level : REAL;
     shortfall : REAL;
+    qa : REAL;
+    qb : REAL;
+    qc : REAL;
   END_VAR
-  temp_f := UINT_TO_REAL(TEMP) / 100.0;
-  vol := UINT_TO_REAL(VOL_SP) / 100.0;
+  temp_f := UINT_TO_REAL(TEMP_SP) / 100.0;
+  (* The fit is quadratic in vol: qa vol^2 + qb vol + qc = 0 at the highest
+     equilibrium the stone may build to (HEAD_MAX - HEAD_MARGIN). *)
+  qa := -0.0684226;
+  qb := 4.24267 + 0.173354 * temp_f;
+  qc := -16.6999 - 0.0101059 * temp_f + 0.00116512 * temp_f * temp_f
+    - (UINT_TO_REAL(HEAD_MAX - HEAD_MARGIN) / 100.0 - 14.7);
+  VOL_MAX := REAL_TO_UINT(LIMIT(0.0,
+    (SQRT(qb * qb - 4.0 * qa * qc) - qb) / (2.0 * qa) * 100.0, 500.0));
+  vol := UINT_TO_REAL(MIN(VOL_SP, VOL_MAX)) / 100.0;
   psig_sea_level := -16.6999 - 0.0101059 * temp_f + 0.00116512 * temp_f * temp_f
     + 0.173354 * temp_f * vol + 4.24267 * vol - 0.0684226 * vol * vol;
   PSIA_SP := REAL_TO_UINT(LIMIT(0.0, (psig_sea_level + 14.7) * 100.0, 4000.0));
   (* 100 % at 0.5 vol or more short of the target, closed at the target. *)
-  shortfall := (UINT_TO_REAL(VOL_SP) - UINT_TO_REAL(VOL_PV)) / 100.0;
-  IF INHIBIT OR shortfall <= 0.0 OR PSIA_PV >= PSIA_SP + HEAD_MARGIN THEN
+  shortfall := vol - UINT_TO_REAL(VOL_PV) / 100.0;
+  IF INHIBIT OR shortfall <= 0.0 OR PSIA_PV >= MIN(PSIA_SP + HEAD_MARGIN, HEAD_MAX) THEN
     VALVE := 0;
   ELSE
     VALVE := REAL_TO_UINT(LIMIT(0.0, shortfall * 2000.0, 1000.0));
@@ -244,19 +262,21 @@ PROGRAM plc_cellar
   (* ---- bright tanks --------------------------------------------------------------- *)
   bbt201_zone(PV := CEL_BBT201_TT01_PV, SP := CEL_BBT201_TT01_SP);
   CEL_BBT201_TV01_CMD := bbt201_zone.VALVE;
-  bbt201_carb(TEMP := CEL_BBT201_TT01_PV, VOL_SP := CEL_BBT201_AT01_SP,
+  bbt201_carb(TEMP_SP := CEL_BBT201_TT01_SP, VOL_SP := CEL_BBT201_AT01_SP,
     VOL_PV := CEL_BBT201_AT01_PV, PSIA_PV := CEL_BBT201_PT01_PV,
     INHIBIT := CEL_SYS_XS01_CO2_INHIBIT);
   CEL_BBT201_PT01_SP := bbt201_carb.PSIA_SP;
+  CEL_BBT201_AT01_SP := MIN(CEL_BBT201_AT01_SP, bbt201_carb.VOL_MAX);
   CEL_BBT201_FCV01_OUT := bbt201_carb.VALVE;
   CEL_BBT201_XV01_CMD := FALSE;  (* BBT-201 is carbonating, not feeding *)
 
   bbt202_zone(PV := CEL_BBT202_TT01_PV, SP := CEL_BBT202_TT01_SP);
   CEL_BBT202_TV01_CMD := bbt202_zone.VALVE;
-  bbt202_carb(TEMP := CEL_BBT202_TT01_PV, VOL_SP := CEL_BBT202_AT01_SP,
+  bbt202_carb(TEMP_SP := CEL_BBT202_TT01_SP, VOL_SP := CEL_BBT202_AT01_SP,
     VOL_PV := CEL_BBT202_AT01_PV, PSIA_PV := CEL_BBT202_PT01_PV,
     INHIBIT := CEL_SYS_XS01_CO2_INHIBIT);
   CEL_BBT202_PT01_SP := bbt202_carb.PSIA_SP;
+  CEL_BBT202_AT01_SP := MIN(CEL_BBT202_AT01_SP, bbt202_carb.VOL_MAX);
   CEL_BBT202_FCV01_OUT := bbt202_carb.VALVE;
   CEL_BBT202_XV01_CMD := CEL_BBT202_LT01_PV > BBT_FEED_MIN_LEVEL;
 

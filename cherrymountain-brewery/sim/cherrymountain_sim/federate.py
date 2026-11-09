@@ -26,7 +26,7 @@ from typing import Any, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from cherrymountain_sim.carbonation import site_gauge_psig
+from cherrymountain_sim.carbonation import equilibrium_volumes, site_gauge_psig
 from cherrymountain_sim.cellar import Cellar, Environment, InitialState, Sensor
 from cherrymountain_sim.timebase import DEFAULT_COMPRESSION, TimeBase
 
@@ -46,9 +46,15 @@ AUTO_CRASH_H: float = 240.0
 AUTO_HYST_F: float = 0.5
 AUTO_BBT_F: float = 34.0
 AUTO_CARB_VOL: float = 2.6
-#: The stone closes this far above the target's equilibrium head pressure, so
-#: gas that does not dissolve never builds up to the relief valve (psi).
-AUTO_CARB_HEAD_MARGIN_PSI: float = 1.0
+#: The stone closes this far above the target's equilibrium head pressure at
+#: the temperature setpoint (not the measured temperature, which swings with
+#: the glycol hysteresis), so gas that does not dissolve does not build up (psi).
+AUTO_CARB_HEAD_MARGIN_PSI: float = 0.5
+#: ... and never above this head, whatever the target: 0.5 psi under the
+#: bbt-pressure-high alarm (26.1 psia, plant.yaml) and about 1.5 psi under the
+#: 15 psig relief valve. A target whose equilibrium needs more than
+#: AUTO_CARB_HEAD_MAX_PSIA - margin is unreachable; plc-cellar alarms on it.
+AUTO_CARB_HEAD_MAX_PSIA: float = 25.6
 #: Per-vessel truth outputs (``<unit>.<name>``, plant.yaml ``unit_outputs``):
 #: values no transmitter measures, for ground truth and the 3D view.
 UNIT_OUTPUTS: frozenset[str] = frozenset({"level_pct", "spund_gps", "psv_gps", "leak_gps"})
@@ -76,6 +82,23 @@ FEDERATES: dict[str, str] = {
 }
 
 type Value = float | bool | str
+
+
+def carb_head_limit_psia(temp_sp_f: float, volumes: float, ambient_psia: float) -> float:
+    """Head pressure (psia) above which the carbonation stone closes: the
+    target's equilibrium at the temperature setpoint plus the margin, capped at
+    AUTO_CARB_HEAD_MAX_PSIA. plc-cellar's Carbonation block does the same."""
+    equilibrium = site_gauge_psig(temp_sp_f, volumes, ambient_psia) + ambient_psia
+    return min(equilibrium + AUTO_CARB_HEAD_MARGIN_PSI, AUTO_CARB_HEAD_MAX_PSIA)
+
+
+def carb_max_volumes(temp_sp_f: float) -> float:
+    """The highest carbonation target the stone can reach at ``temp_sp_f``
+    without building past AUTO_CARB_HEAD_MAX_PSIA: plc-cellar clamps AT01.SP to
+    it (its Carbonation block's VOL_MAX)."""
+    return equilibrium_volumes(
+        temp_sp_f, AUTO_CARB_HEAD_MAX_PSIA - AUTO_CARB_HEAD_MARGIN_PSI
+    )
 
 
 class Publication(BaseModel):
@@ -490,8 +513,8 @@ class CellarFederate(Federate):
         zones on/off around the recipe's setpoint for the fermentation stage,
         spunding sealed from the diacetyl rest, bright tanks held at 34 °F, and
         carbonation toward 2.6 vol, stopped while the CO2 relay is open (§6.7)
-        and while the head is more than a psi above the target's equilibrium
-        pressure (so the relief valve does not lift in normal running)."""
+        and while the head is above :func:`carb_head_limit_psia` (so neither
+        the high-pressure alarm nor the relief valve trips in normal running)."""
         ambient = self.cellar.env.ambient_psia
         for fv in self.cellar.fermenters.values():
             if not fv.filled:
@@ -514,12 +537,9 @@ class CellarFederate(Federate):
                 bbt.write("valve", True)
             elif temp <= AUTO_BBT_F - AUTO_HYST_F:
                 bbt.write("valve", False)
-            short = AUTO_CARB_VOL - float(bbt.read("co2_vol"))
-            head_limit = (
-                site_gauge_psig(temp, AUTO_CARB_VOL, ambient)
-                + ambient
-                + AUTO_CARB_HEAD_MARGIN_PSI
-            )
+            target = min(AUTO_CARB_VOL, carb_max_volumes(AUTO_BBT_F))
+            short = target - float(bbt.read("co2_vol"))
+            head_limit = carb_head_limit_psia(AUTO_BBT_F, target, ambient)
             stone = relay_ok and float(bbt.read("pressure_psia")) < head_limit
             bbt.write("co2_valve_pct", min(max(short * 200.0, 0.0), 100.0) if stone else 0.0)
 

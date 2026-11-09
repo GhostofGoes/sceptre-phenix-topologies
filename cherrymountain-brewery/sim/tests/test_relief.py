@@ -120,3 +120,72 @@ def test_ci_slice_has_truth_outputs_but_no_lift_switch() -> None:
     keys = {p.key for p in ci.federates["cellar"].publications}
     assert "cellar/fv101.level_pct" in keys
     assert not any(k.endswith("-psv.lifted") for k in keys)
+
+
+def _bbt_high_alarm_psia() -> float:
+    """CEL.BBT201.PT01.ALM_HIGH's limit, as plantgen generated it."""
+    doc = json.loads((GENERATED / "full" / "alarms.json").read_text())
+    alarms = doc["alarms"] if isinstance(doc, dict) else doc
+    return next(float(a["limit"]) for a in alarms if a["name"] == "CEL.BBT201.PT01.ALM_HIGH")
+
+
+@pytest.mark.parametrize("target", [2.6, 2.8, 3.0])
+def test_long_autopilot_carbonation_trips_neither_alarm_nor_psv(
+    full: HelicsConfig, monkeypatch: pytest.MonkeyPatch, target: float
+) -> None:
+    """Six hours of normal carbonation, at the recipe's 2.6 vol and at targets
+    the 34 °F setpoint cannot reach: the head never reaches the
+    bbt-pressure-high limit, no relief valve lifts, and the beer carbonates to
+    what is reachable (the stone limit is computed at the temperature setpoint,
+    so the glycol hysteresis does not move it)."""
+    import cherrymountain_sim.federate as federate
+
+    monkeypatch.setattr(federate, "AUTO_CARB_VOL", target)
+    alarm = _bbt_high_alarm_psia()
+    cel = build(full, "cellar")
+    assert isinstance(cel, CellarFederate)
+    cel.apply_input("building/vent.co2_relay_ok", 1.0)
+    peak = 0.0
+    for _ in range(6 * 3600):
+        cel.step(1.0)
+        peak = max(peak, *(float(b.read("pressure_psia")) for b in cel.cellar.bbts.values()))
+    assert peak <= federate.AUTO_CARB_HEAD_MAX_PSIA + 0.1 < alarm
+    assert all(b.psv.lifts == 0 for b in cel.cellar.bbts.values())
+    reachable = min(target, federate.carb_max_volumes(federate.AUTO_BBT_F))
+    for bbt in cel.cellar.bbts.values():
+        assert float(bbt.read("co2_vol")) == pytest.approx(reachable, abs=0.05)
+
+
+def test_stone_limit_and_reachable_target_match_plc_cellar() -> None:
+    """The autopilot's limits are plc-cellar's Carbonation block: equilibrium at
+    the setpoint + 0.5 psi, capped at 25.6 psia, and VOL_MAX solved from the
+    Zahm-Nagel quadratic at 25.1 psia (the block's own arithmetic, here)."""
+    import math
+
+    from cherrymountain_sim.federate import carb_head_limit_psia, carb_max_volumes
+
+    for temp in (30.0, 34.0, 38.0, 50.0):
+        qa = -0.0684226
+        qb = 4.24267 + 0.173354 * temp
+        qc = -16.6999 - 0.0101059 * temp + 0.00116512 * temp**2 - (25.1 - 14.7)
+        plc = (math.sqrt(qb * qb - 4 * qa * qc) - qb) / (2 * qa)
+        assert carb_max_volumes(temp) == pytest.approx(plc, abs=0.005)
+    assert carb_head_limit_psia(34.0, 2.6, AMBIENT_PSIA) == pytest.approx(25.39, abs=0.02)
+    assert carb_head_limit_psia(34.0, 3.0, AMBIENT_PSIA) == 25.6
+
+
+@pytest.mark.parametrize("ambient", [11.6, 12.6])
+def test_bbt_relief_follows_the_live_ambient_pressure(ambient: float) -> None:
+    """The weather moves site pressure; the PSV's 15 psig set point is gauge,
+    so the bright tank uses the ambient it is stepped with, not the one it was
+    built with."""
+    bbt = BrightTank("BBT201", phase="carbonating", temp_f=34, level_pct=90, co2_vol=1.8)
+    assert bbt.ambient_psia == AMBIENT_PSIA
+    bbt.write("co2_valve_pct", 100.0)
+    peak_gauge = 0.0
+    for _ in range(3600):
+        bbt.step(1.0, glycol_f=28.0, ambient_f=66.0, ambient_psia=ambient)
+        peak_gauge = max(peak_gauge, bbt.pressure_psia - ambient)
+    assert bbt.ambient_psia == ambient
+    assert bbt.psv.lifts >= 1
+    assert 14.9 < peak_gauge < 15.5

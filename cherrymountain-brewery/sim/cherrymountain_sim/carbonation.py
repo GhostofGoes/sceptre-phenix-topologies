@@ -263,8 +263,13 @@ class BrightTank:
         ambient_f: float,
         draw_gpm: float = 0.0,
         supply_psig: float = 60.0,
+        ambient_psia: float | None = None,
     ) -> None:
-        """Advance ``dt_s`` seconds (wall time)."""
+        """Advance ``dt_s`` seconds (wall time). ``ambient_psia`` is the live
+        site pressure (the weather moves it): the regulator, the stone supply,
+        and the relief valve's set and reseat pressures are gauge values."""
+        if ambient_psia is not None:
+            self.ambient_psia = ambient_psia
         if draw_gpm > 0 and self.outlet_open and self.liquid_l > 0:
             gone = min(draw_gpm * 3.78541 / 60.0 * dt_s, self.liquid_l)
             self.liquid_l -= gone

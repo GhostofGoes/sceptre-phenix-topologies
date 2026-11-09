@@ -445,6 +445,7 @@ class Cellar:
                 ambient_f=self.env.ambient_f,
                 draw_gpm=self.env.beer_draw_gpm if unit == serving else 0.0,
                 supply_psig=self.env.co2_supply_psig,
+                ambient_psia=self.env.ambient_psia,
             )
         for leak in self.leaks:
             leak.remaining_s -= wall_dt_s

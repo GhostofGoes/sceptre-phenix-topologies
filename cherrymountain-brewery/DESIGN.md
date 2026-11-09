@@ -38,6 +38,7 @@
 16. [New and extended software](#16-new-and-extended-software)
 17. [Testing and validation](#17-testing-and-validation)
 18. [Implementation roadmap](#18-implementation-roadmap)
+    - [Future work](#future-work)
 18A. [Regulatory and standards context](#18a-regulatory-and-standards-context)
 19. [Risks and open questions](#19-risks-and-open-questions)
 20. [Licensing](#20-licensing)
@@ -3636,6 +3637,35 @@ autotunnel, and ot-sim's own Modbus RTU).
 **Running the spike kits.** The netns BBMD runner needs the `conntrack` tool: it
 flushes connection tracking between stages, and a missing binary must not pass
 silently.
+
+### Future work
+
+These items have been evaluated but are not scheduled.
+
+- **SOC case management with DFIR-IRIS.** The SOC can triage alerts in Wazuh
+  and Malcolm, but no tool covers the response side: who owns an alert,
+  grouping alerts into an incident, playbook tasks, and a timeline the white
+  cell can score against ground truth. The
+  [case-management spike](spikes/thehive/README.md) rejected TheHive 5/6,
+  because it is closed source and its Community licence is non-commercial and
+  capped at 2 users ([§2](#2-goals-and-non-goals), [§20](#20-licensing)). It
+  recommends **DFIR-IRIS 2.4** (LGPL-3.0) instead:
+  - It would run on one optional VM, `soc-ir` (2 vCPU, 3 GB RAM, 16 GB disk,
+    on the SOC VLAN), in the `full` variant only. `ci` and `lite` would not
+    change.
+  - A custom Wazuh integration would file CherryMountain alerts of level 7
+    and up as IRIS alerts, with severity mapping, deduplication and a case
+    template picked from the rule group.
+  - Malcolm's alerts would reach IRIS through Wazuh.
+  - ICS playbooks, such as a PLC program change or the CO₂ life-safety event,
+    would become IRIS case templates.
+
+  The spike proved the integration in Docker against a real Wazuh 4.14.1
+  manager. Its plan takes 8–12 days in five phases, with a go/no-go after the
+  image phase: stop if the VM needs more than 3 GB or can't boot offline. The
+  spike also lists SOC gaps that apply with or without a case tool. Examples
+  are that Malcolm's detections don't reach Wazuh and that FUXA process alarms
+  have no Wazuh rules.
 
 ## 18A. Regulatory and standards context
 

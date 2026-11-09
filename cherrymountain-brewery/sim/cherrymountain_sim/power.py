@@ -122,6 +122,11 @@ class PowerSettings(BaseModel):
     bess_soc_pct: float = 60.0
     retransfer_s: float = 120.0
     return_to_service_s: float = 300.0
+    #: A utility BESS dispatch (rtu-der AO 3) stands for this long after its
+    #: last write, 0 kW included; then the site dispatch resumes. rtu-der writes
+    #: only when the DERMS operates the point (ot-sim's FEP Modbus client writes
+    #: on a bus update, never at startup), so no write means no utility command.
+    utility_dispatch_hold_s: float = 900.0
 
 
 class Grid(BaseModel):
@@ -274,10 +279,12 @@ class PowerFederate(Federate):
     load_key: dict[str, str]
     auto: dict[str, Value]
     energized: dict[str, bool]
+    utility_write_t: float | None
 
     def __init__(self, cfg: FederateConfig, clock: SimClock | None = None) -> None:
         super().__init__(cfg, clock)
         self.settings = PowerSettings.model_validate(cfg.sim)
+        self.utility_write_t = None
         self.grid = Grid(soc_pct=self.settings.bess_soc_pct)
         self.meter = Meter()
         self.load_bus = {ld.name: ld.bus for ld in cfg.loads}
@@ -426,8 +433,15 @@ class PowerFederate(Federate):
         g.pv_kw = min(max(avail, 0.0), limit) if pv_on else 0.0
         if "bess-pcs.p_sp_kw" not in self.commands:
             self.auto["bess-pcs.p_sp_kw"] = self._dispatch()
-        utility = self.num("bess-pcs.utility_p_sp_kw")
-        sp = utility if abs(utility) > 0.01 else self.num("bess-pcs.p_sp_kw")
+        utility_active: bool = (
+            self.utility_write_t is not None
+            and t - self.utility_write_t <= s.utility_dispatch_hold_s
+        )
+        sp = (
+            self.num("bess-pcs.utility_p_sp_kw")
+            if utility_active
+            else self.num("bess-pcs.p_sp_kw")
+        )
         if not (g.bess_connected and self.on("bess-pcs.enable")):
             sp = 0.0
         sp = min(max(sp, -100.0), 100.0)
@@ -436,6 +450,11 @@ class PowerFederate(Federate):
         g.bess_kw = sp
         energy = sp * dt / 3600.0
         g.soc_pct -= (energy / 0.95 if sp > 0 else energy * 0.95) / 200.0 * 100.0
+
+    def on_write(self, device: str, point: str, value: Value) -> None:
+        """Note when the utility last dispatched the BESS (any value, 0 kW too)."""
+        if (device, point) == ("bess-pcs", "utility_p_sp_kw"):
+            self.utility_write_t = self.t
 
     def _dispatch(self) -> float:
         """BESS dispatch of DESIGN.md §7.3 (the built-in plc-power logic)."""

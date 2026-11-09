@@ -130,3 +130,22 @@ def test_meter_demand_and_bill() -> None:
     onpeak_hours = 4 * 22  # 22 weekdays in July 1-30, 2026
     energy = 200 * (onpeak_hours * 0.38375 + (720 - onpeak_hours) * 0.09927)
     assert m.month_to_date_usd == pytest.approx(91.79 + energy + 200 * 36.80, rel=1e-6)
+
+
+def test_an_explicit_zero_kw_utility_dispatch_holds_the_bess(power: PowerFederate) -> None:
+    """A utility dispatch of 0 kW is a command, not "no command": it holds the
+    BESS at 0 while the site would discharge, and the site dispatch resumes once
+    the hold (utility_dispatch_hold_s) passes without another utility write.
+    Before any utility write the site dispatch runs."""
+    _load(power, 1.0)
+    for _ in range(5):
+        power.step(1.0)
+    assert power.grid.bess_kw > 10.0  # peak shaving, no utility command yet
+    power.write("bess-pcs.utility_p_sp_kw", 0.0)
+    for _ in range(5):
+        power.step(1.0)
+    assert power.grid.bess_kw == 0.0
+    power.settings.utility_dispatch_hold_s = 10.0
+    for _ in range(15):
+        power.step(1.0)
+    assert power.grid.bess_kw > 10.0

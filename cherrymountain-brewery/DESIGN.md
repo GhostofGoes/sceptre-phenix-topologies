@@ -762,6 +762,12 @@ flowchart TB
 - **PV and utility limits.** The inverter applies
   `min(site_limit, utility_limit)`. The PLC writes the site limit, and the
   utility writes its limit through `rtu-der`.
+- **Utility BESS dispatch.** A utility dispatch (rtu-der AO 3) overrides the
+  site dispatch for 15 minutes after its last write, and an explicit 0 kW is a
+  command (hold the battery idle), not "no command". rtu-der writes only when
+  the DERMS operates the point: ot-sim's FEP Modbus client writes on a bus
+  update and never at startup, so the site dispatch runs until the utility
+  acts.
 - **Genset exercise:** weekly, scheduled.
 
 ### 7.4 Utility tariff from open data
@@ -1365,10 +1371,16 @@ values:
 - Built-in operators (the `autopilot` setting) run the brewhouse, utilities,
   and packaging while no PLC is writing. They hand over on the first write
   and take control back after 300 federate seconds without one (a stopped
-  PLC, or a one-off write from another host). This assumes a running PLC
-  rewrites its outputs every polling cycle, which a VM run must confirm. The
-  power and building federates
-  follow a point's last write and otherwise their own controller. The cellar has
+  PLC, or a one-off write from another host). This relies on a running PLC's
+  writes reaching the federate continuously, which both halves do according to
+  their source: OpenPLC v4.3.2's `modbus_master` plugin writes every write point
+  (FC 15/16) every cycle it is due, with no change detection
+  (`modbus_master_plugin.py`; plantgen sets a 250 ms cycle), and ot-sim
+  `9dc33047` pushes an update for every Modbus write request, changed or not,
+  which its io module sends to the federate's endpoint at the next step. So no
+  PLC heartbeat tag is needed; a VM run must still confirm it. The power and
+  building federates follow a point's last write and otherwise their own
+  controller. The cellar has
   no autopilot yet.
 - PackML uses PackMLpy's transition table on a custom synchronous machine.
 - There is no CoolProp or pvlib. The code has its own EPW reader, synthetic

@@ -304,6 +304,13 @@ APP_TYPES: dict[str, str] = {
     "historian": "historian",
     "ews": "ews",
 }
+#: How often phenix runs the cherrymountain app's ``running`` stage, which
+#: refreshes the provisioning states and the plant KPIs in
+#: ``status.apps.cherrymountain`` (a Go duration; phenix refuses less than 1s).
+#: ``phenix ui`` schedules it for an experiment it starts, which a ``phenix
+#: workflow apply`` or a start from the UI is; a plain ``phenix experiment
+#: start`` from the CLI needs ``--honor-run-periodically``.
+APP_RUN_PERIOD: str = "5m"
 #: Order of the host types in the block (the app's fixtures use it).
 APP_ORDER: tuple[str, ...] = (
     "sim-ctl",
@@ -349,6 +356,7 @@ def cherrymountain_app(plant: Plant) -> dict[str, Any]:
     hosts = [e for _, _, e in sorted(entries, key=lambda e: (e[0], e[1]))]
     return {
         "name": "cherrymountain",
+        "runPeriodically": APP_RUN_PERIOD,
         "metadata": {"variant": plant.variant, **plant.spec.app},
         "hosts": hosts,
     }

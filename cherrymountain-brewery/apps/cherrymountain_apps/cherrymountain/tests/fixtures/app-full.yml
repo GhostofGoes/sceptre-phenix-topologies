@@ -1,9 +1,10 @@
 # The cherrymountain app block for the full variant (DESIGN.md 16): every
 # host the app provisions or checks. It holds the same metadata and hosts as
 # the block plantgen emits (plant/generated/full/phenix/cherrymountain.yaml,
-# embedded in scenario-full.yml); build_fixtures.py records the experiment
-# with this copy.
+# embedded in scenario-full.yml; test_fixtures.py compares the two);
+# build_fixtures.py records the experiment with this copy.
 name: cherrymountain
+runPeriodically: 5m
 metadata:
   variant: full
   wazuh:

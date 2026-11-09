@@ -15,8 +15,20 @@ stages: configure, pre-start, post-start, running, cleanup
 
 After `ot-sim` and before `helics`. ot-sim annotates the field devices with
 `helics/federate`, this app annotates the sim-* federate nodes, and helics
-counts both ([DESIGN.md 15.2](../../../DESIGN.md#152-apps)). Run `running`
-periodically (`runPeriodically: 5m`) to keep the KPIs current.
+counts both ([DESIGN.md 15.2](../../../DESIGN.md#152-apps)).
+
+plantgen emits the block with `runPeriodically: 5m`, so phenix runs the
+`running` stage every five minutes and the status stays current. The schedule
+belongs to the process that starts the experiment:
+
+- `phenix ui` keeps it for an experiment it starts: a `phenix workflow apply`
+  (which starts the experiment through the server) or a start from the UI.
+- A plain `phenix experiment start <name>` from the CLI does not. Pass
+  `--honor-run-periodically` (the command then stays in the foreground until
+  the experiment stops), or run the stage by hand:
+  `phenix experiment trigger running <name> cherrymountain`. Name the app:
+  without it the command runs the `running` stage of every app, and the
+  `scorch` app's is SCORCH run 0.
 
 ## Stages
 
@@ -182,6 +194,17 @@ A fuller plant (excerpt):
 Host states: `provisioned`, `pending`, `failed`, `unreachable` (no C2 client
 yet), `not-checked` (no provisioning unit). After cleanup, `exports` maps each
 host to the exported file, or to `failed: <error type>`.
+
+Read it from the stored experiment:
+
+```shell
+docker exec phenix phenix config get experiment/<name> -o json -p
+```
+
+and look under `status.apps.cherrymountain`. `updated` says when the last
+`running` (or post-start) pass wrote it. Right after a start most hosts are
+`pending` or `unreachable` and `kpis.available` is false with the reason; the
+next `running` pass fills them in.
 
 ## Credentials
 

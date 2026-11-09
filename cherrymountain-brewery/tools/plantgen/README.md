@@ -261,7 +261,11 @@ source equals `limit`. Alarms on BACnet points have no PLC bit: `plc` and
 
 ### `phenix/cherrymountain.yaml`
 
-The `cherrymountain` app entry: `metadata` is `{variant: <name>, ...}` plus
+The `cherrymountain` app entry: `runPeriodically: 5m` makes phenix run the
+app's `running` stage every five minutes, which keeps the provisioning states
+and plant KPIs in `status.apps.cherrymountain` current (`APP_RUN_PERIOD` in
+`plantgen/apps.py`; `phenix ui` schedules it for an experiment it starts,
+which `phenix workflow apply` is). `metadata` is `{variant: <name>, ...}` plus
 the variant's `app` block in plant.yaml (ci: `verify.timeout`; full:
 `wazuh.manager`), and `hosts` lists every host the app provisions or checks
 with its `metadata.type`, grouped in the order sim-ctl, sim-federate, rio,

@@ -22,6 +22,12 @@ TIMEOUT="${CM_START_TIMEOUT:-900}"
 
 log() { echo "cm-malcolm-start: $*"; }
 
+# cm-malcolm.service retries until the first boot's provisioning is done.
+if [ ! -f "${STATE}/provisioned" ]; then
+  log "not provisioned yet (no ${STATE}/provisioned); cm-malcolm-provision.service does it"
+  exit 1
+fi
+
 profile=$(cat "${STATE}/profile")
 read -r -a services <<< "$(cm_malcolm_services "$profile")"
 cd "${MALCOLM_DIR}"

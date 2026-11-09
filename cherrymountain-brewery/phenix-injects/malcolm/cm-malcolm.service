@@ -3,8 +3,10 @@ Description=CherryMountain Malcolm (Zeek, Suricata, Arkime, and OpenSearch on th
 After=docker.service cm-malcolm-provision.service cm-malcolm-capture.service
 Requires=docker.service
 Wants=cm-malcolm-provision.service cm-malcolm-capture.service
-# The first boot configures Malcolm; until then there is nothing to start.
-ConditionPathExists=/var/lib/cm-malcolm/provisioned
+# The first boot configures Malcolm; until then cm-malcolm-start exits 1 and the
+# unit tries again. A ConditionPathExists= would not do: when the first
+# provisioning attempt fails, systemd skips this unit for good, and the retry of
+# cm-malcolm-provision.service that succeeds does not start it.
 # Retry forever: Restart=on-failure below is the only retry loop.
 StartLimitIntervalSec=0
 

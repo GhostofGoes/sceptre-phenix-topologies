@@ -32,6 +32,8 @@ IMAGE_TAG=26.10.0
 OPENSEARCH_IMAGE="ghcr.io/idaholab/malcolm/opensearch:${IMAGE_TAG}"
 # The uid and gid the containers run as (PUID and PGID in config/process.env).
 MALCOLM_UID=1000
+# The group that may use Docker's socket.
+DOCKER_GROUP="${CM_DOCKER_GROUP:-docker}"
 
 # shellcheck source=phenix-injects/malcolm/profiles.sh
 . "${SRC}/profiles.sh"
@@ -51,9 +53,14 @@ set_env() {
 }
 
 # as_malcolm CMD...: run a command as the unprivileged user Malcolm's scripts need. The
-# unit hides /home (ProtectHome=yes), so HOME is the private /tmp.
+# unit hides /home (ProtectHome=yes), so HOME is the private /tmp. Every Malcolm script
+# (scripts/control.py, auth_setup included) runs `docker info` first and stops with
+# "requires docker" when that fails, so the command keeps the docker group, as
+# cm-malcolm.service does. The scripts also refuse a root login name, which a root
+# shell would pass on in USER and LOGNAME.
 as_malcolm() {
-  setpriv --reuid="${MALCOLM_UID}" --regid="${MALCOLM_UID}" --clear-groups env HOME=/tmp "$@"
+  setpriv --reuid="${MALCOLM_UID}" --regid="${MALCOLM_UID}" --groups="${DOCKER_GROUP}" \
+    env HOME=/tmp USER=malcolm LOGNAME=malcolm "$@"
 }
 
 if [ -f "${STATE}/provisioned" ]; then
@@ -86,7 +93,9 @@ sed -i -E "s/-Xmx[0-9]+[gm] -Xms[0-9]+[gm]/-Xmx${ls_heap} -Xms${ls_heap}/" confi
 # Fix 2: the pcap processors log nothing at their default level.
 set_env config/upload-common.env PCAP_PIPELINE_VERBOSITY -vv
 set_env config/upload-common.env PCAP_NODE_NAME malcolm
-set_env config/upload-common.env ZEEK_LOCAL_NETS "${ZEEK_LOCAL_NETS}"
+# Malcolm sets ZEEK_LOCAL_NETS (blank) in zeek.env, which compose reads after
+# upload-common.env for zeek and zeek-live: set anywhere earlier, it is overridden.
+set_env config/zeek.env ZEEK_LOCAL_NETS "${ZEEK_LOCAL_NETS}"
 
 suricata=false
 if [ "$profile" = full ]; then
@@ -154,7 +163,14 @@ password_hash=$(printf '%s' "$password" | openssl passwd -6 -stdin)
 # Non-interactive auth_setup writes nginx/htpasswd only from this bcrypt hash; without it
 # the file stays empty and nobody can sign in to the web UI.
 htpasswd_hash=$(printf '%s' "$password" | htpasswd -niB malcolm | cut -d: -f2)
-mkdir -p opensearch pcap/upload pcap/processed zeek-logs/upload zeek-logs/processed zeek-logs/current zeek-logs/extract_files zeek-logs/live
+# The directories Malcolm's own `scripts/start` creates before `compose up`
+# (boundPathsToCreate in scripts/control.py). cm-malcolm-start calls compose itself,
+# and the compose file binds them with create_host_path: false: without ./valkey
+# (both profiles) or ./postgres and ./netbox/media (full), Docker refuses to create
+# the container and `compose up` fails.
+mkdir -p opensearch/nodes opensearch-backup pcap/arkime-live pcap/processed pcap/upload/tmp/spool pcap/upload/variants \
+  zeek-logs/upload zeek-logs/processed zeek-logs/current zeek-logs/extract_files/filescan zeek-logs/live/spool \
+  suricata-logs/live filescan-logs nginx/ca-trust netbox/media postgres valkey
 chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
 # Malcolm's scripts refuse to run as root.
 as_malcolm env "PATH=/opt/malcolm-venv/bin:${PATH}" ./scripts/auth_setup \

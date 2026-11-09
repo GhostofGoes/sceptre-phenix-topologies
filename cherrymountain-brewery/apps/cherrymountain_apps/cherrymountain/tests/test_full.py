@@ -1,6 +1,7 @@
 """The full variant: plant.yaml against the 43-node topology, and the
 renderers whose inputs exist for it, the five PLC program ZIPs included. (The
-full FUXA projects are built here too, but a whole pre-start is not run.)"""
+full FUXA projects are built here too; test_full_prestart.py renders every
+host in one pass.)"""
 
 from __future__ import annotations
 
@@ -139,6 +140,8 @@ def test_full_sim_ctl_gets_the_ground_truth_marker(ctx: Context) -> None:
     injects = {i.dst: i for i in render.render_sim(ctx, "sim-ctl", sim_ctl)}
     marker = injects["/etc/cherrymountain/ground-truth.env"]
     assert Path(marker.src).stat().st_mode & 0o077 == 0
+    # It holds Grafana's admin password, so it is root-only in the guest too.
+    assert marker.permissions == "0600"
     values = env(Path(marker.src))
     assert values["CM_TRUTH_INDEX_BASE"] == "cherrymountain-truth"
     assert values["GF_SECURITY_ADMIN_PASSWORD"]

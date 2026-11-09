@@ -659,6 +659,9 @@ def render_sim(
                     ),
                     dst=f"{CONF_DIR}/ground-truth.env",
                     description="ground truth on sim-ctl: OpenSearch and Grafana",
+                    # It holds Grafana's admin password. systemd reads it as
+                    # root (EnvironmentFile, ConditionPathExists).
+                    permissions="0600",
                 )
             )
     federates: list[str] = ctx.federates_of(hostname, md)

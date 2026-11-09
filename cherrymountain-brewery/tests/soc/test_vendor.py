@@ -32,6 +32,17 @@ def test_totp_changes_every_thirty_seconds() -> None:
     assert cm_vendor_session.totp(secret, 3029) != cm_vendor_session.totp(secret, 3030)
 
 
+def test_totp_flag_prints_the_account_and_the_current_code(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A person who signs in to Guacamole by hand needs the code of the enrolled key."""
+    monkeypatch.setattr(cm_vendor_session.time, "time", lambda: 3010.0)
+    assert cm_vendor_session.main(["--totp", "--env", str(RIDGELINE)]) == 0
+    vendor = cm_vendor_session.Vendor.from_file(RIDGELINE)
+    code = cm_vendor_session.totp(vendor.VENDOR_TOTP_SECRET, 3010.0)
+    assert capsys.readouterr().out == f"{vendor.VENDOR_GUAC_USER} {code} (valid for 20 s)\n"
+
+
 def test_instruction_round_trip() -> None:
     text = cm_vendor_session.encode_instruction("mouse", "100", "120", "0")
     assert text == "5.mouse,3.100,3.120,1.0;"

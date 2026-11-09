@@ -23,6 +23,7 @@ certificate is self-signed, so it is not verified (a range-only choice, noted in
 log). Standard library plus pydantic.
 
 Usage: cm_vendor_session.py [--url https://10.10.20.11] [--hold 60] [--connection ews-rdp-<account>]
+       cm_vendor_session.py --totp   (the account and its current code, for a sign-in in the browser)
 """
 
 from __future__ import annotations
@@ -402,7 +403,18 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--connection", default=None, help="default: ews-rdp-<the technician's account>")
     parser.add_argument("--env", type=Path, default=DEFAULT_ENV)
     parser.add_argument("--log", type=Path, default=DEFAULT_LOG)
+    parser.add_argument(
+        "--totp",
+        action="store_true",
+        help="print the technician's account and the current TOTP code, then exit (for a sign-in by hand)",
+    )
     args: argparse.Namespace = parser.parse_args(argv)
+    if args.totp:
+        vendor: Vendor = Vendor.from_file(args.env)
+        now: float = time.time()
+        code: str = totp(vendor.VENDOR_TOTP_SECRET, now)
+        print(f"{vendor.VENDOR_GUAC_USER} {code} (valid for {TOTP_PERIOD - int(now) % TOTP_PERIOD} s)")
+        return 0
     return run(args.url.rstrip("/"), args.hold, args.connection, args.env, args.log)
 
 

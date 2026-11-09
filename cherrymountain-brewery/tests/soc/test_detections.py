@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import INJECTS, node_ip
+from soc_paths import INJECTS, node_ip, repo, topology_nodes  # noqa: F401 (the fixtures are used by name)
 
 MALCOLM: Path = INJECTS / "malcolm"
 RULES: Path = MALCOLM / "cherrymountain.rules"

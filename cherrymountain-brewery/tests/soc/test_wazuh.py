@@ -19,7 +19,7 @@ from typing import ClassVar
 import pytest
 from pydantic import BaseModel, ConfigDict, Field
 
-from conftest import INJECTS
+from soc_paths import INJECTS  # noqa: F401 (the fixtures are used by name)
 
 WAZUH: Path = INJECTS / "wazuh"
 #: Wazuh's own rules that ours extend.

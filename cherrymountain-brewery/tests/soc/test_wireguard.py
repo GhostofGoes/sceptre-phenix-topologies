@@ -11,7 +11,7 @@ import cm_wg_watch
 import pytest
 import yaml
 
-from conftest import INJECTS
+from soc_paths import INJECTS, repo  # noqa: F401 (the fixtures are used by name)
 
 DUMP: str = (
     "PRIVATE=\tSERVERPUB=\t51820\toff\n"

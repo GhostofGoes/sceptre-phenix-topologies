@@ -12,7 +12,7 @@ import cm_vendor_session
 import cm_vendor_sql
 import pytest
 
-from conftest import INJECTS
+from soc_paths import INJECTS, repo  # noqa: F401 (the fixtures are used by name)
 
 RIDGELINE: Path = INJECTS / "guacamole/ridgeline.env"
 

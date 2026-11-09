@@ -37,6 +37,10 @@ Phenix". It is an all open-source OT cyber range covering:
 | Physics co-simulation | [HELICS](https://github.com/GMLC-TDC/HELICS) |
 | Network monitoring and SIEM | [Malcolm](https://github.com/cisagov/Malcolm) and [Wazuh](https://github.com/wazuh/wazuh) |
 
+To run it on your own host, follow [USER_GUIDE.md](USER_GUIDE.md): the
+repositories to clone, the builds, the first start of each variant, and what to
+check.
+
 See [DESIGN.md](DESIGN.md) for the full design: plant and process design,
 power and building models, simulation, network architecture, phenix
 integration, new software, testing, roadmap, risks, and references.
@@ -59,6 +63,8 @@ integration, new software, testing, roadmap, risks, and references.
 | `plc/plc-cellar/` | The cellar PLC programs in Structured Text (`plc-cellar.st` for ci, `plc-cellar-plant.st` for full and lite), and the ci `build_zip.sh` |
 | `plc/common/` | The per-variant PLC builder: alarm logic generated from `alarms.json`, strucpp, and the ZIPs under `phenix-injects/openplc/<variant>/` ([README](plc/common/README.md)) |
 | `tests/integration/` | `ci_slice_docker.sh`: the cellar slice (ot-sim, OpenPLC v4.3.2, FUXA) in Docker, no KVM |
+| `tests/soc/` | Tests of the Wazuh rules, the Suricata rules and Zeek script, the vendor-path scripts, and that every script a scenario step runs is on its VM |
+| `viz/` | `cherrymountain_viz`: cm-viz, the white cell's 3D view of ground truth (three.js, vendored), with tests ([README](viz/README.md)) |
 | `fuxa/` | `build_project.py` and the FUXA projects it builds: scada-fuxa for ci, and scada-fuxa and bas-fuxa for full and lite (`fuxa/<variant>/`) |
 | `tools/lint/` | Hook scripts for prek: systemd-analyze on units and shellcheck on shell in image YAML |
 | `spikes/` | Phase 0 spike kits, each with its go/no-go result ([summary](spikes/README.md)) |
@@ -84,7 +90,11 @@ docker exec phenix phenix workflow apply -b cherrymountain-ci -c phenix-ci.yml /
 
 Host access to FUXA is through the startup autotunnel. The host port is random
 (11881 is only the annotation's label): find it with `cc tunnel list scada-fuxa`
-(the row with `dst port 1881`). The range admin password is in `phenix-injects/fuxa/fuxa.env` (range-only).
+(the row with `dst port 1881`). The `cherrymountain` app generates the range
+admin password for each experiment: it is `fuxa_password` in
+`<experiment directory>/cherrymountain/secrets.json`. The fixed one in
+`phenix-injects/fuxa/fuxa.env` applies only where the app does not run (the
+Docker integration test).
 
 ## Regenerate and test
 
@@ -105,6 +115,8 @@ Checks (all must pass; `prek run --all-files` covers lint and hygiene):
 (cd tools/plantgen && python -m plantgen --check && python -m pytest)
 (cd sim && python -m pytest)                         # model validation and the offline federation
 (cd apps && python -m pytest)                        # the cherrymountain app and plantevent (needs phenix-apps, see apps/README.md)
+(cd viz && python -m pytest)                         # cm-viz: frames, server, and the sim-ctl source
+python -m pytest tests/soc                           # SOC detections, vendor-path scripts, and the scripts scenario steps run
 python sync.py --check                               # injects and scenarios match plantgen output (ci, full, lite)
 python tools/netcheck/run_netcheck.py                # IP plan, conduit matrix, routes, rules (full, lite)
 (cd tools/netcheck && python -m pytest)              # netcheck, sync.py, and BBMD tests
@@ -151,9 +163,9 @@ to pin down how the v4 runtime clamps and segments the holding registers.
   conduit loses its rule, a rule has no conduit, an address overlaps, or
   plantgen's output was not synced into the scenarios (or a program ZIP is
   stale).
-- **Test suites:** the plantgen, `sim/`, `apps/`, and SOC pytest suites run as
-  hooks too (`cm-plantgen-tests`, `cm-sim-tests`, `cm-app-tests`,
-  `cm-soc-tests`). The app hook installs phenix-apps from the pinned fork
+- **Test suites:** the plantgen, `sim/`, `viz/`, `apps/`, and SOC pytest suites
+  run as hooks too (`cm-plantgen-tests`, `cm-sim-tests`, `cm-viz-tests`,
+  `cm-app-tests`, `cm-soc-tests`). The app hook installs phenix-apps from the pinned fork
   commit. The Docker integration test and `build_zip.sh --check` (Node) are
   run by hand.
 

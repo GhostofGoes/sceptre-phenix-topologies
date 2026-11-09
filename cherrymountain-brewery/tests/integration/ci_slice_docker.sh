@@ -21,9 +21,10 @@
 # the containers by IP, so use a Linux Docker engine.
 #
 # Environment:
-#   CM_WORK          scratch directory (default /tmp/cm-ci-slice)
-#   CM_PHENIX_APPS   sceptre-phenix-apps checkout (default /home/user/ghostofgoes/sceptre-phenix-apps;
-#                    cloned shallow from GhostofGoes/sceptre-phenix-apps, branch ci-e2e-minimega, if absent)
+#   CM_WORK          scratch directory (default: a new mktemp -d directory, printed at
+#                    the start and the end; set it to reuse the venv between runs)
+#   CM_PHENIX_APPS   sceptre-phenix-apps checkout (default: under CM_WORK; fetched shallow
+#                    from GhostofGoes/sceptre-phenix-apps at PHENIX_APPS_COMMIT if absent)
 #   CM_EXTRA_CA      PEM bundle of a TLS-inspecting egress proxy; builds CA-aware base images
 #                    and builds with --network host and the proxy settings of this shell
 #   CM_SKIP_BUILD=1  reuse images that already exist
@@ -33,13 +34,15 @@ set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "${here}/../.." && pwd)
-work="${CM_WORK:-/tmp/cm-ci-slice}"
-phenix_apps="${CM_PHENIX_APPS:-/home/user/ghostofgoes/sceptre-phenix-apps}"
+work="${CM_WORK:-$(mktemp -d -t cm-ci-slice.XXXXXX)}"
+phenix_apps="${CM_PHENIX_APPS:-${work}/sceptre-phenix-apps}"
 gen="${root}/plant/generated/ci"
 injects="${root}/phenix-injects"
 
 # Pins (see spikes/openplc-v4 and spikes/fuxa for how they were chosen).
 OPENPLC_COMMIT=9fb5e1a29b574806f5aea3a4e78202c7a5d658ee   # runtime v4.3.2
+# The fork commit the app tests use too (prek.toml, cm-app-tests).
+PHENIX_APPS_COMMIT=771e8d87a64770265862468664a1368dcfcbb99d
 OPENPLC_IMAGE=cm-openplc:v4.3.2
 OTSIM_IMAGE=cm-otsim:noble
 FUXA_IMAGE="${CM_FUXA_IMAGE:-frangoteam/fuxa:1.3.5}"
@@ -60,6 +63,7 @@ need() { command -v "$1" >/dev/null || die "$1 is required"; }
 for tool in docker git python3 curl unzip zip; do need "${tool}"; done
 timeout 20 docker info >/dev/null 2>&1 || die "the Docker daemon is not reachable (start dockerd)"
 mkdir -p "${work}/logs"
+log "work directory ${work}"
 
 cleanup() {
   local rc=$?
@@ -84,10 +88,14 @@ log "rio-cellar ${RIO_IP}, plc-cellar ${PLC_IP}, scada-fuxa ${FUXA_IP}"
 
 # --- 1. host venv: phenix-apps (renders ot-sim), pymodbus, requests -----------
 if [ ! -d "${phenix_apps}/.git" ]; then
-  log "cloning sceptre-phenix-apps (ci-e2e-minimega, shallow, read-only use)"
-  mkdir -p "$(dirname "${phenix_apps}")"
-  timeout 300 git clone --quiet --depth 1 --branch ci-e2e-minimega \
-    https://github.com/GhostofGoes/sceptre-phenix-apps.git "${phenix_apps}" || log "clone failed; the ot-sim config will be hand-rendered"
+  log "fetching sceptre-phenix-apps ${PHENIX_APPS_COMMIT:0:12} (shallow, read-only use)"
+  mkdir -p "${phenix_apps}"
+  if ! { git -C "${phenix_apps}" init -q \
+      && timeout 300 git -C "${phenix_apps}" fetch -q --depth 1 \
+        https://github.com/GhostofGoes/sceptre-phenix-apps.git "${PHENIX_APPS_COMMIT}" \
+      && git -C "${phenix_apps}" checkout -q FETCH_HEAD; }; then
+    log "fetch failed; the ot-sim config will be hand-rendered"
+  fi
 fi
 if [ ! -x "${work}/venv/bin/python" ]; then
   log "creating the test venv"
@@ -95,7 +103,7 @@ if [ ! -x "${work}/venv/bin/python" ]; then
 fi
 py="${work}/venv/bin/python"
 timeout 600 "${work}/venv/bin/pip" install -q --disable-pip-version-check \
-  'pymodbus==3.11.4' requests pyyaml pydantic pytest >/dev/null
+  'pymodbus==3.11.4' 'requests==2.32.5' 'pyyaml==6.0.3' 'pydantic==2.14.3' 'pytest==9.2.0' >/dev/null
 render_mode=app
 if [ -d "${phenix_apps}/src/python" ] \
   && timeout 600 "${work}/venv/bin/pip" install -q --disable-pip-version-check "${phenix_apps}/src/python" >/dev/null 2>&1 \

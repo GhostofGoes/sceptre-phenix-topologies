@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/vbash
 # shellcheck shell=bash
 # VyOS settings that the phenix vrouter app cannot render (DESIGN.md 10.3).
 #
@@ -16,19 +16,35 @@
 #
 # --dry-run makes the same changes, prints `compare`, and discards them: no
 # commit, no marker. CM_VYOS_TEMPLATE and CM_VYOS_RUN_DIR override the VyOS
-# script template and the marker directory (the tests use them).
+# script template and the marker directory, and CM_VYOS_BOOT_STATUS,
+# CM_VYOS_BOOT_FLAG, CM_VYOS_WAIT_TRIES, and CM_VYOS_WAIT_SLEEP the two boot
+# markers and the wait for them (the tests use all of them).
 #
-# The topology injects it into the router's persistent config tree and runs it
-# with a `commands` entry (cc exec through sg vyattacfg), which minimega
-# repeats at every miniccc connect, so it runs once per boot: /tmp is cleared
-# at boot, and the marker is written after a successful commit. A lock keeps
-# a second run (the next miniccc connect) from opening a parallel configure
-# session while the first one is still waiting or committing. If any step fails,
-# the rest is still committed, the marker lists the failed steps (so the next
-# connect does not loop on them), and the script exits 1 so `cc` shows it.
+# Where it lives. The topology injects it next to the vrouter app's vyos.script,
+# in boot/vyos/rw/config/scripts/custom/ of the image's persistence partition.
+# VyOS mounts that partition at /usr/lib/live/mount/persistence and bind-mounts
+# /opt/vyatta/etc/config over /config (vyos-1x, src/init/vyos-router), so the
+# file is NOT at /config/scripts/custom/ in the running router. The topology's
+# `commands` entry (cc exec through sg vyattacfg) runs it from the persistence
+# path, the one the image's own boot hook uses (sceptre-phenix-images,
+# scripts/vyos/build-vyos.sh). That hook runs only the *.script files there, so
+# this .sh file runs through cc alone.
 #
-# TODO(verify): unverified on a VyOS VM. Check that the file shows up as
-# /config/scripts/custom/cm-vyos-config.sh, that the syslog syntax of the
+# When it runs. miniccc starts with multi-user.target, before VyOS loads its
+# boot config, and minimega repeats the `cc exec` at every miniccc connect. So
+# the script first waits for two markers: /tmp/vyos-config-status (VyOS has
+# loaded its boot config) and phenix-run-flag in this directory (the boot hook
+# has committed and saved vyos.script; it stays from the first boot on). The
+# router's host name alone is not enough: a commit applies `system host-name`
+# first, before the firewall and IPsec nodes that this script reads exist.
+# /tmp is cleared at boot, and the done marker is written after a successful
+# commit, so the script runs once per boot. A lock keeps a second run (the next
+# miniccc connect) from opening a parallel configure session while the first one
+# is still waiting or committing. If any step fails, the rest is still
+# committed, the marker lists the failed steps (so the next connect does not
+# loop on them), and the script exits 1 so `cc` shows it.
+#
+# TODO(verify): unverified on a VyOS VM. Check that the syslog syntax of the
 # build is `remote` or `host` (both are tried), and that `default-log` takes.
 #
 # VyOS's script-template is not safe under -e or -u.
@@ -40,6 +56,10 @@ RUN_DIR=${CM_VYOS_RUN_DIR:-/tmp}
 TEMPLATE=${CM_VYOS_TEMPLATE:-/opt/vyatta/etc/functions/script-template}
 DONE=$RUN_DIR/cm-vyos-config.done
 LOCK=$RUN_DIR/cm-vyos-config.lock
+BOOT_STATUS=${CM_VYOS_BOOT_STATUS:-/tmp/vyos-config-status}
+BOOT_FLAG=${CM_VYOS_BOOT_FLAG:-$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/phenix-run-flag}
+WAIT_TRIES=${CM_VYOS_WAIT_TRIES:-120}
+WAIT_SLEEP=${CM_VYOS_WAIT_SLEEP:-5}
 
 dry_run=0
 case "${1:-}" in
@@ -58,18 +78,23 @@ if ! flock -n 9; then
   exit 0
 fi
 
-# Wait for the vrouter app's boot config, which sets the host name.
+# Wait until VyOS has loaded its boot config and the image's boot hook has
+# committed the vrouter app's vyos.script, which sets the host name.
 host=
-for _ in $(seq 1 120); do
-  case "$(hostname)" in
-    isp-rtr | util-rtr | fw-edge | fw-ot)
-      host=$(hostname)
-      break
-      ;;
-  esac
-  sleep 5
+for _ in $(seq 1 "$WAIT_TRIES"); do
+  if [ -e "$BOOT_STATUS" ] && [ -e "$BOOT_FLAG" ]; then
+    case "$(hostname)" in
+      isp-rtr | util-rtr | fw-edge | fw-ot)
+        host=$(hostname)
+        break
+        ;;
+    esac
+  fi
+  sleep "$WAIT_SLEEP"
 done
 if [ -z "$host" ]; then
+  [ -e "$BOOT_STATUS" ] || echo "cm-vyos-config: VyOS did not finish loading its boot config ($BOOT_STATUS is missing)" >&2
+  [ -e "$BOOT_FLAG" ] || echo "cm-vyos-config: the boot hook did not finish the vrouter config ($BOOT_FLAG is missing)" >&2
   echo "cm-vyos-config: the router never got its host name" >&2
   exit 1
 fi

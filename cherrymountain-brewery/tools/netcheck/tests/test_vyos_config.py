@@ -82,26 +82,38 @@ class Router:
         hostname: Path = bin_dir / "hostname"
         hostname.write_text(f"#!/bin/sh\necho {host}\n")
         hostname.chmod(0o755)
+        # The two boot markers the script waits for: VyOS's boot config status
+        # and the flag of the image's boot hook. A booted router has both.
+        self.boot_status: Path = tmp / "vyos-config-status"
+        self.boot_flag: Path = tmp / "phenix-run-flag"
+        self.boot_status.write_text("0\n")
+        self.boot_flag.write_text("phenix startup completed\n")
+        self.stderr: str = ""
         self.env: dict[str, str] = {
             **os.environ,
             "PATH": f"{bin_dir}:{os.environ['PATH']}",
             "CM_VYOS_TEMPLATE": str(tmp / "template.sh"),
             "CM_VYOS_RUN_DIR": str(tmp),
+            "CM_VYOS_BOOT_STATUS": str(self.boot_status),
+            "CM_VYOS_BOOT_FLAG": str(self.boot_flag),
+            "CM_VYOS_WAIT_TRIES": "2",
+            "CM_VYOS_WAIT_SLEEP": "0",
             "FAKE_LOG": str(self.log),
             "FAKE_TREE": str(tmp / "tree.json"),
             "FAKE_REJECT": "__nothing__",
         }
 
-    def run(self, *args: str, **env: str) -> tuple[int, list[str]]:
+    def run(self, *args: str, script: Path = SCRIPT, **env: str) -> tuple[int, list[str]]:
         self.log.unlink(missing_ok=True)
         proc = subprocess.run(
-            ["bash", str(SCRIPT), *args],
+            ["bash", str(script), *args],
             env={**self.env, **env},
             capture_output=True,
             text=True,
             timeout=60,
             check=False,
         )
+        self.stderr = proc.stderr
         lines = self.log.read_text().splitlines() if self.log.exists() else []
         return proc.returncode, lines
 
@@ -170,6 +182,44 @@ def test_a_failed_commit_leaves_no_marker(tmp_path: Path) -> None:
     rc, _ = router.run(FAKE_COMMIT_RC="1")
     assert rc == 1
     assert not (tmp_path / "cm-vyos-config.done").exists()
+
+
+@pytest.mark.parametrize("marker", ["boot_status", "boot_flag"])
+def test_waits_for_both_boot_markers(tmp_path: Path, marker: str) -> None:
+    """The host name is set first in a commit, before the firewall and IPsec
+    nodes exist, so the script must not configure until VyOS has loaded its
+    boot config and the boot hook has finished the vrouter config."""
+    router = Router(tmp_path, "fw-edge", FW_EDGE_TREE)
+    missing: Path = getattr(router, marker)
+    missing.unlink()
+    rc, cmds = router.run()
+    assert (rc, cmds) == (1, [])
+    assert str(missing) in router.stderr
+    assert not (tmp_path / "cm-vyos-config.done").exists()
+    # The next miniccc connect, once the router has booted, does the work.
+    missing.write_text("")
+    rc, cmds = router.run()
+    assert rc == 0
+    assert cmds[-2:] == ["commit", "save"]
+
+
+def test_boot_flag_defaults_to_the_script_directory(tmp_path: Path) -> None:
+    """The image's boot hook writes phenix-run-flag next to the custom scripts
+    (scripts/vyos/build-vyos.sh in sceptre-phenix-images), which is where the
+    topology injects this script."""
+    custom: Path = tmp_path / "boot" / "vyos" / "rw" / "config" / "scripts" / "custom"
+    custom.mkdir(parents=True)
+    script: Path = custom / SCRIPT.name
+    script.write_text(SCRIPT.read_text())
+    router = Router(tmp_path, "util-rtr", {})
+    del router.env["CM_VYOS_BOOT_FLAG"]
+    rc, cmds = router.run(script=script)
+    assert (rc, cmds) == (1, [])
+    assert str(custom / "phenix-run-flag") in router.stderr
+    (custom / "phenix-run-flag").write_text("phenix startup completed\n")
+    rc, cmds = router.run(script=script)
+    assert rc == 0
+    assert "set vpn ipsec ike-group IKE-1W key-exchange ikev2" in cmds
 
 
 @pytest.mark.parametrize("arg", ["--bogus", "extra"])

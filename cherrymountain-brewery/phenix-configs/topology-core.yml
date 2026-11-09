@@ -11,6 +11,10 @@
 # (delay on the PLCs), and the HMIs (delay on scada-fuxa). Router interfaces
 # are named eth0, eth1, ... like the VyOS NICs, because the vrouter app writes
 # netem policies with the interface name; hosts use IF0, IF1, ... and mgmt.
+# Each router's `commands` entry runs cm-vyos-config.sh from the persistence
+# path: the injection lands in boot/vyos/rw/ of partition 3, which VyOS mounts
+# at /usr/lib/live/mount/persistence, and /config in the running router is a
+# bind mount of /opt/vyatta/etc/config, so the file is not under /config.
 # The plant-specific injections (OpenPLC, FUXA, HELICS, ot-sim) are added by
 # the cherrymountain app. Inject paths use /phenix/injects/${BRANCH_NAME}/.
 apiVersion: phenix.sandia.gov/v1
@@ -20,7 +24,7 @@ metadata:
 spec:
   nodes:
   - commands:
-    - exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh
+    - exec sg vyattacfg -c /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
     general:
       description: ShadeCast Cable edge router (the internet); netem on the WAN legs
       hostname: isp-rtr
@@ -54,7 +58,7 @@ spec:
         vlan: VENDOR
     type: Router
   - commands:
-    - exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh
+    - exec sg vyattacfg -c /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
     general:
       description: Summit Valley Power router, IPsec peer of fw-edge
       hostname: util-rtr
@@ -91,7 +95,7 @@ spec:
         next: 203.0.113.1
     type: Router
   - commands:
-    - exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh
+    - exec sg vyattacfg -c /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
     general:
       description: 'IT/Internet firewall: NAT, WireGuard DNAT, IPsec to util-rtr'
       hostname: fw-edge
@@ -140,7 +144,7 @@ spec:
         next: 10.10.20.2
     type: Firewall
   - commands:
-    - exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh
+    - exec sg vyattacfg -c /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
     general:
       description: 'OT firewall: every zone conduit of the conduit matrix'
       hostname: fw-ot

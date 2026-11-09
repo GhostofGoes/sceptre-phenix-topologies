@@ -2471,9 +2471,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": true,
@@ -2530,9 +2530,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -2589,9 +2589,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -2648,9 +2648,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": true,
@@ -2707,9 +2707,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -2766,9 +2766,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": true,
@@ -2825,9 +2825,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -2884,9 +2884,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -2943,9 +2943,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": true,
@@ -3002,9 +3002,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -3061,9 +3061,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": true,
@@ -3120,9 +3120,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -3179,9 +3179,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -3238,9 +3238,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": true,
@@ -3297,9 +3297,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -3356,9 +3356,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": true,
@@ -3415,9 +3415,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -3474,9 +3474,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,
@@ -3533,9 +3533,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": true,
@@ -3592,9 +3592,9 @@
         "timedelay": 0,
         "text": "",
         "group": "",
-        "ackmode": "float",
-        "bkcolor": "#FFFFFF",
-        "color": "#000000"
+        "ackmode": "ackactive",
+        "bkcolor": "#B71C1C",
+        "color": "#FFFFFF"
       },
       "high": {
         "enabled": false,

@@ -17,7 +17,7 @@ VAR
   BH_HLT_LT01_ALM_LOW AT %QX0.0 : BOOL; (* HLT level: low alarm (low) *)
   BH_HLT_TT01_PV AT %IW105 : UINT; (* HLT temperature, degF, x10 *)
   BH_HLT_TT01_ALM_HIGH AT %QX0.1 : BOOL; (* HLT temperature: high alarm (medium) *)
-  BH_HLT_LSL01_PV AT %IX100.2 : BOOL; (* HLT low-level switch (jacket covered) *)
+  BH_HLT_LSL01_PV AT %IX100.2 : BOOL; (* HLT low-level switch (made while the steam jacket is covered; drops below 15 %) *)
   BH_HLT_XV01_CMD AT %QX100.3 : BOOL; (* HLT fill valve (from the CLT) *)
   BH_HLT_TV01_OUT AT %QW101 : UINT; (* HLT steam valve position, %, x10 *)
   BH_HLT_TT01_SP AT %MW0 : UINT; (* HLT temperature setpoint, degF, x10 *)

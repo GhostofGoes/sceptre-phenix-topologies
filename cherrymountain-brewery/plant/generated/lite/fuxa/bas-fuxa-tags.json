@@ -175,7 +175,7 @@
           "type": "Real",
           "memaddress": "3001",
           "address": "19-1",
-          "access": "read-write",
+          "access": "read",
           "object_type": "multi-state-value",
           "remote_device": "bas-rtu-taproom",
           "units": null,

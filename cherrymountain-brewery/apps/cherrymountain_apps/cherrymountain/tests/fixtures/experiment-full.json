@@ -16,7 +16,7 @@
       "nodes": [
         {
           "commands": [
-            "exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh"
+            "exec sg vyattacfg -c /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh"
           ],
           "general": {
             "description": "ShadeCast Cable edge router (the internet); netem on the WAN legs",
@@ -68,7 +68,7 @@
         },
         {
           "commands": [
-            "exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh"
+            "exec sg vyattacfg -c /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh"
           ],
           "general": {
             "description": "Summit Valley Power router, IPsec peer of fw-edge",
@@ -126,7 +126,7 @@
         },
         {
           "commands": [
-            "exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh"
+            "exec sg vyattacfg -c /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh"
           ],
           "general": {
             "description": "IT/Internet firewall: NAT, WireGuard DNAT, IPsec to util-rtr",
@@ -204,7 +204,7 @@
         },
         {
           "commands": [
-            "exec sg vyattacfg -c /config/scripts/custom/cm-vyos-config.sh"
+            "exec sg vyattacfg -c /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh"
           ],
           "general": {
             "description": "OT firewall: every zone conduit of the conduit matrix",
@@ -4491,6 +4491,7 @@
         },
         {
           "name": "cherrymountain",
+          "runPeriodically": "5m",
           "metadata": {
             "variant": "full",
             "wazuh": {
@@ -7805,6 +7806,7 @@
                 "type": "soh",
                 "metadata": {
                   "checks": [
+                    "network-config",
                     "custom-reachability",
                     "services",
                     "processes",
@@ -8042,6 +8044,7 @@
                 "type": "soh",
                 "metadata": {
                   "checks": [
+                    "network-config",
                     "custom-reachability",
                     "custom"
                   ],

@@ -11,7 +11,7 @@
   "spec": {
     "experimentName": "cherrymountain-ci",
     "baseDir": "/phenix/experiments/cherrymountain-ci",
-    "defaultBridge": "cherrymtn",
+    "defaultBridge": "cherrymtn-ci",
     "topology": {
       "nodes": [
         {
@@ -487,6 +487,7 @@
         },
         {
           "name": "cherrymountain",
+          "runPeriodically": "5m",
           "metadata": {
             "variant": "ci",
             "verify": {
@@ -645,8 +646,8 @@
                 {
                   "name": "fuxa-project-imported",
                   "executor": "bash",
-                  "testScript": "systemctl is-active cm-fuxa-provision.service\n",
-                  "testStdout": "active"
+                  "testScript": "echo \"state=$(systemctl is-active cm-fuxa-provision.service)\"\n",
+                  "testStdout": "state=active"
                 }
               ]
             }

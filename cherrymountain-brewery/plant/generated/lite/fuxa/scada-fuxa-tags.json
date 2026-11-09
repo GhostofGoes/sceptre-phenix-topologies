@@ -196,7 +196,7 @@
         {
           "id": "t_6e0d3c2c-27a0-50d0-bed0-9e75e35cbc38",
           "name": "BH.HLT.LSL01.PV",
-          "label": "HLT low-level switch (jacket covered)",
+          "label": "HLT low-level switch (made while the steam jacket is covered; drops below 15 %)",
           "type": "Bool",
           "address": null,
           "variable": "BH_HLT_LSL01_PV",
@@ -5729,7 +5729,7 @@
           "type": "Bool",
           "memaddress": "3003",
           "address": "4-4",
-          "access": "read-write",
+          "access": "read",
           "object_type": "binary-output",
           "remote_device": "bas-vent"
         }

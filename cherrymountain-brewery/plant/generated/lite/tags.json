@@ -252,7 +252,7 @@
     },
     {
       "name": "BH.HLT.LSL01.PV",
-      "desc": "HLT low-level switch (jacket covered)",
+      "desc": "HLT low-level switch (made while the steam jacket is covered; drops below 15 %)",
       "type": "binary-read",
       "area": "BH",
       "unit": "HLT",

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=CherryMountain HMI kiosk
+Comment=Opens the FUXA operator view full screen
+Exec=/usr/local/bin/cm-kiosk
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

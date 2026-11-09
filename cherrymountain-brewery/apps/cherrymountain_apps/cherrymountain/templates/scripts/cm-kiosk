@@ -1,0 +1,18 @@
+#!/bin/bash
+# HMI kiosk (cherrymountain app, DESIGN.md 12.2): wait for the FUXA view, then
+# open it full screen. Started by /etc/xdg/autostart/cm-kiosk.desktop.
+# Env (from /etc/default/cm-kiosk): KIOSK_URL, KIOSK_BROWSER.
+set -euo pipefail
+
+# shellcheck source=/dev/null
+. /etc/default/cm-kiosk
+: "${KIOSK_URL:?set KIOSK_URL}"
+BROWSER="${KIOSK_BROWSER:-chromium}"
+
+for _ in $(seq 1 120); do
+  if curl -sS -m 5 -o /dev/null "${KIOSK_URL}"; then break; fi
+  sleep 5
+done
+
+exec "${BROWSER}" --kiosk --no-first-run --noerrdialogs --disable-infobars \
+  --disable-session-crashed-bubble --incognito "${KIOSK_URL}"

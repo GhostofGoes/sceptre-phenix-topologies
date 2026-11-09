@@ -1,0 +1,33 @@
+#!/bin/bash
+# Export FUXA's alarm history and DAQ data (cherrymountain app, cleanup stage).
+# Writes OUTDIR/fuxa-export.tar.gz with the alarm history from the API (when
+# the API answers) and FUXA's _db directory, which holds the alarm history and
+# the SQLite DAQ store. Installed as /usr/local/bin/cm-export-fuxa.
+# Env (from /etc/default/cm-fuxa): FUXA_URL, FUXA_ADMIN_PASSWORD.
+set -euo pipefail
+
+out="${1:?usage: cm-export-fuxa OUTDIR}"
+# shellcheck source=/dev/null
+. /etc/default/cm-fuxa
+FUXA="${FUXA_URL:-http://127.0.0.1:1881}"
+FUXA_DIR="${FUXA_DIR:-/opt/fuxa/server}"
+work=$(mktemp -d)
+trap 'rm -rf "${work}"' EXIT
+
+mkdir -p "${out}" "${work}/export"
+token=$(curl -sS -m 20 -H 'Content-Type: application/json' \
+  -d "{\"username\":\"admin\",\"password\":\"${FUXA_ADMIN_PASSWORD:-}\"}" "${FUXA}/api/signin" 2>/dev/null \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin).get("data", {}).get("token", ""))' 2>/dev/null || true)
+end=$(( $(date +%s) * 1000 ))
+query=$(printf '{"start":0,"end":%s}' "${end}")
+if [ -n "${token}" ] && curl -sS -m 120 -G -H "x-access-token: ${token}" \
+  --data-urlencode "query=${query}" "${FUXA}/api/alarmsHistory" -o "${work}/export/alarms-history.json"; then
+  echo "cm-export-fuxa: alarm history exported from the API"
+else
+  echo "cm-export-fuxa: alarm history API did not answer; the _db copy still has it" >&2
+fi
+if [ -d "${FUXA_DIR}/_db" ]; then
+  cp -a "${FUXA_DIR}/_db" "${work}/export/_db"
+fi
+tar -czf "${out}/fuxa-export.tar.gz" -C "${work}" export
+echo "cm-export-fuxa: wrote ${out}/fuxa-export.tar.gz"

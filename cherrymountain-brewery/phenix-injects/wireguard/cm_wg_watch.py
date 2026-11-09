@@ -14,8 +14,9 @@ Events (the cm-wg-watch decoder and rules 100200 to 100205 of the Wazuh rule set
 * ``peer_up``: a handshake that is not older than ``--down-after`` seconds, for a peer
   that was down, or a handshake less than ``REKEY_MIN`` seconds after the last one
   (WireGuard rekeys a live session after 120 s, so an earlier handshake is a client
-  that started a new session). This is the vendor's tunnel coming up.
-* ``peer_roam``: the peer's endpoint changed while it was up.
+  that started a new session), or a new handshake from a new endpoint (a restarted
+  client has a new source port). This is the vendor's tunnel coming up.
+* ``peer_roam``: the peer's endpoint changed while it was up, with no new handshake.
 * ``peer_down``: no handshake for ``--down-after`` seconds (WireGuard drops a session
   after 180 s without one), or the interface disappeared.
 
@@ -111,10 +112,14 @@ class Watcher:
             state: PeerState = self.state.setdefault(peer.public_key, PeerState())
             endpoint: str = peer.endpoint or "none"
             fresh: bool = peer.latest_handshake > 0 and now - peer.latest_handshake <= self.down_after
+            # A new handshake of a peer that is up is a new session when it comes too
+            # soon for a rekey, or from a new endpoint: a restarted client has a new
+            # source port. A third of a session's life the first test alone would miss
+            # (a restart 100 s or more after the last handshake looks like a rekey).
             restarted: bool = (
                 state.up
                 and peer.latest_handshake > state.handshake
-                and peer.latest_handshake - state.handshake < REKEY_MIN
+                and (peer.latest_handshake - state.handshake < REKEY_MIN or endpoint != state.endpoint)
             )
             if fresh and (not state.up or restarted):
                 state.up = True

@@ -66,8 +66,10 @@ def test_the_event_sequence_of_a_vendor_session() -> None:
     assert [e.name for e in up] == ["peer_up"]
     assert watcher.step(peers(int(now) - 3), now + 5) == []  # still the same session
     assert watcher.step(peers(int(now) + 100), now + 105) == []  # a rekey is not an event
-    roam = watcher.step(peers(int(now) + 230, "198.51.100.77:40000"), now + 232)
+    # The laptop moves to another address inside the session: no new handshake.
+    roam = watcher.step(peers(int(now) + 100, "198.51.100.77:40000"), now + 200)
     assert [e.name for e in roam] == ["peer_roam"]
+    assert watcher.step(peers(int(now) + 230, "198.51.100.77:40000"), now + 232) == []  # its next rekey
     assert roam[0].endpoint == "198.51.100.77:40000"
     down = watcher.step(peers(int(now) + 230, "198.51.100.77:40000"), now + 470)
     assert [e.name for e in down] == ["peer_down"]
@@ -84,6 +86,17 @@ def test_a_client_restart_inside_a_live_session_is_a_new_session() -> None:
     assert [e.name for e in again] == ["peer_up"]
     # A rekey of a live session comes 120 s later and is not an event.
     assert watcher.step(peers(int(now) + 160), now + 162) == []
+
+
+def test_a_late_client_restart_shows_by_its_new_source_port() -> None:
+    """`systemctl restart wg-quick@wg0` (the SCORCH vendor-tunnel step) 110 s after
+    the last handshake looks like a rekey by its timing; the new source port tells."""
+    watcher = cm_wg_watch.Watcher("wg0", down_after=200)
+    now = 1_700_000_000.0
+    assert [e.name for e in watcher.step(peers(int(now) - 3), now)] == ["peer_up"]
+    again = watcher.step(peers(int(now) + 107, "198.51.100.10:43017"), now + 110)
+    assert [e.name for e in again] == ["peer_up"]
+    assert again[0].endpoint == "198.51.100.10:43017"
 
 
 def test_the_interface_vanishing_takes_the_peers_down() -> None:

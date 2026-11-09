@@ -29,7 +29,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar, Final, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -207,6 +207,36 @@ def check(source: str, located: dict[str, Located], tags: dict[str, Tag], alarms
     return problems
 
 
+#: One program organization unit: its keyword, its name, and its text.
+POU: Final[re.Pattern[str]] = re.compile(
+    r"^[ \t]*(FUNCTION_BLOCK|FUNCTION|PROGRAM)[ \t]+(\w+)(.*?)^[ \t]*END_\1\b",
+    re.MULTILINE | re.DOTALL,
+)
+#: A declaration section of a unit, and one declared name in it.
+VAR_SECTION: Final[re.Pattern[str]] = re.compile(r"^[ \t]*VAR(?:_\w+)?\b.*?^[ \t]*END_VAR\b", re.MULTILINE | re.DOTALL)
+DECLARED: Final[re.Pattern[str]] = re.compile(r"^[ \t]*([A-Za-z_]\w*)[ \t]*(?:AT[ \t]+%[\w.]+[ \t]*)?:", re.MULTILINE)
+
+
+def name_collisions(full: str) -> list[str]:
+    """Names declared twice in one unit of the assembled program. IEC 61131-3
+    identifiers are case-insensitive, so ``CMD_SCANS`` and ``cmd_scans`` are one
+    name, and strucpp refuses the program."""
+    problems: list[str] = []
+    text: str = re.sub(r"\(\*.*?\*\)", "", full, flags=re.DOTALL)
+    for unit in POU.finditer(text):
+        seen: dict[str, str] = {}
+        for section in VAR_SECTION.finditer(unit.group(3)):
+            for name in DECLARED.findall(section.group(0)):
+                first: str | None = seen.get(name.upper())
+                if first is not None:
+                    problems.append(
+                        f"{unit.group(2)}: {name} is declared twice"
+                        + ("" if first == name else f" (as {first} and {name}: identifiers ignore case)")
+                    )
+                seen.setdefault(name.upper(), name)
+    return problems
+
+
 def assemble(plc: str, variant: str) -> tuple[str, list[str]]:
     gen: Path = GENERATED / variant
     located_text: str = (gen / "openplc" / plc / "located_vars.st").read_text(encoding="utf-8")
@@ -242,7 +272,7 @@ def assemble(plc: str, variant: str) -> tuple[str, list[str]]:
         + source.replace(LOCATED_MARKER, var_block).replace(ALARM_MARKER, body.rstrip())
         + configuration(plc)
     )
-    return full, problems
+    return full, problems + name_collisions(full)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -47,7 +47,7 @@ PROGRAM plc_packaging
   VAR
     started : BOOL := FALSE;
     cmd : UINT := 0;                (* the command the machines are being given *)
-    cmd_scans : UINT := 0;          (* scans it stays on them *)
+    cmd_left : UINT := 0;           (* scans the command still stays on them *)
     defective : UDINT;
     perf : REAL;
     quality : REAL;
@@ -66,9 +66,9 @@ PROGRAM plc_packaging
   (* ---- line command: CMD_SCANS scans to every machine, then cleared -------------------- *)
   IF PKG_LINE_PACKML_CMD >= 1 AND PKG_LINE_PACKML_CMD <= 9 THEN
     cmd := PKG_LINE_PACKML_CMD;
-    cmd_scans := CMD_SCANS;
-  ELSIF cmd_scans > 0 THEN
-    cmd_scans := cmd_scans - 1;
+    cmd_left := CMD_SCANS;
+  ELSIF cmd_left > 0 THEN
+    cmd_left := cmd_left - 1;
   ELSE
     cmd := 0;
   END_IF;

@@ -45,6 +45,21 @@ def test_every_program_assembles_clean(plc: str, variant: str) -> None:
     assert f"TASK task0(INTERVAL := T#{plcbuild.SCAN_MS}ms" in full
 
 
+def test_two_names_that_differ_only_by_case_are_refused() -> None:
+    """IEC 61131-3 identifiers ignore case. plc-packaging once declared the
+    constant CMD_SCANS and the counter cmd_scans; every text check passed and
+    strucpp refused the program."""
+    full, problems = plcbuild.assemble("plc-packaging", "full")
+    assert problems == []
+    broken: str = full.replace("cmd_left : UINT := 0;", "cmd_scans : UINT := 0;")
+    assert broken != full
+    assert plcbuild.name_collisions(broken) == [
+        "plc_packaging: cmd_scans is declared twice (as CMD_SCANS and cmd_scans: identifiers ignore case)"
+    ]
+    # A function block's own names do not collide with the program's.
+    assert plcbuild.name_collisions(full) == []
+
+
 def test_a_scan_count_must_use_the_task_interval() -> None:
     source: str = BREWHOUSE.replace(f"SCAN_MS : UDINT := {plcbuild.SCAN_MS};", "SCAN_MS : UDINT := 250;")
     assert source != BREWHOUSE
@@ -94,7 +109,7 @@ def test_a_packaging_command_outlasts_two_polls_of_its_rio(variant: str) -> None
     fall between them and never reach the machines."""
     source: str = (ROOT / "plc" / "plc-packaging" / "plc-packaging.st").read_text(encoding="utf-8")
     m: re.Match[str] | None = re.search(r"^\s*CMD_SCANS\s*:\s*UINT\s*:=\s*(\d+)\s*;", source, re.MULTILINE)
-    assert m is not None and "cmd_scans := CMD_SCANS;" in source
+    assert m is not None and "cmd_left := CMD_SCANS;" in source
     master: list[dict[str, Any]] = json.loads(
         (plcbuild.GENERATED / variant / "openplc" / "plc-packaging" / "modbus_master.json").read_text()
     )

@@ -34,6 +34,17 @@ alert tcp ![10.20.30.12] any -> any 102 (msg:"CM S7comm download, PLC control, o
 alert tcp ![10.20.30.12] any -> 10.20.10.0/24 8443 (msg:"CM OpenPLC REST session from a host other than the EWS"; flow:established,to_server; threshold:type limit, track by_src, count 1, seconds 300; classtype:policy-violation; priority:1; metadata:cm_usecase plc_rest; sid:9000150; rev:1;)
 alert tcp 10.20.30.12 any -> 10.20.10.0/24 8443 (msg:"CM OpenPLC REST session from the EWS (program upload or start/stop)"; flow:established,to_server; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:3; metadata:cm_usecase plc_rest_baseline; sid:9000151; rev:1;)
 
+# --- OPC UA to plc-brewhouse and Telnet to relay-main ------------------------------
+# plc-brewhouse serves OPC UA (TCP 4840) to scada-fuxa; the EWS may browse it. A
+# session from anyone else (its first message, Hello, starts with "|48 45 4c|"), and a WriteRequest (service node 673, encoded as the
+# four-byte numeric node id 01 00 a1 02 in a MSG chunk) from anyone but scada-fuxa
+# and the EWS, are unexpected. relay-main's ot-sim Telnet shell (TCP 23) is reachable
+# only from FIELD-PWR (DESIGN.md 10.4): any session to it is lateral movement.
+
+alert tcp ![10.20.30.10,10.20.30.12] any -> 10.20.10.11 4840 (msg:"CM OPC UA session to plc-brewhouse from a host other than scada-fuxa or the EWS"; flow:established,to_server; content:"|48 45 4c|"; depth:3; classtype:policy-violation; priority:1; metadata:cm_usecase opcua_client; sid:9000141; rev:1;)
+alert tcp ![10.20.30.10,10.20.30.12] any -> 10.20.10.11 4840 (msg:"CM OPC UA WriteRequest to plc-brewhouse from a host other than scada-fuxa or the EWS"; flow:established,to_server; content:"MSGF"; content:"|01 00 a1 02|"; distance:20; within:4; classtype:policy-violation; priority:1; metadata:cm_usecase opcua_write; sid:9000142; rev:1;)
+alert tcp any any -> 10.20.16.20 23 (msg:"CM Telnet session to relay-main (the ot-sim admin shell on FIELD-PWR)"; flow:to_server; flags:S; threshold:type limit, track by_src, count 1, seconds 300; classtype:attempted-admin; priority:1; metadata:cm_usecase relay_telnet; sid:9000143; rev:1;)
+
 # --- BACnet: WriteProperty only from bas-fuxa or the EWS --------------------------
 # scada-fuxa only reads the BAS devices: the cellar CO2 interlock is a hardwired
 # relay into plc-cellar that plc-cellar acts on (DESIGN.md 6.7), so no

@@ -32,7 +32,7 @@ EXPECTED_SIDS: frozenset[int] = frozenset(
         9000110, 9000111, 9000112, 9000113, 9000114, 9000115, 9000116, 9000120, 9000121, 9000122, 9000123, 9000124,
         9000125, 9000126, 9000127, 9000130, 9000131, 9000132, 9000133, 9000134, 9000135, 9000136,
         9000137, 9000138, 9000139,
-        9000140, 9000150, 9000151, 9000160, 9000161, 9000162, 9000163, 9000164,
+        9000140, 9000141, 9000142, 9000143, 9000150, 9000151, 9000160, 9000161, 9000162, 9000163, 9000164,
     }
 )
 #: What the Zeek pcap must raise (the notice types of cherrymountain.zeek that need no TLS).
@@ -49,6 +49,7 @@ EXPECTED_NOTICES: frozenset[str] = frozenset(
         "CherryMountain::Load_Shed_Active",
         "CherryMountain::Load_Shed_Cleared",
         "CherryMountain::DNP3_Breaker_Command",
+        "CherryMountain::PLC_Change_During_Vendor_Session",
     }
 )
 
@@ -212,6 +213,14 @@ def suricata_pcap(path: Path) -> None:
     for variation, value in ((1, struct.pack("<i", 500)), (2, struct.pack("<h", 500)), (3, struct.pack("<f", 50.0))):
         ao: bytes = bytes([0xC1, 0xC1, 5, 0x29, variation, 0x17, 0x01, 0x03]) + value + b"\x00"
         b.tcp("192.0.2.10", "10.20.15.10", 20000, dnp3_frame(0xC4, 4, 3, ao))
+    # OPC UA to plc-brewhouse: scada-fuxa is expected, an HMI kiosk is not, and an
+    # HMI kiosk's WriteRequest (MSG chunk, service node 673) alerts too.
+    hello: bytes = b"HELF" + struct.pack("<I", 28) + bytes(20)
+    write_req: bytes = b"MSGF" + struct.pack("<I", 32) + bytes(16) + bytes.fromhex("0100a102") + bytes(8)
+    b.tcp("10.20.30.10", "10.20.10.11", 4840, hello)
+    b.tcp("10.20.20.10", "10.20.10.11", 4840, hello + write_req)
+    # Telnet to relay-main from plc-power's FIELD-PWR address.
+    b.tcp("10.20.16.1", "10.20.16.20", 23, b"\xff\xfd\x18")
     # A host that is not in the inventory on a field VLAN, and one that is.
     b.tcp("10.20.11.99", "10.20.11.10", 502, read_3, b"")
     b.tcp("10.20.11.1", "10.20.11.10", 502, read_3, b"")
@@ -241,6 +250,8 @@ def zeek_pcap(path: Path) -> None:
     b.udp("10.20.20.10", "10.30.10.22", WRITE_PROPERTY)
     b.tcp("10.20.11.99", "10.20.11.10", 502, read_3, b"")
     b.tcp("10.20.11.1", "10.20.11.10", 502, read_3, b"")
+    # A vendor RDP session from dmz-jump, then the EWS's upload: correlated.
+    b.tcp("10.10.20.11", "10.20.30.12", 3389, b"x" * 64)
     b.tcp("10.20.30.12", "10.20.10.12", 8443, b"A" * 90000)
     # gen-ats discrete inputs 10001 to 10003 (running, on the emergency source, utility ok):
     # the emergency bit goes 0, 0, 1, 1, 0. plc-power's coil 7 (load shed) goes 0, 1, 0.

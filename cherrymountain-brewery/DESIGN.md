@@ -2520,6 +2520,15 @@ explainable events):
   Malcolm 26.10.0's 8.0.7 (`tests/soc`); stock `suricata.yaml` disables the
   Modbus and DNP3 parsers, which Malcolm enables by default.
 - A vendor WireGuard or Guacamole session outside an approved window.
+- A PLC change through the vendor path: Zeek's
+  `PLC_Change_During_Vendor_Session` correlates an OpenPLC REST session from
+  the EWS with a dmz-jump RDP or SSH session to the EWS in the two hours before
+  it, so the change is tied to the vendor session even when it was made with
+  `curl` instead of `cm_plc_tool.py`.
+- OPC UA to plc-brewhouse: a session from a host other than scada-fuxa or the
+  EWS (sid 9000141) and an OPC UA WriteRequest from one (sid 9000142).
+- Telnet to relay-main's ot-sim admin shell from anywhere (sid 9000143): only
+  FIELD-PWR can reach it, so a session is lateral movement.
 - ATS transfer and load-shed events.
 - New hosts on field VLANs.
 

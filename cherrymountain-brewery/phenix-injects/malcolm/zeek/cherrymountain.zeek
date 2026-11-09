@@ -52,6 +52,10 @@ export {
         ## DER dispatch is analog setpoints plus the DER enables (BO 4 and 5;
         ## DESIGN.md 7.5).
         DNP3_Breaker_Command,
+        ## A PLC program upload or REST session from the EWS while (or within
+        ## vendor_window after) a vendor session from dmz-jump reached the EWS:
+        ## the vendor path changed a PLC (DESIGN.md 13).
+        PLC_Change_During_Vendor_Session,
     };
 
     ## One bit of a Modbus read that carries a plant state change worth a notice.
@@ -99,6 +103,11 @@ export {
     ## rtu-der binary outputs that operate a breaker: 52-M and the boiler,
     ## packaging, and RTU-1 feeders (plant/generated/full/dnp3/rtu-der.json).
     const dnp3_breaker_indexes: set[count] = { 0, 1, 2, 3 } &redef;
+    ## The jump host whose RDP or SSH sessions to the EWS are vendor sessions,
+    ## and how long after one a PLC change still counts as part of it.
+    const jump_host: addr = 10.10.20.11 &redef;
+    const vendor_ports: set[port] = { 3389/tcp, 22/tcp } &redef;
+    const vendor_window: interval = 2hrs &redef;
     const plc_rest_port: port = 8443/tcp &redef;
     ## Bytes the originator sends in one REST session that mark a program upload
     ## (the cellar program ZIP is about 100 KB).
@@ -315,4 +324,31 @@ event dnp3_crob(c: connection, is_orig: bool, control_code: count, count8: count
                          control_code, index, c$id$orig_h),
                 $identifier=cat(c$id$orig_h, index, control_code),
                 $suppress_for=5min]);
+    }
+
+# ---------------------------------------------------------------- vendor session correlation
+# The last time a vendor session (dmz-jump to the EWS on RDP or SSH) was seen. A
+# PLC REST session from the EWS within vendor_window of it is a PLC change made
+# through the vendor path, whether or not cm_plc_tool.py logged it.
+global last_vendor_session: time = double_to_time(0.0);
+
+event new_connection(c: connection)
+    {
+    if ( c$id$orig_h == jump_host && c$id$resp_h == ews_host && c$id$resp_p in vendor_ports )
+        last_vendor_session = network_time();
+    }
+
+event connection_state_remove(c: connection)
+    {
+    if ( c$id$orig_h == jump_host && c$id$resp_h == ews_host && c$id$resp_p in vendor_ports )
+        last_vendor_session = network_time();
+    if ( c$id$resp_p != plc_rest_port || c$id$orig_h != ews_host )
+        return;
+    if ( time_to_double(last_vendor_session) == 0.0 || network_time() - last_vendor_session > vendor_window )
+        return;
+    NOTICE([$note=PLC_Change_During_Vendor_Session, $conn=c,
+            $msg=fmt("OpenPLC REST session from the EWS to %s during a vendor session (last seen %s ago)",
+                     c$id$resp_h, network_time() - last_vendor_session),
+            $identifier=cat(c$id$resp_h, "vendor"),
+            $suppress_for=10min]);
     }

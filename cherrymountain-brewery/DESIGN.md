@@ -331,14 +331,16 @@ finding to a design choice.
   benchmarking report puts a 2,500 bbl/yr brewery in its 1,000–10,000
   bbl/yr class.
   - That class has an electricity median of 65 kWh/bbl (IQR 45–91, n=93)
-    plus a natural gas median of 3.8 therm/bbl (IQR 2.7–6.2). The 0–1,000
-    class median is 182 kWh/bbl.
+    plus a natural gas median of 3.8 therm/bbl (IQR 2.7–6.2, n=96). The
+    0–1,000 class median is 182 kWh/bbl. (Re-read from the report's
+    1,000–10,000 bbl/year charts on 2026-11-09; the chart bands are the
+    middle 50%.)
   - BA breweries mostly heat with gas. An all-electric equivalent is
     therefore roughly 150–176 kWh/bbl. That range is indicative, because
     the medians come from different samples.
 - **Water ratio.** The BA 1,000–10,000 class median is 8.7 bbl of water
-  per bbl of beer (IQR 6.2–12.1). Best-practice large breweries reach about
-  3.5–5.
+  per bbl of beer (IQR 6.2–12.1, n=89). Best-practice large breweries reach
+  about 3.5–5.
 - *Design target:* about 150 kWh/bbl, all-electric with steam from an
   electric boiler. That is near the low end of the peer-median equivalent.
   - It gives about 370 MWh/yr and an average load of about 42 kW, with
@@ -714,21 +716,39 @@ flowchart TB
   480 V. The main breaker and MSB are 800 A, which is within the 125%
   allowance for transformer secondary protection. PV and BESS backfeed
   through the MSB.
+- **Code notes (the one-line is notional).** Two things a real installation
+  would do differently, which the model ignores:
+  - EP-1 carries NFPA 70 (NEC) Article 700 *emergency* loads (egress
+    lighting) together with Article 701/702 *standby* loads (glycol, cold
+    room, CO₂ detection and purge fans, racks). NEC 700.10(B) requires
+    emergency wiring to be kept entirely independent of other wiring, so the
+    egress lighting would be on its own emergency circuit or battery unit
+    equipment, and EP-1 would be a legally required or optional standby
+    panel. The name "emergency panel" is the brewery's, not the code's.
+  - The 100 kWac PV and 100 kW BESS backfeed about 300 A of inverter
+    overcurrent devices (at 125%) onto the 800 A bus, which exceeds the 120%
+    busbar allowance of NEC 705.12. A real interconnection would use a
+    supply-side (line-side) connection or a bus rated for the sum. OpenDSS
+    does not care; the note matters only when the one-line is read as an
+    installation drawing.
 
 ### 7.3 Power control (`plc-power`)
 
 - **Outage ride-through:**
   1. The utility is lost. The MSB de-energizes. PV and BESS stop
-     energizing within 2 s, per IEEE 1547 unintentional-islanding rules.
-     Neither is connected to EP-1, and v1 has no grid-forming BESS.
+     energizing within 2 s, per IEEE 1547-2018 clause 8.1.1 (detect an
+     unintentional island and cease to energize within 2 s). Neither is
+     connected to EP-1, and v1 has no grid-forming BESS.
   2. The ATS senses the loss, starts the genset, and transfers EP-1 within
      about 10 s.
   3. `plc-power` opens and holds open the large MSB feeders (boiler,
      packaging, RTU), so restoration can be staged. It sheds EP-1 sub-loads
      if genset load exceeds 80%.
   4. When the utility returns, the ATS retransfers after its stable-source
-     timer. PV and BESS reconnect after the IEEE 1547 return-to-service
-     delay. `plc-power` recloses the MSB feeders in stages to limit inrush.
+     timer. PV and BESS reconnect after the IEEE 1547-2018 enter-service
+     intentional delay (clause 4.10.3, Table 39: 300 s by default, adjustable
+     0–600 s; the power federate uses 300 s). `plc-power` recloses the MSB
+     feeders in stages to limit inrush.
 - **BESS dispatch (100 kW / 200 kWh, a 2-hour battery):**
   1. *Priority 1: monthly demand cap.* Demand is billed on the monthly
      peak at all hours, so the BESS holds 15-minute demand under a
@@ -779,10 +799,22 @@ Notes and disclosures:
   is intentional: it makes peak shaving and load shifting economically
   visible in exercises. Each 50 kW of shaved peak saves about $19k/yr.
 - **Window.** The 17:00–21:00 weekday window matches the Colorado PUC's
-  Xcel time-of-use decision (Proceeding 24AL-0377E, effective November 1,
-  2025).
+  Xcel time-of-use decision (Proceeding 24AL-0377E): on-peak 5–9 PM on
+  non-holiday weekdays year-round, moved from 3–7 PM, for residential and
+  small-commercial customers, announced for October 2025 and in effect from
+  November 1, 2025. SG-TOU is that small-commercial schedule, which is why
+  its window is used. Holidays are not modeled.
 - **Demand interval.** The URDB records leave the demand interval blank, so
   SV-SGT assumes the common 15-minute interval.
+- **Verification.** Both records were re-read through the URDB API on
+  2026-11-09 (`api.openei.org/utility_rates`, `getpage=<id>`,
+  `detail=full`). SG's `demandratestructure` is period 1 ($19.79/kW) in
+  January–May and October–December and period 2 ($27.14/kW) in June–September,
+  for all 24 hours on weekdays and weekends. SG-TOU's `energyweekdayschedule`
+  puts hours 17–20 (17:00–21:00) in the $0.38375 period in June–September and
+  the $0.23371 period in the other months, with every other weekday hour and
+  every weekend hour at $0.09927; `peakkwcapacitymax` is 50 and
+  `demandwindow` is null in both records.
 
 **Operational consequences built into the scenario:**
 
@@ -1085,9 +1117,13 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
 
 - Evaporation: ṁ_evap = (Q_steam − Q_loss)/h_fg, targeting 4–8% per hour.
 - Local boiling point: the water saturation temperature at the measured
-  ambient pressure (IAPWS-IF97, or Clausius–Clapeyron) plus the
-  boiling-point elevation from dissolved extract (about 0.3 K at 16 °P).
-  At 83.4 kPa that is 94.6 °C water and about 94.9 °C wort.
+  ambient pressure plus the boiling-point elevation from dissolved extract
+  (about 0.3 K at 16 °P). The code uses the Antoine equation for water
+  (A = 8.07131, B = 1730.63, C = 233.426 in mmHg and °C, valid 1–100 °C),
+  which stays within 0.1 K of IAPWS-IF97 over the 90–100 °C range that
+  matters here, and the ebullioscopic constant K_b = 0.512 K·kg/mol with
+  the extract counted as maltose (0.29 K at 16.1 °P). At 83.4 kPa that is
+  94.6 °C water and about 94.9 °C wort.
 - Bitterness:
   - Tinseth: U = 1.65·0.000125^(G−1) · (1 − e^(−0.04·t))/4.15, and
     IBU = U·(mg/L α-acids added). G is the average kettle gravity during
@@ -1134,6 +1170,13 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
     is a typo: with p = exp(A + B/T) and A = 3.27 it gives μ_e0 ≈ 2×10⁻¹⁸
     h⁻¹ at 15 °C. −1267.24 gives about 0.32 h⁻¹, consistent with the other
     rates. A unit test asserts μ_e0(15 °C) ≈ 0.3 h⁻¹.
+  - *The diacetyl production rate k_dc is 1.27672×10⁻⁴ L·g⁻¹·h⁻¹.* Rodman
+    Table 2 prints 1.27672×10⁻⁷, a second typo: with it the model peaks
+    near 0.001 ppm diacetyl, while the paper's own Fig. 5d peaks near
+    1.5 ppm and its Table 4 reports 0.20 and 0.21 ppm at the ethanol
+    production time of the 11 °C and 13 °C isothermal runs. The 10⁻⁴ value
+    (de Andrés-Toro's) reproduces both (0.21 and 0.22 ppm), and the Table 4
+    test checks it. The consumption rate k_dm = 1.13864×10⁻³ is as printed.
   - The model was fitted to lager fermentations, so its ale behavior at
     18–20 °C is approximate. Tune it so attenuation from 16.1 °P to about
     3 °P completes in about 5–6 days at 66–70 °F.
@@ -1294,6 +1337,7 @@ values:
 | Check | Result |
 |---|---|
 | Wort boiling point | 94.94 °C |
+| Lager fermentation (Rodman Table 4, 11 / 13 °C) | 50.5 / 56.8 g/L ethanol; diacetyl 0.21 / 0.22 ppm (published 0.20 / 0.21) |
 | Strike water (Palmer) | 165.1 °F |
 | Tinseth reference | 20.73 IBU |
 | Altitude derate | 0.698 / 0.643 (Hosom / Malowicki) |
@@ -2147,7 +2191,7 @@ exposed ranges and read 0.
 ### 12.6 Plant tag database
 
 `plant/plant.yaml` is the single source of truth. It now covers every area:
-43 hosts, 412 tags, and 69 rationalized alarms
+43 hosts, 412 tags (`plant/generated/full/tags.json`), and 69 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
 ```yaml
@@ -3096,7 +3140,7 @@ silently.
 ## 21. References
 
 These are all the sources used in the analysis behind this design. Links
-were current as of 2026-11-08. Where a figure rests on a secondary source,
+were current as of 2026-11-09. Where a figure rests on a secondary source,
 both are listed.
 
 ### 21.1 Open data
@@ -3105,6 +3149,7 @@ both are listed.
 |---|---|---|---|
 | OpenEI U.S. Utility Rate Database (URDB): PSCo Schedule SG, time-differentiated demand (eff. 2026-01-01) | SV-SGT demand charges (§7.4) | <https://apps.openei.org/USURDB/rate/view/69bda768f0300279d30f154c> | CC0-1.0 |
 | OpenEI URDB: PSCo Schedule SG-TOU (eff. 2026-01-01) | SV-SGT energy TOU window and rates (§7.4) | <https://apps.openei.org/USURDB/rate/view/69bdaa2ade50eca8ee0baa6a> | CC0-1.0 |
+| OpenEI URDB REST API (`utility_rates`, `version=latest`, `detail=full`, `getpage=<id>`), used to re-read both records' hourly schedules on 2026-11-09 (§7.4) | Tariff verification | <https://api.openei.org/utility_rates> (needs an API key; `DEMO_KEY` serves single reads) | CC0-1.0 data |
 | OpenEI URDB: utility index (174 PSCo rates) | Tariff discovery | <https://apps.openei.org/USURDB/?utilRateFinder=Public+Service+Co+of+Colorado> | CC0-1.0 |
 | EnergyPlus TMY3 weather: `USA_CO_Golden-NREL.724666_TMY3.epw`, `USA_CO_Denver-Aurora-Buckley.AFB.724695_TMY3.epw` | Weather federate, building and PV models (§8.3, §9.2) | <https://github.com/NatLabRockies/EnergyPlus> (weather directory) | Distributed with EnergyPlus; confirm the EPW redistribution terms |
 | NREL National Solar Radiation Database (NSRDB) | Alternative weather and irradiance source | <https://nsrdb.nrel.gov/>, <https://registry.opendata.aws/nrel-pds-nsrdb> | Free with an API key; CC BY (3.0 US / 4.0, listings differ) |
@@ -3119,14 +3164,19 @@ both are listed.
 
 ### 21.2 Papers and technical sources (models)
 
-- Rodman, A. D. and Gerogiorgis, D. I. (2016). *Food and Bioproducts
-  Processing*. Reproduces the de Andrés-Toro beer fermentation model with
-  corrected equations and parameters. Open accepted manuscript:
+- Rodman, A. D. and Gerogiorgis, D. I. (2016). "Multi-objective process
+  optimisation of beer fermentation via dynamic simulation." *Food and
+  Bioproducts Processing*, doi:10.1016/j.fbp.2016.04.002. Reproduces the de
+  Andrés-Toro beer fermentation model with corrected equations and
+  parameters (8–24 °C, validated against over 200 fermentations). Two
+  misprints matter here: Table 1's μ_e0 B constant and Table 2's diacetyl
+  production rate (§9.3); its Table 4 is the validation target of the
+  fermentation tests. Open accepted manuscript:
   <https://www.pure.ed.ac.uk/ws/files/24789868/FBP_03_2016.pdf>
 - de Andrés-Toro, B. et al. (1998). "A kinetic model for beer production
   under industrial operational conditions." *Mathematics and Computers in
-  Simulation* 48:65–74. The original source. Rodman's Table 1 typo in μ_e0
-  is resolved in §9.3.
+  Simulation* 48:65–74. The original source. Rodman's Table 1 (μ_e0) and
+  Table 2 (k_dc) typos are resolved in §9.3.
 - Rodman, A. D. (PhD thesis, University of Edinburgh), beer fermentation
   modeling and optimization: <https://era.ed.ac.uk/handle/1842/36020>
 - Beer fermentation parameter estimation (2019), open access:
@@ -3144,7 +3194,10 @@ both are listed.
   The two-enzyme mash kinetics.
 - Müller (2000), high-temperature mashing ODE model:
   <https://pages.mtu.edu/~struther/Courses/OLD/Other/Older/3521_10/ClassNotebooks/EnzymeandMicroTech_V27_p337-344_2000_Brewing_ODE.pdf>
-- Heat of fermentation (about 586.6 kJ/kg extract), COBEM 2009:
+- Silveira, R. G. and Razuk, P. C. (2009). "Thermal analysis of direct
+  cooling systems in cylindroconical fermenters." *Proceedings of COBEM 2009*
+  (ABCM). States that fermentation releases 586.6 kJ (140 kcal) per kg of
+  extract, the heat of fermentation used in §9.3:
   <https://www.abcm.org.br/anais/cobem/2009/pdf/COB09-0046.pdf>
 - Tinseth, G. Hop utilization formula: <https://www.realbeer.com/hops/research.html>
 - Rager, J. (1990). "Calculating Hop Bitterness in Beer." *Zymurgy* special
@@ -3158,7 +3211,11 @@ both are listed.
 - ANSI C84.1, *Electric Power Systems and Equipment: Voltage Ratings (60
   Hertz)*, the Range A voltage limits used in the power-flow checks (§9.6).
 - Hosom, J. P. mIBU (whirlpool/hop-stand utilization):
-  <https://jphosom.github.io/alchemyoverlord/ibu_mIBU.html>; SMPH model FAQ:
+  <https://jphosom.github.io/alchemyoverlord/ibu_mIBU.html>; the method post
+  that gives the temperature function used in §9.3, U_rel(T) =
+  2.39×10¹¹·e^(−9773/T) (its Eq. [8], relative to boiling):
+  <https://jphosom.github.io/alchemyoverlord/blog/06-a-modified-ibu-measurement-especially-for-late-hopping-and-whirlpool-hops/alchemyoverlord-blog-content06.html>;
+  SMPH model FAQ:
   <https://jphosom.github.io/alchemyoverlord/ibu_SMPH_FAQ.html>
 - Malowicki, M. G. and Shellhammer, T. H. (2005). Isomerization and
   degradation kinetics of hop acids in a model wort-boiling system. *Journal
@@ -3192,10 +3249,30 @@ both are listed.
 - RFC 7748, "Elliptic Curves for Security" (X25519), whose test vectors check
   plantgen's deterministic WireGuard keys (§16):
   <https://www.rfc-editor.org/rfc/rfc7748>
-- IEEE 1547-2018 (DER interconnection and interoperability):
+- IEEE 1547-2018 (DER interconnection and interoperability; clause 8.1.1
+  unintentional islanding, 4.10.3 enter service, clause 10 communications):
   <https://standards.ieee.org/ieee/1547/5915/>
-- OSHA and NIOSH CO₂ exposure limits: NIOSH Pocket Guide, carbon dioxide:
-  <https://www.cdc.gov/niosh/npg/npgd0103.html>
+- Gonzalez, S. et al. "Unintentional Islanding Evaluation Utilizing Discrete
+  RLC Circuit Versus Power Hardware-in-the-Loop Method," Sandia National
+  Laboratories, SAND2019-6655C. The 2 s cease-to-energize requirement of
+  IEEE 1547-2018 as it is type-tested (§7.3):
+  <https://www.osti.gov/servlets/purl/1640766>
+- NIST SP 800-82 Rev. 3, *Guide to Operational Technology (OT) Security*
+  (September 2023), doi:10.6028/NIST.SP.800-82r3. The OT security baseline
+  behind the zone model, the remote-access path, and the monitoring in §10,
+  §13, and §14: <https://csrc.nist.gov/pubs/sp/800/82/r3/final>
+- ISA/IEC 62443 series (ISA page listing the parts, including
+  ANSI/ISA-62443-3-2-2020, security risk assessment for system design, which
+  defines zones and conduits, and ISA-62443-3-3-2013, system security
+  requirements and security levels):
+  <https://www.isa.org/standards-and-publications/isa-standards/isa-iec-62443-series-of-standards>
+- NFPA 70, *National Electrical Code*: Article 700 (emergency systems;
+  700.10(B) keeps emergency wiring independent of other wiring), Articles 701
+  and 702 (legally required and optional standby systems), and 705.12
+  (busbar rules for interconnected power sources). The code notes in §7.2.
+- OSHA and NIOSH CO₂ exposure limits: NIOSH Pocket Guide, carbon dioxide
+  (REL TWA 5,000 ppm, ST 30,000 ppm; OSHA PEL TWA 5,000 ppm; IDLH
+  40,000 ppm): <https://www.cdc.gov/niosh/npg/npgd0103.html>
 - MBAA Brewery Safety, Carbon Dioxide (CO₂) Safety:
   <https://www.mbaa.com/brewresources/brewsafety/BrewSafety/Carbon%20Dioxide%20(CO2)%20Safety.pdf>;
   MBAA discussion of alarm levels:
@@ -3208,10 +3285,18 @@ both are listed.
   Brewer's Report of Operations (TTB F 5130.9):
   <https://www.ttb.gov/system/files/images/forms_tutorials/documents/f51309.pdf>;
   Brewer's Report of Operations instructions:
-  <https://www.pay.gov/public/static-assets/paygov/ATF/help/ATF_5130_9_v6.html>
+  <https://www.pay.gov/public/static-assets/paygov/ATF/help/ATF_5130_9_v6.html>;
+  27 CFR 25.297 as mirrored by Cornell LII (quarterly filing, on F 5130.9 or
+  F 5130.26, for a brewer liable for not more than $50,000 of beer tax in
+  the previous year and expecting the same in the current year):
+  <https://www.law.cornell.edu/cfr/text/27/25.297>
 - Colorado PUC, Xcel Energy time-of-use rates (Proceeding 24AL-0377E):
   <https://puc.colorado.gov/time-of-use-rates>,
-  <https://puc.colorado.gov/press-release/colorado-public-utilities-commission-announces-new-xcel-energy-time-of-use-rates>
+  <https://puc.colorado.gov/press-release/colorado-public-utilities-commission-announces-new-xcel-energy-time-of-use-rates>;
+  the PUC bulletin "PUC Adopts Rules New Xcel Energy TOU, Proceeding No.
+  24AL-0377E" (on-peak 5–9 PM on non-holiday weekdays year-round, from 3–7
+  PM, for residential and small commercial customers):
+  <https://content.govdelivery.com/accounts/CODORA/bulletins/3e2cebe>
 - CIP practice: flow plate and proximity-switch route verification:
   <https://csidesigns.com/blog/articles/clean-in-place-how-cip-is-used-in-breweries>;
   CIP verification and maintenance:
@@ -3241,11 +3326,16 @@ both are listed.
 - ot-sim: <https://github.com/patsec/ot-sim>, docs <https://ot-sim.patsec.dev>
 - FUXA: <https://github.com/frangoteam/FUXA>, <https://frangoteam.org/>,
   <https://deepwiki.com/frangoteam/FUXA>
-- OpenPLC: v4 runtime <https://github.com/Autonomy-Logic/openplc-runtime>,
-  docs <https://autonomylogic.com/docs>; v3 (archived)
-  <https://github.com/thiagoralves/OpenPLC_v3>; strucpp (compiler for v4
-  programs) <https://github.com/Autonomy-Logic/strucpp>
-- HELICS: <https://github.com/GMLC-TDC/HELICS>, <https://github.com/GMLC-TDC/pyhelics>
+- OpenPLC: v4 runtime <https://github.com/Autonomy-Logic/openplc-runtime>
+  (its README documents the REST API on HTTPS 8443, the plugin system, and
+  the GPL-3.0/commercial dual license; `autonomylogic.com/docs` now redirects
+  to the Autonomy Edge cloud documentation, which does not cover the
+  runtime); v3 (archived) <https://github.com/thiagoralves/OpenPLC_v3>;
+  strucpp (compiler for v4 programs) <https://github.com/Autonomy-Logic/strucpp>
+- HELICS: <https://github.com/GMLC-TDC/HELICS>, <https://github.com/GMLC-TDC/pyhelics>;
+  configuration options reference (`real_time`, `rt_lag` and `rt_lead`,
+  default 0.2 s, `period`), the settings `federate.run` uses (§9.2):
+  <https://docs.helics.org/en/main/references/configuration_options_reference.html>
 - OpenDSSDirect.py: <https://github.com/dss-extensions/OpenDSSDirect.py>;
   pandapower: <https://github.com/e2nIEE/pandapower>
 - SimPy: <https://gitlab.com/team-simpy/simpy>; PackMLpy:
@@ -3262,8 +3352,11 @@ both are listed.
 - node-bacnet, the BACnet driver FUXA 1.3.5 installs (0.2.4), read in the
   `bbmd` spike (§8.1, §10.4): <https://www.npmjs.com/package/node-bacnet>
 - BACpypes3: <https://github.com/JoelBender/BACpypes3>, docs
-  <https://bacpypes3.readthedocs.io/>; BAC0:
-  <https://github.com/ChristianTremblay/BAC0>
+  <https://bacpypes3.readthedocs.io/>; its `SimpleArgumentParser`
+  (`--address` with a prefix, `--bbmd` taking the BDT list, `--foreign`),
+  which `cm_bbmd.py` drives (§16):
+  <https://github.com/JoelBender/BACpypes3/blob/main/bacpypes3/argparse.py>;
+  BAC0: <https://github.com/ChristianTremblay/BAC0>
 - BACnet/IP broadcast management (BBMD, BDT, foreign devices): ASHRAE 135
   Annex J; "Building Wide-Area Networks With BACnet, Part 2":
   <https://bacnet.org/wp-content/uploads/sites/4/2022/06/Building-Wide-Area-Networks-With-BACnet-Part-2.pdf>
@@ -3274,7 +3367,8 @@ both are listed.
   <https://github.com/CATIA-Systems/FMPy>; TESP:
   <https://github.com/pnnl/tesp>
 - Malcolm: <https://github.com/cisagov/Malcolm>, docs
-  <https://malcolm.fyi/docs/>, system requirements
+  <https://malcolm.fyi/docs/>, system requirements (8 cores and 24 GB
+  minimum, 16+ cores and 32+ GB recommended; §11)
   <https://malcolm.fyi/docs/system-requirements.html>, supported protocols
   <https://malcolm.fyi/docs/protocols.html>; ICSNPP:
   <https://github.com/cisagov/ICSNPP>; Zeek: <https://github.com/zeek/zeek>;
@@ -3288,7 +3382,15 @@ both are listed.
   reported as 1.5 (fixed by vyos-build PR 1341, 2026-10-31):
   <https://vyos.dev/T9547>; WireGuard:
   <https://www.wireguard.com/>; Apache Guacamole:
-  <https://guacamole.apache.org/>
+  <https://guacamole.apache.org/>; its Docker image manual (the reverse
+  proxy variables `REMOTE_IP_VALVE_ENABLED` and `PROXY_ALLOWED_IPS_REGEX`
+  that `phenix-injects/guacamole/docker-compose.yml` sets):
+  <https://guacamole.apache.org/doc/gug/guacamole-docker.html>; the TOTP
+  extension (`TOTP_ENABLED`, `TOTP_ISSUER`; 6 digits, 30 s, SHA-1 by
+  default, which `cm_vendor_session.py` matches):
+  <https://guacamole.apache.org/doc/gug/totp-auth.html>; the PostgreSQL
+  backend's `POSTGRESQL_*` variables:
+  <https://guacamole.apache.org/doc/gug/postgresql-auth.html>
 - Repository tooling: prek <https://prek.j178.dev>; check-jsonschema
   <https://github.com/python-jsonschema/check-jsonschema>; the sceptre-phenix
   JSON Schemas at the pinned commit

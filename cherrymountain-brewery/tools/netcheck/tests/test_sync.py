@@ -152,3 +152,32 @@ def test_unbalanced_markers_are_reported(variant: sync.Variant) -> None:
 
 def test_the_repository_is_in_sync() -> None:
     assert sync.main(["--check"]) == 0
+
+
+def test_an_lfs_pointer_skips_the_zip_check(
+    variant: sync.Variant,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    pointer: Path = tmp_path / "plc-cellar.zip"
+    pointer.write_text(
+        "version https://git-lfs.github.com/spec/v1\n"
+        "oid sha256:4a41e52741840bb54d2c6a42b30fcf0f965d8cdd608740788580e43fed70de5b\n"
+        "size 101270\n"
+    )
+    monkeypatch.setattr(sync, "PLC_ZIP", pointer)
+    assert sync.is_lfs_pointer(pointer)
+    assert sync.check_zip(variant) == []
+    assert "Git LFS pointer" in capsys.readouterr().out
+
+
+def test_a_bad_zip_is_not_taken_for_a_pointer(
+    variant: sync.Variant, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bad: Path = tmp_path / "plc-cellar.zip"
+    bad.write_bytes(b"PK not really")
+    monkeypatch.setattr(sync, "PLC_ZIP", bad)
+    assert not sync.is_lfs_pointer(bad)
+    with pytest.raises(Exception, match="zip"):
+        sync.check_zip(variant)

@@ -329,6 +329,15 @@ def sync_copies(v: Variant, check: bool) -> list[str]:
 
 PLC_DIR: Path = ROOT / "plc" / "plc-cellar"
 PLC_ZIP: Path = INJECTS / "openplc" / "plc-cellar.zip"
+#: First line of a Git LFS pointer file, which is what a checkout without LFS
+#: (``GIT_LFS_SKIP_SMUDGE=1``, or a CI checkout without ``lfs: true``) holds.
+LFS_POINTER: bytes = b"version https://git-lfs.github.com/spec/v1"
+
+
+def is_lfs_pointer(path: Path) -> bool:
+    """Whether ``path`` is a Git LFS pointer stub, not the file itself."""
+    with path.open("rb") as fh:
+        return fh.read(len(LFS_POINTER)) == LFS_POINTER
 
 
 def assembled_program_md5(variant: str) -> str:
@@ -357,6 +366,12 @@ def check_zip(v: Variant) -> list[str]:
     """
     if not PLC_ZIP.exists():
         return [f"missing {rel(PLC_ZIP)}; run plc/plc-cellar/build_zip.sh"]
+    if is_lfs_pointer(PLC_ZIP):
+        print(
+            f"skip {v.name}/zip: {rel(PLC_ZIP)} is a Git LFS pointer (checkout without LFS); "
+            "the ZIP contents were not checked"
+        )
+        return []
     plc_generated: Path = v.generated / "openplc" / "plc-cellar"
     problems: list[str] = []
     if PLC_ZIP.stat().st_size > MAX_ZIP_BYTES:

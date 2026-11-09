@@ -8,7 +8,7 @@ engineer does there, and the SCORCH `vendor-maintenance` run uses it for the
 benign program re-upload:
 
     cm_plc_tool.py upload --plc plc-cellar --host 10.20.10.12 --zip /opt/cherrymountain/ews/programs/plc-cellar.zip
-    cm_plc_tool.py start|stop|status --plc plc-cellar --host 10.20.10.12
+    cm_plc_tool.py start|stop|status --plc plc-cellar --host 10.20.10.12 [--json]
 
 ``upload`` signs in, uploads the program ZIP, waits for the runtime to compile it, and
 starts the PLC; it passes only if the runtime reports STATUS:RUNNING. Transient REST
@@ -132,9 +132,19 @@ class Runtime:
         if '"UploadFileFail":""' not in reply:
             raise RuntimeError(f"the runtime rejected the upload: {reply[:200]}")
 
+    #: Seconds between compilation-status polls.
+    POLL_S: float = 5.0
+    #: Right after an upload, compilation-status may still report the previous
+    #: build's SUCCESS or FAILED (unverified on v4.3.2). A final state counts only
+    #: once the runtime has shown a busy state for this upload, or after this
+    #: grace, which is longer than any compile can be.
+    STALE_GRACE_S: float = 60.0
+
     def wait_compiled(self, timeout: float) -> None:
-        deadline: float = time.monotonic() + timeout
+        start: float = time.monotonic()
+        deadline: float = start + timeout
         failures: int = 0
+        seen_busy: bool = False
         while time.monotonic() < deadline:
             try:
                 reply: object = json.loads(self.call("compilation-status"))
@@ -145,11 +155,14 @@ class Runtime:
                 if failures > POLL_FAILURES:
                     raise
                 status = ""
-            if status == "SUCCESS":
+            final: bool = status in ("SUCCESS", "FAILED")
+            if status and not final:
+                seen_busy = True
+            if final and (seen_busy or time.monotonic() - start >= self.STALE_GRACE_S):
+                if status == "FAILED":
+                    raise RuntimeError("the runtime failed to compile the program")
                 return
-            if status == "FAILED":
-                raise RuntimeError("the runtime failed to compile the program")
-            time.sleep(5)
+            time.sleep(self.POLL_S)
         raise TimeoutError(f"the program did not compile within {timeout:.0f} s")
 
     def status(self) -> str:
@@ -179,7 +192,17 @@ def log_event(event: str, plc: Plc, operator: str, reason: str = "") -> None:
     logger.info("event=%s plc=%s host=%s user=%s%s", event, plc.name, plc.host, user, extra)
 
 
-def run(action: str, plc: Plc, settings: Settings, program: Path | None, operator: str, timeout: float) -> int:
+def report(as_json: bool, action: str, plc: Plc, status: str, error: str = "") -> None:
+    """The outcome on stdout: the runtime's status line, or one JSON object."""
+    if as_json:
+        print(json.dumps({"action": action, "plc": plc.name, "host": plc.host, "ok": not error, "status": status, "error": error}))
+    elif not error:
+        print(status)
+
+
+def run(
+    action: str, plc: Plc, settings: Settings, program: Path | None, operator: str, timeout: float, as_json: bool = False
+) -> int:
     runtime: Runtime = Runtime(plc, settings)
     event: str = {"upload": "plc_upload", "start": "plc_start", "stop": "plc_stop", "status": "plc_status"}[action]
     try:
@@ -200,7 +223,7 @@ def run(action: str, plc: Plc, settings: Settings, program: Path | None, operato
         elif action == "stop":
             log_event(event, plc, operator)
             runtime.call("stop-plc")
-        print(runtime.status())
+        report(as_json, action, plc, runtime.status())
     except (
         OSError,
         ValueError,
@@ -212,6 +235,7 @@ def run(action: str, plc: Plc, settings: Settings, program: Path | None, operato
     ) as error:
         log_event("plc_failed", plc, operator, type(error).__name__)
         print(f"cm-plc-tool: {action} on {plc.name} failed: {type(error).__name__}: {error}", file=sys.stderr)
+        report(as_json, action, plc, "", type(error).__name__)
         return 1
     return 0
 
@@ -225,6 +249,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--settings", type=Path, default=DEFAULT_SETTINGS)
     parser.add_argument("--operator", default="", help="who the action is for (logged as operator=)")
     parser.add_argument("--compile-timeout", type=float, default=COMPILE_TIMEOUT)
+    parser.add_argument("--json", action="store_true", help="print the outcome as one JSON object")
     args: argparse.Namespace = parser.parse_args(argv)
 
     logger.setLevel(logging.INFO)
@@ -234,7 +259,8 @@ def main(argv: list[str]) -> int:
         logger.addHandler(handler)
     except OSError:
         pass  # no syslog socket (a test box): the console still shows the outcome
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    # With --json, stdout carries only the JSON object; the log goes to stderr.
+    logger.addHandler(logging.StreamHandler(sys.stderr if args.json else sys.stdout))
     plc: Plc = Plc(name=args.plc, host=args.host)
     try:
         settings: Settings = Settings.load(args.settings)
@@ -244,7 +270,7 @@ def main(argv: list[str]) -> int:
     except OSError as error:
         print(f"cm-plc-tool: cannot read {args.settings}: {error.strerror}", file=sys.stderr)
         return 2
-    return run(args.action, plc, settings, args.program, args.operator, args.compile_timeout)
+    return run(args.action, plc, settings, args.program, args.operator, args.compile_timeout, args.json)
 
 
 if __name__ == "__main__":

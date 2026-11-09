@@ -1924,7 +1924,12 @@ uploaded.
    uploads the ZIP (`POST /api/upload-file`, field `file`), polls
    `/api/compilation-status`, and calls `/api/start-plc`. `START:OK` does not
    prove the program loaded, so the script then polls `/api/status` for
-   `STATUS:RUNNING`.
+   `STATUS:RUNNING`. Right after an upload, `compilation-status` might still
+   report the previous build's `SUCCESS` or `FAILED` (unverified on a VM), which
+   would start the old program; the script and `cm_plc_tool.py` therefore accept
+   a final state only after this upload has shown a busy state, or after a
+   60-second grace. `cm_plc_tool.py --json` prints the outcome as one JSON
+   object for scripted use.
 5. The runtime auto-starts the program on later boots (checked with a
    container restart only).
 

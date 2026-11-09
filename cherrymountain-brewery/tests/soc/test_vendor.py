@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import struct
 from pathlib import Path
 
@@ -144,3 +145,52 @@ def test_plc_tool_validates_the_target() -> None:
 def test_plc_tool_log_line_matches_the_wazuh_decoder() -> None:
     sample = next(line for line in (INJECTS / "wazuh/samples.txt").read_text().splitlines() if "plc_upload" in line)
     assert "event=plc_upload plc=plc-cellar host=10.20.10.12 user=ridgeline" in sample
+
+
+class FakeRuntime(cm_plc_tool.Runtime):
+    """A runtime whose compilation-status replies come from a list."""
+
+    POLL_S = 0.0
+    STALE_GRACE_S = 3600.0
+
+    def __init__(self, replies: list[str]) -> None:
+        super().__init__(cm_plc_tool.Plc(name="plc-cellar", host="10.20.10.12"), None)  # type: ignore[arg-type]
+        self.replies: list[str] = replies
+        self.polls: int = 0
+
+    def call(self, path: str, data: bytes | None = None, headers: dict[str, str] | None = None) -> str:
+        assert path == "compilation-status"
+        self.polls += 1
+        return self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]
+
+
+def test_a_stale_success_right_after_upload_is_not_trusted() -> None:
+    """compilation-status may still show the previous build's SUCCESS after an
+    upload; the tool waits for this build's busy state before it believes one."""
+    runtime = FakeRuntime(['{"status": "SUCCESS"}', '{"status": "SUCCESS"}', '{"status": "COMPILING"}', '{"status": "SUCCESS"}'])
+    runtime.wait_compiled(timeout=10)
+    assert runtime.polls == 4
+
+
+def test_a_stale_failure_does_not_abort_and_a_real_one_does() -> None:
+    runtime = FakeRuntime(['{"status": "FAILED"}', '{"status": "UNZIPPING"}', '{"status": "SUCCESS"}'])
+    runtime.wait_compiled(timeout=10)
+    failing = FakeRuntime(['{"status": "COMPILING"}', '{"status": "FAILED"}'])
+    with pytest.raises(RuntimeError, match="failed to compile"):
+        failing.wait_compiled(timeout=10)
+
+
+def test_success_is_accepted_after_the_grace_without_a_busy_state() -> None:
+    runtime = FakeRuntime(['{"status": "SUCCESS"}'])
+    runtime.STALE_GRACE_S = 0.0
+    runtime.wait_compiled(timeout=10)
+    assert runtime.polls == 1
+
+
+def test_json_report(capsys: pytest.CaptureFixture[str]) -> None:
+    plc = cm_plc_tool.Plc(name="plc-cellar", host="10.20.10.12")
+    cm_plc_tool.report(True, "status", plc, "STATUS:RUNNING")
+    cm_plc_tool.report(True, "upload", plc, "", "TimeoutError")
+    first, second = (json.loads(line) for line in capsys.readouterr().out.splitlines())
+    assert first == {"action": "status", "plc": "plc-cellar", "host": "10.20.10.12", "ok": True, "status": "STATUS:RUNNING", "error": ""}
+    assert second["ok"] is False and second["error"] == "TimeoutError"

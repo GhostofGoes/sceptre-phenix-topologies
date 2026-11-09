@@ -111,15 +111,32 @@ echo "${up}"
 case "${up}" in *'"UploadFileFail":""'*) ;; *) log "FAIL: upload rejected"; exit 1 ;; esac
 
 log "polling compilation-status (timeout ${TIMEOUT}s)"
+# Right after an upload the status may still be the previous build's SUCCESS or
+# FAILED (unverified on v4.3.2; a re-provision after a failed start would hit
+# it). A final state counts only once this upload has shown a busy state, or
+# after STALE_GRACE seconds, longer than any compile takes.
+STALE_GRACE="${OPENPLC_STALE_GRACE:-60}"
 start=$(date +%s)
+seen_busy=0
 while :; do
   st=$(api -H "${AUTH}" "${BASE}/compilation-status" | json_field status || true)
-  log "$(( $(date +%s) - start ))s status=${st}"
+  elapsed=$(( $(date +%s) - start ))
+  log "${elapsed}s status=${st}"
   case "${st}" in
-    SUCCESS) break ;;
-    FAILED) api -H "${AUTH}" "${BASE}/runtime-logs" | tail -c 2000 || true; log "FAIL: compilation failed"; exit 1 ;;
+    SUCCESS | FAILED)
+      if [ "${seen_busy}" = 1 ] || (( elapsed >= STALE_GRACE )); then
+        if [ "${st}" = FAILED ]; then
+          api -H "${AUTH}" "${BASE}/runtime-logs" | tail -c 2000 || true
+          log "FAIL: compilation failed"
+          exit 1
+        fi
+        break
+      fi
+      ;;
+    "") ;;
+    *) seen_busy=1 ;;
   esac
-  if (( $(date +%s) - start > TIMEOUT )); then log "FAIL: compile timeout"; exit 1; fi
+  if (( elapsed > TIMEOUT )); then log "FAIL: compile timeout"; exit 1; fi
   sleep 5
 done
 

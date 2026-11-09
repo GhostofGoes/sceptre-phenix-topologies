@@ -300,6 +300,8 @@ def alarms_doc(plant: Plant, alloc: Allocation) -> dict[str, Any]:
             "units": src.units,
             "setpoint": a.setpoint,
             "delay_s": a.delay_s,
+            "deadband": a.deadband,
+            "off_delay_s": a.off_delay_s,
             "priority": a.priority,
             "fuxa_severity": FUXA_SEVERITY[a.priority],
             "cause": a.cause,

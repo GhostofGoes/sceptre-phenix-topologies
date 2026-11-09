@@ -3161,8 +3161,27 @@
       "scada_access": "read"
     },
     {
+      "tag": "CEL.SYS.XS01.CO2_OK",
+      "type": "binary-read",
+      "units": null,
+      "scaling": null,
+      "rio": "rio-cellar",
+      "rio_space": "discrete",
+      "otsim_register": 10008,
+      "master_fc": 2,
+      "master_offset": 10008,
+      "plc": "plc-cellar",
+      "plc_iec": "%IX100.7",
+      "slave_space": "discrete",
+      "slave_read_fc": 2,
+      "slave_pdu_address": 807,
+      "fuxa_memaddress": "100000",
+      "fuxa_address": 808,
+      "scada_access": "read"
+    },
+    {
       "tag": "CEL.SYS.XS01.CO2_INHIBIT",
-      "type": "binary-read-write",
+      "type": "binary-read",
       "units": null,
       "scaling": null,
       "rio": null,
@@ -3177,7 +3196,7 @@
       "slave_pdu_address": 26,
       "fuxa_memaddress": "000000",
       "fuxa_address": 27,
-      "scada_access": "read-write"
+      "scada_access": "read"
     },
     {
       "tag": "CEL.SYS.XS01.ALM_STATE",

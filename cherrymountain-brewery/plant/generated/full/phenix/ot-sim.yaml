@@ -278,6 +278,9 @@ metadata:
             scaling: 1
         pump_run:
           type: binary-read-write
+      gas-relay:
+        co2_ok:
+          type: binary-read
       filler:
         state:
           type: analog-read
@@ -991,6 +994,8 @@ hosts:
         type: hop-doser
       - name: cellar/transfer
         type: transfer-panel
+      - name: cellar/gasrelay
+        type: gas-relay
 - hostname: rio-packaging
   metadata:
     type: fd-server

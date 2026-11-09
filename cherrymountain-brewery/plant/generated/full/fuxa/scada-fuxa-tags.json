@@ -2066,18 +2066,27 @@
           "access": "read"
         },
         {
+          "id": "t_985df04b-21a3-573a-a03a-560e4012b040",
+          "name": "CEL.SYS.XS01.CO2_OK",
+          "label": "Cellar CO2 relay healthy (below 15,000 ppm, detection powered)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 808,
+          "access": "read"
+        },
+        {
           "id": "t_942b8b3f-c52b-5cea-a337-30f479ac1373",
           "name": "CEL.SYS.XS01.CO2_INHIBIT",
-          "label": "Carbonation inhibited by cellar CO2 (written by scada-fuxa from bas-vent)",
+          "label": "Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock)",
           "type": "Bool",
           "memaddress": "000000",
           "address": 27,
-          "access": "read-write"
+          "access": "read"
         },
         {
           "id": "t_a4fbf2b9-20c3-5af0-8e4e-54df4c3a42aa",
           "name": "CEL.SYS.XS01.ALM_STATE",
-          "label": "Carbonation inhibited by cellar CO2 (written by scada-fuxa from bas-vent): state alarm (medium)",
+          "label": "Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock): state alarm (medium)",
           "type": "Bool",
           "memaddress": "000000",
           "address": 28,

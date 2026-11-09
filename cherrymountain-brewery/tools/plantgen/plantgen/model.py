@@ -327,6 +327,13 @@ class AlarmSpec(Rationale):
     setpoint: str | None = None
     rationale: str | None = None
     suppress: str | None = None
+    #: Hysteresis in engineering units: the alarm clears only once the value is
+    #: this far back inside the limit. Default: 1 % of the tag's range span
+    #: (ISA-18.2 deadband), and at most a quarter of a deviation limit;
+    #: ``state`` alarms have none.
+    deadband: float | None = None
+    #: Off-delay: the alarm stays active this long after the condition clears.
+    off_delay: str | float = 0.0
 
 
 class TagSpec(Strict):
@@ -651,6 +658,8 @@ class Alarm(BaseModel):
     setpoint: str | None = None
     suppress: str | None = None
     has_bit: bool = True
+    deadband: float = 0.0
+    off_delay_s: float = 0.0
 
 
 class Tag(BaseModel):
@@ -965,7 +974,34 @@ def _alarm(tag: Tag, spec: AlarmSpec, library: dict[str, Rationale]) -> Alarm:
         setpoint=f"{tag.area}.{tag.unit}.{setpoint}" if setpoint else None,
         suppress=suppress,
         has_bit=tag.plc is not None,
+        deadband=_deadband(tag, spec),
+        off_delay_s=parse_duration(merged.get("off_delay", 0)),
     )
+
+
+def _deadband(tag: Tag, spec: AlarmSpec) -> float:
+    """The alarm's deadband in engineering units, rounded to the tag's
+    resolution (at least one count): explicit, else 1 % of the range span."""
+    if spec.kind == "state":
+        if spec.deadband:
+            raise PlantError(f"{tag.name}: a state alarm has no deadband")
+        return 0.0
+    step: float = 10.0 ** -tag.scaling
+    if spec.deadband is not None:
+        if spec.deadband < 0:
+            raise PlantError(f"{tag.name}: alarm deadband must not be negative")
+        raw: float = spec.deadband
+    elif tag.range is not None:
+        raw = (tag.range[1] - tag.range[0]) / 100.0
+        if spec.kind == "deviation" and spec.limit:
+            # A deviation band is narrow next to the span: at most a quarter of it.
+            raw = min(raw, spec.limit / 4.0)
+    else:
+        raw = step
+    counts: int = max(round(raw / step), 1)
+    if spec.deadband is None and spec.kind == "deviation" and spec.limit:
+        counts = min(counts, max(int(spec.limit / 4.0 / step + 1e-9), 1))
+    return round(counts * step, 6)
 
 
 def _alarm_tag(tag: Tag, alarm: Alarm) -> Tag:

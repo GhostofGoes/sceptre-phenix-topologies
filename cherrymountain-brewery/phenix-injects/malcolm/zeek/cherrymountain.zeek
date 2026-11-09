@@ -59,9 +59,9 @@ export {
 
     ## The two BBMDs: ot-svc (OPS) and bas-bbmd (BAS).
     const bbmd_hosts: set[addr] = { 10.20.30.13, 10.30.10.5 } &redef;
-    ## BACnet clients that may write: bas-fuxa, scada-fuxa (the CO2 life-safety
-    ## status, DESIGN.md 6.6), and the EWS.
-    const bacnet_writers: set[addr] = { 10.30.10.10, 10.20.30.10, 10.20.30.12 } &redef;
+    ## BACnet clients that may write: bas-fuxa and the EWS. scada-fuxa only
+    ## reads; the cellar CO2 interlock is hardwired (DESIGN.md 6.6 #6).
+    const bacnet_writers: set[addr] = { 10.30.10.10, 10.20.30.12 } &redef;
     ## Hosts that may talk BACnet across the OPS/BAS boundary (conduit matrix).
     const bacnet_ops_peers: set[addr] = { 10.20.30.10, 10.20.30.12, 10.20.30.13 } &redef;
     const bacnet_ops_net: subnet = 10.20.30.0/24 &redef;

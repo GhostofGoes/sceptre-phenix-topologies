@@ -99,6 +99,7 @@ VAR
   CEL_XFER_HS01_CMD AT %QX101.6 : BOOL; (* Transfer pump run command *)
   CEL_XFER_XS01_ACTIVE AT %QX3.0 : BOOL; (* Transfer in progress (peer status for plc-utilities) *)
   CEL_XFER_XS02_CIP_PERMIT AT %QX3.1 : BOOL; (* CIP permitted on the cellar circuits (peer status for plc-utilities) *)
-  CEL_SYS_XS01_CO2_INHIBIT AT %QX3.2 : BOOL; (* Carbonation inhibited by cellar CO2 (written by scada-fuxa from bas-vent) *)
-  CEL_SYS_XS01_ALM_STATE AT %QX3.3 : BOOL; (* Carbonation inhibited by cellar CO2 (written by scada-fuxa from bas-vent): state alarm (medium) *)
+  CEL_SYS_XS01_CO2_OK AT %IX100.7 : BOOL; (* Cellar CO2 relay healthy (below 15,000 ppm, detection powered) *)
+  CEL_SYS_XS01_CO2_INHIBIT AT %QX3.2 : BOOL; (* Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock) *)
+  CEL_SYS_XS01_ALM_STATE AT %QX3.3 : BOOL; (* Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock): state alarm (medium) *)
 END_VAR

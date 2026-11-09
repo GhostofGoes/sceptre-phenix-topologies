@@ -166,8 +166,11 @@ class Sources:
         return self.generated / "openplc" / program
 
     def program_zip(self, program: str) -> Path:
-        """The program ZIP ``plc/<program>/build_zip.sh`` writes."""
-        path: Path = self.require(self.injects / "openplc" / f"{program}.zip")
+        """The program ZIP: ``phenix-injects/openplc/<program>.zip`` for ci
+        (``plc/plc-cellar/build_zip.sh``), ``phenix-injects/openplc/<variant>/
+        <program>.zip`` for full and lite (``plc/common/build_zip.sh``)."""
+        sub: Path = Path("openplc") if self.variant == "ci" else Path("openplc") / self.variant
+        path: Path = self.require(self.injects / sub / f"{program}.zip")
         with path.open("rb") as fh:
             if fh.read(len(LFS_POINTER)) == LFS_POINTER:
                 raise SourceError(
@@ -189,7 +192,7 @@ class Sources:
             with zipfile.ZipFile(self.program_zip(program)) as zf:
                 if "debug_map.json" in zf.namelist():
                     data = json.loads(zf.read("debug_map.json"))
-                    where = f"phenix-injects/openplc/{program}.zip:debug_map.json"
+                    where = f"{self.rel(self.program_zip(program))}:debug_map.json"
             if data is None:
                 path = self.root / "plc" / program / "debug_map.json"
                 if not path.is_file():

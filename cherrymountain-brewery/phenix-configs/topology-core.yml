@@ -1144,10 +1144,10 @@ spec:
       dst: /usr/local/lib/cm-ews/cm_plc_tool.py
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/ews/cm_plc_tool.py
-    - description: the plc-cellar program, for the engineering re-upload
+    - description: the plc-cellar program (full; lite runs the same code), for the engineering re-upload
       dst: /opt/cherrymountain/ews/programs/plc-cellar.zip
       permissions: '0644'
-      src: /phenix/injects/${BRANCH_NAME}/openplc/plc-cellar.zip
+      src: /phenix/injects/${BRANCH_NAME}/openplc/full/plc-cellar.zip
     labels:
       zone: ops
     network:

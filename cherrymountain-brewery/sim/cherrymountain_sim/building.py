@@ -368,6 +368,11 @@ class BuildingFederate(Federate):
                 return c_to_f(self.cel.temp_c)
             case "cellar.co2_ppm":
                 return self.cel.co2_ppm
+            case "vent.co2_relay_ok":
+                # The gas-detection relay to rio-cellar is de-energize to trip: it
+                # drops at tier 2 (15,000 ppm) and when EP-1, which feeds the
+                # detection panel, is dead (DESIGN.md §6.6 #6).
+                return 1.0 if (not self.cel.tiers[1]) and self.bus("ep1") else 0.0
             case "load.rtu.kw":
                 return self.tap.power_kw
             case "load.coldroom.kw":

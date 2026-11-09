@@ -70,6 +70,28 @@ def test_purge_fans_start_at_tier_1(full: HelicsConfig) -> None:
     assert fed.values()["building/bas-vent.purge_fan_1"] is True
 
 
+def test_co2_relay_trips_at_tier_2_and_on_power_loss(full: HelicsConfig) -> None:
+    """The hardwired gas-detection relay to rio-cellar (DESIGN.md §6.6 #6) is
+    energized below tier 2 with EP-1 powered, drops at 15,000 ppm, and drops
+    when EP-1 dies; the cellar federate republishes it as the rio-cellar
+    discrete input that plc-cellar's carbonation interlock reads."""
+    bld = build(full, "building")
+    assert bld.values()["building/vent.co2_relay_ok"] == 1.0
+    bld.apply_input("cellar/co2.vent_gps", 400.0)
+    while not bld.cel.tiers[1]:
+        bld.step(10.0)
+    assert bld.values()["building/vent.co2_relay_ok"] == 0.0
+    bld2 = build(full, "building")
+    bld2.apply_input("power/bus.ep1.energized", False)
+    bld2.step(10.0)
+    assert bld2.values()["building/vent.co2_relay_ok"] == 0.0
+
+    cel = build(full, "cellar")
+    assert cel.values()["cellar/gasrelay.co2_ok"] is True
+    cel.apply_input("building/vent.co2_relay_ok", 0.0)
+    assert cel.values()["cellar/gasrelay.co2_ok"] is False
+
+
 def test_taproom_and_cold_room_hold_setpoints(full: HelicsConfig) -> None:
     """On a hot afternoon RTU-1 holds the taproom near 74 °F and the cold room
     stays near 36 °F."""

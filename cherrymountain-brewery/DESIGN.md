@@ -583,9 +583,18 @@ These counts are design estimates. The plant tag database (`plant.yaml`,
   - Glycol supply above 34 °F: High.
   - Wastewater discharge inhibited: Medium.
   - Bottling line held more than 10 minutes: Low.
+- **Deadband and off-delay.** Every alarm carries a deadband (hysteresis in
+  engineering units; plant.yaml `deadband`, default 1 % of the tag's range span
+  and at most a quarter of a deviation limit) and an off-delay (`off_delay`,
+  default 0). plantgen writes both to `alarms.json` (`deadband`,
+  `off_delay_s`), and `plc/common/plcbuild.py` generates each PLC's alarm logic
+  from that file (the `CmAlarm` block: set past the limit, clear back inside by
+  the deadband, on-delay, off-delay, suppression), so the PLCs and FUXA's alarm
+  list cannot drift. The ci slice's hand-written plc-cellar program predates
+  this and has on-delays only.
 - **Shelving and suppression.** Shelving is allowed. State-based
   suppression applies; for example, packaging alarms are suppressed while
-  the line is Stopped.
+  the line is Stopped (the alarm's `suppress` bit is 0).
 
 ### 6.6 Cross-system interactions
 
@@ -599,7 +608,7 @@ isolated demos.
 | 3 | Cellar → utilities | Glycol demand from jacket valves; CO₂ draw for purge and carbonation; CIP requests | Glycol supply temperature rises during a crash |
 | 4 | Utilities ↔ cellar | plc-utilities reads the CIP-permit and transfer status from plc-cellar over peer Modbus (east–west L1 traffic) | CIP blocked during a transfer and vice versa |
 | 5 | Cellar → building | Fermentation CO₂ vented by spunding and blow-off into the cellar room (CO₂ mass balance) | bas-vent purge fans start; alarms at 15,000 ppm |
-| 6 | BAS → SCADA | scada-fuxa reads cellar CO₂ alarms from bas-vent over BACnet, discovering it through the BBMDs ([§10.4](#104-protocol-map)) | Process HMI shows the life-safety state; carbonation inhibited at ≥15,000 ppm |
+| 6 | BAS → cellar (life safety) and BAS → SCADA (display) | The bas-vent gas-detection relay is hardwired into rio-cellar (`CEL.SYS.XS01.CO2_OK`); `plc-cellar` inhibits carbonation while it is open. scada-fuxa only reads the CO₂ objects from bas-vent over BACnet, discovering it through the BBMDs ([§10.4](#104-protocol-map)) | Carbonation inhibited at ≥15,000 ppm or on loss of detection power; the process HMI shows the state. See [§6.7](#67-cellar-co2-life-safety-interlock) |
 | 7 | BBT → packaging | Product supply and BBT pressure gate the filler | Filler holds on low BBT pressure |
 | 8 | Building ↔ process | Ambient and room temperatures change jacket heat gain and chiller COP; brewhouse heat and vapor load the makeup-air unit | Summer afternoons stress the glycol plant |
 | 9 | Process + building → power | Every motor, heater, and compressor publishes kW to the power model | Feeder loading, demand peaks |
@@ -607,6 +616,51 @@ isolated demos.
 | 11 | Utility ↔ power | DERMS reads PV and BESS over DNP3 and sends curtailment and dispatch; the tariff drives peak shaving | Curtailment visible at the inverter |
 | 12 | Weather → building, PV, utilities | Weather federate (Denver TMY3) | Diurnal PV, HVAC, and chiller cycles |
 | 13 | CIP and brewhouse drains → wastewater | Effluent volume and pH into the neutralization tank | Dosing pumps run; discharge inhibited when pH is out of band |
+
+### 6.7 Cellar CO2 life-safety interlock
+
+**One mechanism: a hardwired relay into plc-cellar.** The cellar CO₂ protection
+uses the BAS controller's own logic and a hardwired contact, and no supervisory
+host is in the path:
+
+1. **Detection and ventilation (bas-vent, local).** The four low-mounted
+   sensors feed bas-vent's controller logic. At 5,000 ppm it starts both purge
+   fans itself ([§8.1](#81-spaces-equipment-and-bacnet-devices)); the alarm
+   tiers are 5,000 / 15,000 / 30,000 ppm ([§5.3](#53-best-practices-encoded)).
+2. **Carbonation inhibit (hardwired relay, plc-cellar logic).** bas-vent's
+   gas-detection relay output is wired to a rio-cellar discrete input,
+   `CEL.SYS.XS01.CO2_OK`. The relay is **de-energize to trip**: it is closed
+   (TRUE) only while the sensed CO₂ is below tier 2 (15,000 ppm) and EP-1, which
+   powers the detection panel, is live. `plc-cellar` sets
+   `CEL.SYS.XS01.CO2_INHIBIT` whenever the contact is open and then forces both
+   BBT carbonation valves (`FCV01.OUT`) to 0 and the hop-port CO₂ purge valve
+   closed. The inhibit clears only after the contact has been closed again for
+   a release delay, so a tier that chatters does not cycle the carbonation
+   stones.
+3. **Supervision (FUXA, display only).** scada-fuxa reads the CO₂ objects and
+   tiers from bas-vent over BACnet (through the BBMDs) and reads
+   `CO2_INHIBIT` from plc-cellar over Modbus. It alarms and displays; it never
+   writes either, so the BACnet writer rules (Suricata sids 9000113/9000114,
+   Zeek `BACnet_Write_Unexpected`) list only bas-fuxa and the EWS.
+
+**Fail-safe behavior.**
+
+| Failure | Effect on the interlock |
+|---|---|
+| BBMD (ot-svc or bas-bbmd), the BBMD conduits, or `fw-ot` | None. The relay path is hardwired; scada-fuxa loses its CO₂ display, and its BACnet tags go stale (FUXA keeps the last value, [§8.1](#81-spaces-equipment-and-bacnet-devices)) |
+| scada-fuxa or bas-fuxa down | None. Only the display and the BAS alarms are lost |
+| BACnet on bas-vent (the ot-sim BACnet module) down | None. Ventilation and the relay are the controller's local logic |
+| EP-1 dead (detection panel unpowered) | The relay drops: carbonation is inhibited (de-energize to trip). The purge fans are on EP-1 too and stop |
+| CO₂ at or above 15,000 ppm | The relay drops: carbonation and hop-port purges are inhibited until the sensed value falls 10 % below the tier and the release delay passes |
+| rio-cellar or the FIELD-CEL link down | `plc-cellar`'s Modbus master keeps the last input values, so the inhibit holds its last state. A RIO heartbeat would let the PLC fail safe here too; it is open work ([§19](#19-risks-and-open-questions)) |
+| plc-cellar stopped | Its outputs stop updating; rio-cellar keeps the last commands. Without a PLC the cellar autopilot takes over after 300 s and honors the relay itself ([§9.6](#96-implementation-status-and-validation)) |
+
+**Simulation.** The building federate computes the relay state (tier 2 clear
+and EP-1 energized) and publishes `building/vent.co2_relay_ok`; the cellar
+federate republishes it as rio-cellar's `gasrelay.co2_ok` point. A crash of
+the bas-vent ot-sim process therefore does not drop the relay, which a real
+controller failure would: a documented simplification. In the `ci` variant
+there is no building federate and no BBT, so the point does not exist.
 
 ## 7. Electrical distribution and energy
 
@@ -766,8 +820,11 @@ CherryMountain's interconnection agreement uses **DNP3**:
 
 **Local logic.** Each controller runs its own interlocks in ot-sim logic,
 the way real BAS controllers do. For example, CO₂ ≥ 5,000 ppm starts the
-purge fans locally. The `bas-fuxa` front end supervises, schedules, and
-alarms. `scada-fuxa` reads the CO₂ objects for the process HMI.
+purge fans locally, and bas-vent's gas-detection relay, hardwired into
+rio-cellar, drops at 15,000 ppm so plc-cellar inhibits carbonation
+([§6.7](#67-cellar-co2-life-safety-interlock)). The `bas-fuxa` front end supervises,
+schedules, and alarms. `scada-fuxa` only reads the CO₂ objects for the process
+HMI.
 
 **Discovery across `fw-ot`.** `bas-fuxa` shares the BAS VLAN with the devices.
 plantgen sets its BACnet device's `broadcastAddress` to the subnet's directed
@@ -1482,7 +1539,7 @@ static routes are set in topology `network.routes`:
 | scada-fuxa → plc-brewhouse | TCP 4840 (OPC UA) | fw-ot | SCADA polling |
 | scada-fuxa → plc-packaging | TCP 102 (S7comm) | fw-ot | SCADA polling |
 | scada-fuxa → plc-cellar, plc-utilities, plc-power | TCP 502 (Modbus) | fw-ot | SCADA polling |
-| scada-fuxa → BAS devices | UDP 47808 (BACnet/IP) | fw-ot | ReadProperty, ReadPropertyMultiple, and WriteProperty for the CO₂ life-safety status ([§6.6](#66-cross-system-interactions) #6). Replies are stateful. The rule still matters after the connection-tracking entry from the I-Am expires |
+| scada-fuxa → BAS devices | UDP 47808 (BACnet/IP) | fw-ot | ReadProperty and ReadPropertyMultiple of the CO₂ objects for the process HMI. scada-fuxa never writes to BACnet: the life-safety interlock is hardwired ([§6.7](#67-cellar-co2-life-safety-interlock)), and a WriteProperty from it alerts (Suricata sid 9000113, Zeek `BACnet_Write_Unexpected`). Replies are stateful. The rule still matters after the connection-tracking entry from the I-Am expires |
 | ot-svc (OPS BBMD) → bas-bbmd | UDP 47808 | fw-ot | BBMD rule 1: Forwarded-NPDU carrying FUXA's Who-Is, plus BDT and foreign-device messages |
 | BAS devices → scada-fuxa, ews | UDP 47808 | fw-ot | BBMD rule 2, **required**: a device answers the forwarded Who-Is with a unicast I-Am straight to the client. This is a new BAS → OPS flow that no BBMD-to-BBMD rule covers; without it discovery fails. It has no SoH probe, because the flow sends no reply of its own, so only `netcheck` checks it |
 | bas-bbmd → ot-svc (OPS BBMD) | UDP 47808 | fw-ot | BBMD rule 3, tested and **optional**: it passes only unsolicited broadcast I-Ams (power-up, periodic) from devices, which the BAS BBMD forwards to OPS. It matched when tested. A Who-Is answered with a broadcast I-Am passes on the established rule, and FUXA cannot hear broadcast I-Ams anyway ([§10.4](#104-protocol-map)). Keep it only for devices that announce themselves |
@@ -1746,7 +1803,10 @@ provisioning below) or in the OpenPLC Editor:
   altitude-aware boil detection.
 - **plc-cellar:** per-zone glycol deadband control, setpoint profiles,
   spunding, dry-hop and transfer sequences, CIP and transfer interlocks,
-  and carbonation control.
+  carbonation control, and the CO₂ carbonation interlock on the hardwired
+  bas-vent relay ([§6.7](#67-cellar-co2-life-safety-interlock)). The full and
+  lite program is `plc/plc-cellar/plc-cellar-plant.st`; the ci slice keeps
+  `plc-cellar.st` (fermenters only).
 - **plc-packaging:** the PackML state machine, ported from Beckhoff's MIT
   `PackML_PLC_Example`, plus PackTags and machine interlocks.
 - **plc-utilities:** glycol, steam, air, CO₂, RO, wastewater, and CIP
@@ -1768,8 +1828,13 @@ Docker only; a VM reboot and VM RAM were not tested). v4.3.x is strucpp-based,
 so the runtime compiles generated C++, not MatIEC output, when a ZIP is
 uploaded.
 
-1. **Build the program ZIP.** `plc/<plc>/build_zip.sh` builds it headless, with
-   strucpp pinned at `fcccfbdf`, and the ZIP is committed through Git LFS. The
+1. **Build the program ZIP.** `plc/plc-cellar/build_zip.sh` builds the ci
+   slice's ZIP and `plc/common/build_zip.sh` the ZIPs of all five PLCs for the
+   full and lite variants (`phenix-injects/openplc/<variant>/<plc>.zip`, with
+   the alarm logic generated from `alarms.json` and the strucpp
+   `debug_map.json` inside; [plc/common/README.md](plc/common/README.md)). Both
+   build headless, with strucpp pinned at `fcccfbdf`, and the ZIPs are
+   committed through Git LFS. The
    OpenPLC Editor (4.3.3 or later, as the runtime reports in
    `/api/capabilities`) stays optional. The ZIP must carry:
    - `generated.cpp`, `generated.hpp`, and `generated_debug.cpp`
@@ -2878,6 +2943,7 @@ silently.
 | Hardened systemd units are verified offline only | First VM run checks `DynamicUser` with `StateDirectory`, read-only paths, and `MemoryDenyWriteExecute` at runtime (§17) |
 | `CM_REF` in `cm-sim` trails `sim/` changes (`OTSIM_REF` is pinned to the tested ot-sim `9dc33047`) | Move `CM_REF` forward with every `sim/` change the image must carry |
 | OpenDSS islanding needs a source in each island | Genset modeled as a switched Vsource; pandapower fallback |
+| OpenPLC's `modbus_master` keeps the last input value on a lost RIO link (`error_handling: keep-last-value`), so an interlock input such as the cellar CO₂ relay holds its last state when rio-cellar is unreachable | Open: a RIO heartbeat point (a counter the RIO increments) that each PLC watches, failing its interlocks safe on a stale count ([§6.7](#67-cellar-co2-life-safety-interlock)) |
 
 ## 20. Licensing
 

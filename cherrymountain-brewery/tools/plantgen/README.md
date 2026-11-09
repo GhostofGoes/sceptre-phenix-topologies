@@ -233,10 +233,14 @@ and point order, from 0 per kind. ot-sim scales analog points by
 
 One entry per alarm: `name` (the alarm bit tag `<AREA>.<UNIT>.<INSTR>.ALM_<KIND>`),
 `source`, `kind` (`deviation`, `high`, `low`, `highhigh`, `lowlow`, `state`),
-`limit`, `units`, `setpoint`, `delay_s`, `priority`, `fuxa_severity`, `cause`,
+`limit`, `units`, `setpoint`, `delay_s`, `deadband`, `off_delay_s`, `priority`, `fuxa_severity`, `cause`,
 `consequence`, `action`, `response_time_s`, `plc`, `plc_iec`, `fuxa_tag_id`,
 `text`, and when set `suppress` (a bit that suppresses the alarm while it is 0,
-for ISA-18.2 state-based suppression). A `state` alarm is active while the
+for ISA-18.2 state-based suppression). `deadband` is the hysteresis in
+engineering units (plant.yaml `deadband`, default 1 % of the tag's range span
+and at most a quarter of a deviation limit; 0 for `state`), and `off_delay_s`
+holds the alarm after its condition clears (plant.yaml `off_delay`, default 0).
+`plc/common/plcbuild.py` generates the PLC alarm logic from these fields. A `state` alarm is active while the
 source equals `limit`. Alarms on BACnet points have no PLC bit: `plc` and
 `plc_iec` are null, `evaluator` is `fuxa`, `owner` is the controller, and
 `fuxa_tag_id` is the source tag's ID.

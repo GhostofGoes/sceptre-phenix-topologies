@@ -403,6 +403,74 @@ def check_zip(v: Variant) -> list[str]:
     return problems
 
 
+# --- the full and lite OpenPLC ZIPs (plc/common/build_zip.sh) -----------------
+
+COMMON_DIR: Path = ROOT / "plc" / "common"
+#: The PLCs of the full and lite variants; each one with a program under
+#: plc/<plc>/ must have a current program ZIP.
+VARIANT_PLCS: tuple[str, ...] = (
+    "plc-brewhouse",
+    "plc-cellar",
+    "plc-packaging",
+    "plc-utilities",
+    "plc-power",
+)
+
+
+def variant_program_md5(plc: str, variant: str) -> str:
+    """MD5 of the program ``plc/common/plcbuild.py`` assembles; also runs its checks."""
+    sys.path.insert(0, str(COMMON_DIR))
+    try:
+        import plcbuild  # noqa: PLC0415 - sibling script, not a package
+    finally:
+        sys.path.remove(str(COMMON_DIR))
+    full: str
+    problems: list[str]
+    full, problems = plcbuild.assemble(plc, variant)
+    if problems:
+        raise ValueError("; ".join(problems))
+    return hashlib.md5(full.encode()).hexdigest()  # noqa: S324 - OpenPLC's program id
+
+
+def check_variant_zips(v: Variant) -> list[str]:
+    """Each committed full/lite program ZIP carries the program as assembled now
+    (``defines.h``), the generated plugin configs, and the debug map."""
+    problems: list[str] = []
+    for plc in VARIANT_PLCS:
+        source: str = "plc-cellar-plant.st" if plc == "plc-cellar" else f"{plc}.st"
+        if not (ROOT / "plc" / plc / source).is_file():
+            continue  # no full-variant program for this PLC yet
+        zpath: Path = INJECTS / "openplc" / v.name / f"{plc}.zip"
+        rebuild: str = f"rerun plc/common/build_zip.sh {plc} --variant {v.name}"
+        if not zpath.exists():
+            problems.append(f"missing {rel(zpath)}; {rebuild}")
+            continue
+        if is_lfs_pointer(zpath):
+            print(f"skip {v.name}/{plc}: {rel(zpath)} is a Git LFS pointer; the ZIP was not checked")
+            continue
+        if zpath.stat().st_size > MAX_ZIP_BYTES:
+            problems.append(f"{rel(zpath)} is over {MAX_ZIP_BYTES} bytes")
+        try:
+            want: str = variant_program_md5(plc, v.name)
+        except (OSError, ValueError, SystemExit) as exc:
+            problems.append(f"{plc} ({v.name}): {exc}")
+            continue
+        with zipfile.ZipFile(zpath) as zf:
+            names: set[str] = set(zf.namelist())
+            for need in ("generated.cpp", "generated.hpp", "generated_debug.cpp", "defines.h", "debug_map.json"):
+                if need not in names:
+                    problems.append(f"{rel(zpath)}: missing {need}")
+            if "defines.h" in names and f'#define PROGRAM_MD5 "{want}"' not in zf.read("defines.h").decode():
+                problems.append(f"{rel(zpath)}: PROGRAM_MD5 is not the assembled program's ({want}); {rebuild}")
+            for src in sorted((v.generated / "openplc" / plc).glob("*.json")):
+                entry: str = f"conf/{src.name}"
+                if entry not in names:
+                    problems.append(f"{rel(zpath)}: missing {entry}; {rebuild}")
+                elif json.loads(zf.read(entry)) != json.loads(src.read_text()):
+                    problems.append(f"{rel(zpath)}: {entry} differs from {rel(src)}; {rebuild}")
+    return problems
+
+
 def main(argv: list[str] | None = None) -> int:
     ap: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--check", action="store_true")
@@ -426,6 +494,8 @@ def main(argv: list[str] | None = None) -> int:
             problems += sync_scenario(v, args.check)
             if v.check_plc_zip:
                 problems += check_zip(v)
+            if v.name in ("full", "lite"):
+                problems += check_variant_zips(v)
         except (OSError, KeyError, TypeError, ValueError) as exc:
             problems.append(f"{v.name}: {type(exc).__name__}: {exc}")
 

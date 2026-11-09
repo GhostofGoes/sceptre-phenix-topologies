@@ -171,6 +171,8 @@ def suricata_pcap(path: Path) -> None:
     b.udp("10.30.10.5", "10.20.30.13", FORWARDED_NPDU)
     b.udp("10.20.30.10", "10.30.10.22", READ_PROPERTY)
     b.udp("10.20.30.12", "10.30.10.22", WRITE_PROPERTY)
+    # scada-fuxa only reads the BAS devices (DESIGN.md 6.6 #6): its write alerts.
+    b.udp("10.20.30.10", "10.30.10.22", WRITE_PROPERTY)
     b.udp("10.20.20.10", "10.30.10.22", WRITE_PROPERTY)
     b.udp("10.20.20.10", "10.30.10.22", WRITE_PROPERTY_MULTIPLE)
     for function in (1, 2, 5, 6, 8):

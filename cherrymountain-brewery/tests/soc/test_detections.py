@@ -82,9 +82,10 @@ def test_the_clients_match_the_topology(topology_nodes: dict[str, dict]) -> None
     s7 = next(line for line in rule_lines() if "sid:9000111;" in line)
     assert f"![{scada},{ews}]" in s7
     bacnet = next(line for line in rule_lines() if "sid:9000113;" in line)
-    assert f"![{bas_fuxa},{scada},{ews}]" in bacnet
+    assert f"![{bas_fuxa},{ews}]" in bacnet
+    assert scada not in bacnet.split("->")[0]
     zeek = ZEEK.read_text()
-    assert f"const bacnet_writers: set[addr] = {{ {bas_fuxa}, {scada}, {ews} }}" in zeek
+    assert f"const bacnet_writers: set[addr] = {{ {bas_fuxa}, {ews} }}" in zeek
     assert f"const ews_host: addr = {ews}" in zeek
 
 

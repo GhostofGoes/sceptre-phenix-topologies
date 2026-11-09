@@ -32,9 +32,11 @@ from cherrymountain_sim.timebase import DEFAULT_COMPRESSION, TimeBase
 LOG: logging.Logger = logging.getLogger("cherrymountain_sim")
 PA_PER_PSI: float = 6894.757
 #: Shared cellar equipment with simple command feedback.
-SHARED_TYPES: frozenset[str] = frozenset({"hop-doser", "transfer-panel"})
+SHARED_TYPES: frozenset[str] = frozenset({"hop-doser", "transfer-panel", "gas-relay"})
 #: Device types modeled as fermenters.
 FERMENTER_TYPES: frozenset[str] = frozenset({"fv-zone", "fv-vessel"})
+#: The bas-vent gas-detection relay, an input from the building federate.
+CO2_RELAY_INPUT: str = "building/vent.co2_relay_ok"
 #: Measurement noise (standard deviation) per point, when noise is enabled.
 NOISE_SIGMA: dict[str, float] = {
     "temp_f": 0.02,
@@ -414,6 +416,8 @@ class CellarFederate(Federate):
             env.knockout_gpm = value
         elif key == "packaging/beer.draw_gpm":
             env.beer_draw_gpm = value
+        elif key == CO2_RELAY_INPUT:
+            pass  # the gas-relay point reads it back from self.inputs
         else:
             LOG.warning("ignoring unknown input %s", key)
 
@@ -499,7 +503,7 @@ class CellarFederate(Federate):
         return max(noisy, 0.0)  # registers are unsigned
 
     def _shared(self, device: str, point: str) -> Value:
-        """Dry-hop doser and transfer panel: commands and their feedback.
+        """Dry-hop doser, transfer panel, and gas relay: commands and feedback.
 
         The hop port is closed unless a dose is in progress; the transfer
         route is verified (swing panel in place) and the pump moves 30 gal/min
@@ -507,6 +511,11 @@ class CellarFederate(Federate):
         """
         cmd = self.commands
         match point:
+            case "co2_ok":
+                # The bas-vent relay contact, hardwired into rio-cellar
+                # (DESIGN.md §6.6 #6): healthy only while the building federate
+                # reports it energized.
+                return self.input(CO2_RELAY_INPUT, 1.0) >= 0.5
             case "port_closed":
                 return not bool(cmd.get(f"{device}.dose_valve", False))
             case "route_ok":

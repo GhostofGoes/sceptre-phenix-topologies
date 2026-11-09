@@ -428,3 +428,32 @@ def test_generate_writes_and_prunes(tmp_path: Path) -> None:
     assert main(["--variant", "ci", "--out", str(out)]) == 0
     assert not (out / "old").exists()
     assert main(["--check", "--variant", "ci", "--out", str(out)]) == 0
+
+
+def test_alarm_deadbands_and_off_delays(tmp_path: Path) -> None:
+    """Every alarm has a deadband (1 % of span, at most a quarter of a deviation
+    limit, none for state alarms) and an off-delay; an explicit value wins."""
+    full = load(DEFAULT_PLANT, "full")
+    for a in full.alarms:
+        assert a.off_delay_s == 0.0
+        if a.kind == "state":
+            assert a.deadband == 0.0
+        else:
+            assert a.deadband > 0.0, a.name
+        if a.kind == "deviation":
+            assert a.deadband <= a.limit / 4 + 1e-9, a.name
+
+    def mutate(d: dict[str, Any]) -> None:
+        tag = next(t for t in unit(d, "CEL", "FV101")["tags"] if t["id"] == "TT01.PV")
+        tag["alarms"][0].update({"deadband": 0.3, "off_delay": "2m"})
+
+    custom = load(write_plant(tmp_path, mutate), "ci")
+    alarm = next(a for a in custom.alarms if a.name == "CEL.FV101.TT01.ALM_DEVIATION")
+    assert (alarm.deadband, alarm.off_delay_s) == (0.3, 120.0)
+
+    def bad(d: dict[str, Any]) -> None:
+        tag = next(t for t in unit(d, "CEL", "FV101")["tags"] if t["id"] == "TT01.PV")
+        tag["alarms"][0]["deadband"] = -1.0
+
+    with pytest.raises(PlantError, match="deadband"):
+        load(write_plant(tmp_path, bad), "ci")

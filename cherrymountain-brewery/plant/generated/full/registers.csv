@@ -160,7 +160,8 @@ CEL.XFER.FT01.PV,analog-read,gal/min,1,rio-cellar,input,30028,4,30028,plc-cellar
 CEL.XFER.HS01.CMD,binary-read-write,,,rio-cellar,coil,15,15,15,plc-cellar,%QX101.6,coil,1,814,000000,815,read
 CEL.XFER.XS01.ACTIVE,binary-read,,,,,,,,plc-cellar,%QX3.0,coil,1,24,000000,25,read
 CEL.XFER.XS02.CIP_PERMIT,binary-read,,,,,,,,plc-cellar,%QX3.1,coil,1,25,000000,26,read
-CEL.SYS.XS01.CO2_INHIBIT,binary-read-write,,,,,,,,plc-cellar,%QX3.2,coil,1,26,000000,27,read-write
+CEL.SYS.XS01.CO2_OK,binary-read,,,rio-cellar,discrete,10008,2,10008,plc-cellar,%IX100.7,discrete,2,807,100000,808,read
+CEL.SYS.XS01.CO2_INHIBIT,binary-read,,,,,,,,plc-cellar,%QX3.2,coil,1,26,000000,27,read
 CEL.SYS.XS01.ALM_STATE,binary-read,,,,,,,,plc-cellar,%QX3.3,coil,1,27,000000,28,read
 PKG.LINE.PACKML.STATE,analog-read,,0,,,,,,plc-packaging,%MW0,holding,3,117,400000,118,read
 PKG.LINE.PACKML.ALM_STATE,binary-read,,,,,,,,plc-packaging,%QX0.0,coil,1,0,000000,1,read

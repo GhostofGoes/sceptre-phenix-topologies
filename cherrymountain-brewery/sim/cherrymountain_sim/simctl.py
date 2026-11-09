@@ -81,6 +81,16 @@ class EventRequest(BaseModel):
             case "chiller-fault":
                 if p.get("action", "fail") not in ("fail", "clear"):
                     raise ValueError("chiller-fault action is fail or clear")
+                if p.get("compressor", 1) not in (1, 2):
+                    raise ValueError("chiller-fault compressor is 1 or 2 (two stages)")
+            case "start-batch":
+                if p.get("recipe", "fire-of-the-phenix") != "fire-of-the-phenix":
+                    raise ValueError("start-batch recipe must be fire-of-the-phenix")
+                brews = p.get("brews", 2)
+                if not isinstance(brews, int) or isinstance(brews, bool) or not 1 <= brews <= 4:
+                    raise ValueError("start-batch brews is an integer from 1 to 4")
+                if not isinstance(p.get("batch_id", ""), str):
+                    raise ValueError("start-batch batch_id is a string")
             case _:
                 pass
         return self

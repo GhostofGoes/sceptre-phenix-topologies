@@ -405,6 +405,8 @@ class BrewhouseFederate(Federate):
     pilot: Autopilot
     mash_params: MashParams
     started_days: set[str]
+    #: The ``batch_id`` of the latest ``start-batch`` event (ground truth only).
+    batch_id: str
 
     def __init__(self, cfg: FederateConfig, clock: SimClock | None = None) -> None:
         super().__init__(cfg, clock)
@@ -415,6 +417,7 @@ class BrewhouseFederate(Federate):
         self.pilot = Autopilot(self.recipe)
         self.mash_params = MashParams()
         self.started_days = set()
+        self.batch_id = ""
 
     # -- control authority -------------------------------------------------------------
 
@@ -422,7 +425,7 @@ class BrewhouseFederate(Federate):
     def autopilot(self) -> bool:
         """True while the built-in operator drives the commands."""
         mode = self.settings.autopilot
-        return mode == "on" or (mode == "auto" and self.external == 0)
+        return mode == "on" or (mode == "auto" and not self.plc_driving)
 
     def cmd(self, tag: str) -> Value:
         """The command in force: the autopilot's, or the last PLC write."""
@@ -442,6 +445,8 @@ class BrewhouseFederate(Federate):
         """``start-batch`` queues brews for the autopilot."""
         super().on_event(event)
         if event.type == "start-batch":
+            # simctl checks the recipe (the plant has one) and the brew count.
+            self.batch_id = str(event.params.get("batch_id", ""))
             self.pilot.start(int(event.params.get("brews", 2)))
 
     # -- helpers used by the autopilot -------------------------------------------------
@@ -788,6 +793,7 @@ class BrewhouseFederate(Federate):
         p = self.proc
         doc["batch"] = {
             "phase": self.pilot.phase,
+            "batch_id": self.batch_id,
             "autopilot": self.autopilot,
             "boil_min": p.boil_min,
             "kettle_plato": p.kettle.plato,

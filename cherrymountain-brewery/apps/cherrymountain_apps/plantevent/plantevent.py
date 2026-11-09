@@ -40,7 +40,10 @@ class StartBatch(MetadataBlock):
     """Start a brew on the brewhouse."""
 
     event: Literal["start-batch"]
-    recipe: Name = "fire-of-the-phenix"
+    #: The plant has one recipe (DESIGN.md 3.2); the sim rejects any other.
+    recipe: Literal["fire-of-the-phenix"] = "fire-of-the-phenix"
+    #: Brews the brewhouse autopilot queues back to back.
+    brews: Annotated[int, Field(ge=1, le=4)] = 2
     batch_id: Name | None = None
 
 
@@ -55,7 +58,8 @@ class ChillerFault(MetadataBlock):
     """Fail or clear a glycol chiller compressor."""
 
     event: Literal["chiller-fault"]
-    compressor: Annotated[int, Field(ge=1, le=8)] = 1
+    #: The 15-ton chiller has two compressor stages.
+    compressor: Annotated[int, Field(ge=1, le=2)] = 1
     action: Literal["fail", "clear"] = "fail"
 
 

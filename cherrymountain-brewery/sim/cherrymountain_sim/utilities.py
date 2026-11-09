@@ -189,7 +189,7 @@ class UtilitiesFederate(Federate):
     def autopilot(self) -> bool:
         """True while the built-in operator drives the commands."""
         mode = self.settings.autopilot
-        return mode == "on" or (mode == "auto" and self.external == 0)
+        return mode == "on" or (mode == "auto" and not self.plc_driving)
 
     def cmd(self, tag: str) -> Value:
         """The command in force."""
@@ -214,7 +214,7 @@ class UtilitiesFederate(Federate):
         sets the swing panel (``circuit``: bh, fv101, ..., or none)."""
         super().on_event(event)
         if event.type == "chiller-fault":
-            stage = (int(event.params.get("compressor", 1)) - 1) % 2 + 1
+            stage = int(event.params.get("compressor", 1))  # 1 or 2 (simctl checks)
             if event.params.get("action", "fail") == "clear":
                 self.gly.failed.discard(stage)
             else:

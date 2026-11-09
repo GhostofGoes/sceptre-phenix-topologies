@@ -345,7 +345,9 @@ def test_unknown_keys_are_not_sent(
         },
         MagicMock(),
     )
-    assert StandIn.posted == [{"event": "start-batch", "recipe": "fire-of-the-phenix"}]
+    assert StandIn.posted == [
+        {"event": "start-batch", "recipe": "fire-of-the-phenix", "brews": 2}
+    ]
 
 
 def test_headnode_check_without_the_phenix_apps_helper(

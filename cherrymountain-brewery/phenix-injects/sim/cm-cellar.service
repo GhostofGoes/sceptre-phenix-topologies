@@ -20,6 +20,13 @@ RestartSec=5
 # Hardening. The federate only reads its config and talks to the broker over
 # TCP. MemoryDenyWriteExecute is left off because the HELICS library is loaded
 # through ctypes, which can need executable memory.
+# Two directives are looser than the other units', because HELICS 3.6.1 and
+# its ZeroMQ die without them (reproduced with a seccomp filter):
+#   - AF_NETLINK: HELICS lists the host's interfaces with getifaddrs() to pick
+#     its local address, and segfaults when that fails.
+#   - @resources is not filtered: ZeroMQ sets the scheduling of each I/O thread
+#     (sched_setscheduler), and the power federate's solver calls mbind; a
+#     filtered call kills the process with SIGSYS.
 DynamicUser=yes
 NoNewPrivileges=yes
 PrivateTmp=yes
@@ -34,14 +41,14 @@ ProtectKernelLogs=yes
 ProtectControlGroups=yes
 ProtectClock=yes
 ProtectHostname=yes
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 RestrictNamespaces=yes
 RestrictRealtime=yes
 RestrictSUIDSGID=yes
 LockPersonality=yes
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
-SystemCallFilter=~@privileged @resources
+SystemCallFilter=~@privileged
 CapabilityBoundingSet=
 UMask=0077
 

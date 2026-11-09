@@ -194,7 +194,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - **Purpose:** the Guacamole jump host (`dmz-jump`): the one conduit from the DMZ
   into the EWS for vendor sessions, with TOTP and session recording (DESIGN.md 13).
 - **Base:** the shared noble `minbase` image plus Docker, `skopeo`, `openssl`,
-  `gnupg`, `python3`, and `rsyslog`, 16 GB disk.
+  `gnupg`, `python3`, `python3-pydantic`, and `rsyslog`, 16 GB disk.
 - **Contents:**
   - Docker Engine and the Compose plugin from Docker's APT repository.
   - Four container images as compressed on-disk copies under

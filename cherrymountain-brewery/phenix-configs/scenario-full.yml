@@ -2429,7 +2429,10 @@ spec:
   # app yet. (1) options:df_default=false on the cluster host's GRE port; the app should
   # set it, there is no way to do it from here. (2) the OpenFlow capture flow in malcolm
   # (in_port=sniffer,actions=output:phenix); this topology injects it for malcolm
-  # (phenix-injects/malcolm/99-zz-capture-flow.sh) until the app or the image does it.
+  # (phenix-injects/malcolm: 99-zz-capture-flow.sh starts cm-malcolm-capture.service, which
+  # also brings the port up) until the app does it. The sohProfile of malcolm is checked
+  # by SoH next to the app's own probes: the processes, the web UI listener, and
+  # cm-malcolm-health (containers of the profile running, Zeek records in the last 15 minutes).
   - name: mirror
     metadata:
       version: v1
@@ -2453,6 +2456,18 @@ spec:
         - DERLINK
         - BAS
         - DMZ
+        sohProfile:
+          processes:
+          - dockerd
+          - ovs-vswitchd
+          listeners:
+          - :443
+          customTests:
+          - name: malcolm-health
+            executor: bash
+            testScript: |
+              /usr/local/sbin/cm-malcolm-health
+            testStdout: HEALTHY
   # sync:begin soh overlay
   - name: soh
     metadata:
@@ -2971,6 +2986,7 @@ spec:
         - dnsmasq
         - rsyslog
         - cm-bbmd
+        - wazuh-agent
         bas-bbmd:
         - chrony
         - cm-bbmd
@@ -2978,6 +2994,57 @@ spec:
         - chrony
         - dnsmasq
         - protonuke
+        dmz-vpn:
+        - chrony
+        - wg-quick@wg0
+        - cm-wg-watch
+        - wazuh-agent
+        dmz-jump:
+        - chrony
+        - rsyslog
+        - docker
+        - cm-guacamole
+        - wazuh-agent
+        ews:
+        - chrony
+        - ssh
+        - xrdp
+        - wazuh-agent
+        malcolm:
+        - chrony
+        - docker
+        - openvswitch-switch
+        - cm-malcolm-capture
+        - cm-malcolm
+        - wazuh-agent
+        wazuh:
+        - chrony
+        - wazuh-manager
+        - wazuh-indexer
+        - wazuh-dashboard
+        - filebeat
+        soc-analyst:
+        - chrony
+        - wazuh-agent
+        historian:
+        - chrony
+        - influxdb
+        - telegraf
+        - grafana-server
+        - mosquitto
+        - wazuh-agent
+        scada-fuxa:
+        - chrony
+        - wazuh-agent
+        bas-fuxa:
+        - chrony
+        - wazuh-agent
+        hmi-brewhouse:
+        - chrony
+        - wazuh-agent
+        hmi-packaging:
+        - chrony
+        - wazuh-agent
       hostListeners:
         ot-svc:
         - :53
@@ -3050,6 +3117,11 @@ spec:
         - :443
         - :1514
         - :1515
+        - :514
+        - :55000
+        - :9200
+        dmz-vpn:
+        - :51820
       hostCustomTests:
         corp-ws:
         - name: blocked-ot-svc-53
@@ -3123,6 +3195,11 @@ spec:
               echo "ALLOWED rc=$rc $err"
             fi
           testStdout: DROPPED
+        - name: wg-tunnel-handshake
+          executor: bash
+          testScript: |
+            wg show wg0 latest-handshakes | awk '$2 > 0 { print "HANDSHAKE" }'
+          testStdout: HANDSHAKE
         utility-derms:
         - name: blocked-ews-3389
           executor: bash
@@ -3185,6 +3262,26 @@ spec:
               echo "ALLOWED rc=$rc $err"
             fi
           testStdout: DROPPED
+        - name: guacamole-login-page
+          executor: bash
+          testScript: |
+            curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1/
+          testStdout: '200'
+        - name: guacamole-totp-extension
+          executor: bash
+          testScript: |
+            docker logs guacamole 2>&1 | grep -o 'Extension "TOTP TFA Authentication Backend" (totp) loaded'
+          testStdout: (totp) loaded
+        - name: guacamole-recording-extension
+          executor: bash
+          testScript: |
+            docker logs guacamole 2>&1 | grep -o 'Extension "Session Recording Storage" (recording-storage) loaded'
+          testStdout: (recording-storage) loaded
+        - name: guacamole-recordings-dir
+          executor: bash
+          testScript: |
+            stat -c '%u:%g %a' /var/lib/cm-guacamole/recordings
+          testStdout: 1000:1001 2750
         dmz-vpn:
         - name: blocked-ews-3389
           executor: bash
@@ -3196,6 +3293,11 @@ spec:
               echo "ALLOWED rc=$rc $err"
             fi
           testStdout: DROPPED
+        - name: wg-forward-policy
+          executor: bash
+          testScript: |
+            nft list chain inet cm_wireguard forward | grep -o 'policy drop'
+          testStdout: policy drop
         hmi-brewhouse:
         - name: blocked-plc-cellar-502
           executor: bash
@@ -3290,6 +3392,11 @@ spec:
               echo "ALLOWED rc=$rc $err"
             fi
           testStdout: DROPPED
+        - name: vendor-account
+          executor: bash
+          testScript: |
+            getent passwd ridgeline | cut -d: -f1
+          testStdout: ridgeline
         plc-cellar:
         - name: blocked-scada-fuxa-1881
           executor: bash
@@ -3384,6 +3491,11 @@ spec:
               echo "ALLOWED rc=$rc $err"
             fi
           testStdout: DROPPED
+        - name: wazuh-health
+          executor: bash
+          testScript: |
+            /usr/local/sbin/cm-wazuh-health
+          testStdout: HEALTHY
         ot-svc:
         - name: plant-dns-zone
           executor: bash
@@ -3484,4 +3596,148 @@ spec:
         - guacamole
         - guacd
         - postgres
+        - guac-proxy
+        malcolm:
+        - malcolm-opensearch-1
+        - malcolm-logstash-1
+        - malcolm-dashboards-1
+        - malcolm-nginx-proxy-1
+        - malcolm-pcap-monitor-1
+        - malcolm-zeek-live-1
+        - malcolm-arkime-live-1
+        - malcolm-suricata-live-1
   # sync:end soh
+  # SCORCH (DESIGN.md 15.6): the vendor-maintenance run. The vendor's technician brings up
+  # the WireGuard tunnel, signs in to Guacamole with TOTP and works in a recorded session on
+  # the EWS, and the EWS re-uploads a PLC program (benign: the program the PLC already
+  # runs). The baseline detections of DESIGN.md 14 must fire; the two `expect-*` steps check
+  # them in Wazuh and Malcolm, which is Roadmap Phase 5's exit criterion. The other runs of
+  # 15.6 (baseline-brew-day, utility-outage, ...) are Phase 6 and use plantevent; this one
+  # needs no plant event, because nothing in the plant changes.
+  #
+  # The validators run on the phenix host and read the command's output on stdin; a
+  # validator that exits non-zero fails the step. Set PHENIX_SCORCH_HOST_VALIDATORS=0 to
+  # skip them. Timing: the program compile on the PLC takes several minutes, so `settle`
+  # waits before the status check.
+  - name: scorch
+    metadata:
+      components:
+      - name: health-check
+        type: soh
+        metadata:
+          checks:
+          - custom-reachability
+          - services
+          - processes
+          - ports
+          - docker
+          - custom
+          failOnError: false
+      - name: verify-soc
+        type: cc
+        metadata:
+          vms:
+          - hostname: malcolm
+            configure:
+            - type: exec
+              args: /usr/local/sbin/cm-malcolm-health
+              wait: true
+              validator: grep -q '^HEALTHY'
+          - hostname: wazuh
+            configure:
+            - type: exec
+              args: /usr/local/sbin/cm-wazuh-health
+              wait: true
+              validator: grep -q '^HEALTHY'
+      - name: vendor-tunnel
+        type: cc
+        metadata:
+          vms:
+          - hostname: vendor-ws
+            start:
+            - type: exec
+              args: systemctl restart wg-quick@wg0 && sleep 8 && wg show wg0 latest-handshakes
+              wait: true
+              validator: awk '$2 > 0 { found = 1 } END { exit !found }'
+      - name: vendor-session
+        type: cc
+        metadata:
+          vms:
+          - hostname: vendor-ws
+            start:
+            - type: exec
+              args: python3 -I /usr/local/lib/cm-desktop/cm_vendor_session.py --connection ews-rdp --hold 90
+              wait: true
+              validator: "! grep -q '\"ok\":false' && grep -q '\"step\":\"sign-out\",\"ok\":true'"
+      - name: plc-reupload
+        type: cc
+        metadata:
+          vms:
+          - hostname: ews
+            start:
+            - type: background
+              args: python3 -I /usr/local/lib/cm-ews/cm_plc_tool.py upload --plc plc-cellar --host 10.20.10.12 --zip /opt/cherrymountain/ews/programs/plc-cellar.zip > /var/log/cm-plc-reupload.log 2>&1
+      - name: settle
+        type: pause
+        metadata:
+          duration: 8m
+      - name: plc-status
+        type: cc
+        metadata:
+          vms:
+          - hostname: ews
+            start:
+            - type: exec
+              args: python3 -I /usr/local/lib/cm-ews/cm_plc_tool.py status --plc plc-cellar --host 10.20.10.12
+              wait: true
+              validator: grep -q 'STATUS:RUNNING'
+      - name: expect-wazuh
+        type: cc
+        metadata:
+          vms:
+          - hostname: wazuh
+            start:
+            - type: exec
+              args: /usr/local/sbin/cm-wazuh-expect --since 30 --export /var/lib/cm-wazuh/vendor-maintenance-alerts.jsonl 100201,100204,100205 100301,100305,100306 100311 100313 100402 100411
+              wait: true
+              validator: "! grep -q '^FAIL'"
+      - name: expect-malcolm
+        type: cc
+        metadata:
+          vms:
+          - hostname: malcolm
+            start:
+            - type: exec
+              args: /usr/local/sbin/cm-malcolm-expect --since 30 "CM WireGuard handshake initiation" "CM vendor tunnel address reached the Guacamole login" "CM session from dmz-jump to the EWS" "CM OpenPLC REST session from the EWS" CherryMountain::PLC_REST_From_EWS CherryMountain::PLC_Program_Upload_Suspected
+              wait: true
+              validator: "! grep -q '^FAIL'"
+      - name: analyst-review
+        type: break
+      - name: collect-evidence
+        type: cc
+        metadata:
+          vms:
+          - hostname: vendor-ws
+            stop:
+            - type: recv
+              args: /var/log/cm-vendor-session.jsonl
+          - hostname: wazuh
+            stop:
+            - type: recv
+              args: /var/lib/cm-wazuh/vendor-maintenance-alerts.jsonl
+      runs:
+      - name: vendor-maintenance
+        configure:
+        - health-check
+        - verify-soc
+        start:
+        - vendor-tunnel
+        - vendor-session
+        - plc-reupload
+        - settle
+        - plc-status
+        - expect-wazuh
+        - expect-malcolm
+        - analyst-review
+        stop:
+        - collect-evidence

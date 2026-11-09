@@ -1,0 +1,48 @@
+[Unit]
+Description=CherryMountain Wazuh first-boot setup (certificates, passwords, indexer, manager, dashboard)
+After=network.target
+ConditionPathExists=!/var/lib/cm-wazuh/provisioned
+# Retry forever: Restart=on-failure below is the only retry loop. The script is safe
+# to run again, because each step replaces what the last attempt left.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cm-wazuh
+ExecStart=/usr/local/sbin/cm-wazuh-provision
+TimeoutStartSec=45min
+Restart=on-failure
+RestartSec=60
+
+# Hardening. This is the one root unit of the SIEM: it writes configuration and
+# certificates for three services under their own users (CAP_CHOWN, CAP_FOWNER,
+# CAP_DAC_OVERRIDE), starts them through systemd (D-Bus, an AF_UNIX socket), and
+# talks to the indexer and the API over TCP.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ReadWritePaths=/etc /var/ossec /var/lib/cm-wazuh /opt/cherrymountain/wazuh /usr/share/wazuh-indexer /usr/share/wazuh-dashboard /var/lib/wazuh-indexer /var/log
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -20,6 +20,63 @@ spec:
       memory: 8192
       os_type: linux
       vcpus: 4
+    injections:
+    - description: Wazuh rules of the baseline detections (ids 100100 to 100499)
+      dst: /var/ossec/etc/rules/cherrymountain_rules.xml
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/cherrymountain_rules.xml
+    - description: Wazuh decoders of the baseline detections
+      dst: /var/ossec/etc/decoders/cherrymountain_decoders.xml
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/cherrymountain_decoders.xml.in
+    - description: syslog listener settings appended to ossec.conf
+      dst: /opt/cherrymountain/wazuh/ossec-extra.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/ossec-extra.conf
+    - description: shared agent settings of the dmz group
+      dst: /opt/cherrymountain/wazuh/agent-conf/dmz.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/dmz.conf
+    - description: shared agent settings of the ops group
+      dst: /opt/cherrymountain/wazuh/agent-conf/ops.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/ops.conf
+    - description: shared agent settings of the hmi group
+      dst: /opt/cherrymountain/wazuh/agent-conf/hmi.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/hmi.conf
+    - description: shared agent settings of the bas group
+      dst: /opt/cherrymountain/wazuh/agent-conf/bas.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/bas.conf
+    - description: shared agent settings of the soc group
+      dst: /opt/cherrymountain/wazuh/agent-conf/soc.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/agent-conf/soc.conf
+    - description: sample log lines of the baseline detections
+      dst: /opt/cherrymountain/wazuh/samples.txt
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/samples.txt
+    - description: Wazuh first-boot setup
+      dst: /usr/local/sbin/cm-wazuh-provision
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-provision
+    - description: Wazuh health check for SoH and SCORCH
+      dst: /usr/local/sbin/cm-wazuh-health
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-health
+    - description: run the baseline detections' samples through wazuh-logtest
+      dst: /usr/local/sbin/cm-wazuh-selftest
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-selftest
+    - description: Wazuh first-boot setup unit
+      dst: /etc/systemd/system/cm-wazuh-provision.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/cm-wazuh-provision.service
+    - description: set up and start the Wazuh stack
+      dst: /etc/phenix/startup/65-wazuh.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/wazuh/65-wazuh.sh
     labels:
       zone: soc
     network:
@@ -48,10 +105,86 @@ spec:
       os_type: linux
       vcpus: 8
     injections:
-    - description: add the OpenFlow capture flow after the mirror app's OVS setup
+    - description: start the unit that adds the OpenFlow capture flow after the mirror app's OVS setup
       dst: /etc/phenix/startup/99-zz-capture-flow.sh
       permissions: '0755'
       src: /phenix/injects/${BRANCH_NAME}/malcolm/99-zz-capture-flow.sh
+    - description: 'Malcolm settings: sizing profile, capture interface'
+      dst: /etc/default/cm-malcolm
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm.env
+    - description: Malcolm sizing profiles (full 8 vCPU / 24 GB, slim 4 vCPU / 12 GB)
+      dst: /opt/cherrymountain/malcolm/profiles.sh
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/profiles.sh
+    - description: Suricata rules of the baseline detections (sids 9000110 to 9000199)
+      dst: /opt/cherrymountain/malcolm/cherrymountain.rules
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cherrymountain.rules
+    - description: Zeek notices of the baseline detections
+      dst: /opt/cherrymountain/malcolm/zeek/cherrymountain.zeek
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/zeek/cherrymountain.zeek
+    - description: zeek/custom/__load__.zeek (the compose bind mount hides the image's)
+      dst: /opt/cherrymountain/malcolm/zeek/__load__.zeek
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/zeek/__load__.zeek
+    - description: pcap for the Malcolm pipeline self-test
+      dst: /usr/local/lib/cm-malcolm/cm_selftest_pcap.py
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm_selftest_pcap.py
+    - description: Malcolm first-boot configuration
+      dst: /usr/local/sbin/cm-malcolm-provision
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-provision
+    - description: start Malcolm's services
+      dst: /usr/local/sbin/cm-malcolm-start
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-start
+    - description: stop Malcolm's services
+      dst: /usr/local/sbin/cm-malcolm-stop
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-stop
+    - description: wait for the pcap processors' ZeroMQ subscriptions
+      dst: /usr/local/sbin/cm-malcolm-wait-ready
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-wait-ready
+    - description: Malcolm health check for SoH and SCORCH
+      dst: /usr/local/sbin/cm-malcolm-health
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-health
+    - description: Malcolm pipeline self-test for SCORCH
+      dst: /usr/local/sbin/cm-malcolm-selftest
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-selftest
+    - description: OpenFlow flow and port setup for the mirror feed
+      dst: /usr/local/sbin/cm-malcolm-capture
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-capture
+    - description: load the pre-pulled container images into Docker
+      dst: /usr/local/sbin/cm-load-images
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/docker/cm-load-images
+    - description: image loading unit
+      dst: /etc/systemd/system/cm-load-images.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/docker/cm-load-images.service
+    - description: Malcolm first-boot configuration unit
+      dst: /etc/systemd/system/cm-malcolm-provision.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-provision.service
+    - description: Malcolm unit
+      dst: /etc/systemd/system/cm-malcolm.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm.service
+    - description: capture port unit
+      dst: /etc/systemd/system/cm-malcolm-capture.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-capture.service
+    - description: load the images, configure, and start Malcolm
+      dst: /etc/phenix/startup/65-malcolm.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/65-malcolm.sh
     labels:
       zone: soc
     network:
@@ -82,6 +215,15 @@ spec:
       memory: 3072
       os_type: linux
       vcpus: 2
+    injections:
+    - description: open Malcolm and Wazuh for the analyst
+      dst: /usr/local/bin/cm-analyst-console
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-analyst-console
+    - description: start the consoles at login
+      dst: /etc/xdg/autostart/cm-analyst.desktop
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-analyst.desktop
     labels:
       zone: soc
     network:

@@ -94,7 +94,7 @@ spec:
       systemctl disable wazuh-manager.service wazuh-indexer.service wazuh-dashboard.service filebeat.service
 
       # Wazuh's helper files, checked against the checksums of the 4.14 release.
-      install -d -m 0755 /opt/cherrymountain/wazuh
+      install -d -m 0755 /opt/cherrymountain/wazuh /opt/cherrymountain/wazuh/agent-conf
       fetch() {
         curl -fsSL -o "/opt/cherrymountain/wazuh/$1" "$2"
         echo "$3  /opt/cherrymountain/wazuh/$1" | sha256sum -c -

@@ -311,6 +311,24 @@ pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
+# The SOC and remote-access checks: the Wazuh decoders and rules against sample log
+# lines, the Suricata rules and the Zeek script against the topology's addresses (and
+# against Suricata itself where it is installed), and the scripts of the vendor path
+# (WireGuard watcher, Guacamole SQL, scripted session, EWS tool).
+id = "cm-soc-tests"
+name = "pytest (SOC and remote access)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/soc"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
 # The generated app blocks embedded in the scenarios, and the generated files
 # copied into phenix-injects/, are current (python sync.py rewrites them).
 # This runs on every CI run (--all-files), so plantgen output that changed

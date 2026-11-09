@@ -1,0 +1,24 @@
+# dmz-vpn forwarding policy (DESIGN.md 13 and 10.3). Loaded by 70-wireguard.sh.
+#
+# WireGuard's AllowedIPs on the vendor's laptop keep the laptop's own traffic on
+# dmz-jump, but nothing on the gateway limits where a decapsulated packet may go
+# next: dmz-vpn forwards without NAT, so a rewritten laptop config would reach the
+# whole DMZ. This ruleset enforces the design on the gateway itself: the vendor's
+# tunnel address may open TCP 443 to dmz-jump and nothing else, and replies pass.
+# Every refused packet is logged with the prefix "cm-wg-drop" (rate limited); the
+# Wazuh agent reads it from /var/log/kern.log (rule 100105).
+#
+# The input and output hooks are left open: the host answers the handshake on UDP
+# 51820 and talks to ot-svc (time, DNS) and to Wazuh.
+table inet cm_wireguard
+delete table inet cm_wireguard
+
+table inet cm_wireguard {
+  chain forward {
+    type filter hook forward priority filter; policy drop;
+    ct state established,related accept
+    iifname "wg0" ip saddr 10.99.0.2 ip daddr 10.10.20.11 tcp dport 443 accept
+    limit rate 5/second burst 10 packets log prefix "cm-wg-drop "
+    counter drop
+  }
+}

@@ -45,6 +45,7 @@ spec:
   - openssl
   - procps
   - python3
+  - python3-pydantic
   - rsync
   - rsyslog
   - skopeo
@@ -75,7 +76,7 @@ spec:
       GUAC_VERSION=1.6.0
       GUAC_JDBC_SHA256=97bc5fd3d67d25c0e98a475d1dfd308a037859f549fac47171c723b7a7039366
       apt-get update
-      apt-get install -y --no-install-recommends gnupg openssl python3 rsyslog skopeo
+      apt-get install -y --no-install-recommends gnupg openssl python3 python3-pydantic rsyslog skopeo
 
       # Docker Engine and the Compose plugin from Docker's APT repository, pinned.
       DOCKER_KEY_FINGERPRINT=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
@@ -96,7 +97,7 @@ spec:
       apt-get install -y --no-install-recommends "docker-ce=${DOCKER_VERSION}" "docker-ce-cli=${DOCKER_VERSION}" containerd.io "docker-compose-plugin=${COMPOSE_VERSION}"
 
       # The images stay on disk as compressed copies until the first boot.
-      install -d -m 0755 /etc/cherrymountain /var/lib/cm-guacamole/images
+      install -d -m 0755 /etc/cherrymountain /var/lib/cm-guacamole/images /usr/local/lib/cm-guacamole
       : > /etc/cherrymountain/images.list
       for ref in guacamole/guacd:1.6.0 guacamole/guacamole:1.6.0 postgres:17.11-alpine nginx:1.30.6-alpine; do
         dir="/var/lib/cm-guacamole/images/$(printf '%s' "$ref" | tr '/:' '__')"

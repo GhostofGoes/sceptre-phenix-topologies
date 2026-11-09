@@ -1,0 +1,162 @@
+#!/bin/bash
+# First-boot setup of the Wazuh all-in-one (DESIGN.md 14). Installed as
+# /usr/local/sbin/cm-wazuh-provision and run as root by cm-wazuh-provision.service.
+#
+# The cm-wazuh image holds the packages with every service disabled. Certificates
+# and passwords depend on the VM's address, so they are made here, following the
+# step-by-step installation of Wazuh's documentation for one node that runs the
+# indexer, the manager, and the dashboard:
+#   1. certificates for the three components (wazuh-certs-tool.sh)
+#   2. the indexer: certificates, address, start, security initialization
+#   3. the manager and Filebeat: certificates, keystores, indexer address, start
+#   4. new passwords for the indexer and API users (wazuh-passwords-tool.sh)
+#   5. the dashboard: certificates, indexer address, start
+#   6. the cherrymountain additions: agent groups and their shared settings, the
+#      syslog listener, and no vulnerability detection or update check (the VMs have
+#      no internet)
+# The rules and decoders are injected into /var/ossec/etc/{rules,decoders}/ before
+# the manager first starts, so they load with it.
+#
+# Env (from /etc/default/cm-wazuh, optional): CM_WAZUH_IP (default: the first global
+# IPv4 address). Re-running is safe: it stops early once
+# /var/lib/cm-wazuh/provisioned exists. The generated passwords are in
+# /var/lib/cm-wazuh/passwords.txt (root only).
+#
+# TODO(verify): unverified on a VM. The commands follow Wazuh 4.14's documentation;
+# check each step on the first run, above all the password tool (step 4), which
+# restarts services itself.
+set -euo pipefail
+
+TOOLS=/opt/cherrymountain/wazuh
+CONF="${TOOLS}/agent-conf"
+STATE="${CM_WAZUH_STATE:-/var/lib/cm-wazuh}"
+OSSEC=/var/ossec
+OSSEC_CONF="${OSSEC}/etc/ossec.conf"
+
+log() { echo "cm-wazuh-provision: $*"; }
+
+wait_for() {
+  # wait_for SECONDS DESCRIPTION COMMAND...
+  local seconds="$1" what="$2"
+  shift 2
+  local deadline=$((SECONDS + seconds))
+  until "$@" > /dev/null 2>&1; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      log "FAIL: ${what} did not come up within ${seconds} s"
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+if [ -f "${STATE}/provisioned" ]; then
+  log "already provisioned"
+  exit 0
+fi
+
+# The app's 80-cm-wazuh-manager.sh edits ossec.conf and writes the enrollment
+# password when the host boots; let it finish first.
+if [ -f /etc/default/cm-wazuh-manager ]; then
+  wait_for 600 "the enrollment password" test -s "${OSSEC}/etc/authd.pass"
+fi
+
+node_ip="${CM_WAZUH_IP:-}"
+if [ -z "$node_ip" ]; then
+  get_ip() { ip -4 -o addr show scope global | awk '{ split($4, a, "/"); print a[1]; exit }'; }
+  have_ip() { [ -n "$(get_ip)" ]; }
+  wait_for 300 "an IPv4 address" have_ip
+  node_ip=$(get_ip)
+fi
+log "node address ${node_ip}"
+mkdir -p "$STATE"
+
+# --- 1. certificates ----------------------------------------------------------------
+cd "$TOOLS"
+cat > config.yml <<EOF
+nodes:
+  indexer:
+    - name: node-1
+      ip: "${node_ip}"
+  server:
+    - name: wazuh-1
+      ip: "${node_ip}"
+  dashboard:
+    - name: dashboard
+      ip: "${node_ip}"
+EOF
+rm -rf wazuh-certificates
+bash ./wazuh-certs-tool.sh -A
+certs="${TOOLS}/wazuh-certificates"
+
+# install_certs DIR OWNER:GROUP SRC=DST...: copy certificates into DIR, read-only.
+install_certs() {
+  local dir="$1" owner="$2" pair
+  shift 2
+  install -d -m 0500 -o "${owner%%:*}" -g "${owner##*:}" "$dir"
+  for pair in "$@"; do
+    install -m 0400 -o "${owner%%:*}" -g "${owner##*:}" "${certs}/${pair%%=*}" "${dir}/${pair##*=}"
+  done
+}
+
+# --- 2. the indexer -------------------------------------------------------------------
+install_certs /etc/wazuh-indexer/certs wazuh-indexer:wazuh-indexer \
+  root-ca.pem=root-ca.pem node-1.pem=indexer.pem node-1-key.pem=indexer-key.pem admin.pem=admin.pem admin-key.pem=admin-key.pem
+sed -i -E "s|^network.host:.*|network.host: \"${node_ip}\"|" /etc/wazuh-indexer/opensearch.yml
+systemctl daemon-reload
+systemctl enable --now wazuh-indexer.service
+wait_for 600 "the indexer" bash -c "(echo > /dev/tcp/${node_ip}/9200)"
+/usr/share/wazuh-indexer/bin/indexer-security-init.sh
+
+# --- 3. the manager and Filebeat -----------------------------------------------------
+install -m 0644 "${TOOLS}/filebeat.yml" /etc/filebeat/filebeat.yml
+sed -i -E "s|^(\s*hosts:).*|\1 [\"${node_ip}:9200\"]|" /etc/filebeat/filebeat.yml
+install_certs /etc/filebeat/certs root:root root-ca.pem=root-ca.pem wazuh-1.pem=filebeat.pem wazuh-1-key.pem=filebeat-key.pem
+filebeat keystore create --force
+echo admin | filebeat keystore add username --stdin --force
+echo admin | filebeat keystore add password --stdin --force
+# The manager reads the same credentials from its own keystore.
+echo admin | "${OSSEC}/bin/wazuh-keystore" -f indexer -k username
+echo admin | "${OSSEC}/bin/wazuh-keystore" -f indexer -k password
+sed -i -E "s|<host>https://[^<]*</host>|<host>https://${node_ip}:9200</host>|" "$OSSEC_CONF"
+
+# cherrymountain additions to ossec.conf (once): the syslog listener, and no
+# vulnerability detection or update check without internet.
+if ! grep -q 'cherrymountain: syslog' "$OSSEC_CONF"; then
+  {
+    echo '<!-- cherrymountain: syslog listener (cm-wazuh-provision) -->'
+    cat "${TOOLS}/ossec-extra.conf"
+  } >> "$OSSEC_CONF"
+fi
+sed -i '/<vulnerability-detection>/,/<\/vulnerability-detection>/s|<enabled>yes</enabled>|<enabled>no</enabled>|' "$OSSEC_CONF"
+sed -i 's|<update_check>yes</update_check>|<update_check>no</update_check>|' "$OSSEC_CONF"
+chown root:wazuh "$OSSEC_CONF"
+chmod 0660 "$OSSEC_CONF"
+
+systemctl enable --now wazuh-manager.service
+wait_for 600 "the Wazuh API" bash -c 'curl -sk -o /dev/null https://localhost:55000/'
+systemctl enable --now filebeat.service
+
+# Agent groups, named like the nodes' zone labels (the app enrolls each agent into
+# its zone's group), and the shared settings of the groups that have any.
+for group in default dmz ops hmi bas soc ctrl corp vendor inet util mgmt derlink field-bh field-cel field-pkg field-utl field-pwr; do
+  "${OSSEC}/bin/agent_groups" -a -g "$group" -q || true
+done
+for file in "${CONF}"/*.conf; do
+  group=$(basename "$file" .conf)
+  install -m 0660 -o wazuh -g wazuh "$file" "${OSSEC}/etc/shared/${group}/agent.conf"
+done
+
+# --- 4. passwords -----------------------------------------------------------------------
+(umask 077 && bash "${TOOLS}/wazuh-passwords-tool.sh" -a -au wazuh -ap wazuh > "${STATE}/passwords.txt" 2>&1)
+log "new passwords are in ${STATE}/passwords.txt"
+systemctl restart filebeat.service wazuh-manager.service
+
+# --- 5. the dashboard -------------------------------------------------------------------
+install_certs /etc/wazuh-dashboard/certs wazuh-dashboard:wazuh-dashboard \
+  root-ca.pem=root-ca.pem dashboard.pem=dashboard.pem dashboard-key.pem=dashboard-key.pem
+sed -i -E "s|^opensearch.hosts:.*|opensearch.hosts: https://${node_ip}:9200|" /etc/wazuh-dashboard/opensearch_dashboards.yml
+systemctl enable --now wazuh-dashboard.service
+wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:443/'
+
+touch "${STATE}/provisioned"
+log "PASS: indexer, manager, Filebeat, and dashboard are up"

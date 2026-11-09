@@ -118,7 +118,7 @@ spec:
       # The images stay on disk as compressed copies (about half the size Docker needs)
       # until the first boot loads them. This is every image of the full profile; the
       # slim profile uses a subset.
-      install -d -m 0755 /etc/cherrymountain /var/lib/cm-malcolm/images
+      install -d -m 0755 /etc/cherrymountain /var/lib/cm-malcolm/images /opt/cherrymountain/malcolm/zeek /usr/local/lib/cm-malcolm
       : > /etc/cherrymountain/images.list
       for name in api arkime dashboards dashboards-helper file-upload filebeat-oss filescan freq htadmin logstash-oss netbox nginx-proxy opensearch pcap-monitor postgresql strelka-backend strelka-frontend strelka-manager suricata valkey zeek; do
         ref="ghcr.io/idaholab/malcolm/${name}:${MALCOLM_IMAGE_TAG}"

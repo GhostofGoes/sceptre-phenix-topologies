@@ -1,0 +1,49 @@
+[Unit]
+Description=CherryMountain Guacamole jump host (guacd, web application, PostgreSQL, TLS proxy)
+After=docker.service cm-load-images.service rsyslog.service network.target
+Requires=docker.service
+Wants=cm-load-images.service
+# Retry forever: Restart=on-failure below is the only retry loop.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cm-guacamole
+ExecStart=/usr/local/sbin/cm-guacamole-start
+ExecStop=/usr/bin/docker compose --project-directory /opt/cherrymountain/guacamole -f /opt/cherrymountain/guacamole/docker-compose.yml stop
+TimeoutStartSec=20min
+Restart=on-failure
+RestartSec=30
+
+# Hardening. The unit makes a certificate and a password file under
+# /etc/cherrymountain and talks to Docker through its socket (owned by root); Docker
+# does the privileged work.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ReadWritePaths=/etc/cherrymountain
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

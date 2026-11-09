@@ -1,0 +1,32 @@
+#!/bin/bash
+# The SOC analyst's consoles (DESIGN.md 14): Malcolm and Wazuh in one browser
+# window, one tab each. Installed as /usr/local/bin/cm-analyst-console and started at
+# login by /etc/xdg/autostart/cm-analyst.desktop on soc-analyst. Waits until both
+# consoles answer (they take minutes after a boot), then opens them.
+#
+# Env (from /etc/default/cm-analyst, optional): ANALYST_URLS, a space separated list
+# (default: Malcolm https://10.40.10.10/ and Wazuh https://10.40.10.11/), and
+# ANALYST_BROWSER (default chromium). Both consoles use self-signed certificates, so
+# the first visit shows a warning; Malcolm asks for the admin user and password that
+# the first boot wrote to /var/lib/cm-malcolm/admin-password on malcolm, and Wazuh for
+# the admin password in /var/lib/cm-wazuh/passwords.txt on wazuh.
+set -euo pipefail
+
+if [ -f /etc/default/cm-analyst ]; then
+  # shellcheck source=/dev/null
+  . /etc/default/cm-analyst
+fi
+URLS="${ANALYST_URLS:-https://10.40.10.10/ https://10.40.10.11/}"
+BROWSER="${ANALYST_BROWSER:-chromium}"
+
+read -r -a urls <<< "$URLS"
+for url in "${urls[@]}"; do
+  for _ in $(seq 1 120); do
+    if curl -ks -m 5 -o /dev/null "$url"; then
+      break
+    fi
+    sleep 5
+  done
+done
+
+exec "$BROWSER" --no-first-run --noerrdialogs --ignore-certificate-errors "${urls[@]}"

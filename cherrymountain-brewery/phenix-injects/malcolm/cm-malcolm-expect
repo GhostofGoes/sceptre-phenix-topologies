@@ -1,0 +1,42 @@
+#!/bin/bash
+# Check that expected detections reached Malcolm's OpenSearch in a time window
+# (DESIGN.md 15.6: the `vendor-maintenance` run). Installed as
+# /usr/local/sbin/cm-malcolm-expect; run it as root on malcolm, for example through a
+# SCORCH `cc` step after the run's actions.
+#
+# Usage: cm-malcolm-expect [--since MINUTES] PHRASE...
+#   PHRASE   text of a Suricata alert (its signature, for example
+#            "CM WireGuard handshake initiation") or of a Zeek notice (for example
+#            CherryMountain::PLC_Program_Upload_Suspected). It is matched against every
+#            field of the records, so it does not depend on Malcolm's field names.
+#   --since  how far back to look (default 30)
+# Prints one PASS or FAIL line per phrase and exits 1 if any fails.
+set -uo pipefail
+
+since=30
+if [ "${1:-}" = --since ]; then
+  since="${2:?--since needs a number of minutes}"
+  shift 2
+fi
+[ $# -gt 0 ] || {
+  echo "usage: cm-malcolm-expect [--since MINUTES] PHRASE..." >&2
+  exit 2
+}
+
+status=0
+for phrase in "$@"; do
+  escaped=$(printf '%s' "$phrase" | jq -Rs '.')
+  # The body is built with jq, because the phrase may hold characters that need escaping.
+  query=$(jq -nc --argjson phrase "$escaped" --arg since "now-${since}m" \
+    '{query: {bool: {filter: [{range: {"@timestamp": {gte: $since}}}, {query_string: {query: ("\"" + $phrase + "\"")}}]}}}')
+  count=$(docker exec -i malcolm-opensearch-1 sh -c \
+    "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_count' -d @-" <<< "$query" 2> /dev/null \
+    | python3 -c 'import json, sys; print(json.load(sys.stdin).get("count", 0))' 2> /dev/null || echo 0)
+  if [ "${count:-0}" -gt 0 ]; then
+    echo "PASS: \"${phrase}\" found ${count} time(s) in the last ${since} minutes"
+  else
+    echo "FAIL: \"${phrase}\" not found in the last ${since} minutes"
+    status=1
+  fi
+done
+exit "$status"

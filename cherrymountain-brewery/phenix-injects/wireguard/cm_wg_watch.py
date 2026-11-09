@@ -129,6 +129,12 @@ class Watcher:
             state.ident = peer.ident
         return events
 
+    def seed(self, peers: list[Peer], now: float) -> None:
+        """Record the current peers without reporting them. The watcher calls this
+        on its first successful poll, so a restart of the watcher itself does not
+        report an already-connected peer as a new session (Wazuh 100201/100204/100205)."""
+        self.step(peers, now)
+
     def interface_gone(self) -> list[Event]:
         """The interface vanished (wg-quick down): every peer that was up is down."""
         events: list[Event] = []
@@ -164,6 +170,7 @@ def main(argv: list[str]) -> int:
     hostname: str = socket.gethostname()
     watcher: Watcher = Watcher(args.interface, args.down_after)
     args.log.parent.mkdir(parents=True, exist_ok=True)
+    seeded: bool = False
     while True:
         try:
             peers: list[Peer] = parse_dump(read_dump(args.interface))
@@ -177,6 +184,11 @@ def main(argv: list[str]) -> int:
             time.sleep(args.interval)
             continue
         now: float = time.time()
+        if not seeded:
+            watcher.seed(peers, now)
+            seeded = True
+            time.sleep(args.interval)
+            continue
         for event in watcher.step(peers, now):
             emit(args.log, hostname, event, now)
         time.sleep(args.interval)

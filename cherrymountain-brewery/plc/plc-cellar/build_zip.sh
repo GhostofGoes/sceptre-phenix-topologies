@@ -87,7 +87,15 @@ python3 -I "${here}/pack_zip.py" \
   --out "${target}"
 
 if [ "${check}" = 1 ]; then
-  if cmp -s "${target}" "${out}"; then
+  # Compare entry names and contents, not raw bytes: deflate output can differ
+  # between zlib builds while the archive holds the same files.
+  if python3 -I -c '
+import sys, zipfile
+def entries(path):
+    with zipfile.ZipFile(path) as zf:
+        return {i.filename: zf.read(i) for i in zf.infolist()}
+sys.exit(0 if entries(sys.argv[1]) == entries(sys.argv[2]) else 1)
+' "${target}" "${out}" 2>/dev/null; then
     log "PASS: ${out#"${root}"/} is up to date"
   else
     log "FAIL: ${out#"${root}"/} differs from a fresh build; run $0" >&2

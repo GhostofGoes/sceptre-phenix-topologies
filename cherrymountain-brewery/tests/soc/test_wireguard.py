@@ -39,6 +39,15 @@ def test_a_peer_that_never_connected_has_no_endpoint() -> None:
     assert peer.latest_handshake == 0
 
 
+def test_seeding_does_not_report_a_connected_peer() -> None:
+    """A watcher restart must not turn a live session into a new peer_up."""
+    watcher = cm_wg_watch.Watcher("wg0", down_after=200)
+    now = 1_700_000_000.0
+    watcher.seed(peers(int(now) - 3), now)
+    assert watcher.step(peers(int(now) - 3), now + 5) == []
+    assert [e.name for e in watcher.interface_gone()] == ["peer_down"]
+
+
 def test_the_event_sequence_of_a_vendor_session() -> None:
     watcher = cm_wg_watch.Watcher("wg0", down_after=200)
     now = 1_700_000_000.0

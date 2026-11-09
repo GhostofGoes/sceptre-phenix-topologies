@@ -36,11 +36,14 @@ alert tcp 10.20.30.12 any -> 10.20.10.0/24 8443 (msg:"CM OpenPLC REST session fr
 
 # --- BACnet: WriteProperty only from bas-fuxa, scada-fuxa, or the EWS -------------
 # BVLC type 0x81, function 0x0a (Original-Unicast) or 0x0b (Original-Broadcast),
-# a two-byte NPDU (no routing fields), then a confirmed request (APDU type 0) with
-# service 15 (WriteProperty) or 16 (WritePropertyMultiple).
+# a two-byte NPDU (no routing fields), then an unsegmented confirmed request (APDU
+# type 0; the low-nibble flags, such as segmented-response-accepted, are ignored)
+# with service 15 (WriteProperty) or 16 (WritePropertyMultiple). Routed NPDUs and
+# segmented requests shift the offsets and are not matched here; Zeek's BACnet
+# analyzer (zeek/cherrymountain.zeek) is the authoritative write detection.
 
-alert udp ![10.30.10.10,10.20.30.10,10.20.30.12] any -> any 47808 (msg:"CM BACnet WriteProperty from a host other than bas-fuxa, scada-fuxa, or the EWS"; content:"|81 0a|"; depth:2; content:"|00|"; offset:6; depth:1; content:"|0f|"; offset:9; depth:1; classtype:policy-violation; priority:1; metadata:cm_usecase bacnet_write; sid:9000113; rev:1;)
-alert udp ![10.30.10.10,10.20.30.10,10.20.30.12] any -> any 47808 (msg:"CM BACnet WritePropertyMultiple from a host other than bas-fuxa, scada-fuxa, or the EWS"; content:"|81 0a|"; depth:2; content:"|00|"; offset:6; depth:1; content:"|10|"; offset:9; depth:1; classtype:policy-violation; priority:1; metadata:cm_usecase bacnet_write; sid:9000114; rev:1;)
+alert udp ![10.30.10.10,10.20.30.10,10.20.30.12] any -> any 47808 (msg:"CM BACnet WriteProperty from a host other than bas-fuxa, scada-fuxa, or the EWS"; content:"|81|"; depth:1; byte_test:1,>=,10,1; byte_test:1,<=,11,1; byte_test:1,<,8,6; content:"|0f|"; offset:9; depth:1; classtype:policy-violation; priority:1; metadata:cm_usecase bacnet_write; sid:9000113; rev:2;)
+alert udp ![10.30.10.10,10.20.30.10,10.20.30.12] any -> any 47808 (msg:"CM BACnet WritePropertyMultiple from a host other than bas-fuxa, scada-fuxa, or the EWS"; content:"|81|"; depth:1; byte_test:1,>=,10,1; byte_test:1,<=,11,1; byte_test:1,<,8,6; content:"|10|"; offset:9; depth:1; classtype:policy-violation; priority:1; metadata:cm_usecase bacnet_write; sid:9000114; rev:2;)
 
 # --- BBMD and BDT activity (the BBMDs are a lateral path between OPS and BAS) -----
 # BVLC functions: 0x01 Write-BDT, 0x02 Read-BDT, 0x05 Register-Foreign-Device,

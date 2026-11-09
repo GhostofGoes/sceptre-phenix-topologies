@@ -28,7 +28,18 @@ trap 'rm -rf "${WORK}"' EXIT
 
 log() { echo "cm-openplc-provision: $*"; }
 api() { curl -ksS --max-time 60 "$@"; }
-json_field() { python3 -c 'import json,sys; print(json.load(sys.stdin).get(sys.argv[1], ""))' "$1"; }
+# Print a top-level JSON field, or nothing when the reply is not a JSON object
+# (a transient error page during compile); callers treat empty as "retry".
+json_field() {
+  python3 -c '
+import json, sys
+try:
+    doc = json.load(sys.stdin)
+except ValueError:
+    doc = {}
+print(doc.get(sys.argv[1], "") if isinstance(doc, dict) else "")
+' "$1"
+}
 
 login() {
   api -H 'Content-Type: application/json' \
@@ -76,7 +87,13 @@ code=$(api -o "${WORK}/cu.json" -w '%{http_code}' -H 'Content-Type: application/
   "${BASE}/create-user" || true)
 log "create-user HTTP ${code}"   # 201 created; 401 or 409 means the user already exists
 
-token=$(login)
+token=""
+for _ in 1 2 3 4 5 6; do
+  token=$(login || true)
+  [ -n "${token}" ] && break
+  log "login returned no token; retrying"
+  sleep 5
+done
 [ -n "${token}" ] || { log "FAIL: login failed"; exit 1; }
 AUTH="Authorization: Bearer ${token}"
 
@@ -88,7 +105,7 @@ case "${up}" in *'"UploadFileFail":""'*) ;; *) log "FAIL: upload rejected"; exit
 log "polling compilation-status (timeout ${TIMEOUT}s)"
 start=$(date +%s)
 while :; do
-  st=$(api -H "${AUTH}" "${BASE}/compilation-status" | json_field status)
+  st=$(api -H "${AUTH}" "${BASE}/compilation-status" | json_field status || true)
   log "$(( $(date +%s) - start ))s status=${st}"
   case "${st}" in
     SUCCESS) break ;;

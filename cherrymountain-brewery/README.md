@@ -8,9 +8,10 @@
 > **Phase 2 (simulation)** is largely built: `plant.yaml` covers every area,
 > plantgen writes the ci, full, and lite outputs, and seven federates pass their
 > tests (remaining: ot-sim logic blocks and a 24 h soak).
-> **Phase 3 (control)** is in progress: the per-variant PLC builder and the full
-> plc-cellar program (with the hardwired CO₂ interlock) exist; the other PLC
-> programs, the FUXA batch engine, and bas-fuxa's project are next. **Phase 5
+> **Phase 3 (control)** is in progress: all five PLC programs (with the
+> hardwired CO₂ interlock and the peer reads), their full and lite ZIPs, and the
+> scada-fuxa and bas-fuxa projects are generated; the FUXA batch engine and any
+> run in a real OpenPLC runtime are next. **Phase 5
 > (SOC and remote access)** is built (images, provisioning, detections, and
 > per-experiment secrets) but not run. Every image config exists
 > ([phenix-images/README.md](phenix-images/README.md)); the ot-sim BACnet module

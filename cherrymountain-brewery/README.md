@@ -160,8 +160,8 @@ that some hooks need are listed in
 
 The full and lite variants carry the whole network of DESIGN.md section 10:
 
-- **Topology.** `topology-core.yml` has the 37 core nodes (the 36 of the
-  design plus `bas-bbmd`) with their interfaces, VLANs, addresses, static
+- **Topology.** `topology-core.yml` has the 37 core nodes (the 43 of the
+  design minus the SOC and remote-access modules) with their interfaces, VLANs, addresses, static
   routes, zone labels, boot-order `delay`s, autotunnel entries, and resources.
   `topology-soc.yml` adds malcolm, wazuh, and soc-analyst;
   `topology-remote-access.yml` adds dmz-vpn, dmz-jump, and vendor-ws.
@@ -209,12 +209,8 @@ it matters):
   isp-rtr comes first in the topology, and the script fixes fw-ot's source);
   the rendered rulesets filter only `forward`, so traffic to a router's own
   address (IKE, SSH) is never filtered; rules have no `log` field; netem `loss`
-  is an integer percent (the design asks for 0.1 percent, the files use 1); and
+  is an integer percent (the design and files use 1 percent); and
   the template has no `key-exchange`.
-- **FUXA BACnet discovery.** plantgen writes the subnet's directed broadcast as
-  the `broadcastAddress` of scada-fuxa's BACnet device, but the `bbmd` spike
-  tested the property unset (the Who-Is then goes to 255.255.255.255, which the
-  OPS BBMD hears). The generator should omit it (DESIGN 8.1).
 - **Malcolm upload pipeline.** A pcap in `pcap/upload` reaches OpenSearch only
   with four setup steps that the cm-malcolm boot script must do (DESIGN 14).
 - **Mirror.** `df_default=false` on the host's GRE port still needs the mirror

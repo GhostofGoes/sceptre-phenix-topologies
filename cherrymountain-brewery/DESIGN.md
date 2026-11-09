@@ -793,11 +793,9 @@ router, and it read device 3003.
   FUXA then reads the device with no BBMD, with only the FUXA-to-device rule and
   the established-reply rule, and it needs one FUXA device per BACnet device.
   The design leaves `broadcastAddress` unset on `scada-fuxa`, as the spike did,
-  so FUXA's discovery exercises the BBMDs. plantgen's FUXA output currently
-  writes the subnet's directed broadcast (for example 10.20.30.255) instead.
-  That value was never tested against the OPS BBMD, whose `/0` prefix listens
-  for `255.255.255.255`. The generator must omit the property
-  ([§16](#16-new-and-extended-software)).
+  so FUXA's discovery exercises the BBMDs. plantgen omits the property on
+  `scada-fuxa` (its devices sit on the BAS subnet, behind fw-ot), so the
+  Who-Is goes to `255.255.255.255`, which the OPS BBMD's `/0` prefix hears.
 - **FUXA marks a BACnet device "connected" on the first I-Am from anything**,
   including the OPS BBMD's own. A device that never answers leaves its tags
   `null` while FUXA says connected. SoH and health checks therefore read a tag
@@ -1188,7 +1186,7 @@ values:
 | Genset | Carries EP-1 at 10 s |
 | Peak shaving | $19,140 per 50 kW-year |
 | PackML | Matches PackMLpy's table; 5000-command fuzz |
-| Cellar CO₂ | 4835 ppm steady state |
+| Cellar CO₂ | 2627 ppm steady state at 1 g/s (3284 ppm sensed, below the purge stop); tiers clear 10 % below their limit |
 | 12 h offline run | 2 brews, 14,327 bottles, 227 kW peak |
 
 - **IBU reference.** The check uses the published Tinseth formula. Brewtarget
@@ -1329,14 +1327,22 @@ notional design targets):
   uses no dynamic routing protocol, which is common practice for a small OT
   site and avoids route injection across zone boundaries. phenix supports
   OSPF, but it is deliberately not used.
-- **Conduits are initiated upward only.** For example, logs and telemetry
-  flow to the SOC and the historian. Replies are allowed statefully; there
-  is no data diode.
-- **Every conduit crosses at least one firewall.** There are two documented
-  deviations:
+- **Data conduits are initiated upward where possible.** For example, logs
+  and telemetry flow to the SOC and the historian. Replies are allowed
+  statefully; there is no data diode. Control conduits necessarily start
+  downward: SCADA and the EWS to the PLCs, dmz-jump to the EWS, and the
+  utility DERMS to rtu-der.
+- **Cross-zone conduits cross at least one firewall.** The rows marked "—"
+  in [§10.3](#103-conduit-matrix-default-deny-stateful-logged) are not
+  cross-zone: intra-DMZ (vendor tunnel to dmz-jump through dmz-vpn),
+  intra-SOC (soc-analyst), and fw-edge's own NTP from inet-nuke. There are
+  two documented deviations:
   - The utility DNP3 conduit ([§7.5](#75-utility-der-link)) reaches an L1
     gateway from L5 through fw-edge and fw-ot with no protocol break. It is
     decrypted from IPsec on fw-edge, so it crosses the DMZ in plaintext.
+    The fw-edge rule matches the source address `192.0.2.10` only, with no
+    IPsec policy match, so a plaintext packet spoofing that address from the
+    INET segment would pass the ACL. Adding a policy match is open work.
   - The MGMT plane (below).
 - **MGMT is a simulation back-plane, not a containment boundary.** Field
   devices with HELICS-backed I/O and the simulation nodes have a MGMT NIC
@@ -1573,7 +1579,7 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 
 **WAN emulation.** The vrouter `emulators` (netem) apply to egress only:
 
-- **isp-rtr:** about 30 ms of delay and 0.1% loss on its VENDOR and INET
+- **isp-rtr:** about 30 ms of delay and 1% loss (netem loss is an integer percent) on its VENDOR and INET
   egress (the vendor path), plus a bandwidth limit on INET.
 - **util-rtr:** about 20 ms of delay on its INET and UTIL egress (the
   utility WAN). The IPsec and DNP3 path between fw-edge and util-rtr stays
@@ -1658,8 +1664,9 @@ spike:
 - Suricata added 917 MiB at its peak and about one core to that stack. Without
   it, an earlier run of the same pipeline peaked at 7.6 GiB.
 - The full stack adds Postgres and Redis for NetBox, Strelka, the upload and
-  nginx containers, and larger default heaps (OpenSearch 10 GB, Logstash 3 GB).
-  None of that was measured, and no live capture ran in a real `cm-malcolm` VM.
+  nginx containers. The 24 GB profile sets OpenSearch to a 6 GB heap and
+  Logstash to 3 GB (`phenix-injects/malcolm/profiles.sh`), below Malcolm's
+  10 GB OpenSearch default. None of that was measured, and no live capture ran in a real `cm-malcolm` VM.
 
 The 24 GB default stays until a VM run measures the full stack. The slim profile
 is the trimmed pipeline above, with Suricata and without NetBox and Strelka, at
@@ -1924,7 +1931,9 @@ health checks read a tag value, not the connection state
 **ews**
 
 - Ubuntu desktop with the OpenPLC Editor, a browser (FUXA editor, OpenPLC
-  REST), Wireshark, mbpoll, BAC0, pymodbus, and opcua-client tools.
+  REST), Wireshark, mbpoll, BAC0, pymodbus, and the asyncua command-line
+  tools (`uals`, `uaread`, `uawrite`, `uacall`). opcua-client needs
+  Python 3.14 and noble ships 3.12.
 - xrdp, for vendor and Guacamole sessions.
 
 ### 12.5 Addressing conventions (high off-by-one risk)
@@ -2297,8 +2306,8 @@ which uses the Elasticsearch-compatible API.
 
 ### 15.3 Topology modules and variants
 
-- **Modules.** `topology-core.yml` holds 37 nodes (the 36 of the inventory
-  plus `bas-bbmd`). `topology-soc.yml` adds malcolm, wazuh, and soc-analyst.
+- **Modules.** `topology-core.yml` holds 37 nodes (the 43 of the inventory
+  minus the SOC and remote-access modules). `topology-soc.yml` adds malcolm, wazuh, and soc-analyst.
   `topology-remote-access.yml` adds vendor-ws, dmz-vpn, and dmz-jump.
   `topology-full.yml` merges all three with `includeTopologies` (43 VMs), and
   `topology-lite.yml` includes only the core (37 VMs). phenix appends the
@@ -2482,10 +2491,10 @@ magnitudes. Validate the configs offline with `phenix-scorch-validate`.
 | `cm-sim` | noble minbase | HELICS 3.6 + pyhelics, OpenDSSDirect.py (`~=0.8.4`), SimPy, cherrymountain_sim, chrony, nftables. The models do not use CoolProp or pvlib, and SciPy, PackMLpy, and `ht` are needed only by the tests ([§9.6](#96-implementation-status-and-validation)). On sim-ctl: single-node OpenSearch (ground truth) and Grafana | |
 | `cm-historian` | noble minbase | InfluxDB 2 OSS, Telegraf, Grafana, Mosquitto, Wazuh agent | |
 | `cm-desktop` | noble mingui | Chromium (kiosk), WireGuard tools, protonuke, Wazuh agent | Role injections: HMI, corp, vendor, analyst |
-| `cm-ews` | noble mingui | OpenPLC Editor, Wireshark, mbpoll, BAC0, pymodbus, opcua-client, xrdp, Wazuh agent | |
+| `cm-ews` | noble mingui | OpenPLC Editor, Wireshark, mbpoll, BAC0, pymodbus, asyncua CLI tools, xrdp, Wazuh agent | |
 | `cm-guacamole` | noble minbase | Docker + guacd/guacamole/postgres images pre-pulled, TOTP extension, recording volume, Wazuh agent | |
 | `cm-svc` | noble minbase | chrony, dnsmasq, rsyslog, Wazuh agent, BACpypes3 BBMD service (`cm-bbmd.service`, enabled on ot-svc and bas-bbmd only) | |
-| `cm-malcolm` | noble minbase, about 60G | Docker + pinned Malcolm images pre-pulled, openvswitch, boot and provisioning script that adds the capture flow and does the four upload-pipeline setup steps ([§14](#14-blue-team-monitoring)) | Largest image |
+| `cm-malcolm` | noble minbase, 64G | Docker + pinned Malcolm images pre-pulled, openvswitch, boot and provisioning script that adds the capture flow and does the four upload-pipeline setup steps ([§14](#14-blue-team-monitoring)) | Largest image |
 | `cm-wazuh` | noble minbase | Wazuh all-in-one (manager, indexer, dashboard), offline install | |
 | `cm-wireguard` | noble minbase | Derived from the repo's `renewables/wind/plant/phenix-images/wireguard.yml` (focal), rebased on noble, plus chrony and a Wazuh agent. IP forwarding enabled | dmz-vpn |
 | `vyos` | prebuilt (sceptre-phenix-images) | VyOS rolling with miniccc built in (`-m` build flag). It reports `999.<timestamp>`, not 1.5, since vyos-build T9547 changed rolling versioning on 2026-10-31 | `oras pull`, or build with the images repo's `scripts/vyos/build-vyos.sh`; topology uses `os_type: vyos`, `inject_partition: 3`, ≥2 GB. `rolling` moves daily, so record the build used |
@@ -2590,9 +2599,6 @@ five stages) and follows the pattern of sceptre-phenix-apps:
   - Render the `relay-main` telnet config ([§12.3](#123-ot-sim-field-devices)).
   - The HELICS federate-count SoH check counts distinct peers on the broker
     port, which is approximate.
-  - plantgen's `scada-fuxa` BACnet device writes the subnet's directed broadcast
-    as `broadcastAddress`; omit the property, as the `bbmd` spike did
-    ([§8.1](#81-spaces-equipment-and-bacnet-devices)).
 
 ot-sim BACnet config sketch:
 
@@ -2748,7 +2754,7 @@ silently.
 | Image configs upserted through `phenix-configs/` (inferred, undocumented) | Keep them in `phenix-images/` and build with `phenix image build` |
 | MGMT plane bypasses segmentation | nftables per device (allowing ICMP, HELICS, OpenSearch, and NTP to sim-ctl); no default route; ot-sim CPU API on localhost; exercise rules. Mirror exclusion is visibility only |
 | BACnet module is new code | The Phase 0 stand-in (BACpypes3) answered everything FUXA calls; bennu `hvac` fallback via the `sceptre` app stays documented |
-| FUXA's BACnet driver (node-bacnet 0.2.4) sends its Who-Is to the device's `broadcastAddress` property, or to `255.255.255.255` when it is unset, so scada-fuxa could not reach BAS devices through `fw-ot` (resolved by the `bbmd` spike, which ran a real FUXA 1.3.5 through the BBMDs on VyOS and on a Linux router) | A BBMD on ot-svc and one on bas-bbmd, each BDT listing the other, with `/0` listening on the OPS side, and three more ACL rules: rule 2 is required, and rule 3 is optional unless devices send unsolicited I-Ams (§10.3). A host cannot run both FUXA and a BBMD. The user decided to keep the BBMDs and the `bas-bbmd` VM (43 VMs). Alternatives, not used: set `broadcastAddress` to each device's IP (a unicast Who-Is, no BBMD, one FUXA device per BACnet device), or host the BAS BBMD in a device's BACnet module (no extra VM, untested). FUXA reports "connected" on any first I-Am, so health checks read a tag value. plantgen must omit `broadcastAddress` on scada-fuxa (§8.1) |
+| FUXA's BACnet driver (node-bacnet 0.2.4) sends its Who-Is to the device's `broadcastAddress` property, or to `255.255.255.255` when it is unset, so scada-fuxa could not reach BAS devices through `fw-ot` (resolved by the `bbmd` spike, which ran a real FUXA 1.3.5 through the BBMDs on VyOS and on a Linux router) | A BBMD on ot-svc and one on bas-bbmd, each BDT listing the other, with `/0` listening on the OPS side, and three more ACL rules: rule 2 is required, and rule 3 is optional unless devices send unsolicited I-Ams (§10.3). A host cannot run both FUXA and a BBMD. The user decided to keep the BBMDs and the `bas-bbmd` VM (43 VMs). Alternatives, not used: set `broadcastAddress` to each device's IP (a unicast Who-Is, no BBMD, one FUXA device per BACnet device), or host the BAS BBMD in a device's BACnet module (no extra VM, untested). FUXA reports "connected" on any first I-Am, so health checks read a tag value. plantgen omits `broadcastAddress` on scada-fuxa (§8.1) |
 | Requires the phenix fork's autotunnel fixes (branch `ci-e2e-minimega`). Upstream `main` checks the C2 client once, drops the tunnel silently, creates none for CLI-started experiments, and never re-creates one | Run on the fork, or start experiments from `phenix ui` and re-create tunnels manually (the forwards API call works). A CLI-started experiment on the fork gets all its tunnels, and they survive a `phenix ui` restart. Host ports are random and phenix's forwards API does not report them, so tools look them up with `cc tunnel list` (§15.3) |
 | Serial: the socat link has no baud pacing, so loss and timing say nothing about a real RS-485 bus. phenix PR #130's QEMU-socket serial app fails when a VM is redeployed: the host `socat` exits and is never restarted, a restarted VM did not register its C2 client (not isolated), and `socat -d -d -d -d` logs 4.4 MB per 5 minutes | Stay on the current serial app, which carried ot-sim's own Modbus RTU master and server with 0 errors in about 680 polls (no ot-sim change). PR #130 needs a reconnect fix first; the spike's patch is `spikes/serial/pr130-serial.patch`. Modbus TCP remains the fallback |
 | The phenix `vrouter` app cannot log, set a syslog target, write IKEv2 `key-exchange`, or give each router its own NTP source; it filters only the `forward` chain; it takes only integer netem loss | `cm-vyos-config.sh` does the first four after boot, isp-rtr boots first, the 1 % loss replaces 0.1 %, and `netcheck` reports router-local traffic as unfiltered. Upstream follow-ups in §16. The script is unverified on VyOS until a VM run |

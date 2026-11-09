@@ -212,7 +212,9 @@ Wazuh takes 5 to 8, and Malcolm 10 to 15.
 1. **VMs and state of health.** `docker exec phenix phenix vm info
    cherrymountain-ci` lists the VMs. The SoH tab of the experiment in the
    phenix UI shows the checks; they start 10 minutes after boot. A first pass
-   that fails only on the PLCs or Malcolm is normal.
+   that fails only on the PLCs or Malcolm is normal. In lite and full the
+   BACnet checks fail for now, and bas-fuxa shows no values: the building
+   devices have no BACnet server until the ot-sim BACnet module is written.
 2. **The HMI.** FUXA is reached through a tunnel on a random host port. Look
    it up, every time:
 

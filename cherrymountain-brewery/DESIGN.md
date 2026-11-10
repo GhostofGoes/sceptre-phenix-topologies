@@ -2494,10 +2494,10 @@ whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
 
 - The `cherrymountain` app generates the project JSON from `plant.yaml`
   (devices, tags, alarms, DAQ settings) with `fuxa/build_project.py`: for ci
-  the hand-laid Cellar view, and for full and lite a view per device (the
-  Cellar view too on scada-fuxa) for both scada-fuxa and bas-fuxa. FUXA opens
+  the Cellar graphic, and for full and lite the process graphics and a
+  generated table per device for both scada-fuxa and bas-fuxa. FUXA opens
   a view by its name (`/home?viewName=<name>`, the kiosk URL), so the names are unique:
-  plc-cellar's generated view is "Cellar points". The
+  the graphic is "Cellar" and plc-cellar's generated table "Cellar points". The
   committed copies (`fuxa/<variant>/<host>-project.json`) are checked current
   by the `cm-fuxa-check` hook. OPC UA tags address `ns=2;s=<tag>` and S7 tags
   the data blocks the app gives the `s7comm` plugin (DB1 %QW, DB2 %IW, DB3 %MW,
@@ -2558,7 +2558,34 @@ whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
 - **Views** (ISA-101 style, grayscale): Overview with KPIs, Brewhouse,
   Cellar (FV/BBT grid), Packaging (line and OEE), Utilities, Electrical
   one-line, Alarms, Trends, and Batch (recipe "Fire of the Phenix", batch
-  ID, phase status).
+  ID, phase status). **As built** (`fuxa/hmi_views.py`, drawn with
+  `fuxa/hmi_kit.py`; [fuxa/README.md](fuxa/README.md#the-process-graphics)):
+  - **The hierarchy.** *Overview* is level 1: the whole plant on one screen,
+    product moving left to right, nothing to operate, each panel a link to
+    its area. *Brewhouse*, *Cellar*, *Packaging*, *Utilities*, *Power* (the
+    one-line diagram), and *Cellar CO2* are level 2, the screens an area is
+    run from. *Batch* and a generated *points* table for each controller
+    (every tag it has, and a box for each one an operator may write) are
+    levels 3 and 4. There is no separate Alarms or Trends view: FUXA's header
+    has the alarm list, and each level-2 screen carries the trends of its
+    own area.
+  - **Color.** Equipment is gray on a gray ground. A muted color says what is
+    in a vessel or a pipe (wort, beer, water, glycol, steam, CO₂, CIP
+    solution), one blue says running, open, or closed-in, and the four alarm
+    colors of [§15.11](#1511-brand) appear only in alarm flags. A flag is also
+    a shape with its priority's number in it (1 square to 4 diamond), so it
+    reads without color. Every alarm of the project has a flag beside the
+    value it watches on at least one of these screens (a test holds this).
+  - **Values in context.** A measurement with limits is a scale: the normal
+    band, the alarm limits from `alarms.json` as marks, a pointer at the
+    value, a hollow marker at the setpoint. A level fills its vessel in the
+    vessel's shape. A fermenter has no level transmitter, so its color says
+    what it holds instead: empty, then wort that turns to beer as the extract
+    falls.
+  - **Controls.** A box or a button is drawn only for a tag the plant model
+    marks `read-write`; the kit refuses any other at build time. So the
+    breakers, the generator, and the spunding setpoints show and cannot be
+    operated here, as in the points tables.
 - **Alarms** are generated from the rationalized definitions in `plant.yaml`.
 - **Server scripts:**
   - An ISA-88 batch engine that sequences PLC phases from recipe parameters
@@ -2590,7 +2617,10 @@ whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
   goes to the directed broadcast address `10.30.10.255`, so it needs no BBMD
   ([§8.1](#81-spaces-equipment-and-bacnet-devices); untested, because the `bbmd`
   spike covered `scada-fuxa` only).
-- Views: building overview, RTU-1, cold room, ventilation/CO₂.
+- Views: building overview, RTU-1, cold room, ventilation/CO₂. **As built:**
+  one *Building* screen drawn as a plan (taproom with RTU-1, cold room, the
+  brewhouse hood and area exhaust, and the cellar from above with its four
+  CO₂ sensors and purge fans), and the *Building points* table.
 - Schedules (occupancy) and alarms.
 - DAQ goes to the InfluxDB 2 bucket `bas`.
 
@@ -4005,10 +4035,12 @@ five stages) and follows the pattern of sceptre-phenix-apps:
   - Per-variant PLC ZIPs with `debug_map.json` exist for all five PLCs
     (`plc/common`); the app renders each from its variant's ZIP.
   - `fuxa/build_project.py` builds the full and lite projects for scada-fuxa
-    and bas-fuxa (every device type, a generated view per device, the PLC
-    alarm bits and FUXA's own BACnet alarms); importing them into a running
-    FUXA, and the OPC UA namespace index and S7 tag types they assume, are
-    unverified.
+    and bas-fuxa (every device type, the process graphics, a generated table
+    per device, the PLC alarm bits and FUXA's own BACnet alarms). They import
+    into a real FUXA 1.3.6 and show values from a stand-in plant
+    ([docs/examples/capture](docs/examples/capture/README.md)); against the
+    range's own PLCs, the OPC UA namespace index and the S7 tag types they
+    assume are unverified.
   - Drop the static sim, OpenPLC, and FUXA topology injects once the app runs.
   - The HELICS federate-count SoH check counts distinct peers on the broker
     port: one per host that runs a federate (a real HELICS 3.6.1 broker keeps

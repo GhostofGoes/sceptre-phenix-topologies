@@ -155,12 +155,12 @@ def view(doc: dict[str, Any], name: str) -> dict[str, Any]:
 @pytest.mark.parametrize(
     ("view_name", "tag_name", "lo", "hi"),
     [
-        ("Utilities", "UTL.CO2.XC01.RESET", 0.0, 1.0),  # the CO2 shutoff reset
+        ("Utilities points", "UTL.CO2.XC01.RESET", 0.0, 1.0),  # the CO2 shutoff reset
         ("Cellar points", "CEL.ENTRY.HS01.ENTRY", 0.0, 1.0),  # an entry permit
-        ("Brewhouse", "BH.BATCH.XC01.CMD", 0.0, 5.0),
-        ("Brewhouse", "BH.HLT.TT01.SP", 32.0, 212.0),
-        ("Packaging", "PKG.LINE.PACKML.CMD", 0.0, 9.0),
-        ("Power", "PWR.DMD.JY01.SP", None, None),
+        ("Brewhouse points", "BH.BATCH.XC01.CMD", 0.0, 5.0),
+        ("Brewhouse points", "BH.HLT.TT01.SP", 32.0, 212.0),
+        ("Packaging points", "PKG.LINE.PACKML.CMD", 0.0, 9.0),
+        ("Power points", "PWR.DMD.JY01.SP", None, None),
     ],
 )
 def test_an_operator_can_write_every_writable_tag(
@@ -180,9 +180,13 @@ def test_inputs_are_exactly_the_writable_tags(host: str) -> None:
     writable: set[str] = {
         t["id"] for d in tags["devices"] for t in d["tags"] if t["access"] == "read-write"
     }
-    generated = [v for v in doc["hmi"]["views"] if v["name"] != "Cellar"]
+    generated = [v for v in doc["hmi"]["views"] if v["name"].endswith(" points")]
     bound: set[str] = set().union(*(inputs(v).keys() for v in generated))
     assert bound == writable
+    # the process graphics put a control on a writable tag only
+    for v in doc["hmi"]["views"]:
+        if v["name"] != "Batch":
+            assert set(inputs(v)) <= writable, v["name"]
 
 
 def test_the_process_scada_cannot_write_bacnet(scada: dict[str, Any]) -> None:

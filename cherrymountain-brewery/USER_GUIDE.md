@@ -401,34 +401,63 @@ console: `cat /var/lib/cm-malcolm/admin-password` on malcolm, and
 
 ### Operate the plant (scada-fuxa)
 
-Open `http://localhost:11881`. The views are **Cellar**, **Brewhouse**,
-**Batch**, **Cellar points**, **Packaging**, **Utilities**, **Power**, and
-**Cellar CO2** (`ci` has the cellar only). Open one directly with
-`http://localhost:11881/home?viewName=Cellar`.
+Open `http://localhost:11881`. It opens on the **Overview**: the whole plant
+on one screen, with product moving from left to right. Click a panel to open
+its area: **Brewhouse**, **Cellar**, **Packaging**, **Utilities**, **Power**,
+or **Cellar CO2**. The menu on the left has the same screens, the **Batch**
+view, and a **points** table for each controller (**Cellar points** and so on)
+with every tag the controller has. `ci` has the Cellar screen only. Open a view
+directly with `http://localhost:11881/home?viewName=Cellar`.
 
-- **Look.** Fermenter temperatures on the Cellar view should move within a
+How to read a screen:
+
+- **Gray is normal.** A screen with nothing wrong has no red or yellow on it.
+- **Color is what is in a vessel or a pipe:** brown wort, gold beer, blue
+  water, orange hot liquor, teal glycol, pale gray steam, green CO₂, purple
+  cleaning solution. A fermenter turns from brown to gold as its extract falls.
+- **Blue means on:** a pump or a fan that runs, a valve that is open, a lamp
+  whose text is true. A breaker that is closed is a dark square and the wire
+  behind it is dark. A fan that runs turns, and a pipe with flow in it shows
+  the flow moving.
+- **A flag is an alarm.** It appears beside the value it belongs to: a red
+  square with a 1 (critical), a triangle with a 2 (high), a yellow triangle
+  that points down with a 3 (medium), a blue diamond with a 4 (low). Hold the
+  pointer on a flag to read the alarm's text. The list in the header has all
+  of them.
+- **A scale shows where a value is.** The shaded band is the normal range, a
+  line across it is an alarm limit, the black pointer is the value, and the
+  hollow triangle on the left is the setpoint.
+- **A white box is a value you may change, a button is a command.** What has
+  neither can only be read here.
+- **A trend** shows the last hour.
+
+- **Look.** Fermenter temperatures on the Cellar screen should move within a
   minute. Values that never change mean the simulation is not reaching the
   PLCs: see [Troubleshooting](#troubleshooting).
 - **Change a value.** Without a login FUXA only shows. Click the account icon
   at the top right, or just try to write: FUXA opens its sign-in box. Sign in
-  as `operator`. The sign-in lasts 12 hours. Every value you may write has a
-  box beside it: type and press Enter. Type engineering values (`66.0` for
-  66 °F); bits take `1` or `0`.
+  as `operator`. The sign-in lasts 12 hours. The screens have a box or a button
+  for what an operator changes most; a points table has a box beside every
+  value you may write. Type and press Enter. Type engineering values (`66.0`
+  for 66 °F); bits take `1` or `0`.
 - **Edit the screens.** Only `admin` can open the editor (`/editor`).
 - **Acknowledge an alarm.** Open the alarm list in the header. Every alarm
   except the lowest level stays until someone acknowledges it.
 
-| To do this | Write | On view |
+| To do this | Do this | On view |
 |---|---|---|
-| Change a fermenter's temperature | Press **By hand** for that fermenter, then set `CEL.FV101.TT01.SP` and `TT02.SP`. **Profile on** gives it back to the PLC's fermentation profile | Cellar |
+| Change a fermenter's temperature | Press **By hand** under that fermenter, then type in its **side** and **cone** boxes (`CEL.FV101.TT01.SP` and `TT02.SP`). **Profile on** gives it back to the PLC's fermentation profile | Cellar |
+| Change a bright tank's temperature or carbonation | The **set °F** and **vol** boxes under the tank | Cellar |
 | Change the fermentation profile for every fermenter | `CEL.PROFILE.TC01.SP` (fermenting, 66), `TC02.SP` (rest, 70), `TC03.SP` (crash, 34), `KC01.SP` (rest minutes, 180) | Cellar points |
 | Brew | the **Start** button ([Brew a batch](#brew-a-batch)) | Batch |
-| Run one brewhouse phase by hand, only while the Batch view says Idle | `BH.BATCH.XC01.PHASE` (1 to 10), then `BH.BATCH.XC01.CMD` (1 start, 2 hold, 3 restart, 4 abort, 5 reset) | Brewhouse |
-| Start a cleaning (CIP) circuit | `UTL.CIP.XC01.CIRCUIT` (1 to 7), then `UTL.CIP.XC01.CMD` (1 start, 2 hold, 0 resume, 3 abort) | Utilities |
-| Start or stop the packaging line outside its shift | `PKG.LINE.PACKML.CMD` (1 reset, then 2 start; 3 stop) | Packaging |
-| Keep the packaging line stopped during its shift | `PKG.LINE.PACKML.CMD` = 4 (hold), and 5 to let it go. A stop (3) lasts about two minutes: the line's operator starts the line again | Packaging |
-| Mark a vessel entry permit | `CEL.ENTRY.HS01.ENTRY` to `HS06`, `BH.ENTRY.HS01.ENTRY`, `HS02`; check `XSnn.LOCKED` | Cellar points, Brewhouse |
-| Reset the CO₂ supply shutoff after a gas alarm | `UTL.CO2.XC01.RESET` = 1 (accepted once the detection relay has been healthy 60 s; state is `UTL.CO2.XS02.SHUTOFF`) | Utilities |
+| Run one brewhouse phase by hand, only while the Batch view says Idle | `BH.BATCH.XC01.PHASE` (1 to 10), then `BH.BATCH.XC01.CMD` (1 start, 2 hold, 3 restart, 4 abort, 5 reset) | Brewhouse points |
+| Start a cleaning (CIP) circuit | Type the circuit (1 to 7) in **Circuit**, then **Start**. **Hold**, **Resume**, and **Abort** are beside it (`UTL.CIP.XC01.CIRCUIT` and `XC01.CMD`) | Utilities |
+| Start or stop the packaging line outside its shift | **Reset**, then **Start**; **Stop** (`PKG.LINE.PACKML.CMD` 1, 2, 3) | Packaging |
+| Keep the packaging line stopped during its shift | **Hold**, and **Unhold** to let it go. A **Stop** lasts about two minutes: the line's operator starts the line again | Packaging |
+| Change the line's speed | The **Speed setpoint** box | Packaging |
+| Mark a vessel entry permit | `CEL.ENTRY.HS01.ENTRY` to `HS06`, `BH.ENTRY.HS01.ENTRY`, `HS02`. The Cellar and Brewhouse screens show which vessels are locked | Cellar points, Brewhouse points |
+| Reset the CO₂ supply shutoff after a gas alarm | **Reset** in the CO₂ supply panel (`UTL.CO2.XC01.RESET`; accepted once the detection relay has been healthy 60 s) | Utilities |
+| Change the demand target, or mark tomorrow a brew day | The **Target kW** box; **Set** and **Clear** beside Brew day | Power |
 
 The plant also runs on a clock. It starts on a Wednesday at 04:30 (simulated
 local time), brew days are Monday and Wednesday at 05:00, the packaging shift
@@ -476,8 +505,11 @@ view and sign in as `operator`.
 
 ### Building automation (bas-fuxa)
 
-Open `http://localhost:11882`. The **Building** view shows the taproom rooftop
-unit, the cold room, and ventilation with the CO₂ sensors. bas-fuxa reads three
+Open `http://localhost:11882`. The **Building** screen is a plan of the
+building: the taproom with its rooftop unit, the cold room, the brewhouse hood
+and area exhaust, and the cellar from above with its four CO₂ sensors and two
+purge fans. It reads like the plant's screens (see above), and **Building
+points** lists every tag. bas-fuxa reads three
 BACnet controllers (`bas-rtu-taproom`, `bas-coldroom`, `bas-vent`). Signed in
 as `operator`, you can command their outputs and setpoints. A command overrides
 the controller's own logic until it is released; FUXA cannot release one, the

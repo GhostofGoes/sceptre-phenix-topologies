@@ -2,8 +2,17 @@
 
 `build_project.py` builds every FUXA project of the range from plantgen's tag
 lists and alarm list. This file describes the ci project first, then
-[the full and lite projects](#the-full-and-lite-projects) and the
-[brewhouse batch engine](#the-brewhouse-batch-engine) they carry on scada-fuxa.
+[the full and lite projects](#the-full-and-lite-projects), the
+[process graphics](#the-process-graphics) every project has, and the
+[brewhouse batch engine](#the-brewhouse-batch-engine) on scada-fuxa.
+
+| File | What it is |
+|---|---|
+| `build_project.py` | Builds a project: devices, tags, alarms, the generated points tables, the Batch view, the layout |
+| `hmi_base.py` | What the builder and the graphics share: ids, the brand's colors, the plantgen records, the plain view builder |
+| `hmi_kit.py` | The drawing kit of the process graphics: vessels, scales, flags, pumps, pipes, trends |
+| `hmi_views.py` | The screens, laid out with the kit |
+| `batch_engine.js` | The brewhouse batch engine (a FUXA server script) |
 
 ## The ci project
 
@@ -27,14 +36,17 @@ then `../sync.py` (it copies the project into `phenix-injects/fuxa/`).
 - **Device `plc-cellar`:** Modbus TCP to `10.20.10.12`, unit 1, polled every
   second, with the 61 generated tags. Addresses are 1-based, as FUXA expects
   (it subtracts 1), and analog values use FUXA's `divisor` (raw / 100).
-- **View `Cellar`:** one column per FV-101 to FV-104 showing side and cone
-  temperature, setpoint (writable), glycol valve, head pressure, spunding
-  setpoint and valve, and extract, plus a lamp for each of the five alarm bits.
-  Pressures are absolute (psia), as stored in the PLC.
+- **View `Cellar`:** the [Cellar graphic](#the-process-graphics) with the four
+  fermenters: side and cone temperature and their setpoints (writable), the
+  glycol jackets, head pressure and the spunding valve, extract, a flag for
+  each of the five alarm bits, and two trends. The bright tanks, the transfer,
+  and the fermentation profile are drawn only where the plant has them (full
+  and lite). Pressures are absolute (psia), as stored in the PLC.
 - **Alarms:** one FUXA alarm per PLC alarm bit (20 in ci). It is active while the
   bit is 1. The PLC applies the on-delay, so FUXA's own delay is 0. The severity
   comes from `fuxa_severity` in `alarms.json`.
-- **DAQ:** PV tags store to FUXA's built-in SQLite (no historian in ci).
+- **DAQ:** PV tags store to FUXA's built-in SQLite (no historian in ci), which
+  is also where a trend gets the hour before the view was opened.
 
 ## The full and lite projects
 
@@ -50,21 +62,23 @@ projects at pre-start, so these files are for review and for the `--check`.
   tags carry the same factor as a linear `scale` (`rawHigh` = the factor),
   which every driver applies on reads and inverts on writes. BACnet values
   are engineering values already.
-- **Views.** The hand-laid Cellar view (in the full and lite plants it also
-  shows each fermenter's profile stage and has the buttons that put it on the
-  PLC's fermentation profile or take it off), and a generated view per device:
-  Brewhouse, Cellar points, Packaging, Utilities, Power, and Cellar CO2 on
-  scada-fuxa; Building on bas-fuxa. Each row is a label and a value or lamp.
-  A view is at most three columns across (1,240 px) and thirty rows down, so it
-  fits an HMI station's 1440x900 screen beside the menu; a device with more
-  tags (Cellar points) continues in a second band below, which the page
-  scrolls to.
+- **Views.** The [process graphics](#the-process-graphics) first (Overview,
+  Brewhouse, Cellar, Packaging, Utilities, Power, and Cellar CO2 on
+  scada-fuxa; Building on bas-fuxa), the Batch view after Brewhouse, then a
+  generated table per device: Brewhouse points, Cellar points, Packaging
+  points, Utilities points, Power points, and Cellar CO2 points on scada-fuxa;
+  Building points on bas-fuxa. In a table each row is a label and a value or
+  lamp. A table is at most three columns across (1,240 px) and thirty rows
+  down, so it fits an HMI station's 1440x900 screen beside the menu; a device
+  with more tags (Cellar points) continues in a second band below, which the
+  page scrolls to.
   A tag the operator may write (`access: read-write` in the plantgen tag
-  list) also has an input box: a number in the tag's range, or 1 and 0 for a
-  bit. That is how an operator resets the CO2 supply shutoff
-  (`UTL.CO2.XC01.RESET` on Utilities), sets an entry permit
-  (`CEL.ENTRY.HS0n.ENTRY` on Cellar points, `BH.ENTRY.HS0n.ENTRY` on
-  Brewhouse), or gives a phase, CIP, or line command.
+  list) also has an input box in its table: a number in the tag's range, or 1
+  and 0 for a bit. The graphics have a box or a button for what an operator
+  changes most (setpoints, the line's and the CIP skid's commands, the CO2
+  shutoff reset); the tables have every writable tag, which is how an
+  operator sets an entry permit (`CEL.ENTRY.HS0n.ENTRY` on Cellar points,
+  `BH.ENTRY.HS0n.ENTRY` on Brewhouse points) or gives a phase command.
 - **Who writes BACnet.** Only bas-fuxa. The BACnet tags of scada-fuxa are
   read-only (DESIGN.md 10.3), and so is the multi-state occupancy mode on
   bas-fuxa, because FUXA's driver writes analog and binary objects only.
@@ -72,6 +86,72 @@ projects at pre-start, so these files are for review and for the `--check`.
   to `highhigh`). Every level but the lowest must be acknowledged. A PLC alarm
   bit carries its own on-delay; an alarm FUXA evaluates on a BACnet value gets
   the rationalized on-delay as `timedelay`. FUXA has no deadband.
+
+## The process graphics
+
+`hmi_views.py` draws the screens an operator works from, with the kit in
+`hmi_kit.py`. They follow the high-performance HMI practice of ISA-101.
+
+**The hierarchy**
+
+| Level | View | What it is for |
+|---|---|---|
+| 1 | Overview | The whole plant at a glance, product moving left to right: the brewhouse vessels, the fermenters and bright tanks, the line's state and OEE, the utilities on scales, the power one-line, the cellar's CO2, and two trends. Nothing to operate; a click on a panel opens its area |
+| 2 | Brewhouse | The vessels as they stand, the phase of the batch across the top, steam along the bottom, the knockout to the cellar |
+| 2 | Cellar | The four fermenters and two bright tanks, the racking line and transfer pump, setpoints, the profile's stage |
+| 2 | Packaging | The line from glass to cases with each machine's PackML state, the line's commands, the keg line |
+| 2 | Utilities | Glycol, steam, air, CO2 supply, water, wastewater neutralization, and the CIP skid with its steps |
+| 2 | Power | The one-line diagram: service, switchboard, PV, battery, feeders, transfer switch, generator, demand |
+| 2 | Cellar CO2 | The cellar from above with its four CO2 sensors, the alarm tiers, and the last hour (read only) |
+| 2 | Building (bas-fuxa) | The building as a plan: taproom and RTU-1, cold room, hood and area exhaust, the cellar's sensors and purge fans |
+| 3, 4 | Batch, `... points` | The batch's controls; every tag of a controller |
+
+A screen is 1,240 by 820 px: an HMI station's 1440x900 display less the menu
+and the header. `hmi-brewhouse` and `hmi-packaging` open the Brewhouse and
+Packaging screens by name.
+
+**The rules the kit keeps**
+
+- **Gray is normal.** Equipment is gray on the brand's process-area gray. A
+  screen with nothing wrong has no alarm color on it.
+- **Alarm colors are only alarms.** The four reserved colors of
+  `brand/tokens.json` appear only in a flag, and a flag is also a shape with
+  the priority's number: 1 square (critical), 2 triangle (high), 3 inverted
+  triangle (medium), 4 diamond (low). A flag stands beside the value its alarm
+  watches and is hidden until the alarm is active; the alarm's text is its
+  tooltip. Every alarm of a project has a flag on a graphic.
+- **Media have their own muted colors** (`MEDIA` in `hmi_kit.py`), used for
+  what is in a vessel or a pipe and for nothing else.
+- **Running is filled, stopped is hollow**, in one "live" blue. A fan that
+  runs also turns, and a pipe with flow in it shows the flow moving.
+- **A value comes with its range.** A measurement with limits is a scale: the
+  normal band, each alarm limit of `alarms.json` as a mark, a pointer at the
+  value, a hollow marker at the setpoint. A quantity (a level, a charge, a
+  valve's opening) is a fill; a vessel's level fills the vessel's own shape.
+- **A control is only on a writable tag.** `Canvas.entry` and `Canvas.button`
+  stop the build for a tag that is not `read-write` in the plant model.
+- **A wrong tag name stops the build.** Every element is bound by tag name;
+  only the Cellar asks whether the plant has the bright tanks.
+
+**How the elements are written for FUXA 1.3.6.** All of them were run in a real
+server against a stand-in plant ([docs/examples/capture](../docs/examples/capture/README.md)).
+
+| Element | FUXA item | Notes |
+|---|---|---|
+| Number | `svg-ext-value` | FUXA takes 0 fraction digits as "not set" and shows the tag's own rounding, so the kit asks for 1 digit on a scaled tag |
+| Lamp | `svg-ext-gauge_semaphore` | One circle whose fill follows `ranges` |
+| Valve, breaker, wire, jacket, a fermenter's contents | `svg-ext-shapes-*` with `ranges` | Any SVG element whose id starts with `svg_`; a range sets its fill, or its stroke for a wire |
+| Fill, pointer, setpoint marker | `svg-ext-shapes-*` with a `moveByTags` action | FUXA moves the element between two positions as the tag goes from one value to another and holds it at the ends. A fill moves behind a `<clipPath>` of the vessel's outline. (`svg-ext-gauge_progress` was not used: it draws an empty bar for a value above its range) |
+| Alarm flag, a state's word | `svg-ext-shapes-*`, `hide: true`, with `show` and `hide` actions | A PLC alarm bit shows its flag at 1; an alarm FUXA evaluates shows it past the limit. A word is one hidden text per state |
+| Fan blades | `svg-ext-shapes-g` with `clockwise` and `stop` | An unseen circle centers the group's box on the hub, which FUXA turns it about |
+| Pipe with flow | `svg-ext-pipe` with `clockwise` and `hidecontent` | FUXA scrolls the dashes with a 20 ms timer per pipe at a fixed speed, so only pipes with a pump, valve, or flow meter behind them move |
+| Input box, button | `svg-ext-html_input`, `svg-ext-html_button` | As in the points tables |
+| Trend | `svg-ext-html_chart` (`realtime1`, 60 minutes) and an entry of the project's `charts` | It loads what FUXA has stored, then follows live values, so every trended tag has `daq.enabled`. The legend is drawn by the kit; FUXA's own is off (`legendMode: follow` keeps the tooltip) |
+| Dial | `svg-ext-html_bag` (donut) | Shift OEE only |
+| Link | `svg-ext-shapes-rect` with an `onpage` click event | A transparent rectangle over a panel |
+
+To see a change, build the projects and run the capture scripts' FUXA
+(`docs/examples/capture/fuxa_run.sh up scada <snapshot>`), then open a view.
 
 ## The brewhouse batch engine
 
@@ -229,20 +309,20 @@ Checked against `frangoteam/FUXA` at `b2972583` (server 1.3.6), the commit the
   `rgb(59, 144, 255)` inline once someone signed in (`home.component.html`), `index.html`
   names the page `FUXA` and links `favicon.ico`, and `server/_images` is served at `/_images`
   without sign-in (`main.js`).
+- The views' items, in FUXA 1.3.6's client (`client/src/app/gauges`) and then in
+  a browser on a real server: values and their digits (`gauge-base`
+  `getDigits` returns nothing for 0), semaphores, shapes with `ranges` and with
+  the `show`, `hide`, `clockwise`, `stop`, and `moveByTags` actions
+  (`shapes.component.ts`), pipes (`pipe.component.ts`), charts
+  (`chart-uplot.component.ts`: 40 px are kept for the legend), and page links.
+- `layout.inputdialog` must be set: `fuxa-view.component.ts` reads it without a
+  default while it binds an input box (`onBindHtmlEvent`) and stops binding
+  that box when it is missing. The builder writes `"false"`.
 - The project imported on a local FUXA 1.3.6 through `cm-fuxa-provision`, the
   device loaded with the `modbus-serial` plugin installed, and the admin
   password change worked on a first run and a re-run.
 
 ## Unverified
-
-TODO(verify): the view gauges (`svg-ext-value`, `svg-ext-html_input`,
-`svg-ext-gauge_semaphore`) are written from the client source and the demo
-project, not exported from the editor. Open the project in the FUXA editor once,
-confirm the Cellar view renders and the values update, and re-export it if the
-widget properties differ.
-
-TODO(verify): the unit and digits ranges use `type: 1` (`PropertyType.output`)
-with `fractionDigits`; the semaphore colors use ranges 0 and 1.
 
 TODO(verify): layout enum spellings. Navigation `mode: fix` and `type: inline`
 follow the demo project (enum keys). The header `alarms: fix` and the layout

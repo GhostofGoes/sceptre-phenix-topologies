@@ -31,125 +31,45 @@ import json
 import math
 import sys
 import textwrap
-import uuid
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 HERE: Path = Path(__file__).resolve().parent
-PLANT_GENERATED: Path = HERE.parents[0] / "plant" / "generated"
-BRAND_TOKENS: Path = HERE.parent / "brand" / "tokens.json"
-NAMESPACE: uuid.UUID = uuid.uuid5(uuid.NAMESPACE_URL, "cherrymountain-brewery/fuxa")
+# The app and the tests load this file by its path, so its directory is not on
+# the import path: put it there for the modules beside it.
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+
+import hmi_views  # noqa: E402
+from hmi_base import (  # noqa: E402
+    BRAND,
+    BRAND_TOKENS,
+    NAMESPACE,
+    OUTPUT_UNIT,
+    PLANT_GENERATED,
+    Brand,
+    Gauge,
+    PlantAlarm,
+    PlantAlarms,
+    PlantDevice,
+    PlantTag,
+    PlantTags,
+    ViewBuilder,
+    load_brand,
+    uid,
+)
+
+__all__ = [
+    "BRAND", "BRAND_TOKENS", "NAMESPACE", "OUTPUT_UNIT", "PLANT_GENERATED", "Brand", "Gauge",
+    "PlantAlarm", "PlantAlarms", "PlantDevice", "PlantTag", "PlantTags", "ViewBuilder",
+    "build_project", "load_brand", "main", "render", "uid",
+]
+
 FUXA_PROJECT_VERSION: str = "1.01"
 PROJECT_NAME: str = "cherrymountain-ci"
 FERMENTERS: tuple[str, ...] = ("FV101", "FV102", "FV103", "FV104")
-OUTPUT_UNIT: int = 1  # PropertyType.output in the FUXA editor (unit and digits)
-
-
-def uid(prefix: str, name: str) -> str:
-    """Stable ID for ``name``: ``<prefix>_<uuid5>``."""
-    return f"{prefix}{uuid.uuid5(NAMESPACE, name)}"
-
-
-# ---------------------------------------------------------------- brand
-
-
-class Brand(BaseModel):
-    """``brand/tokens.json``: the colors by name, the roles that name them, the
-    colors reserved for alarms, and the process area's gray."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    colors: dict[str, str]
-    roles: dict[str, str | list[str]]
-    reserved_for_alarms: dict[str, str]
-    process_area: dict[str, str]
-
-    def color(self, name: str) -> str:
-        """The ``#RRGGBB`` value of a named color."""
-        return self.colors[name]
-
-    def role(self, role: str) -> str:
-        """The value of the color a role names (``header_bg`` -> ink -> ``#1B1B1F``)."""
-        name: str | list[str] = self.roles[role]
-        if not isinstance(name, str):
-            raise ValueError(f"role {role} names several colors, not one")
-        return self.colors[name]
-
-    def alarm(self, level: str) -> str:
-        """The color reserved for an alarm level (``critical``, ``high``, ``medium``, ``low``)."""
-        return self.reserved_for_alarms[level]
-
-    def process_bkcolor(self) -> str:
-        """The process area's background as FUXA writes a view's ``bkcolor``
-        (lowercase, with an alpha byte)."""
-        return self.process_area["background"].lower() + "ff"
-
-
-def load_brand(path: Path = BRAND_TOKENS) -> Brand:
-    if not path.is_file():
-        raise SystemExit(f"missing {path}: the FUXA frame takes its colors from the brand tokens")
-    return Brand.model_validate_json(path.read_text(encoding="utf-8"))
-
-
-BRAND: Brand = load_brand()
-
-
-# ---------------------------------------------------------------- inputs
-
-
-class PlantTag(BaseModel):
-    """One tag from <host>-tags.json (fields this builder uses)."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    id: str
-    name: str
-    label: str
-    type: str
-    memaddress: str | None = None
-    address: int | str | None = None
-    divisor: int | None = None
-    units: str | None = None
-    range: tuple[float, float] | None = None
-    plc_iec: str | None = None
-    access: str = "read"
-
-
-class PlantDevice(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    name: str
-    type: str
-    property: dict[str, Any]
-    polling: int
-    tags: list[PlantTag]
-
-
-class PlantTags(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    devices: list[PlantDevice]
-
-
-class PlantAlarm(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    name: str
-    fuxa_severity: str
-    fuxa_tag_id: str
-    text: str
-    kind: str = "state"
-    limit: float = 1.0
-    delay_s: float = 0.0
-    evaluator: str | None = None
-
-
-class PlantAlarms(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    alarms: list[PlantAlarm]
 
 
 # ---------------------------------------------------------------- devices
@@ -224,310 +144,8 @@ def convert_device(dev: PlantDevice) -> FuxaDevice:
     )
 
 
-# ---------------------------------------------------------------- view
 
-
-class Gauge(BaseModel):
-    """FUXA ``GaugeSettings``: one widget bound to a tag."""
-
-    id: str
-    type: str
-    name: str
-    property: dict[str, Any]
-    label: str
-
-
-class ViewBuilder:
-    """Collects SVG fragments and the matching gauge settings for one view."""
-
-    def __init__(
-        self,
-        tags: dict[str, PlantTag],
-        width: int,
-        height: int,
-        internal: dict[str, str] | None = None,
-    ) -> None:
-        self.tags: dict[str, PlantTag] = tags
-        #: Tag name -> tag id of FUXA's own (FUXA Server device) tags.
-        self.internal: dict[str, str] = internal or {}
-        self.width: int = width
-        self.height: int = height
-        self.svg: list[str] = []
-        self.items: dict[str, Gauge] = {}
-
-    def text(self, x: int, y: int, content: str, size: int = 13, bold: bool = False,
-             anchor: str = "start") -> None:
-        weight: str = ' font-weight="bold"' if bold else ""
-        self.svg.append(
-            f'<text xml:space="preserve" x="{x}" y="{y}" font-size="{size}"'
-            f' font-family="sans-serif" text-anchor="{anchor}" fill="#212121"'
-            f' stroke-width="0"{weight}>{content}</text>'
-        )
-
-    def line(self, x1: int, y1: int, x2: int, y2: int) -> None:
-        self.svg.append(
-            f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="#9e9e9e" stroke-width="1"/>'
-        )
-
-    def _tag(self, name: str) -> PlantTag:
-        return self.tags[name]
-
-    def _tag_id(self, name: str) -> str:
-        """The id of a plant tag, or of one of FUXA's own tags."""
-        if name in self.internal:
-            return self.internal[name]
-        return self._tag(name).id
-
-    def value(
-        self, x: int, y: int, tag_name: str, digits: int, unit: str, anchor: str = "middle"
-    ) -> None:
-        tag_id: str = self._tag_id(tag_name)
-        gid: str = uid("VAL_", tag_name)
-        self.svg.append(
-            f'<g id="{gid}" type="svg-ext-value" fill="#000000" stroke="#000000"'
-            f' font-size="14" stroke-width="0" font-family="sans-serif" text-anchor="{anchor}">'
-            f'<text stroke-width="0" id="{uid("VAL_", tag_name + "/text")}" fill="#000000"'
-            f' stroke="#000000" font-size="14" font-family="sans-serif" text-anchor="{anchor}"'
-            f' xml:space="preserve" x="{x}" y="{y}">##.##</text></g>'
-        )
-        self.items[gid] = Gauge(
-            id=gid,
-            type="svg-ext-value",
-            name=tag_name,
-            label="Value",
-            property={
-                "events": [],
-                "variableId": tag_id,
-                "ranges": [
-                    {"type": OUTPUT_UNIT, "min": 0, "max": 0, "text": unit,
-                     "textId": "", "fractionDigits": digits}
-                ],
-            },
-        )
-
-    def setpoint_input(
-        self, x: int, y: int, tag_name: str, lo: float, hi: float, scope: str = ""
-    ) -> None:
-        """An input box that shows a tag's value and writes what the operator
-        enters (FUXA multiplies by the tag's divisor). ``scope`` keeps the
-        element ids of a second view of the same tag apart."""
-        tag: PlantTag = self._tag(tag_name)
-        key: str = scope + tag_name
-        gid: str = uid("HXI_", key)
-        w, h = 64, 24
-        self.svg.append(
-            f'<g id="{gid}" stroke="#000000" text-anchor="right" font-family="sans-serif"'
-            f' font-size="14" fill="#f1f1f1ff" type="svg-ext-html_input">'
-            f'<rect id="{uid("svg_", key + "/rect")}" stroke="null" fill="#ffffff"'
-            f' height="{h}" width="{w}" y="{y}" x="{x}" stroke-width="0"/>'
-            f'<foreignObject id="H-{uid("HXI_", key + "/fo")}" width="{w}" height="{h}"'
-            f' y="{y}" x="{x}"><INPUT id="I-{uid("HXI_", key + "/in")}"'
-            f' style="width: calc(100% - 7px); height: calc(100% - 7px); text-align: right;'
-            f' border: unset; background-color: rgb(255, 255, 255); color: rgb(0, 0, 0);'
-            f' vector-effect: non-scaling-stroke;" type="text"/></foreignObject></g>'
-        )
-        self.items[gid] = Gauge(
-            id=gid,
-            type="svg-ext-html_input",
-            name=tag_name,
-            label="HtmlInput",
-            property={
-                "events": [],
-                "variableId": tag.id,
-                "ranges": [
-                    {"type": OUTPUT_UNIT, "min": 0, "max": 0, "text": "",
-                     "textId": "", "fractionDigits": 1}
-                ],
-                "options": {"updated": True, "numeric": True, "min": lo, "max": hi,
-                            "type": "number", "selectOnClick": True},
-            },
-        )
-
-    def lamp(self, cx: int, cy: int, tag_name: str, on_color: str) -> None:
-        tag_id: str = self._tag_id(tag_name)
-        gid: str = uid("GSE_", tag_name)
-        self.svg.append(
-            f'<g id="{gid}" type="svg-ext-gauge_semaphore" stroke="#616161" stroke-width="1">'
-            f'<circle id="{uid("GSE_", tag_name + "/c")}" cx="{cx}" cy="{cy}" r="8"'
-            f' fill="#bdbdbd" stroke="#616161"/></g>'
-        )
-        self.items[gid] = Gauge(
-            id=gid,
-            type="svg-ext-gauge_semaphore",
-            name=tag_name,
-            label="HtmlSemaphore",
-            property={
-                "events": [],
-                "variableId": tag_id,
-                "ranges": [
-                    {"min": 0, "max": 0, "color": "#bdbdbd", "stroke": "#616161"},
-                    {"min": 1, "max": 1, "color": on_color, "stroke": "#212121"},
-                ],
-            },
-        )
-
-    def number_lamp(self, cx: int, cy: int, tag_name: str, number: int, on_color: str) -> None:
-        """A lamp that is lit while a tag holds ``number`` (0 to 99), grey otherwise."""
-        tag_id: str = self._tag_id(tag_name)
-        gid: str = uid("GSE_", f"{tag_name}={number}")
-        self.svg.append(
-            f'<g id="{gid}" type="svg-ext-gauge_semaphore" stroke="#616161" stroke-width="1">'
-            f'<circle id="{uid("GSE_", f"{tag_name}={number}/c")}" cx="{cx}" cy="{cy}" r="8"'
-            f' fill="#bdbdbd" stroke="#616161"/></g>'
-        )
-        grey: dict[str, Any] = {"color": "#bdbdbd", "stroke": "#616161"}
-        ranges: list[dict[str, Any]] = [
-            {"min": 0, "max": number - 1, **grey},
-            {"min": number, "max": number, "color": on_color, "stroke": "#212121"},
-            {"min": number + 1, "max": 99, **grey},
-        ]
-        self.items[gid] = Gauge(
-            id=gid,
-            type="svg-ext-gauge_semaphore",
-            name=f"{tag_name}={number}",
-            label="HtmlSemaphore",
-            property={"events": [], "variableId": tag_id, "ranges": ranges},
-        )
-
-    def button(self, x: int, y: int, w: int, h: int, text: str, tag_name: str, value: int) -> None:
-        """A button that writes ``value`` to a tag: the editor's ``html_button``
-        with its ``set`` action. The editor draws the group with
-        ``pointer-events:none`` and drops that style when it saves the view; a
-        group that keeps it never gets the click (seen in FUXA 1.3.6: the view's
-        ``svg`` takes it instead), so this one is written as a saved button is."""
-        tag_id: str = self._tag_id(tag_name)
-        gid: str = uid("HXB_", f"{tag_name}/{value}")
-        style: str = (
-            "width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;"
-            "background-color:rgba(238,238,238,1);color:rgba(33,33,33,1);"
-            "font-size:14px;font-family:sans-serif;"
-        )
-        self.svg.append(
-            f'<g id="{gid}" type="svg-ext-html_button"'
-            f' fill="rgba(0,0,0,0)" stroke="rgba(0,0,0,0)" xml:space="preserve">'
-            f'<rect id="{uid("svg_", f"{tag_name}/{value}/rect")}" x="{x}" y="{y}" width="{w}"'
-            f' height="{h}" stroke-width="0"/>'
-            f'<foreignObject id="H-{uid("HXB_", f"{tag_name}/{value}/fo")}" x="{x}" y="{y}"'
-            f' width="{w}" height="{h}"><button id="B-{uid("HXB_", f"{tag_name}/{value}/b")}"'
-            f' class="md-btn  md-btn-raised" style="{style}">{text}</button></foreignObject></g>'
-        )
-        self.items[gid] = Gauge(
-            id=gid,
-            type="svg-ext-html_button",
-            name=text,
-            label="HtmlButton",
-            property={
-                "events": [],
-                "actions": [],
-                "variableId": tag_id,
-                "text": text,
-                "buttonAction": {"mode": "set", "setValue": str(value)},
-            },
-        )
-
-    def svg_content(self) -> str:
-        body: str = "\n  ".join(self.svg)
-        return (
-            f'<svg width="{self.width}" height="{self.height}"'
-            f' xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">'
-            f"\n <g>\n  <title>Layer 1</title>\n  {body}\n </g>\n</svg>"
-        )
-
-
-COLUMN_WIDTH: int = 290
 LEFT: int = 20
-ALARM_LAMPS: tuple[tuple[str, str], ...] = (
-    ("TT01.ALM_DEVIATION", "Side dev"),
-    ("TT01.ALM_HIGH", "Side hi"),
-    ("TT02.ALM_DEVIATION", "Cone dev"),
-    ("PT01.ALM_HIGH", "Press hi"),
-    ("PT01.ALM_LOW", "Press lo"),
-)
-
-
-def build_cellar_view(tags: dict[str, PlantTag]) -> dict[str, Any]:
-    """The Cellar view: one column per fermenter. Where plc-cellar runs the
-    fermentation profile (the full and lite plants), each column also shows the
-    profile's stage and switches the fermenter on and off it; the alarm lamps
-    move down to make room."""
-    width: int = LEFT * 2 + COLUMN_WIDTH * len(FERMENTERS)
-    profile: bool = "CEL.PROFILE.HS01.AUTO" in tags
-    drop: int = 70 if profile else 0
-    height: int = 470 + drop
-    vb: ViewBuilder = ViewBuilder(tags, width=width, height=height)
-    vb.text(LEFT, 28, "Cellar: fermenters FV-101 to FV-104", size=18, bold=True)
-    if profile:
-        vb.text(LEFT + 330, 28, "Profile stage: 0 empty, 1 fermenting, 2 diacetyl rest, 3 crash", size=11)
-    vb.text(width - LEFT, 28, "Sim hours", size=12, anchor="end")
-    vb.value(width - LEFT - 100, 28, "CEL.CLK.KI01.PV", digits=1, unit="h")
-
-    for i, fv in enumerate(FERMENTERS):
-        x0: int = LEFT + i * COLUMN_WIDTH
-        label_x: int = x0
-        side_x: int = x0 + 150
-        cone_x: int = x0 + 225
-        if i:
-            vb.line(x0 - 8, 50, x0 - 8, 450 + drop)
-        vb.text(x0, 62, f"FV-{fv[2:]}", size=16, bold=True)
-        vb.text(side_x, 62, "Side", size=12, anchor="middle")
-        vb.text(cone_x, 62, "Cone", size=12, anchor="middle")
-
-        vb.text(label_x, 96, "Temperature")
-        vb.value(side_x, 96, f"CEL.{fv}.TT01.PV", digits=1, unit="F")
-        vb.value(cone_x, 96, f"CEL.{fv}.TT02.PV", digits=1, unit="F")
-
-        vb.text(label_x, 136, "Setpoint (F)")
-        vb.setpoint_input(side_x - 32, 118, f"CEL.{fv}.TT01.SP", 20, 90)
-        vb.setpoint_input(cone_x - 32, 118, f"CEL.{fv}.TT02.SP", 20, 90)
-
-        vb.text(label_x, 176, "Glycol valve")
-        vb.lamp(side_x, 171, f"CEL.{fv}.TV01.CMD", "#1e88e5")
-        vb.lamp(cone_x, 171, f"CEL.{fv}.TV02.CMD", "#1e88e5")
-
-        vb.text(label_x, 226, "Head pressure")
-        vb.value(side_x, 226, f"CEL.{fv}.PT01.PV", digits=2, unit="psia")
-        vb.text(label_x, 256, "Spund setpoint")
-        vb.value(side_x, 256, f"CEL.{fv}.PCV01.SP", digits=2, unit="psia")
-        vb.text(label_x, 286, "Spund valve open")
-        vb.lamp(side_x, 281, f"CEL.{fv}.ZSO01.PV", "#fb8c00")
-        vb.text(label_x, 316, "Extract")
-        vb.value(side_x, 316, f"CEL.{fv}.DT01.PV", digits=2, unit="P")
-
-        if profile:
-            # With the profile on, plc-cellar writes both setpoints every scan:
-            # switch it off to set a temperature by hand.
-            n: str = fv[-1]
-            vb.text(label_x, 346, "Profile on")
-            vb.lamp(side_x, 341, f"CEL.PROFILE.HS0{n}.AUTO", "#43a047")
-            vb.text(cone_x - 50, 346, "Stage", size=11)
-            vb.value(cone_x, 346, f"CEL.PROFILE.KS0{n}.STAGE", digits=0, unit="")
-            vb.button(label_x, 360, 96, 28, "Profile on", f"CEL.PROFILE.HS0{n}.AUTO", 1)
-            vb.button(label_x + 106, 360, 96, 28, "By hand", f"CEL.PROFILE.HS0{n}.AUTO", 0)
-
-        vb.text(label_x, 356 + drop, "Alarms", size=12, bold=True)
-        for j, (suffix, caption) in enumerate(ALARM_LAMPS):
-            lx: int = x0 + 10 + j * 54
-            vb.lamp(lx, 380 + drop, f"CEL.{fv}.{suffix}", "#e53935")
-            vb.text(lx, 408 + drop, caption, size=9, anchor="middle")
-
-    view_id: str = uid("v_", "Cellar")
-    return {
-        "id": view_id,
-        "name": "Cellar",
-        "profile": {
-            "width": width,
-            "height": height,
-            "bkcolor": BRAND.process_bkcolor(),
-            "margin": 10,
-            "align": "topCenter",
-            "gridType": "fixed",
-            "viewRenderDelay": 0,
-        },
-        "items": {k: g.model_dump() for k, g in vb.items.items()},
-        "variables": {},
-        "svgcontent": vb.svg_content(),
-        "type": "svg",
-    }
 
 
 #: The brewery's name as it is written on every screen.
@@ -633,6 +251,9 @@ def build_layout(view_id: str) -> dict[str, Any]:
             ],
         },
         "showdev": False,
+        # FUXA 1.3.6 reads this without a default while it sets up an input box
+        # and stops setting the box up when it is missing.
+        "inputdialog": "false",
         "zoom": "enabled",
         "customStyles": frame_css(),
     }
@@ -821,9 +442,10 @@ def linear_scale(divisor: int | None) -> dict[str, Any] | None:
     return {"mode": "linear", "rawLow": 0, "rawHigh": divisor, "scaledLow": 0, "scaledHigh": 1}
 
 
-def convert_plant_tag(dev: PlantDevice, tag: PlantTag) -> FuxaTag:
-    """A FUXA tag for any device type of the full and lite tag lists."""
-    daq: bool = tag.name.endswith(".PV") and is_analog(tag)
+def convert_plant_tag(dev: PlantDevice, tag: PlantTag, trended: frozenset[str] = frozenset()) -> FuxaTag:
+    """A FUXA tag for any device type of the full and lite tag lists. FUXA stores
+    the analog process values, and any other tag a trend draws (``trended``, by id)."""
+    daq: bool = (tag.name.endswith(".PV") and is_analog(tag)) or tag.id in trended
     tag_type: str = tag.type
     memaddress: str | None = tag.memaddress
     by_driver: bool = dev.type == "ModbusTCP"
@@ -858,7 +480,7 @@ def convert_plant_tag(dev: PlantDevice, tag: PlantTag) -> FuxaTag:
     )
 
 
-def convert_plant_device(dev: PlantDevice) -> FuxaDevice:
+def convert_plant_device(dev: PlantDevice, trended: frozenset[str] = frozenset()) -> FuxaDevice:
     props: dict[str, Any] = dict(dev.property)
     if dev.type == "ModbusTCP":
         props["port"] = str(props.get("port", 502))
@@ -869,7 +491,7 @@ def convert_plant_device(dev: PlantDevice) -> FuxaDevice:
         property=props,
         type=dev.type,
         polling=dev.polling,
-        tags={t.id: convert_plant_tag(dev, t) for t in dev.tags},
+        tags={t.id: convert_plant_tag(dev, t, trended) for t in dev.tags},
     )
 
 
@@ -936,10 +558,29 @@ def build_device_view(
     }
 
 
+#: The menu's icon for a view (Material icon names): a picture for each process
+#: graphic, a list for the generated tables.
+NAV_ICONS: dict[str, str] = {
+    "Overview": "dashboard",
+    "Brewhouse": "whatshot",
+    "Batch": "playlist_play",
+    "Cellar": "ac_unit",
+    "Packaging": "local_shipping",
+    "Utilities": "build",
+    "Power": "flash_on",
+    "Cellar CO2": "warning",
+    "Building": "business",
+}
+
+
+def nav_icon(view: str) -> str:
+    return NAV_ICONS.get(view, "list")
+
+
 def build_plant_layout(views: list[dict[str, Any]]) -> dict[str, Any]:
     layout: dict[str, Any] = build_layout(views[0]["id"])
     layout["navigation"]["items"] = [
-        {"icon": "dashboard", "view": v["id"], "link": "", "text": v["name"]} for v in views
+        {"icon": nav_icon(v["name"]), "view": v["id"], "link": "", "text": v["name"]} for v in views
     ]
     return layout
 
@@ -1477,6 +1118,19 @@ def check_batch_tags(tags: dict[str, PlantTag]) -> None:
         raise SystemExit(f"the batch engine needs these tags, missing from the tag list: {missing}")
 
 
+def graphics_plant(plant: PlantTags, gen: Path) -> hmi_views.Plant:
+    """What the process graphics are drawn from: the tags by name, the alarm
+    records of ``alarms.json`` by the tag they watch, and each tag's device."""
+    by_source: dict[str, list[dict[str, Any]]] = {}
+    for alarm in json.loads((gen / "alarms.json").read_text(encoding="utf-8"))["alarms"]:
+        by_source.setdefault(alarm["source"], []).append(alarm)
+    return hmi_views.Plant(
+        tags={t.name: t for d in plant.devices for t in d.tags},
+        alarms=by_source,
+        devices={t.name: d.name for d in plant.devices for t in d.tags},
+    )
+
+
 def build_plant_project(variant: str, host: str) -> Project:
     gen: Path = PLANT_GENERATED / variant
     path: Path = gen / "fuxa" / f"{host}-tags.json"
@@ -1486,13 +1140,14 @@ def build_plant_project(variant: str, host: str) -> Project:
     alarms: PlantAlarms = PlantAlarms.model_validate_json((gen / "alarms.json").read_text(encoding="utf-8"))
     tags: dict[str, PlantTag] = {t.name: t for d in plant.devices for t in d.tags}
     ids: set[str] = {t.id for t in tags.values()}
-    views: list[dict[str, Any]] = []
-    if all(f"CEL.{fv}.TT01.PV" in tags for fv in FERMENTERS):
-        views.append(build_cellar_view(tags))
+    screens: list[hmi_views.Screen] = hmi_views.screens(graphics_plant(plant, gen))
+    views: list[dict[str, Any]] = [s.view for s in screens]
+    charts: list[dict[str, Any]] = [chart for s in screens for chart in s.charts]
+    trended: frozenset[str] = frozenset(line["id"] for chart in charts for line in chart["lines"])
     hand_laid: frozenset[str] = frozenset(v["name"] for v in views)
     views += [build_device_view(d, tags, hand_laid) for d in plant.devices]
     devices: dict[str, FuxaDevice | ServerDevice] = {
-        d.id: d for d in (convert_plant_device(d) for d in plant.devices)
+        d.id: d for d in (convert_plant_device(d, trended) for d in plant.devices)
     }
     project_alarms: list[dict[str, Any]] = [
         build_plant_alarm(a) for a in alarms.alarms if a.fuxa_tag_id in ids
@@ -1518,6 +1173,7 @@ def build_plant_project(variant: str, host: str) -> Project:
         hmi={"layout": build_plant_layout(views), "views": views},
         devices=devices,
         alarms=project_alarms,
+        charts=charts,
         scripts=scripts,
     )
 
@@ -1535,18 +1191,18 @@ def build_project(variant: str, host: str = "scada-fuxa") -> Project:
     if len(plant.devices) != 1 or plant.devices[0].name != "plc-cellar":
         raise SystemExit("expected exactly one device, plc-cellar, in the tag list")
 
-    by_name: dict[str, PlantTag] = {t.name: t for t in plant.devices[0].tags}
     by_id: dict[str, PlantTag] = {t.id: t for t in plant.devices[0].tags}
     missing: list[str] = [a.name for a in alarms.alarms if a.fuxa_tag_id not in by_id]
     if missing:
         raise SystemExit(f"alarm tags missing from the tag list: {missing}")
 
-    view: dict[str, Any] = build_cellar_view(by_name)
+    screen: hmi_views.Screen = hmi_views.cellar(graphics_plant(plant, gen))
     device: FuxaDevice = convert_device(plant.devices[0])
     return Project(
-        hmi={"layout": build_layout(view["id"]), "views": [view]},
+        hmi={"layout": build_layout(screen.view["id"]), "views": [screen.view]},
         devices={device.id: device},
         alarms=[build_alarm(a) for a in alarms.alarms],
+        charts=screen.charts,
     )
 
 

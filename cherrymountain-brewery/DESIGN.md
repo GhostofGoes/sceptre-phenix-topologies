@@ -1,16 +1,11 @@
 # CherryMountain Brewery: phenix topology design
 
-> **Status:** design, with the Phase 0 spikes and their gap-closing second
-> round done. This document specifies the CherryMountain Brewery topology for
-> [phēnix](https://github.com/sandialabs/sceptre-phenix). The configs, images,
-> programs, and simulation code it describes are built in the phases listed in
-> [Implementation roadmap](#18-implementation-roadmap). The `ci` variant (the
-> cellar slice) is built and tested in Docker. Phase 1 (the network) is built
-> and checked statically, and Phase 2 (the plant database, the generator, and
-> the seven federates) and the `cherrymountain` app are largely built; no VM
-> has run any of it yet. The spike decisions are folded into the sections
-> below. [USER_GUIDE.md](USER_GUIDE.md) is the step-by-step guide to building,
-> starting, reaching, and using the range.
+> **Status:** built and tested offline; nothing has run on a phenix host yet.
+> [Status](#status) below is the one place that says what is done and what is
+> left. This document specifies the CherryMountain Brewery topology for
+> [phēnix](https://github.com/sandialabs/sceptre-phenix): the configs, images,
+> programs, and simulation code of the range. [USER_GUIDE.md](USER_GUIDE.md) is
+> the step-by-step guide to building, starting, reaching, and using it.
 >
 > **tl;dr:** a 43-VM, all open-source OT cyber range of a Colorado
 > microbrewery. It covers brewhouse, cellar, bottling, utilities, plant power,
@@ -19,7 +14,38 @@
 > Blue-team monitoring and vendor remote access are included, and the range
 > exercises most phenix capabilities.
 
+## Status
+
+This section is the authoritative status of the range. The README, the user
+guide, and the pull request point here; when they disagree with it, this
+section is right.
+
+**Nothing has run on a phenix host or in a VM yet.** Every part is built, and
+tested as far as it can be without one. The `ci` variant (the cellar slice,
+five VMs) is the furthest along: its integration test runs ot-sim, the OpenPLC
+v4 runtime, and FUXA together in Docker. Every image has a config
+([phenix-images/README.md](phenix-images/README.md)); none has been built on a
+phenix host.
+
+| Phase | Status | Left to do |
+|---|---|---|
+| 0: Spikes | **Done.** Ten spikes are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to future work. A second round closed the gaps of the first | Nothing. What each spike left untested is in its row of [§18](#18-implementation-roadmap) |
+| 1: Network | **Built, checked statically.** The topology modules, the firewall rulesets, the services on ot-svc, both BBMDs, the post-boot VyOS script, and the SoH probes. `netcheck` compares all of it with the conduit matrix | The VM run: every conduit and every blocked path under SoH, and the VyOS script on VyOS |
+| 2: Simulation | **Built, run offline.** `plant.yaml`, plantgen, the seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). A simulated brewer, cellar crew, and line operator do the hand work, so beer moves from the brewhouse to the filler over days. The whole plant ran offline for 54 simulated hours | The ot-sim `logic` blocks, and a 24 h soak under HELICS |
+| 3: Control | **Built, run offline.** All five PLC programs and their full and lite ZIPs, with the alarm logic generated from `alarms.json`, the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)), the peer reads, the fermentation profile, and the packaging line's operator panel. Four of the five run in the tests as compiled programs against the federates (plc-utilities is compiled but not run). The scada-fuxa and bas-fuxa projects are generated; the batch engine brews a double-brew day unattended in the offline federation and ran in a real FUXA server against a stand-in PLC, with the operator sign-in and the kiosk's automatic sign-in. The `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks | The full and lite programs in an OpenPLC runtime, FUXA writing to plc-brewhouse over OPC UA, hand-laid views beyond Cellar and Batch, and alarm suppression during a crash |
+| 4: Power and BAS | **Built, run offline.** The power and building federates. `plc-power` does load shed, staged restoration, and BESS dispatch, and schedules the on-peak shift, the recharge, the monthly demand reset, and the weekly genset exercise from the ATS controller's clock ([§12.1](#121-openplc-v4-runtime-v3-fallback)). The BAS controllers serve BACnet through the ot-sim BACnet module in this repository ([§16](#16-new-and-extended-software)), tested against BACpypes3 and BAC0 clients | The outage and CO₂ scenarios on a VM, and FUXA reading the controllers through the BBMDs |
+| 5: SOC and remote access | **Built, not run.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; the Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), the Zeek script (checked in Malcolm's Zeek image), and the Wazuh rules (checked in Wazuh 4.14.1 logtest), each with tests; per-experiment vendor and WireGuard secrets | Everything on a VM: live capture into Malcolm, the agents and syslog into Wazuh, and the vendor's path end to end |
+| 6: Polish | **Started.** `cm-viz`, the white cell's 3D view, built and tested offline ([§15.10](#1510-white-cell-3d-view-cm-viz)); `plantevent` and the four plant-driving SCORCH runs ([§15.6](#156-scorch-pipelines)); the operations runbook ([§15.9](#159-operations)); the brand on every screen ([§15.11](#1511-brand)); nine test suites in prek and CI | The Builder package, an e2e run on a VM, cm-viz in the range with its operator-view relay, and the upstream pull requests (the ot-sim BACnet module and the `ot-sim` app's support for it are on fork branches) |
+
+[§18](#18-implementation-roadmap) has each phase's scope and exit criteria and
+the spike results. [§19](#19-risks-and-open-questions) lists the risks, the
+decisions taken, and every open item, and the user guide's
+[Known limits](USER_GUIDE.md#known-limits) says what to check on the first
+start.
+
 ## Contents
+
+- [Status](#status)
 
 1. [Summary](#1-summary)
 2. [Goals and non-goals](#2-goals-and-non-goals)
@@ -4130,15 +4156,18 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
 
 ## 18. Implementation roadmap
 
-| Phase | Scope | Exit criteria | Status |
-|---|---|---|---|
-| 0: Spikes | **Done.** See the spike results below | Each spike has a written go/no-go decision (ten are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to future work) | Done, with a second round that closed the gaps |
-| 1: Network | Core topology, VyOS conduits and static routes, ot-svc, SoH reachability | All §10.3 conduits pass; blocked paths fail | **Implemented**: topology modules, rulesets, services, BBMDs, the post-boot VyOS script, and SoH probes. Validated statically by `netcheck`; the VM run is pending |
-| 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic | **Largely implemented**: `plant.yaml`, plantgen, seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). The cellar autopilot and the peer reads of `plc-cellar` are built. Remaining: the ot-sim `logic` blocks and the 24 h soak |
-| 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** All five PLC programs and their full and lite ZIPs are built by `plc/common` (alarms generated from `alarms.json` with deadbands, C++ checked; none run in an OpenPLC runtime yet), including the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)) and the peer reads. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. The FUXA batch engine sequences the brewhouse and brews a double-brew day unattended in the offline federation (compiled plc-brewhouse, the federates, the engine under Node), and it ran in a real FUXA server against a stand-in PLC, with its Batch view and the operator sign-in driven from a browser. Open: views beyond the generated tag lists, the cellar's transfers (so only the first brew day finds a fermenter), and any VM run |
-| 4: Power + BAS | OpenDSS, tariff logic, BESS/ATS, BACnet devices | Outage and CO₂ scenarios behave as in §6.6 | **Built, not run on a VM.** The power and building federates are built with Phase 2. The `plc-power` program does load shed, staged restoration, and BESS dispatch, and schedules the on-peak shift, the recharge, the monthly demand reset, and the weekly genset exercise from the ATS controller's clock ([§12.1](#121-openplc-v4-runtime-v3-fallback)). The BAS controllers serve BACnet through the ot-sim BACnet module in this repository, with their I/O module from the `cherrymountain` app ([§16](#16-new-and-extended-software)) |
-| 5: SOC + remote access | Malcolm, Wazuh, WireGuard, Guacamole | Baseline detections fire on the vendor-maintenance run | **Built, not run on a VM.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), Zeek script (checked in Malcolm's Zeek image), and Wazuh rules with their tests; per-experiment vendor and WireGuard secrets |
-| 6: Polish | SCORCH runs, Builder package, README, e2e CI, upstream PRs, the white-cell 3D view | Fresh `phenix workflow apply` → green SoH, with no manual steps | **Started.** The 3D view (`cm-viz`) is built and tested offline with its snapshot, relief valves, vessel truth, and real KPIs ([§15.10](#1510-white-cell-3d-view-cm-viz)); its phenix run and the operator-view relay are open. `plantevent` and the four plant-driving SCORCH runs of the full scenario are built ([§15.6](#156-scorch-pipelines)), with the operations runbook ([§15.9](#159-operations)) and the plantgen, sim, app, netcheck, and SOC suites in prek and CI. Open: the Builder package, an e2e run on a VM, and the upstream PRs |
+The phases, with what each covers and when it is done. What is built and what
+is left in each phase is in [Status](#status), at the top of this document.
+
+| Phase | Scope | Exit criteria |
+|---|---|---|
+| 0: Spikes | The feasibility spikes: see the results below | Each spike has a written go/no-go decision (ten are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to future work) |
+| 1: Network | Core topology, VyOS conduits and static routes, ot-svc, SoH reachability | All §10.3 conduits pass; blocked paths fail |
+| 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic |
+| 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized |
+| 4: Power + BAS | OpenDSS, tariff logic, BESS/ATS, BACnet devices | Outage and CO₂ scenarios behave as in §6.6 |
+| 5: SOC + remote access | Malcolm, Wazuh, WireGuard, Guacamole | Baseline detections fire on the vendor-maintenance run |
+| 6: Polish | SCORCH runs, Builder package, README, e2e CI, upstream PRs, the white-cell 3D view | Fresh `phenix workflow apply` → green SoH, with no manual steps |
 
 **Phase 0 spikes (done).** The `ci` variant (the cellar slice) was built early
 as the integration vehicle. It covers part of phases 1 to 3 for one slice and

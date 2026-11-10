@@ -108,24 +108,8 @@ the addresses and every allowed flow.
 
 ## Status
 
-> **Status:** in progress; nothing has run on a VM yet. The design is complete
-> and the Phase 0 spikes are done (ten are go and one, TheHive, is a no; DESIGN.md has the decisions).
-> The **ci variant** (the cellar slice, five VMs) is built and its integration
-> test passes in Docker (ot-sim, OpenPLC, FUXA). **Phase 1 (network)** is built
-> for the full and lite variants and checked statically by `tools/netcheck`.
-> **Phase 2 (simulation)** is largely built: `plant.yaml` covers every area,
-> plantgen writes the ci, full, and lite outputs, and seven federates pass their
-> tests (remaining: ot-sim logic blocks and a 24 h soak).
-> **Phase 3 (control)** is in progress: all five PLC programs (with the
-> hardwired CO₂ interlock and the peer reads), their full and lite ZIPs, and the
-> scada-fuxa and bas-fuxa projects are generated, and a batch engine in
-> scada-fuxa brews a brew day unattended (run in a real FUXA server against a
-> stand-in PLC); a run in a real OpenPLC runtime is next. **Phase 4 (power and building)** is
-> built: plc-power schedules from the ATS controller's clock, and the building
-> controllers serve BACnet through an ot-sim module in this repository.
-> **Phase 5 (SOC and remote access)** is built (images, provisioning,
-> detections, and per-experiment secrets) but not run. Every image config exists
-> ([phenix-images/README.md](phenix-images/README.md)).
+Everything is built and tested offline, and nothing has run on a phenix host
+yet: [Status in DESIGN.md](DESIGN.md#status) has the detail.
 
 ## Overview
 

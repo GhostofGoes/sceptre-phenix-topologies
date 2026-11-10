@@ -2637,6 +2637,162 @@
           "memaddress": "000000",
           "address": 65,
           "access": "read"
+        },
+        {
+          "id": "t_ba23f755-c38d-5648-9d82-1077442a8b8f",
+          "name": "CEL.PROFILE.HS01.AUTO",
+          "label": "FV-101 fermentation profile on (plc-cellar sets its temperature setpoints)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 66,
+          "access": "read-write"
+        },
+        {
+          "id": "t_92dd2a85-12c1-54ca-aaca-bcdf7c37e339",
+          "name": "CEL.PROFILE.HS02.AUTO",
+          "label": "FV-102 fermentation profile on (plc-cellar sets its temperature setpoints)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 67,
+          "access": "read-write"
+        },
+        {
+          "id": "t_3279b385-6a9e-59ef-a791-791e591085b9",
+          "name": "CEL.PROFILE.HS03.AUTO",
+          "label": "FV-103 fermentation profile on (plc-cellar sets its temperature setpoints)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 68,
+          "access": "read-write"
+        },
+        {
+          "id": "t_b294e6fb-5eb9-57d5-b70e-55762453f95e",
+          "name": "CEL.PROFILE.HS04.AUTO",
+          "label": "FV-104 fermentation profile on (plc-cellar sets its temperature setpoints)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 69,
+          "access": "read-write"
+        },
+        {
+          "id": "t_4431eafa-9c80-5cd3-8b34-5cc96467536d",
+          "name": "CEL.PROFILE.KS01.STAGE",
+          "label": "FV-101 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 122,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_15ba2679-7b75-59fe-bdf9-57469f2fec60",
+          "name": "CEL.PROFILE.KS02.STAGE",
+          "label": "FV-102 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 123,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_6035d204-09f5-5dcb-8cdc-ac3a286a810d",
+          "name": "CEL.PROFILE.KS03.STAGE",
+          "label": "FV-103 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 124,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_a2f6b5de-f0f6-5e98-b11b-098da2974c36",
+          "name": "CEL.PROFILE.KS04.STAGE",
+          "label": "FV-104 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 125,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_4e74448a-03ad-55fa-b58f-4b09bd20e87f",
+          "name": "CEL.PROFILE.TC01.SP",
+          "label": "Profile temperature while the beer ferments",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 126,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_a2ea1634-ba50-5984-8689-8471c9dc22b6",
+          "name": "CEL.PROFILE.TC02.SP",
+          "label": "Profile temperature of the diacetyl rest",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 127,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_8f3d9ba5-3e49-54d5-a983-b964c65d85fa",
+          "name": "CEL.PROFILE.TC03.SP",
+          "label": "Profile temperature of the crash",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 128,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_62fe7739-076f-54b8-82fd-9d275fcab3a4",
+          "name": "CEL.PROFILE.KC01.SP",
+          "label": "Diacetyl rest length in plant minutes (180 is 144 h of fermentation on the range's 48x clock)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 129,
+          "access": "read-write",
+          "divisor": 1,
+          "units": "min",
+          "range": [
+            0.0,
+            6000.0
+          ]
         }
       ]
     },

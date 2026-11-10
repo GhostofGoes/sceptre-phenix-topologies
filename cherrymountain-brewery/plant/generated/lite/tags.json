@@ -3365,6 +3365,158 @@
       "generated": true
     },
     {
+      "name": "CEL.PROFILE.HS01.AUTO",
+      "desc": "FV-101 fermentation profile on (plc-cellar sets its temperature setpoints)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.HS02.AUTO",
+      "desc": "FV-102 fermentation profile on (plc-cellar sets its temperature setpoints)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.HS03.AUTO",
+      "desc": "FV-103 fermentation profile on (plc-cellar sets its temperature setpoints)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.HS04.AUTO",
+      "desc": "FV-104 fermentation profile on (plc-cellar sets its temperature setpoints)",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.KS01.STAGE",
+      "desc": "FV-101 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.KS02.STAGE",
+      "desc": "FV-102 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.KS03.STAGE",
+      "desc": "FV-103 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.KS04.STAGE",
+      "desc": "FV-104 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        3.0
+      ],
+      "scaling": 0,
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.TC01.SP",
+      "desc": "Profile temperature while the beer ferments",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.TC02.SP",
+      "desc": "Profile temperature of the diacetyl rest",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.TC03.SP",
+      "desc": "Profile temperature of the crash",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.PROFILE.KC01.SP",
+      "desc": "Diacetyl rest length in plant minutes (180 is 144 h of fermentation on the range's 48x clock)",
+      "type": "analog-read-write",
+      "units": "min",
+      "range": [
+        0.0,
+        6000.0
+      ],
+      "scaling": 0,
+      "area": "CEL",
+      "unit": "PROFILE",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
       "name": "PKG.LINE.PACKML.STATE",
       "desc": "Bottling line PackML state (StateCurrent)",
       "type": "analog-read",

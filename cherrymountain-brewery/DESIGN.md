@@ -1711,6 +1711,18 @@ values:
   plc-brewhouse, the brewhouse and cellar federates, and the engine script
   under Node, and brews a double-brew day (about 11 simulated hours) from a
   `start-batch` event and from the schedule alone.
+- With plc-packaging in control, the line still needs somebody to start it:
+  the PLC relays a line command and gives none of its own. The packaging
+  federate's line operator does it at the operator panel at the filler
+  (`PKG.PANEL.HS01.PV`, an input of rio-packaging that holds the PackML code of
+  the button being pressed). The operator presses Reset and Start when the
+  shift starts (06:00 on weekdays), Stop when it ends (14:30), and Clear,
+  Reset, and Start again when the line has stood stopped or aborted for two
+  minutes during the shift (sim setting `operator_react_s`; 0 turns that off).
+  plc-packaging takes a press as one line command, the same as one from the
+  HMI. A line in Hold is left alone, and so is a line somebody started outside
+  the shift. A Stop written from the HMI or by an attacker during the shift
+  therefore lasts about two minutes; a Hold lasts until an Unhold.
 - Built-in operators (the `autopilot` setting) run the brewhouse, utilities,
   and packaging while no PLC is writing. They hand over on the first write
   and take control back after 300 federate seconds without one (a stopped
@@ -4337,7 +4349,7 @@ reach a plant like this, and the row says why.
 | Every start is a first boot: phenix runs each node as a snapshot and builds its disk again from the image ([§15.9](#159-operations)) | By design of phenix. Consequences to plan for: Malcolm loads its container images on every start (10 to 15 minutes), the retention settings bound one continuous run, and whatever a VM stores is lost at a stop unless the cleanup stage exports it |
 | The simulation ends after `end_time_s`: 7 days in full and lite, 24 hours in ci. ot-sim's I/O modules finalize then and do not rejoin | Decided by the range owner: kept as the length of one exercise. Stop and start the experiment for a longer run, or raise it in `plant.yaml` |
 | The cellar has no material flow over days: fermenters never empty, the bright tanks are not refilled, knockout wort has nowhere to go once the fermenters are full, and packaging goes on counting bottles from an empty tank (a 72 h offline run) | Open: racking and bright-tank rotation in the cellar model, a no-product hold on the filler (packaging must subscribe to the tank level), and realistic packaging rates. Until then a multi-day run goes static after the first day |
-| Nothing starts the packaging shift once the PLCs are in control: plc-packaging only relays an operator's command | Open: a shift start for packaging. Brewing is resolved: with plc-brewhouse in control, `start-batch` and the 05:00 schedule request brews at the panel and the FUXA batch engine runs them ([§12.2](#122-fuxa-two-instances)) |
+| Nothing started the packaging shift once the PLCs were in control: plc-packaging only relays an operator's command (resolved) | The federate's line operator starts and stops the shift at the line's operator panel, through plc-packaging ([§9.6](#96-implementation-status-and-validation)). Run offline against the compiled program; the path through rio-packaging's Modbus server is for the first VM run. Brewing was resolved before: with plc-brewhouse in control, `start-batch` and the 05:00 schedule request brews at the panel and the FUXA batch engine runs them ([§12.2](#122-fuxa-two-instances)) |
 | The batch engine has not met OpenPLC: whether its OPC UA server lets FUXA's session write the command, phase, parameter, accepted-count, and setpoint tags, and whether the phase timeouts (estimates) outlast the real phases | Open until a VM run. Everything on FUXA's side ran in a real FUXA server ([fuxa/README.md](fuxa/README.md#checked-against-fuxa-source)) |
 | Only the first brew day finds a fermenter: FV-101 is the one empty vessel at the start and nothing empties a fermenter | The engine refuses a start with "no fermenter is empty" and keeps the request queued. Resolved by the cellar's material flow (open, above) |
 | The Wazuh admin password from `secrets.json` rests on `wazuh-passwords-tool.sh -a -f <file>` replacing only the admin user's generated password, read from the tool's source (4.14) and not run | The script checks the sign-in afterwards and only warns; `passwords.txt` on the VM always holds what the tool set. Confirm on the first boot |

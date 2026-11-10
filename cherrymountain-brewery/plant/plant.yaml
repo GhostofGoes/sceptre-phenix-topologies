@@ -369,6 +369,12 @@ device_types:
     cmd: { type: analog-read-write, scaling: 0 }
     mode_cmd: { type: analog-read-write, scaling: 0 }
     speed_sp_bpm: { type: analog-read-write, scaling: 1 }
+  # The line's operator panel at the filler (DESIGN.md §6.3): the PackML command
+  # of the button being pressed (CntrlCmd), 0 while none is. plc-packaging takes
+  # a press as one line command. The line operator of the packaging federate
+  # starts the shift here, stops it, and starts a stopped line again.
+  line-panel:
+    cmd: { type: analog-read, scaling: 0 }
   keg-machine:
     state: { type: analog-read, scaling: 0 }
     mode: { type: analog-read, scaling: 0 }
@@ -1918,6 +1924,16 @@ areas:
           - { id: LS04.PV, desc: Conveyor 4 (packer to palletizing) accumulation eye, io: conv4.accum_eye }
           - { id: YA04.PV, desc: Conveyor 4 jam eye, io: conv4.jam_eye }
           - { id: HS04.CMD, desc: Conveyor 4 run command, io: conv4.run }
+
+      # Last in the area, so the panel's register follows the machines' and
+      # none of theirs moved when it was added.
+      - id: PANEL
+        name: Line operator panel at the filler
+        model: line-panel
+        devices:
+          - { name: linepanel, type: line-panel }
+        tags:
+          - { id: HS01.PV, desc: "Line command at the operator panel (CntrlCmd while a button is pressed, else 0)", io: linepanel.cmd, range: [0, 9] }
 
   - id: UTL
     name: Utilities

@@ -12,6 +12,11 @@
       in step with the scan), so a one-scan pulse could fall between two
       polls and never reach the machines. The mode command and speed setpoint
       go to every machine every scan.
+    - The operator panel at the filler (PKG.PANEL.HS01.PV) gives the same
+      commands: the code of the button being pressed, 0 while none is. A press
+      is one line command, taken when the code changes, so a held button does
+      not repeat. A command from the HMI in the same scan goes first. This is
+      how the line's operator starts and stops the shift.
     - The line state and mode are the filler's (the line's constraint machine);
       XS01.RUN is TRUE unless the line is Stopped (2) or Aborted (9), and it
       suppresses the jam alarms (ISA-18.2 state-based suppression).
@@ -48,6 +53,7 @@ PROGRAM plc_packaging
     started : BOOL := FALSE;
     cmd : UINT := 0;                (* the command the machines are being given *)
     cmd_left : UINT := 0;           (* scans the command still stays on them *)
+    panel_last : UINT := 0;         (* the panel's code at the last scan *)
     defective : UDINT;
     perf : REAL;
     quality : REAL;
@@ -62,6 +68,14 @@ PROGRAM plc_packaging
   END_IF;
   PKG_LINE_PACKML_SPEED_SP := MIN(PKG_LINE_PACKML_SPEED_SP, SPEED_MAX);
   PKG_LINE_PACKML_MODE_CMD := LIMIT(1, PKG_LINE_PACKML_MODE_CMD, 3);
+
+  (* ---- operator panel: a button going down is one line command ------------------------- *)
+  IF PKG_PANEL_HS01_PV <> panel_last THEN
+    panel_last := PKG_PANEL_HS01_PV;
+    IF panel_last >= 1 AND panel_last <= 9 AND PKG_LINE_PACKML_CMD = 0 THEN
+      PKG_LINE_PACKML_CMD := panel_last;
+    END_IF;
+  END_IF;
 
   (* ---- line command: CMD_SCANS scans to every machine, then cleared -------------------- *)
   IF PKG_LINE_PACKML_CMD >= 1 AND PKG_LINE_PACKML_CMD <= 9 THEN

@@ -18,7 +18,8 @@ parameter for the FUXA batch engine, the batch request handshake with the panel,
 the liquor tanks, boil detection), `plc/plc-cellar/
 plc-cellar-plant.st` (glycol zones, spunding, carbonation, the CO2 interlock,
 the dry-hop sequence, the peer status bits), `plc/plc-packaging/
-plc-packaging.st` (the PackML line over the machines, OEE, conveyors),
+plc-packaging.st` (the PackML line over the machines, the operator panel's
+command, OEE, conveyors),
 `plc/plc-utilities/plc-utilities.st` (glycol, steam, wastewater, the CIP
 sequence with plc-cellar's permit read peer to peer), and
 `plc/plc-power/plc-power.st` (load shed and staged restoration, BESS dispatch

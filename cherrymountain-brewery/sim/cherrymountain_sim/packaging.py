@@ -29,12 +29,13 @@ barrels the way 27 CFR 25.158 does (a 24 x 12 fl oz case is 0.07258 barrel).
 
 from __future__ import annotations
 
+import logging
 import random
 from collections.abc import Generator
 from typing import Any, ClassVar, Literal
 
 import simpy
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from cherrymountain_sim.federate import (
     Federate,
@@ -51,6 +52,8 @@ from cherrymountain_sim.packml import (
     PackMLMachine,
     State,
 )
+
+LOG: logging.Logger = logging.getLogger("cherrymountain_sim.packaging")
 
 #: Stop reasons (PackTags StopReason.ID).
 STOP_NONE: int = 0
@@ -152,6 +155,21 @@ SPECS: dict[str, MachineSpec] = {
 BUFFER_CAPACITY: int = 120
 #: Seconds a machine waits starved or blocked before it suspends.
 SUSPEND_AFTER_S: float = 5.0
+#: Seconds the line operator holds a button of the panel down. plc-packaging
+#: reads the panel about once a second (its Modbus poll of rio-packaging).
+PANEL_PRESS_S: float = 3.0
+#: Seconds between two presses: the machines' states take a few seconds to show
+#: what the last one did (PLC scan, Modbus write, PackML transition, poll).
+PANEL_PAUSE_S: float = 5.0
+#: States a line command gets a machine out of, and the command that does.
+_LINE_STEPS: tuple[tuple[frozenset[State], Command], ...] = (
+    (frozenset({State.ABORTED}), Command.CLEAR),
+    (frozenset({State.STOPPED, State.COMPLETE}), Command.RESET),
+    (frozenset({State.IDLE}), Command.START),
+)
+_AT_REST: frozenset[State] = frozenset(
+    {State.STOPPED, State.STOPPING, State.ABORTED, State.ABORTING}
+)
 
 
 class PackagingSettings(BaseModel):
@@ -162,6 +180,10 @@ class PackagingSettings(BaseModel):
     shift_start: str = "06:00"
     shift_end: str = "14:30"
     shift_weekdays: list[int] = [0, 1, 2, 3, 4]
+    #: Seconds the line operator takes to notice a line that stopped during
+    #: the shift and start it again at the panel. 0: the operator only starts
+    #: the line at the start of the shift and stops it at the end.
+    operator_react_s: float = Field(default=120.0, ge=0.0)
     fill: FillSpec = FillSpec()
 
 
@@ -231,6 +253,19 @@ class PackagingFederate(Federate):
     heater: bool
     shift_days: set[str]
     fill: FillRecord
+    #: The code of the panel button the line operator holds down (0: none).
+    panel_cmd: int
+    panel_release_t: float
+    panel_next_t: float
+    panel_presses: int
+    #: The operator has a shift to end: set when one starts, cleared once the
+    #: line is at rest after it.
+    shift_open: bool
+    #: The line has run this shift, so a stop now is one to notice, not the
+    #: start of the shift.
+    shift_up: bool
+    #: When the line was first seen needing a command (None: it needs none).
+    line_down_since: float | None
 
     def __init__(self, cfg: FederateConfig, clock: SimClock | None = None) -> None:
         super().__init__(cfg, clock)
@@ -253,6 +288,13 @@ class PackagingFederate(Federate):
         self.product_open = False
         self.heater = False
         self.shift_days = set()
+        self.panel_cmd = 0
+        self.panel_release_t = 0.0
+        self.panel_next_t = 0.0
+        self.panel_presses = 0
+        self.shift_open = False
+        self.shift_up = False
+        self.line_down_since = None
         for i, name in enumerate(BOTTLE_LINE):
             self.env.process(self._run(self.machines[name], i))
         self.env.process(self._kegger())
@@ -399,7 +441,9 @@ class PackagingFederate(Federate):
 
     # -- the operator ------------------------------------------------------------------
 
-    def _operator(self) -> None:
+    def _shift(self) -> bool:
+        """True during the shift. The first time in a day's shift, the shift's
+        bottle count starts again."""
         s = self.settings
         now = self.now
         start = tuple(int(x) for x in s.shift_start.split(":"))
@@ -407,13 +451,72 @@ class PackagingFederate(Federate):
         in_shift = (
             now.weekday() in s.shift_weekdays and start <= (now.hour, now.minute) < end
         )
-        powered = self.input("power/bus.pkg.energized", 1.0) >= 0.5
-        self.product_open = in_shift and powered
-        self.heater = in_shift and powered
         day = now.date().isoformat()
         if in_shift and day not in self.shift_days:
             self.shift_days.add(day)
             self.shift_bottles = 0
+            self.shift_open = True
+            self.shift_up = False
+            self.line_down_since = None
+        return in_shift
+
+    @property
+    def panel_operator(self) -> bool:
+        """True while the line operator works the shift at the panel: the PLC
+        drives the line, so the built-in operator does not command the machines
+        (:attr:`autopilot`), and somebody has to start the line."""
+        return self.settings.autopilot == "auto" and self.plc_driving
+
+    def _line_wants(self) -> Command | None:
+        """The line command that moves the line toward running, if it needs one.
+        A Held or Suspended machine needs none: a jam and a low bowl clear
+        themselves (:meth:`_recover`), and a commanded Hold is somebody's choice."""
+        states = {m.pml.state for m in self.machines.values()}
+        return next((cmd for at, cmd in _LINE_STEPS if states & at), None)
+
+    def _press(self, cmd: Command) -> None:
+        self.panel_cmd = int(cmd)
+        self.panel_release_t = self.t + PANEL_PRESS_S
+        self.panel_next_t = self.panel_release_t + PANEL_PAUSE_S
+        self.panel_presses += 1
+        LOG.info("packaging: the line operator presses %s at the panel", cmd.name.title())
+
+    def _panel(self, powered: bool) -> None:
+        """The line operator at the panel, while the PLC drives the line: start
+        the line when the shift starts, stop it when the shift ends, and start
+        it again when it has stood stopped for ``operator_react_s`` during the
+        shift (after a power cut, or a Stop nobody at the line asked for)."""
+        if self.panel_cmd and self.t >= self.panel_release_t:
+            self.panel_cmd = 0
+        in_shift = self._shift()
+        if self.panel_cmd or self.t < self.panel_next_t:
+            return
+        if not in_shift:
+            if not self.shift_open:
+                return
+            if all(m.pml.state in _AT_REST for m in self.machines.values()):
+                self.shift_open = False
+            else:
+                self._press(Command.STOP)
+            return
+        want = self._line_wants() if powered else None
+        if want is None:
+            self.line_down_since = None
+            self.shift_up = self.shift_up or (
+                powered and any(m.executing for m in self.machines.values())
+            )
+            return
+        if self.line_down_since is None:
+            self.line_down_since = self.t
+        react = self.settings.operator_react_s
+        if not self.shift_up or (0 < react <= self.t - self.line_down_since):
+            self._press(want)
+
+    def _operator(self) -> None:
+        in_shift = self._shift()
+        powered = self.input("power/bus.pkg.energized", 1.0) >= 0.5
+        self.product_open = in_shift and powered
+        self.heater = in_shift and powered
         for m in self.machines.values():
             st = m.pml.state
             if not in_shift or not powered:
@@ -483,6 +586,9 @@ class PackagingFederate(Federate):
                     m.apply(Command.ABORT)
         if self.autopilot:
             self._operator()
+            self.panel_cmd = 0
+        elif self.panel_operator:
+            self._panel(powered)
         if powered:
             self._recover()
         for m in self.machines.values():
@@ -504,6 +610,8 @@ class PackagingFederate(Federate):
                     return False
                 case "run":
                     return any(m.executing for m in self.machines.values())
+        if device == "linepanel":
+            return float(self.panel_cmd)
         m = self.machines[device]
         match point:
             case "state":
@@ -628,6 +736,10 @@ class PackagingFederate(Federate):
             "bbl": self.bottles_total / BOTTLES_PER_BBL + self.kegs * BBL_PER_KEG,
             "oee": self.oee(),
             "states": {n: m.pml.state.name for n, m in self.machines.items()},
+            # who commands the line: the built-in operator, the line operator
+            # at the panel (through the PLC), or nobody in the simulation
+            "operator": "autopilot" if self.autopilot else "panel" if self.panel_operator else "none",
+            "panel_presses": self.panel_presses,
         }
         doc["fill"] = {
             "labeled_floz": LABELED_FLOZ,

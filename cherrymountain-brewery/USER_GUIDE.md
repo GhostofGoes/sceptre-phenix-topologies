@@ -424,14 +424,18 @@ Open `http://localhost:11881`. The views are **Cellar**, **Brewhouse**,
 | Brew | the **Start** button ([Brew a batch](#brew-a-batch)) | Batch |
 | Run one brewhouse phase by hand, only while the Batch view says Idle | `BH.BATCH.XC01.PHASE` (1 to 10), then `BH.BATCH.XC01.CMD` (1 start, 2 hold, 3 restart, 4 abort, 5 reset) | Brewhouse |
 | Start a cleaning (CIP) circuit | `UTL.CIP.XC01.CIRCUIT` (1 to 7), then `UTL.CIP.XC01.CMD` (1 start, 2 hold, 0 resume, 3 abort) | Utilities |
-| Start or stop the packaging line | `PKG.LINE.PACKML.CMD` (2 start, 3 stop) | Packaging |
+| Start or stop the packaging line outside its shift | `PKG.LINE.PACKML.CMD` (1 reset, then 2 start; 3 stop) | Packaging |
+| Keep the packaging line stopped during its shift | `PKG.LINE.PACKML.CMD` = 4 (hold), and 5 to let it go. A stop (3) lasts about two minutes: the line's operator starts the line again | Packaging |
 | Mark a vessel entry permit | `CEL.ENTRY.HS01.ENTRY` to `HS06`, `BH.ENTRY.HS01.ENTRY`, `HS02`; check `XSnn.LOCKED` | Cellar points, Brewhouse |
 | Reset the CO₂ supply shutoff after a gas alarm | `UTL.CO2.XC01.RESET` = 1 (accepted once the detection relay has been healthy 60 s; state is `UTL.CO2.XS02.SHUTOFF`) | Utilities |
 
 The plant also runs on a clock. It starts on a Wednesday at 04:30 (simulated
 local time), brew days are Monday and Wednesday at 05:00, the packaging shift
 is 06:00 to 14:30 on weekdays, and the power PLC exercises the generator on
-Wednesdays at 10:00. Fermentation runs 48 times faster than real time, so a
+Wednesdays at 10:00. Nobody has to start the packaging line: its operator (a
+part of the simulation) presses Reset and Start at the line's panel at 06:00
+and Stop at 14:30, and starts the line again when it has stood stopped for two
+minutes during the shift. Fermentation runs 48 times faster than real time, so a
 two-week fermentation takes about seven hours; everything else is real time.
 
 ### Brew a batch

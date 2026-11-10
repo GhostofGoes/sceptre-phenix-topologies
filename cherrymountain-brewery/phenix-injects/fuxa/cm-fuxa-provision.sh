@@ -70,12 +70,14 @@ print(json.dumps({"params": {"username": "admin", "fullname": "Administrator",
 fi
 
 # The devices the imported project must hold: FUXA_EXPECT_DEVICES (space
-# separated, written by the cherrymountain app), else every device of the file.
+# separated, written by the cherrymountain app), else every device of the file
+# except FUXA's own server device (it always exists, and its name has a space).
 EXPECT="${FUXA_EXPECT_DEVICES:-}"
 if [ -z "${EXPECT}" ]; then
   EXPECT=$(python3 - "${PROJECT}" <<'PY'
 import json, sys
-print(" ".join(sorted(d.get("name", "") for d in json.load(open(sys.argv[1])).get("devices", {}).values())))
+devs = json.load(open(sys.argv[1])).get("devices", {}).values()
+print(" ".join(sorted(d.get("name", "") for d in devs if d.get("type") != "FuxaServer")))
 PY
 )
 fi

@@ -329,7 +329,8 @@ def test_full_fuxa_projects_are_built_for_both_hosts(ctx: Context) -> None:
         committed = json.loads((ROOT / "fuxa" / "full" / f"{host}-project.json").read_text())
         assert project == committed, host
         expect = env(Path(injects["/etc/default/cm-fuxa"].src))["FUXA_EXPECT_DEVICES"].split()
-        assert set(expect) == {d["name"] for d in project["devices"].values()}
+        # every device but FUXA's own server device, whose name has a space
+        assert set(expect) == {d["name"] for d in project["devices"].values() if d["type"] != "FuxaServer"}
 
 
 def test_full_fuxa_views_have_unique_names_and_the_kiosks_views_exist(ctx: Context) -> None:

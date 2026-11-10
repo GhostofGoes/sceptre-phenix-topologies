@@ -533,11 +533,14 @@ def fuxa_settings(ctx: Context, hostname: str, md: FuxaHost) -> dict[str, Any]:
 
 
 def project_devices(project: dict[str, Any]) -> list[str]:
+    """The devices the import must produce, by name. Not FUXA's own server device
+    (``FuxaServer``, which holds the batch engine's tags): FUXA always has it, and its
+    name has a space, which a space-separated list cannot carry."""
     devices: Any = project.get("devices") or {}
     return sorted(
         str(d.get("name"))
         for d in devices.values()
-        if isinstance(d, dict) and d.get("name")
+        if isinstance(d, dict) and d.get("name") and d.get("type") != "FuxaServer"
     )
 
 

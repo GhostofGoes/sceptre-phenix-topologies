@@ -28,11 +28,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import textwrap
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -194,8 +195,16 @@ class Gauge(BaseModel):
 class ViewBuilder:
     """Collects SVG fragments and the matching gauge settings for one view."""
 
-    def __init__(self, tags: dict[str, PlantTag], width: int, height: int) -> None:
+    def __init__(
+        self,
+        tags: dict[str, PlantTag],
+        width: int,
+        height: int,
+        internal: dict[str, str] | None = None,
+    ) -> None:
         self.tags: dict[str, PlantTag] = tags
+        #: Tag name -> tag id of FUXA's own (FUXA Server device) tags.
+        self.internal: dict[str, str] = internal or {}
         self.width: int = width
         self.height: int = height
         self.svg: list[str] = []
@@ -218,14 +227,22 @@ class ViewBuilder:
     def _tag(self, name: str) -> PlantTag:
         return self.tags[name]
 
-    def value(self, x: int, y: int, tag_name: str, digits: int, unit: str) -> None:
-        tag: PlantTag = self._tag(tag_name)
+    def _tag_id(self, name: str) -> str:
+        """The id of a plant tag, or of one of FUXA's own tags."""
+        if name in self.internal:
+            return self.internal[name]
+        return self._tag(name).id
+
+    def value(
+        self, x: int, y: int, tag_name: str, digits: int, unit: str, anchor: str = "middle"
+    ) -> None:
+        tag_id: str = self._tag_id(tag_name)
         gid: str = uid("VAL_", tag_name)
         self.svg.append(
             f'<g id="{gid}" type="svg-ext-value" fill="#000000" stroke="#000000"'
-            f' font-size="14" stroke-width="0" font-family="sans-serif" text-anchor="middle">'
+            f' font-size="14" stroke-width="0" font-family="sans-serif" text-anchor="{anchor}">'
             f'<text stroke-width="0" id="{uid("VAL_", tag_name + "/text")}" fill="#000000"'
-            f' stroke="#000000" font-size="14" font-family="sans-serif" text-anchor="middle"'
+            f' stroke="#000000" font-size="14" font-family="sans-serif" text-anchor="{anchor}"'
             f' xml:space="preserve" x="{x}" y="{y}">##.##</text></g>'
         )
         self.items[gid] = Gauge(
@@ -235,7 +252,7 @@ class ViewBuilder:
             label="Value",
             property={
                 "events": [],
-                "variableId": tag.id,
+                "variableId": tag_id,
                 "ranges": [
                     {"type": OUTPUT_UNIT, "min": 0, "max": 0, "text": unit,
                      "textId": "", "fractionDigits": digits}
@@ -282,7 +299,7 @@ class ViewBuilder:
         )
 
     def lamp(self, cx: int, cy: int, tag_name: str, on_color: str) -> None:
-        tag: PlantTag = self._tag(tag_name)
+        tag_id: str = self._tag_id(tag_name)
         gid: str = uid("GSE_", tag_name)
         self.svg.append(
             f'<g id="{gid}" type="svg-ext-gauge_semaphore" stroke="#616161" stroke-width="1">'
@@ -296,11 +313,67 @@ class ViewBuilder:
             label="HtmlSemaphore",
             property={
                 "events": [],
-                "variableId": tag.id,
+                "variableId": tag_id,
                 "ranges": [
                     {"min": 0, "max": 0, "color": "#bdbdbd", "stroke": "#616161"},
                     {"min": 1, "max": 1, "color": on_color, "stroke": "#212121"},
                 ],
+            },
+        )
+
+    def number_lamp(self, cx: int, cy: int, tag_name: str, number: int, on_color: str) -> None:
+        """A lamp that is lit while a tag holds ``number`` (0 to 99), grey otherwise."""
+        tag_id: str = self._tag_id(tag_name)
+        gid: str = uid("GSE_", f"{tag_name}={number}")
+        self.svg.append(
+            f'<g id="{gid}" type="svg-ext-gauge_semaphore" stroke="#616161" stroke-width="1">'
+            f'<circle id="{uid("GSE_", f"{tag_name}={number}/c")}" cx="{cx}" cy="{cy}" r="8"'
+            f' fill="#bdbdbd" stroke="#616161"/></g>'
+        )
+        grey: dict[str, Any] = {"color": "#bdbdbd", "stroke": "#616161"}
+        ranges: list[dict[str, Any]] = [
+            {"min": 0, "max": number - 1, **grey},
+            {"min": number, "max": number, "color": on_color, "stroke": "#212121"},
+            {"min": number + 1, "max": 99, **grey},
+        ]
+        self.items[gid] = Gauge(
+            id=gid,
+            type="svg-ext-gauge_semaphore",
+            name=f"{tag_name}={number}",
+            label="HtmlSemaphore",
+            property={"events": [], "variableId": tag_id, "ranges": ranges},
+        )
+
+    def button(self, x: int, y: int, w: int, h: int, text: str, tag_name: str, value: int) -> None:
+        """A button that writes ``value`` to a tag: the editor's ``html_button``
+        with its ``set`` action."""
+        tag_id: str = self._tag_id(tag_name)
+        gid: str = uid("HXB_", f"{tag_name}/{value}")
+        style: str = (
+            "width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;"
+            "background-color:rgba(238,238,238,1);color:rgba(33,33,33,1);"
+            "font-size:14px;font-family:sans-serif;"
+        )
+        self.svg.append(
+            f'<g id="{gid}" type="svg-ext-html_button" style="pointer-events:none"'
+            f' fill="rgba(0,0,0,0)" stroke="rgba(0,0,0,0)" xml:space="preserve">'
+            f'<rect id="{uid("svg_", f"{tag_name}/{value}/rect")}" x="{x}" y="{y}" width="{w}"'
+            f' height="{h}" stroke-width="0"/>'
+            f'<foreignObject id="H-{uid("HXB_", f"{tag_name}/{value}/fo")}" x="{x}" y="{y}"'
+            f' width="{w}" height="{h}"><button id="B-{uid("HXB_", f"{tag_name}/{value}/b")}"'
+            f' class="md-btn  md-btn-raised" style="{style}">{text}</button></foreignObject></g>'
+        )
+        self.items[gid] = Gauge(
+            id=gid,
+            type="svg-ext-html_button",
+            name=text,
+            label="HtmlButton",
+            property={
+                "events": [],
+                "actions": [],
+                "variableId": tag_id,
+                "text": text,
+                "buttonAction": {"mode": "set", "setValue": str(value)},
             },
         )
 
@@ -474,6 +547,31 @@ def build_alarm(alarm: PlantAlarm) -> dict[str, Any]:
 # ---------------------------------------------------------------- project
 
 
+class ServerTag(BaseModel):
+    """A tag of FUXA's own ``FuxaServer`` device (``type`` ``number`` or
+    ``string``, set by the batch engine script or the Batch view)."""
+
+    id: str
+    name: str
+    label: str
+    type: Literal["number", "string"]
+    init: str
+    description: str
+    daq: TagDaq
+
+
+class ServerDevice(BaseModel):
+    """The ``FuxaServer`` device, with the batch engine's tags."""
+
+    id: str
+    name: str
+    enabled: bool
+    type: Literal["FuxaServer"]
+    property: dict[str, Any]
+    polling: int
+    tags: dict[str, ServerTag]
+
+
 class Project(BaseModel):
     """FUXA ``ProjectData`` (only the sections this project fills)."""
 
@@ -485,7 +583,7 @@ class Project(BaseModel):
         }
     )
     hmi: dict[str, Any]
-    devices: dict[str, FuxaDevice]
+    devices: dict[str, FuxaDevice | ServerDevice]
     alarms: list[dict[str, Any]]
     charts: list[Any] = Field(default_factory=list)
     graphs: list[Any] = Field(default_factory=list)
@@ -692,6 +790,513 @@ def build_plant_alarm(alarm: PlantAlarm) -> dict[str, Any]:
     return built
 
 
+# ---------------------------------------------------------------- batch engine
+
+#: The batch engine script (hand-written JavaScript; its __CFG__ is the data below).
+BATCH_ENGINE_JS: Path = HERE / "batch_engine.js"
+#: The recipe the engine sequences (BeerJSON, DESIGN.md 3.2).
+RECIPE_PATH: Path = HERE.parent / "recipes" / "fire-of-the-phenix.json"
+BATCH_SCRIPT_NAME: str = "cmBatchEngine"
+BATCH_RECIPE_CODE: str = "FOP"
+#: The tag that tells the builder the brewhouse PLC (and so the engine) is there.
+BATCH_PLC_STATE_TAG: str = "BH.BATCH.XS01.STATE"
+FUXA_SERVER_ID: str = "0"
+#: The most a pipe and tun lose between the HLT and the grist (K); the sim's
+#: operator adds the same to the strike temperature.
+STRIKE_LOSS_K: float = 1.0
+#: Fermenters the engine may choose from, and the brews one holds (a 30 bbl FV
+#: takes two 15 bbl brews: DESIGN.md 3.1).
+FERMENTER_COUNT: int = 4
+
+
+class BatchTiming(BaseModel):
+    """What the engine waits for, in seconds unless noted (DESIGN.md 12.2)."""
+
+    #: A run still going this long after it started blocks the next one.
+    busy_s: int = 30
+    #: After a start, wait this long for FUXA to restore the batch state.
+    init_grace_s: int = 15
+    #: Longest to write and read back a phase's parameters, and to wait for the
+    #: PLC to answer a Start, Hold, Restart, Abort, or Reset.
+    prep_s: int = 30
+    handshake_s: int = 30
+    #: Repeat a command the PLC did not take after this long.
+    retry_s: int = 6
+    #: No answer from the PLC for this long holds a running batch.
+    comms_s: int = 60
+    #: A start that is refused this long raises its alarm.
+    refuse_grace_s: int = 10
+    #: A knockout waiting this long for a fermenter raises its alarm.
+    nofv_alarm_s: int = 600
+    #: A fermenter reserved for a brew day stays reserved this long.
+    fv_reserve_s: int = 12 * 3600
+    brews_per_fv: int = 2
+    #: Apparent extract below this (degP) reads as an empty fermenter.
+    empty_plato: float = 0.5
+    max_queue: int = 16
+    #: More new panel requests than this means the counter restarted.
+    max_pending: int = 64
+    #: Consecutive failed runs of the script that raise its alarm.
+    error_alarm: int = 3
+
+
+class MashStep(BaseModel):
+    name: str
+    temp_f: float
+    minutes: int
+
+
+class BatchRecipe(BaseModel):
+    """The parameters the engine takes from the BeerJSON recipe."""
+
+    code: str
+    name: str
+    grain_kg: float
+    mash: list[MashStep]
+    boil_minutes: int
+    whirlpool_minutes: int
+    whirlpool_temp_f: float
+    pitch_temp_f: float
+    #: The setpoints, in whole degF: 168 for Palmer's 167.5.
+    strike_temp_f: float
+    sparge_temp_f: float
+
+
+class PhaseSpec(BaseModel):
+    """An ISA-88 phase of plc-brewhouse and how long to wait for it: ``base_s``
+    plus ``per_unit_s`` for each unit of its parameter (kg or minutes)."""
+
+    number: int
+    name: str
+    base_s: int
+    per_unit_s: int = 0
+
+
+PHASES: tuple[PhaseSpec, ...] = (
+    # Milling takes 2 s per kg at 0.5 kg/s (50 Hz), as plc-brewhouse counts it; the
+    # base is the margin.
+    PhaseSpec(number=1, name="MILL", base_s=600, per_unit_s=2),
+    PhaseSpec(number=2, name="HLT_HEAT", base_s=7200),
+    PhaseSpec(number=3, name="MASH_IN", base_s=1800),
+    PhaseSpec(number=4, name="MASH_STEP", base_s=3600, per_unit_s=60),
+    PhaseSpec(number=5, name="VORLAUF", base_s=1800),
+    PhaseSpec(number=6, name="LAUTER", base_s=9000),
+    PhaseSpec(number=7, name="BOIL", base_s=3600, per_unit_s=60),
+    PhaseSpec(number=8, name="WHIRLPOOL", base_s=900, per_unit_s=60),
+    PhaseSpec(number=9, name="KNOCKOUT", base_s=3600),
+    PhaseSpec(number=10, name="CIP_READY", base_s=120),
+)
+
+
+class SequenceStep(BaseModel):
+    """One phase run of a brew: the PLC phase, its parameter, the setpoints to
+    write first (degF, whole degrees: see :func:`whole_degrees`), and the time to
+    wait for it."""
+
+    n: int
+    name: str
+    label: str
+    param: int
+    hlt: int
+    mlt: int
+    ko: int
+    timeout_s: int
+
+
+class BatchTag(BaseModel):
+    """A tag of the FUXA Server device that the engine, or the Batch view, uses.
+    ``persist`` tags are restored after a FUXA restart; ``historian`` tags go to
+    the DAQ store."""
+
+    key: str
+    name: str
+    kind: Literal["number", "string"]
+    label: str
+    persist: bool = False
+    historian: bool = False
+
+
+def _batch_tags() -> tuple[BatchTag, ...]:
+    def num(key: str, name: str, label: str, persist: bool = False, historian: bool = False) -> BatchTag:
+        return BatchTag(key=key, name=f"BATCH.{name}", kind="number", label=label,
+                        persist=persist, historian=historian)
+
+    def text(key: str, name: str, label: str) -> BatchTag:
+        return BatchTag(key=key, name=f"BATCH.{name}", kind="string", label=label)
+
+    return (
+        # The Batch view's command: 1 Start, 2 Hold, 3 Restart, 4 Abort, 5 Reset.
+        num("cmd", "CMD", "Operator command (1 Start, 2 Hold, 3 Restart, 4 Abort, 5 Reset)"),
+        num("st", "STATE", "Batch state (0 Idle, 1 Running, 2 Held, 3 Complete, 4 Aborted)", True, True),
+        num("step", "STEP", "Engine step (1 prep, 2 start, 3 run, 4 reset, 5 fermenter wait, 6 holding, 7 held, 8 restarting, 9 aborting, 10 abort reset)", True),
+        num("seq_ix", "SEQ_INDEX", "Index of the phase run in the brew's sequence", True),
+        num("resume", "RESUME_STEP", "Step to resume at after a hold", True),
+        num("why", "REASON", "Why the batch is held, waiting, refused, or aborted (code)", True, True),
+        num("number", "NUMBER", "Batch number (the last one started)", True, True),
+        num("completed", "COMPLETED", "Brews completed", True, True),
+        num("queue", "QUEUE", "Brews queued", True, True),
+        num("handled", "REQUESTS_HANDLED", "Panel requests the engine has taken (16-bit counter)", True),
+        num("fv", "FV", "Fermenter reserved for the brew day (1 to 4, 0 none)", True, True),
+        num("fv_brews", "FV_BREWS", "Brews knocked out into the reserved fermenter", True),
+        num("hold_req", "HOLD_REQUEST", "A Hold waits for a safe point", True),
+        num("t_batch", "T_BATCH", "Batch start (Unix s)", True),
+        num("t_phase", "T_PHASE", "Phase start (Unix s)", True),
+        num("t_step", "T_STEP", "Step start (Unix s)", True),
+        num("t_fv", "T_FV", "First knockout into the reserved fermenter (Unix s)", True),
+        num("alm_timeout", "ALM_TIMEOUT", "Alarm: a phase timed out and the batch is held", True, True),
+        num("alm_plc", "ALM_PLC", "Alarm: the brewhouse PLC did not answer, lost, or aborted the phase", True, True),
+        num("alm_refused", "ALM_REFUSED", "Alarm: a batch start was refused", True, True),
+        num("alm_nofv", "ALM_NOFV", "Alarm: no fermenter is ready for knockout", True, True),
+        num("alm_engine", "ALM_ENGINE", "Alarm: the batch engine script is failing", True, True),
+        num("phase", "PHASE", "Phase number in force (0 none)", False, True),
+        num("plc_mirror", "PLC_STATE", "Brewhouse PLC phase state (-1 no link)", False, True),
+        num("wait", "WAITING", "Waiting for a fermenter", False, True),
+        num("beat", "HEARTBEAT", "Engine heartbeat (Unix s)"),
+        text("state_text", "STATE_TEXT", "Batch state"),
+        text("status", "STATUS", "Batch status"),
+        text("id", "ID", "Batch ID"),
+        text("recipe", "RECIPE", "Recipe"),
+        text("phase_name", "PHASE_NAME", "Phase"),
+        text("fv_name", "FV_NAME", "Reserved fermenter"),
+        text("start", "STARTED", "Batch start"),
+        text("phase_start", "PHASE_STARTED", "Phase start"),
+    )
+
+
+BATCH_TAGS: tuple[BatchTag, ...] = _batch_tags()
+
+#: The plant tags the engine reads and writes, by the engine's own names.
+BATCH_PLANT_TAGS: dict[str, str] = {
+    "plc_state": "BH.BATCH.XS01.STATE",
+    "plc_cmd": "BH.BATCH.XC01.CMD",
+    "plc_phase": "BH.BATCH.XC01.PHASE",
+    "plc_param": "BH.BATCH.XC03.PARAM",
+    "plc_batch": "BH.BATCH.XI01.BATCH",
+    "requests": "BH.BATCH.XI02.REQUESTS",
+    "plc_accepted": "BH.BATCH.XC02.ACCEPTED",
+    "lock_mlt": "BH.ENTRY.XS01.LOCKED",
+    "lock_ktl": "BH.ENTRY.XS02.LOCKED",
+    "sp_hlt": "BH.HLT.TT01.SP",
+    "sp_mlt": "BH.MLT.TT01.SP",
+    "sp_ko": "BH.KO.TT02.SP",
+}
+#: What plc-cellar reports of each fermenter: the extract meter (0 when empty),
+#: the entry lockout, and the CIP permit (withdrawn during entry).
+BATCH_FV_TAGS: dict[str, str] = {
+    "fv{n}_extract": "CEL.FV10{n}.DT01.PV",
+    "fv{n}_lock": "CEL.ENTRY.XS0{n}.LOCKED",
+    "fv{n}_cip": "CEL.ENTRY.XS1{n}.CIP_OK",
+}
+
+
+def _beerjson_f(node: dict[str, Any]) -> float:
+    value: float = float(node["value"])
+    unit: str = node["unit"]
+    if unit == "F":
+        return value
+    if unit == "C":
+        return value * 1.8 + 32.0
+    raise SystemExit(f"{RECIPE_PATH.name}: temperature unit {unit!r} is not F or C")
+
+
+def _beerjson_kg(node: dict[str, Any]) -> float:
+    factors: dict[str, float] = {"kg": 1.0, "g": 0.001, "lb": 0.45359237, "oz": 0.028349523}
+    unit: str = node["unit"]
+    if unit not in factors:
+        raise SystemExit(f"{RECIPE_PATH.name}: mass unit {unit!r} is not kg, g, lb, or oz")
+    return float(node["value"]) * factors[unit]
+
+
+def _beerjson_min(node: dict[str, Any]) -> int:
+    factors: dict[str, float] = {"min": 1.0, "hr": 60.0, "day": 1440.0}
+    unit: str = node["unit"]
+    if unit not in factors:
+        raise SystemExit(f"{RECIPE_PATH.name}: time unit {unit!r} is not min, hr, or day")
+    return round(float(node["value"]) * factors[unit])
+
+
+def whole_degrees(temp_f: float) -> int:
+    """A temperature as a whole-degree setpoint. FUXA's OPC UA driver turns a
+    value into an integer before it applies a tag's linear scale
+    (server/runtime/devices/opcua/index.js ``setValue``: ``_toValue``, then
+    ``tagRawCalculator``), so a fractional setpoint would lose its fraction
+    unpredictably; whole degrees survive, and a brewer sets whole degrees."""
+    return math.floor(temp_f + 0.5)
+
+
+def load_batch_recipe(path: Path = RECIPE_PATH) -> BatchRecipe:
+    """The engine's parameters from the BeerJSON recipe: the mash steps, the boil
+    and the whirlpool stand, the pitching temperature, and the strike water
+    temperature (Palmer: 0.41 / ratio x (mash - grain) + mash in metric units,
+    plus the line loss, as the sim's brewhouse operator computes it)."""
+    try:
+        doc: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        r: dict[str, Any] = doc["beerjson"]["recipes"][0]
+        grain_kg: float = sum(_beerjson_kg(f["amount"]) for f in r["ingredients"]["fermentable_additions"])
+        steps: list[dict[str, Any]] = r["mash"]["mash_steps"]
+        mash: list[MashStep] = [
+            MashStep(name=s["name"], temp_f=_beerjson_f(s["step_temperature"]),
+                     minutes=_beerjson_min(s["step_time"]))
+            for s in steps
+        ]
+        whirlpool: dict[str, Any] = next(
+            s for s in r["boil"]["boil_steps"] if "whirlpool" in s["name"].lower()
+        )
+        infusion_l: float = float(steps[0]["amount"]["value"])
+        if steps[0]["amount"]["unit"] != "l":
+            raise SystemExit(f"{path.name}: the first mash step's amount is not in liters")
+        grain_f: float = _beerjson_f(r["mash"]["grain_temperature"])
+        pitch_f: float = _beerjson_f(r["fermentation"]["fermentation_steps"][0]["start_temperature"])
+        boil_minutes: int = _beerjson_min(r["boil"]["boil_time"])
+        whirlpool_minutes: int = _beerjson_min(whirlpool["step_time"])
+        whirlpool_f: float = _beerjson_f(whirlpool["start_temperature"])
+        name: str = r["name"]
+    except (OSError, ValueError, KeyError, IndexError, StopIteration) as ex:
+        raise SystemExit(f"{path}: cannot read the recipe ({type(ex).__name__}: {ex})") from ex
+    to_c = lambda f: (f - 32.0) / 1.8  # noqa: E731
+    strike_c: float = (
+        0.41 / (infusion_l / grain_kg) * (to_c(mash[0].temp_f) - to_c(grain_f))
+        + to_c(mash[0].temp_f)
+        + STRIKE_LOSS_K
+    )
+    return BatchRecipe(
+        code=BATCH_RECIPE_CODE,
+        name=name,
+        grain_kg=round(grain_kg, 1),
+        mash=mash,
+        boil_minutes=boil_minutes,
+        whirlpool_minutes=whirlpool_minutes,
+        whirlpool_temp_f=whirlpool_f,
+        pitch_temp_f=pitch_f,
+        strike_temp_f=whole_degrees(strike_c * 1.8 + 32.0),
+        sparge_temp_f=mash[-1].temp_f,
+    )
+
+
+def batch_sequence(recipe: BatchRecipe) -> list[SequenceStep]:
+    """The phase runs of one brew: the phases in order, with MASH_STEP once per
+    mash step of the recipe. Each carries the setpoints written before its Start
+    (the HLT at the strike temperature until the mash is in, then at the
+    sparge temperature; the MLT at the step being run; the knockout at the
+    pitching temperature) and the phase parameter."""
+    spec: dict[int, PhaseSpec] = {p.number: p for p in PHASES}
+    runs: list[SequenceStep] = []
+
+    def add(n: int, param: int, mlt_f: float, label: str) -> None:
+        p: PhaseSpec = spec[n]
+        runs.append(SequenceStep(
+            n=n,
+            name=p.name,
+            label=label,
+            param=param,
+            hlt=whole_degrees(recipe.strike_temp_f if n <= 3 else recipe.sparge_temp_f),
+            mlt=whole_degrees(mlt_f),
+            ko=whole_degrees(recipe.pitch_temp_f),
+            timeout_s=p.base_s + p.per_unit_s * param,
+        ))
+
+    first, last = recipe.mash[0], recipe.mash[-1]
+    add(1, round(recipe.grain_kg), first.temp_f, "MILL")
+    add(2, 0, first.temp_f, "HLT_HEAT")
+    add(3, 0, first.temp_f, "MASH_IN")
+    for i, step in enumerate(recipe.mash, start=1):
+        label: str = f"MASH_STEP {i} of {len(recipe.mash)} ({step.name}, {step.temp_f:g} F)"
+        add(4, step.minutes, step.temp_f, label)
+    add(5, 0, last.temp_f, "VORLAUF")
+    add(6, 0, last.temp_f, "LAUTER")
+    add(7, recipe.boil_minutes, last.temp_f, "BOIL")
+    add(8, recipe.whirlpool_minutes, last.temp_f, "WHIRLPOOL")
+    add(9, 0, last.temp_f, "KNOCKOUT")
+    add(10, 0, last.temp_f, "CIP_READY")
+    return runs
+
+
+def batch_names() -> dict[str, str]:
+    """Every tag the engine touches, by its own name for it: the PLC and cellar
+    tags and the FUXA Server tags."""
+    names: dict[str, str] = dict(BATCH_PLANT_TAGS)
+    for n in range(1, FERMENTER_COUNT + 1):
+        for key, name in BATCH_FV_TAGS.items():
+            names[key.format(n=n)] = name.format(n=n)
+    own: dict[str, str] = {t.key: t.name for t in BATCH_TAGS}
+    clash: set[str] = names.keys() & own.keys()
+    if clash or len(own) != len(BATCH_TAGS):
+        raise SystemExit(f"batch engine tag keys are not unique: {sorted(clash)}")
+    names.update(own)
+    return names
+
+
+def batch_config(recipe: BatchRecipe) -> dict[str, Any]:
+    """The data the engine script is built with."""
+    return {
+        "recipe": recipe.model_dump(),
+        "timing": BatchTiming().model_dump(),
+        "fermenters": FERMENTER_COUNT,
+        "sequence": [s.model_dump() for s in batch_sequence(recipe)],
+        "names": batch_names(),
+    }
+
+
+def batch_script(recipe: BatchRecipe) -> dict[str, Any]:
+    """The engine as a FUXA server script: run every second by FUXA's scheduler
+    (``scheduling.mode`` ``interval``, in seconds)."""
+    source: str = BATCH_ENGINE_JS.read_text(encoding="utf-8")
+    marker: str = "const CFG = __CFG__;"
+    if source.count(marker) != 1:
+        raise SystemExit(f"{BATCH_ENGINE_JS.name} must hold {marker!r} exactly once")
+    config: str = json.dumps(batch_config(recipe), indent=1, sort_keys=True)
+    return {
+        "id": uid("s_", BATCH_SCRIPT_NAME),
+        "name": BATCH_SCRIPT_NAME,
+        "code": source.replace(marker, f"const CFG = {config};"),
+        "sync": False,
+        "parameters": [],
+        "scheduling": {"mode": "interval", "interval": 1},
+        "mode": "SERVER",
+    }
+
+
+def batch_tag_ids() -> dict[str, str]:
+    """Tag name -> tag id of the engine's FUXA Server tags (stable across builds)."""
+    return {t.name: uid("t_", f"fuxa-server/{t.name}") for t in BATCH_TAGS}
+
+
+def batch_server_device(recipe: BatchRecipe) -> ServerDevice:
+    """The ``FuxaServer`` device with the engine's tags. Restored tags keep the
+    batch state across a FUXA restart (FUXA stores them as current values);
+    historian tags also go to the DAQ store."""
+    ids: dict[str, str] = batch_tag_ids()
+    tags: dict[str, ServerTag] = {}
+    for t in BATCH_TAGS:
+        init: str = recipe.name if t.key == "recipe" else ("0" if t.kind == "number" else "")
+        tags[ids[t.name]] = ServerTag(
+            id=ids[t.name],
+            name=t.name,
+            label=t.label,
+            type=t.kind,
+            init=init,
+            description=t.label,
+            daq=TagDaq(enabled=t.historian, changed=t.historian, interval=60, restored=t.persist),
+        )
+    return ServerDevice(
+        id=FUXA_SERVER_ID,
+        name="FUXA Server",
+        enabled=True,
+        type="FuxaServer",
+        property={},
+        polling=1000,
+        tags=tags,
+    )
+
+
+#: The engine's own alarms: (tag key, FUXA severity, text). ISA-18.2 priority:
+#: High for what holds a batch, Medium for wort waiting, Low for a refused start.
+BATCH_ALARMS: tuple[tuple[str, str, str], ...] = (
+    ("alm_timeout", "high", "A batch phase did not complete in time and the batch is held: check the phase's equipment, then Restart or Abort"),
+    ("alm_plc", "high", "The brewhouse PLC did not answer, lost, or aborted a batch phase: check plc-brewhouse, then Restart or Abort"),
+    ("alm_engine", "high", "The batch engine script is failing: see the FUXA log"),
+    ("alm_nofv", "low", "Knockout is waiting for a fermenter that is empty and lined up: the wort stays in the kettle"),
+    ("alm_refused", "info", "A batch start is refused (brewhouse not Idle or a vessel in entry): clear the cause, or Reset to drop the queue"),
+)
+
+
+def build_batch_alarms() -> list[dict[str, Any]]:
+    """One FUXA alarm per engine alarm tag, active while the tag is 1."""
+    ids: dict[str, str] = batch_tag_ids()
+    names: dict[str, str] = {t.key: t.name for t in BATCH_TAGS}
+    alarms: list[dict[str, Any]] = []
+    for key, severity, text in BATCH_ALARMS:
+        alarm: dict[str, Any] = build_alarm(
+            PlantAlarm(name=names[key], fuxa_severity=severity, fuxa_tag_id=ids[names[key]], text=text)
+        )
+        for level in ("highhigh", "high", "low", "info"):
+            alarm[level] = sub_property(severity, level, text, "Batch")
+        alarms.append(alarm)
+    return alarms
+
+
+def _lb(kg: float) -> str:
+    return f"{kg * 2.20462:,.0f} lb"
+
+
+def build_batch_view(recipe: BatchRecipe) -> dict[str, Any]:
+    """The Batch view of scada-fuxa: the operator's Start, Hold, Restart, Abort,
+    and Reset, the batch's state and phase, the queue, the reserved fermenter,
+    the engine's alarms, and the recipe the batch follows."""
+    ids: dict[str, str] = batch_tag_ids()
+    internal: dict[str, str] = {t.name: ids[t.name] for t in BATCH_TAGS}
+    width, height = 820, 560
+    vb: ViewBuilder = ViewBuilder({}, width=width, height=height, internal=internal)
+    vb.text(LEFT, 28, f"Batch: {recipe.name}", size=18, bold=True)
+    rows: tuple[tuple[str, str, int, str], ...] = (
+        ("Batch ID", "BATCH.ID", 0, ""),
+        ("State", "BATCH.STATE_TEXT", 0, ""),
+        ("Phase", "BATCH.PHASE_NAME", 0, ""),
+        ("Status", "BATCH.STATUS", 0, ""),
+        ("Reserved fermenter", "BATCH.FV_NAME", 0, ""),
+        ("Brews queued", "BATCH.QUEUE", 0, ""),
+        ("Brews completed", "BATCH.COMPLETED", 0, ""),
+        ("Batch started", "BATCH.STARTED", 0, ""),
+        ("Phase started", "BATCH.PHASE_STARTED", 0, ""),
+        ("PLC phase state", "BATCH.PLC_STATE", 0, ""),
+        ("Engine heartbeat (Unix s)", "BATCH.HEARTBEAT", 0, ""),
+    )
+    for i, (caption, tag, digits, unit) in enumerate(rows):
+        y: int = 66 + 26 * i
+        vb.text(LEFT, y, caption, size=12)
+        vb.value(LEFT + 190, y, tag, digits=digits, unit=unit, anchor="start")
+    y0: int = 66 + 26 * len(rows) + 14
+    vb.text(LEFT, y0, "PLC phase state: 0 Idle, 1 Running, 2 Holding, 3 Held, 4 Restarting, 5 Complete, 6 Aborted", size=11)
+    vb.text(LEFT, y0 + 40, "Operator", size=12, bold=True)
+    for i, (caption, code) in enumerate((("Start", 1), ("Hold", 2), ("Restart", 3), ("Abort", 4), ("Reset", 5))):
+        vb.button(LEFT + 90 + 100 * i, y0 + 20, 90, 32, caption, "BATCH.CMD", code)
+    vb.text(LEFT, y0 + 84, "Alarms", size=12, bold=True)
+    for i, (key, _severity, _text) in enumerate(BATCH_ALARMS):
+        lx: int = LEFT + 100 + 110 * i
+        vb.lamp(lx, y0 + 80, f"BATCH.{key.upper()}", "#e53935")
+        vb.text(lx + 14, y0 + 84, key.removeprefix("alm_").capitalize(), size=11)
+    vb.text(LEFT, y0 + 118, "Phases", size=12, bold=True)
+    for i, p in enumerate(PHASES):
+        px: int = LEFT + 40 + 74 * i
+        vb.number_lamp(px, y0 + 114, "BATCH.PHASE", p.number, "#1e88e5")
+        vb.text(px, y0 + 138, p.name.replace("_", " ").lower(), size=9, anchor="middle")
+    recipe_lines: list[str] = [
+        f"Grain bill {_lb(recipe.grain_kg)}, strike water {recipe.strike_temp_f:g} F, sparge at {recipe.sparge_temp_f:g} F",
+        "Mash: " + ", then ".join(f"{s.name} {s.temp_f:g} F for {s.minutes} min" for s in recipe.mash),
+        f"Boil {recipe.boil_minutes} min, whirlpool stand {recipe.whirlpool_minutes} min at {recipe.whirlpool_temp_f:g} F, knockout and pitch at {recipe.pitch_temp_f:g} F",
+    ]
+    for i, line in enumerate(recipe_lines):
+        vb.text(LEFT, y0 + 172 + 20 * i, line, size=12)
+    view_id: str = uid("v_", "Batch")
+    return {
+        "id": view_id,
+        "name": "Batch",
+        "profile": {
+            "width": width,
+            "height": height,
+            "bkcolor": "#f5f5f5ff",
+            "margin": 10,
+            "align": "topCenter",
+            "gridType": "fixed",
+            "viewRenderDelay": 0,
+        },
+        "items": {k: g.model_dump() for k, g in vb.items.items()},
+        "variables": {},
+        "svgcontent": vb.svg_content(),
+        "type": "svg",
+    }
+
+
+def check_batch_tags(tags: dict[str, PlantTag]) -> None:
+    """Every plant tag the engine uses must be in the tag list."""
+    missing: list[str] = sorted(
+        name for key, name in batch_names().items()
+        if not name.startswith("BATCH.") and name not in tags
+    )
+    if missing:
+        raise SystemExit(f"the batch engine needs these tags, missing from the tag list: {missing}")
+
+
 def build_plant_project(variant: str, host: str) -> Project:
     gen: Path = PLANT_GENERATED / variant
     path: Path = gen / "fuxa" / f"{host}-tags.json"
@@ -706,17 +1311,34 @@ def build_plant_project(variant: str, host: str) -> Project:
         views.append(build_cellar_view(tags))
     hand_laid: frozenset[str] = frozenset(v["name"] for v in views)
     views += [build_device_view(d, tags, hand_laid) for d in plant.devices]
+    devices: dict[str, FuxaDevice | ServerDevice] = {
+        d.id: d for d in (convert_plant_device(d) for d in plant.devices)
+    }
+    project_alarms: list[dict[str, Any]] = [
+        build_plant_alarm(a) for a in alarms.alarms if a.fuxa_tag_id in ids
+    ]
+    scripts: list[dict[str, Any]] = []
+    if host == "scada-fuxa" and BATCH_PLC_STATE_TAG in tags:
+        # The brewhouse PLC is here, so the ISA-88 batch engine sequences it:
+        # its script, its FUXA Server tags and alarms, and the Batch view.
+        check_batch_tags(tags)
+        recipe: BatchRecipe = load_batch_recipe()
+        brewhouse: int = next((i for i, v in enumerate(views) if v["name"] == "Brewhouse"), -1)
+        views.insert(brewhouse + 1, build_batch_view(recipe))
+        devices[FUXA_SERVER_ID] = batch_server_device(recipe)
+        project_alarms += build_batch_alarms()
+        scripts.append(batch_script(recipe))
     names: list[str] = [v["name"] for v in views]
     if len(set(names)) != len(names):
         # FUXA finds a view by its name, so a second one of the same name
         # cannot be opened by URL.
         raise SystemExit(f"two views of {host} share a name: {sorted(names)}")
-    devices: list[FuxaDevice] = [convert_plant_device(d) for d in plant.devices]
     return Project(
         name=f"cherrymountain-{variant}-{host}",
         hmi={"layout": build_plant_layout(views), "views": views},
-        devices={d.id: d for d in devices},
-        alarms=[build_plant_alarm(a) for a in alarms.alarms if a.fuxa_tag_id in ids],
+        devices=devices,
+        alarms=project_alarms,
+        scripts=scripts,
     )
 
 

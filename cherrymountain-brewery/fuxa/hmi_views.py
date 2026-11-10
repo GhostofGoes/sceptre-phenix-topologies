@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import NamedTuple
 
 from hmi_base import PlantTag, uid
-from hmi_kit import BODY, DIM, INK, LIVE, MEDIA, RULE, WHITE, Alarm, Canvas, Screen
+from hmi_kit import BAND, BODY, DIM, INK, LIVE, MEDIA, RULE, WHITE, Alarm, Canvas, Screen
 
 WIDTH: int = 1240
 HEIGHT: int = 820
@@ -489,11 +489,41 @@ def cellar(plant: Plant) -> Screen:
             c.state_circle(x, 740, 6, f"CEL.ENTRY.XS0{k + 1}.LOCKED")
             c.flags(x + 9, 728, f"CEL.ENTRY.XA0{k + 1}.PV")
     else:
+        _legend(c, 790, 90)
         c.card(890, 520, 330, 284, "This plant")
         c.label(906, 558, "Four fermenters on plc-cellar.", size=11)
         c.label(906, 578, "Set a side or cone temperature in the", size=11)
         c.label(906, 596, "box under its fermenter.", size=11)
     return c.screen(VIEW_ID["Cellar"])
+
+
+def _legend(c: Canvas, x: float, y: float) -> None:
+    """How to read the Cellar, drawn where the ci plant has no bright tanks."""
+    c.card(x, y, 430, 330, "Reading this screen")
+    for k, (color, text) in enumerate(((MEDIA["wort"], "wort, 9 °P or more"), ("#C99F45", "fermenting"),
+                                       (MEDIA["beer"], "beer, under 4 °P"), (BODY, "empty"))):
+        c.rect(x + 16 + k * 104, y + 34, 18, 18, fill=color, width=1)
+        c.label(x + 40 + k * 104, y + 47, text, size=10, color=INK)
+    c.label(x + 16, y + 74, "A fermenter's color is what it holds, from its extract.", size=10)
+    c.rect(x + 16, y + 92, 6, 30, fill=MEDIA["glycol"], width=1)
+    c.rect(x + 28, y + 92, 6, 30, fill=WHITE, width=1)
+    c.label(x + 44, y + 104, "A jacket band is filled while its glycol valve is open,", size=10, color=INK)
+    c.label(x + 44, y + 118, "and empty while it is closed.", size=10, color=INK)
+    # a scale, labeled
+    sx, sy = x + 30, y + 150
+    c.rect(sx, sy, 10, 110, fill=WHITE, stroke=DIM, width=1)
+    c.rect(sx, sy + 30, 10, 50, fill=BAND, stroke="none", width=0)
+    c.rect(sx, sy, 10, 110, fill="none", stroke=DIM, width=1)
+    c.path(f"M{sx - 4:g} {sy + 14:g} L{sx + 10:g} {sy + 14:g}", width=1.5)
+    c.path(f"M{sx - 2:g} {sy + 52:g} L{sx + 12:g} {sy + 52:g} l7 -5 l0 10 l-7 -5 Z", fill=INK)
+    c.path(f"M{sx - 8:g} {sy + 60:g} l6 4 l-6 4 Z", fill=WHITE, width=1)
+    for ly, text in ((sy + 18, "a line is an alarm limit"), (sy + 56, "the pointer is the value"),
+                     (sy + 76, "the hollow marker on the left is the setpoint"),
+                     (sy + 96, "the shaded band is the normal range")):
+        c.label(sx + 34, ly, text, size=10, color=INK)
+    c.label(x + 16, y + 286, "A shape with a number beside a value is an active alarm:", size=10)
+    c.label(x + 16, y + 302, "1 critical (square), 2 high, 3 medium, 4 low (diamond). Hold the", size=10)
+    c.label(x + 16, y + 318, "pointer on it for its text. The bell in the header lists them all.", size=10)
 
 
 def _fermenter(c: Canvas, x: float, y: float, fv: str, n: int, whole: bool) -> None:
@@ -920,8 +950,7 @@ def power(plant: Plant) -> Screen:
     c.label(1030, 712, "fuel %", size=10)
     c.number(1200, 712, "PWR.GEN.LT01.PV", digits=0, size=12)
     c.hbar(1030, 718, 170, 12, "PWR.GEN.LT01.PV", 0, 100, normal=(25, 100), color=MEDIA["hot"])
-    c.flags(1030, 742, "PWR.GEN.ZS01.PV")
-    c.flags(1064, 742, "PWR.GEN.LT01.PV")
+    c.flags(1030, 742, "PWR.GEN.LT01.PV")
     status(c, 1030, 784, "Remote start (exercise)", "PWR.GEN.HS01.CMD")
 
     c.trend(20, 470, 480, 334, "Sources kW, last hour", [

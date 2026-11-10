@@ -733,7 +733,8 @@ class Canvas(ViewBuilder):
         options: Json = {
             "type": 1, "minValue": lo, "maxValue": hi, "animationSpeed": 40,
             "colorStart": LIVE, "colorStop": LIVE, "gradientType": "", "strokeColor": BODY,
-            "pointer": {"length": 0.5, "strokeWidth": 0.035, "iconScale": 1.0, "color": "rgba(0,0,0,0)"},
+            # a donut draws no pointer, but FUXA writes the number in the pointer's color
+            "pointer": {"length": 0.5, "strokeWidth": 0.035, "iconScale": 1.0, "color": INK},
             "angle": 0.15, "lineWidth": 0.14, "radiusScale": 0.9, "fontSize": 20, "fontFamily": "Sans-serif",
             "textFilePosition": 30, "limitMax": False, "limitMin": False, "highDpiSupport": True,
             "backgroundColor": "rgba(255, 255, 255, 0)", "shadowColor": "#d5d5d5", "fractionDigits": digits,

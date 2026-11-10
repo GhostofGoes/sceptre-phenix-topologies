@@ -545,37 +545,8 @@ pinned 1.3.6 server running the generated projects, the HMI pictures come from t
 range's own `cm-kiosk` script, and cm-viz is this repository's page. What is staged
 is data, and each caption says where its values came from. The parts that could not
 run here are listed in [Not captured yet](#not-captured-yet). The scripts that take
-the pictures are in [docs/examples/capture](docs/examples/capture/README.md).
-
-**Where the values come from.**
-
-- **cm-viz** runs the real federates in one process (`cherrymountain_sim.local`, no
-  HELICS) and plays one of the scenarios of `viz/cherrymountain_viz/scenarios.py`.
-  The weather is the simulation's synthetic Denver year, because the TMY3 file is not
-  on the machine that took the pictures.
-- **FUXA** is a real server with the unchanged `fuxa/full/*-project.json` (only the
-  devices' addresses were changed to loopback) and the range's own
-  `cm-fuxa-provision.sh`. Behind it a stand-in plant serves values over OPC UA,
-  Modbus TCP, S7, and BACnet/IP in place of the PLCs and building controllers. Every
-  tag the I/O map ties to a federate value shows that value from the offline
-  simulation. The fermentation profile is something the PLC computes, so it is staged
-  from the offline cellar's state: the profile is on for all four fermenters; a
-  fermenter's stage is 0 when its extract is under 0.5 °P, 1 at 5 °P or more, 3 under
-  5 °P with the side temperature under 60 °F, and 2 otherwise; and its setpoints are
-  66 °F for stage 0 or 1, 70 °F for stage 2, and 34 °F for stage 3, which is what the PLC
-  writes with the profile on. The bright tanks' setpoints are the targets of the
-  offline cellar's built-in operator, and the other setpoints are the numbers the PLC
-  programs start with. A high, high-high, or state alarm bit is 1 when the simulated
-  value is past its limit in `alarms.json` (the PLC's on-delay is not applied). Low
-  and deviation alarms, and everything else a PLC program would compute (PackML line
-  state and totals, shift OEE, entry permits), read 0. The offline cellar has a crew
-  that racks finished fermenters into BBT-201, moves bright beer to BBT-202, and cleans
-  vessels, and the filler holds when it has no product, so fills, tank levels, and the
-  line's states depend on the time of day.
-- Unless a caption says otherwise the plant is at 11:00 on its first Wednesday
-  (simulated time) with nothing injected; the packaging pictures are from 08:00, when
-  the line has beer to fill. The FUXA and HMI pictures are saved with a
-  256-color palette to keep the files small.
+the pictures, and the rules for the staged values, are in
+[docs/examples/capture](docs/examples/capture/README.md#where-the-values-come-from).
 
 ### SCADA (scada-fuxa)
 

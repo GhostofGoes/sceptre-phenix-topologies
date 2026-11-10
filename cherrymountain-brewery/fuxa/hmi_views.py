@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import NamedTuple
 
 from hmi_base import PlantTag, uid
-from hmi_kit import BAND, BODY, DIM, INK, LIVE, MEDIA, RULE, WHITE, Alarm, Canvas, Screen
+from hmi_kit import BAND, BODY, CARD, DIM, INK, LIVE, MEDIA, RULE, WHITE, Alarm, Canvas, Screen
 
 WIDTH: int = 1240
 HEIGHT: int = 820
@@ -970,51 +970,177 @@ def power(plant: Plant) -> Screen:
 # ---------------------------------------------------------------- CO2 and the building
 
 
+#: The CO2 tiers, ppm: a sensor's bar is cut at them.
+CO2_STEPS: tuple[float, ...] = (0.0, 5000.0, 15000.0, 30000.0)
+#: The cellar's plan: the room's size, and where the vessels stand in it.
+ROOM_W: int = 610
+ROOM_H: int = 350
+
+
+def _co2_sensor(c: Canvas, x: float, y: float, caption: str, tag: str, w: float = 166) -> None:
+    """One CO2 sensor: what it reads, and the reading against the three tiers."""
+    c.rect(x, y, w, 74, fill=CARD, stroke=RULE, width=1, radius=4)
+    c.label(x + 8, y + 14, caption, size=9)
+    c.number(x + 74, y + 38, tag, digits=0, size=20)
+    c.label(x + 77, y + 38, "ppm", size=9)
+    c.flags(x + w - 38, y + 6, tag, step=16)
+    c.steps(x + 10, y + 46, w - 20, 9, tag, CO2_STEPS, MEDIA["co2"])
+
+
 def _co2_room(c: Canvas, x: float, y: float) -> None:
-    """The cellar as a room seen from above: the vessels, the four CO2 sensors
-    where they hang, and the purge fans in the wall."""
-    c.rect(x, y, 700, 330, fill=WHITE, stroke=INK, width=3)
-    c.label(x + 4, y - 8, "Cellar, from above. CO2 is heavier than air: it pools at the floor.", size=10)
+    """The cellar as a room seen from above: the CO2 header along the wall, the
+    vessels (a ring around one that is venting, a flag at one whose relief valve
+    lifted), the four low sensors where they hang, and the purge fans in the
+    wall. The vessels' own points are plc-cellar's: the building's HMI does not
+    have them and draws the vessels alone."""
+    c.rect(x, y, ROOM_W, ROOM_H, fill=WHITE, stroke=INK, width=3)
+    c.label(x + 4, y - 8, "Cellar, from above. CO2 is heavier than air: it pools at the floor, where the sensors hang.",
+            size=10)
+    process: bool = c.has("CEL.FV101.ZSO01.PV", "UTL.CO2.ZSO01.PV")
+    if process:
+        c.pipe_run([(x + 2, y + 24), (x + 556, y + 24)], "co2", 4, flow="UTL.CO2.ZSO01.PV")
+        for dx in (460, 540):
+            c.path(f"M{x + dx:g} {y + 24:g} L{x + dx:g} {y + 70:g}", stroke=INK, width=5)
+            c.path(f"M{x + dx:g} {y + 24:g} L{x + dx:g} {y + 70:g}", stroke=MEDIA["co2"], width=3)
+        c.label(x + 12, y + 42, "CO2 header", size=9)
     for i in range(4):
-        c.path(f"M{x + 90 + i * 100:g} {y + 80:g} m-36 0 a36 36 0 1 0 72 0 a36 36 0 1 0 -72 0", fill=BODY)
-        c.label(x + 90 + i * 100, y + 84, f"FV-10{i + 1}", size=10, color=INK, anchor="middle")
+        cx: float = x + 70 + i * 95
+        if process:
+            c.ring(cx, y + 104, 40, f"CEL.FV10{i + 1}.ZSO01.PV", MEDIA["co2"])
+        c.path(f"M{cx:g} {y + 104:g} m-34 0 a34 34 0 1 0 68 0 a34 34 0 1 0 -68 0", fill=BODY)
+        c.label(cx, y + 102, f"FV-10{i + 1}", size=10, color=INK, anchor="middle", bold=True)
+        if process:
+            c.word(cx, y + 116, f"CEL.FV10{i + 1}.ZSO01.PV", {1: "venting"}, size=9, anchor="middle", bold=False)
+            c.flags(cx + 22, y + 62, f"CEL.PSV.ZSH0{i + 1}.PV")
     for j in range(2):
-        c.path(f"M{x + 540 + j * 80:g} {y + 80:g} m-30 0 a30 30 0 1 0 60 0 a30 30 0 1 0 -60 0", fill=BODY)
-        c.label(x + 540 + j * 80, y + 84, f"BBT-20{j + 1}", size=9, color=INK, anchor="middle")
-    for i, (sx, sy) in enumerate(((90, 200), (290, 200), (490, 200), (290, 286))):
-        tag: str = f"FAC.VENT.AT0{i + 1}.PV"
-        c.rect(x + sx - 62, y + sy - 30, 124, 56, fill="#FBFBFC", stroke=RULE, width=1, radius=4)
-        c.label(x + sx - 54, y + sy - 14, f"CO2 sensor {i + 1}", size=9)
-        c.number(x + sx + 4, y + sy + 12, tag, digits=0, size=20)
-        c.label(x + sx + 7, y + sy + 12, "ppm", size=9)
-        c.flags(x + sx + 30, y + sy - 26, tag, step=16)
-    c.label(x + 690, y + 150, "wall", size=9, anchor="end")
-    for k, fy in enumerate((y + 200, y + 280)):
-        c.fan(x + 700, fy, f"FAC.VENT.FAN0{k + 1}.PV", r=16)
-        c.label(x + 724, fy - 8, f"purge fan {k + 1}", size=10, color=INK)
-        c.arrow(x + 760, fy + 12, "right", color=DIM)
+        cx = x + 460 + j * 80
+        c.path(f"M{cx:g} {y + 104:g} m-30 0 a30 30 0 1 0 60 0 a30 30 0 1 0 -60 0", fill=BODY)
+        c.label(cx, y + 108, f"BBT-20{j + 1}", size=9, color=INK, anchor="middle", bold=True)
+        if process:
+            c.flags(cx + 20, y + 66, f"CEL.PSV.ZSH0{j + 5}.PV")
+    for i, (sx, sy) in enumerate(((12, 166), (188, 166), (364, 166), (188, 258))):
+        _co2_sensor(c, x + sx, y + sy, f"CO2 sensor {i + 1}", f"FAC.VENT.AT0{i + 1}.PV")
+    for k, fy in enumerate((y + 214, y + 300)):
+        c.label(x + ROOM_W - 6, fy - 24, f"purge fan {k + 1}", size=10, color=INK, anchor="end")
+        c.fan(x + ROOM_W, fy, f"FAC.VENT.FAN0{k + 1}.PV", r=16)
+        c.path(f"M{x + ROOM_W + 20:g} {fy:g} L{x + ROOM_W + 36:g} {fy:g}", stroke=DIM, width=2)
+        c.arrow(x + ROOM_W + 42, fy, "right", color=DIM, size=5)
+    if process:
+        c.label(x + 4, y + ROOM_H + 16,
+                "A ring around a fermenter: its spunding valve is venting. A flag at a vessel: its relief valve lifted.",
+                size=10)
+
+
+def _co2_ladder(c: Canvas, x: float, y: float, operate: bool) -> float:
+    """What the detection does at each tier, and whether it happened: a lamp for
+    the tier, then a lamp (or the fan itself) for each thing the tier's relay
+    does. ``operate`` adds the building HMI's buttons. Returns the y under it."""
+    def tier(ty: float, n: int, limit: str, what: str) -> None:
+        c.state_circle(x + 9, ty - 5, 8, f"FAC.VENT.AY01.TIER{n}")
+        c.label(x + 26, ty, f"Tier {n}", size=13, color=INK, bold=True)
+        c.label(x + 74, ty, f"{limit} ppm: {what}", size=11)
+
+    def effect(ey: float, caption: str, tag: str | None = None) -> None:
+        c.path(f"M{x + 9:g} {ey - 16:g} L{x + 9:g} {ey - 4:g} L{x + 22:g} {ey - 4:g}", stroke=RULE, width=1.5)
+        if tag is None:
+            c.label(x + 30, ey, caption, size=11)
+        else:
+            status(c, x + 28, ey, caption, tag)
+
+    tier(y, 1, "5,000", "purge the cellar")
+    c.flags(x + 250, y - 12, "FAC.VENT.AY01.TIER1")
+    for k in range(2):
+        fy: float = y + 26 + k * 28
+        c.path(f"M{x + 9:g} {fy - 18:g} L{x + 9:g} {fy - 4:g} L{x + 22:g} {fy - 4:g}", stroke=RULE, width=1.5)
+        c.fan(x + 38, fy - 4, f"FAC.VENT.FAN0{k + 1}.PV", r=10)
+        c.label(x + 56, fy, f"Purge fan {k + 1} running", size=11, color=INK)
+        if operate:
+            c.button(x + 196, fy - 17, 54, 24, "Run", f"FAC.VENT.FAN0{k + 1}.CMD", 1)
+            c.button(x + 256, fy - 17, 54, 24, "Stop", f"FAC.VENT.FAN0{k + 1}.CMD", 0)
+    y2: float = y + 92
+    tier(y2, 2, "15,000", "stop adding CO2")
+    if c.has("CEL.SYS.XS01.CO2_INHIBIT"):
+        effect(y2 + 24, "Carbonation inhibited (plc-cellar)", "CEL.SYS.XS01.CO2_INHIBIT")
+    else:
+        effect(y2 + 24, "The cellar relay opens: plc-cellar stops carbonating")
+    y3: float = y2 + 58
+    tier(y3, 3, "30,000", "evacuate, and shut the supply")
+    effect(y3 + 24, "Horns and strobes", "FAC.VENT.XA01.CMD")
+    if operate:
+        c.button(x + 196, y3 + 7, 54, 24, "Sound", "FAC.VENT.XA01.CMD", 1)
+        c.button(x + 256, y3 + 7, 54, 24, "Silence", "FAC.VENT.XA01.CMD", 0)
+    under: float = y3 + 24
+    if c.has("UTL.CO2.XS02.SHUTOFF"):
+        effect(under + 24, "CO2 supply shut off (latched)", "UTL.CO2.XS02.SHUTOFF")
+        under += 24
+    else:
+        effect(under + 24, "The shutoff relay opens: plc-utilities closes the CO2 supply")
+        under += 24
+    c.path(f"M{x:g} {under + 14:g} L{x + 310:g} {under + 14:g}", stroke=RULE, width=1)
+    c.label(x, under + 32, "THE RELAYS (LIT: HEALTHY, AND HOLDING THE CO2 ON)", size=9, bold=True)
+    under += 54
+    if c.has("CEL.SYS.XS01.CO2_OK"):
+        status(c, x, under, "Cellar relay, as plc-cellar reads it", "CEL.SYS.XS01.CO2_OK")
+        under += 24
+    status(c, x, under, "Shutoff relay, as the building drives it", "FAC.VENT.XS01.SHUTOFF_OK")
+    if c.has("UTL.CO2.XS01.CO2_OK"):
+        under += 24
+        status(c, x, under, "Shutoff relay, as plc-utilities reads it", "UTL.CO2.XS01.CO2_OK")
+    return under
+
+
+def _co2_areas(c: Canvas, x: float, y: float, w: float = 174) -> None:
+    """The three sensors beyond the cellar, side by side, and their tier 1."""
+    for k, name in enumerate(("Bulk CO2 tank", "Filler", "Cold room")):
+        _co2_sensor(c, x + k * (w + 10), y, name, f"FAC.VENT.AT0{k + 5}.PV", w)
+    status(c, x, y + 98, "Tier 1 at one of them: the area exhaust fans run", "FAC.VENT.AY02.TIER1")
 
 
 def co2(plant: Plant) -> Screen:
-    """Cellar CO2, as SCADA reads it from the building's controllers: read only."""
+    """Cellar CO2, as SCADA reads it from the building's controllers and from
+    the two PLCs the detection's relays are wired to: read only."""
     c: Canvas = canvas("Cellar CO2", plant)
     c.title(20, 30, "Cellar CO2")
-    c.label(140, 30, "life safety, read from the building system; this screen operates nothing", size=12)
-    _co2_room(c, 30, 80)
-    c.card(880, 60, 340, 350, "Alarm tiers")
-    for k, (text, tag) in enumerate((("Tier 1: 5,000 ppm, purge fans on", "FAC.VENT.AY01.TIER1"),
-                                     ("Tier 2: 15,000 ppm, carbonation inhibited", "FAC.VENT.AY01.TIER2"),
-                                     ("Tier 3: 30,000 ppm, evacuate; CO2 supply shut off", "FAC.VENT.AY01.TIER3"))):
-        status(c, 896, 100 + k * 30, text, tag, r=6)
-    status(c, 896, 206, "Tier 1 at the bulk tank, filler, or cold room", "FAC.VENT.AY02.TIER1")
-    status(c, 896, 234, "Horns and strobes", "FAC.VENT.XA01.CMD")
-    status(c, 896, 262, "CO2 shutoff relay energized (healthy)", "FAC.VENT.XS01.SHUTOFF_OK")
-    c.label(896, 304, "CO2 in the other areas", size=10)
-    for k, name in enumerate(("Bulk CO2 tank", "Filler", "Cold room")):
-        row(c, 896, 330 + k * 24, name, f"FAC.VENT.AT0{k + 5}.PV", 0, "ppm", 190)
-    c.trend(30, 440, 1190, 364, "CO2 at the four cellar sensors, ppm, last hour", [
+    c.label(140, 30, "life safety: where the CO2 comes from, what the sensors read, and what the detection has done."
+            " This screen operates nothing.", size=12)
+
+    # -- the supply, left of the room it feeds
+    c.card(20, 50, 190, 392, "CO2 supply")
+    c.pipe_run([(70, 124), (70, 100), (250, 100)], "co2", 4, flow="UTL.CO2.ZSO01.PV")
+    vessel(c, 40, 124, 60, 130, "UTL.CO2.LT01.PV", "co2")
+    c.label(70, 272, "bulk tank", size=10, anchor="middle")
+    c.number(82, 196, "UTL.CO2.LT01.PV", digits=0, size=15)
+    c.label(84, 196, "%", size=10, color=INK)
+    c.flags(63, 206, "UTL.CO2.LT01.PV")
+    c.valve(150, 100, "UTL.CO2.ZSO01.PV")
+    c.label(150, 84, "shutoff valve", size=9, anchor="middle")
+    c.gauge(150, 150, 12, 90, "UTL.CO2.PT02.PV", 0, 100, normal=(50, 70), digits=0, unit="psig", caption="Header")
+    row(c, 36, 310, "Tank", "UTL.CO2.PT01.PV", 0, "psig", 110)
+    status(c, 36, 344, "Valve open", "UTL.CO2.ZSO01.PV")
+    status(c, 36, 368, "Shut off (latched)", "UTL.CO2.XS02.SHUTOFF")
+    c.label(36, 400, "Reset it on Utilities, once the", size=10)
+    c.label(36, 414, "relay has been healthy for 60 s.", size=10)
+    c.link(30, 386, 170, 36, VIEW_ID["Utilities"], "Utilities")
+
+    _co2_room(c, 250, 76)
+
+    c.card(900, 50, 320, 392, "What the detection has done")
+    c.label(916, 88, "A tier trips when any one cellar sensor reaches it.", size=10)
+    _co2_ladder(c, 916, 120, operate=False)
+
+    c.trend(20, 462, 610, 348, "CO2 at the four cellar sensors, ppm, last hour", [
         (f"FAC.VENT.AT0{i + 1}.PV", f"Sensor {i + 1}", color) for i, color in enumerate(FV_COLORS)
     ])
+    c.card(646, 462, 574, 348, "CO2 in the other areas")
+    _co2_areas(c, 662, 496)
+    c.path("M662 622 L1204 622", stroke=RULE, width=1)
+    c.label(662, 644, "HOW TO READ A SENSOR", size=9, bold=True)
+    c.label(662, 664, "The bar is cut at the three tiers, and each third fills as the reading goes through it:", size=11)
+    c.label(662, 682, "a bar that reaches the first mark is at tier 1, whatever the number of digits.", size=11)
+    c.label(662, 708, "Outdoor air is about 420 ppm. 5,000 ppm is the limit for a whole shift (OSHA),", size=11)
+    c.label(662, 726, "30,000 ppm the limit for 15 minutes (NIOSH).", size=11)
+    c.label(662, 752, "The flags at a sensor are its own alarms (15,000 and 30,000 ppm), which SCADA", size=11)
+    c.label(662, 770, "works out from the reading. The tiers are the building controller's.", size=11)
     return c.screen(VIEW_ID["Cellar CO2"])
 
 
@@ -1072,38 +1198,26 @@ def building(plant: Plant) -> Screen:
 
     # -- ventilation: the hood, the makeup air, the area exhaust
     c.rect(920, 60, 300, 300, fill=WHITE, stroke=INK, width=3)
-    c.label(934, 84, "BREWHOUSE AND OTHER AREAS", size=11, bold=True)
+    c.label(934, 84, "BREWHOUSE VENTILATION", size=11, bold=True)
     c.fan(960, 130, "FAC.VENT.SC01.CMD", r=16, above=1)
     c.label(990, 118, "kettle hood exhaust %", size=10)
     c.hbar(990, 126, 160, 10, "FAC.VENT.SC01.CMD", 0, 100, color=MEDIA["air"])
     c.number(1196, 136, "FAC.VENT.SC01.CMD", digits=0, size=12)
     c.fan(960, 186, "FAC.VENT.MUA01.CMD", r=12)
     c.label(986, 190, "Makeup air unit", size=11, color=INK)
-    c.fan(960, 222, "FAC.VENT.FAN03.CMD", r=12)
-    c.label(986, 226, "Area exhaust fans", size=11, color=INK)
-    row(c, 940, 266, "Makeup air discharge", "FAC.VENT.TT01.PV", 1, "°F", 200)
-    for k, name in enumerate(("Bulk CO2 tank", "Filler", "Cold room")):
-        row(c, 940, 292 + k * 22, f"CO2 at the {name[0].lower()}{name[1:]}", f"FAC.VENT.AT0{k + 5}.PV", 0, "ppm", 200)
+    row(c, 940, 236, "Makeup air discharge", "FAC.VENT.TT01.PV", 1, "°F", 200)
 
     # -- the cellar, with its sensors and fans
     _co2_room(c, 20, 404)
-    c.card(880, 380, 340, 424, "Cellar ventilation")
-    for k, (text, tag) in enumerate((("Tier 1: 5,000 ppm, purge fans on", "FAC.VENT.AY01.TIER1"),
-                                     ("Tier 2: 15,000 ppm, carbonation inhibited", "FAC.VENT.AY01.TIER2"),
-                                     ("Tier 3: 30,000 ppm, evacuate; CO2 supply shut off", "FAC.VENT.AY01.TIER3"))):
-        status(c, 896, 420 + k * 28, text, tag, r=6)
-    status(c, 896, 518, "Tier 1 at the bulk tank, filler, or cold room", "FAC.VENT.AY02.TIER1")
-    status(c, 896, 546, "CO2 shutoff relay energized (healthy)", "FAC.VENT.XS01.SHUTOFF_OK")
-    status(c, 896, 574, "Horns and strobes", "FAC.VENT.XA01.CMD")
-    c.button(1070, 558, 62, 26, "Sound", "FAC.VENT.XA01.CMD", 1)
-    c.button(1138, 558, 62, 26, "Silence", "FAC.VENT.XA01.CMD", 0)
-    for k in range(2):
-        y: float = 626 + k * 40
-        c.label(896, y, f"Purge fan {k + 1}", size=11, color=INK)
-        c.button(990, y - 18, 62, 26, "Run", f"FAC.VENT.FAN0{k + 1}.CMD", 1)
-        c.button(1058, y - 18, 62, 26, "Stop", f"FAC.VENT.FAN0{k + 1}.CMD", 0)
-        c.state_circle(1140, y - 5, 6, f"FAC.VENT.FAN0{k + 1}.PV")
-        c.label(1152, y, "running", size=10, color=INK)
+    c.card(690, 380, 530, 430, "Cellar CO2: what the detection has done")
+    c.label(706, 418, "A tier trips when any one cellar sensor reaches it.", size=10)
+    _co2_ladder(c, 706, 450, operate=True)
+    c.label(1040, 418, "CO2 IN THE OTHER AREAS", size=9, bold=True)
+    for k, name in enumerate(("Bulk CO2 tank", "Filler", "Cold room")):
+        _co2_sensor(c, 1040, 430 + k * 82, name, f"FAC.VENT.AT0{k + 5}.PV")
+    status(c, 1040, 696, "Tier 1 at one of them", "FAC.VENT.AY02.TIER1")
+    c.fan(1052, 722, "FAC.VENT.FAN03.CMD", r=10)
+    c.label(1070, 726, "Area exhaust fans", size=11, color=INK)
     return c.screen(VIEW_ID["Building"])
 
 

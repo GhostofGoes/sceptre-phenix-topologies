@@ -102,8 +102,8 @@ projects at pre-start, so these files are for review and for the `--check`.
 | 2 | Packaging | The line from glass to cases with each machine's PackML state, the line's commands, the keg line |
 | 2 | Utilities | Glycol, steam, air, CO2 supply, water, wastewater neutralization, and the CIP skid with its steps |
 | 2 | Power | The one-line diagram: service, switchboard, PV, battery, feeders, transfer switch, generator, demand |
-| 2 | Cellar CO2 | The cellar from above with its four CO2 sensors, the alarm tiers, and the last hour (read only) |
-| 2 | Building (bas-fuxa) | The building as a plan: taproom and RTU-1, cold room, hood and area exhaust, the cellar's sensors and purge fans |
+| 2 | Cellar CO2 | Where the CO2 comes from, what is read, and what the detection did: the supply and its shutoff valve, the cellar from above (a ring around a fermenter that is venting, a flag at a relief valve that lifted, each sensor on a bar cut at the three tiers, the purge fans), each tier with what its relay does and whether it happened, the other areas' sensors, and the last hour (read only) |
+| 2 | Building (bas-fuxa) | The building as a plan: taproom and RTU-1, cold room, the brewhouse hood, and the cellar's plan and tiers as on Cellar CO2, here with the buttons for the purge fans and the horns |
 | 3, 4 | Batch, `... points` | The batch's controls; every tag of a controller |
 
 A screen is 1,240 by 820 px: an HMI station's 1440x900 display less the menu
@@ -128,6 +128,14 @@ Packaging screens by name.
   normal band, each alarm limit of `alarms.json` as a mark, a pointer at the
   value, a hollow marker at the setpoint. A quantity (a level, a charge, a
   valve's opening) is a fill; a vessel's level fills the vessel's own shape.
+  A CO2 reading is a bar cut into equal parts at the three tiers (5,000,
+  15,000, 30,000 ppm), each part filling as the reading goes through it: on
+  one straight scale to 30,000 ppm the first tier would be a sixth of the bar
+  and a normal room a sliver.
+- **A safety action is shown with its effect.** Each CO2 tier is a lamp, and
+  under it is a lamp (or the fan itself) for each thing its relay does, read
+  from the controller that does it: a tier that is lit over an effect that is
+  not is what a failed or defeated interlock looks like.
 - **A control is only on a writable tag.** `Canvas.entry` and `Canvas.button`
   stop the build for a tag that is not `read-write` in the plant model.
 - **A wrong tag name stops the build.** Every element is bound by tag name;
@@ -140,8 +148,8 @@ server against a stand-in plant ([docs/examples/capture](../docs/examples/captur
 |---|---|---|
 | Number | `svg-ext-value` | FUXA takes 0 fraction digits as "not set" and shows the tag's own rounding, so the kit asks for 1 digit on a scaled tag |
 | Lamp | `svg-ext-gauge_semaphore` | One circle whose fill follows `ranges` |
-| Valve, breaker, wire, jacket, a fermenter's contents | `svg-ext-shapes-*` with `ranges` | Any SVG element whose id starts with `svg_`; a range sets its fill, or its stroke for a wire |
-| Fill, pointer, setpoint marker | `svg-ext-shapes-*` with a `moveByTags` action | FUXA moves the element between two positions as the tag goes from one value to another and holds it at the ends. A fill moves behind a `<clipPath>` of the vessel's outline. (`svg-ext-gauge_progress` was not used: it draws an empty bar for a value above its range) |
+| Valve, breaker, wire, jacket, a fermenter's contents, the ring around a venting vessel | `svg-ext-shapes-*` with `ranges` | Any SVG element whose id starts with `svg_`; a range sets its fill, or its stroke for a wire or a ring |
+| Fill, pointer, setpoint marker, a part of a tier bar | `svg-ext-shapes-*` with a `moveByTags` action | FUXA moves the element between two positions as the tag goes from one value to another and holds it at the ends (which is what lets a tier bar be three fills side by side, one for each span). A fill moves behind a `<clipPath>` of the vessel's outline. (`svg-ext-gauge_progress` was not used: it draws an empty bar for a value above its range) |
 | Alarm flag, a state's word | `svg-ext-shapes-*`, `hide: true`, with `show` and `hide` actions | A PLC alarm bit shows its flag at 1; an alarm FUXA evaluates shows it past the limit. A word is one hidden text per state |
 | Fan blades | `svg-ext-shapes-g` with `clockwise` and `stop` | An unseen circle centers the group's box on the hub, which FUXA turns it about |
 | Pipe with flow | `svg-ext-pipe` with `clockwise` and `hidecontent` | FUXA scrolls the dashes with a 20 ms timer per pipe at a fixed speed, so only pipes with a pump, valve, or flow meter behind them move |

@@ -461,6 +461,36 @@ class Canvas(ViewBuilder):
                 mx: float = x + w * (limit - lo) / span
                 self.path(f"M{mx:g} {y - 6:g} L{mx:g} {y + h + 3:g}", stroke=INK, width=1.5)
 
+    def steps(self, x: float, y: float, w: float, h: float, tag_name: str, bounds: tuple[float, ...],
+              color: str = DIM) -> None:
+        """A quantity against a ladder of limits: the bar is cut into equal parts
+        at ``bounds`` (the low end, each limit, the high end) and each part fills
+        as the value goes through it, so a limit that is a small part of the
+        whole range is as easy to see as the last one. The bounds are marked on
+        the bar and written under it."""
+        parts: int = len(bounds) - 1
+        part: float = w / parts
+        self.rect(x, y, w, h, fill=WHITE, stroke=RULE, width=1)
+        for i in range(parts):
+            px: float = x + i * part
+            self.fill(f"M{px:g} {y:g} h{part:g} v{h:g} h{-part:g} Z", px, y, part, h, tag_name,
+                      bounds[i], bounds[i + 1], color, horizontal=True)
+        self.rect(x, y, w, h, fill="none", stroke=DIM, width=1)
+        for i, bound in enumerate(bounds):
+            bx: float = x + i * part
+            if i:
+                self.path(f"M{bx:g} {y - 4:g} L{bx:g} {y + h + 2:g}", stroke=INK, width=1.5)
+            self.label(bx, y + h + 11, f"{bound:,.0f}", size=8,
+                       anchor="start" if i == 0 else "end" if i == parts else "middle")
+
+    def ring(self, cx: float, cy: float, r: float, tag_name: str, color: str = LIVE, width: float = 6) -> None:
+        """A ring around a piece of equipment that is drawn while a bit is 1 (a
+        vessel that is venting)."""
+        self.shape("circle", {"cx": f"{cx:g}", "cy": f"{cy:g}", "r": f"{r:g}", "fill": "none", "stroke": WHITE,
+                              "stroke-width": width},
+                   f"{tag_name} ring", tag_name=tag_name,
+                   ranges=[{"min": -FAR, "max": 0.5, "stroke": WHITE}, {"min": 0.5 + 1.0e-6, "max": FAR, "stroke": color}])
+
     # -- alarms ------------------------------------------------------------------------
 
     def flag(self, x: float, y: float, alarm: Alarm) -> None:

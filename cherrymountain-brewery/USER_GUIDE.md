@@ -427,6 +427,14 @@ How to read a screen:
 - **A scale shows where a value is.** The shaded band is the normal range, a
   line across it is an alarm limit, the black pointer is the value, and the
   hollow triangle on the left is the setpoint.
+- **A CO₂ sensor has a bar cut at the three tiers** (5,000, 15,000, and
+  30,000 ppm). Each third fills as the reading goes through it, so a bar that
+  reaches the first mark is at tier 1. On **Cellar CO2** each tier is a lamp
+  with, under it, what the tier's relay does and whether that happened (the
+  purge fans, the carbonation inhibit, the horns, the supply shutoff). A tier
+  that is lit over an effect that is not means the safety action did not
+  happen. A green ring around a fermenter on the cellar's plan means its
+  spunding valve is venting.
 - **A white box is a value you may change, a button is a command.** What has
   neither can only be read here.
 - **A trend** shows the last hour.
@@ -506,10 +514,11 @@ view and sign in as `operator`.
 ### Building automation (bas-fuxa)
 
 Open `http://localhost:11882`. The **Building** screen is a plan of the
-building: the taproom with its rooftop unit, the cold room, the brewhouse hood
-and area exhaust, and the cellar from above with its four CO₂ sensors and two
-purge fans. It reads like the plant's screens (see above), and **Building
-points** lists every tag. bas-fuxa reads three
+building: the taproom with its rooftop unit, the cold room, the brewhouse hood,
+and the cellar from above with its four CO₂ sensors and two purge fans. Beside
+the cellar are the three CO₂ tiers with what each one does, the buttons for the
+purge fans and the horns, and the sensors of the other areas. It reads like the
+plant's screens (see above), and **Building points** lists every tag. bas-fuxa reads three
 BACnet controllers (`bas-rtu-taproom`, `bas-coldroom`, `bas-vent`). Signed in
 as `operator`, you can command their outputs and setpoints. A command overrides
 the controller's own logic until it is released; FUXA cannot release one, the

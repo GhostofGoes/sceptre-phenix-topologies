@@ -131,6 +131,58 @@ def test_the_process_scada_operates_nothing_in_the_building() -> None:
     assert not kinds & {"svg-ext-html_input", "svg-ext-html_button"}
 
 
+CO2_SCREENS: list[tuple[str, str]] = [("scada-fuxa", "Cellar CO2"), ("bas-fuxa", "Building")]
+
+
+@pytest.mark.parametrize(("host", "name"), CO2_SCREENS)
+def test_a_co2_sensor_bar_is_cut_at_the_three_tiers(host: str, name: str) -> None:
+    """A sensor's bar is three fills side by side, one for each tier's span, and
+    the sensor's own alarm limits are two of the cuts."""
+    view = next(v for v in build_project("full", host)["hmi"]["views"] if v["name"] == name)
+    limits: dict[str, set[float]] = {}
+    for alarm in alarms("full"):
+        if alarm["source"].startswith("FAC.VENT.AT0") and alarm.get("limit") is not None:
+            limits.setdefault(alarm["source"], set()).add(alarm["limit"])
+    for n in range(1, 8):
+        tag: str = f"FAC.VENT.AT0{n}.PV"
+        parts: list[dict[str, Any]] = sorted(
+            (a["options"] for i in view["items"].values() if i["name"] == f"{tag} fill"
+             for a in i["property"]["actions"]),
+            key=lambda o: o["valueMin"],
+        )
+        spans: list[tuple[float, float]] = [(o["valueMin"], o["valueMax"]) for o in parts]
+        assert spans == [(0, 5000), (5000, 15000), (15000, 30000)], tag
+        for before, after in zip(parts, parts[1:], strict=False):
+            assert after["positionMin"] == pytest.approx(before["positionMax"]), tag  # no gap, no overlap
+        assert limits[tag] <= {hi for _lo, hi in spans}, tag
+
+
+def test_each_co2_tier_is_shown_with_what_it_does() -> None:
+    """On Cellar CO2 a tier's lamp stands over its effects, each read from the
+    controller that carries it out, and the plan shows which vessel vents."""
+    view = next(v for v in build_project("full")["hmi"]["views"] if v["name"] == "Cellar CO2")
+    names: set[str] = {i["name"] for i in view["items"].values()}
+    tiers: set[str] = {f"FAC.VENT.AY01.TIER{n}" for n in (1, 2, 3)}
+    effects: set[str] = {
+        "FAC.VENT.FAN01.PV", "FAC.VENT.FAN02.PV",  # tier 1: the purge fans' current switches
+        "CEL.SYS.XS01.CO2_INHIBIT",  # tier 2: plc-cellar's interlock
+        "FAC.VENT.XA01.CMD", "UTL.CO2.XS02.SHUTOFF", "UTL.CO2.ZSO01.PV valve",  # tier 3
+    }
+    relays: set[str] = {"CEL.SYS.XS01.CO2_OK", "FAC.VENT.XS01.SHUTOFF_OK", "UTL.CO2.XS01.CO2_OK"}
+    sources: set[str] = {f"CEL.FV10{n}.ZSO01.PV ring" for n in (1, 2, 3, 4)}
+    assert tiers | effects | relays | sources <= names
+    assert {f"CEL.PSV.ZSH0{n}.ALM_STATE" for n in range(1, 7)} <= names  # a relief valve that lifted
+
+
+def test_the_building_hmi_commands_the_purge_fans_and_the_horns() -> None:
+    view = next(v for v in build_project("full", "bas-fuxa")["hmi"]["views"] if v["name"] == "Building")
+    tags: dict[str, dict[str, Any]] = plant_tags("full", "bas-fuxa")
+    commanded: set[str] = {
+        tags[i["property"]["variableId"]]["name"] for i in view["items"].values() if i["type"] == "svg-ext-html_button"
+    }
+    assert commanded == {"FAC.VENT.FAN01.CMD", "FAC.VENT.FAN02.CMD", "FAC.VENT.XA01.CMD"}
+
+
 def test_a_link_opens_a_view_that_exists(built: tuple[str, str, dict[str, Any]]) -> None:
     _variant, _host, project = built
     view_ids: set[str] = {v["id"] for v in project["hmi"]["views"]}

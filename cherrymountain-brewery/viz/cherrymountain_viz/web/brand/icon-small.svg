@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="t">
+  <title id="t">CherryMountain Brewery</title>
+  <!-- The mark for 16 to 32 px (browser tabs, taskbars): the same bird and summit with the fine parts
+       left out (gold ring, inner feathers, plumes, eye, snow, wave) and the bird drawn larger. -->
+  <defs><clipPath id="sky"><circle cx="32" cy="32" r="27.5"/></clipPath></defs>
+  <circle cx="32" cy="32" r="32" fill="#1B1B1F"/>
+  <g clip-path="url(#sky)">
+    <rect width="64" height="64" fill="#EFEFEF"/>
+    <g transform="translate(32 24) scale(1.28) translate(-32 -24)">
+      <path d="M30.5 25 C26 22 21 18 17.5 12 C17.5 17 18.5 20 20 23 C17.5 22 15.5 22 13.5 22.5 C16 26 18.5 28 21.5 29.5 C19.5 30 18 30.5 16.5 31.5 C21 34 26 33.5 30.5 31 Z" fill="#E2552B"/>
+      <path d="M33.5 25 C38 22 43 18 46.5 12 C46.5 17 45.5 20 44 23 C46.5 22 48.5 22 50.5 22.5 C48 26 45.5 28 42.5 29.5 C44.5 30 46 30.5 47.5 31.5 C43 34 38 33.5 33.5 31 Z" fill="#E2552B"/>
+      <path d="M32 19 C35.2 22 35.6 28 32 36 C28.4 28 28.8 22 32 19 Z" fill="#E2552B"/>
+      <g transform="translate(-1 3)">
+        <path d="M30.2 24 L29.6 19.5 C29.2 17 29.6 14.6 31.2 13.4 C32.8 12.2 35.2 12.4 37 14 L40.4 15.4 C41.4 16.2 41.8 17.4 41.4 19 C40.9 18.2 40.4 17.8 39.8 17.6 L37.6 17.9 C37.2 18.8 36.6 19.4 35.8 19.8 L34.4 20.6 L34 24 Z" fill="#E2552B"/>
+        <path d="M37 14 L40.4 15.4 C41.4 16.2 41.8 17.4 41.4 19 C40.9 18.2 40.4 17.8 39.8 17.6 L37.6 17.9 C37.6 16.6 37.4 15.2 37 14 Z" fill="#F4A93B"/>
+      </g>
+    </g>
+    <path d="M32 36 L8 56 H56 Z" fill="#1B1B1F"/>
+    <rect x="0" y="52" width="64" height="12" fill="#E2552B"/>
+  </g>
+</svg>

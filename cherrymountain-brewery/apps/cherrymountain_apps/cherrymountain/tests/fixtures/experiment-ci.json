@@ -332,6 +332,24 @@
               "src": "/phenix/injects/${BRANCH_NAME}/fuxa/70-fuxa-provision.sh",
               "dst": "/etc/phenix/startup/70-fuxa-provision.sh",
               "permissions": "0755"
+            },
+            {
+              "description": "the brewery's tab icon for FUXA",
+              "src": "/phenix/injects/${BRANCH_NAME}/brand/favicon.ico",
+              "dst": "/opt/fuxa/client/dist/favicon.ico",
+              "permissions": "0644"
+            },
+            {
+              "description": "the brewery's mark for the top of FUXA's menu and its sign-in dialog",
+              "src": "/phenix/injects/${BRANCH_NAME}/brand/icon.svg",
+              "dst": "/opt/fuxa/server/_images/Brand/icon.svg",
+              "permissions": "0644"
+            },
+            {
+              "description": "set FUXA's page title",
+              "src": "/phenix/injects/${BRANCH_NAME}/fuxa/66-fuxa-brand.sh",
+              "dst": "/etc/phenix/startup/66-fuxa-brand.sh",
+              "permissions": "0755"
             }
           ],
           "network": {

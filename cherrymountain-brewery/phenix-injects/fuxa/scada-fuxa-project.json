@@ -13,8 +13,9 @@
       "navigation": {
         "mode": "fix",
         "type": "inline",
-        "bkcolor": "#F4F5F7",
-        "fgcolor": "#1D1D1D",
+        "bkcolor": "#2A2A30",
+        "fgcolor": "#EFEFEF",
+        "logo": "_images/Brand/icon.svg",
         "items": [
           {
             "icon": "dashboard",
@@ -28,12 +29,28 @@
         "title": "CherryMountain Brewery",
         "alarms": "fix",
         "infos": "hide",
-        "bkcolor": "#ffffff",
-        "fgcolor": "#000000",
-        "items": []
+        "bkcolor": "#1B1B1F",
+        "fgcolor": "#EFEFEF",
+        "height": 56,
+        "fontSize": 18,
+        "loginInfo": "username",
+        "items": [
+          {
+            "id": "i_e86f8792-9023-5ca1-b27c-72b3e5d8aaee",
+            "type": "label",
+            "marginLeft": 5,
+            "marginRight": 5,
+            "property": {
+              "text": "CherryMountain Brewery",
+              "events": [],
+              "actions": []
+            }
+          }
+        ]
       },
       "showdev": false,
-      "zoom": "enabled"
+      "zoom": "enabled",
+      "customStyles": "/* The frame of CherryMountain Brewery: header, menu, and sign-in dialog. Colors are the brand tokens. */\n.header {\n  background-image: linear-gradient(#E2552B, #E2552B);\n  background-size: 100% 3px;\n  background-repeat: no-repeat;\n  background-position: left bottom;\n}\n.header .header-items-button button { pointer-events: none; }\n.header .header-items-button .mdc-button__label { font-weight: 700; }\n.header .header-login mat-icon[style*=\"59, 144, 255\"] { color: #F4A93B !important; }\n.sidenav-menu .sidenav-header { height: 56px !important; padding-bottom: 0 !important; }\n.sidenav-menu .sidenav-header img { width: 48px; height: 48px; }\n.mat-mdc-dialog-container:has(app-login) {\n  --mdc-dialog-container-color: #2A2A30;\n  --mdc-dialog-subhead-color: #EFEFEF;\n  --mdc-dialog-supporting-text-color: #EFEFEF;\n}\n.mat-mdc-dialog-container:has(app-login) .mdc-dialog__surface { border-top: 3px solid #E2552B; }\napp-login h1.mat-mdc-dialog-title::before {\n  content: \"\";\n  display: block;\n  width: 48px;\n  height: 48px;\n  margin: 14px 0 10px;\n  background: url(_images/Brand/icon.svg) center / contain no-repeat;\n}\napp-login .my-form-field span { color: #EFEFEF; }\napp-login .my-form-field input { background-color: #1B1B1F; color: #EFEFEF; }\n.mat-mdc-dialog-container app-login .mat-mdc-raised-button.mat-primary {\n  --mdc-protected-button-container-color: #E2552B;\n  --mdc-protected-button-label-text-color: #EFEFEF;\n}\n.mat-mdc-dialog-container app-login .mat-mdc-raised-button.mat-unthemed {\n  --mdc-protected-button-container-color: #55555D;\n  --mdc-protected-button-label-text-color: #EFEFEF;\n}\n"
     },
     "views": [
       {

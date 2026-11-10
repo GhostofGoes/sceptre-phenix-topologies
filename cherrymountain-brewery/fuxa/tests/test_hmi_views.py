@@ -123,6 +123,21 @@ def test_the_kit_refuses_a_control_on_a_read_only_tag() -> None:
         canvas.button(0, 0, 10, 10, "Go", "X.Y.PV", 1)
 
 
+def test_a_setpoint_box_shows_a_scaled_value_with_its_digits(built: tuple[str, str, dict[str, Any]]) -> None:
+    """FUXA's input box takes 0 digits as "not set" and shows up to five
+    decimals (html-input.component.ts: ``toFixed(digit || 5)``), which a narrow
+    box cuts off: a box on a scaled tag asks for at least one."""
+    variant, host, _project = built
+    tags: dict[str, dict[str, Any]] = plant_tags(variant, host)
+    for view in graphics(*built):
+        for item in view["items"].values():
+            if item["type"] != "svg-ext-html_input":
+                continue
+            tag: dict[str, Any] = tags[item["property"]["variableId"]]
+            if (tag.get("divisor") or 1) > 1:
+                assert item["property"]["ranges"][0]["fractionDigits"] >= 1, f'{view["name"]}: {tag["name"]}'
+
+
 def test_the_process_scada_operates_nothing_in_the_building() -> None:
     """scada-fuxa reads the cellar's CO2 from the building controllers; only
     bas-fuxa commands them."""

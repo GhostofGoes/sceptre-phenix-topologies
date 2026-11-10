@@ -411,7 +411,7 @@ def brewhouse(plant: Plant) -> Screen:
     row(c, 646, 610, "Barometric pressure", "BH.KTL.PT01.PV", 1, "psia", 220)
     status(c, 646, 648, "Mash deviation alarm enabled", "BH.MLT.XS01.ACTIVE")
     status(c, 646, 672, "Cold liquor high level", "BH.CLT.LSH01.PV")
-    status(c, 646, 696, "Hot liquor low level", "BH.HLT.LSL01.PV")
+    status(c, 646, 696, "Hot liquor covers the steam jacket", "BH.HLT.LSL01.PV")
     status(c, 646, 720, "Kettle high level", "BH.KTL.LSH01.PV")
     status(c, 646, 752, "Mash tun locked for entry", "BH.ENTRY.XS01.LOCKED")
     c.flags(820, 741, "BH.ENTRY.XA01.PV")

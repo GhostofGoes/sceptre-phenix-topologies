@@ -49,11 +49,11 @@ caption in the README says which.
   (the PLC's on-delay is not applied; a jam alarm stays 0 while the line is Stopped
   or Aborted, as in the PLC). Low and deviation alarms, and everything else a PLC
   program would compute (batch state, the CIP step, entry permits, the power PLC's
-  schedule and load-shed bits, the CO₂ supply's latched shutoff), read 0. The CIP's
+  schedule and load-shed bits), read 0. The CO₂ supply's latched shutoff
+  (`UTL.CO2.XS02.SHUTOFF`) is staged by plc-utilities' rule for one moment: it is 1
+  while the shutoff relay input (`UTL.CO2.XS01.CO2_OK`) is 0. The CIP's
   "held: return flow lost" (`UTL.CIP.XA01.PV`) is listed in the snapshot at 0, because
   no wash runs; it would read 0 without that, and the entry only makes it explicit.
-  (The latched CO₂ shutoff is not staged: in the CO₂ attack the supply valve is shut
-  and the relays are dark, but plc-utilities's latch, "Shut off (latched)", reads 0.)
 - **The bottling line** is also something the PLC computes (`plc-packaging.st`), so
   `fuxa_snapshot.py` applies the program's rules to the machines' values at the one
   moment of the snapshot. The line's state and mode are the filler's. The line's run

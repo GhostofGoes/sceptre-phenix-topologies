@@ -153,7 +153,7 @@ server against a stand-in plant ([docs/examples/capture](../docs/examples/captur
 | Alarm flag, a state's word | `svg-ext-shapes-*`, `hide: true`, with `show` and `hide` actions | A PLC alarm bit shows its flag at 1; an alarm FUXA evaluates shows it past the limit. A word is one hidden text per state |
 | Fan blades | `svg-ext-shapes-g` with `clockwise` and `stop` | An unseen circle centers the group's box on the hub, which FUXA turns it about |
 | Pipe with flow | `svg-ext-pipe` with `clockwise` and `hidecontent` | FUXA scrolls the dashes with a 20 ms timer per pipe at a fixed speed, so only pipes with a pump, valve, or flow meter behind them move |
-| Input box, button | `svg-ext-html_input`, `svg-ext-html_button` | As in the points tables |
+| Input box, button | `svg-ext-html_input`, `svg-ext-html_button` | As in the points tables. An input box takes 0 fraction digits as "not set" too and then shows up to five decimals, which a narrow box cuts off, so the kit asks for 1 digit on a scaled tag |
 | Trend | `svg-ext-html_chart` (`realtime1`, 60 minutes) and an entry of the project's `charts` | It loads what FUXA has stored, then follows live values, so every trended tag has `daq.enabled`. The legend is drawn by the kit; FUXA's own is off (`legendMode: follow` keeps the tooltip) |
 | Dial | `svg-ext-html_bag` (donut) | Shift OEE only |
 | Link | `svg-ext-shapes-rect` with an `onpage` click event | A transparent rectangle over a panel |

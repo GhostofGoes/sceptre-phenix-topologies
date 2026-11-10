@@ -660,8 +660,12 @@ class Canvas(ViewBuilder):
 
     def entry(self, x: float, y: float, tag_name: str, lo: float, hi: float, w: float = 56,
               h: float = 22, digits: int = 1) -> None:
-        """A box that shows a setpoint and writes what the operator enters."""
+        """A box that shows a setpoint and writes what the operator enters. As for
+        a number, FUXA takes 0 digits as "not set" (it then shows up to five
+        decimals), so a scaled value asked for with 0 digits is shown with one."""
         self.writable(tag_name)
+        if digits == 0 and (self.tags[tag_name].divisor or 1) > 1:
+            digits = 1
         key: str = self.key("entry", tag_name, float(x), float(y))
         gid: str = uid("HXI_", key)
         self.svg.append(

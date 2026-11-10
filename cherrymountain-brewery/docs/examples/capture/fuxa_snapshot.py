@@ -71,6 +71,8 @@ a scenario, and writes a JSON file of engineering values by FUXA tag name:
   bit is 0, as in the PLC.
 - **utilities**: ``UTL.CIP.XA01.PV`` (the CIP held for lost return flow) is 0: no wash
   is running at these moments.
+  ``UTL.CO2.XS02.SHUTOFF`` (the CO2 supply shut off, latched) is 1 while the
+  shutoff relay input ``UTL.CO2.XS01.CO2_OK`` is 0, as plc-utilities sets it.
 - every other tag the PLC computes (batch state, the brewhouse's phase parameter and
   mash-in level, CIP step, entry permits, the power PLC's schedule bits, a held-off
   latch) is not in the file, and the stand-in serves 0 for it. (A brew day's phase
@@ -332,6 +334,9 @@ def main() -> int:
     stage_cellar(eng, kind, tags)
     eng["UTL.CIP.XA01.PV"] = 0  # the CIP's return flow is held only in a wash, and none runs
     kind["UTL.CIP.XA01.PV"] = "utilities"
+    # plc-utilities latches the CO2 supply shut off while its shutoff relay input is open
+    eng["UTL.CO2.XS02.SHUTOFF"] = 0 if eng.get("UTL.CO2.XS01.CO2_OK", 1) else 1
+    kind["UTL.CO2.XS02.SHUTOFF"] = "utilities"
     alarms = json.loads((plant / "alarms.json").read_text())["alarms"]
     for a in alarms:
         bit = a["name"]

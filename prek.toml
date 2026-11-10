@@ -368,7 +368,10 @@ priority = "check"
 [[repos.hooks]]
 # The simulation models against hand calculations and published values, the
 # federates, the event API, and the offline federation (DESIGN.md 9.6). HELICS
-# itself is not needed: the tests run the federates without a broker.
+# itself is not needed: the tests run the federates without a broker. The tests
+# that run a PLC program as built (plc-power, and plc-brewhouse with the FUXA batch
+# engine in the loop) need Node, a built strucpp checkout, and g++ (the ones
+# plc/common/build_zip.sh uses) and skip without them.
 id = "cm-sim-tests"
 name = "pytest (cherrymountain_sim)"
 language = "python"
@@ -382,7 +385,7 @@ additional_dependencies = [
     "ht==1.2.0",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(sim/|plant/generated/)'
+files = '^cherrymountain-brewery/(sim/|plant/generated/|plc/|fuxa/)'
 pass_filenames = false
 priority = "check"
 
@@ -425,13 +428,14 @@ additional_dependencies = [
     "pytest==9.2.0",
     "pytest-mock==3.15.1",
 ]
-files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|plc/|phenix-injects/(openplc|otsim)/|phenix-configs/)'
+files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|recipes/|plc/|phenix-injects/(openplc|otsim)/|phenix-configs/)'
 pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
 # The FUXA projects (ci, and full and lite for scada-fuxa and bas-fuxa) are what
-# fuxa/build_project.py builds from the current plantgen output.
+# fuxa/build_project.py builds from the current plantgen output and the BeerJSON
+# recipe the brewhouse batch engine sequences.
 id = "cm-fuxa-check"
 name = "FUXA projects are current (build_project.py --all --check)"
 language = "python"
@@ -439,7 +443,27 @@ entry = "python cherrymountain-brewery/fuxa/build_project.py --all --check"
 additional_dependencies = [
     "pydantic==2.14.3",
 ]
-files = '^cherrymountain-brewery/(fuxa/|plant/)'
+files = '^cherrymountain-brewery/(fuxa/|plant/|recipes/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The brewhouse batch engine (fuxa/batch_engine.js, the script of the scada-fuxa
+# projects), run under Node against a stub of FUXA's script API and a simulator
+# of plc-brewhouse's handshake and the cellar's status, plus the builder's tests
+# for the Batch view, its tags, and its alarms. Node 18 or newer must be on PATH:
+# the CI runners have it, and with CI set a missing Node fails the tests instead of
+# skipping them. The check that the simulator follows the compiled program also
+# needs strucpp and g++, and skips without them.
+id = "cm-fuxa-batch-tests"
+name = "pytest (FUXA batch engine)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/fuxa"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(fuxa/|recipes/|plant/generated/|plc/plc-brewhouse/|sim/tests/st_engine\.py)'
 pass_filenames = false
 priority = "check"
 
@@ -456,7 +480,7 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(sync(_ci)?\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|phenix-injects/(openplc|fuxa)/)'
+files = '^cherrymountain-brewery/(sync(_ci)?\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|recipes/|phenix-injects/(openplc|fuxa)/)'
 pass_filenames = false
 priority = "check"
 

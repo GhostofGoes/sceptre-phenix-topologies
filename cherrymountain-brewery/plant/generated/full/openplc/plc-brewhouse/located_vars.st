@@ -37,7 +37,7 @@ VAR
   BH_MLT_FV02_OUT AT %QW104 : UINT; (* Sparge valve position, %, x10 *)
   BH_MLT_SC01_OUT AT %QW105 : UINT; (* Rake speed reference, %, x10 *)
   BH_MLT_TT01_SP AT %MW1 : UINT; (* Mash step temperature setpoint, degF, x10 *)
-  BH_MLT_XS01_ACTIVE AT %QX0.4 : BOOL; (* Mash step holding (deviation alarm enabled) *)
+  BH_MLT_XS01_ACTIVE AT %QX0.4 : BOOL; (* Mash step at temperature, or 15 min into it (deviation alarm enabled) *)
   BH_KTL_TT01_PV AT %IW112 : UINT; (* Kettle temperature, degF, x10 *)
   BH_KTL_LT01_PV AT %IW113 : UINT; (* Kettle level, %, x10 *)
   BH_KTL_LT01_ALM_HIGH AT %QX0.5 : BOOL; (* Kettle level: high alarm (high) *)

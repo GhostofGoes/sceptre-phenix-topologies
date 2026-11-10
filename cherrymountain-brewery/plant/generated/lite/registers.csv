@@ -416,6 +416,8 @@ UTL.CIP.XS07.PV,binary-read,,,,,,,,plc-utilities,%IX120.4,discrete,2,964,100000,
 UTL.CIP.XS08.PV,binary-read,,,,,,,,plc-utilities,%IX120.5,discrete,2,965,100000,966,read
 UTL.CIP.XS09.PV,binary-read,,,,,,,,plc-utilities,%IX120.6,discrete,2,966,100000,967,read
 UTL.CIP.XS10.PV,binary-read,,,,,,,,plc-utilities,%IX120.7,discrete,2,967,100000,968,read
+UTL.CIP.XA01.PV,binary-read,,,,,,,,plc-utilities,%QX2.4,coil,1,20,000000,21,read
+UTL.CIP.XA01.ALM_STATE,binary-read,,,,,,,,plc-utilities,%QX2.5,coil,1,21,000000,22,read
 PWR.MAIN.JT01.PV,analog-read,kW,1,relay-main,input,30001,4,30001,plc-power,%IW100,input,4,100,300000,101,read
 PWR.MAIN.JT01.ALM_HIGH,binary-read,,,,,,,,plc-power,%QX0.0,coil,1,0,000000,1,read
 PWR.MAIN.JT02.PV,analog-read,kvar,1,relay-main,input,30002,4,30002,plc-power,%IW101,input,4,101,300000,102,read

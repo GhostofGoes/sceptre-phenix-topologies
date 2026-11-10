@@ -614,7 +614,7 @@
     },
     {
       "name": "BH.MLT.XS01.ACTIVE",
-      "desc": "Mash step holding (deviation alarm enabled)",
+      "desc": "Mash step at temperature, or 15 min into it (deviation alarm enabled)",
       "type": "binary-read",
       "area": "BH",
       "unit": "MLT",
@@ -6471,11 +6471,11 @@
     },
     {
       "name": "UTL.CIP.XC01.CIRCUIT",
-      "desc": "CIP circuit selected",
+      "desc": "CIP circuit selected (1 to 7; 0 none)",
       "type": "analog-read-write",
       "range": [
         0.0,
-        8.0
+        7.0
       ],
       "scaling": 0,
       "area": "UTL",
@@ -6513,7 +6513,7 @@
     },
     {
       "name": "UTL.CIP.XS02.ROUTE_OK",
-      "desc": "CIP route verified and return flow proven",
+      "desc": "CIP route verified (the swing panel is on the circuit and the cellar permits it)",
       "type": "binary-read",
       "area": "UTL",
       "unit": "CIP",
@@ -6591,6 +6591,28 @@
       "unit": "CIP",
       "source": "peer",
       "plc": "plc-utilities"
+    },
+    {
+      "name": "UTL.CIP.XA01.PV",
+      "desc": "CIP held: return flow lost (the pumps stay off until Hold and Resume, or Abort)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "alarms": [
+        "UTL.CIP.XA01.ALM_STATE"
+      ]
+    },
+    {
+      "name": "UTL.CIP.XA01.ALM_STATE",
+      "desc": "CIP held: return flow lost (the pumps stay off until Hold and Resume, or Abort): state alarm (medium)",
+      "type": "binary-read",
+      "area": "UTL",
+      "unit": "CIP",
+      "source": "plc",
+      "plc": "plc-utilities",
+      "generated": true
     },
     {
       "name": "PWR.MAIN.JT01.PV",

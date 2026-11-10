@@ -474,7 +474,7 @@
         {
           "id": "t_13d41df9-e19e-54d0-b76f-f5628072f61f",
           "name": "BH.MLT.XS01.ACTIVE",
-          "label": "Mash step holding (deviation alarm enabled)",
+          "label": "Mash step at temperature, or 15 min into it (deviation alarm enabled)",
           "type": "Bool",
           "address": null,
           "variable": "BH_MLT_XS01_ACTIVE",
@@ -5024,7 +5024,7 @@
         {
           "id": "t_617ba051-b57e-5513-8570-171aa15f54ad",
           "name": "UTL.CIP.XC01.CIRCUIT",
-          "label": "CIP circuit selected",
+          "label": "CIP circuit selected (1 to 7; 0 none)",
           "type": "UInt16",
           "memaddress": "400000",
           "address": 108,
@@ -5033,7 +5033,7 @@
           "units": null,
           "range": [
             0.0,
-            8.0
+            7.0
           ]
         },
         {
@@ -5069,7 +5069,7 @@
         {
           "id": "t_bb66ed69-9d1c-5bd1-af34-cb1ec46d7825",
           "name": "UTL.CIP.XS02.ROUTE_OK",
-          "label": "CIP route verified and return flow proven",
+          "label": "CIP route verified (the swing panel is on the circuit and the cellar permits it)",
           "type": "Bool",
           "memaddress": "000000",
           "address": 20,
@@ -5145,6 +5145,24 @@
           "type": "Bool",
           "memaddress": "100000",
           "address": 968,
+          "access": "read"
+        },
+        {
+          "id": "t_6ca897f1-d234-533c-a96b-e27db0f6459f",
+          "name": "UTL.CIP.XA01.PV",
+          "label": "CIP held: return flow lost (the pumps stay off until Hold and Resume, or Abort)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 21,
+          "access": "read"
+        },
+        {
+          "id": "t_2dfca9ce-40d7-525b-a67a-6d4bdaad2f01",
+          "name": "UTL.CIP.XA01.ALM_STATE",
+          "label": "CIP held: return flow lost (the pumps stay off until Hold and Resume, or Abort): state alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 22,
           "access": "read"
         }
       ]

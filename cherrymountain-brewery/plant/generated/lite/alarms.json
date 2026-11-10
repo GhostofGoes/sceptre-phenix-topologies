@@ -1466,6 +1466,27 @@
       "suppress": "UTL.CIP.HS01.CMD"
     },
     {
+      "name": "UTL.CIP.XA01.ALM_STATE",
+      "source": "UTL.CIP.XA01.PV",
+      "kind": "state",
+      "limit": 1.0,
+      "units": null,
+      "setpoint": null,
+      "delay_s": 0.0,
+      "deadband": 0.0,
+      "off_delay_s": 0.0,
+      "priority": "medium",
+      "fuxa_severity": "low",
+      "cause": "A closed valve or a wrong hose on the circuit, a tripped pump, or a failed flow switch",
+      "consequence": "The wash is held with its pumps stopped; the vessel is not clean and stays out of use",
+      "action": "Check the circuit's valves, hoses, and pumps; then Hold and Resume, or Abort the wash",
+      "response_time_s": 900.0,
+      "plc": "plc-utilities",
+      "plc_iec": "%QX2.5",
+      "fuxa_tag_id": "t_2dfca9ce-40d7-525b-a67a-6d4bdaad2f01",
+      "text": "CIP held: return flow lost (the pumps stay off until Hold and Resume, or Abort): state alarm"
+    },
+    {
       "name": "PWR.MAIN.JT01.ALM_HIGH",
       "source": "PWR.MAIN.JT01.PV",
       "kind": "high",

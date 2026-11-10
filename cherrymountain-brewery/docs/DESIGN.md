@@ -2779,10 +2779,9 @@ sequenceDiagram
   S->>P: OpenPLC REST 8443 / SCADA protocols
 ```
 
-The OpenPLC REST API on 8443 is HTTPS with a self-signed certificate, so a
-capture of the EWS-to-PLC leg shows TLS sessions only. A program upload or a
-start/stop from the EWS is detected from the session source and size and from
-the EWS's own logs, not from request contents ([§14](#14-blue-team-monitoring)).
+The EWS-to-PLC leg is TLS (OpenPLC REST on 8443), so a program change is
+detected from session metadata and the EWS's logs, not from request contents
+([§14](#14-blue-team-monitoring)).
 
 **Controls**
 
@@ -2795,8 +2794,9 @@ the EWS's own logs, not from request contents ([§14](#14-blue-team-monitoring))
     running range.
   - The phenix `wireguard` app only renders `/etc/wireguard/wg0.conf` from
     that metadata. With `boot: true` it enables `wg-quick@wg0`.
-  - The vendor peer's AllowedIPs on dmz-vpn admit only traffic to
-    `dmz-jump`.
+  - On vendor-ws, the gateway peer's AllowedIPs send only dmz-jump
+    (`10.10.20.11/32`) into the tunnel; on dmz-vpn, the vendor peer's
+    AllowedIPs accept only its tunnel address (`10.99.0.2/32`).
 - **Forward policy on dmz-vpn.** AllowedIPs on the vendor's laptop do not
   limit where a decapsulated packet goes next, and dmz-vpn forwards without NAT,
   so a rewritten laptop config would otherwise reach the whole DMZ. The
@@ -2921,9 +2921,10 @@ point for future adversary-emulation scenarios.
   1. **An OpenFlow flow in the capture VM.** The stock in-guest bridge
      (`phenix`) delivers only the first flooded frames to the capture port,
      because it learns the mirrored MACs on the `sniffer` port and then drops
-     frames for them. The `cm-malcolm` boot script must run
+     frames for them. `cm-malcolm-capture.service` (enabled at boot by
+     `99-zz-capture-flow.sh`) runs
      `ovs-ofctl add-flow phenix priority=1000,in_port=sniffer,actions=output:phenix`
-     and bring the `phenix` link up.
+     and brings the `phenix` link up.
   2. **`options:df_default=false` on the host's GRE port.** The mirror's GRE
      packets carry the don't-fragment bit, so any frame that no longer fits the
      1500-byte underlay after the 42 bytes of GRE is dropped silently. With
@@ -2933,8 +2934,8 @@ point for future adversary-emulation scenarios.
      a pcap filter such as `icmp` or `tcp port 5201` does not match tagged
      frames without `vlan and`.
 
-  Item 2 belongs in the mirror app, and item 1 in `setupOVS` or the boot
-  script ([§16](#16-new-and-extended-software)). Until the mirror app does
+  Item 2 belongs in the mirror app, and item 1 in `setupOVS`
+  ([§16](#16-new-and-extended-software)). Until the mirror app does
   item 2, the `cherrymountain` app does: in post-start it reads the port names
   the mirror app recorded (`status.apps.mirror.mirrors.<target>.mirrorName`) and
   runs `ovs-vsctl set interface <port> options:df_default=false` through
@@ -2949,9 +2950,8 @@ point for future adversary-emulation scenarios.
   (modbus, dnp3, bacnet, and the rest) and Suricata alerts 142 s later, with
   nothing fed by hand. Suricata peaked at 917 MiB and one core, the containers
   at 8.4 GiB, and the host at 9.2 GiB of 16 GB ([§11](#11-node-inventory-and-resources)).
-  The hand-off was never broken in Malcolm. The earlier runs failed because of
-  the setup, and the `cm-malcolm` boot and provisioning must do these four
-  things:
+  It needs four setup steps, which `cm-malcolm-provision` and
+  `cm-malcolm-wait-ready` do:
   1. **Create `zeek/custom/__load__.zeek`.** `local.zeek` loads `site/custom`,
      and the compose file bind-mounts the checkout's `./zeek/custom` over the
      image's copy. In a checkout that directory holds only a `.gitignore`, which
@@ -2965,11 +2965,11 @@ point for future adversary-emulation scenarios.
      on a ZeroMQ PUB socket (port 30441) with no replay, so a processor that
      subscribes later never sees it. Suricata's processor starts the slowest.
      Wait until every processor logs `subscribed to topic at 30441` before the
-     first pcap, or restart pcap-monitor afterwards.
+     first pcap (`cm-malcolm-wait-ready`), or restart pcap-monitor afterwards.
   4. **Use sids of 9000101 and up for custom Suricata rules.** Malcolm's default
      OT rules (ELITEWOLF) use 1000001 and up, and Suricata rejects a clashing
-     custom rule as a `Duplicate signature`. `cm-malcolm-provision` checks only
-     `cherrymountain.rules` and fails when it has no sid at all
+     custom rule as a `Duplicate signature`. `cm-malcolm-provision` fails when
+     `cherrymountain.rules` has a sid below 9000101 or no sid at all
      (`tests/soc/test_malcolm.py`).
 - **Not yet verified:** a real `cm-malcolm` VM image with live capture, and
   NetBox and Strelka.
@@ -2988,16 +2988,16 @@ point for future adversary-emulation scenarios.
 - PLCs and ot-sim devices have no agents, which is realistic.
 - **Rules checked on a real manager.** Every line of
   `phenix-injects/wazuh/samples.txt` was run through `wazuh-logtest` on a Wazuh
-  4.14.1 manager container and fires its rule. That run found four problems the
-  offline evaluator in `tests/soc/test_wazuh.py` had modeled wrongly, all fixed:
-  Wazuh's own `kernel` decoder takes every kernel line first, so the firewall
-  drop decoders are its children and rule 100100 matches `decoded_as kernel`;
-  `<action>` is a plain string comparison, so anchored patterns never matched;
-  `!` in `<srcip>` does not negate (Wazuh 4 uses `negate="yes"`); and the
-  children of a rule run highest level first and stop at the first match, so
-  100302 (cmadmin from the tunnel, level 12) hid the approved-window rules
-  100305/100306 for that login, which 100307/100308 now carry under 100302.
-  The evaluator now models all four.
+  4.14.1 manager container and fires its rule. The offline evaluator in
+  `tests/soc/test_wazuh.py` models the four manager behaviors the rules depend
+  on: Wazuh's own `kernel` decoder takes every kernel line first, so the
+  firewall drop decoders are its children and rule 100100 matches
+  `decoded_as kernel`; `<action>` is a plain string comparison, so anchored
+  patterns never match; `!` in `<srcip>` does not negate (Wazuh 4 uses
+  `negate="yes"`); and the children of a rule run highest level first and stop
+  at the first match, so 100302 (cmadmin from the tunnel, level 12) would hide
+  the approved-window rules 100305/100306 for that login, and 100307/100308
+  carry them under 100302.
 
 **Baseline detection use cases** (normal operations should generate known,
 explainable events):
@@ -3089,13 +3089,11 @@ site would need:
 | Historian `records` | 3 years | Bucket retention, daily copy task ([§12.4](#124-historian-and-engineering-workstation)) | negligible | 3 years (27 CFR 25.300) |
 | Ground truth (OpenSearch on sim-ctl) | The experiment | none (the white cell's) | 16 GB; not measured over a full week | n/a (range only) |
 
-**Reconciled with 45a0747.** That commit deleted Wazuh alert and archive
-indexes after 14 days with one policy, to keep the 16 GB disk from filling.
-The split keeps that purpose: archives, the large and raw stream, now go
-after 7 days, and alerts, which an after-action review reads, stay 30.
-`CM_WAZUH_RETENTION_DAYS`, if set, still applies one value to both. The
-volumes are estimates; nothing has run on a VM, and the Malcolm settings are
-unverified on 26.10.0 ([§19](#19-risks-and-open-questions)).
+The two Wazuh policies keep the 16 GB disk from filling: archives, the large
+and raw stream, go after 7 days, and alerts, which an after-action review
+reads, stay 30. `CM_WAZUH_RETENTION_DAYS`, if set, applies one value to both.
+The volumes are estimates; nothing has run on a VM, and the Malcolm settings
+are unverified on 26.10.0 ([§19](#19-risks-and-open-questions)).
 
 **Excluded** as non-OSI-licensed: Security Onion 2.4 (Elastic License 2.0)
 and EMQX 5.9+ (BSL).
@@ -3106,36 +3104,34 @@ and EMQX 5.9+ (BSL).
 
 The topology uses the `phenix workflow apply` directory layout.
 
-**Running it.** In the standard Docker deployment, run
-`docker exec phenix phenix workflow apply /phenix/topologies/cherrymountain-brewery`.
+**Running it.** The steps are in [USER_GUIDE.md](../USER_GUIDE.md#6-start-the-range).
+The constraints behind them:
 - Run it as the user that runs `phenix ui`.
 - Run it from outside the directory, because phenix reads
   `config.*`/`users.*` from the current directory.
 - The apply starts the experiment from the CLI. Host tunnels for a
   CLI-started experiment exist only with the phenix fork's autotunnel loop
-  (`ci-e2e-minimega`, [§15.3](#153-topology-modules-and-variants)). The
-  `autotunnel` spike verified this: after `phenix experiment start` exited, the
-  fork's `phenix ui` created all four tunnels, and they survived a `phenix ui`
-  restart. Upstream `main` creates none for CLI-started experiments, so with it,
-  start the experiment from `phenix ui` or create the forwards by hand.
+  (`ci-e2e-minimega`, [§15.3](#153-topology-modules-and-variants)). Upstream
+  `main` creates none for CLI-started experiments, so with it, start the
+  experiment from `phenix ui` or create the forwards by hand.
 
 **Variants.** The workflow branch defaults to the directory name, and each
-branch maps to one experiment. Each variant therefore applies with its own
-branch:
+branch maps to one experiment, so the full variant's experiment is
+`cherrymountain-brewery`. Each other variant applies with its own branch:
 - `-b cherrymountain-lite -c phenix-lite.yml`
 - `-b cherrymountain-ci -c phenix-ci.yml`
 
 Every file in `phenix-configs/` is stored on each apply. So configs have
 fixed, variant-specific names (for example `cherrymountain-core`,
-`cherrymountain-full`, `cherrymountain-lite`). Inject paths use
-`/phenix/injects/${BRANCH_NAME}/...`, which expands to the branch of that
+`cherrymountain-full`, `cherrymountain-lite`). Configs reference injects as
+`/phenix/injects/${BRANCH_NAME}/<path>`, which expands to the branch of that
 apply.
 
 ```text
 cherrymountain-brewery/
 ├── README.md
 ├── USER_GUIDE.md                   # how to build, start, check, and run the range on your own host
-├── DESIGN.md
+├── docs/                           # DESIGN.md, FUTURE_WORK.md, plc-secure-coding-review.md, and examples/ (screenshots and the scripts that capture them)
 ├── phenix.yml                      # Workflow: full variant (topology/scenario cherrymountain-full)
 ├── phenix-lite.yml                 # Workflow: lite (apply with -b cherrymountain-lite -c phenix-lite.yml)
 ├── phenix-ci.yml                   # Workflow: CI slice (apply with -b cherrymountain-ci -c phenix-ci.yml)
@@ -3149,9 +3145,9 @@ cherrymountain-brewery/
 │   ├── scenario-full.yml
 │   ├── scenario-lite.yml
 │   └── scenario-ci.yml
-├── phenix-injects/                 # -> /phenix/injects/cherrymountain-brewery
-│   ├── bbmd/  desktop/  docker/  ews/  fuxa/  guacamole/  inet-traffic/  malcolm/
-│   └── openplc/  ot-svc/  otsim/  sim/  vrouter/  wazuh/  wireguard/
+├── phenix-injects/                 # -> /phenix/injects/${BRANCH_NAME}
+│   ├── bbmd/  brand/  desktop/  docker/  ews/  fuxa/  grafana/  guacamole/  inet-traffic/
+│   └── malcolm/  openplc/  ot-svc/  otsim/  sim/  vrouter/  wazuh/  wireguard/
 ├── phenix-images/                  # Image configs (cm-*.yml) and README; built with phenix image build
 ├── apps/                           # cherrymountain_apps: the cherrymountain phenix app (with its script, systemd, and template files, which include the historian and federate units), the plantevent SCORCH component, simctl.py
 ├── sim/                            # cherrymountain_sim federates package and tests
@@ -3166,7 +3162,7 @@ cherrymountain-brewery/
 ├── tools/plantgen/                 # offline generator
 ├── tools/netcheck/                 # static check of the IP plan and conduit matrix
 ├── tools/lint/                     # image-script and systemd-unit lint helpers (run by prek)
-├── tests/{integration,soc,bacnet}/ # CI-slice and render checks; SOC detection, Wazuh, vendor-access, and WireGuard tests; the ot-sim BACnet module's tests
+├── tests/{integration,soc,bacnet,brand}/ # CI-slice and render checks; SOC detection, Wazuh, vendor-access, and WireGuard tests; the ot-sim BACnet module's tests; the brand on each screen
 ├── brand/                          # the brewery's mark, colors, and wallpaper (§15.11)
 ├── spikes/                         # spike kits (bacnet, bbmd, fuxa, malcolm, otsim-noble, serial, vyos-ipsec, autotunnel, thehive) and their CI images (ci); openplc-v4 and viz3d are retired
 └── .yamllint-block-style.yml       # block-style rule for phenix YAML
@@ -3176,7 +3172,7 @@ Not yet in the repository: a SoH packet-capture scenario
 (`scenario-soh-capture.yml`, see [§15.4](#154-state-of-health)) and the Builder
 package (`builder/`, see [§15.8](#158-builder-package)).
 
-`phenix.yml` sketch:
+`phenix.yml`, in flow style:
 
 ```yaml
 apiVersion: phenix.sandia.gov/v0
@@ -3199,8 +3195,6 @@ Each variant has its own bridge (`cherrymtn`, `cherrymtn-lite`,
 non-default bridge. Only one variant can **run** at a time: they pin the same
 VLAN IDs, and minimega refuses the second.
 
-Configs reference injects as `/phenix/injects/${BRANCH_NAME}/<path>`.
-
 Scenarios carry `metadata.annotations.topology`, which workflow requires.
 `fromScenario` checks that a referenced scenario's annotation *contains*
 the current topology name. So the full scenario's annotation lists every
@@ -3221,7 +3215,7 @@ topology that borrows from it:
 | `ot-sim` | user | All field devices, the FEP, and the DNP3 master. Custom `infrastructures` map. HELICS wiring |
 | `helics` | user | Root broker on sim-ctl (`broker.root: sim-ctl\|mgmt`). It counts federates only from `helics/federate` annotations, so scenario order is `ot-sim`, then `cherrymountain` (which annotates the sim-* federate nodes), then `helics`. Its broker-wait script pings the broker, so the MGMT nftables policy allows ICMP to sim-ctl |
 | `mirror` | user (Go) | GRE mirror of the monitored VLANs to malcolm (`version: v1`, `mirrorVLAN: MIRROR`, host `interface: mirror`, `setupOVS: true`; sketch in [§14](#14-blue-team-monitoring)) |
-| `wireguard` | user | Renders `wg0.conf` on vendor-ws and dmz-vpn from keys and addresses generated by plantgen; `boot: true` enables `wg-quick@wg0` |
+| `wireguard` | user | Renders `wg0.conf` on vendor-ws and dmz-vpn from the addresses plantgen generates and the keys the `cherrymountain` app replaces per experiment ([§13](#13-vendor-remote-access)); `boot: true` enables `wg-quick@wg0` |
 | `protonuke` | user | inet-traffic `-serve -http -https -smtp`; corp-ws and vendor-ws as clients |
 | `cherrymountain` | **new** user | [§16](#16-new-and-extended-software) |
 | `mgmt_tap` | user | Not used; host access uses autotunnel |
@@ -3284,10 +3278,10 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
     used only for apps whose host lists are identical across variants. In lite
     that is only `vrouter`.
   - `plantgen` emits per-variant app blocks for the apps whose hosts differ:
-    `ot-sim`, `cherrymountain`, `helics`, `ntp`, and the generated part of
-    `soh`; `wireguard` exists only in full. `sync.py` embeds them in the
-    scenarios between `sync:begin` and `sync:end` markers. `mirror` and
-    `wireguard` are absent from lite.
+    `ot-sim`, `cherrymountain`, `helics`, `ntp`, `wireguard` (full only), and
+    the generated part of `soh`. `sync.py` embeds them in the scenarios between
+    `sync:begin` and `sync:end` markers. `mirror` and `wireguard` are absent
+    from lite.
 - **Boot order.** Builder device order is boot order, and `delay: c2`
   enforces readiness:
   1. firewalls and routers (isp-rtr first, because the `vrouter` app reuses the
@@ -3384,10 +3378,10 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
       scada-fuxa: [":1881"]
       historian: [":8086", ":3000", ":1883"]
     dockerContainers:              # map: hostname -> container names (Docker healthcheck)
-      dmz-jump: [guacamole, guacd, postgres]
-      malcolm: []                  # key container names from the pinned Malcolm compose file
-    # hostCustomTests is a map keyed by hostname; omitted here because the
-    # cherrymountain app emits per-host sohProfile.customTests instead.
+      dmz-jump: [guacamole, guacd, postgres, guac-proxy]
+      malcolm: [malcolm-opensearch-1, malcolm-zeek-live-1, malcolm-suricata-live-1]  # and five more
+    hostCustomTests:               # map: hostname -> cc scripts; one per blocked path, expecting DROPPED
+      corp-ws: [{name: blocked-ews-3389, executor: bash, testScript: "...", testStdout: DROPPED}]
 ```
 
 - **Generated checks.** The `cherrymountain` app emits a per-host
@@ -3399,20 +3393,24 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
     program that stopped after provisioning fails it
   - FUXA `/api/project` contains every device in `FUXA_EXPECT_DEVICES` (signed
     in with the range password from `/etc/default/cm-fuxa`); checked against a
-    FUXA 1.3.5 container
-  - a BACnet ReadProperty succeeds, from bas-fuxa and from scada-fuxa through
-    `fw-ot`
-  - FUXA on scada-fuxa returns a live value for a BACnet tag. This is the
-    check that exercises BBMD discovery, which a SoH UDP probe cannot. It reads
-    the tag value, not FUXA's connection state, because FUXA reports
-    "connected" on the first I-Am from anything, including a BBMD's
+    FUXA 1.3.5 container. A second check signs in as `operator`
   - the HELICS federate count on sim-ctl: one peer per host that runs a
     federate, 16 in full and lite (the four sim nodes and the twelve ot-sim
     devices with an I/O module, the BAS controllers included)
-  - fresh points in each InfluxDB bucket
-  - Malcolm healthy (`cm-malcolm-health`): every container of the profile
-    running and none unhealthy, the capture port `phenix` promiscuous with its
-    rx count growing, and Zeek records in the last 15 minutes
+  - the historian's InfluxDB provisioned, and fresh points in each bucket
+  - an HMI kiosk signed in as `operator` (`kiosk-operator-session`,
+    [§15.9](#159-operations))
+- **Other checks in the scenario.** The `soh` block's
+  `testCustomReachability` sends BACnet ReadProperty probes from bas-fuxa and
+  from scada-fuxa through `fw-ot`. The `mirror` app's malcolm host carries
+  `cm-malcolm-health`: every container of the profile running and none
+  unhealthy, the capture port `phenix` promiscuous with its rx count growing,
+  and Zeek records in the last 15 minutes.
+- **Not built: a FUXA BACnet live-value check.** FUXA on scada-fuxa should
+  return a live value for a BACnet tag. That is the check that would exercise
+  BBMD discovery, which a SoH UDP probe cannot. It must read the tag value, not
+  FUXA's connection state, because FUXA reports "connected" on the first I-Am
+  from anything, including a BBMD's.
 - **Probe limits.** SoH TCP and UDP probes need a reply. One-way flows
   (syslog), IKE/ESP, and negative tests (blocked paths stay blocked) are
   therefore checked with `cc` scripts in SCORCH or `sohProfile.customTests`.
@@ -3436,8 +3434,8 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
   `feat-topology-soh-checks`, where VyOS adjacency and guest C2
   registration were slow in CI.
 - **Packet capture view (planned, not yet in the repository).** A
-  `scenario-soh-capture.yml` would add SoH `packetCapture`, which feeds the Network Volume chord graph. It is a
-  separate scenario because of its cost:
+  `scenario-soh-capture.yml` would add SoH `packetCapture`, which feeds the
+  Network Volume chord graph. It is a separate scenario because of its cost:
   - phenix adds an Elastic VM (default 4 vCPU / 4 GB) plus one hidden
     Packetbeat VM per captured *host* (1 vCPU / 512 MB, with one NIC per
     captured interface).
@@ -3455,20 +3453,30 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
 | Repeatable per-run captures | SCORCH `pcap` (OVS, no guest agent; listed per VM interface; needs tshark tools on the head node, which the phenix container has), `convert_to_json: true` → Filebeat → host Elasticsearch. `pcap` start clears other active minimega captures, so don't mix it with ad hoc captures | SCORCH run folder + Kibana |
 | In-guest view (e.g., the IPsec endpoint) | SCORCH `tcpdump` | SCORCH run folder |
 | Continuous NSM | `mirror` app → Malcolm. Needs the capture-VM flow (the image's boot script) and `df_default=false` on the host GRE port (the `cherrymountain` app's post-start), or frames are lost ([§14](#14-blue-team-monitoring)). Mirrored frames are 802.1Q-tagged, so ad hoc filters need `vlan and` | Zeek/Suricata/Arkime in Malcolm |
-| Offline analysis of a saved pcap (for example a SCORCH capture) | Copy it into Malcolm's `pcap/upload`. It works once the four pipeline setup steps of [§14](#14-blue-team-monitoring) are done (the `__load__.zeek` file, `PCAP_PIPELINE_VERBOSITY`, waiting for the processors, and sids of 9000101 and up for custom Suricata rules). In the spike a pcap reached OpenSearch as Zeek logs and Suricata alerts in 142 s | Zeek/Suricata/Arkime in Malcolm |
+| Offline analysis of a saved pcap (for example a SCORCH capture) | Copy it into Malcolm's `pcap/upload`, which needs the four pipeline setup steps of [§14](#14-blue-team-monitoring) | Zeek/Suricata/Arkime in Malcolm |
 | Flow overview | Netflow tab (non-default bridge `cherrymtn`) | UI |
 | Topology traffic graph | SoH `packetCapture` (capture scenario only; monitor VMs join MGMT) | SoH Network Volume graph |
 | Blocked-flow evidence | VyOS firewall logs → Wazuh | Wazuh dashboards |
 
 ### 15.6 SCORCH pipelines
 
-| Run | Configure | Start | Stop / cleanup |
-|---|---|---|---|
-| `baseline-brew-day` | soh (all checks), cc: verify Malcolm and Wazuh healthy | vmstats, hoststats, pcap (scada-fuxa IF0, plc-brewhouse IF0+IF1, rio-brewhouse IF0), plantevent `start-batch recipe=fire-of-the-phenix`, pause 30m (the start of a brew day: one brew takes five to six hours), soh (`flows`, `custom`) | stop pcap (JSON → Filebeat), cc: export FUXA alarm history and an InfluxDB backup to Files, collector |
-| `utility-outage` | soh | pcap (rtu-der IF0+IF1, plc-power IF1, gen-ats IF0), plantevent `utility-breaker open`, pause 10m, cc: Modbus read of gen-ats running and ATS on emergency, plantevent `utility-breaker close`, pause 10m | stop pcap, collector |
-| `cellar-co2-leak` | soh | pcap (bas-fuxa IF0, bas-vent IF0), plantevent `co2-release fv=FV-102 rate=high`, pause 15m, cc: BACnet read of purge fans on and alarm tier | stop pcap, collector |
-| `vendor-maintenance` | soh | cc on vendor-ws: bring up WireGuard, scripted Guacamole session; cc on ews: benign PLC program re-upload; `break` (analyst review) | collector |
-| `packaging-shift` | soh | plantevent `jam labeler` (randomized with `loop`/`replace`), qos (FIELD-PKG delay/loss), pause 45m | collector (OEE from InfluxDB) |
+The runs in `scenario-full.yml`, by run number:
+
+| # | Run | Configure | Start | Stop / cleanup |
+|---|---|---|---|---|
+| 0 | `vendor-maintenance` | soh (all checks), cc: Malcolm and Wazuh healthy | cc on vendor-ws: restart WireGuard, scripted Guacamole session; cc on ews: benign re-upload of plc-cellar's program; pause 8m (the compile); cc: plc-cellar `STATUS:RUNNING`; cc: `cm-wazuh-expect` and `cm-malcolm-expect` check the expected alerts; `break` (analyst review) | cc: collect the session log and the Wazuh alerts |
+| 1 | `baseline-brew-day` | soh (all checks), cc: Malcolm and Wazuh healthy | pcap (scada-fuxa IF0, plc-brewhouse IF0+IF1, rio-brewhouse IF0), plantevent `start-batch recipe=fire-of-the-phenix`, pause 30m (the start of a brew day: one brew takes five to six hours), soh (`network-config`, `custom-reachability`, `custom`) | stop pcap, cc: export FUXA alarm history and an InfluxDB backup |
+| 2 | `utility-outage` | soh | pcap (rtu-der IF0+IF1, plc-power IF1, gen-ats IF0), plantevent `utility-breaker open`, pause 10m, cc on plc-power: Modbus read of gen-ats's genset-running and ATS-on-emergency bits, plantevent `utility-breaker close`, pause 10m | stop pcap |
+| 3 | `cellar-co2-leak` | soh | pcap (bas-fuxa IF0, bas-vent IF0), plantevent `co2-release fv=FV-102 rate=high`, pause 15m, cc on bas-fuxa: BACnet reads of bas-vent's purge-fan status and CO₂ tier 1 | stop pcap |
+| 4 | `packaging-shift` | soh | pcap (plc-packaging IF1, rio-packaging IF0), qos (50 ms and 1 % loss on plc-packaging's field link), plantevent jams of the labeler and the filler, pause 45m | remove qos, stop pcap |
+
+The `cc` validators run on the phenix host. Run 0's `break` step needs a
+terminal (`docker exec -it`), and its `expect-malcolm` step matches the start
+of a Suricata signature or Zeek notice name, because Malcolm indexes
+`rule.name` as a keyword. None of the runs has run on a range. Not in them
+yet: `loop` with `replace` to randomize event times and magnitudes, vmstats
+and hoststats, and a collector stage (OEE from InfluxDB). Validate the configs
+offline with `phenix-scorch-validate`.
 
 The `plantevent` component reaches the sim-ctl event API through the
 autotunnel forward of `sim-ctl:8080`. The host port is random, and phenix's
@@ -3476,37 +3484,20 @@ forwards API does not report it, so the component resolves it at the start of
 each stage with `cc tunnel list sim-ctl`. It opens a tunnel itself when none
 exists, and it never assumes a fixed `localhost` port.
 
-Each run uses `loop` with `replace` to randomize event times and
-magnitudes. Validate the configs offline with `phenix-scorch-validate`.
-
-**As built** (`scenario-full.yml`). All five runs exist. The vendor run is
-unchanged; the other four use `plantevent`, `pause`, `pcap` (the plantgen
-capture lists), `soh`, `qos`, and `cc` checks whose validators run on the
-phenix host: `utility-outage` reads gen-ats's genset-running and
-ATS-on-emergency bits over Modbus from plc-power; `cellar-co2-leak` reads
-bas-vent's purge-fan status and CO₂ tier 1 over BACnet from bas-fuxa;
-`baseline-brew-day` exports the FUXA alarm
-history and an InfluxDB backup at stop; and `packaging-shift` jams the labeler
-and the filler while `qos` adds 50 ms and 1 % loss on plc-packaging's field
-link. They do not loop with `replace` yet, and none has run. Run 0 ends in a
-`break` step that needs a terminal (`docker exec -it`), and its `expect-malcolm`
-step matches the start of a Suricata signature or Zeek notice name, because
-Malcolm indexes `rule.name` as a keyword.
-
 ### 15.7 Images
 
 | Image | Base | Contents | Notes |
 |---|---|---|---|
-| `cm-openplc` | noble minbase | OpenPLC v4.3.2 runtime (native install), boot provisioning script, build toolchain (the runtime compiles uploads on the VM) | Program ZIPs are built outside the image by `plc/<plc>/build_zip.sh`. No v3 image: the spike chose v4 |
+| `cm-openplc` | noble minbase | OpenPLC v4.3.2 runtime (native install), boot provisioning script, build toolchain (the runtime compiles uploads on the VM) | Program ZIPs are built outside the image by `plc/common/build_zip.sh` (the ci ZIP by `plc/plc-cellar/build_zip.sh`). No v3 image: the spike chose v4 |
 | `cm-fuxa` | noble minbase | Node 22, FUXA pinned by commit (there is no 1.3.6 tag), drivers installed into `server/node_modules` at build, where FUXA loads them from (`modbus-serial@8.0.19`, `node-opcua@2.149.0`, `node-snap7@1.0.9`, `node-bacnet@0.2.4`), systemd unit, project-import script | Used by scada-fuxa and bas-fuxa |
 | `cm-otsim` | noble minbase | Pinned `patsec/ot-sim` built from source (pyzmq built from source, C++ DNP3 module, the E2E DNP3 master, the Go toolchain download), HELICS, systemd unit; the app renders the nftables MGMT policy. BACpypes3 and pydantic sit in the venv of ot-sim's Python modules for the BACnet module, which the app injects ([§16](#16-new-and-extended-software)) | Replaces the prebuilt focal image, which has no service unit. One image for every ot-sim node, DNP3 included ([§12.3](#123-ot-sim-field-devices)) |
 | `cm-sim` | noble minbase, 16G | HELICS 3.6 + pyhelics, OpenDSSDirect.py (`~=0.8.4`), SimPy, cherrymountain_sim, cm-viz with its vendored three.js and `websockets` 15 ([§15.10](#1510-white-cell-3d-view-cm-viz)), chrony, nftables. The models do not use CoolProp or pvlib, and SciPy, PackMLpy, and `ht` are needed only by the tests ([§9.6](#96-implementation-status-and-validation)). Single-node OpenSearch 3.9 (ground truth, security plugin off) and Grafana 12 with the OpenSearch data source plugin, started only where the app injects `ground-truth.env` (sim-ctl in full and lite) | Built |
 | `cm-historian` | noble minbase | InfluxDB 2 OSS, Telegraf, Grafana, Mosquitto, Wazuh agent | |
 | `cm-desktop` | noble mingui | The Xubuntu desktop, Chromium (kiosk; from the xtradeb PPA, pinned to `chromium*` only, because Debian's package no longer installs on noble), WireGuard tools, protonuke, Wazuh agent | Role injections: HMI, corp, vendor, analyst |
-| `cm-ews` | noble mingui | OpenPLC Editor, Wireshark, mbpoll, BAC0, pymodbus, asyncua CLI tools, xrdp, Wazuh agent | |
-| `cm-guacamole` | noble minbase | Docker + guacd/guacamole/postgres images pre-pulled, TOTP extension, recording volume, Wazuh agent | |
+| `cm-ews` | noble mingui | OpenPLC Editor, Chromium (as in `cm-desktop`), Wireshark, mbpoll, BAC0, pymodbus, asyncua CLI tools, xrdp, Wazuh agent | |
+| `cm-guacamole` | noble minbase | Docker + the guacd, guacamole, postgres, and nginx images saved in the image (loaded into Docker at first boot), recording directory, Wazuh agent. TOTP and recording are in the stock guacamole image | |
 | `cm-svc` | noble minbase | chrony, dnsmasq, rsyslog, Wazuh agent, BACpypes3 BBMD service (`cm-bbmd.service`, enabled on ot-svc and bas-bbmd only) | |
-| `cm-malcolm` | noble minbase, 64G | Docker + pinned Malcolm images pre-pulled, openvswitch, boot and provisioning script that adds the capture flow and does the four upload-pipeline setup steps ([§14](#14-blue-team-monitoring)) | Largest image |
+| `cm-malcolm` | noble minbase, 64G | Docker + pinned Malcolm images saved in the image (loaded at first boot), openvswitch, boot and provisioning script that adds the capture flow and does the four upload-pipeline setup steps ([§14](#14-blue-team-monitoring)) | Largest image |
 | `cm-wazuh` | noble minbase | Wazuh all-in-one (manager, indexer, dashboard), offline install | |
 | `cm-wireguard` | noble minbase | Derived from the repo's `renewables/wind/plant/phenix-images/wireguard.yml` (focal), rebased on noble, plus chrony and a Wazuh agent. IP forwarding enabled | dmz-vpn |
 | `vyos` | prebuilt (sceptre-phenix-images) | VyOS rolling with miniccc built in (`-m` build flag). It reports `999.<timestamp>`, not 1.5, since vyos-build T9547 changed rolling versioning on 2026-10-31 | `oras pull`, or build with the images repo's `scripts/vyos/build-vyos.sh`; topology uses `os_type: vyos`, `inject_partition: 3`, ≥2 GB. `rolling` moves daily, so record the build used |
@@ -3514,8 +3505,9 @@ Malcolm indexes `rule.name` as a keyword.
 - **miniccc.** Every Linux image gets miniccc via
   `phenix image inject-miniexe`, which SoH, cc, and SCORCH require. That
   command does not work on VyOS, so the prebuilt VyOS image builds miniccc
-  in instead. inet-traffic also gets protonuke via `inject-miniexe` on
-  `cm-svc`.
+  in instead. protonuke is added the same way, to a copy of `cm-svc`
+  (`cm-svc-protonuke.qc2`, for inet-traffic) and to `cm-desktop` (corp-ws and
+  vendor-ws).
 - **Root access.** Range images follow the repo convention of a passwordless
   root console (`POSTBUILD_NO_ROOT_PASSWD`, a phenix default kept verbatim),
   which also turns on root SSH with an empty password. The hosts on the vendor
@@ -3556,40 +3548,37 @@ is never hand-written.
 
 ### 15.9 Operations
 
-This subsection is the operator's runbook for the range. Items marked
-**TODO** are designed here and not built yet. [USER_GUIDE.md](../USER_GUIDE.md)
-is the step-by-step version: the repositories to clone, the builds, the first
-start of each variant, and what to check.
+This subsection holds what operating the range rests on: host fit, timing,
+reset, failure modes, and the range's own security. Items marked **TODO** are
+designed here and not built yet. [USER_GUIDE.md](../USER_GUIDE.md) has the
+steps: the host and repositories, the builds, the first start of each variant,
+what to check, and how to run an exercise.
 
-**Host prerequisites.** A host with `/dev/kvm`, about 128 GB RAM and 32 cores
-for the full variant (71 GB for lite; [§11](#11-node-inventory-and-resources)),
-the phenix fork with the autotunnel loop ([§15.3](#153-topology-modules-and-variants)),
-minimega with OVS, Git LFS (the PLC ZIPs), and Docker for the phenix container.
-Image storage: twelve qcow2 images of 8 to 64 GB virtual size; compressed
-they take roughly 40 GB, and each running VM adds a copy-on-write overlay that
-grows with its writes (Malcolm and Wazuh the most). Keep about 150 GB free
-for images and overlays. **Host fit:** the full variant asks 67 vCPUs (2.1×
+**Host prerequisites** ([USER_GUIDE.md §2](../USER_GUIDE.md#2-prepare-the-host)).
+The full variant needs about 128 GB RAM and 32 cores (71 GB for lite;
+[§11](#11-node-inventory-and-resources)) and the phenix fork with the
+autotunnel loop ([§15.3](#153-topology-modules-and-variants)). Image storage:
+twelve qcow2 images of 8 to 64 GB virtual size; compressed they take roughly
+40 GB, and each running VM adds a copy-on-write overlay that grows with its
+writes (Malcolm and Wazuh the most), so keep about 150 GB free. **Host fit:** the full variant asks 67 vCPUs (2.1×
 overcommit on 32 cores; most nodes idle) and 113 GB of 128 GB, leaving about
 15 GB for the host, phenix, and the page cache. When memory runs short,
 in order: use the slim Malcolm profile (−12 GB), run lite (no SOC, no vendor
 path), drop the ground-truth Grafana (sim-ctl to 4 GB), and stop the
 packaging and BAS sides for exercises that do not need them.
 
-**Image build order.** `cm-svc` and `cm-otsim` first (the network and field
-layer), then `cm-sim`, `cm-openplc`, `cm-fuxa`, `cm-historian`, `cm-desktop`,
-`cm-ews`, `cm-guacamole`, `cm-wireguard`, `cm-wazuh`, and `cm-malcolm` last
-(64 GB, the slowest); the prebuilt `vyos` comes from sceptre-phenix-images.
-Run `phenix image inject-miniexe` on each, then commit to the image store.
-Rebuild `cm-sim` after a `sim/` change (move `CM_REF` first) and the PLC ZIPs
-after a `plant.yaml` change (`plc/common/build_zip.sh --all`).
+**Image builds** (order and commands in
+[USER_GUIDE.md §5](../USER_GUIDE.md#5-build-the-vm-images)). `cm-malcolm`
+(64 GB) is the slowest, and `vyos` comes from sceptre-phenix-images. Rebuild
+`cm-sim` after a `sim/` change (move `CM_REF` first) and the PLC ZIPs after a
+`plant.yaml` change (`plc/common/build_zip.sh --all`).
 
 **Mirror option on the host.** The `cherrymountain` app sets
 `options:df_default=false` on the mirror's GRE ports after every start
-([§14](#14-blue-team-monitoring)); without it, full-size frames are lost. Check
-`status.apps.cherrymountain.mirror.dfDefault` (`set`). If it says `incomplete`
-or `waiting`, trigger the app's `running` stage, or set it by hand in the
-minimega container (`ovs-vsctl set interface <gre port>
-options:df_default=false`). **TODO(verify):** the command's path through
+([§14](#14-blue-team-monitoring)); without it, full-size frames are lost. If
+`status.apps.cherrymountain.mirror.dfDefault` is not `set`, trigger the app's
+`running` stage or set the option by hand in the minimega container
+([USER_GUIDE.md](../USER_GUIDE.md#troubleshooting)). **TODO(verify):** the command's path through
 minimega (`shell` on the headnode, `mesh send <host> shell` elsewhere) follows
 phenix-apps' own helper and has not run on a cluster.
 
@@ -3616,27 +3605,23 @@ password a VM generated for itself. The retention settings of
 [§14](#14-blue-team-monitoring) and [§12.4](#124-historian-and-engineering-workstation)
 therefore bound one continuous run, not the life of the range; the cleanup
 stage's exports are what survives a stop. Keep the experiment directory: it
-holds `secrets.json` and `wireguard.json`, so the app's passwords and keys
-stay the same across restarts; delete them to rotate. **TODO:** a `cm-reset`
+holds `secrets.json`, `vendor.json`, and `wireguard.json`, so the app's
+passwords and keys stay the same across restarts; delete them to rotate. **TODO:** a `cm-reset`
 SCORCH run that clears the evidence stores without a restart.
 
 **White-cell guide** (the people who run an exercise):
 
-- Reach the white-cell services with `phenix-tunneler`, on the fixed local
-  ports of [§15.3](#153-topology-modules-and-variants): ground-truth Grafana
-  and OpenSearch, the event API, and cm-viz on sim-ctl, Malcolm and Wazuh,
-  FUXA, the historian. On the phenix host itself, `cc tunnel list <vm>` gives
-  the host port.
-- Drive the plant with the SCORCH runs or `plantevent` (the event API);
-  compare what happened (ground truth) with what the SOC saw (Malcolm, Wazuh).
+- Reach the white-cell services with `phenix-tunneler` on the fixed local
+  ports of [§15.3](#153-topology-modules-and-variants)
+  ([USER_GUIDE.md §8](../USER_GUIDE.md#8-connect-from-your-own-computer)).
+- Drive the plant with the SCORCH runs ([§15.6](#156-scorch-pipelines)) or the
+  event API; compare what happened (ground truth) with what the SOC saw
+  (Malcolm, Wazuh).
 - The MGMT plane, the hosts' consoles, and the phenix host are out of bounds
   for players ([§10.1](#101-zones-and-conduits-purdue-model--isaiec-62443)).
-- Abnormal injects available now: utility outage, chiller fault, CO₂ release,
-  packaging jams, weather steps, a field-link impairment (`qos`), a benign
-  vendor re-upload, a genset exercise, a CO₂ leak at the bulk tank, filler, or
-  draft system (trips the supply shutoff at 30,000 ppm), a gas-detection panel
-  failure, a chiller refrigerant leak and recharge, and a BESS cell thermal
-  event ([§9.5](#95-scenario-events-and-ground-truth)).
+- Abnormal injects available now: the plant events of
+  [§9.5](#95-scenario-events-and-ground-truth), plus a field-link impairment
+  (`qos`) and a benign vendor re-upload through SCORCH.
 - **CO₂ supply shutoff (operator runbook).** After a tier-3 alarm or a
   detection failure, `UTL.CO2.XS02.SHUTOFF` stays set and the bulk valve stays
   closed. Confirm on bas-fuxa that every area is below tier 3 and the shutoff
@@ -3756,15 +3741,13 @@ disables an alarm and re-enables it at expiry, logging both to the historian.
 
 **Log volume.** VyOS `default-log` has no rate limit, so a scan produces one
 syslog line per dropped packet. Mitigations in place: rule 100104 aggregates
-ten drops a minute from one source into one alert, and `cm-wazuh-provision`
-creates index lifecycle (ISM) policies that delete `wazuh-archives-*` after 7
-days and `wazuh-alerts-*` after 30 so the indexer's 16 GB disk does not fill
-during a long exercise, and Malcolm prunes its metadata indexes at 24 GB (the
-per-store targets are in [§14](#14-blue-team-monitoring)). **TODO:** Wazuh's analysisd EPS limit on the manager.
+ten drops a minute from one source into one alert, and the retention policies
+of [§14](#14-blue-team-monitoring) keep the Wazuh and Malcolm disks from
+filling. **TODO:** Wazuh's analysisd EPS limit on the manager.
 
 **EWS program-change detection without cm_plc_tool (TODO).** Today a change
 made with `curl` on the EWS leaves only network evidence (the REST session and
-size, and now the vendor-session correlation in Zeek). The design: install
+size, and the vendor-session correlation in Zeek). The design: install
 `auditd` in cm-ews with an `execve` rule for interactive users
 (`auid>=1000`), have the Wazuh agent read `/var/log/audit/audit.log`, and add
 a rule on commands whose arguments name an OpenPLC REST path
@@ -3835,10 +3818,12 @@ last frame goes stale and the next poll retries.
 **Access path.** `cm-viz.service` on sim-ctl (rendered by the `cherrymountain`
 app where the weather federate runs, so full and lite, not ci) binds
 `127.0.0.1:8090`. sim-ctl's autotunnel adds `18090:8090`
-([§15.3](#153-topology-modules-and-variants)); the white cell finds the host
-port with `cc tunnel list sim-ctl` and opens it in a browser on the phenix
-host, which renders with that machine's GPU. Nothing new listens on MGMT or
-any range network, and netcheck's conduit matrix is unchanged.
+([§15.3](#153-topology-modules-and-variants)): the white cell opens
+`http://localhost:18090` through `phenix-tunneler` on its own machine, whose
+browser renders with that machine's GPU. On the phenix host, the port comes
+from `cc tunnel list sim-ctl`, reached as `localhost` (the `Host` check below
+refuses the host's address). Nothing new listens on MGMT or any range network,
+and netcheck's conduit matrix is unchanged.
 
 **Ground-truth leakage control.** The view is ground truth, so showing it
 during an exercise removes the detection problem the exercise is about.

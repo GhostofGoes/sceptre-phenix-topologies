@@ -1,8 +1,7 @@
 # CherryMountain Brewery: phenix topology design
 
-> **Status:** built and tested offline; nothing has run on a phenix host yet.
-> [Status](#status) below is the one place that says what is done and what is
-> left. This document specifies the CherryMountain Brewery topology for
+> **Status:** built and tested offline; nothing has run on a phenix host yet
+> ([Status](#status)). This document specifies the CherryMountain Brewery topology for
 > [phēnix](https://github.com/sandialabs/sceptre-phenix): the configs, images,
 > programs, and simulation code of the range. [USER_GUIDE.md](../USER_GUIDE.md) is
 > the step-by-step guide to building, starting, reaching, and using it.
@@ -16,9 +15,8 @@
 
 ## Status
 
-This section is the authoritative status of the range. The README, the user
-guide, and the pull request point here; when they disagree with it, this
-section is right.
+This section is the authoritative status of the range. The README and the
+user guide point here; when they disagree with it, this section is right.
 
 **Nothing has run on a phenix host or in a VM yet.** Every part is built, and
 tested as far as it can be without one. The `ci` variant (the cellar slice,
@@ -29,10 +27,10 @@ phenix host.
 
 | Phase | Status | Left to do |
 |---|---|---|
-| 0: Spikes | **Done.** Ten spikes are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to [future work](FUTURE_WORK.md#soc-case-management-with-dfir-iris). A second round closed the gaps of the first | Nothing. What each spike left untested is in its row of [§18](#18-implementation-roadmap) |
+| 0: Spikes | **Done.** Ten spikes are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to [future work](FUTURE_WORK.md#soc-case-management-with-dfir-iris) | Nothing. What each spike left untested is in its row of [§18](#18-implementation-roadmap) |
 | 1: Network | **Built, checked statically.** The topology modules, the firewall rulesets, the services on ot-svc, both BBMDs, the post-boot VyOS script, and the SoH probes. `netcheck` compares all of it with the conduit matrix | The VM run: every conduit and every blocked path under SoH, and the VyOS script on VyOS |
 | 2: Simulation | **Built, run offline.** `plant.yaml`, plantgen, the seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). A simulated brewer, cellar crew, and line operator do the hand work, so beer moves from the brewhouse to the filler over days. The whole plant ran offline for 54 simulated hours | The ot-sim `logic` blocks, and a 24 h soak under HELICS |
-| 3: Control | **Built, run offline.** All five PLC programs and their full and lite ZIPs, with the alarm logic generated from `alarms.json`, the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)), the peer reads, the fermentation profile, and the packaging line's operator panel. Four of the five run in the tests as compiled programs against the federates (plc-utilities is compiled but not run). The scada-fuxa and bas-fuxa projects are generated; the batch engine brews a double-brew day unattended in the offline federation and ran in a real FUXA server against a stand-in PLC, with the operator sign-in and the kiosk's automatic sign-in. The `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks | The full and lite programs in an OpenPLC runtime, FUXA writing to plc-brewhouse over OPC UA, hand-laid views beyond Cellar and Batch, and alarm suppression during a crash |
+| 3: Control | **Built, run offline.** All five PLC programs and their full and lite ZIPs, with the alarm logic generated from `alarms.json`, the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)), the peer reads, the fermentation profile, and the packaging line's operator panel. All five run in the tests as compiled programs: four against the federates, and plc-utilities (its CIP sequence) with its inputs set by hand. The scada-fuxa and bas-fuxa projects are generated, with a process graphic for each area ([fuxa/README.md](../fuxa/README.md#the-process-graphics)); the batch engine brews a double-brew day unattended in the offline federation and ran in a real FUXA server against a stand-in PLC, with the operator sign-in and the kiosk's automatic sign-in. The `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks | The full and lite programs in an OpenPLC runtime, plc-utilities against the federates, FUXA writing to plc-brewhouse over OPC UA, the Overview, Utilities, Power, Cellar CO2, and Building graphics seen in a real FUXA, and alarm suppression during a crash |
 | 4: Power and BAS | **Built, run offline.** The power and building federates. `plc-power` does load shed, staged restoration, and BESS dispatch, and schedules the on-peak shift, the recharge, the monthly demand reset, and the weekly genset exercise from the ATS controller's clock ([§12.1](#121-openplc-v4-runtime-v3-fallback)). The BAS controllers serve BACnet through the ot-sim BACnet module in this repository ([§16](#16-new-and-extended-software)), tested against BACpypes3 and BAC0 clients | The outage and CO₂ scenarios on a VM, and FUXA reading the controllers through the BBMDs |
 | 5: SOC and remote access | **Built, not run.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; the Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), the Zeek script (checked in Malcolm's Zeek image), and the Wazuh rules (checked in Wazuh 4.14.1 logtest), each with tests; per-experiment vendor and WireGuard secrets | Everything on a VM: live capture into Malcolm, the agents and syslog into Wazuh, and the vendor's path end to end |
 | 6: Polish | **Started.** `cm-viz`, the white cell's 3D view, built and tested offline ([§15.10](#1510-white-cell-3d-view-cm-viz)); `plantevent` and the four plant-driving SCORCH runs ([§15.6](#156-scorch-pipelines)); the operations runbook ([§15.9](#159-operations)); the brand on every screen ([§15.11](#1511-brand)); nine test suites in prek and CI | The Builder package, an e2e run on a VM, cm-viz in the range with its operator-view relay, and the upstream pull requests (the ot-sim BACnet module and the `ot-sim` app's support for it are on fork branches) |
@@ -97,7 +95,8 @@ All components are open source. A HELICS co-simulation couples the process,
 power, and building physics. ot-sim field devices expose that physics over
 Modbus, DNP3, and BACnet (BACnet through a new ot-sim module). The
 topology uses phenix's workflow layout, core and user apps, state of health
-(SoH), packet capture, SCORCH, image builds, and a Builder package.
+(SoH), packet capture, SCORCH, and image builds; a Builder package is
+planned ([§15.8](#158-builder-package)).
 
 ## 2. Goals and non-goals
 
@@ -202,7 +201,7 @@ Cable*), and the integrator (*Ridgeline Process Controls*) are fictional.
 | Item | Value |
 |---|---|
 | Location | Colorado Front Range, about 5,200 ft (1,585 m) elevation |
-| Ambient pressure | about 12.1 psia (83.4 kPa). Water boils at about 202.3 °F (94.6 °C); 16 °P wort at about 202.8 °F (94.9 °C) |
+| Ambient pressure | about 12.1 psia (83.4 kPa). Water boils at about 202.3 °F (94.6 °C); 16 °P wort at about 202.9 °F (94.9 °C) |
 | Annual production | about 2,500 bbl/yr (US beer barrel = 31 gal = 117.3 L) |
 | Brewhouse | 15 bbl, two-vessel, steam-heated: mash/lauter tun (MLT) and kettle/whirlpool |
 | Liquor tanks | 30 bbl hot liquor tank (HLT), 30 bbl cold liquor tank (CLT) |
@@ -232,7 +231,7 @@ and fermentation profiles from it, and so do FUXA's recipe parameters.
 | ABV / IBU / SRM | about 7.1% / 68 / about 7 |
 | Grain bill | 2-row pale 88%, Munich 6%, Crystal 40L 3%, Carapils 3% |
 | Mash | single infusion 152 °F (66.7 °C) for 60 min; mash-out 168 °F (75.6 °C) |
-| Boil | 60 min at the local wort boiling point (about 202.8 °F) |
+| Boil | 60 min at the local wort boiling point (about 202.9 °F) |
 | Hops | Columbus at 60 min (bittering); Centennial at 10 min; whirlpool Citra + Simcoe at 180 °F for 20 min; dry hop Citra/Mosaic/Simcoe at 2 lb/bbl on day 5 |
 | Yeast | American ale (Chico-type) pitched at 64 °F; ferment at 66 °F; free-rise to 70 °F for the diacetyl rest |
 | Finishing | cold crash to 34 °F; carbonate to 2.6 volumes CO₂ in the BBT |
@@ -341,93 +340,69 @@ finding to a design choice.
   in an MBAA forum discussion uses 5,000/15,000 ppm alerts. MBAA's CO₂
   safety guidance calls for detection, ventilation, and evacuation alarms,
   and here CO₂ detection is interlocked to ventilation.
-  - **Confirmed against the codes (2026-11-09).** The 2021 IFC, which the
-    Colorado Division of Fire Prevention and Control adopts unamended,
-    requires gas detection where an insulated liquid CO₂ beverage system
-    with more than 100 lb of CO₂ is indoors without ventilation: sensors
-    within 12 in of the floor, a supervisory alarm at 5,000 ppm and an alarm
-    in the room at 30,000 ppm (IFC 2021 §5307.3). The representative
-    jurisdiction goes further: the Denver Fire Department's policy *IFC 5307*
-    (effective 2020-06-15) sets exactly the three tiers used here, **5,000 ppm
-    TWA (self-resetting), 15,000 ppm (latching), and 30,000 ppm (latching,
-    strobes and horns, evacuate and call 911)**, detectors 12–24 in above the
-    floor at each point of use and each supply tank area, exhaust taken within
-    12 in of the floor at 1 cfm/ft² and held below 5,000 ppm, and, at the
-    30,000 ppm tier, **closure of an automatic CO₂ system shutoff valve that
-    fails closed on loss of power or detection**. It also requires an
-    annunciator outside the hazard area, signage, an annual operational permit,
-    and a construction permit for systems over 100 lb. The design's tiers and
-    sensor heights match; the shutoff valve and the detection coverage outside
-    the cellar do not ([§18A](#18a-regulatory-and-standards-context)).
+  - **Confirmed against the codes (2026-11-09).** The 2021 IFC (§5307.3),
+    which Colorado adopts unamended, asks for a supervisory alarm at 5,000 ppm
+    and a room alarm at 30,000 ppm. The Denver Fire Department's policy
+    *IFC 5307* sets exactly the three tiers used here, **5,000 ppm TWA
+    (self-resetting), 15,000 ppm (latching), and 30,000 ppm (latching,
+    evacuate)**, with detectors 12–24 in above the floor at every point of use
+    and supply tank area and, at 30,000 ppm, **an automatic CO₂ supply shutoff
+    valve that fails closed on loss of power or detection**. The design's
+    tiers, sensor heights, detection areas, and shutoff valve follow it
+    ([§6.7](#67-cellar-co2-life-safety-interlock)); the BAS tiers self-clear,
+    so the latching is at the shutoff and in FUXA's acknowledged alarms. The
+    rest of both codes and what the range does with each part are in
+    [§18A.3](#18a3-life-safety-fire-and-equipment).
   - Fermenters, bright tanks, the mash tun, and the kettle are permit-required
     confined spaces under 29 CFR 1910.146 whenever a hazardous atmosphere (CO₂
-    above the PEL, oxygen below 19.5 %) can exist in them. The entry permit,
-    attendant, atmospheric testing (oxygen, then flammables, then toxics), and
-    the one-year retention of canceled permits are procedures, not controls;
-    the range documents them and keeps the CO₂ readings that would appear on
-    a permit ([§18A](#18a-regulatory-and-standards-context)).
+    above the PEL, oxygen below 19.5 %) can exist in them. The PLCs lock out an
+    entered vessel ([§6.8](#68-confined-space-entry-lockout)); the permit,
+    attendant, and testing are procedures the range documents
+    ([§18A.3](#18a3-life-safety-fire-and-equipment)).
 - **Glycol.** About 35% propylene glycol is supplied at about 28 °F. Each
   tank has separate cone and side jacket zones.
 - **Wastewater.** Caustic and acid CIP effluent is neutralized to a
   configured permit band (pH 6.0–9.0) before discharge.
-  - **Checked against the rules (2026-11-09).** The federal pretreatment
-    standards prohibit any industrial discharge with a pH below 5.0 unless the
-    works is designed for it, heat that takes the treatment plant above 40 °C
-    (104 °F), and oxygen-demanding slugs that cause interference (40 CFR
-    403.5(b)). Metro Water Recovery's 2026 Rules and Regulations repeat these
-    for its member sewers (§6.14: pH below 5.0 prohibited for industrial
-    users; 40 °C at the plant; a slug may not exceed five times the 24-hour
-    average for more than 15 minutes) and define a significant industrial
-    user, which gets a discharge permit, at 25,000 gal/day of process
-    wastewater or 5 % of the plant's capacity, or by designation (§2 item 85).
-    At about 2,500 bbl/yr and the Brewers Association's 4–10 bbl of water per
-    bbl of beer, CherryMountain discharges a few thousand gallons a day, so it
-    is a permitted-by-designation or sector-program user rather than an SIU by
+  - **Checked against the rules (2026-11-09).** 40 CFR 403.5(b) and Metro
+    Water Recovery's rules prohibit an industrial discharge below pH 5.0 and
+    make a user discharging 25,000 gal/day of process wastewater a significant
+    industrial user ([§18A.4](#18a4-environment)). At about 2,500 bbl/yr and
+    the Brewers Association's 4–10 bbl of water per bbl of beer,
+    CherryMountain discharges a few thousand gallons a day, so it is a
+    permitted-by-designation or sector-program user rather than an SIU by
     volume. The 6.0–9.0 band is the brewery's own permit condition; it is the
     "typical pre-treated end-of-pipe" range the Brewers Association manual
-    gives (pH 6–9, BOD 100–400 ppm, TSS 50–500 ppm), against untreated brewery
-    effluent of pH 3–12 and BOD 600–5,000 ppm. The utilities federate keeps
-    the discharge record such a permit asks for
+    gives (pH 6–9, BOD 100–400 ppm, TSS 50–500 ppm;
+    [§18A.8](#18a8-industry-practice)). The utilities federate keeps the
+    discharge record such a permit asks for
     ([§9.6](#96-implementation-status-and-validation)).
 - **Compliance data.** TTB requires daily records of operations,
   including production and removals (27 CFR 25.292), kept for 3 years
   (27 CFR 25.300). It also requires a Brewer's Report of Operations
-  (27 CFR 25.297), reported in barrels.
+  (27 CFR 25.297), reported in barrels. These rules, and Colorado's 8.0 cents
+  per gallon excise with its three-year books, were checked on 2026-11-09 and
+  are in [§18A.1](#18a1-alcohol-ttb-and-colorado).
   - CherryMountain's federal excise tax is about 2,500 bbl × $3.50/bbl
-    (the reduced rate) ≈ $8,750/yr. That is under the $50,000 threshold,
-    so it files quarterly, on TTB F 5130.26 or a quarterly F 5130.9.
-  - **Checked (2026-11-09).** 26 U.S.C. 5051(a)(2) sets the $3.50 rate on the
-    first 60,000 barrels for a brewer producing not more than 2,000,000
-    barrels a year, with no end date since Pub. L. 116-260; 27 CFR 25.152
-    applies it. The daily record (25.292(a)) covers materials, beer produced,
-    beer bottled and racked, removals taxpaid and tax-free, returns, losses,
-    and tests of measuring devices, with daily summaries (25.292(b)). Records
-    stay at the brewery, available to TTB in business hours, for not less than
-    three years from the date or the last entry, extendable by TTB for three
-    more; data-processing records may live elsewhere if the source records
-    stay at the brewery and the data can be retrieved within five business
-    days (25.300(a), (c), (d)). Colorado adds a three-year retention for the
-    books behind its 8.0 cents per gallon excise return, due by the 20th of the
-    following month (C.R.S. 44-3-503(1)(a), (3), (4), (6)).
+    (the reduced rate of 26 U.S.C. 5051(a)(2)) ≈ $8,750/yr. That is under the
+    $50,000 threshold, so it files quarterly, on TTB F 5130.26 or a quarterly
+    F 5130.9.
   - **Tax determination and fill.** Bottled beer is computed from the 25.158
     case table (a case of 24 × 12 fl oz is 0.07258 barrel) to five decimals,
-    with the daily sum rounded to two (25.157). A keg is its rated size, but a
-    keg found more than 2 % over it is taxed on the actual quantity "without
-    benefit of any tolerance" (25.156). A bottle must state its net contents
-    exactly, "except for such variations in measuring as may occur in filling
-    conducted in compliance with good commercial practice," and over any
+    with the daily sum rounded to two (25.157). A keg found more than 2 % over
+    its rated size is taxed on the actual quantity (25.156). Over any
     three-month period the barrel equivalent of the bottles filled may not
-    vary more than 0.5 % from the labeled equivalent (25.142(a), (d)). NIST
+    vary more than 0.5 % from the labeled equivalent (25.142(d)). NIST
     Handbook 133 (2026), which the state weights-and-measures program applies
     at retail, allows an individual 12 fl oz package no more than 0.5 fl oz
     under its label (Appendix A, Table 2-6) and requires the lot average to
     meet the label. The packaging federate's fill-level model and TTB barrel
     figures follow these ([§9.6](#96-implementation-status-and-validation)).
   - The historian and packaging counts are therefore compliance-grade
-    data, which raises the stakes for data integrity. The historian's 30-day
-    retention ([§12.4](#124-historian-and-engineering-workstation)) is
-    operational; the TTB record is the daily production report and the batch
-    records FUXA writes, which a real brewery would keep for the three years.
+    data, which raises the stakes for data integrity. The historian's raw
+    buckets keep 30 days, an operational window; its `records` bucket keeps a
+    daily copy of the series a TTB or excise audit draws on for three years
+    ([§12.4](#124-historian-and-engineering-workstation)). FUXA's daily
+    production report and batch records remain the record of record.
 - **Altitude-aware control.** Boil detection uses the local wort boiling
   point, not 212 °F. All pressure setpoints are stored as absolute pressure
   and shown as gauge pressure using the site ambient pressure
@@ -446,9 +421,7 @@ finding to a design choice.
   bbl/yr class.
   - That class has an electricity median of 65 kWh/bbl (IQR 45–91, n=93)
     plus a natural gas median of 3.8 therm/bbl (IQR 2.7–6.2, n=96). The
-    0–1,000 class median is 182 kWh/bbl. (Re-read from the report's
-    1,000–10,000 bbl/year charts on 2026-11-09; the chart bands are the
-    middle 50%.)
+    0–1,000 class median is 182 kWh/bbl.
   - BA breweries mostly heat with gas. An all-electric equivalent is
     therefore roughly 150–176 kWh/bbl. That range is indicative, because
     the medians come from different samples.
@@ -600,8 +573,8 @@ flowchart LR
     crashed when it is under 60 °F and as starting its rest otherwise, so a
     restart during a rest repeats it, and one early in a crash warms the beer
     for another rest. The ci program has no profile.
-  - The spunding setpoint ramps to about 12 psig on site near terminal
-    gravity. Setpoints are stored as absolute pressure (12 psig on site ≈
+  - The spunding setpoint is 1 psig while the beer ferments and steps to
+    12 psig once the extract falls below 5 °P, near terminal gravity. Setpoints are stored as absolute pressure (12 psig on site ≈
     24.1 psia) and displayed as gauge pressure.
   - Vessels are rated 15 psig MAWP, and mechanical relief valves are set
     at 15 psig. A PSV pops at 15 psig, vents CO₂ into the cellar room at up to
@@ -715,14 +688,16 @@ and a bare `FV-101` is never used as an instrument tag.
 
 | Area | AI | AO | DI | DO | Owner |
 |---|---:|---:|---:|---:|---|
-| Brewhouse | 22 | 8 | 18 | 20 | plc-brewhouse / rio-brewhouse |
-| Cellar | 34 | 6 | 12 | 22 | plc-cellar / rio-cellar |
-| Packaging | 10 | 4 | 32 | 24 | plc-packaging / rio-packaging |
-| Utilities | 24 | 6 | 22 | 20 | plc-utilities / rio-utilities, glycol-chiller |
-| Electrical | 40 | 6 | 16 | 10 | plc-power / power devices |
-| Facilities (BACnet objects) | 30 | 8 | 14 | 12 | bas-fuxa / BAS devices |
+| Brewhouse | 21 | 11 | 6 | 10 | plc-brewhouse / rio-brewhouse |
+| Cellar | 28 | 6 | 14 | 15 | plc-cellar / rio-cellar |
+| Packaging | 38 | 17 | 15 | 6 | plc-packaging / rio-packaging |
+| Utilities | 21 | 4 | 20 | 13 | plc-utilities / rio-utilities, glycol-chiller |
+| Electrical | 18 | 4 | 11 | 7 | plc-power / power devices |
+| Facilities (BACnet objects) | 14 | 6 | 8 | 11 | bas-fuxa / BAS devices |
 
-These counts are design estimates. The plant tag database (`plant.yaml`,
+The counts are the full variant's field points (`source: io` in
+`plant/generated/full/tags.json`: analog and binary, read and read-write),
+324 in all. The plant tag database (`plant.yaml`,
 [§12.6](#126-plant-tag-database)) is authoritative.
 
 ### 6.5 Alarm philosophy (ISA-18.2)
@@ -735,8 +710,8 @@ These counts are design estimates. The plant tag database (`plant.yaml`,
 - **Rationalization.** Each alarm has a cause, consequence, operator
   action, and time to respond. These are recorded in `plant.yaml` and
   generated into the FUXA alarm definitions.
-- **Current state.** `plant.yaml` holds 96 rationalized alarms: 16 Critical,
-  33 High, 26 Medium, and 21 Low. The Critical ones are all life safety: CO₂
+- **Current state.** The full variant has 98 rationalized alarms
+  (`alarms.json`): 16 Critical, 33 High, 28 Medium, and 21 Low. The Critical ones are all life safety: CO₂
   at 30,000 ppm (four cellar sensors and the three other areas), the BESS
   off-gas detector, and the eight confined-space entry violations. That is not yet the 5/15/80 target, because only
   the important alarms are rationalized so far.
@@ -756,8 +731,8 @@ These counts are design estimates. The plant tag database (`plant.yaml`,
   `off_delay_s`), and `plc/common/plcbuild.py` generates each PLC's alarm logic
   from that file (the `CmAlarm` block: set past the limit, clear back inside by
   the deadband, on-delay, off-delay, suppression), so the PLCs and FUXA's alarm
-  list cannot drift. The ci slice's hand-written plc-cellar program predates
-  this and has on-delays only.
+  list cannot drift. The ci slice's hand-written plc-cellar program has
+  on-delays only.
 - **Shelving and suppression.** Shelving is allowed. State-based
   suppression applies; for example, packaging alarms are suppressed while
   the line is Stopped (the alarm's `suppress` bit is 0).
@@ -822,13 +797,12 @@ host is in the path:
 | BBMD (ot-svc or bas-bbmd), the BBMD conduits, or `fw-ot` | None. The relay path is hardwired; scada-fuxa loses its CO₂ display, and its BACnet tags go stale (FUXA keeps the last value, [§8.1](#81-spaces-equipment-and-bacnet-devices)) |
 | scada-fuxa or bas-fuxa down | None. Only the display and the BAS alarms are lost |
 | BACnet on bas-vent (the ot-sim BACnet module) down | None. Ventilation and the relay are the controller's local logic |
-| EP-1 dead (detection panel unpowered) | The relay drops: carbonation is inhibited (de-energize to trip). The purge fans are on EP-1 too and stop |
+| EP-1 dead (detection panel unpowered) | Both relays drop (de-energize to trip): carbonation is inhibited and the CO₂ supply shuts off. The purge fans are on EP-1 too and stop |
 | CO₂ at or above 15,000 ppm | The relay drops: carbonation and hop-port purges are inhibited until the sensed value falls 10 % below the tier and the release delay passes |
 | rio-cellar or the FIELD-CEL link down | `plc-cellar`'s Modbus master keeps the last input values, so the inhibit holds its last state. A RIO heartbeat would let the PLC fail safe here too; it is open work ([§19](#19-risks-and-open-questions)) |
 | plc-cellar stopped | Its outputs stop updating; rio-cellar keeps the last commands (unverified: the runtime may write 0 to its outputs when it stops, [§19](#19-risks-and-open-questions)). Without a PLC the cellar autopilot takes over after 300 s and honors the relay itself ([§9.6](#96-implementation-status-and-validation)) |
 | CO₂ at or above 30,000 ppm in any area (cellar, bulk tank, filler, cold room) | The shutoff relay drops: the bulk CO₂ valve closes through its solenoid, and plc-utilities latches the shutoff until the operator resets it with the relay healthy for 60 s. A leak on the supply piping stops as the header bleeds down |
 | Gas-detection panel failed (`gas-detection` event) | Both relays drop: carbonation is inhibited and the CO₂ supply shuts off (loss of detection fails closed) |
-| EP-1 dead | Both relays drop; the CO₂ supply shuts off as well as carbonation |
 | rio-utilities or the FIELD-UTL link down | The valve still closes on a trip (its solenoid is on the relay, not the RIO); plc-utilities keeps the last input values, so its latch may not set. The same RIO heartbeat would close this gap ([§19](#19-risks-and-open-questions)) |
 | plc-utilities stopped, or a rogue write of 1 to the valve's coil | None for the trip: the solenoid has no power while the relay is open. The write is detected (Suricata 9000170/9000171, Zeek `Life_Safety_Write`, [§14](#14-blue-team-monitoring)). Without a PLC the utilities autopilot latches the same way and reopens 600 s after the relay is healthy |
 
@@ -891,7 +865,7 @@ controller failure would: a documented simplification. In the `ci` variant
 there is no building federate and no BBT, so the point does not exist. The
 shutoff relay is `building/vent.co2_shutoff_ok`, which the utilities federate
 republishes as rio-utilities' `co2relay.co2_ok` and uses to gate the valve.
-The three new areas are well-mixed volumes: the tank room, the filler area
+The three other areas are well-mixed volumes: the tank room, the filler area
 (the filler vents half the CO₂ it draws into it), and the cold room (a draft
 leak trickle, and air exchange with the door open). A `co2-leak` event opens a
 leak on the supply piping in one of them; its flow follows the supply header

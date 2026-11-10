@@ -333,6 +333,24 @@ def test_full_fuxa_projects_are_built_for_both_hosts(ctx: Context) -> None:
         assert set(expect) == {d["name"] for d in project["devices"].values() if d["type"] != "FuxaServer"}
 
 
+def test_full_both_fuxa_hosts_get_the_operator_password(ctx: Context) -> None:
+    """scada-fuxa and bas-fuxa share the operator password, as they share the
+    admin's, and it is not the admin's."""
+    from cherrymountain_apps.cherrymountain.metadata import FuxaHost
+
+    passwords: set[str] = set()
+    for host in ("scada-fuxa", "bas-fuxa"):
+        md = ctx.hosts[host]
+        assert isinstance(md, FuxaHost)
+        injects = {i.dst: i for i in render.render_fuxa(ctx, host, md)}
+        values = env(Path(injects["/etc/default/cm-fuxa"].src))
+        operator = ctx.creds.fuxa_operator_password.get_secret_value()
+        assert values["FUXA_OPERATOR_PASSWORD"] == operator
+        assert values["FUXA_OPERATOR_PASSWORD"] != values["FUXA_ADMIN_PASSWORD"]
+        passwords.add(values["FUXA_OPERATOR_PASSWORD"])
+    assert len(passwords) == 1
+
+
 def test_full_fuxa_views_have_unique_names_and_the_kiosks_views_exist(ctx: Context) -> None:
     """FUXA opens a view by its name (/home?viewName=<name>, the kiosk URL), so no two
     views of a project may share one: plc-cellar's generated view is "Cellar

@@ -31,6 +31,7 @@ class RangeSecrets(BaseModel):
     openplc_password: SecretStr
     fuxa_password: SecretStr
     fuxa_jwt_secret: SecretStr
+    fuxa_operator_password: SecretStr
     influx_password: SecretStr
     influx_token: SecretStr
     grafana_password: SecretStr

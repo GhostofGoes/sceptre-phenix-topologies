@@ -69,6 +69,12 @@ def test_configure_writes_soh_profiles(run_app: RunApp) -> None:
     assert "/api/project" in fuxa.testScript and "FUXA_EXPECT_DEVICES" in fuxa.testScript
 
     assert host_md(app, "scada-fuxa").sohProfile.listeners == [":1881"]
+    operator = host_md(app, "scada-fuxa").sohProfile.customTests[1]
+    assert operator.name == "fuxa-operator-account"
+    assert operator.testStdout == "operator-ok"
+    # The password comes from the root-only settings file, never the script.
+    assert ". /etc/default/cm-fuxa" in operator.testScript
+    assert "FUXA_OPERATOR_PASSWORD" in operator.testScript
     assert host_md(app, "rio-cellar").sohProfile.processes == [
         "ot-sim-cpu-module",
         "ot-sim-modbus-module",

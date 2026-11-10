@@ -84,7 +84,7 @@ App block:
 | `wazuh.manager` | hostname | `wazuh` | Wazuh manager; no `wazuh` block means no Wazuh files |
 | `wazuh.interface`, `wazuh.enrollmentPort` | interface, port | `IF0`, `1515` | Where agents enroll |
 | `wazuh.agents` | hostnames | `[]` | The hosts that run an agent and get the enrollment password: an explicit allowlist (plantgen writes it from plant.yaml `app.wazuh.agents`). Empty enrolls nobody |
-| `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment`, `vendorGuacPassword`, `vendorTotpSecret` (Base32), `vendorEwsPassword` |
+| `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaOperatorPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment`, `vendorGuacPassword`, `vendorTotpSecret` (Base32), `vendorEwsPassword` |
 | `wireguardKeys` | `generate` or `scenario` | `generate` | `generate` replaces the scenario's `wireguard` keys (plantgen's fixed-seed keys) with per-experiment ones at configure |
 | `verify.timeout`, `verify.clientGrace` | seconds | `15`, `5` | Per-check timeouts in post-start and running |
 | `verify.recheck` | `unprovisioned` or `all` | `unprovisioned` | Which hosts `running` asks again. A check sets minimega's cc filter, which is one per namespace, for a moment; a command that phenix's soh app or a SCORCH component sends from another process in that moment goes to the wrong VM. So by default a host is not asked again once it is `provisioned` (the state is then kept until the next start), and a settled plant gets no cc commands from this app. `all` asks every host on every pass. State of health is the check for a service that stops later |
@@ -96,7 +96,7 @@ Host metadata, selected by `type`:
 | `type` | Fields (defaults) | Renders |
 |---|---|---|
 | `openplc` | `program` (the hostname), `northbound` (plant.yaml's: `modbus_slave`, `opcua`, `s7comm`), `opcua.port` (4840), `opcua.interface` (IF0), `opcua.debugMap`, `opcua.cycleTimeMs` (100), `s7comm.port` (102), `restPort` (8443), `compileTimeout` (900) | Program ZIP, `conf/modbus_master.json` and `modbus_slave.json` (plantgen), `conf/opcua.json` (from the compiled program's debug map) or `conf/s7comm.json`, `/etc/default/cm-openplc`, the provisioning script, unit, and boot hook |
-| `fuxa` | `role` (`scada`), `project` (built), `expectDevices` (every project device), `daq` (`auto`: InfluxDB when the app has a historian, else SQLite), `bucket` (the role), `port` (1881) | Project JSON, `mysettings.json` (secure mode, JWT secret, DAQ store, no Node-RED), `/etc/default/cm-fuxa`, the provisioning script, unit, and hook, `cm-export-fuxa` |
+| `fuxa` | `role` (`scada`), `project` (built), `expectDevices` (every project device), `daq` (`auto`: InfluxDB when the app has a historian, else SQLite), `bucket` (the role), `port` (1881) | Project JSON, `mysettings.json` (secure mode, JWT secret, DAQ store, no Node-RED), `/etc/default/cm-fuxa` (the `admin` and `operator` passwords), the provisioning script, unit, and hook, `cm-export-fuxa` |
 | `rio` | `telnet` (`interface` IF0, `port` 23, `banner` default) | Nothing, unless `telnet` is set: then the ot-sim `config.xml` the ot-sim app rendered gets the telnet module (relay-main). Checked otherwise (ot-sim devices of any role) |
 | `sim-ctl` | `federates` (plant.yaml's for this host) | As `sim-federate` when it runs any |
 | `sim-federate` | `federates` (plant.yaml's for this host), `logLevel` (`INFO`) | `helics.json`, `/etc/cherrymountain/federates`, `/etc/default/cm-federate-<name>`, `cm-federate@.service`, `60-cm-federates.sh` |
@@ -220,6 +220,22 @@ services agree. Files that hold one are written and injected mode 0600.
   vendor.json`, 0600) is rendered for every node the
   topology gives it (dmz-jump, ews, vendor-ws) and replaces the committed
   copy, so the three always agree and change with each experiment.
+- **FUXA accounts.** Both FUXA hosts get two accounts. `admin` is the editor
+  account (`fuxaPassword`). `operator` (`fuxaOperatorPassword`) is in FUXA's
+  Operator group (`groups: 2`): it may write tags from a view and acknowledge
+  alarms, and cannot open the editor or call the project, users, settings, or
+  device APIs, which FUXA keeps for administrators (`groups` -1 or 255). The
+  HMI kiosks open `/home` with no session, which FUXA treats as the guest: the
+  guest sees the views and FUXA refuses its writes (the settings leave
+  `secureOnlyEditor` and `userRole` unset, and the app never sets them). To
+  write a setpoint at a kiosk, click the account icon at the top right of the
+  header (or write a value, which opens the same dialog), sign in as
+  `operator` with the password from `secrets.json`, and write again; the
+  session ends after `tokenExpiresIn` (12 h) or at sign-out. `cm-fuxa-provision`
+  creates the account after it sets the admin password, resets its password and
+  group when they differ, and fails when FUXA lets the account use the users API.
+  A re-run (a reboot) and a project re-import leave it alone. The SoH check
+  `fuxa-operator-account` signs in as `operator` and checks the same.
 - **WireGuard.** With `wireguardKeys: generate`, configure replaces each
   `wireguard` host's private key with one kept in
   `<experiment dir>/cherrymountain/wireguard.json` (0600) and rewrites every

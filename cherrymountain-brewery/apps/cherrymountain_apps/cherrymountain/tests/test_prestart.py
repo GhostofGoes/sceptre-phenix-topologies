@@ -96,6 +96,70 @@ def test_metadata_secret_wins(run_app: RunApp, experiment: dict[str, Any]) -> No
     assert "FUXA_EXPECT_DEVICES=plc-cellar" in env
 
 
+def test_fuxa_env_carries_the_operator_password(run_app: RunApp) -> None:
+    """The second FUXA account (DESIGN.md 12.2) has its own generated password,
+    in the same root-only file as the admin's."""
+    app = run_app("pre-start")
+    secrets = json.loads((app.out_dir / "secrets.json").read_text())
+    inject = injections(app, "scada-fuxa")["/etc/default/cm-fuxa"]
+    env = Path(inject.src).read_text()
+    assert f"FUXA_OPERATOR_PASSWORD={secrets['fuxa_operator_password']}" in env
+    assert f"FUXA_ADMIN_PASSWORD={secrets['fuxa_password']}" in env
+    assert secrets["fuxa_operator_password"] != secrets["fuxa_password"]
+    assert inject.permissions == "0600"
+    assert stat.S_IMODE(Path(inject.src).stat().st_mode) == 0o600
+    # The provisioning script is the one that makes the account.
+    script = injections(app, "scada-fuxa")["/usr/local/bin/cm-fuxa-provision"]
+    assert "add the operator account" in script.description
+
+
+def test_the_operator_password_can_be_set_in_metadata(
+    run_app: RunApp, experiment: dict[str, Any]
+) -> None:
+    app_block(experiment)["metadata"]["secrets"] = {
+        "fuxaOperatorPassword": "range-operator-pw"
+    }
+    app = run_app("pre-start", exp=experiment)
+    env = Path(injections(app, "scada-fuxa")["/etc/default/cm-fuxa"].src).read_text()
+    assert "FUXA_OPERATOR_PASSWORD=range-operator-pw" in env
+    # An operator-set value is not written to the store.
+    stored = json.loads((app.out_dir / "secrets.json").read_text())
+    assert "fuxa_operator_password" not in stored
+
+
+def test_an_operator_password_is_added_to_an_older_secrets_file(
+    run_app: RunApp, experiment: dict[str, Any]
+) -> None:
+    """secrets.json of an experiment directory from before the operator account
+    keeps its values and gains the new one."""
+    first = run_app("pre-start")
+    path = first.out_dir / "secrets.json"
+    old = json.loads(path.read_text())
+    del old["fuxa_operator_password"]
+    path.write_text(json.dumps(old))
+    again = json.loads(
+        (run_app("pre-start", exp=experiment).out_dir / "secrets.json").read_text()
+    )
+    assert {k: v for k, v in again.items() if k != "fuxa_operator_password"} == old
+    assert again["fuxa_operator_password"]
+
+
+def test_kiosk_guests_keep_what_they_may_do(run_app: RunApp) -> None:
+    """The kiosks open /home with no session, which FUXA treats as the guest.
+    The guest sees the views and FUXA refuses its writes only while the settings
+    leave secureOnlyEditor and userRole unset (server/runtime/index.js
+    isSocketWriteAuthorized); the operator account must not change that."""
+    app = run_app("pre-start")
+    settings = json.loads(
+        Path(
+            injections(app, "scada-fuxa")["/opt/fuxa/server/_appdata/mysettings.json"].src
+        ).read_text()
+    )
+    assert settings["secureEnabled"] is True
+    assert "secureOnlyEditor" not in settings
+    assert "userRole" not in settings
+
+
 def test_fuxa_project_is_the_builders(run_app: RunApp) -> None:
     app = run_app("pre-start")
     project = json.loads(

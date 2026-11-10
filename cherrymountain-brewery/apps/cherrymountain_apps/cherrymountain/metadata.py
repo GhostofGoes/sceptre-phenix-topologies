@@ -178,6 +178,10 @@ class Secrets(Closed):
     openplc_password: SecretStr | None = None
     fuxa_password: SecretStr | None = None
     fuxa_jwt_secret: SecretStr | None = None
+    #: The ``operator`` account both FUXA hosts get next to ``admin`` (DESIGN.md
+    #: 12.2): it may write tags from a view and acknowledge alarms, and cannot
+    #: open the editor or change the project or the users.
+    fuxa_operator_password: SecretStr | None = None
     influx_password: SecretStr | None = None
     influx_token: SecretStr | None = None
     grafana_password: SecretStr | None = None

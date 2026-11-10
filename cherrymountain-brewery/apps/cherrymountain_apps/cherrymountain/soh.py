@@ -102,6 +102,24 @@ print("project-ok" if names and want <= names else "project-missing " + " ".join
 '
 """
 
+#: The operator account (DESIGN.md 12.2): sign in with its range password, check
+#: that FUXA put it in the Operator group (2) and in no administrator group, and
+#: that the users API, which is for administrators only, refuses its token.
+FUXA_OPERATOR: Final[str] = """\
+set -a; . /etc/default/cm-fuxa; set +a
+url="${{FUXA_URL:-http://127.0.0.1:{port}}}"
+[ -n "${{FUXA_OPERATOR_PASSWORD:-}}" ] || {{ echo "operator-not-configured"; exit 0; }}
+reply=$(python3 -c 'import json, os; print(json.dumps({{"username": "operator", "password": os.environ["FUXA_OPERATOR_PASSWORD"]}}))' \\
+  | curl -sS --max-time 10 -H 'Content-Type: application/json' --data-binary @- "${{url}}/api/signin")
+field() {{ printf '%s' "${{reply}}" | python3 -c 'import json, sys; print(json.load(sys.stdin).get("data", {{}}).get(sys.argv[1], ""))' "$1" 2>/dev/null; }}
+token=$(field token)
+[ -n "${{token}}" ] || {{ echo "operator-no-login"; exit 0; }}
+groups=$(field groups)
+[ "${{groups}}" = 2 ] || {{ echo "operator-wrong-group ${{groups}}"; exit 0; }}
+code=$(printf 'x-access-token: %s\\n' "${{token}}" | curl -sS --max-time 10 -o /dev/null -w '%{{http_code}}' -H @- "${{url}}/api/users")
+if [ "${{code}}" = 401 ]; then echo "operator-ok"; else echo "operator-is-admin ${{code}}"; fi
+"""
+
 
 def _test(name: str, script: str, stdout: str) -> dict[str, str]:
     return {
@@ -168,6 +186,13 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
                 "fuxa-project-imported",
                 FUXA_PROJECT.format(port=md.port),
                 "project-ok",
+            )
+        )
+        tests.append(
+            _test(
+                "fuxa-operator-account",
+                FUXA_OPERATOR.format(port=md.port),
+                "operator-ok",
             )
         )
     elif isinstance(md, RioHost):

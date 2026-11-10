@@ -183,7 +183,8 @@ has one (`/run/snapd.socket`), and skips it when it has none.
     offline.
   - `fuxa.service`, which runs `node /opt/fuxa/server/main.js`.
   - `/etc/cherrymountain/fuxa`. The project JSON, `mysettings.json`, and
-    `cm-fuxa-provision` are injected by the topology.
+    `cm-fuxa-provision` are injected by the topology. The script sets the
+    `admin` password, adds the `operator` account, and imports the project.
   - The Wazuh agent, disabled ([Wazuh agent](#wazuh-agent)).
 - **Build:** the commands above, with `<name>` set to `cm-fuxa`.
 - **Used by:** `scada-fuxa` in the ci variant.

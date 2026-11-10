@@ -566,6 +566,7 @@ def render_fuxa(ctx: Context, hostname: str, md: FuxaHost) -> list[Injection]:
                 "FUXA_URL": f"http://127.0.0.1:{md.port}",
                 "FUXA_SEED_PASSWORD": "123456",
                 "FUXA_ADMIN_PASSWORD": ctx.creds.fuxa_password.get_secret_value(),
+                "FUXA_OPERATOR_PASSWORD": ctx.creds.fuxa_operator_password.get_secret_value(),
                 "FUXA_PROJECT": f"{CONF_DIR}/fuxa/project.json",
                 # cm-fuxa-provision requires each of these after the import.
                 "FUXA_EXPECT_DEVICES": " ".join(expect),
@@ -601,7 +602,7 @@ def render_fuxa(ctx: Context, hostname: str, md: FuxaHost) -> list[Injection]:
                 "cm-fuxa-provision.sh",
                 "/usr/local/bin/cm-fuxa-provision",
                 "0755",
-                "set the admin password and import the project",
+                "set the admin password, add the operator account, and import the project",
             ),
             (
                 "cm-fuxa-provision.service",

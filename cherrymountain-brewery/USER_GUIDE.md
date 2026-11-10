@@ -374,7 +374,7 @@ sudo cat /phenix/experiments/<experiment>/cherrymountain/secrets.json
 
 | For | User | Key in `secrets.json` |
 |---|---|---|
-| FUXA, to operate (scada-fuxa, bas-fuxa, the operator stations) | `operator` | `fuxa_operator_password` |
+| FUXA, to operate from your own browser (scada-fuxa, bas-fuxa). The operator stations sign in with it by themselves | `operator` | `fuxa_operator_password` |
 | FUXA editor (scada-fuxa, bas-fuxa) | `admin` | `fuxa_password` |
 | OpenPLC runtime on every PLC (`https://<plc>:8443`) | `admin` | `openplc_password` |
 | Grafana, on the historian and on sim-ctl | `admin` | `grafana_password` |
@@ -476,9 +476,17 @@ through the firewall and never writes them.
 ### The operator stations (hmi-brewhouse, hmi-packaging)
 
 Each is a desktop that opens one FUXA view full screen. See them in the phenix
-page by clicking the VM's screenshot. They show values without a login. To
-operate from one, try to write a value, or click the account icon at the top
-right, and sign in as `operator`.
+page by clicking the VM's screenshot. They sign themselves in as `operator`
+about a minute after scada-fuxa is up, so you can write values and press
+buttons there with no login. They renew the sign-in by themselves about every
+8 hours; the view reloads when they do.
+
+- **Is it signed in?** The account icon at the top right is blue when it is,
+  and black when it is not. On the station's console, `cat /run/cm-kiosk/status`
+  says `state=operator`, or `state=guest` with the reason.
+- **It only ever is the operator.** If you sign in there as another account,
+  the station signs back in as `operator` within seconds. Use your own browser
+  to work as `admin`.
 
 ### PLCs and field devices, from the engineering workstation
 
@@ -662,7 +670,7 @@ docker exec phenix phenix experiment delete cherrymountain-lite    # remove it, 
 | SoH fails on a PLC | On the PLC's console: `journalctl -u cm-openplc-provision` shows the upload and the compile |
 | Nothing moves in FUXA | `curl -s http://localhost:18080/api/v1/health`. If it says `starting`, a part of the simulation has not joined: on sim-ctl read `/var/log/helics-root-broker.log`, and on the device `journalctl -u ot-sim`. `nft list table inet cm_mgmt` on either shows whether the simulation network's firewall is dropping packets |
 | bas-fuxa shows no values | On a `bas-*` console: `journalctl -u ot-sim \| grep bacnet-server` should say "first values from the message bus". [phenix-injects/otsim/README.md](phenix-injects/otsim/README.md) has more |
-| FUXA does not take a value or a button | You are not signed in. Sign in as `operator` ([step 9](#9-passwords)) |
+| FUXA does not take a value or a button | In your own browser: you are not signed in. Sign in as `operator` ([step 9](#9-passwords)). On an operator station: its own sign-in has not worked yet. `cat /run/cm-kiosk/status` on its console says why; it keeps trying, and the SoH check `kiosk-operator-session` shows the same |
 | A brew does not start | Read **Status** on the Batch view. `start refused` names the cause: the brewhouse PLC is not idle (press **Reset**), a vessel has an entry permit, no fermenter is empty, or there is no link to the PLC. If the view shows nothing at all, on the scada-fuxa console: `journalctl -u fuxa \| grep cmBatchEngine` |
 | Malcolm shows no traffic | Run `cm-malcolm-health` on its console. If the app's status does not say `"dfDefault": "set"` ([step 7](#7-wait-then-check-health)), set the option by hand: `docker exec minimega sh -c 'for p in $(ovs-vsctl --bare --columns=name find interface type=gre); do ovs-vsctl set interface "$p" options:df_default=false; done'` |
 | SCORCH run 0 fails at `analyst-review` | Run it with `docker exec -it` |

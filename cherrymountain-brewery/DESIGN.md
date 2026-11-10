@@ -2453,12 +2453,14 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
   1.3.6 server at the image's pin with `secureEnabled` on (first run, then a
   re-run that changed nothing).
 - **Who may do what** (FUXA 1.3.6 source, and seen in a browser against that
-  server): a guest, which is what a kiosk is, sees every view and may write
-  nothing; a write opens FUXA's sign-in box. Any signed-in user may write tags
-  from a view and acknowledge alarms. Only an administrator (`groups` -1 or
-  255) may open the editor or use the project, users, and settings APIs, and
-  REST `POST /api/setTagValue`. The operator signs in at a kiosk or a browser
-  with the `operator` account; the session lasts 12 h (`tokenExpiresIn`).
+  server): a guest, which is any client with no session, sees every view and
+  may write nothing; a write opens FUXA's sign-in box. Any signed-in user may
+  write tags from a view and acknowledge alarms. Only an administrator
+  (`groups` -1 or 255) may open the editor or use the project, users, and
+  settings APIs, and REST `POST /api/setTagValue`. A person signs in from their
+  own browser with the `operator` account, and the session lasts 12 h
+  (`tokenExpiresIn`); the HMI kiosks sign in as `operator` by themselves
+  ([§15.9](#159-operations), "FUXA kiosk login").
 - **`POST /api/project` replaces the whole project.** It clears everything
   first, so it wipes the built-in FuxaServer device (id `0`) unless the posted
   project includes it. The generated projects include it.
@@ -3646,13 +3648,36 @@ simulated time (`sim_time`), so it lines up with Wazuh and Malcolm directly.
   per-host nftables MGMT policy limits who reaches them. They are accepted
   range risks; enabling OpenSearch security and an API token are open work.
 
-**FUXA kiosk login.** The HMI kiosks open a FUXA view in secure mode with no
-session. FUXA treats that as a guest: every view and value shows, and a write
-opens the sign-in box. The operator signs in there as `operator`
-([§12.2](#122-fuxa-two-instances)); `tokenExpiresIn` is 12 h, after which the
-next write asks again. Seen in a browser against a FUXA 1.3.6 server; not yet
-on a kiosk VM. A kiosk that signs itself in was rejected: it would put an
-operator's session on an unattended screen.
+**FUXA kiosk login.** The HMI kiosks sign themselves in to FUXA as `operator`
+(the owner's decision), so an operator station can write values and press
+buttons with nobody logging in. `cm-kiosk`, which the app renders, is a
+standard-library Python supervisor:
+
+- It waits until FUXA's project has the kiosk's view, then starts Chromium with
+  `--remote-debugging-pipe`. The debugging protocol runs over two inherited file
+  descriptors, so there is no port and no socket.
+- It signs in itself (`POST /api/signin`), so the password never enters the
+  browser, and hands the page the session: FUXA's client keeps it in the tab's
+  `sessionStorage`, which a script registered for new documents fills before
+  the page starts.
+- Every 5 s it looks at the page. It renews the session at two thirds of the
+  token's life (about every 8 h; the view reloads then), restores one the page
+  lost, and restarts a browser that exits or stops answering. FUXA's own
+  renewal runs only after a click, so it does not keep an untouched screen
+  signed in.
+- If the sign-in cannot be made (FUXA down, the account not there yet), the
+  view still opens as a guest and the sign-in is tried again after 10 s, 20 s,
+  and so on up to every 120 s. A session of any other account on a kiosk is
+  replaced by the operator's at the next look.
+- The password reaches only the HMI hosts, in `/etc/default/cm-kiosk-credentials`
+  (0600, root). The script writes `/run/cm-kiosk/status`, which the SoH check
+  `kiosk-operator-session` reads.
+
+The accepted risk: anyone at an HMI's console is the operator, and the sign-in
+is a clear-text HTTP POST on the HMI VLAN at each start and renewal, as it is
+when a person types it. The script ran against a FUXA 1.3.6 server with the
+image's Chromium build on a virtual display (sign-in, renewal past expiry, FUXA
+restarts, a missing account, browser crashes); no kiosk VM has run it.
 
 **Alarm shelving (TODO).** ISA-18.2 shelving is a FUXA feature, not a PLC one:
 an operator shelves an alarm for a fixed time (default 8 h, at most one shift)
@@ -3805,7 +3830,7 @@ scene.
 
 | Item | Where | Purpose |
 |---|---|---|
-| `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main` by default, pinned by digest; the `PHENIX_IMAGE` build argument names the locally built fork image instead). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs, Guacamole connections, Wazuh enrollment, the FUXA operator password and the Malcolm and Wazuh web passwords, nftables MGMT policy, and for the ot-sim devices what the `ot-sim` app cannot render: the telnet module, and the I/O and BACnet modules (with the `helics/federate` annotation) of the BAS controllers. **post-start/running:** set `df_default=false` on the mirror's GRE ports ([§14](#14-blue-team-monitoring)); verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. The scenario runs the running stage every five minutes (`runPeriodically`); neither stage fails the experiment, and a host once seen provisioned is not asked again. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
+| `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main` by default, pinned by digest; the `PHENIX_IMAGE` build argument names the locally built fork image instead). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs and the kiosks' sign-in (the operator password, to the HMI hosts only), Guacamole connections, Wazuh enrollment, the FUXA operator password and the Malcolm and Wazuh web passwords, nftables MGMT policy, and for the ot-sim devices what the `ot-sim` app cannot render: the telnet module, and the I/O and BACnet modules (with the `helics/federate` annotation) of the BAS controllers. **post-start/running:** set `df_default=false` on the mirror's GRE ports ([§14](#14-blue-team-monitoring)); verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. The scenario runs the running stage every five minutes (`runPeriodically`); neither stage fails the experiment, and a host once seen provisioned is not asked again. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
 | `phenix-scorch-component-plantevent` | `apps/` | Drives the sim-ctl event API from SCORCH (batch, outage, genset exercise, chiller fault, CO₂ release, jam, weather step, CIP panel, CO₂ leak, gas-detection failure, refrigerant leak, BESS thermal), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
 | `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the proposed `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current (`cm-plantgen-tests`, `cm-sync-check`) |
 | `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)), tested in CI (`cm-sim-tests`) |

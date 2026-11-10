@@ -97,7 +97,7 @@ Reach FUXA with `phenix-tunneler` at `http://localhost:11881`
 host itself the forward listens on a random port: find it with
 `cc tunnel list scada-fuxa` (the row with `dst port 1881`). The `cherrymountain` app generates the range
 passwords for each experiment: FUXA's `admin` is `fuxa_password` and its
-`operator` (the account that may write values) is `fuxa_operator_password` in
+`operator` (the account that may write values, which the HMI stations sign in with by themselves) is `fuxa_operator_password` in
 `<experiment directory>/cherrymountain/secrets.json`. The fixed one in
 `phenix-injects/fuxa/fuxa.env` applies only where the app does not run (the
 Docker integration test).

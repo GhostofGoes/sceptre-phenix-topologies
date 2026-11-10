@@ -1961,9 +1961,9 @@ notional design targets):
     (it has no IPsec policy match), so a plaintext packet spoofing that address
     from the INET segment would pass the ACL. `cm-vyos-config.sh` therefore adds
     `ipsec match-ipsec-in` (or `match-ipsec` on older builds) after boot to
-    every fw-edge rule whose source is utility-derms. That is unverified on a
-    VyOS VM, and `netcheck` does not model it; the template limitation is
-    recorded for upstream ([§16](#16-new-and-extended-software)).
+    every fw-edge rule whose source is utility-derms
+    ([§10.3](#103-conduit-matrix-default-deny-stateful-logged)). `netcheck` does
+    not model it.
   - The MGMT plane (below).
 - **MGMT is a simulation back-plane, not a containment boundary.** Field
   devices with HELICS-backed I/O and the simulation nodes have a MGMT NIC
@@ -1977,8 +1977,8 @@ notional design targets):
       back to each federate's core (TCP 23407–23999). Nothing pins the core
       ports: the broker hands each core one, counted up per host from just
       above its own (23414 in HELICS 3.6.1; 23492 was also seen), so the range
-      starts right after the broker ports. An earlier range of 23500–23999
-      stopped the federation when it was tried between two network namespaces.
+      starts right after the broker ports. A range starting at 23500 stopped
+      the federation between two network namespaces.
     - OpenSearch (9200) and NTP to sim-ctl.
 
     The `cherrymountain` app renders the policy. phenix does not rename a
@@ -2100,14 +2100,12 @@ on `999.202611082315`:
   This build commits those lines anyway, but leaves the IKE group with no
   proposal, so the peers would negotiate defaults. The pinned fork already
   writes `ike-group`.
-- The stock config prints a deprecation warning: the IKE group has no
-  `key-exchange` and still accepts IKEv1. The design sets
-  `set vpn ipsec ike-group IKE-1W key-exchange ikev2` (upstream follow-up in
-  [§16](#16-new-and-extended-software)).
+- The rendered IKE group has no `key-exchange`, so it still accepts IKEv1 (a
+  deprecation warning). The post-boot script below sets `ikev2` (upstream
+  follow-up in [§16](#16-new-and-extended-software)).
 - Current rolling images name NICs in PCI slot order (vyos-1x
-  `canonical_sort_key`), which matches phenix's `eth<index>`. The spike saw
-  `eth0` at `0000:01:01.0` and `eth1` at `0000:01:02.0`, with the first
-  topology interface on `eth0`.
+  `canonical_sort_key`), which matches phenix's `eth<index>`: the first
+  topology interface was `eth0`.
 - ACL syntax with a valueless `state established` and `state related` commits
   on this build.
 
@@ -2137,11 +2135,9 @@ default drop through the static routes, NAT, IPsec, and these rulesets
 - **Router-local traffic is unfiltered.** The rendered rulesets filter only the
   `forward` chain, so traffic to a router's own address (IKE, SSH, the routers'
   own NTP and syslog) is not filtered. `netcheck` reports it as `local`.
-- **Netem loss is an integer percent.** The WAN emulation below uses 1 %, not
-  0.1 %.
 - **Unverified until a VM run:** that VyOS accepts the rulesets, the post-boot
-  script (the syslog syntax is tried as `remote`, then `host`), and the SoH
-  probes. The script is injected into the image's persistence path, where the
+  script (the syslog syntax is tried as `remote`, then `host`; the IPsec match
+  on the utility rule), and the SoH probes. The script is injected into the image's persistence path, where the
   boot hook of the phenix VyOS image runs `*.script` files, and it waits for
   the boot commit before it changes anything; both were read from the vyos-1x
   and images-repository sources, not run.
@@ -2155,12 +2151,12 @@ default drop through the static routes, NAT, IPsec, and these rulesets
 | FUXA → plc-cellar, utilities, power | Modbus TCP (502) | FUXA Modbus client ↔ OpenPLC v4 `modbus_slave` |
 | PLCs → RIO and power devices | Modbus TCP (502) | OpenPLC v4 `modbus_master` ↔ ot-sim Modbus server |
 | plc-utilities → plc-cellar | Modbus TCP (502) | Peer interlock reads (east–west) |
-| bas-fuxa → BAS devices | BACnet/IP (UDP 47808) | FUXA BACnet client ↔ new ot-sim BACnet module. Same VLAN, and the Who-Is goes to the directed broadcast address `10.30.10.255`, so no BBMD is involved. Untested: the `bbmd` spike covered `scada-fuxa` only |
+| bas-fuxa → BAS devices | BACnet/IP (UDP 47808) | FUXA BACnet client ↔ new ot-sim BACnet module. Same VLAN; the Who-Is goes to the directed broadcast `10.30.10.255`, so no BBMD is involved (untested, [§8.1](#81-spaces-equipment-and-bacnet-devices)) |
 | scada-fuxa → BAS devices | BACnet/IP (UDP 47808) through fw-ot | Same client and module. Who-Is discovery goes through the BBMDs below; the I-Am returns by unicast; reads and writes are unicast |
 | ot-svc ↔ bas-bbmd | BACnet/IP BBMD (UDP 47808) | BACpypes3 BBMDs; each BDT lists both |
 | utility-derms → rtu-der | DNP3 (TCP 20000) over IPsec | ot-sim DNP3 master ↔ ot-sim FEP outstation |
 | rtu-der → power devices | Modbus TCP (502) | ot-sim FEP Modbus client |
-| relay-main | Telnet (23) | ot-sim `telnet` module (an ot-sim admin shell with its default banner). Reachable only from the FIELD-PWR segment (plc-power, rtu-der), so it is a lateral-movement artifact, not a sanctioned path. The `cherrymountain` app injects the telnet config, because the phenix ot-sim app doesn't generate it |
+| relay-main | Telnet (23) | ot-sim `telnet` module (an ot-sim admin shell with its default banner). Reachable only from the FIELD-PWR segment (plc-power, rtu-der), so it is a lateral-movement artifact, not a sanctioned path. The `cherrymountain` app adds it to the config ([§12.3](#123-ot-sim-field-devices)) |
 | ews → CTRL PLCs | OpenPLC v4 runtime REST API (TCP 8443) | HTTPS with a self-signed certificate (`phenix-injects/openplc/cm-openplc-provision.sh` uses `curl -k`, and the EWS tool does not verify the certificate). Mirrored capture holds only TLS sessions: Zeek and Suricata cannot read the program upload or start/stop calls, only the session ([§14](#14-blue-team-monitoring)) |
 | FUXA → historian | InfluxDB HTTP (8086); MQTT (1883) PackTags/OEE | FUXA DAQ; FUXA server script publishing to Mosquitto; Telegraf → InfluxDB |
 | HMIs → FUXA | HTTP/WebSocket (1881) | Chromium kiosk |
@@ -2202,16 +2198,11 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
   own address, so it never hears the rebroadcast, and rule 3 matters only for
   other clients. Rule 3 is therefore optional.
 - **FUXA's own behavior** (read from its driver and shown by captures):
-  - The Who-Is goes to the device's `broadcastAddress` property. Unset, it is
-    `255.255.255.255` and the BBMDs are needed. Set to the device's IP, it is a
-    unicast, and FUXA reads the device with no BBMD, with only the
-    FUXA-to-device rule and the established-reply rule. The design keeps the
-    BBMDs for realism and as blue-team attack surface
-    ([§14](#14-blue-team-monitoring)), and leaves the property unset on
-    `scada-fuxa`.
-  - FUXA reports a device "connected" on the first I-Am from anything,
-    including the OPS BBMD's. SoH and health checks read a tag value
-    ([§15.4](#154-state-of-health)).
+  - The Who-Is goes to the device's `broadcastAddress` property, which the
+    design leaves unset on `scada-fuxa` so that discovery uses the BBMDs; FUXA
+    reports a device "connected" on any first I-Am, so SoH reads a tag value
+    ([§8.1](#81-spaces-equipment-and-bacnet-devices),
+    [§15.4](#154-state-of-health)).
   - FUXA sends its Who-Is once, at connect. A device whose ACL rule appears
     later is not found until the runtime reconnects.
   - A device FUXA has not discovered is polled by broadcast, one
@@ -2220,8 +2211,9 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 
 **WAN emulation.** The vrouter `emulators` (netem) apply to egress only:
 
-- **isp-rtr:** about 30 ms of delay and 1% loss (netem loss is an integer percent) on its VENDOR and INET
-  egress (the vendor path), plus a bandwidth limit on INET.
+- **isp-rtr:** about 30 ms of delay and 1 % loss on its VENDOR and INET egress
+  (the vendor path), plus a 50 Mbit/s limit on INET. The vrouter app takes netem
+  loss as an integer percent, so 1 % stands in for 0.1 %.
 - **util-rtr:** about 20 ms of delay on its INET and UTIL egress (the
   utility WAN). The IPsec and DNP3 path between fw-edge and util-rtr stays
   on the INET segment and never crosses isp-rtr.
@@ -2283,10 +2275,9 @@ already owns UDP 47808: `bas-fuxa` runs node-bacnet, and each device runs an
 ot-sim BACnet module. The `bbmd` spike only tested BBMDs as separate processes
 on their own addresses, never inside a device, so the design uses a standalone
 service (`cm-bbmd.service` in `cm-svc`, enabled on these two nodes only). The
-`bas-bbmd` VM stays in the design (43 VMs). That was decided with the
-`broadcastAddress` alternative, which needs no BBMD, in view
-([§8.1](#81-spaces-equipment-and-bacnet-devices)). Hosting the BAS BBMD in
-`bas-vent`'s BACnet module would drop the VM but is untested
+`bas-bbmd` VM stays (43 VMs), although the `broadcastAddress` alternative
+needs no BBMD ([§8.1](#81-spaces-equipment-and-bacnet-devices)). Hosting the
+BAS BBMD in `bas-vent`'s BACnet module would drop the VM but is untested
 ([§19](#19-risks-and-open-questions)).
 
 **Malcolm sizing.** Both profiles stay in the design. The default `malcolm`
@@ -2304,15 +2295,17 @@ spike:
   used 9.2 GiB of 16 GB (run 42547389340).
 - Suricata added 917 MiB at its peak and about one core to that stack. Without
   it, an earlier run of the same pipeline peaked at 7.6 GiB.
-- The full stack adds Postgres and Redis for NetBox, Strelka, the upload and
-  nginx containers. The 24 GB profile sets OpenSearch to a 6 GB heap and
-  Logstash to 3 GB (`phenix-injects/malcolm/profiles.sh`), below Malcolm's
-  10 GB OpenSearch default. None of that was measured, and no live capture ran in a real `cm-malcolm` VM.
+- The full stack adds NetBox with Postgres and Strelka file scanning. The
+  24 GB profile sets OpenSearch to a 6 GB heap and Logstash to 3 GB
+  (`phenix-injects/malcolm/profiles.sh`), below Malcolm's 10 GB OpenSearch
+  default. None of that was measured, and no live capture ran in a real
+  `cm-malcolm` VM.
 
 The 24 GB default stays until a VM run measures the full stack. The slim profile
-is the trimmed pipeline above, with Suricata and without NetBox and Strelka, at
-about 4 vCPU / 12 GB. That figure is the measured 8.4 GiB peak plus headroom,
-not a measurement of a live-capture VM, and it is not the default.
+is the trimmed pipeline above (OpenSearch 3 GB and Logstash 2 GB heaps) without
+Suricata, NetBox, and Strelka, at about 4 vCPU / 12 GB: the measured 8.4 GiB
+peak, which included Suricata, plus headroom. `profiles.sh` picks it on a VM
+with less than 22 GB of memory unless `CM_MALCOLM_PROFILE` says otherwise.
 
 **Variants** ([§15.3](#153-topology-modules-and-variants)):
 
@@ -2361,8 +2354,10 @@ it forwards the engine's accepted-request count to the brewhouse panel
 (`XC02` to `XI03`). Its timed steps count the scans they run, so a hold keeps
 the time already served; the mill runs 2 s per kg (17 minutes for the 503 kg
 grain bill at the simulated mill's rate); and the HLT gets steam only while its
-low-level switch is made, the fail-safe sense. plc-cellar has fixed spunding steps, no setpoint
-profiles, and no transfer sequence beyond the peer status bits. plc-packaging
+low-level switch is made, the fail-safe sense. plc-cellar runs one
+fermentation profile (the ferment, diacetyl-rest, and crash setpoints, for each
+fermenter whose `CEL.PROFILE.HSnn.AUTO` is on) and two fixed spunding steps, and has no
+transfer sequence beyond the peer status bits. plc-packaging
 coordinates the machines' own PackML state machines (it is not the Beckhoff
 port) and holds a command on them for five scans, because the Modbus master
 samples its outputs once per poll. plc-power reads the ATS controller's clock
@@ -2444,27 +2439,22 @@ GB.
 retired. For reference, the pattern would have been GRFICSv3's: bake
 `compile_program.sh <prog>.st` into the image, and inject `openplc.db` (with a
 `Programs` row and `Start_run_mode=true`), `active_program`, `st_files/`, and
-`mbconfig.cfg`. v3 is archived, has no OPC UA, and gains DNP3. plantgen wrote an
-`mbconfig.cfg` for reference until it was removed: nothing read it, and a range
-whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
+`mbconfig.cfg`. v3 is archived, has no OPC UA, and gains DNP3, so a range whose
+brewhouse PLC serves OPC UA cannot fall back to it.
 
 ### 12.2 FUXA (two instances)
 
 **Version and build**
 
 - Pin FUXA exactly. The latest published Docker image is 1.3.5 and there is
-  no 1.3.6 tag, so `cm-fuxa` builds a pinned commit from source. The
-  integration test runs the 1.3.5 image.
+  no 1.3.6 tag, so `cm-fuxa` builds commit `b2972583` (server 1.3.6) from
+  source. The ci integration test runs the 1.3.5 image.
 - The drivers (Modbus, OPC UA, S7, BACnet) are not baked into FUXA: they are
   optional npm packages, 92 MB for `modbus-serial`, `node-opcua`, `node-snap7`,
-  and `node-bacnet`.
-  - The image build installs the four into `server/node_modules` with
-    `npm install`, at the pinned versions in [§15.7](#157-images), so the range
-    runs offline.
-  - The spike took the other route FUXA offers, `POST /api/plugins`, which
-    installs on demand into `server/_pkg/runtime/node_modules`: it copied that
-    `_pkg/` into a fresh container with no network, and all four drivers
-    loaded. The image does not use that route.
+  and `node-bacnet`. The image build installs the four into
+  `server/node_modules` at the pinned versions in [§15.7](#157-images), so the
+  range runs offline. (FUXA's on-demand route, `POST /api/plugins`, is not
+  used.)
 
 **Provisioning**
 
@@ -2474,8 +2464,9 @@ whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
   generated table per device for both scada-fuxa and bas-fuxa. FUXA opens
   a view by its name (`/home?viewName=<name>`, the kiosk URL), so the names are unique:
   the graphic is "Cellar" and plc-cellar's generated table "Cellar points". The
-  committed copies (`fuxa/<variant>/<host>-project.json`) are checked current
-  by the `cm-fuxa-check` hook. OPC UA tags address `ns=2;s=<tag>` and S7 tags
+  committed copies (`fuxa/<variant>/<host>-project.json` for full and lite,
+  `fuxa/scada-fuxa-project.json` for ci) are checked current by the
+  `cm-fuxa-check` hook. OPC UA tags address `ns=2;s=<tag>` and S7 tags
   the data blocks the app gives the `s7comm` plugin (DB1 %QW, DB2 %IW, DB3 %MW,
   DB4 %IX, DB5 %QX).
 - Tag IDs are deterministic (derived from tag names), so the views stay
@@ -2496,15 +2487,13 @@ whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
      back until every device in `FUXA_EXPECT_DEVICES` (written by the app;
      default every device of the file but FUXA's own server device) is there. A re-run first GETs
      `/api/project` and, when FUXA already holds the same devices with the same
-     tag counts, skips the POST and the runtime restart it causes. The script
-     ran three times against a FUXA 1.3.5 container (import, skipped re-run, a
-     missing device failing).
+     tag counts, skips the POST and the runtime restart it causes.
 
-  The spike ran this flow unattended, twice. The seeded password stops
-  working, and tokens survive both the runtime restart and a full restart of
-  FUXA. The script as it is now, operator step included, ran against a FUXA
-  1.3.6 server at the image's pin with `secureEnabled` on (first run, then a
-  re-run that changed nothing).
+  The script ran three times against a FUXA 1.3.5 container (import, skipped
+  re-run, a missing device failing) and, operator step included, against a
+  FUXA 1.3.6 server at the image's pin with `secureEnabled` on (a first run,
+  then a re-run that changed nothing). After it, the seeded password no longer works, and tokens
+  survive both the runtime restart and a full restart of FUXA.
 - **Who may do what** (FUXA 1.3.6 source, and seen in a browser against that
   server): a guest, which is any client with no session, sees every view and
   may write nothing; a write opens FUXA's sign-in box. Any signed-in user may
@@ -2519,98 +2508,91 @@ whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
   project includes it. The generated projects include it.
 - **Tag address formats:**
   - OPC UA: the node id string.
-  - S7: `DB<n>.DBW<byte>`.
+  - S7: `DB<n>.DBW<byte>`, or `DB<n>.DBX<byte>.<bit>` for a bit.
   - Modbus: a 1-based address plus `memaddress` 400000, 300000, 100000, or 0.
   - BACnet: `<type>-<instance>`, with `memaddress` set to the remote device
     instance.
 - **Verified in the spike:** FUXA's own OPC UA, S7, Modbus TCP, and BACnet
   drivers read live values from the OpenPLC v4 plugins and a BACpypes3
   responder. FUXA's process RSS was 174 MB with four devices polling at 1 s.
-  Not done: confirming in a browser that a posted view renders, and a
-  10-minute memory soak.
+  A posted project's views were seen rendered in a browser against FUXA 1.3.6 ([fuxa/README.md](../fuxa/README.md#the-brand-on-fuxas-screens)).
+  Not done: a 10-minute memory soak.
 
 **scada-fuxa (process)**
 
-- **Views** (ISA-101 style, grayscale): Overview with KPIs, Brewhouse,
-  Cellar (FV/BBT grid), Packaging (line and OEE), Utilities, Electrical
-  one-line, Alarms, Trends, and Batch (recipe "Fire of the Phenix", batch
-  ID, phase status). **As built** (`fuxa/hmi_views.py`, drawn with
+- **Views** (ISA-101 high-performance style; `fuxa/hmi_views.py`, drawn with
   `fuxa/hmi_kit.py`; [fuxa/README.md](../fuxa/README.md#the-process-graphics)):
   - **The hierarchy.** *Overview* is level 1: the whole plant on one screen,
     product moving left to right, nothing to operate, each panel a link to
     its area. *Brewhouse*, *Cellar*, *Packaging*, *Utilities*, *Power* (the
     one-line diagram), and *Cellar CO2* are level 2, the screens an area is
-    run from. *Batch* and a generated *points* table for each controller
+    run from. *Batch* and a generated *points* table for each device
     (every tag it has, and a box for each one an operator may write) are
     levels 3 and 4. There is no separate Alarms or Trends view: FUXA's header
     has the alarm list, and each level-2 screen carries the trends of its
     own area.
-  - **Color.** Equipment is gray on a gray ground. A muted color says what is
-    in a vessel or a pipe (wort, beer, water, glycol, steam, CO₂, CIP
-    solution), one blue says running, open, or closed-in, and the four alarm
-    colors of [§15.11](#1511-brand) appear only in alarm flags. A flag is also
-    a shape with its priority's number in it (1 square to 4 diamond), so it
-    reads without color. Every alarm of the project has a flag beside the
-    value it watches on at least one of these screens (a test holds this).
-  - **Values in context.** A measurement with limits is a scale: the normal
-    band, the alarm limits from `alarms.json` as marks, a pointer at the
-    value, a hollow marker at the setpoint. A level fills its vessel in the
-    vessel's shape. A fermenter has no level transmitter, so its color says
-    what it holds instead: empty, then wort that turns to beer as the extract
-    falls.
+  - **Color.** Equipment is gray on a gray ground; muted media colors show
+    what is in a vessel or a pipe, and one blue shows running or open. The
+    four alarm colors of [§15.11](#1511-brand) appear only in alarm flags,
+    and a flag is also a shape with its priority's number, so it reads
+    without color. Every alarm of the project has a flag beside the value it
+    watches on at least one graphic (a test holds this).
+  - **Values in context.** A measurement with limits is a scale with the
+    alarm limits of `alarms.json` as marks and a marker at the setpoint; a
+    level fills its vessel's shape. A fermenter has no level transmitter, so
+    its color shows what it holds: empty, then wort that turns to beer as the
+    extract falls.
   - **Controls.** A box or a button is drawn only for a tag the plant model
     marks `read-write`; the kit refuses any other at build time. So the
     breakers, the generator, and the spunding setpoints show and cannot be
     operated here, as in the points tables.
 - **Alarms** are generated from the rationalized definitions in `plant.yaml`.
 - **Server scripts:**
-  - An ISA-88 batch engine that sequences PLC phases from recipe parameters
-    and coordinates unit-to-unit transfers. **As built** (`fuxa/batch_engine.js`,
-    [fuxa/README.md](../fuxa/README.md#the-brewhouse-batch-engine)): one server
-    script in the full and lite scada-fuxa projects, run by FUXA every second,
-    with the BeerJSON recipe embedded by the builder. For each of a brew's
-    eleven phase runs it writes the setpoints and the parameter, commands
-    Start, waits for Complete, and commands Reset. It keeps its whole state in
-    restorable tags of FUXA's own server device (`BATCH.*`), so a FUXA restart
-    resumes the batch. It starts a brew only when the PLC is Idle, no brewhouse
-    vessel is in entry, and plc-cellar reports a fermenter empty and lined up;
-    it holds the batch with an alarm on a phase timeout, an unanswered command,
-    or a lost PLC link. Brews come from the **Batch** view (Start, Hold,
-    Restart, Abort, Reset) or from the brewhouse panel's request counter, which
-    the brew schedule and the `start-batch` event press
-    ([§9.6](#96-implementation-status-and-validation)). The fermenter it reserves is a
-    check and a display; the cellar federate routes the wort.
-  - A daily production report (PDF) with barrels packaged:
-    bottles × 12 oz ÷ 3,968 oz/bbl, plus kegs. It supports the TTB records.
-  - A PackTags/OEE publisher that sends MQTT to the historian's Mosquitto
-    on ISA-95 topics such as
-    `cherrymountain/frontrange/packaging/bottling-line/packtags/...`.
+  - The ISA-88 batch engine (`fuxa/batch_engine.js`,
+    [fuxa/README.md](../fuxa/README.md#the-brewhouse-batch-engine)), the one
+    server script built: it is in the full and lite scada-fuxa projects, run
+    by FUXA every second, with the BeerJSON recipe embedded by the builder.
+    For each of a brew's eleven phase runs it writes the setpoints and the
+    parameter, commands Start, waits for Complete, and commands Reset. It
+    keeps its whole state in restorable tags of FUXA's own server device
+    (`BATCH.*`), so a FUXA restart resumes the batch. It starts a brew only
+    when the PLC is Idle, no brewhouse vessel is in entry, and plc-cellar
+    reports a fermenter empty and lined up; it holds the batch with an alarm
+    on a phase timeout, an unanswered command, or a lost PLC link. Brews come
+    from the **Batch** view (Start, Hold, Restart, Abort, Reset) or from the
+    brewhouse panel's request counter, which the brew schedule and the
+    `start-batch` event press
+    ([§9.6](#96-implementation-status-and-validation)). The fermenter it
+    reserves is a check and a display; the cellar federate routes the wort.
+  - Not built yet: a daily production report (PDF) with barrels packaged
+    (bottles × 12 oz ÷ 3,968 oz/bbl, plus kegs), which supports the TTB
+    records.
+  - Not built yet: a PackTags/OEE publisher that sends MQTT to the
+    historian's Mosquitto on ISA-95 topics such as
+    `cherrymountain/frontrange/packaging/bottling-line/packtags/...`. The
+    historian's Telegraf already subscribes ([§12.4](#124-historian-and-engineering-workstation)).
 - **DAQ** goes to the InfluxDB 2 bucket `scada`.
 
 **bas-fuxa (BAS)**
 
-- BACnet/IP client to the three BAS devices, on the same VLAN. Its Who-Is
-  goes to the directed broadcast address `10.30.10.255`, so it needs no BBMD
-  ([§8.1](#81-spaces-equipment-and-bacnet-devices); untested, because the `bbmd`
-  spike covered `scada-fuxa` only).
-- Views: building overview, RTU-1, cold room, ventilation/CO₂. **As built:**
-  one *Building* screen drawn as a plan (taproom with RTU-1, cold room, the
-  brewhouse hood and area exhaust, and the cellar from above with its four
+- BACnet/IP client to the three BAS devices, on the same VLAN, with no BBMD
+  ([§8.1](#81-spaces-equipment-and-bacnet-devices); untested).
+- Views: one *Building* screen drawn as a plan (taproom with RTU-1, cold room,
+  the brewhouse hood and area exhaust, and the cellar from above with its four
   CO₂ sensors and purge fans), and the *Building points* table.
-- Schedules (occupancy) and alarms.
+- Alarms. There is no occupancy schedule in FUXA: the building federate sets
+  RTU-1's occupancy mode from its own taproom schedule, and bas-fuxa shows the
+  mode read only, because FUXA's BACnet driver writes only analog and binary
+  objects.
 - DAQ goes to the InfluxDB 2 bucket `bas`.
 
 **BACnet on scada-fuxa.** A FUXA BACnet device's `property.address` must be an
 IP that exists on the FUXA host (its own interface), not the remote device. The
-driver connects only after an I-Am answers its Who-Is, and it sends the Who-Is
-to the device's `broadcastAddress` property (`255.255.255.255:47808` when the
-property is unset), as captures confirmed. So scada-fuxa, on OPS, reaches the BAS
-devices through the BBMDs ([§10.4](#104-protocol-map)), and it needs the I-Am
-unicast rule in [§10.3](#103-conduit-matrix-default-deny-stateful-logged). A real
-FUXA 1.3.5 did this in the `bbmd` spike, on a VyOS router and on a Linux router.
-FUXA reports "connected" on any first I-Am, including the BBMD's own, so
-health checks read a tag value, not the connection state
-([§15.4](#154-state-of-health)).
+Who-Is goes to `255.255.255.255:47808`, so scada-fuxa, on OPS, reaches the BAS
+devices through the BBMDs ([§10.4](#104-protocol-map)) and needs the I-Am
+unicast rule in [§10.3](#103-conduit-matrix-default-deny-stateful-logged); a
+real FUXA 1.3.5 did this in the `bbmd` spike. Health checks read a tag value,
+not the connection state ([§8.1](#81-spaces-equipment-and-bacnet-devices)).
 
 **HMIs** are Chromium kiosks, for example
 `http://10.20.30.10:1881/home?viewName=Brewhouse`. FUXA's home page reads the
@@ -2620,8 +2602,9 @@ routed but ignored, and the start view opens instead.
 ### 12.3 ot-sim field devices
 
 - **Repo and image.** Devices run `patsec/ot-sim`, pinned and rebuilt on
-  Ubuntu noble. The image adds a systemd unit for `ot-sim-cpu-module` and
-  the new BACnet module.
+  Ubuntu noble (`cm-otsim`). The image adds a systemd unit for
+  `ot-sim-cpu-module` and the Python packages of the new BACnet module, which
+  the `cherrymountain` app injects from `phenix-injects/otsim/`.
 - **Noble for every node, DNP3 included.** ot-sim's README lists Ubuntu 20.04
   as the last known-good DNP3 build, but the `otsim-noble` spike built the C++
   DNP3 module (opendnp3 3.1.2) on noble with gcc 13.3 without patches, and the
@@ -2647,8 +2630,8 @@ routed but ignored, and the start view opens instead.
     modules through `PATH`.
   - A root XML comment before `<ot-sim>` makes the C++ DNP3 module reject the
     config ("missing root 'ot-sim' element").
-- **CPU API.** `cpu-module.api-endpoint` is set to `127.0.0.1:9101` on
-  every device. The default is `0.0.0.0`, unauthenticated.
+- **CPU API.** Bound to `127.0.0.1:9101` on every device
+  ([§10.1](#101-zones-and-conduits-purdue-model--isaiec-62443)).
 - **Configs.** The phenix `ot-sim` app generates
   `/etc/ot-sim/config.xml`:
   - All devices are `fd-server` hosts, except `rtu-der` (`fep`) and
@@ -2702,13 +2685,16 @@ routed but ignored, and the start view opens instead.
   chosen over raising the `scada` retention, which would keep three years of
   every raw sample on a 12 GB disk; the daily copy is a few thousand points a
   year. FUXA's daily production report and batch records stay the record of
-  record; the bucket is the retrievable copy 27 CFR 25.300 allows. Not
-  verified on a VM: FUXA's DAQ field layout, as for the dashboard (TODO(verify)
-  in `render.py`).
+  record (the report is not built yet, [§12.2](#122-fuxa-two-instances)); the
+  bucket is the retrievable copy 27 CFR 25.300 allows. Not verified on a VM:
+  FUXA's DAQ field layout, which the task assumes as the dashboard does.
 - Telegraf runs `mqtt_consumer` for PackTags, plus host metrics.
 - Grafana is provisioned with dashboards for fermentation curves, OEE,
   energy (kWh/bbl against the BA benchmark), monthly demand cost, and
-  glycol plant health.
+  glycol plant health. As built, the app renders one starter dashboard
+  (`cm-plant`: fermentation temperatures, apparent extract, and PackTags);
+  the energy, demand-cost, and glycol panels are not built, and its queries
+  assume FUXA's DAQ field layout (TODO(verify) in `render.py`).
 - Mosquitto is the MQTT broker.
 
 **ews**
@@ -2725,7 +2711,7 @@ routed but ignored, and the start view opens instead.
 |---|---|
 | ot-sim (phenix app) | Literal register numbers: coils from 1, discrete inputs from 10001, input registers from 30001, holding registers from 40001. ot-sim stores and matches the literal number the app assigns, so the first input register is read with FC4 at 30001. Analog points must set `data-type: uint16`, because the app defaults to int32 (two registers); plantgen emits it |
 | OpenPLC v4 `modbus_master` | Its own JSON config of start addresses and sizes per device |
-| OpenPLC v4 modbus_slave (4.3.2) | Coils are %QX bits from 0 (then %MX). Discrete inputs are %IX. Input registers are %IW only, from 0. Holding registers are segmented back to back: %QW (qw_count), then %MW, then %MD (2 registers each), then %ML (4 each). %MWn is at holding qw_count + n (for plc-cellar, %MW0 = holding 104). Each count is clamped to the program's own image table (highest located index + 1), and a segment's start moves when an earlier count changes. plantgen writes tight counts as an explicit buffer_mapping, so nothing is clamped. v3 map for reference only: %QW 0–1023, %MW 1024–2047 |
+| OpenPLC v4 modbus_slave (4.3.2) | Coils are %QX bits from 0 (then %MX). Discrete inputs are %IX. Input registers are %IW only, from 0. Holding registers are segmented back to back: %QW (qw_count), then %MW, then %MD (2 registers each), then %ML (4 each). %MWn is at holding qw_count + n (for plc-cellar, %MW0 = holding 106 in full and lite, 104 in ci). Each count is clamped to the program's own image table (highest located index + 1), and a segment's start moves when an earlier count changes. plantgen writes tight counts as an explicit buffer_mapping, so nothing is clamped. v3 map for reference only: %QW 0–1023, %MW 1024–2047 |
 | FUXA Modbus | `memaddress` area (0, 100000, 300000, 400000) plus a **1-based** `address` (FUXA subtracts 1) |
 
 `plantgen` ([§16](#16-new-and-extended-software)) assigns every address
@@ -2738,7 +2724,7 @@ exposed ranges and read 0.
 
 ### 12.6 Plant tag database
 
-`plant/plant.yaml` is the single source of truth. It now covers every area:
+`plant/plant.yaml` is the single source of truth. It covers every area:
 43 hosts, 516 tags (`plant/generated/full/tags.json`), and 98 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
@@ -2767,10 +2753,10 @@ areas:
 
 The slave addresses depend on the PLC's whole located set: adding a %QW moves
 every %MW, so regenerate and rebuild the ZIP together
-(`python -m plantgen`, `python sync.py`, then `plc/<plc>/build_zip.sh`).
-`sync.py --check` fails when the committed ZIP's `conf/` files or
-`PROGRAM_MD5` are stale. It handles all three variants and is aware of Git LFS pointers: where the
-ZIP is still a pointer, it skips the ZIP check. The integration test pins the clamp and segment rules
+(`python -m plantgen`, `python sync.py`, then `plc/common/build_zip.sh --all`,
+or `plc/plc-cellar/build_zip.sh` for ci). `sync.py --check` fails when a
+committed ZIP's `conf/` files or `PROGRAM_MD5` are stale, in all three
+variants; where a ZIP is still a Git LFS pointer, it skips that ZIP. The integration test pins the clamp and segment rules
 by uploading two deliberately different `modbus_slave.json` files.
 
 ## 13. Vendor remote access

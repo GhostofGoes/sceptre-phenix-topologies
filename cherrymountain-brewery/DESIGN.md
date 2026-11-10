@@ -1696,6 +1696,21 @@ values:
   minute.
 - Chiller staging, the BAS interlocks, and the PV site limit live in the
   federates, not in ot-sim `logic` blocks ([§12.3](#123-ot-sim-field-devices)).
+- **Who starts a brew day.** The 05:00 schedule on brew days and the
+  `start-batch` event are requests for brews. While the brewhouse autopilot
+  drives, they queue brews in it. While plc-brewhouse drives, they raise the
+  brewhouse panel's request counter (`panel.requests`, a rio-brewhouse input
+  that reaches FUXA as `BH.BATCH.XI02.REQUESTS`); the FUXA batch engine queues
+  each new count and writes the count it has taken back
+  (`BH.BATCH.XC02.ACCEPTED`, which the PLC forwards to the panel as
+  `panel.accepted`). Both counters are 16-bit and wrap, so a lost update
+  repeats nothing. A request nobody accepts (scada-fuxa is down) stays at the
+  panel, is logged once after five minutes, shows as `batch.panel.pending` in
+  the ground truth, is not adopted by the autopilot, and is taken by the engine
+  when it returns. `sim/tests/test_brewhouse_control_path.py` runs the compiled
+  plc-brewhouse, the brewhouse and cellar federates, and the engine script
+  under Node, and brews a double-brew day (about 11 simulated hours) from a
+  `start-batch` event and from the schedule alone.
 - Built-in operators (the `autopilot` setting) run the brewhouse, utilities,
   and packaging while no PLC is writing. They hand over on the first write
   and take control back after 300 federate seconds without one (a stopped
@@ -2289,12 +2304,15 @@ provisioning below) or in the OpenPLC Editor:
 **As built** (`plc/<plc>/`, [plc/common/README.md](plc/common/README.md)).
 The programs are simpler than the targets above, and the gaps are open work:
 plc-brewhouse uses proportional valves rather than PID and runs one phase per
-Start (no FUXA batch engine exists yet to sequence them, so with the PLC
-running the brewhouse waits for phase commands instead of following its
-autopilot). Its timed steps count the scans they run, so a hold keeps the time
-already served; the mill runs 17 minutes (the 503 kg grain bill at the
-simulated mill's rate); and the HLT gets steam only while its low-level switch
-is made, the fail-safe sense. plc-cellar has fixed spunding steps, no setpoint
+Start; the FUXA batch engine sequences them ([§12.2](#122-fuxa-two-instances)).
+At each Start it latches the phase and the engine's phase parameter
+(`BH.BATCH.XC03.PARAM`: the grain bill in kg for MILL, the minutes of a mash
+rest, the boil, and the whirlpool stand; 0 keeps the program's default), and
+it forwards the engine's accepted-request count to the brewhouse panel
+(`XC02` to `XI03`). Its timed steps count the scans they run, so a hold keeps
+the time already served; the mill runs 2 s per kg (17 minutes for the 503 kg
+grain bill at the simulated mill's rate); and the HLT gets steam only while its
+low-level switch is made, the fail-safe sense. plc-cellar has fixed spunding steps, no setpoint
 profiles, and no transfer sequence beyond the peer status bits. plc-packaging
 coordinates the machines' own PackML state machines (it is not the Beckhoff
 port) and holds a command on them for five scans, because the Modbus master
@@ -2417,9 +2435,13 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
   1. Signs in as the seeded `admin`/`123456` (`POST /api/signin`).
   2. Sets the range admin password through the users API (`groups: -1`, and
      `info` must be the JSON string `"{}"`).
-  3. POSTs the project to `/api/project` with that admin token, then reads it
+  3. Adds the `operator` account (`groups: 2`, FUXA's Operator group) with
+     `fuxa_operator_password`, checks that it signs in, and checks that it
+     cannot use the users API. A re-run leaves a correct account alone and
+     repairs a wrong password or group.
+  4. POSTs the project to `/api/project` with the admin token, then reads it
      back until every device in `FUXA_EXPECT_DEVICES` (written by the app;
-     default every device of the file) is there. A re-run first GETs
+     default every device of the file but FUXA's own server device) is there. A re-run first GETs
      `/api/project` and, when FUXA already holds the same devices with the same
      tag counts, skips the POST and the runtime restart it causes. The script
      ran three times against a FUXA 1.3.5 container (import, skipped re-run, a
@@ -2427,7 +2449,16 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
 
   The spike ran this flow unattended, twice. The seeded password stops
   working, and tokens survive both the runtime restart and a full restart of
-  FUXA.
+  FUXA. The script as it is now, operator step included, ran against a FUXA
+  1.3.6 server at the image's pin with `secureEnabled` on (first run, then a
+  re-run that changed nothing).
+- **Who may do what** (FUXA 1.3.6 source, and seen in a browser against that
+  server): a guest, which is what a kiosk is, sees every view and may write
+  nothing; a write opens FUXA's sign-in box. Any signed-in user may write tags
+  from a view and acknowledge alarms. Only an administrator (`groups` -1 or
+  255) may open the editor or use the project, users, and settings APIs, and
+  REST `POST /api/setTagValue`. The operator signs in at a kiosk or a browser
+  with the `operator` account; the session lasts 12 h (`tokenExpiresIn`).
 - **`POST /api/project` replaces the whole project.** It clears everything
   first, so it wipes the built-in FuxaServer device (id `0`) unless the posted
   project includes it. The generated projects include it.
@@ -2452,7 +2483,21 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
 - **Alarms** are generated from the rationalized definitions in `plant.yaml`.
 - **Server scripts:**
   - An ISA-88 batch engine that sequences PLC phases from recipe parameters
-    and coordinates unit-to-unit transfers.
+    and coordinates unit-to-unit transfers. **As built** (`fuxa/batch_engine.js`,
+    [fuxa/README.md](fuxa/README.md#the-brewhouse-batch-engine)): one server
+    script in the full and lite scada-fuxa projects, run by FUXA every second,
+    with the BeerJSON recipe embedded by the builder. For each of a brew's
+    eleven phase runs it writes the setpoints and the parameter, commands
+    Start, waits for Complete, and commands Reset. It keeps its whole state in
+    restorable tags of FUXA's own server device (`BATCH.*`), so a FUXA restart
+    resumes the batch. It starts a brew only when the PLC is Idle, no brewhouse
+    vessel is in entry, and plc-cellar reports a fermenter empty and lined up;
+    it holds the batch with an alarm on a phase timeout, an unanswered command,
+    or a lost PLC link. Brews come from the **Batch** view (Start, Hold,
+    Restart, Abort, Reset) or from the brewhouse panel's request counter, which
+    the brew schedule and the `start-batch` event press
+    ([§9.6](#96-implementation-status-and-validation)). The fermenter it reserves is a
+    check and a display; the cellar federate routes the wort.
   - A daily production report (PDF) with barrels packaged:
     bottles × 12 oz ÷ 3,968 oz/bbl, plus kegs. It supports the TTB records.
   - A PackTags/OEE publisher that sends MQTT to the historian's Mosquitto
@@ -2609,7 +2654,7 @@ exposed ranges and read 0.
 ### 12.6 Plant tag database
 
 `plant/plant.yaml` is the single source of truth. It now covers every area:
-43 hosts, 497 tags (`plant/generated/full/tags.json`), and 97 rationalized alarms
+43 hosts, 501 tags (`plant/generated/full/tags.json`), and 97 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
 ```yaml
@@ -2755,7 +2800,7 @@ the design keeps committed values out of running experiments where it can:
 
 | Secret | Where it comes from | Exposure |
 |---|---|---|
-| OpenPLC, FUXA (admin and JWT `secretCode`), InfluxDB, Grafana, Guacamole admin, Wazuh enrollment | Generated per experiment by the `cherrymountain` app (`secrets.json`, 0600); rendered files replace the static injects | None committed for full and lite. The ci slice's static `fuxa.env`, `openplc.env`, and `mysettings.json` hold fixed values, used only when the ci topology runs without the app (the Docker integration test) |
+| OpenPLC, FUXA (admin, operator, and JWT `secretCode`), InfluxDB, Grafana, Guacamole admin, Wazuh enrollment, and the web passwords of Malcolm (`malcolm`) and the Wazuh dashboard (`admin`) | Generated per experiment by the `cherrymountain` app (`secrets.json`, 0600); rendered files replace the static injects. The Malcolm and Wazuh passwords reach their VMs in root-only files that only the provisioning units read; the Wazuh one is generated inside what `wazuh-passwords-tool.sh` accepts (8 to 64 characters of letters, digits, and `.+-`, with one of each class) | None committed for full and lite. The ci slice's static `fuxa.env`, `openplc.env`, and `mysettings.json` hold fixed values, used only when the ci topology runs without the app (the Docker integration test) |
 | Vendor persona (per technician: Guacamole password, TOTP key, EWS password) | Generated per experiment (the first technician's in `secrets.json`, the others' in `vendor.json`, 0600) and rendered as `ridgeline.env` for dmz-jump, ews, and vendor-ws | The committed `phenix-injects/guacamole/ridgeline.env` is a fallback for runs without the app |
 | WireGuard private keys | Generated per experiment at configure | The scenario's fixed-seed keys are public in the repository and are replaced unless `wireguardKeys: scenario` |
 | FUXA seed password `123456` | FUXA's own default | Changed by the provisioning script on first boot |
@@ -2819,7 +2864,16 @@ point for future adversary-emulation scenarios.
      frames without `vlan and`.
 
   Item 2 belongs in the mirror app, and item 1 in `setupOVS` or the boot
-  script ([§16](#16-new-and-extended-software)).
+  script ([§16](#16-new-and-extended-software)). Until the mirror app does
+  item 2, the `cherrymountain` app does: in post-start it reads the port names
+  the mirror app recorded (`status.apps.mirror.mirrors.<target>.mirrorName`) and
+  runs `ovs-vsctl set interface <port> options:df_default=false` through
+  minimega on every cluster host of the experiment, for this experiment's ports
+  only. It records the result in `status.apps.cherrymountain.mirror`
+  (`dfDefault`: `set`, `incomplete`, `waiting`, or `skipped`), never fails the
+  stage, and its `running` stage tries again any host that did not answer. The
+  `mirror` app is listed before `cherrymountain` in the scenario for this:
+  phenix runs a stage's apps in list order, and the status must exist first.
 - **The pcap upload pipeline works.** The full pipeline ran in the spike (run
   42547389340): a pcap dropped in `pcap/upload` reached OpenSearch as Zeek logs
   (modbus, dnp3, bacnet, and the rest) and Suricata alerts 142 s later, with
@@ -3330,7 +3384,7 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
 | Ad-hoc capture during an exercise | UI tap click or `phenix vm capture start` | `.pcap` in the experiment Files tab |
 | Repeatable per-run captures | SCORCH `pcap` (OVS, no guest agent; listed per VM interface; needs tshark tools on the head node, which the phenix container has), `convert_to_json: true` → Filebeat → host Elasticsearch. `pcap` start clears other active minimega captures, so don't mix it with ad hoc captures | SCORCH run folder + Kibana |
 | In-guest view (e.g., the IPsec endpoint) | SCORCH `tcpdump` | SCORCH run folder |
-| Continuous NSM | `mirror` app → Malcolm. Needs the capture-VM flow and `df_default=false` on the host GRE port, or frames are lost ([§14](#14-blue-team-monitoring)). Mirrored frames are 802.1Q-tagged, so ad hoc filters need `vlan and` | Zeek/Suricata/Arkime in Malcolm |
+| Continuous NSM | `mirror` app → Malcolm. Needs the capture-VM flow (the image's boot script) and `df_default=false` on the host GRE port (the `cherrymountain` app's post-start), or frames are lost ([§14](#14-blue-team-monitoring)). Mirrored frames are 802.1Q-tagged, so ad hoc filters need `vlan and` | Zeek/Suricata/Arkime in Malcolm |
 | Offline analysis of a saved pcap (for example a SCORCH capture) | Copy it into Malcolm's `pcap/upload`. It works once the four pipeline setup steps of [§14](#14-blue-team-monitoring) are done (the `__load__.zeek` file, `PCAP_PIPELINE_VERBOSITY`, waiting for the processors, and sids of 9000101 and up for custom Suricata rules). In the spike a pcap reached OpenSearch as Zeek logs and Suricata alerts in 142 s | Zeek/Suricata/Arkime in Malcolm |
 | Flow overview | Netflow tab (non-default bridge `cherrymtn`) | UI |
 | Topology traffic graph | SoH `packetCapture` (capture scenario only; monitor VMs join MGMT) | SoH Network Volume graph |
@@ -3340,7 +3394,7 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
 
 | Run | Configure | Start | Stop / cleanup |
 |---|---|---|---|
-| `baseline-brew-day` | soh (all checks), cc: verify Malcolm and Wazuh healthy | vmstats, hoststats, pcap (scada-fuxa IF0, plc-brewhouse IF0+IF1, rio-brewhouse IF0), plantevent `start-batch recipe=fire-of-the-phenix`, pause 30m, soh (`flows`, `custom`) | stop pcap (JSON → Filebeat), cc: export FUXA alarm history and an InfluxDB backup to Files, collector |
+| `baseline-brew-day` | soh (all checks), cc: verify Malcolm and Wazuh healthy | vmstats, hoststats, pcap (scada-fuxa IF0, plc-brewhouse IF0+IF1, rio-brewhouse IF0), plantevent `start-batch recipe=fire-of-the-phenix`, pause 30m (the start of a brew day: one brew takes five to six hours), soh (`flows`, `custom`) | stop pcap (JSON → Filebeat), cc: export FUXA alarm history and an InfluxDB backup to Files, collector |
 | `utility-outage` | soh | pcap (rtu-der IF0+IF1, plc-power IF1, gen-ats IF0), plantevent `utility-breaker open`, pause 10m, cc: Modbus read of gen-ats running and ATS on emergency, plantevent `utility-breaker close`, pause 10m | stop pcap, collector |
 | `cellar-co2-leak` | soh | pcap (bas-fuxa IF0, bas-vent IF0), plantevent `co2-release fv=FV-102 rate=high`, pause 15m, cc: BACnet read of purge fans on and alarm tier | stop pcap, collector |
 | `vendor-maintenance` | soh | cc on vendor-ws: bring up WireGuard, scripted Guacamole session; cc on ews: benign PLC program re-upload; `break` (analyst review) | collector |
@@ -3459,12 +3513,15 @@ Run `phenix image inject-miniexe` on each, then commit to the image store.
 Rebuild `cm-sim` after a `sim/` change (move `CM_REF` first) and the PLC ZIPs
 after a `plant.yaml` change (`plc/common/build_zip.sh --all`).
 
-**Mirror step on the host.** After `phenix experiment start`, set
-`options:df_default=false` on the host's GRE port of the mirror (`ovs-vsctl
-set interface <gre port> options:df_default=false`) until the mirror app does
-it ([§14](#14-blue-team-monitoring)); without it, full-size frames are lost.
-**TODO:** a host-side helper that finds the GRE port of the experiment's
-mirror and sets the option, run by the white cell or a SCORCH `mm` step.
+**Mirror option on the host.** The `cherrymountain` app sets
+`options:df_default=false` on the mirror's GRE ports after every start
+([§14](#14-blue-team-monitoring)); without it, full-size frames are lost. Check
+`status.apps.cherrymountain.mirror.dfDefault` (`set`). If it says `incomplete`
+or `waiting`, trigger the app's `running` stage, or set it by hand in the
+minimega container (`ovs-vsctl set interface <gre port>
+options:df_default=false`). **TODO(verify):** the command's path through
+minimega (`shell` on the headnode, `mesh send <host> shell` elsewhere) follows
+phenix-apps' own helper and has not run on a cluster.
 
 **Boot-time budget.** The SoH app waits `startupDelay: 10m` and `c2Timeout:
 15m`. The boot order ([§15.3](#153-topology-modules-and-variants)) puts the
@@ -3589,12 +3646,13 @@ simulated time (`sim_time`), so it lines up with Wazuh and Malcolm directly.
   per-host nftables MGMT policy limits who reaches them. They are accepted
   range risks; enabling OpenSearch security and an API token are open work.
 
-**FUXA kiosk login.** The HMI kiosks open a FUXA view in secure mode, so they
-need a session; `tokenExpiresIn` is 12 h, after which the kiosk shows the
-login again. **TODO:** a view-only FUXA account for the kiosks (FUXA groups
-allow a viewer role) whose credentials `cm-kiosk` posts to `/api/signin` at
-start and again before the 12 h expiry, or a token lifetime that matches the
-exercise length.
+**FUXA kiosk login.** The HMI kiosks open a FUXA view in secure mode with no
+session. FUXA treats that as a guest: every view and value shows, and a write
+opens the sign-in box. The operator signs in there as `operator`
+([§12.2](#122-fuxa-two-instances)); `tokenExpiresIn` is 12 h, after which the
+next write asks again. Seen in a browser against a FUXA 1.3.6 server; not yet
+on a kiosk VM. A kiosk that signs itself in was rejected: it would put an
+operator's session on an unattended screen.
 
 **Alarm shelving (TODO).** ISA-18.2 shelving is a FUXA feature, not a PLC one:
 an operator shelves an alarm for a fixed time (default 8 h, at most one shift)
@@ -3747,14 +3805,15 @@ scene.
 
 | Item | Where | Purpose |
 |---|---|---|
-| `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main` by default, pinned by digest; the `PHENIX_IMAGE` build argument names the locally built fork image instead). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs, Guacamole connections, Wazuh enrollment, nftables MGMT policy, and for the ot-sim devices what the `ot-sim` app cannot render: the telnet module, and the I/O and BACnet modules (with the `helics/federate` annotation) of the BAS controllers. **post-start/running:** verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. The scenario runs the running stage every five minutes (`runPeriodically`); neither stage fails the experiment, and a host once seen provisioned is not asked again. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
+| `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main` by default, pinned by digest; the `PHENIX_IMAGE` build argument names the locally built fork image instead). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs, Guacamole connections, Wazuh enrollment, the FUXA operator password and the Malcolm and Wazuh web passwords, nftables MGMT policy, and for the ot-sim devices what the `ot-sim` app cannot render: the telnet module, and the I/O and BACnet modules (with the `helics/federate` annotation) of the BAS controllers. **post-start/running:** set `df_default=false` on the mirror's GRE ports ([§14](#14-blue-team-monitoring)); verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. The scenario runs the running stage every five minutes (`runPeriodically`); neither stage fails the experiment, and a host once seen provisioned is not asked again. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
 | `phenix-scorch-component-plantevent` | `apps/` | Drives the sim-ctl event API from SCORCH (batch, outage, genset exercise, chiller fault, CO₂ release, jam, weather step, CIP panel, CO₂ leak, gas-detection failure, refrigerant leak, BESS thermal), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
 | `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the proposed `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current (`cm-plantgen-tests`, `cm-sync-check`) |
 | `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)), tested in CI (`cm-sim-tests`) |
 | `cm-viz` | `viz/` | The white cell's 3D view of ground truth: a Python bridge from the sim-ctl snapshot to a read-only WebSocket, and a three.js page with three scenes and an SVG fallback ([§15.10](#1510-white-cell-3d-view-cm-viz)); tested in CI (`cm-viz-tests`) and in headless Chromium (`-m browser`) |
+| **FUXA batch engine** (`batch_engine.js`) | `fuxa/` (a FUXA server script, embedded by `build_project.py`; [README](fuxa/README.md#the-brewhouse-batch-engine)) | Sequences plc-brewhouse's ISA-88 phases from the BeerJSON recipe, with a Batch view, and takes brew requests from the view or the brewhouse panel ([§12.2](#122-fuxa-two-instances)). Built; run in a real FUXA server against a stand-in PLC, not yet against OpenPLC |
 | **ot-sim BACnet module** (`cm_otsim_bacnet.py`) | `phenix-injects/otsim/` (BACpypes3 and pyzmq; [README](phenix-injects/otsim/README.md)) | A BACnet/IP server for the BAS controllers, built in this repository with no fork of ot-sim. The ot-sim CPU module starts it from `config.xml`, and it speaks ot-sim's message bus directly. It maps AI/AO/AV/BI/BO/BV/MSV objects to message-bus tags. Outputs, and value objects that take writes, have a priority array: a command overrides the controller's own logic in the building federate, and relinquishing the last priority sends a null value that hands the point back. Every other write answers `write-access-denied` (BACpypes3 alone accepts any). It answers Who-Is, including one a BBMD forwarded (a unicast I-Am to the client), ReadProperty, ReadPropertyMultiple, and WriteProperty; an object without a fresh value reports a fault. FUXA calls no SubscribeCOV. No BBMD in the module: the BBMDs are separate services ([§11](#11-node-inventory-and-resources)). Built and tested against a real BACpypes3 client, BAC0, and, on loopback, a HELICS broker with the building federate and ot-sim's own I/O module; not run on a VM |
 | BBMD service (`cm-bbmd`) | `phenix-injects/bbmd/` (BACpypes3) | A small BACpypes3 BBMD with a configurable BDT and listen prefix, run as `cm-bbmd.service` on ot-svc (`/0` prefix) and bas-bbmd. Based on the `bbmd` spike's `bbmd.py`. Its settings are static topology injects, not rendered by the app. Built; not yet run under systemd |
-| phenix `mirror` app follow-up (upstream) | `sandialabs/sceptre-phenix-apps` | In `setupOVS` mode, set `options:df_default=false` on the host's GRE port and add the capture-VM flow `in_port=sniffer,actions=output:phenix` (then `ip link set phenix up`), instead of leaving both to the image ([§14](#14-blue-team-monitoring)) |
+| phenix `mirror` app follow-up (upstream) | `sandialabs/sceptre-phenix-apps` | Until it lands, the `cherrymountain` app sets the first and the cm-malcolm image the second. In `setupOVS` mode, set `options:df_default=false` on the host's GRE port and add the capture-VM flow `in_port=sniffer,actions=output:phenix` (then `ip link set phenix up`), instead of leaving both to the image ([§14](#14-blue-team-monitoring)) |
 | phenix autotunnel loop (upstream) | `sandialabs/sceptre-phenix` | The fork's fixes (branch `ci-e2e-minimega`): a loop in `phenix ui` that creates tunnels for every experiment, including CLI-started ones, waits for C2 as long as it runs, and re-creates tunnels after VM restarts, reboots, and long pauses. It also needs a way to read the host port (the forwards API reports only the annotation label) |
 | `vyatta.tmpl` and VyOS image fixes (upstream) | `sandialabs/sceptre-phenix`, `sandialabs/sceptre-phenix-images` | `set vpn ipsec ike-group IKE-1W key-exchange ikev2`; the `ike-group` fix if `main` still has the `esp-group` typo; `build-vyos.sh` fixes for the current vyos-build image naming |
 | phenix `vrouter` app limitations (upstream) | `sandialabs/sceptre-phenix` | Found while building the network. (1) The app keeps the NTP address of the first router that has one and uses it for every later router, so isp-rtr comes first in the topology and `cm-vyos-config.sh` sets fw-ot's source. (2) The rendered rulesets filter only the `forward` chain, so traffic to a router's own address (IKE, SSH, NTP, syslog) is never filtered. (3) Rules have no `log` field, so `cm-vyos-config.sh` turns on `default-log`. (4) netem `loss` is an integer percent (the design wants 0.1 %, the files use 1). (5) The template has no `key-exchange`, which the row above also asks for. (6) Rules have no IPsec policy match (`ipsec match-ipsec-in`), so a rule for traffic that should arrive only through a tunnel also passes a spoofed plaintext packet; `cm-vyos-config.sh` adds it to the utility DNP3 rule. Until these merge, the script and the topology order work around them |
@@ -3884,6 +3943,16 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
   fixture, both checked current against the committed configs. The hook installs phenix-apps from the fork the range runs on
   ([§16](#16-new-and-extended-software)), pinned by commit, because it is not
   on PyPI.
+- **Batch engine tests (the `cm-fuxa-batch-tests` hook).** `fuxa/tests` runs
+  the engine script, as the builder put it into the project, under Node against
+  a stub of FUXA's script API and a port of plc-brewhouse's handshake: 25
+  scenarios (an unattended brew, a double-brew day, Hold, Restart, Abort, a
+  phase timeout, no fermenter at the start or at knockout, refused starts, a
+  lost link, PLC and FUXA restarts, a request while FUXA is down, a failing
+  script). Where strucpp and g++ exist, `test_plc_port.py` holds that port to
+  the compiled program scan by scan. Run once by hand: the engine, its view,
+  the provisioning script, and the operator sign-in in a real FUXA server
+  ([fuxa/README.md](fuxa/README.md#checked-against-fuxa-source)).
 - **BACnet module tests (the `cm-bacnet-tests` hook).** `tests/bacnet` runs
   the ot-sim BACnet module against a real BACpypes3 client and real ZeroMQ
   sockets on loopback: values that follow the message bus, commands at several
@@ -3967,7 +4036,7 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
 | 0: Spikes | **Done.** See the spike results below | Each spike has a written go/no-go decision (all nine are go) | Done, with a second round that closed the gaps |
 | 1: Network | Core topology, VyOS conduits and static routes, ot-svc, SoH reachability | All §10.3 conduits pass; blocked paths fail | **Implemented**: topology modules, rulesets, services, BBMDs, the post-boot VyOS script, and SoH probes. Validated statically by `netcheck`; the VM run is pending |
 | 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic | **Largely implemented**: `plant.yaml`, plantgen, seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). The cellar autopilot and the peer reads of `plc-cellar` are built. Remaining: the ot-sim `logic` blocks and the 24 h soak |
-| 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** All five PLC programs and their full and lite ZIPs are built by `plc/common` (alarms generated from `alarms.json` with deadbands, C++ checked; none run in an OpenPLC runtime yet), including the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)) and the peer reads. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. Open: the FUXA batch engine (so no unattended brew day through the PLC yet), views beyond the generated tag lists, and any VM run |
+| 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** All five PLC programs and their full and lite ZIPs are built by `plc/common` (alarms generated from `alarms.json` with deadbands, C++ checked; none run in an OpenPLC runtime yet), including the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)) and the peer reads. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. The FUXA batch engine sequences the brewhouse and brews a double-brew day unattended in the offline federation (compiled plc-brewhouse, the federates, the engine under Node), and it ran in a real FUXA server against a stand-in PLC, with its Batch view and the operator sign-in driven from a browser. Open: views beyond the generated tag lists, the cellar's transfers (so only the first brew day finds a fermenter), and any VM run |
 | 4: Power + BAS | OpenDSS, tariff logic, BESS/ATS, BACnet devices | Outage and CO₂ scenarios behave as in §6.6 | **Built, not run on a VM.** The power and building federates are built with Phase 2. The `plc-power` program does load shed, staged restoration, and BESS dispatch, and schedules the on-peak shift, the recharge, the monthly demand reset, and the weekly genset exercise from the ATS controller's clock ([§12.1](#121-openplc-v4-runtime-v3-fallback)). The BAS controllers serve BACnet through the ot-sim BACnet module in this repository, with their I/O module from the `cherrymountain` app ([§16](#16-new-and-extended-software)) |
 | 5: SOC + remote access | Malcolm, Wazuh, WireGuard, Guacamole | Baseline detections fire on the vendor-maintenance run | **Built, not run on a VM.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), Zeek script (checked in Malcolm's Zeek image), and Wazuh rules with their tests; per-experiment vendor and WireGuard secrets |
 | 6: Polish | SCORCH runs, Builder package, README, e2e CI, upstream PRs, the white-cell 3D view | Fresh `phenix workflow apply` → green SoH, with no manual steps | **Started.** The 3D view (`cm-viz`) is built and tested offline with its snapshot, relief valves, vessel truth, and real KPIs ([§15.10](#1510-white-cell-3d-view-cm-viz)); its phenix run and the operator-view relay are open. `plantevent` and the four plant-driving SCORCH runs of the full scenario are built ([§15.6](#156-scorch-pipelines)), with the operations runbook ([§15.9](#159-operations)) and the plantgen, sim, app, netcheck, and SOC suites in prek and CI. Open: the Builder package, an e2e run on a VM, and the upstream PRs |
@@ -4180,7 +4249,7 @@ reach a plant like this, and the row says why.
 | Hop creep rate is tuned; altitude derating uses literature activation energies | Labeled as tuned or derived in the model docs; compare with brewer data if available |
 | Malcolm RAM (24 GB) on a 128 GB host | `lite` variant; Malcolm profile tuning. Both profiles stay (§11): the default 8 vCPU / 24 GB full stack, and an optional slim profile of about 4 vCPU / 12 GB. Evidence: Zeek alone 281 MiB; the trimmed pipeline with Suricata 8.4 GiB of containers and 9.2 GiB of 16 GB on the host (Suricata 917 MiB, one core); NetBox, Strelka, and the default heaps unmeasured |
 | Malcolm pcap upload pipeline fails silently when its setup is wrong (resolved: the spike found four causes), and no real `cm-malcolm` VM has run with live capture | The `cm-malcolm` boot and provisioning script creates `zeek/custom/__load__.zeek`, sets `PCAP_PIPELINE_VERBOSITY` in `upload-common.env`, waits for every processor's subscription before the first pcap, and custom Suricata rules use sids of 9000101 and up (§14). Capture live with `zeek-live` in the real VM before relying on it |
-| Mirror capture loses frames without two fixes (the capture-VM flow, `df_default=false` on the GRE port) | Requirements in §14; boot script and mirror app follow-up (§16) |
+| Mirror capture loses frames without two fixes (the capture-VM flow, `df_default=false` on the GRE port) | Requirements in §14. The cm-malcolm boot script adds the flow and the `cherrymountain` app sets the option after every start; the mirror app follow-up (§16) would take both over |
 | `fromScenario` copies hosts wholesale; workflow maps one experiment per branch | Per-variant app blocks from plantgen; variants applied with `-b`; fixed config names (§15.1, §15.3) |
 | ntp app label mode overrides per-host settings | App mode only, every host listed (§15.2) |
 | VyOS is a moving rolling build, not 1.5, and phenix's IPsec template once had an `esp-group` typo (resolved: the rendered config commits at boot, with an AES-256/SHA-1 SA) | Record the build used; keep the fork's `ike-group` fix; set `key-exchange ikev2` to avoid the IKEv1 deprecation warning |
@@ -4216,7 +4285,10 @@ reach a plant like this, and the row says why.
 | Every start is a first boot: phenix runs each node as a snapshot and builds its disk again from the image ([§15.9](#159-operations)) | By design of phenix. Consequences to plan for: Malcolm loads its container images on every start (10 to 15 minutes), the retention settings bound one continuous run, and whatever a VM stores is lost at a stop unless the cleanup stage exports it |
 | The simulation ends after `end_time_s`: 7 days in full and lite, 24 hours in ci. ot-sim's I/O modules finalize then and do not rejoin | Open, a decision: raise it in `plant.yaml`, or keep it as the length of one exercise. Stop and start the experiment for a longer run |
 | The cellar has no material flow over days: fermenters never empty, the bright tanks are not refilled, knockout wort has nowhere to go once the fermenters are full, and packaging goes on counting bottles from an empty tank (a 72 h offline run) | Open: racking and bright-tank rotation in the cellar model, a no-product hold on the filler (packaging must subscribe to the tank level), and realistic packaging rates. Until then a multi-day run goes static after the first day |
-| Nothing starts work once the PLCs are in control: `start-batch` and the 05:00 brew schedule only queue brews for the federate's autopilot, and plc-packaging only relays an operator's command | Open: the FUXA batch engine for brewing ([§12.2](#122-fuxa-two-instances)) and a shift start for packaging |
+| Nothing starts the packaging shift once the PLCs are in control: plc-packaging only relays an operator's command | Open: a shift start for packaging. Brewing is resolved: with plc-brewhouse in control, `start-batch` and the 05:00 schedule request brews at the panel and the FUXA batch engine runs them ([§12.2](#122-fuxa-two-instances)) |
+| The batch engine has not met OpenPLC: whether its OPC UA server lets FUXA's session write the command, phase, parameter, accepted-count, and setpoint tags, and whether the phase timeouts (estimates) outlast the real phases | Open until a VM run. Everything on FUXA's side ran in a real FUXA server ([fuxa/README.md](fuxa/README.md#checked-against-fuxa-source)) |
+| Only the first brew day finds a fermenter: FV-101 is the one empty vessel at the start and nothing empties a fermenter | The engine refuses a start with "no fermenter is empty" and keeps the request queued. Resolved by the cellar's material flow (open, above) |
+| The Wazuh admin password from `secrets.json` rests on `wazuh-passwords-tool.sh -a -f <file>` replacing only the admin user's generated password, read from the tool's source (4.14) and not run | The script checks the sign-in afterwards and only warns; `passwords.txt` on the VM always holds what the tool set. Confirm on the first boot |
 | A SoH UDP probe is a single datagram with a 500 ms reply window, and `delay.c2` has no timeout ([§15.4](#154-state-of-health)) | Accepted: a BACnet, NTP, or DNS probe can fail once without a fault, and a VM that never registers its C2 client holds back every VM behind it. Look at that VM's console |
 | `vendor-ws` brings its WireGuard tunnel up at boot (`boot: true`), so the tunnel rules 100201, 100204, and 100205 fire at every experiment start | Open, a decision: set `boot: false` on vendor-ws so the tunnel comes up only when a vendor session starts |
 | FUXA writes to plc-brewhouse through an anonymous OPC UA session, which the app's OPC UA profile gives the operator role (the runtime's default for an anonymous session is viewer, so FUXA could not write at all) | Open, a decision: keep it, as many plants run, or give FUXA a named OPC UA account. Any host that reaches port 4840 can write the brewhouse's tags, and the conduit matrix limits who can |

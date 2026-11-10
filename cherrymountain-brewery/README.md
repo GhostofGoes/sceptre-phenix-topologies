@@ -10,8 +10,9 @@
 > tests (remaining: ot-sim logic blocks and a 24 h soak).
 > **Phase 3 (control)** is in progress: all five PLC programs (with the
 > hardwired CO₂ interlock and the peer reads), their full and lite ZIPs, and the
-> scada-fuxa and bas-fuxa projects are generated; the FUXA batch engine and any
-> run in a real OpenPLC runtime are next. **Phase 4 (power and building)** is
+> scada-fuxa and bas-fuxa projects are generated, and a batch engine in
+> scada-fuxa brews a brew day unattended (run in a real FUXA server against a
+> stand-in PLC); a run in a real OpenPLC runtime is next. **Phase 4 (power and building)** is
 > built: plc-power schedules from the ATS controller's clock, and the building
 > controllers serve BACnet through an ot-sim module in this repository.
 > **Phase 5 (SOC and remote access)** is built (images, provisioning,
@@ -50,10 +51,10 @@ integration, new software, testing, roadmap, risks, and references.
 
 | Path | Contents |
 |---|---|
-| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts, 497 tags, 97 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
+| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts, 501 tags, 97 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
 | `tools/plantgen/` | Generator: tags, addresses, the ot-sim, ntp, soh, wireguard, helics, and cherrymountain app blocks, HELICS lists, OpenPLC, FUXA, BACnet, DNP3, and SCORCH inputs ([README](tools/plantgen/README.md) documents every output) |
 | `sim/` | `cherrymountain_sim`: the weather, brewhouse, cellar, utilities, packaging, power (OpenDSS), and building federates, the sim-ctl event API, and an offline harness, with tests ([README](sim/README.md)) |
-| `recipes/` | `fire-of-the-phenix.json`, the flagship recipe in BeerJSON |
+| `recipes/` | `fire-of-the-phenix.json`, the flagship recipe in BeerJSON; the batch engine brews from it |
 | `phenix-ci.yml`, `phenix-configs/{topology,scenario}-ci.yml` | Workflow, topology, and scenario for the ci variant |
 | `phenix.yml`, `phenix-lite.yml`, `phenix-configs/` | Workflows for the full and lite variants; topology modules `topology-{core,soc,remote-access}.yml`, `topology-{full,lite}.yml` (they include the modules), and `scenario-{full,lite}.yml` |
 | `phenix-injects/{ot-svc,bbmd,inet-nuke,vrouter,malcolm}/` | The network phase's injects: ot-svc DNS, syslog relay, and chrony hook; the `cm-bbmd` BACnet BBMD service; inet-nuke DNS; the VyOS settings script; malcolm's capture flow |
@@ -68,7 +69,7 @@ integration, new software, testing, roadmap, risks, and references.
 | `tests/soc/` | Tests of the Wazuh rules, the Suricata rules and Zeek script, the vendor-path scripts, and that every script a scenario step runs is on its VM |
 | `tests/bacnet/` | The ot-sim BACnet module against a real BACpypes3 client and real ZeroMQ sockets on loopback |
 | `viz/` | `cherrymountain_viz`: cm-viz, the white cell's 3D view of ground truth (three.js, vendored), with tests ([README](viz/README.md)) |
-| `fuxa/` | `build_project.py` and the FUXA projects it builds: scada-fuxa for ci, and scada-fuxa and bas-fuxa for full and lite (`fuxa/<variant>/`) |
+| `fuxa/` | `build_project.py` and the FUXA projects it builds: scada-fuxa for ci, and scada-fuxa and bas-fuxa for full and lite (`fuxa/<variant>/`); `batch_engine.js`, the ISA-88 batch engine that the full and lite scada-fuxa projects carry, with its tests in `fuxa/tests/` ([README](fuxa/README.md)) |
 | `tools/lint/` | Hook scripts for prek: systemd-analyze on units and shellcheck on shell in image YAML |
 | `spikes/` | Phase 0 spike kits, each with its go/no-go result ([summary](spikes/README.md)) |
 | `apps/` | The `cherrymountain` phenix app (five stages) and the `plantevent` SCORCH component, each with its own `README.md`, with tests ([README](apps/README.md)) |
@@ -95,7 +96,8 @@ Reach FUXA with `phenix-tunneler` at `http://localhost:11881`
 ([USER_GUIDE.md](USER_GUIDE.md#8-connect-from-your-own-computer)). On the phenix
 host itself the forward listens on a random port: find it with
 `cc tunnel list scada-fuxa` (the row with `dst port 1881`). The `cherrymountain` app generates the range
-admin password for each experiment: it is `fuxa_password` in
+passwords for each experiment: FUXA's `admin` is `fuxa_password` and its
+`operator` (the account that may write values) is `fuxa_operator_password` in
 `<experiment directory>/cherrymountain/secrets.json`. The fixed one in
 `phenix-injects/fuxa/fuxa.env` applies only where the app does not run (the
 Docker integration test).
@@ -122,6 +124,7 @@ Checks (all must pass; `prek run --all-files` covers lint and hygiene):
 (cd viz && python -m pytest)                         # cm-viz: frames, server, and the sim-ctl source
 python -m pytest tests/soc                           # SOC detections, vendor-path scripts, and the scripts scenario steps run
 python -m pytest tests/bacnet                        # the ot-sim BACnet module (needs bacpypes3 and pyzmq)
+python -m pytest fuxa                                # the batch engine under Node (18+) and what the builder writes for it
 python sync.py --check                               # injects and scenarios match plantgen output (ci, full, lite)
 python tools/netcheck/run_netcheck.py                # IP plan, conduit matrix, routes, rules (full, lite)
 (cd tools/netcheck && python -m pytest)              # netcheck, sync.py, and BBMD tests
@@ -170,7 +173,8 @@ to pin down how the v4 runtime clamps and segments the holding registers.
   stale).
 - **Test suites:** the plantgen, `sim/`, `viz/`, `apps/`, and SOC pytest suites
   run as hooks too (`cm-plantgen-tests`, `cm-sim-tests`, `cm-viz-tests`,
-  `cm-app-tests`, `cm-soc-tests`, `cm-bacnet-tests`). The app hook installs phenix-apps from the pinned fork
+  `cm-app-tests`, `cm-soc-tests`, `cm-bacnet-tests`, and `cm-fuxa-batch-tests`,
+  which needs Node 18 or newer). The app hook installs phenix-apps from the pinned fork
   commit. The Docker integration test and `build_zip.sh --check` (Node) are
   run by hand.
 
@@ -236,9 +240,9 @@ it matters):
   the template has no `key-exchange`.
 - **Malcolm upload pipeline.** A pcap in `pcap/upload` reaches OpenSearch only
   with four setup steps that the cm-malcolm boot script must do (DESIGN 14).
-- **Mirror.** `df_default=false` on the host's GRE port still needs the mirror
-  app (nothing in a topology can set it; the user guide has the command to run
-  after each start). The OpenFlow capture flow is injected
+- **Mirror.** The `cherrymountain` app sets `df_default=false` on the mirror's
+  GRE ports after each start, until the mirror app does it itself (its status
+  says `dfDefault: set`). The OpenFlow capture flow is injected
   into malcolm (`phenix-injects/malcolm/99-zz-capture-flow.sh`) until the app or
   the cm-malcolm image does it (DESIGN.md 14).
 - **Images.** Every image the full topology names has a config in

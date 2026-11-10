@@ -230,13 +230,9 @@ docker exec phenix phenix workflow apply $T                                     
 - A missing image does not stop the start: phenix marks that VM "do not boot"
   and warns. Read the output.
 
-**For `full` only, after every start,** set one option on the mirror's tunnel
-port, or Malcolm loses full-size packets. Open vSwitch runs inside the
-minimega container:
-
-```shell
-docker exec minimega sh -c 'for p in $(ovs-vsctl --bare --columns=name find interface type=gre); do ovs-vsctl set interface "$p" options:df_default=false; done'
-```
+In `full`, Malcolm's packet mirror needs one option on its tunnel port
+(`df_default=false`), or full-size packets are lost. The range's app sets it by
+itself after every start. Step 7 shows where to check it.
 
 ## 7. Wait, then check health
 
@@ -292,7 +288,8 @@ Then check, in this order:
    ```
 
    Look for `"provisioned": "n/m"` and, per host, `provisioned`, `pending`,
-   `failed`, or `unreachable`.
+   `failed`, or `unreachable`. In `full`, `"mirror"` should say
+   `"dfDefault": "set"`.
 
 If one VM never starts its control connection, every VM that waits for it
 stays down and SoH never begins: phenix has no timeout there. Open that VM's
@@ -321,7 +318,7 @@ web page.
 
 | Open this on your computer | What it is | Variant | Sign in |
 |---|---|---|---|
-| `http://localhost:11881` | **scada-fuxa**: process SCADA and HMI | all | none to look; `admin` to edit |
+| `http://localhost:11881` | **scada-fuxa**: process SCADA and HMI | all | none to look; `operator` to operate; `admin` to edit |
 | `http://localhost:11882` | **bas-fuxa**: building automation front end | lite, full | same |
 | `http://localhost:13000` | **historian**: Grafana with process trends | lite, full | none to look; `admin` |
 | `http://localhost:18090` | **cm-viz**: the 3D view of what is really happening | lite, full | none |
@@ -371,6 +368,7 @@ sudo cat /phenix/experiments/<experiment>/cherrymountain/secrets.json
 
 | For | User | Key in `secrets.json` |
 |---|---|---|
+| FUXA, to operate (scada-fuxa, bas-fuxa, the operator stations) | `operator` | `fuxa_operator_password` |
 | FUXA editor (scada-fuxa, bas-fuxa) | `admin` | `fuxa_password` |
 | OpenPLC runtime on every PLC (`https://<plc>:8443`) | `admin` | `openplc_password` |
 | Grafana, on the historian and on sim-ctl | `admin` | `grafana_password` |
@@ -378,41 +376,43 @@ sudo cat /phenix/experiments/<experiment>/cherrymountain/secrets.json
 | Guacamole administrator | `cmadmin` | `guacamole_password` |
 | Vendor technician, Guacamole | `ridgeline-akim` | `vendor_guac_password`, and a one-time code from `vendor_totp_secret` |
 | Vendor technician, on the EWS | `ridgeline-akim` | `vendor_ews_password` |
-
-Two passwords are made inside their VM on first boot. Read them on that VM's
-console:
-
-| For | User | On the VM's console |
-|---|---|---|
-| Malcolm | `malcolm` | `cat /var/lib/cm-malcolm/admin-password` |
-| Wazuh | `admin` | `grep 'user admin' /var/lib/cm-wazuh/passwords.txt` |
+| Malcolm | `malcolm` | `malcolm_password` |
+| Wazuh dashboard | `admin` | `wazuh_password` |
 
 The passwords survive a stop and start, and a new `workflow apply`. Deleting
 the experiment deletes them. A second technician, `ridgeline-jdiaz`, is in
 `vendor.json` beside `secrets.json`.
+
+If a Malcolm or Wazuh sign-in fails, read what the VM itself set, on its
+console: `cat /var/lib/cm-malcolm/admin-password` on malcolm, and
+`grep 'user admin' /var/lib/cm-wazuh/passwords.txt` on wazuh.
 
 ## 10. A tour: use each part
 
 ### Operate the plant (scada-fuxa)
 
 Open `http://localhost:11881`. The views are **Cellar**, **Brewhouse**,
-**Cellar points**, **Packaging**, **Utilities**, **Power**, and **Cellar CO2**
-(`ci` has the cellar only). Open one directly with
+**Batch**, **Cellar points**, **Packaging**, **Utilities**, **Power**, and
+**Cellar CO2** (`ci` has the cellar only). Open one directly with
 `http://localhost:11881/home?viewName=Cellar`.
 
 - **Look.** Fermenter temperatures on the Cellar view should move within a
   minute. Values that never change mean the simulation is not reaching the
   PLCs: see [Troubleshooting](#troubleshooting).
-- **Change a value.** Without a login FUXA only shows. Click the login icon and
-  sign in as `admin`. Every value you may write has a box beside it: type and
-  press Enter. Type engineering values (`66.0` for 66 °F); bits take `1` or `0`.
+- **Change a value.** Without a login FUXA only shows. Click the account icon
+  at the top right, or just try to write: FUXA opens its sign-in box. Sign in
+  as `operator`. The sign-in lasts 12 hours. Every value you may write has a
+  box beside it: type and press Enter. Type engineering values (`66.0` for
+  66 °F); bits take `1` or `0`.
+- **Edit the screens.** Only `admin` can open the editor (`/editor`).
 - **Acknowledge an alarm.** Open the alarm list in the header. Every alarm
   except the lowest level stays until someone acknowledges it.
 
 | To do this | Write | On view |
 |---|---|---|
 | Change a fermenter's temperature | `CEL.FV101.TT01.SP` | Cellar |
-| Run a brewhouse phase by hand | `BH.BATCH.XC01.PHASE` (1 to 10), then `BH.BATCH.XC01.CMD` (1 start, 2 hold, 3 restart, 4 abort, 5 reset) | Brewhouse |
+| Brew | the **Start** button ([Brew a batch](#brew-a-batch)) | Batch |
+| Run one brewhouse phase by hand, only while the Batch view says Idle | `BH.BATCH.XC01.PHASE` (1 to 10), then `BH.BATCH.XC01.CMD` (1 start, 2 hold, 3 restart, 4 abort, 5 reset) | Brewhouse |
 | Start a cleaning (CIP) circuit | `UTL.CIP.XC01.CIRCUIT` (1 to 7), then `UTL.CIP.XC01.CMD` (1 start, 2 hold, 0 resume, 3 abort) | Utilities |
 | Start or stop the packaging line | `PKG.LINE.PACKML.CMD` (2 start, 3 stop) | Packaging |
 | Mark a vessel entry permit | `CEL.ENTRY.HS01.ENTRY` to `HS06`, `BH.ENTRY.HS01.ENTRY`, `HS02`; check `XSnn.LOCKED` | Cellar points, Brewhouse |
@@ -424,12 +424,45 @@ is 06:00 to 14:30 on weekdays, and the power PLC exercises the generator on
 Wednesdays at 10:00. Fermentation runs 48 times faster than real time, so a
 two-week fermentation takes about seven hours; everything else is real time.
 
+### Brew a batch
+
+`lite` and `full`. scada-fuxa carries the **batch engine**: it takes the
+brewhouse PLC through a brew, one phase after another, with the numbers of the
+recipe (mill, heat the liquor, mash in, two mash steps, vorlauf, lauter, boil,
+whirlpool, knockout to a fermenter, ready for cleaning). Open the **Batch**
+view and sign in as `operator`.
+
+| Button | What it does |
+|---|---|
+| **Start** | Adds one brew to the queue. It starts when the brewhouse PLC is idle, no brewhouse vessel has an entry permit, and a fermenter is empty |
+| **Hold** | Pauses at the next safe point: the running phase stops its equipment and keeps the time it has served |
+| **Restart** | Continues a held batch |
+| **Abort** | Stops the phase, empties the queue, and ends the batch as Aborted |
+| **Reset** | Acknowledges a Complete or Aborted batch, and clears the queue and the engine's alarms |
+
+- **Status** says what the batch is doing, or why it waits. A start that is
+  refused stays queued and begins when the cause is gone.
+- **One brew takes five to six hours**; a brew day is two brews into one
+  fermenter.
+- **Brew days start by themselves.** At 05:00 on Mondays and Wednesdays
+  (simulated time) the plant asks for two brews, as if someone pressed the
+  request button on the brewhouse panel. So does the `start-batch` event
+  ([Run an exercise](#run-an-exercise)). The first one comes 30 minutes after
+  the range starts.
+- **If scada-fuxa is down**, a request waits at the panel and is taken when
+  FUXA is back. A FUXA restart in the middle of a batch picks the batch up
+  where it was.
+- **A phase that takes too long**, or a PLC that stops answering, holds the
+  batch and lights an alarm on the view. Fix the cause, then Restart or Abort.
+- **Leave the phase and command tags alone while a batch runs.** The engine
+  holds the batch if the PLC does something it did not ask for.
+
 ### Building automation (bas-fuxa)
 
 Open `http://localhost:11882`. The **Building** view shows the taproom rooftop
 unit, the cold room, and ventilation with the CO₂ sensors. bas-fuxa reads three
 BACnet controllers (`bas-rtu-taproom`, `bas-coldroom`, `bas-vent`). Signed in
-as `admin`, you can command their outputs and setpoints. A command overrides
+as `operator`, you can command their outputs and setpoints. A command overrides
 the controller's own logic until it is released; FUXA cannot release one, the
 engineering workstation can (see below). scada-fuxa reads the same CO₂ values
 through the firewall and never writes them.
@@ -437,8 +470,9 @@ through the firewall and never writes them.
 ### The operator stations (hmi-brewhouse, hmi-packaging)
 
 Each is a desktop that opens one FUXA view full screen. See them in the phenix
-page by clicking the VM's screenshot. They show values without a login; to
-operate from one, sign in to FUXA on it.
+page by clicking the VM's screenshot. They show values without a login. To
+operate from one, try to write a value, or click the account icon at the top
+right, and sign in as `operator`.
 
 ### PLCs and field devices, from the engineering workstation
 
@@ -502,14 +536,16 @@ shows a QR code to enroll a one-time-code app.
 
 `full` only.
 
-- **Malcolm**, `https://localhost:18443`, user `malcolm`. Use `/dashboards/`
+- **Malcolm**, `https://localhost:18443`, user `malcolm` with
+  `malcolm_password`. Use `/dashboards/`
   for the Zeek and Suricata dashboards (look for Modbus, BACnet, DNP3, and
   OPC UA) and `/arkime/` for sessions and packets. Mirrored packets carry
   their VLAN tag, so packet filters need `vlan and ...`.
   - Is capture live? On the malcolm console run `cm-malcolm-health`. It should
     print `HEALTHY` with a packet count and a count of Zeek records.
   - `cm-malcolm-selftest` plays a test capture through Zeek and Suricata.
-- **Wazuh**, `https://localhost:18444`, user `admin`. The range's own rules
+- **Wazuh**, `https://localhost:18444`, user `admin` with `wazuh_password`.
+  The range's own rules
   are ids 100100 to 100413. In Threat Hunting, filter on
   `rule.groups: cm_vendor`, `cm_wireguard`, or `cm_firewall`. Agents appear in
   the groups `ops`, `hmi`, `bas`, `dmz`, and `soc`.
@@ -549,7 +585,7 @@ docker exec -it phenix phenix experiment scorch cherrymountain-brewery --run 2
 | Run | Name | What it does |
 |---:|---|---|
 | 0 | `vendor-maintenance` | A scripted vendor session re-uploads a PLC program; checks that Wazuh and Malcolm saw it; pauses for the analyst (type `exit` to go on, so it needs `-it`) |
-| 1 | `baseline-brew-day` | A normal day, with packet captures and exports |
+| 1 | `baseline-brew-day` | Requests a brew day and records its first half hour, with packet captures and exports |
 | 2 | `utility-outage` | Opens the utility breaker for ten minutes; checks that the generator carries the emergency loads |
 | 3 | `cellar-co2-leak` | Releases CO₂ at a fermenter; checks the purge fans and the alarm |
 | 4 | `packaging-shift` | Jams packaging machines on a degraded field network |
@@ -560,6 +596,7 @@ A run blocks until it is done, 30 to 45 minutes for most.
 
 ```shell
 api=http://localhost:18080/api/v1
+curl -s -X POST -d '{"event":"start-batch","brews":1}' $api/events
 curl -s -X POST -d '{"event":"utility-breaker","action":"open"}' $api/events
 curl -s -X POST -d '{"event":"utility-breaker","action":"close"}' $api/events
 curl -s -X POST -d '{"event":"co2-release","fv":"FV-102","rate":"high","duration":600}' $api/events
@@ -594,8 +631,9 @@ docker exec phenix phenix experiment delete cherrymountain-lite    # remove it, 
 - A stop and start gives a fresh plant. phenix builds every VM's disk again
   from its image, so the simulation starts over, the PLCs load and compile
   their programs again, and everything stored inside a VM is gone: the
-  historian's data, the Malcolm and Wazuh data and their two passwords, and
-  Guacamole's recordings. Export what you want to keep before you stop.
+  historian's data, the batch engine's batch count, the Malcolm and Wazuh
+  data, and Guacamole's recordings. The passwords stay. Export what you want
+  to keep before you stop.
 - The exports of a stop land in `/phenix/images/<experiment>/files/cherrymountain/`.
 - After a `phenix experiment start` from the command line, the app's
   five-minute status refresh does not run. Start with `workflow apply` or from
@@ -618,7 +656,9 @@ docker exec phenix phenix experiment delete cherrymountain-lite    # remove it, 
 | SoH fails on a PLC | On the PLC's console: `journalctl -u cm-openplc-provision` shows the upload and the compile |
 | Nothing moves in FUXA | `curl -s http://localhost:18080/api/v1/health`. If it says `starting`, a part of the simulation has not joined: on sim-ctl read `/var/log/helics-root-broker.log`, and on the device `journalctl -u ot-sim`. `nft list table inet cm_mgmt` on either shows whether the simulation network's firewall is dropping packets |
 | bas-fuxa shows no values | On a `bas-*` console: `journalctl -u ot-sim \| grep bacnet-server` should say "first values from the message bus". [phenix-injects/otsim/README.md](phenix-injects/otsim/README.md) has more |
-| Malcolm shows no traffic | Did you set `df_default=false` after this start ([step 6](#6-start-the-range))? Then run `cm-malcolm-health` on its console |
+| FUXA does not take a value or a button | You are not signed in. Sign in as `operator` ([step 9](#9-passwords)) |
+| A brew does not start | Read **Status** on the Batch view. `start refused` names the cause: the brewhouse PLC is not idle (press **Reset**), a vessel has an entry permit, no fermenter is empty, or there is no link to the PLC. If the view shows nothing at all, on the scada-fuxa console: `journalctl -u fuxa \| grep cmBatchEngine` |
+| Malcolm shows no traffic | Run `cm-malcolm-health` on its console. If the app's status does not say `"dfDefault": "set"` ([step 7](#7-wait-then-check-health)), set the option by hand: `docker exec minimega sh -c 'for p in $(ovs-vsctl --bare --columns=name find interface type=gre); do ovs-vsctl set interface "$p" options:df_default=false; done'` |
 | SCORCH run 0 fails at `analyst-review` | Run it with `docker exec -it` |
 
 ## Known limits
@@ -627,20 +667,18 @@ Be ready for these. [DESIGN.md §19](DESIGN.md#19-risks-and-open-questions) has
 the full list.
 
 - **Nothing has run on VMs.** The first boot of each image is the first real
-  test of its provisioning scripts.
-- **A brew day does not start by itself with the PLCs running.** The brewhouse
-  PLC runs one phase at a time when commanded. Until the batch engine is in,
-  run the phases by hand from the Brewhouse view. The `start-batch` event only
-  works where no PLC is in control.
-- **The cellar does not move beer between vessels by itself** over several
-  days: tanks are not refilled, so a multi-day run goes static after the first
-  day.
-- **The HMI stations cannot operate without a FUXA login.** There is no
-  operator account yet, only `admin`.
-- **Malcolm and Wazuh passwords change on every start**, because they are made
-  inside VMs whose disks are new each time.
-- **One step is manual** on every start of `full`: the mirror option in
-  [step 6](#6-start-the-range).
+  test of its provisioning scripts. Parts were run for real outside a VM: the
+  batch engine, its view, and the operator sign-in in a FUXA server; the
+  BACnet controllers against BACnet clients; every PLC program through the
+  compiler. The first things to check on a real range are that FUXA may write
+  to the brewhouse PLC over OPC UA, and that Wazuh takes the `admin` password
+  from `secrets.json`.
+- **Only the first brew day brews.** One fermenter, FV-101, starts empty, and
+  the cellar does not yet move beer on to the bright tanks. The first day's two
+  brews fill FV-101. After that the Batch view refuses a start with "no
+  fermenter is empty", and a multi-day run goes static in the cellar.
+- **The batch engine's time limits are estimates.** If a healthy phase is held
+  for "phase timed out", press Restart, and tell us which phase.
 
 ## Where to go next
 

@@ -690,9 +690,10 @@ The **Brewhouse** screen with the brewhouse idle: the phase bar reads "No phase"
 state. Vessel levels and temperatures come from the offline brewhouse (hot liquor 167.9
 °F at 89.6 %, mash tun 167.1 °F with its setpoint at 152.0 °F, kettle 193.9 °F), and
 steam is 12.6 psig; the valve into the cold liquor tank is labelled "RO in". The
-"Mash deviation alarm enabled" lamp is dark, which is PLC state too. The "Cold liquor high level" and "Hot liquor low level" lamps are lit; the
-second is the low-level switch being made, which it is while the hot liquor covers the
-jacket. The Batch view and a brew in progress are under [Scenarios](#scenarios).
+"Mash deviation alarm enabled" lamp is dark, which is PLC state too. The "Cold liquor
+high level" and "Hot liquor covers the steam jacket" lamps are lit; the second is the
+tank's low-level switch, which is made while the liquor is above the jacket. The Batch
+view and a brew in progress are under [Scenarios](#scenarios).
 
 ![The Cellar screen](docs/examples/fuxa-scada-cellar.png)
 
@@ -706,9 +707,9 @@ profile's rule, which leads the beer by 1 °F: FV-101 (64.2 °F, fermenting) is 
 °F, under its stage's 66 °F; FV-104 (40.6 °F, empty) is 1 °F above its beer; and the
 two crashing fermenters are staged at 1.5 °F under their beer, which approximates the
 PLC's crash curve (see [the capture notes](docs/examples/capture/README.md#where-the-values-come-from)).
-The setpoint boxes are too narrow for these one-decimal values, so the last digit in
-each is partly cut off; the Cellar points table below has them in full. No flag is up. "CIP permitted" is lit, which the capture stages from the
-transfer pump being off.
+The setpoint boxes show one decimal (65.2, 44.3, 38.4, and 41.6 °F); the Cellar points
+table below has two. No flag is up. "CIP permitted" is lit, which the capture stages
+from the transfer pump being off.
 
 ![The Packaging screen](docs/examples/fuxa-scada-packaging.png)
 
@@ -913,12 +914,13 @@ did not happen: all three tier lamps are lit (tier 1 has its low-priority diamon
 and so are "Carbonation inhibited" (with a medium flag) and "Horns and strobes", but
 neither purge fan is running, which tier 1 should have started. The CO₂ supply is cut:
 the shutoff valve's lamp is dark, the header reads 0.0 psig, the tank still 300.0 psig
-and 59.8 %. All three relay lamps are dark, which is the relays dropped out. "CO2 supply
-shut off (latched)" is dark too, although the valve is shut: that latch is plc-utilities
-state, which the capture does not stage, so it reads 0. FV-102 and FV-103 have the ring
-and "venting". The other areas read 543, 539, and 737 ppm. The bell counts 9 alarms: the
-four sensors' high and critical alarms and the cellar PLC's carbonation inhibit (the
-low-priority tier flag is not counted). FUXA raises a high alarm after 30 s, so the
+and 59.8 %. All three relay lamps are dark, which is the relays dropped out, and "CO2
+supply shut off (latched)" is lit with its triangle flag, on the ladder and in the
+supply card (the capture stages that latch by plc-utilities' rule). FV-102 and FV-103
+have the ring and "venting". The other areas read 543, 539, and 737 ppm. The bell
+counts 10 alarms: the four sensors' high and critical alarms, the cellar PLC's
+carbonation inhibit, and the supply shutoff (the low-priority tier flag is not
+counted). FUXA raises a high alarm after 30 s, so the
 picture was taken 40 s after the view opened.
 
 ![Building view during the attack](docs/examples/fuxa-scenario-co2-attack-bas.png)
@@ -948,8 +950,8 @@ list. The stage lamps show FV-102 fermenting, FV-103 resting, and FV-104 crashin
 FV-101 empty. The staged temperature setpoints follow the profile's rule: FV-102 at
 66 °F and FV-103 at 69 °F (their beer at 66.3 and 68.0 °F, so the 66 and 70 °F of the
 stages cap the one and the 1 °F lead sets the other), and FV-101 and FV-104 at 1 °F above
-and 1.5 °F below their beer (65.27 and 42.59 °F in the snapshot, with the last digit
-cut off in the boxes).
+and 1.5 °F below their beer (65.3 and 42.6 °F in the boxes, 65.27 and 42.59 °F in the
+snapshot).
 
 **packaging-shift.** The `jam` event on the labeler and the filler.
 

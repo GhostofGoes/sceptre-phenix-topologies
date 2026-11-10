@@ -245,7 +245,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - **Purpose:** the WireGuard gateway of the DMZ (`dmz-vpn`), the DNAT target of
   fw-edge for the vendor tunnel (DESIGN.md 13).
 - **Base:** the shared noble `minbase` image plus `wireguard-tools`, `gnupg`,
-  `python3`, `python3-pydantic`, and `rsyslog`, 8 GB disk. It is the focal
+  `python3`, `python3-pip` and pydantic 2.11.7 (pip), and `rsyslog`, 8 GB disk. It is the focal
   `renewables/wind/plant/phenix-images/wireguard.yml` rebased on noble.
 - **Contents:**
   - `logrotate`, for the WireGuard peer event log (`/etc/logrotate.d/cm-wireguard`
@@ -265,14 +265,15 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - **Build:** the commands above, with `<name>` set to `cm-wireguard`.
 - **Used by:** `dmz-vpn`.
 - **Pinned versions:** the Wazuh agent `4.14.10-1`. `wireguard-tools` and
-  `python3-pydantic` follow noble.
+  `python3-pip` follow noble; pydantic is pinned at 2.11.7 (noble's own is 1.10,
+  which the range's scripts cannot use).
 
 ## cm-guacamole
 
 - **Purpose:** the Guacamole jump host (`dmz-jump`): the one conduit from the DMZ
   into the EWS for vendor sessions, with TOTP and session recording (DESIGN.md 13).
 - **Base:** the shared noble `minbase` image plus Docker, `skopeo`, `openssl`,
-  `gnupg`, `python3`, `python3-pydantic`, and `rsyslog`, 16 GB disk.
+  `gnupg`, `python3`, `python3-pip` and pydantic 2.11.7 (pip), and `rsyslog`, 16 GB disk.
 - **Contents:**
   - Docker Engine and the Compose plugin from Docker's APT repository.
   - Four container images as compressed on-disk copies under
@@ -312,7 +313,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   parsers, Suricata, Arkime, and OpenSearch, capturing live from the mirror app's
   feed (DESIGN.md 14). The largest image.
 - **Base:** the shared noble `minbase` image plus Docker, Open vSwitch, `git`,
-  `skopeo`, `jq`, `openssl`, `apache2-utils`, `python3-pydantic`, and
+  `skopeo`, `jq`, `openssl`, `apache2-utils`, `python3-pip` and pydantic 2.11.7 (pip), and
   `python3-venv`, 64 GB disk.
 - **Contents:**
   - Docker Engine and the Compose plugin from Docker's APT repository.
@@ -386,7 +387,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   kiosks (`hmi-brewhouse`, `hmi-packaging`), `corp-ws`, `vendor-ws`, and
   `soc-analyst` (DESIGN.md 11).
 - **Base:** the phenix `mingui` variant (xubuntu, root autologin) on noble, plus
-  `wireguard-tools`, `python3-pydantic`, `gnupg`, and `rsyslog`, 24 GB disk.
+  `wireguard-tools`, `python3-pip` and pydantic 2.11.7 (pip), `gnupg`, and `rsyslog`, 24 GB disk.
 - **Contents:**
   - Chromium from the xtradeb PPA (`ppa:xtradeb/apps`), which builds the
     current release for noble against noble's own libraries. Ubuntu's
@@ -400,7 +401,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     `--disable-gpu`.
   - What the HMI kiosk needs from the image, and nothing more: `chromium` (above),
     and `python3` (3.12) for the app's `cm-kiosk` script, which uses the standard
-    library only, because noble's `python3-pydantic` is 1.10, not the 2.x the
+    library only, because noble's `python3-pip` and pydantic 2.11.7 (pip) is 1.10, not the 2.x the
     app uses (a script that imports `StringConstraints` from pydantic, or calls
     `model_validate`, does not run on it). The script starts
     Chromium with `--remote-debugging-pipe` (no port) and signs in to FUXA as

@@ -47,7 +47,7 @@ spec:
   - openssh-server
   - procps
   - python3
-  - python3-pydantic
+  - python3-pip
   - rsync
   - rsyslog
   - ssh
@@ -73,7 +73,12 @@ spec:
       # keeps the vendor peer on dmz-jump and cm_wg_watch (peer events for Wazuh).
       export DEBIAN_FRONTEND=noninteractive
       apt-get update
-      apt-get install -y --no-install-recommends gnupg python3 python3-pydantic rsyslog wireguard-tools
+      apt-get install -y --no-install-recommends gnupg python3 python3-pip rsyslog wireguard-tools
+      # pydantic 2 for the range's own scripts on this image (they run with the
+      # system python3 -I): noble's python3-pydantic is 1.10, which lacks what they
+      # import. noble enforces PEP 668, so pip is told to install into the system.
+      pip3 install --no-cache-dir --break-system-packages "pydantic==2.11.7"
+      python3 -I -c 'import pydantic; assert pydantic.VERSION.startswith("2."), pydantic.VERSION'
 
       # dmz-vpn forwards decapsulated tunnel traffic onto the DMZ. No NAT: dmz-jump
       # routes 10.99.0.0/24 back through this host and sees the real tunnel address.

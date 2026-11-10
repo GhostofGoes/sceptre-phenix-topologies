@@ -45,7 +45,7 @@ spec:
   - openssl
   - procps
   - python3
-  - python3-pydantic
+  - python3-pip
   - rsync
   - rsyslog
   - skopeo
@@ -77,7 +77,12 @@ spec:
       GUAC_VERSION=1.6.0
       GUAC_JDBC_SHA256=97bc5fd3d67d25c0e98a475d1dfd308a037859f549fac47171c723b7a7039366
       apt-get update
-      apt-get install -y --no-install-recommends gnupg openssl python3 python3-pydantic rsyslog skopeo
+      apt-get install -y --no-install-recommends gnupg openssl python3 python3-pip rsyslog skopeo
+      # pydantic 2 for the range's own scripts on this image (they run with the
+      # system python3 -I): noble's python3-pydantic is 1.10, which lacks what they
+      # import. noble enforces PEP 668, so pip is told to install into the system.
+      pip3 install --no-cache-dir --break-system-packages "pydantic==2.11.7"
+      python3 -I -c 'import pydantic; assert pydantic.VERSION.startswith("2."), pydantic.VERSION'
 
       # Docker Engine and the Compose plugin from Docker's APT repository, pinned.
       DOCKER_KEY_FINGERPRINT=9DC858229FC7DD38854AE2D88D81803C0EBFCD88

@@ -14,6 +14,21 @@ bas-fuxa ──BACnet/IP──> cm_otsim_bacnet.py ──Update──> message b
          <─────────────                    <──Status──             <──                  <────────
 ```
 
+## Moving it upstream
+
+A version of this module written for ot-sim itself is on the
+`feat-bacnet-module` branch of the ot-sim fork (`src/python/otsim/bacnet`), and
+the phenix `ot-sim` app's rendering for it is on the `feat-otsim-bacnet` branch
+of the phenix-apps fork. Once both are upstream and in the range's pins, this
+file can go. Two things differ and have to follow in the range first:
+
+- Its settings are child elements (`<instance>`, `<tag>`, `<units>`), like the
+  Modbus and DNP3 modules', not attributes.
+- It does not send a null value on a relinquish. It sends the value from before
+  the command, and with an `override-tag` set on the object, a second tag that
+  is 1 while a command is in force and 0 after. The building and power federates
+  would read that tag in place of the null.
+
 ## What it does
 
 - **Objects.** A Device object and one analog-input, analog-output,

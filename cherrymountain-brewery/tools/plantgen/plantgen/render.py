@@ -15,7 +15,6 @@ from pydantic import BaseModel
 
 from plantgen.allocate import (
     READ_FC,
-    READ_HOLDING_FC,
     Allocation,
     BacnetObject,
     MasterBlock,
@@ -90,7 +89,6 @@ def render_all(plant: Plant, alloc: Allocation) -> dict[str, str]:
             out[f"openplc/{plc}/modbus_slave.json"] = _json(
                 modbus_slave(plant, alloc, plc)
             )
-        out[f"openplc/{plc}/mbconfig.cfg"] = mbconfig(plant, alloc, plc, rios)
         out[f"openplc/{plc}/located_vars.st"] = located_vars(plant, alloc, plc)
     for host in alloc.bacnet:
         out[f"bacnet/{host}.json"] = _json(bacnet_doc(plant, alloc, host))
@@ -829,14 +827,6 @@ def modbus_master(
     return devices
 
 
-def _v3_block(blocks: list[MasterBlock], fc: int, rio: str) -> tuple[int, int]:
-    """(start, size) of the one block with ``fc``; v3 has one per kind."""
-    found = [b for b in blocks if b.fc == fc]
-    if len(found) > 1:
-        raise PlantError(f"{rio}: OpenPLC v3 allows one FC{fc} block, not {len(found)}")
-    return (found[0].start, found[0].count) if found else (0, 0)
-
-
 def modbus_slave(plant: Plant, alloc: Allocation, plc: str) -> dict[str, Any]:
     """OpenPLC v4 ``modbus_slave`` plugin config with an explicit ``buffer_mapping``.
 
@@ -850,50 +840,6 @@ def modbus_slave(plant: Plant, alloc: Allocation, plc: str) -> dict[str, Any]:
         "word_order": "high_word_first",
         "buffer_mapping": alloc.layouts[plc].buffer_mapping(),
     }
-
-
-def mbconfig(plant: Plant, alloc: Allocation, plc: str, rios: list[str]) -> str:
-    """OpenPLC v3 ``mbconfig.cfg`` (fallback; same IEC map as v4)."""
-    poll = plant.hosts[plc].poll_ms
-    lines = [
-        f"# {HEADER.format(variant=plant.variant)}",
-        "# OpenPLC v3 fallback: slave devices map to %IX100.0, %QX100.0, %IW100,",
-        "# and %QW100, the same IEC locations as the v4 modbus_master config.",
-        f'Num_Devices = "{len(rios)}"',
-        f'Polling_Period = "{poll}"',
-        'Timeout = "1000"',
-    ]
-    for i, rio in enumerate(rios):
-        host = plant.hosts[rio]
-        mb = host.modbus or ModbusEndpoint()
-        blocks = master_blocks(alloc, rio)
-        di, co, ir, hr, hrr = (
-            _v3_block(blocks, fc, rio) for fc in (2, 15, 4, 16, READ_HOLDING_FC)
-        )
-        p = f"device{i}"
-        lines += [
-            f'{p}.name = "{rio}"',
-            f'{p}.slave_id = "{mb.unit_id}"',
-            f'{p}.protocol = "TCP"',
-            f'{p}.address = "{host.ip(mb.interface)}"',
-            f'{p}.IP_Port = "{mb.port}"',
-            f'{p}.RTU_Baud_Rate = "115200"',
-            f'{p}.RTU_Parity = "None"',
-            f'{p}.RTU_Data_Bits = "8"',
-            f'{p}.RTU_Stop_Bits = "1"',
-            f'{p}.RTU_TX_Pause = "0"',
-            f'{p}.Discrete_Inputs_Start = "{di[0]}"',
-            f'{p}.Discrete_Inputs_Size = "{di[1]}"',
-            f'{p}.Coils_Start = "{co[0]}"',
-            f'{p}.Coils_Size = "{co[1]}"',
-            f'{p}.Input_Registers_Start = "{ir[0]}"',
-            f'{p}.Input_Registers_Size = "{ir[1]}"',
-            f'{p}.Holding_Registers_Read_Start = "{hrr[0]}"',
-            f'{p}.Holding_Registers_Read_Size = "{hrr[1]}"',
-            f'{p}.Holding_Registers_Start = "{hr[0]}"',
-            f'{p}.Holding_Registers_Size = "{hr[1]}"',
-        ]
-    return "\n".join(lines) + "\n"
 
 
 def st_name(tag_name: str) -> str:

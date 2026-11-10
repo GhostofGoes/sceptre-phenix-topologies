@@ -2395,7 +2395,9 @@ GB.
 retired. For reference, the pattern would have been GRFICSv3's: bake
 `compile_program.sh <prog>.st` into the image, and inject `openplc.db` (with a
 `Programs` row and `Start_run_mode=true`), `active_program`, `st_files/`, and
-`mbconfig.cfg`. v3 is archived, has no OPC UA, and gains DNP3.
+`mbconfig.cfg`. v3 is archived, has no OPC UA, and gains DNP3. plantgen wrote an
+`mbconfig.cfg` for reference until it was removed: nothing read it, and a range
+whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
 
 ### 12.2 FUXA (two instances)
 

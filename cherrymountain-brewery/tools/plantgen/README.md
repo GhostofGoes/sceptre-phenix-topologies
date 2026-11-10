@@ -50,7 +50,6 @@ and every file starts with or carries `generator` and `variant`.
 | `openplc/<plc>/modbus_master.json` | ci | OpenPLC v4 `modbus_master` plugin config |
 | `openplc/<plc>/modbus_slave.json` | Modbus northbound PLCs | OpenPLC v4 `modbus_slave` plugin config |
 | `openplc/<plc>/located_vars.st` | ci | Located-variable declarations for the PLC program |
-| `openplc/<plc>/mbconfig.cfg` | ci | OpenPLC v3 fallback (reference only) |
 | `fuxa/<host>-tags.json` | ci | FUXA devices and tags, one file per FUXA host (scada-fuxa, bas-fuxa) |
 | `bacnet/<host>.json` | BACnet controllers | Object table of one ot-sim BACnet module |
 | `dnp3/<fep>.json` | FEPs | DNP3 point map the FEP outstation serves |

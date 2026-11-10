@@ -30,16 +30,18 @@ phenix host.
 | 0: Spikes | **Done.** Ten spikes are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to [future work](FUTURE_WORK.md#soc-case-management-with-dfir-iris) | Nothing. What each spike left untested is in its row of [§18](#18-implementation-roadmap) |
 | 1: Network | **Built, checked statically.** The topology modules, the firewall rulesets, the services on ot-svc, both BBMDs, the post-boot VyOS script, and the SoH probes. `netcheck` compares all of it with the conduit matrix | The VM run: every conduit and every blocked path under SoH, and the VyOS script on VyOS |
 | 2: Simulation | **Built, run offline.** `plant.yaml`, plantgen, the seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). A simulated brewer, cellar crew, and line operator do the hand work, so beer moves from the brewhouse to the filler over days. The whole plant ran offline for 54 simulated hours | The ot-sim `logic` blocks, and a 24 h soak under HELICS |
-| 3: Control | **Built, run offline.** All five PLC programs and their full and lite ZIPs, with the alarm logic generated from `alarms.json`, the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)), the peer reads, the fermentation profile, and the packaging line's operator panel. All five run in the tests as compiled programs: four against the federates, and plc-utilities (its CIP sequence) with its inputs set by hand. The scada-fuxa and bas-fuxa projects are generated, with a process graphic for each area ([fuxa/README.md](../fuxa/README.md#the-process-graphics)); the batch engine brews a double-brew day unattended in the offline federation and ran in a real FUXA server against a stand-in PLC, with the operator sign-in and the kiosk's automatic sign-in. The `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks | The full and lite programs in an OpenPLC runtime, plc-utilities against the federates, FUXA writing to plc-brewhouse over OPC UA, the Overview, Utilities, Power, Cellar CO2, and Building graphics seen in a real FUXA, and alarm suppression during a crash |
+| 3: Control | **Built, run offline.** All five PLC programs and their full and lite ZIPs, with the alarm logic generated from `alarms.json`, the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)), the peer reads, the fermentation profile, and the packaging line's operator panel. All five run in the tests as compiled programs: four against the federates, and plc-utilities (its CIP sequence) with its inputs set by hand. The scada-fuxa and bas-fuxa projects are generated, with a process graphic for each area, each run in a real FUXA server against a stand-in plant ([fuxa/README.md](../fuxa/README.md#the-process-graphics)); the batch engine brews a double-brew day unattended in the offline federation and ran in a real FUXA server against a stand-in PLC, with the operator sign-in and the kiosk's automatic sign-in. The `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks | The full and lite programs in an OpenPLC runtime, plc-utilities against the federates, and FUXA writing to plc-brewhouse over OPC UA |
 | 4: Power and BAS | **Built, run offline.** The power and building federates. `plc-power` does load shed, staged restoration, and BESS dispatch, and schedules the on-peak shift, the recharge, the monthly demand reset, and the weekly genset exercise from the ATS controller's clock ([§12.1](#121-openplc-v4-runtime-v3-fallback)). The BAS controllers serve BACnet through the ot-sim BACnet module in this repository ([§16](#16-new-and-extended-software)), tested against BACpypes3 and BAC0 clients | The outage and CO₂ scenarios on a VM, and FUXA reading the controllers through the BBMDs |
 | 5: SOC and remote access | **Built, not run.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; the Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), the Zeek script (checked in Malcolm's Zeek image), and the Wazuh rules (checked in Wazuh 4.14.1 logtest), each with tests; per-experiment vendor and WireGuard secrets | Everything on a VM: live capture into Malcolm, the agents and syslog into Wazuh, and the vendor's path end to end |
 | 6: Polish | **Started.** `cm-viz`, the white cell's 3D view, built and tested offline ([§15.10](#1510-white-cell-3d-view-cm-viz)); `plantevent` and the four plant-driving SCORCH runs ([§15.6](#156-scorch-pipelines)); the operations runbook ([§15.9](#159-operations)); the brand on every screen ([§15.11](#1511-brand)); nine test suites in prek and CI | The Builder package, an e2e run on a VM, cm-viz in the range with its operator-view relay, and the upstream pull requests (the ot-sim BACnet module and the `ot-sim` app's support for it are on fork branches) |
 
 [§18](#18-implementation-roadmap) has each phase's scope and exit criteria and
-the spike results. [§19](#19-risks-and-open-questions) lists the risks, the
-decisions taken, and every open item, and the user guide's
-[Known limits](../USER_GUIDE.md#known-limits) says what to check on the first
-start.
+the spike results. [§19](#19-risks-and-open-questions) lists the risks and the
+decisions taken. Everything that is left to do, in every phase, is in
+[FUTURE_WORK.md](FUTURE_WORK.md), which starts with what
+[the first run on a phenix host](FUTURE_WORK.md#the-first-run-on-a-phenix-host)
+has to show; the user guide's [Known limits](../USER_GUIDE.md#known-limits)
+says what to check on the first start.
 
 ## Contents
 
@@ -96,7 +98,7 @@ power, and building physics. ot-sim field devices expose that physics over
 Modbus, DNP3, and BACnet (BACnet through a new ot-sim module). The
 topology uses phenix's workflow layout, core and user apps, state of health
 (SoH), packet capture, SCORCH, and image builds; a Builder package is
-planned ([§15.8](#158-builder-package)).
+[future work](FUTURE_WORK.md#exercise-support) ([§15.8](#158-builder-package)).
 
 ## 2. Goals and non-goals
 
@@ -739,7 +741,7 @@ The counts are the full variant's field points (`source: io` in
   (`alarms.json`): 16 Critical, 33 High, 28 Medium, and 21 Low. The Critical ones are all life safety: CO₂
   at 30,000 ppm (four cellar sensors and the three other areas), the BESS
   off-gas detector, and the eight confined-space entry violations. That is not yet the 5/15/80 target, because only
-  the important alarms are rationalized so far.
+  the important alarms are rationalized so far ([future work](FUTURE_WORK.md#control-and-safety)).
 - **Examples:**
   - CO₂ ≥ 30,000 ppm: Critical; ≥ 15,000 ppm: High; tier 1 (≥ 5,000 ppm, the
     OSHA PEL, purge fans running) for a minute: Low, so the operator knows the
@@ -824,7 +826,7 @@ host is in the path:
 | BACnet on bas-vent (the ot-sim BACnet module) down | None. Ventilation and the relay are the controller's local logic |
 | EP-1 dead (detection panel unpowered) | Both relays drop (de-energize to trip): carbonation is inhibited and the CO₂ supply shuts off. The purge fans are on EP-1 too and stop |
 | CO₂ at or above 15,000 ppm | The relay drops: carbonation and hop-port purges are inhibited until the sensed value falls 10 % below the tier and the release delay passes |
-| rio-cellar or the FIELD-CEL link down | `plc-cellar`'s Modbus master keeps the last input values, so the inhibit holds its last state. A RIO heartbeat would let the PLC fail safe here too; it is open work ([§19](#19-risks-and-open-questions)) |
+| rio-cellar or the FIELD-CEL link down | `plc-cellar`'s Modbus master keeps the last input values, so the inhibit holds its last state. A RIO heartbeat would let the PLC fail safe here too; it is [future work](FUTURE_WORK.md#control-and-safety) ([§19](#19-risks-and-open-questions)) |
 | plc-cellar stopped | Its outputs stop updating; rio-cellar keeps the last commands (unverified: the runtime may write 0 to its outputs when it stops, [§19](#19-risks-and-open-questions)). Without a PLC the cellar autopilot takes over after 300 s and honors the relay itself ([§9.6](#96-implementation-status-and-validation)) |
 | CO₂ at or above 30,000 ppm in any area (cellar, bulk tank, filler, cold room) | The shutoff relay drops: the bulk CO₂ valve closes through its solenoid, and plc-utilities latches the shutoff until the operator resets it with the relay healthy for 60 s. A leak on the supply piping stops as the header bleeds down |
 | Gas-detection panel failed (`gas-detection` event) | Both relays drop: carbonation is inhibited and the CO₂ supply shuts off (loss of detection fails closed) |
@@ -929,7 +931,8 @@ models the part a control system can enforce:
   (writes straight to the RIO), nothing locks the valves; a real site isolates
   them mechanically (LOTO, 29 CFR 1910.147) as well. CIP circuit 1 (brewhouse)
   is not interlocked to the brewhouse permits, because plc-brewhouse serves OPC
-  UA only and plc-utilities has no peer path to it ([§19](#19-risks-and-open-questions)).
+  UA only and plc-utilities has no peer path to it ([§19](#19-risks-and-open-questions);
+  [future work](FUTURE_WORK.md#control-and-safety)).
   The simulation has no entrant: entry is PLC state only.
 
 ## 7. Electrical distribution and energy
@@ -1200,8 +1203,8 @@ Modbus raw value, engineering value × 10^scale.
   `DNP3_Breaker_Command` alert on it from any host, and any control operation
   from a host other than utility-derms alerts at priority 1 (sids 9000130 to
   9000133). Writes to AO 0 and 2 fight plc-power, which rewrites them every
-  scan. Restricting the FEP map to the utility points is open work for the
-  ot-sim FEP config ([§19](#19-risks-and-open-questions)).
+  scan. Restricting the FEP map to the utility points is
+  [future work](FUTURE_WORK.md#network-and-the-ranges-own-security) ([§19](#19-risks-and-open-questions)).
 
 ## 8. Building automation
 
@@ -1828,7 +1831,8 @@ run.
   unreachable.
 
 **Remaining:** the ot-sim `logic` blocks of
-[§12.3](#123-ot-sim-field-devices), a 24 h HELICS soak, and any run on a VM.
+[§12.3](#123-ot-sim-field-devices), a 24 h HELICS soak, and any run on a VM
+([FUTURE_WORK.md](FUTURE_WORK.md)).
 
 ## 10. Network architecture
 
@@ -2369,7 +2373,8 @@ provisioning below) or in the OpenPLC Editor:
   supervision.
 
 **As built** (`plc/<plc>/`, [plc/common/README.md](../plc/common/README.md)).
-The programs are simpler than the targets above, and the gaps are open work:
+The programs are simpler than the targets above, and the gaps are
+[future work](FUTURE_WORK.md#control-and-safety):
 plc-brewhouse uses proportional valves rather than PID and runs one phase per
 Start; the FUXA batch engine sequences them ([§12.2](#122-fuxa-two-instances)).
 At each Start it latches the phase and the engine's phase parameter
@@ -2589,10 +2594,10 @@ brewhouse PLC serves OPC UA cannot fall back to it.
     `start-batch` event press
     ([§9.6](#96-implementation-status-and-validation)). The fermenter it
     reserves is a check and a display; the cellar federate routes the wort.
-  - Not built yet: a daily production report (PDF) with barrels packaged
+  - Not built yet ([future work](FUTURE_WORK.md#operator-tools)): a daily production report (PDF) with barrels packaged
     (bottles × 12 oz ÷ 3,968 oz/bbl, plus kegs), which supports the TTB
     records.
-  - Not built yet: a PackTags/OEE publisher that sends MQTT to the
+  - Not built yet ([future work](FUTURE_WORK.md#operator-tools)): a PackTags/OEE publisher that sends MQTT to the
     historian's Mosquitto on ISA-95 topics such as
     `cherrymountain/frontrange/packaging/bottling-line/packtags/...`. The
     historian's Telegraf already subscribes ([§12.4](#124-historian-and-engineering-workstation)).
@@ -2673,7 +2678,7 @@ routed but ignored, and the start view opens instead.
 
   In the current build the first three live in the simulation federates (the
   chiller staging in `utilities`, the BAS interlocks in `building`, and the PV
-  limit in `power`). The ot-sim `logic` blocks are still to do
+  limit in `power`). The ot-sim `logic` blocks are [future work](FUTURE_WORK.md#control-and-safety)
   ([§9.6](#96-implementation-status-and-validation)).
 - **Serial.** ot-sim supports Modbus RTU natively, as master and as server: a
   `<serial>` block (`device`, `baud-rate`, `data-bits`, `stop-bits`, `parity`,
@@ -2718,7 +2723,8 @@ routed but ignored, and the start view opens instead.
   energy (kWh/bbl against the BA benchmark), monthly demand cost, and
   glycol plant health. As built, the app renders one starter dashboard
   (`cm-plant`: fermentation temperatures, apparent extract, and PackTags);
-  the energy, demand-cost, and glycol panels are not built, and its queries
+  the energy, demand-cost, and glycol panels are not built
+  ([future work](FUTURE_WORK.md#operator-tools)), and its queries
   assume FUXA's DAQ field layout (TODO(verify) in `render.py`).
 - Mosquitto is the MQTT broker.
 
@@ -2997,7 +3003,7 @@ point for future adversary-emulation scenarios.
      `cherrymountain.rules` has a sid below 9000101 or no sid at all
      (`tests/soc/test_malcolm.py`).
 - **Not yet verified:** a real `cm-malcolm` VM image with live capture, and
-  NetBox and Strelka.
+  NetBox and Strelka ([FUTURE_WORK.md](FUTURE_WORK.md#the-first-run-on-a-phenix-host)).
 
 **Wazuh** (GPL-2.0)
 
@@ -3195,7 +3201,8 @@ cherrymountain-brewery/
 
 Not yet in the repository: a SoH packet-capture scenario
 (`scenario-soh-capture.yml`, see [§15.4](#154-state-of-health)) and the Builder
-package (`builder/`, see [§15.8](#158-builder-package)).
+package (`builder/`, see [§15.8](#158-builder-package)). Both are
+[future work](FUTURE_WORK.md#exercise-support).
 
 `phenix.yml`, in flow style:
 
@@ -3458,7 +3465,7 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
   wind-plant SoH configs on the user's unmerged fork branch
   `feat-topology-soh-checks`, where VyOS adjacency and guest C2
   registration were slow in CI.
-- **Packet capture view (planned, not yet in the repository).** A
+- **Packet capture view ([future work](FUTURE_WORK.md#exercise-support), not yet in the repository).** A
   `scenario-soh-capture.yml` would add SoH `packetCapture`, which feeds the
   Network Volume chord graph. It is a separate scenario because of its cost:
   - phenix adds an Elastic VM (default 4 vCPU / 4 GB) plus one hidden
@@ -3500,7 +3507,8 @@ terminal (`docker exec -it`), and its `expect-malcolm` step matches the start
 of a Suricata signature or Zeek notice name, because Malcolm indexes
 `rule.name` as a keyword. None of the runs has run on a range. Not in them
 yet: `loop` with `replace` to randomize event times and magnitudes, vmstats
-and hoststats, and a collector stage (OEE from InfluxDB). Validate the configs
+and hoststats, and a collector stage (OEE from InfluxDB), which are
+[future work](FUTURE_WORK.md#exercise-support). Validate the configs
 offline with `phenix-scorch-validate`.
 
 The `plantevent` component reaches the sim-ctl event API through the
@@ -3567,7 +3575,8 @@ exists, and it never assumes a fixed `localhost` port.
 
 After the topology is published, open it in Builder. Add zone groups,
 notes, and custom icons (brew kettle, fermenter, bottle, BACnet). Then
-export `builder/cherrymountain.package.yaml` (not yet created) with its linked scenarios and
+export `builder/cherrymountain.package.yaml` (not yet created;
+[future work](FUTURE_WORK.md#exercise-support)) with its linked scenarios and
 the list of required images, apps, and files. The `builder-doc` annotation
 is never hand-written.
 
@@ -3575,7 +3584,8 @@ is never hand-written.
 
 This subsection holds what operating the range rests on: host fit, timing,
 reset, failure modes, and the range's own security. Items marked **TODO** are
-designed here and not built yet. [USER_GUIDE.md](../USER_GUIDE.md) has the
+designed here and not built yet; [FUTURE_WORK.md](FUTURE_WORK.md) lists each
+of them with the rest of the future work. [USER_GUIDE.md](../USER_GUIDE.md) has the
 steps: the host and repositories, the builds, the first start of each variant,
 what to check, and how to run an exercise.
 
@@ -3724,7 +3734,8 @@ simulated time (`sim_time`), so it lines up with Wazuh and Malcolm directly.
   authentication, and HELICS (zmq on 23405–23406 and the federate ports) has
   none either. All three are on MGMT, which no player zone routes to, and the
   per-host nftables MGMT policy limits who reaches them. They are accepted
-  range risks; enabling OpenSearch security and an API token are open work.
+  range risks; enabling OpenSearch security and an API token are
+  [future work](FUTURE_WORK.md#network-and-the-ranges-own-security).
 
 **FUXA kiosk login.** The HMI kiosks sign themselves in to FUXA as `operator`
 (the owner's decision), so an operator station can write values and press
@@ -3875,7 +3886,7 @@ The operator toggle draws the vessel readings, jacket valves, carbonation
 valves, CO₂ sensors and tiers, fan commands and status, and the relay from
 that layer. It is a convenience for the white cell, not a confidentiality
 boundary: every frame carries the truth.
-Phase 2 (open): a relay on the phenix host that reads the historian's `scada`
+Phase 2 ([future work](FUTURE_WORK.md#the-white-cells-3d-view)): a relay on the phenix host that reads the historian's `scada`
 bucket through a cc tunnel and hands the operator's values to the page.
 
 **Resources.** `cm-viz` is capped at 256 MiB and half a core
@@ -3898,7 +3909,7 @@ installed; not in CI) loads every scene in headless Chromium and checks the
 WebGL context, frame rendering, and the data binding. `viz/tools/screenshots.py`
 renders the documented views from the real federates.
 
-**Not done yet.** The phenix run of the spike plan (the view through a real
+**Not done yet** ([FUTURE_WORK.md](FUTURE_WORK.md#the-white-cells-3d-view)). The phenix run of the spike plan (the view through a real
 cc tunnel, frame age at the 95th percentile, the effect of the 188
 subscriptions on the federation's timing over an hour), the operator-view
 relay (phase 2), replay from the ground-truth OpenSearch, and a brewhouse
@@ -3955,7 +3966,8 @@ title, which the open-source edition cannot change.
 Until the upstream changes merge, the derived phenix container installs
 forked `sceptre-phenix-apps` (the phenix Dockerfile's `APPS_REPO` and
 `APPS_BRANCH` build arguments), and the range runs on the phenix fork for the
-autotunnel loop.
+autotunnel loop. The upstream changes still to make are listed in
+[FUTURE_WORK.md](FUTURE_WORK.md#upstream).
 
 **`cherrymountain` app metadata validation.** The app follows the pattern of
 sceptre-phenix-apps:
@@ -4013,7 +4025,8 @@ sceptre-phenix-apps:
   port: one per host that runs a federate (a real HELICS 3.6.1 broker keeps
   one connection per core), 16 in full and lite.
 - **Follow-up.** Drop the static sim, OpenPLC, and FUXA topology injects once
-  the app has run on a VM ([§19](#19-risks-and-open-questions)).
+  the app has run on a VM ([§19](#19-risks-and-open-questions);
+  [FUTURE_WORK.md](FUTURE_WORK.md#the-first-run-on-a-phenix-host)).
 
 ot-sim BACnet config, as the app renders it from plantgen's
 `bacnet/<host>.json`:
@@ -4150,7 +4163,8 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
   [§12.5](#125-addressing-conventions-high-off-by-one-risk).
 - **Runtime acceptance:** SoH passes on the full and lite variants. The first
   VM run must check that VyOS accepts the rulesets, the `cm-vyos-config.sh`
-  post-boot script, `cm-bbmd` under systemd, and every SoH probe.
+  post-boot script, `cm-bbmd` under systemd, and every SoH probe
+  ([FUTURE_WORK.md](FUTURE_WORK.md#the-first-run-on-a-phenix-host) has the whole list).
   - Every TCP conduit in §10.3, and the BACnet UDP flows, are tested by
     `testCustomReachability`. BBMD discovery is checked by a live FUXA BACnet
     tag on scada-fuxa.
@@ -4201,14 +4215,22 @@ TheHive case-management spike, a no, is in
 | Serial (stretch) | Go. Round 2: ot-sim's own Modbus RTU runs over the current serial app (0 errors in about 680 polls). PR #130's app works until a VM is redeployed | `serial` app row ([§15.2](#152-apps)), ot-sim serial note ([§12.3](#123-ot-sim-field-devices)) | PR #130 after a reconnect fix; the missing C2 client after a redeploy |
 | 3D view (viz3d) | Go, locally: three.js renders with no GPU (SwiftShader, llvmpipe) when Chromium opts in, and the federates drive it through a WebSocket bridge. Built as `cm-viz` | The snapshot endpoint, the PSV model, vessel truth outputs, real KPIs, `cm-viz` and its autotunnel ([§9.5](#95-scenario-events-and-ground-truth), [§15.10](#1510-white-cell-3d-view-cm-viz)) | The phenix run: a real cc tunnel, frame age, and federation timing with the new subscriptions |
 
+What the spikes left untested is carried, with everything else the first VM
+run has to show, in
+[FUTURE_WORK.md](FUTURE_WORK.md#the-first-run-on-a-phenix-host).
+
 **Running the spike kits.** The netns BBMD runner needs the `conntrack` tool: it
 flushes connection tracking between stages, and a missing binary must not pass
 silently.
 
 ### Future work
 
-All future work is in [FUTURE_WORK.md](FUTURE_WORK.md): what has been evaluated
-and not scheduled, and the follow-ups this document mentions where they arise.
+All future work is documented in [FUTURE_WORK.md](FUTURE_WORK.md), and only
+there: what the first run on a phenix host has to show, the open work by
+subject (control and safety, operator tools, simulation, network, exercise
+support, the 3D view, upstream changes), what has been evaluated and not
+scheduled, and what was decided against. Where this document says that
+something is not built, not verified, or open, it links to the item there.
 
 ## 18A. Regulatory and standards context
 
@@ -4303,7 +4325,7 @@ reach a plant like this, and the row says why.
 |---|---|---|
 | ANSI/ASHRAE 135-2024 | The current BACnet standard, including BACnet/SC configuration and certificate management | Modeled as BACnet/IP with BBMDs on purpose ([§8.3](#83-recommendation), [§10.4](#104-protocol-map)) |
 | BACnet Secure Connect (SSPC 135 whitepaper) | TLS, hub-and-spoke, no broadcasts, no BBMDs, firewall-friendly | Documented as the real-world upgrade the range deliberately does not adopt |
-| 2021 IECC / ASHRAE 90.1, 62.1 (not read) | DCV, economizer, scheduling and setback for a unit like RTU-1 | Modeled in simplified form ([§8.1](#81-spaces-equipment-and-bacnet-devices)) |
+| 2021 IECC / ASHRAE 90.1, 62.1 (not read) | DCV, economizer, scheduling and setback for a unit like RTU-1 | Modeled in simplified form ([§8.1](#81-spaces-equipment-and-bacnet-devices), [§8.3](#83-recommendation)) |
 | ASHRAE Guideline 36 (2018; 2021 added plants); 223P (public review 2024) | Standard sequences; semantic tags | Documented |
 
 ### 18A.7 ICS cybersecurity
@@ -4341,7 +4363,7 @@ reach a plant like this, and the row says why.
 | 3 | CIP "verification record" of [§5.3](#53-best-practices-encoded) existed only as a sentence | FDA CGMP sanitation records; BA practice | Implemented in the utilities federate |
 | 4 | Fill-level inspection was a fixed 0.5 % reject with no net-contents basis | NIST HB 133 Table 2-6; 27 CFR 25.142(d), 25.156, 25.158 | Implemented in the packaging federate |
 | 5 | No automatic CO₂ supply shutoff at the 30,000 ppm tier | Denver DFD policy IFC 5307 | Implemented: a hardwired shutoff relay in series with the valve, latched in plc-utilities, in the sim, plant.yaml, the PLC, and the detections ([§6.7](#67-cellar-co2-life-safety-interlock)) |
-| 6 | CO₂ detection only in the cellar; none at the bulk tank and vaporizer, the filler, or the taproom cold room and draft system | Denver DFD policy IFC 5307 (every point of use and supply tank area) | Implemented on bas-vent: three sensors with the cellar's tiers, area exhaust, horns and strobes; the annunciator and fire-alarm tie-in are documented (§6.7) |
+| 6 | CO₂ detection only in the cellar; none at the bulk tank and vaporizer, the filler, or the taproom cold room and draft system | Denver DFD policy IFC 5307 (every point of use and supply tank area) | Implemented on bas-vent: three sensors with the cellar's tiers, area exhaust, horns and strobes; the annunciator and fire-alarm tie-in are documented ([§6.7](#67-cellar-co2-life-safety-interlock)) |
 | 7 | No confined-space entry interlock on the vessels | 29 CFR 1910.146 | Implemented in plc-cellar and plc-brewhouse, with the CIP peer bits and detections ([§6.8](#68-confined-space-entry-lockout)) |
 | 8 | No refrigerant leak detection or charge record for the chiller | ASHRAE 15; 40 CFR 84 Subpart C | Implemented: detector point, alarm, low-charge trip, charge record |
 | 9 | No BESS cell-temperature or off-gas monitoring | NFPA 855 | Implemented: cell temperature and off-gas points, alarms, PCS trip |
@@ -4353,6 +4375,9 @@ reach a plant like this, and the row says why.
 | 15 | The `plantevent` SCORCH component does not know `genset-exercise` | this review | Implemented: plantevent posts `genset-exercise` (and `cip-panel`), and the app's KPIs carry the genset test hours left under the cap |
 
 ## 19. Risks and open questions
+
+A row that says "Open" is also in [FUTURE_WORK.md](FUTURE_WORK.md), which
+lists everything that is left to do.
 
 | Risk | Mitigation |
 |---|---|
@@ -4402,7 +4427,7 @@ reach a plant like this, and the row says why.
 | The ci topology still injects the static sim, OpenPLC, and FUXA files beside the app's rendered ones ([§16](#16-new-and-extended-software)) | The app replaces an injection to the same destination, and `60-cm-federates.sh` leaves the federate to the static `cm-cellar.service`; the app's status check accepts either unit. Open: drop the static injects from `topology-ci.yml` once the app has run on a VM |
 | Every start is a first boot: phenix runs each node as a snapshot and builds its disk again from the image ([§15.9](#159-operations)) | By design of phenix. Consequences to plan for: Malcolm loads its container images on every start (10 to 15 minutes), the retention settings bound one continuous run, and whatever a VM stores is lost at a stop unless the cleanup stage exports it |
 | The simulation ends after `end_time_s`: 7 days in full and lite, 24 hours in ci. ot-sim's I/O modules finalize then and do not rejoin | Decided by the range owner: kept as the length of one exercise. Stop and start the experiment for a longer run, or raise it in `plant.yaml` |
-| Beer moves through the cellar over days only through the simulated cellar crew, with limits | The cellar crew racks a finished, cold fermenter into BBT-201, moves bright beer from BBT-201 into BBT-202, and cleans what it emptied; the filler takes its supply from the beer line of the tank on line and holds on no product; a knockout keeps to one fermenter ([§9.6](#96-implementation-status-and-validation)). plc-cellar runs the fermentation profile, so beer is crashed with the PLC in control too ([§6.3](#63-areas-equipment-and-control-strategies)). Run offline: the whole plant for 54 h without PLCs (all four fermenters racked, 112 bbl, and 139 bbl put on line), and the cellar for 36 h under the compiled plc-cellar (the same four rackings). Limits: (1) the crew cleans by hand, and the CIP skid's circuits are run only from the HMI; (2) the line outruns the brewhouse (a tank lasts about 3.5 h of a shift and two brew days make two tanks a week), so the filler waits for product most of the week; (3) a crash raises the fermenter's two temperature deviation alarms until the beer is cold, about three hours: nuisance alarms that state-based suppression should remove |
+| Beer moves through the cellar over days only through the simulated cellar crew, with limits | The cellar crew racks a finished, cold fermenter into BBT-201, moves bright beer from BBT-201 into BBT-202, and cleans what it emptied; the filler takes its supply from the beer line of the tank on line and holds on no product; a knockout keeps to one fermenter ([§9.6](#96-implementation-status-and-validation)). plc-cellar runs the fermentation profile, so beer is crashed with the PLC in control too ([§6.3](#63-areas-equipment-and-control-strategies)). Run offline: the whole plant for 54 h without PLCs (all four fermenters racked, 112 bbl, and 139 bbl put on line), and the cellar for 36 h under the compiled plc-cellar (the same four rackings). Limits: (1) the crew cleans by hand, and the CIP skid's circuits are run only from the HMI; (2) the line outruns the brewhouse (a tank lasts about 3.5 h of a shift and two brew days make two tanks a week), so the filler waits for product most of the week. The profile leads each fermenter's setpoint ahead of the beer, so the fill, the rest, and the crash raise no temperature deviation alarm (36 h under the compiled program) |
 | With the PLCs in control, plc-packaging only relays an operator's command, so the shift needs an operator | The federate's line operator starts and stops the shift at the line's operator panel, through plc-packaging ([§9.6](#96-implementation-status-and-validation)), run offline against the compiled program. Open, for the first VM run: the path through rio-packaging's Modbus server. Brewing works the same way: with plc-brewhouse in control, `start-batch` and the 05:00 schedule request brews at the panel and the FUXA batch engine runs them ([§12.2](#122-fuxa-two-instances)) |
 | The batch engine has not met OpenPLC: whether its OPC UA server lets FUXA's session write the command, phase, parameter, accepted-count, and setpoint tags, and whether the phase timeouts (estimates) outlast the real phases | Open until a VM run. Everything on FUXA's side ran in a real FUXA server ([fuxa/README.md](../fuxa/README.md#checked-against-fuxa-source)) |
 | A brew day needs an empty fermenter, and FV-101 is the one empty vessel at the start | The profile crashes a fermenter and the crew empties and cleans it, so later brew days find one. While none is empty the engine refuses a start with "no fermenter is empty" and keeps the request queued |

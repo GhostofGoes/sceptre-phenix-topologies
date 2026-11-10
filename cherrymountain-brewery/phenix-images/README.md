@@ -183,7 +183,8 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
     `cm-openplc-provision` are injected by the topology.
 - **Build:** the commands above, with `<name>` set to `cm-openplc`. The
   program ZIP is built separately (`plc/plc-cellar/build_zip.sh`).
-- **Used by:** `plc-cellar` in the ci variant.
+- **Used by:** the five PLCs (`plc-brewhouse`, `plc-cellar`, `plc-packaging`,
+  `plc-utilities`, `plc-power`) in lite and full; `plc-cellar` in ci.
 - **Pinned versions:** `OPENPLC_REF=v4.3.2` (a tag of
   `Autonomy-Logic/openplc-runtime`), checked against its commit
   `9fb5e1a29b574806f5aea3a4e78202c7a5d658ee` so a moved tag fails the build. Whether `install.sh --native` works in the
@@ -207,7 +208,7 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
     `admin` password, adds the `operator` account, and imports the project.
   - The Wazuh agent, disabled ([Wazuh agent](#wazuh-agent)).
 - **Build:** the commands above, with `<name>` set to `cm-fuxa`.
-- **Used by:** `scada-fuxa` in the ci variant.
+- **Used by:** `scada-fuxa` and `bas-fuxa` in lite and full; `scada-fuxa` in ci.
 - **Pinned versions:** Node.js `22.14.0` (tarball SHA-256
   `69b09dba...e80437ec`, from nodejs.org's `SHASUMS256.txt`); FUXA commit
   `b2972583b3d59525131c44e8b3214f55b74750fe` (server 1.3.6); plugins
@@ -510,10 +511,10 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 
 ## Apps
 
-phenix apps are not in this repository yet. When the `cherrymountain` app (and
-any other app) is added under `apps/`, it ships its own `README.md` next to its
-code, covering its metadata, stages, and tests. See the top-level
-[README](../README.md).
+The `cherrymountain` phenix app is in [`apps/`](../apps/README.md), with its
+own README for its metadata, stages, and tests. It injects what differs between
+hosts of one image (PLC programs, FUXA projects, kiosk scripts, passwords), so
+the images stay the same for every variant.
 
 ## SSH hardening on the vendor path
 

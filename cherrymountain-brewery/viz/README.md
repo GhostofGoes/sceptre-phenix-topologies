@@ -50,7 +50,8 @@ confidentiality boundary. The offline
 harness fills it (the published field values, which a scenario can freeze to
 stand in for a replay). In the range it is not connected yet: the page says
 so, and FUXA (its own autotunnel) goes in a window beside it. A relay that
-reads the historian through a cc tunnel is open work (DESIGN.md §15.10).
+reads the historian through a cc tunnel is
+[future work](../docs/FUTURE_WORK.md#the-white-cells-3d-view).
 
 Page options: `?scene=cellar|fermenters|power`, `?view=truth|operator`,
 `?fps=N` (default 15, `0` uncapped), `?dpr=N` (pixel ratio, default 1), `?aa=1`
@@ -102,8 +103,11 @@ python3 -m venv .venv && .venv/bin/pip install -e '.[local]' -e ../sim
 ```
 
 In the range, `cm-viz.service` on sim-ctl runs
-`python -m cherrymountain_viz --source simctl`. Find the host port with
-`cc tunnel list sim-ctl` (guest port 8090), as for Grafana and the event API.
+`python -m cherrymountain_viz --source simctl`. Open it at
+`http://localhost:18090` with `phenix-tunneler` running
+([USER_GUIDE.md](../USER_GUIDE.md#8-connect-from-your-own-computer)); on the
+phenix host itself, find the host port with `cc tunnel list sim-ctl` (guest
+port 8090), as for Grafana and the event API.
 
 ## Tests
 

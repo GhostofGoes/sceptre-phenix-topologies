@@ -739,11 +739,6 @@ the full list.
   compiler. The first things to check on a real range are that FUXA may write
   to the brewhouse PLC over OPC UA, and that Wazuh takes the `admin` password
   from `secrets.json`.
-- **A crash sets off the fermenter's deviation alarms.** The cellar PLC takes
-  each fermenter through its profile (66 °F fermenting, 70 °F for a three-hour
-  rest, then 34 °F), and the cellar crew racks it once it is cold. While the
-  beer cools, for about three hours, the fermenter's two temperature deviation
-  alarms are on. They clear by themselves.
 - **The bottling line waits for beer.** The filler holds when BBT-202 runs dry
   and starts again when the crew has refilled it. The line empties a tank in
   about 3.5 hours and two brew days make two tanks a week, so expect it to

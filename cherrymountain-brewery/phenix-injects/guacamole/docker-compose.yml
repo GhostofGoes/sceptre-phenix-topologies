@@ -70,7 +70,7 @@ services:
       REMOTE_IP_VALVE_ENABLED: 'true'
       PROXY_ALLOWED_IPS_REGEX: '172\.(1[6-9]|2[0-9]|3[01])\..*'
       TOTP_ENABLED: ${TOTP_ENABLED:-true}
-      TOTP_ISSUER: CherryMountain jump host
+      TOTP_ISSUER: CherryMountain Brewery
     env_file:
       - /etc/cherrymountain/guacamole-web.env
     restart: unless-stopped

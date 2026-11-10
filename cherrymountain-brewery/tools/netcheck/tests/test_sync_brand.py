@@ -89,6 +89,24 @@ def test_the_login_background_is_the_dark_page_color(brand_root: Path) -> None:
     assert 'fill="#101012"' in sync.login_background_svg()
 
 
+def test_the_xrdp_settings_take_the_brands_colors(brand_root: Path) -> None:
+    sync.sync_brand(check=False)
+    conf: str = (brand_root / "phenix-injects" / "brand" / "xrdp.conf").read_text()
+    settings: dict[str, str] = dict(
+        line.split("=", 1) for line in conf.splitlines() if line and not line.startswith("#")
+    )
+    assert settings == {
+        "ls_title": "CherryMountain Brewery",
+        "ls_top_window_bg_color": "1B1B1F",  # xrdp writes a color without the #
+        "ls_bg_color": "EFEFEF",
+        "blue": "E2552B",
+        "ls_logo_filename": sync.XRDP_LOGO_PATH,
+    }
+    edit_tokens(brand_root, lambda t: t["colors"].update(ember="#d04a20"))
+    assert "blue=D04A20\n" in sync.xrdp_conf()
+    assert any("xrdp.conf is not what sync.py makes" in p for p in sync.sync_brand(check=True))
+
+
 def test_tokens_css_has_colors_and_single_color_roles_only(brand_root: Path) -> None:
     css: str = sync.tokens_css()
     assert "--cm-ember: #E2552B;" in css

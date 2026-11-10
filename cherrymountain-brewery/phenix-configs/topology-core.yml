@@ -1153,6 +1153,22 @@ spec:
       dst: /etc/xdg/autostart/cm-brand-wallpaper.desktop
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper.desktop
+    - description: the brewery's mark for xrdp's login screen (240x140, 24-bit BMP)
+      dst: /usr/share/xrdp/cherrymountain-logo.bmp
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/xrdp-logo.bmp
+    - description: the login screen's title, colors, and logo, from the brand's tokens
+      dst: /etc/xrdp/cherrymountain.conf
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/xrdp.conf
+    - description: set them in xrdp.ini
+      dst: /usr/local/bin/cm-brand-xrdp
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/ews/cm-brand-xrdp
+    - description: brand xrdp's login screen at boot
+      dst: /etc/phenix/startup/68-xrdp-brand.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/ews/68-xrdp-brand.sh
     - description: range-only vendor persona (the local account the Guacamole session logs in as)
       dst: /etc/cherrymountain/ridgeline.env
       permissions: '0600'

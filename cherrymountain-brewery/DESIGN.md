@@ -3846,10 +3846,12 @@ a copy drifts or a brand color equals an alarm color.
 | Guacamole sign-in (dmz-jump) | Page, card, mark, name, Login button | A branding extension (`cherrymountain-brand.jar`), which `sync.py` builds and the compose file mounts | No: rendered from the web app's own CSS and the jar's files, not booted |
 | Grafana (historian, sim-ctl) | Logo, tab icon, sign-in background; dashboard lines in the chart colors | `cm-grafana-brand` replaces Grafana's image files at boot, because open-source Grafana has no logo setting; the app renders the dashboards with the colors | No: the script ran on the package's file tree |
 | Desktops (HMI stations, ews, corp-ws, vendor-ws, soc-analyst) | Wallpaper, launcher icon | `cm-brand-wallpaper` at login sets the wallpaper and keeps it against the image's default | No |
+| xrdp login screen (ews) | Title, screen and box colors, title bar, the mark | `cm-brand-xrdp` at boot sets five keys of `xrdp.ini`'s `[Globals]` section from `xrdp.conf`, which `sync.py` makes from the tokens; the mark is a 240x140 BMP, the format xrdp reads. The vendor's Guacamole session signs in with stored credentials and never shows this screen | No: the script ran on the `xrdp.ini` of noble's package (0.9.24) |
 
-Malcolm, Wazuh, the OpenPLC runtime, and InfluxDB keep their own look. Open: the
-xrdp login screen on the EWS, and Grafana's tab title, which the open-source
-edition cannot change.
+Malcolm, Wazuh, the OpenPLC runtime, and InfluxDB keep their own look. The
+name an authenticator app shows for the vendor's one-time code is the brewery's
+too (`TOTP_ISSUER` in the Guacamole compose file). Not branded: Grafana's tab
+title, which the open-source edition cannot change.
 
 ## 16. New and extended software
 
@@ -4340,8 +4342,8 @@ reach a plant like this, and the row says why.
 | Only the first brew day finds a fermenter: FV-101 is the one empty vessel at the start and nothing empties a fermenter | The engine refuses a start with "no fermenter is empty" and keeps the request queued. Resolved by the cellar's material flow (open, above) |
 | The Wazuh admin password from `secrets.json` rests on `wazuh-passwords-tool.sh -a -f <file>` replacing only the admin user's generated password, read from the tool's source (4.14) and not run | The script checks the sign-in afterwards and only warns; `passwords.txt` on the VM always holds what the tool set. Confirm on the first boot |
 | A SoH UDP probe is a single datagram with a 500 ms reply window, and `delay.c2` has no timeout ([§15.4](#154-state-of-health)) | Accepted: a BACnet, NTP, or DNS probe can fail once without a fault, and a VM that never registers its C2 client holds back every VM behind it. Look at that VM's console |
-| `vendor-ws` brings its WireGuard tunnel up at boot (`boot: true`), so the tunnel rules 100201, 100204, and 100205 fire at every experiment start | Open, a decision: set `boot: false` on vendor-ws so the tunnel comes up only when a vendor session starts |
-| FUXA writes to plc-brewhouse through an anonymous OPC UA session, which the app's OPC UA profile gives the operator role (the runtime's default for an anonymous session is viewer, so FUXA could not write at all) | Open, a decision: keep it, as many plants run, or give FUXA a named OPC UA account. Any host that reaches port 4840 can write the brewhouse's tags, and the conduit matrix limits who can |
+| `vendor-ws` brings its WireGuard tunnel up at boot (`boot: true`), so the tunnel rules 100201, 100204, and 100205 fire at every experiment start | Decided by the range owner: the tunnel stays up from boot. Expect those three rules at every experiment start; set `boot: false` on vendor-ws to change it |
+| FUXA writes to plc-brewhouse through an anonymous OPC UA session, which the app's OPC UA profile gives the operator role (the runtime's default for an anonymous session is viewer, so FUXA could not write at all) | Decided by the range owner: kept, as many plants run. Any host that reaches port 4840 can write the brewhouse's tags, and the conduit matrix limits who can. A named OPC UA account for FUXA would close it |
 | Chromium on the desktops comes from the third-party xtradeb PPA, pinned to `chromium*` (Debian 13's package no longer installs on noble, and Ubuntu's is a snap) | Open, a decision: accept the PPA, or use Firefox ESR from packages.mozilla.org |
 | Two image-build risks could not be checked without a build: no `policy-rc.d` stops package scripts from starting daemons in the build chroot, and `systemd-networkd-wait-online` is not masked as the images repository masks it (a possible two-minute boot delay) | Watch the first build and the first boot; mask the unit in each `INSTALL_*` if the delay shows |
 | Ground truth is stamped with the wall clock, with the simulated time beside it. This reverses the earlier choice of simulated timestamps, which left the dashboard empty by default | Decided in review; revert `groundtruth.py`'s timestamp to change it back |

@@ -1,6 +1,7 @@
 // Renders the raster files of this folder from icon.svg, icon-small.svg, and tokens.json:
-// icon-<n>.png, favicon.ico (16, 32, 48), and the wallpaper (wallpaper.png at 3840x2160 and
-// wallpaper-1080p.png), which wallpaper.cjs draws. Run by hand after a change
+// icon-<n>.png, favicon.ico (16, 32, 48), xrdp-logo.bmp (the mark on the login box's
+// color, the 240x140 24-bit BMP xrdp's login screen takes), and the wallpaper (wallpaper.png
+// at 3840x2160 and wallpaper-1080p.png), which wallpaper.cjs draws. Run by hand after a change
 // to either SVG or the tokens:  node brand/render_assets.cjs   (needs Playwright with Chromium).
 // The outputs are committed, so nothing on the range needs a browser.
 const fs = require('fs');
@@ -31,6 +32,25 @@ function ico(pngs) { // [[size, Buffer]] -> an ICO that holds the PNGs as they a
   return Buffer.concat([head, ...pngs.map(([, data]) => data)]);
 }
 
+function bmp(width, height, rgba) { // RGBA rows, top first -> a 24-bit BMP (rows bottom first, BGR)
+  const row = Math.ceil((width * 3) / 4) * 4;
+  const out = Buffer.alloc(54 + row * height);
+  out.write('BM', 0); out.writeUInt32LE(out.length, 2); out.writeUInt32LE(54, 10);
+  out.writeUInt32LE(40, 14); out.writeInt32LE(width, 18); out.writeInt32LE(height, 22);
+  out.writeUInt16LE(1, 26); out.writeUInt16LE(24, 28); out.writeUInt32LE(row * height, 34);
+  out.writeInt32LE(2835, 38); out.writeInt32LE(2835, 42);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const from = (y * width + x) * 4;
+      const to = 54 + (height - 1 - y) * row + x * 3;
+      out[to] = rgba[from + 2]; out[to + 1] = rgba[from + 1]; out[to + 2] = rgba[from];
+    }
+  }
+  return out;
+}
+// xrdp's own logo is 240x140; the mark is drawn 124 px high in the middle of it.
+const XRDP_LOGO = { width: 240, height: 140, mark: 124 };
+
 (async () => {
   const browser = await chromium.launch();
   const made = {};
@@ -43,6 +63,23 @@ function ico(pngs) { // [[size, Buffer]] -> an ICO that holds the PNGs as they a
   }
   fs.writeFileSync(path.join(here, 'favicon.ico'), ico([16, 32, 48].map((n) => [n, made[n]])));
 
+  // The xrdp login logo: a canvas gives the pixels, and BMP has no transparency, so the
+  // mark sits on the color of the login box (tokens.json: paper).
+  {
+    const { width, height, mark } = XRDP_LOGO;
+    const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 1 });
+    await page.setContent(`<body style="margin:0"><canvas width="${width}" height="${height}"></canvas><img src="${uri('icon.svg')}" width="${mark}" height="${mark}"></body>`);
+    await page.waitForFunction(() => document.images[0].complete && document.images[0].naturalWidth > 0);
+    const rgba = await page.evaluate(([w, h, m, bg]) => {
+      const ctx = document.querySelector('canvas').getContext('2d');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(document.images[0], (w - m) / 2, (h - m) / 2, m, m);
+      return Array.from(ctx.getImageData(0, 0, w, h).data);
+    }, [width, height, mark, c.paper]);
+    fs.writeFileSync(path.join(here, 'xrdp-logo.bmp'), bmp(width, height, rgba));
+    await page.close();
+  }
+
   // The wallpaper is drawn by wallpaper.cjs; rendered at 3840x2160 and again at 1920x1080.
   const art = 'data:image/svg+xml;base64,' + Buffer.from(wallpaperSvg(tokens)).toString('base64');
   for (const [w, h, name] of [[W, H, 'wallpaper.png'], [1920, 1080, 'wallpaper-1080p.png']]) {
@@ -53,5 +90,5 @@ function ico(pngs) { // [[size, Buffer]] -> an ICO that holds the PNGs as they a
     await page.close();
   }
   await browser.close();
-  console.log('wrote', SIZES.map(([n]) => `icon-${n}.png`).join(' '), 'favicon.ico wallpaper.png wallpaper-1080p.png');
+  console.log('wrote', SIZES.map(([n]) => `icon-${n}.png`).join(' '), 'favicon.ico xrdp-logo.bmp wallpaper.png wallpaper-1080p.png');
 })();

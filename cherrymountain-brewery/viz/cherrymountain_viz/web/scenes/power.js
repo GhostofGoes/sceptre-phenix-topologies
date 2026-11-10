@@ -127,7 +127,7 @@ export function buildPower() {
     gen: label(scene, [12.5, 3.6, -9]),
     ats: label(scene, [8.6, 3.0, -1.6], 260, 80, 0.16, 2),
     msb: label(scene, [-0.5, 2.4, -1.2], 400, 80, 0.26, 2),
-    tariff: label(scene, [-8.5, 3.0, 9.5], 260, 110, 0.18),
+    tariff: label(scene, [-10.5, 1.5, 2.2], 260, 110, 0.18),
   };
 
 

@@ -232,7 +232,7 @@ docker exec phenix phenix workflow apply $T                                     
 
 In `full`, Malcolm's packet mirror needs one option on its tunnel port
 (`df_default=false`), or full-size packets are lost. The range's app sets it by
-itself after every start. Step 7 shows where to check it.
+itself after every start; step 7 checks it.
 
 ## 7. Wait, then check health
 
@@ -288,8 +288,14 @@ Then check, in this order:
    ```
 
    Look for `"provisioned": "n/m"` and, per host, `provisioned`, `pending`,
-   `failed`, or `unreachable`. In `full`, `"mirror"` should say
-   `"dfDefault": "set"`.
+   `failed`, or `unreachable`.
+
+5. **The mirror option is set** (`full`). This should print
+   `"dfDefault": "set"`:
+
+   ```shell
+   docker exec phenix phenix config get experiment/cherrymountain-brewery -o json -p | grep dfDefault
+   ```
 
 If one VM never starts its control connection, every VM that waits for it
 stays down and SoH never begins: phenix has no timeout there. Open that VM's

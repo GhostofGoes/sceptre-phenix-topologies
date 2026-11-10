@@ -4299,6 +4299,17 @@
           "point": "run"
         },
         {
+          "key": "packaging/linepanel.cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PANEL.HS01.PV",
+          "unit": "PANEL",
+          "device": "linepanel",
+          "device_type": "line-panel",
+          "zone": null,
+          "point": "cmd"
+        },
+        {
           "key": "packaging/co2.draw_slpm",
           "type": "double",
           "units": "L/min",
@@ -6066,7 +6077,8 @@
         "packaging/conv3.run",
         "packaging/conv4.accum_eye",
         "packaging/conv4.jam_eye",
-        "packaging/conv4.run"
+        "packaging/conv4.run",
+        "packaging/linepanel.cmd"
       ],
       "endpoint": "rio-packaging/updates",
       "sends": [

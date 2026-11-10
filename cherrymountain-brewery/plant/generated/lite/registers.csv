@@ -311,6 +311,7 @@ PKG.CONV.HS03.CMD,binary-read-write,,,rio-packaging,coil,5,15,5,plc-packaging,%Q
 PKG.CONV.LS04.PV,binary-read,,,rio-packaging,discrete,10014,2,10014,plc-packaging,%IX101.5,discrete,2,813,100000,814,read
 PKG.CONV.YA04.PV,binary-read,,,rio-packaging,discrete,10015,2,10015,plc-packaging,%IX101.6,discrete,2,814,100000,815,read
 PKG.CONV.HS04.CMD,binary-read-write,,,rio-packaging,coil,6,15,6,plc-packaging,%QX100.5,coil,1,805,000000,806,read
+PKG.PANEL.HS01.PV,analog-read,,0,rio-packaging,input,30038,4,30038,plc-packaging,%IW137,input,4,137,300000,138,read
 UTL.CHL.TT01.PV,analog-read,degF,1,glycol-chiller,input,30001,4,30001,plc-utilities,%IW100,input,4,100,300000,101,read
 UTL.CHL.TT01.ALM_HIGH,binary-read,,,,,,,,plc-utilities,%QX0.0,coil,1,0,000000,1,read
 UTL.CHL.TT02.PV,analog-read,degF,1,glycol-chiller,input,30002,4,30002,plc-utilities,%IW101,input,4,101,300000,102,read

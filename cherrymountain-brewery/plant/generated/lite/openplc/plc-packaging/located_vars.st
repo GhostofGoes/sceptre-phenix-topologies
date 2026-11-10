@@ -95,4 +95,5 @@ VAR
   PKG_CONV_LS04_PV AT %IX101.5 : BOOL; (* Conveyor 4 (packer to palletizing) accumulation eye *)
   PKG_CONV_YA04_PV AT %IX101.6 : BOOL; (* Conveyor 4 jam eye *)
   PKG_CONV_HS04_CMD AT %QX100.5 : BOOL; (* Conveyor 4 run command *)
+  PKG_PANEL_HS01_PV AT %IW137 : UINT; (* Line command at the operator panel (CntrlCmd while a button is pressed, else 0), None, x1 *)
 END_VAR

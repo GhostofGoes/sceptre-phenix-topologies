@@ -5000,6 +5000,26 @@
       "helics_key": "packaging/conv4.run"
     },
     {
+      "name": "PKG.PANEL.HS01.PV",
+      "desc": "Line command at the operator panel (CntrlCmd while a button is pressed, else 0)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        9.0
+      ],
+      "scaling": 0,
+      "area": "PKG",
+      "unit": "PANEL",
+      "source": "io",
+      "plc": "plc-packaging",
+      "rio": "rio-packaging",
+      "federate": "packaging",
+      "device": "linepanel",
+      "device_type": "line-panel",
+      "point": "cmd",
+      "helics_key": "packaging/linepanel.cmd"
+    },
+    {
       "name": "UTL.CHL.TT01.PV",
       "desc": "Glycol supply temperature",
       "type": "analog-read",

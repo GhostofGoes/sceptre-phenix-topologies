@@ -3948,6 +3948,22 @@
           "variable": "PKG_CONV_HS04_CMD",
           "plc_iec": "%QX100.5",
           "access": "read"
+        },
+        {
+          "id": "t_50a1b20a-b308-52b9-bd28-c77286bd9903",
+          "name": "PKG.PANEL.HS01.PV",
+          "label": "Line command at the operator panel (CntrlCmd while a button is pressed, else 0)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PANEL_HS01_PV",
+          "plc_iec": "%IW137",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
         }
       ]
     },

@@ -60,7 +60,7 @@
         "ix_bits": 816
       },
       "input_registers": {
-        "iw_count": 137
+        "iw_count": 138
       }
     },
     "plc-utilities": {
@@ -6027,6 +6027,25 @@
       "slave_pdu_address": 805,
       "fuxa_memaddress": "000000",
       "fuxa_address": 806,
+      "scada_access": "read"
+    },
+    {
+      "tag": "PKG.PANEL.HS01.PV",
+      "type": "analog-read",
+      "units": null,
+      "scaling": 0,
+      "rio": "rio-packaging",
+      "rio_space": "input",
+      "otsim_register": 30038,
+      "master_fc": 4,
+      "master_offset": 30038,
+      "plc": "plc-packaging",
+      "plc_iec": "%IW137",
+      "slave_space": "input",
+      "slave_read_fc": 4,
+      "slave_pdu_address": 137,
+      "fuxa_memaddress": "300000",
+      "fuxa_address": 138,
       "scada_access": "read"
     },
     {

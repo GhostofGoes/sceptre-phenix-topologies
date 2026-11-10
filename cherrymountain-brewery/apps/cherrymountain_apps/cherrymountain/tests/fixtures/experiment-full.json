@@ -3467,6 +3467,15 @@
                     "type": "binary-read-write"
                   }
                 },
+                "line-panel": {
+                  "cmd": {
+                    "type": "analog-read",
+                    "modbus": {
+                      "data-type": "uint16",
+                      "scaling": 0
+                    }
+                  }
+                },
                 "chiller": {
                   "supply_f": {
                     "type": "analog-read",
@@ -4478,6 +4487,11 @@
                     {
                       "name": "packaging/conv4",
                       "type": "conveyor",
+                      "endpoint": "updates"
+                    },
+                    {
+                      "name": "packaging/linepanel",
+                      "type": "line-panel",
                       "endpoint": "updates"
                     }
                   ]

@@ -16,6 +16,17 @@
   runs, so a hold keeps the time already served and a restart finishes the
   rest: nothing is milled, rested, or dosed twice.
 
+  The batch engine also writes the phase parameter BH.BATCH.XC03.PARAM, latched
+  at Start like the phase (ISA-88 formal parameters are fixed for a phase run):
+  MILL the grain bill in kg (2 s per kg at 0.5 kg/s), MASH_STEP the rest in
+  minutes, BOIL the boil in minutes, WHIRLPOOL the stand in minutes. A parameter
+  of 0 keeps the default below.
+
+  The batch request handshake with the engine (DESIGN.md 12.2): the engine
+  reads the panel's request counter (BH.BATCH.XI02.REQUESTS, a RIO input) over
+  OPC UA and writes the count it has accepted to BH.BATCH.XC02.ACCEPTED; this
+  program only forwards that count to the panel (BH.BATCH.XI03.ACCEPTED).
+
   Equipment control that runs whatever the phase:
     - CLT and HLT levels (fill valves with hysteresis), and the HLT temperature
       (steam valve, proportional, only while the jacket is covered: the
@@ -60,6 +71,8 @@ PROGRAM plc_brewhouse
     WHIRLPOOL_MS : UDINT := 1200000;  (* 20 min *)
     HOP_DOSE_MS : UDINT := 30000;     (* the hop stand dose, 30 s *)
     BOIL_MINUTES_X10 : UINT := 600;   (* 60 min *)
+    MILL_MS_PER_KG : UDINT := 2000;   (* 0.5 kg/s *)
+    PARAM_MAX_MIN : UINT := 600;      (* a minutes parameter is at most 10 h *)
     MASH_IN_LEVEL : UINT := 600;      (* 60 % *)
     KETTLE_FULL : UINT := 850;        (* 85 % *)
     KETTLE_EMPTY : UINT := 50;        (* 5 % *)
@@ -74,6 +87,10 @@ PROGRAM plc_brewhouse
     started : BOOL := FALSE;
     active : UINT := 0;               (* the phase latched at Start *)
     cmd : UINT;
+    param : UINT := 0;                (* the phase parameter latched at Start *)
+    limit_ms : UDINT := 0;            (* how long the latched phase's step runs *)
+    boil_x10 : UINT := 600;           (* the latched boil, tenths of a minute *)
+    param_min : UINT;
     step_ms : UDINT := 0;             (* time the latched phase's step has run *)
     timing : BOOL;                    (* the step's time counts this scan *)
     boil_tick : TON;
@@ -112,6 +129,9 @@ PROGRAM plc_brewhouse
   BH_ENTRY_XS01_LOCKED := BH_ENTRY_HS01_ENTRY;
   BH_ENTRY_XS02_LOCKED := BH_ENTRY_HS02_ENTRY;
 
+  (* ---- the batch engine's accepted-request count goes to the panel -------------------- *)
+  BH_BATCH_XI03_ACCEPTED := BH_BATCH_XC02_ACCEPTED;
+
   (* ---- phase commands -------------------------------------------------------------- *)
   cmd := BH_BATCH_XC01_CMD;
   (* Start and Restart of a phase that uses a locked-out vessel are refused. *)
@@ -138,6 +158,34 @@ PROGRAM plc_brewhouse
       IF (BH_BATCH_XS01_STATE = 0 OR BH_BATCH_XS01_STATE = 5 OR BH_BATCH_XS01_STATE = 6)
           AND BH_BATCH_XC01_PHASE >= 1 AND BH_BATCH_XC01_PHASE <= 10 THEN
         active := BH_BATCH_XC01_PHASE;
+        param := BH_BATCH_XC03_PARAM;
+        (* The parameter in force: the engine's, or the program's default. *)
+        param_min := MIN(param, PARAM_MAX_MIN);
+        limit_ms := 0;
+        boil_x10 := BOIL_MINUTES_X10;
+        CASE active OF
+          1:
+            limit_ms := MILL_MS;
+            IF param > 0 THEN
+              limit_ms := UINT_TO_UDINT(param) * MILL_MS_PER_KG;
+            END_IF;
+          4:
+            limit_ms := MASH_HOLD_MS;
+            IF param > 0 THEN
+              limit_ms := UINT_TO_UDINT(param_min) * 60000;
+            END_IF;
+          5:
+            limit_ms := VORLAUF_MS;
+          7:
+            IF param > 0 THEN
+              boil_x10 := param_min * 10;
+            END_IF;
+          8:
+            limit_ms := WHIRLPOOL_MS;
+            IF param > 0 THEN
+              limit_ms := UINT_TO_UDINT(param_min) * 60000;
+            END_IF;
+        END_CASE;
         BH_BATCH_XS01_STATE := 1;
         BH_BATCH_XS01_STEP := 1;
         step_ms := 0;
@@ -228,7 +276,7 @@ PROGRAM plc_brewhouse
         BH_MILL_HS02_CMD := TRUE;
         BH_MILL_SC01_SP := 500;
         timing := TRUE;
-        complete := step_ms >= MILL_MS;
+        complete := step_ms >= limit_ms;
       2:  (* HLT_HEAT: the HLT loop runs anyway; done at temperature and level *)
         complete := BH_HLT_TT01_PV + 10 >= BH_HLT_TT01_SP AND BH_HLT_LT01_PV >= HLT_LOW;
       3:  (* MASH_IN *)
@@ -242,11 +290,11 @@ PROGRAM plc_brewhouse
         BH_MLT_TV01_OUT := PValve(SP := BH_MLT_TT01_SP, PV := BH_MLT_TT01_PV, GAIN := 30);
         BH_MLT_XS01_ACTIVE := BH_MLT_TT01_PV + 20 >= BH_MLT_TT01_SP;
         timing := BH_MLT_XS01_ACTIVE;  (* the rest counts only at temperature *)
-        complete := step_ms >= MASH_HOLD_MS;
+        complete := step_ms >= limit_ms;
       5:  (* VORLAUF: recirculate until the runnings clear *)
         BH_MLT_FV01_OUT := 300;
         timing := TRUE;
-        complete := step_ms >= VORLAUF_MS;
+        complete := step_ms >= limit_ms;
       6:  (* LAUTER: runoff and sparge; lower the rake when the bed packs *)
         BH_MLT_FV01_OUT := 600;
         BH_MLT_FV02_OUT := 500;
@@ -255,12 +303,12 @@ PROGRAM plc_brewhouse
         complete := BH_KTL_LT01_PV >= KETTLE_FULL;
       7:  (* BOIL *)
         BH_KTL_TV01_OUT := 800;
-        complete := BH_KTL_KI01_PV >= BOIL_MINUTES_X10;
+        complete := BH_KTL_KI01_PV >= boil_x10;
       8:  (* WHIRLPOOL, with the hop stand dose at the start *)
         BH_KTL_XV01_CMD := TRUE;
         BH_KTL_XV02_CMD := step_ms < HOP_DOSE_MS;
         timing := TRUE;
-        complete := step_ms >= WHIRLPOOL_MS;
+        complete := step_ms >= limit_ms;
       9:  (* KNOCKOUT: wort through the HX to the FV, O2 ratioed to flow *)
         BH_KO_HS01_CMD := TRUE;
         BH_KO_XV01_CMD := TRUE;

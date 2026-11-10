@@ -300,6 +300,14 @@ device_types:
     pump_speed_pct: { type: analog-read-write, scaling: 1 }
     glycol_valve_pct: { type: analog-read-write, scaling: 1 }
     o2_sp_slpm: { type: analog-read-write, scaling: 2 }
+  # The brewhouse panel's batch-request handshake with the FUXA batch engine
+  # (DESIGN.md 12.2). requests counts the brews asked for at the panel (the
+  # brew-day schedule and the start-batch event press it); accepted echoes the
+  # count the engine has taken into its queue. Both are 16-bit counters that
+  # wrap, so a lost update repeats nothing and a late engine misses nothing.
+  batch-panel:
+    requests: { type: analog-read, scaling: 0 }
+    accepted: { type: analog-read-write, scaling: 0 }
 
   # -- cellar conditioning and shared equipment (rio-cellar) ------------------
   bbt:
@@ -1308,6 +1316,8 @@ areas:
       - id: BATCH
         name: ISA-88 phase interface (FUXA batch engine)
         model: phases
+        devices:
+          - { name: panel, type: batch-panel }
         tags:
           # Phase numbers: 1 MILL, 2 HLT_HEAT, 3 MASH_IN, 4 MASH_STEP, 5 VORLAUF,
           # 6 LAUTER, 7 BOIL, 8 WHIRLPOOL, 9 KNOCKOUT, 10 CIP_READY. Commands
@@ -1319,6 +1329,16 @@ areas:
           - { id: XS01.STATE, desc: Phase state, type: analog-read, range: [0, 6], scaling: 0 }
           - { id: XS01.STEP, desc: Phase step number, type: analog-read, range: [0, 100], scaling: 0 }
           - { id: XI01.BATCH, desc: Batch number (low 16 bits), type: analog-read-write, range: [0, 65535], scaling: 0 }
+          # The phase parameter of the next Start, latched at the Start: MILL the
+          # grain bill in kg, MASH_STEP the hold in minutes, BOIL the boil in
+          # minutes, WHIRLPOOL the stand in minutes. 0 keeps the program's default.
+          - { id: XC03.PARAM, desc: "Phase parameter (MILL kg, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)", type: analog-read-write, range: [0, 65535], scaling: 0 }
+          # Batch requests from the brewhouse panel (the batch-panel device). The
+          # engine reads the request counter, queues the brews, and writes its
+          # accepted count to XC02; the program forwards it to the panel as XI03.
+          - { id: XI02.REQUESTS, desc: "Brews requested at the brewhouse panel since the start (16-bit counter)", io: panel.requests, range: [0, 65535] }
+          - { id: XC02.ACCEPTED, desc: "Brew requests the batch engine has accepted (16-bit counter; the engine writes it)", type: analog-read-write, range: [0, 65535], scaling: 0 }
+          - { id: XI03.ACCEPTED, desc: "Accepted-request counter sent to the panel (the program forwards XC02)", io: panel.accepted, range: [0, 65535] }
 
       # Confined-space entry of the mash/lauter tun and the kettle (29 CFR
       # 1910.146, DESIGN.md 6.3): the permit bit locks out the vessel's steam,

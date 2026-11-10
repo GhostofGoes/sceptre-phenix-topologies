@@ -13,8 +13,9 @@ The ci slice's plc-cellar ZIP keeps its own builder in `plc/plc-cellar/`.
 | `zipdiff.py` | Compares two ZIPs by entries, for `--check` |
 | `build_zip.sh` | Runs the four steps for one PLC and variant, or `--all` |
 
-The programs are `plc/plc-brewhouse/plc-brewhouse.st` (ISA-88 phases for the
-FUXA batch engine, the liquor tanks, boil detection), `plc/plc-cellar/
+The programs are `plc/plc-brewhouse/plc-brewhouse.st` (ISA-88 phases and their
+parameter for the FUXA batch engine, the batch request handshake with the panel,
+the liquor tanks, boil detection), `plc/plc-cellar/
 plc-cellar-plant.st` (glycol zones, spunding, carbonation, the CO2 interlock,
 the dry-hop sequence, the peer status bits), `plc/plc-packaging/
 plc-packaging.st` (the PackML line over the machines, OEE, conveyors),
@@ -27,7 +28,9 @@ controller's clock, which the program distrusts when it stops or jumps). Each
 was compiled by strucpp and its C++ checked with `g++ -fsyntax-only` against the
 strucpp runtime headers; none has run in an OpenPLC runtime yet. plc-power's C++
 is also built and run scan by scan against the federates' power model by
-`sim/tests/test_plc_power.py` and `test_plant.py` (`sim/README.md`).
+`sim/tests/test_plc_power.py` and `test_plant.py`, and plc-brewhouse's against the
+brewhouse federate and the FUXA batch engine by
+`sim/tests/test_brewhouse_control_path.py` (`sim/README.md`, `fuxa/README.md`).
 
 ```shell
 plc/common/build_zip.sh plc-utilities --variant full    # writes phenix-injects/openplc/full/plc-utilities.zip

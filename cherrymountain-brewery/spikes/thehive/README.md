@@ -3,10 +3,10 @@
 **Question.** Should the range add a case-management and incident-response
 tool next to Wazuh and Malcolm, and if so, is that tool TheHive? Five parts:
 (1) the training value over what Wazuh and Malcolm already give, (2) TheHive's
-licensing against the all-open-source goal ([DESIGN §2](../../DESIGN.md#2-goals-and-non-goals),
-[§20](../../DESIGN.md#20-licensing)), (3) how alerts get from Wazuh and Malcolm
+licensing against the all-open-source goal ([DESIGN §2](../../docs/DESIGN.md#2-goals-and-non-goals),
+[§20](../../docs/DESIGN.md#20-licensing)), (3) how alerts get from Wazuh and Malcolm
 into cases, (4) where the tool sits and what it costs against the host budget
-([§11](../../DESIGN.md#11-node-inventory-and-resources)), and (5) the risks.
+([§11](../../docs/DESIGN.md#11-node-inventory-and-resources)), and (5) the risks.
 **Decides:** whether the SOC module gets a fourth VM, which product it runs,
 and the integration path.
 
@@ -20,7 +20,7 @@ alerts are routed through Wazuh. Both parts were proved in Docker; see
 
 ## Background
 
-What the SOC has today ([§14](../../DESIGN.md#14-blue-team-monitoring),
+What the SOC has today ([§14](../../docs/DESIGN.md#14-blue-team-monitoring),
 `phenix-configs/topology-soc.yml`):
 
 - **Wazuh 4.14** on `wazuh` (4 vCPU / 8 GB) collects the following:
@@ -34,8 +34,8 @@ What the SOC has today ([§14](../../DESIGN.md#14-blue-team-monitoring),
 - **`soc-analyst`** (2 vCPU / 3 GB) opens the two consoles in Chromium
   (`cm-analyst-console`).
 - The SCORCH `vendor-maintenance` run ends in a `break` for "analyst review"
-  ([§15.6](../../DESIGN.md#156-scorch-pipelines)).
-- [§15.9](../../DESIGN.md#159-operations) has a TODO to compare ground truth
+  ([§15.6](../../docs/DESIGN.md#156-scorch-pipelines)).
+- [§15.9](../../docs/DESIGN.md#159-operations) has a TODO to compare ground truth
   against what Malcolm detected.
 
 What is missing is the *respond* half. Neither console can do any of these:
@@ -46,12 +46,12 @@ What is missing is the *respond* half. Neither console can do any of these:
 - hold observables, affected assets, and evidence across tools
 - keep the investigation timeline that a white cell can score
 
-[§18A.7](../../DESIGN.md#18a7-ics-cybersecurity) lists CISA CPG 1.C (incident
+[§18A.7](../../docs/DESIGN.md#18a7-ics-cybersecurity) lists CISA CPG 1.C (incident
 response plans) and 5.B (incident reporting) as *Documented* only.
 
 The host budget is tight. `full` asks 113 GB of 128 GB (67 vCPUs on 32 cores).
 That leaves about 15 GB for the host, phenix, and the page cache
-([§15.9](../../DESIGN.md#159-operations)).
+([§15.9](../../docs/DESIGN.md#159-operations)).
 
 ## Options compared
 
@@ -86,11 +86,11 @@ Wazuh's dashboard and Malcolm do not:
     approval record, name the PLC and its process area, ask operations whether
     the process is safe *before* containment, cut the vendor path, preserve the
     Guacamole recording and the Arkime sessions, restore the baseline ZIP, and
-    record the reporting decision ([§18A.7](../../DESIGN.md#18a7-ics-cybersecurity)
+    record the reporting decision ([§18A.7](../../docs/DESIGN.md#18a7-ics-cybersecurity)
     CIRCIA).
   - **CM-IR-05 "CO₂ life-safety event with cyber indicators"**: people first.
     Confirm the purge fans and the hardwired relay
-    ([§6.7](../../DESIGN.md#67-cellar-co2-life-safety-interlock)), and do not
+    ([§6.7](../../docs/DESIGN.md#67-cellar-co2-life-safety-interlock)), and do not
     isolate `bas-vent` while it runs the purge. The evidence is the BACnet
     `WriteProperty` alerts (sids 9000113 to 9000116, Zeek
     `BACnet_Write_Unexpected`) and the BBMD BDT activity.
@@ -102,7 +102,7 @@ Wazuh's dashboard and Malcolm do not:
   only as observables.
 - **Scoring.** Alert creation, acknowledgement, case creation, and task
   closure times, read back over the API, give the white cell these numbers to
-  compare with ground truth (sim time, [§9.5](../../DESIGN.md#95-scenario-events-and-ground-truth)):
+  compare with ground truth (sim time, [§9.5](../../docs/DESIGN.md#95-scenario-events-and-ground-truth)):
   - time to detect
   - time to acknowledge
   - time to declare
@@ -308,7 +308,7 @@ flowchart LR
     `10.20.30.13`, label `zone: soc`.
   - Image `cm-ir.qc2`, 2 vCPU / 3072 MB.
   - Autotunnel `["18445:443"]` (the label key only, as in
-    [§15.3](../../DESIGN.md#153-topology-modules-and-variants)).
+    [§15.3](../../docs/DESIGN.md#153-topology-modules-and-variants)).
   - A Wazuh agent in the `soc` group (add it to `app.wazuh.agents`; netcheck
     keeps that list equal to the conduits).
   - New module `topology-ir.yml` (`cherrymountain-ir`), included after
@@ -355,7 +355,7 @@ with a 2 GB limit, plus its analyzer containers. So TheHive needs **4 vCPU /
 
 | Variant | VMs | vCPUs | RAM | Headroom of 128 GB | Note |
 |---|---|---|---|---|---|
-| `full` today | 43 | 67 | 113 GB | ~15 GB | [§11](../../DESIGN.md#11-node-inventory-and-resources) |
+| `full` today | 43 | 67 | 113 GB | ~15 GB | [§11](../../docs/DESIGN.md#11-node-inventory-and-resources) |
 | **`full` + soc-ir (recommended)** | **44** | **69** | **116 GB** | **~12 GB** | Add "drop `topology-ir.yml` (−3 GB)" to the §15.9 memory ladder, after the slim Malcolm |
 | `full` + slim Malcolm + soc-ir | 44 | 65 | 104 GB | ~24 GB | Recommended on a loaded host |
 | `full` + TheHive (no Cortex) | 44 | 71 | 121 GB | ~7 GB | Rejected; needs the slim Malcolm to be safe |
@@ -579,7 +579,7 @@ case tool.
 6. **The severity range in use stops at 13.** No CherryMountain rule is level
    14 or higher, so nothing from Wazuh is ever "critical". The life-safety
    path needs its own rule level (Phase 3).
-7. **The vendor approval record** ([§19](../../DESIGN.md#19-risks-and-open-questions),
+7. **The vendor approval record** ([§19](../../docs/DESIGN.md#19-risks-and-open-questions),
    §18A.9 #12) is still a hard-coded time window in rules 100204, 100205, and
    100305 to 100308. A case tool is a natural home for the per-session
    approval (a "vendor work order" case with a window). This is out of scope

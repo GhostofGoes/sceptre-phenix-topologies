@@ -1,6 +1,6 @@
 # Phase 0 spike kit
 
-Runnable checks for the Phase 0 spikes in [DESIGN.md §18](../DESIGN.md). The
+Runnable checks for the Phase 0 spikes in [DESIGN.md §18](../docs/DESIGN.md). The
 fuxa, otsim-noble and bacnet kits were run in Docker containers on
 a no-KVM host. The VM spikes (malcolm, vyos-ipsec, autotunnel, serial, bbmd)
 run in CI on GitHub-hosted runners with KVM (the Malcolm and the netns BBMD jobs need Docker only, and the BBMD jobs run FUXA in Docker): workflow
@@ -13,7 +13,7 @@ remaining guess about an upstream API is marked `TODO(verify):`.
 
 Each spike writes a go/no-go decision into the **Result** section of its own
 README. Every spike has its decision, and the phases they unblocked are built
-([DESIGN.md §18](../DESIGN.md)). A kit stays here while it is the only runnable
+([DESIGN.md §18](../docs/DESIGN.md)). A kit stays here while it is the only runnable
 proof of its answer or the spike workflow still runs it; the others are under
 [Retired kits](#retired-kits).
 

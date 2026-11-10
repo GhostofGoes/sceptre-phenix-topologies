@@ -334,6 +334,10 @@ web page.
 | `https://localhost:18443` | **Malcolm**: network security monitoring | full | `malcolm` |
 | `https://localhost:18444` | **Wazuh**: SIEM | full | `admin` |
 
+The brewery's own screens carry its mark, a phoenix over a summit, and its
+dark-and-ember colors: FUXA, the Guacamole sign-in, Grafana's logo, and the
+desktops' wallpaper. Malcolm and Wazuh keep their own look.
+
 Passwords are in [step 9](#9-passwords). Malcolm and Wazuh use self-signed
 certificates, so your browser warns once.
 

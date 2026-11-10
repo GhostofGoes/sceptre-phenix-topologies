@@ -3102,7 +3102,7 @@ cherrymountain-brewery/
 ├── tools/netcheck/                 # static check of the IP plan and conduit matrix
 ├── tools/lint/                     # image-script and systemd-unit lint helpers (run by prek)
 ├── tests/{integration,soc,bacnet}/ # CI-slice and render checks; SOC detection, Wazuh, vendor-access, and WireGuard tests; the ot-sim BACnet module's tests
-├── brand/                          # the brewery's mark, colors, and wallpaper
+├── brand/                          # the brewery's mark, colors, and wallpaper (§15.11)
 ├── spikes/                         # spike kits (bacnet, bbmd, fuxa, malcolm, otsim-noble, serial, vyos-ipsec, autotunnel, thehive) and their CI images (ci); openplc-v4 and viz3d are retired
 └── .yamllint-block-style.yml       # block-style rule for phenix YAML
 ```
@@ -3828,6 +3828,28 @@ cc tunnel, frame age at the 95th percentile, the effect of the 188
 subscriptions on the federation's timing over an hour), the operator-view
 relay (phase 2), replay from the ground-truth OpenSearch, and a brewhouse
 scene.
+
+### 15.11 Brand
+
+The brewery has one mark and one color scheme, kept in `brand/`
+([brand/README.md](brand/README.md)): a phoenix rising behind a summit, and the
+"Phenix Fire" colors as named tokens. The rules: brand color goes on the frame
+of a screen (header, menu, sign-in, wallpaper, chart lines), process graphics
+stay gray, and the alarm colors are reserved. `sync.py` copies the files to
+where each screen takes them and writes a `tokens.css`; its `--check` fails when
+a copy drifts or a brand color equals an alarm color.
+
+| Screen | What carries the brand | How | Seen running |
+|---|---|---|---|
+| FUXA (scada-fuxa, bas-fuxa) | Header, menu with the mark, sign-in box, tab icon and title | The project's layout colors and logo, a header label, the layout's custom styles, an injected `favicon.ico` and mark, and `66-fuxa-brand.sh` for the page title (FUXA has no title setting) | Yes, in a FUXA 1.3.6 server (scada-fuxa) |
+| cm-viz | Page frame, mark, tab icon | The page's stylesheet reads `tokens.css`; colors that carry meaning are left alone | Yes |
+| Guacamole sign-in (dmz-jump) | Page, card, mark, name, Login button | A branding extension (`cherrymountain-brand.jar`), which `sync.py` builds and the compose file mounts | No: rendered from the web app's own CSS and the jar's files, not booted |
+| Grafana (historian, sim-ctl) | Logo, tab icon, sign-in background; dashboard lines in the chart colors | `cm-grafana-brand` replaces Grafana's image files at boot, because open-source Grafana has no logo setting; the app renders the dashboards with the colors | No: the script ran on the package's file tree |
+| Desktops (HMI stations, ews, corp-ws, vendor-ws, soc-analyst) | Wallpaper, launcher icon | `cm-brand-wallpaper` at login sets the wallpaper and keeps it against the image's default | No |
+
+Malcolm, Wazuh, the OpenPLC runtime, and InfluxDB keep their own look. Open: the
+xrdp login screen on the EWS, and Grafana's tab title, which the open-source
+edition cannot change.
 
 ## 16. New and extended software
 

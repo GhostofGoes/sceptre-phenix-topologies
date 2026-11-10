@@ -95,10 +95,11 @@ print(json.dumps({"params": {"username": "admin", "fullname": "Administrator",
 fi
 
 # --- the operator account --------------------------------------------------
-# The HMI kiosks open /home with no session, which FUXA treats as the guest: the
-# guest sees the views, but FUXA refuses the guest's tag writes. The operator
-# signs in on the kiosk (the account icon in the header, or the dialog that
-# opens when a write is refused) and then writes tags and acknowledges alarms.
+# A client that opens /home with no session is the guest: it sees the views, but
+# FUXA refuses its tag writes. The HMI kiosks sign in as this account themselves
+# (cm-kiosk, with the password the app puts in /etc/default/cm-kiosk-credentials),
+# and anyone else signs in by hand (the account icon in the header, or the dialog
+# that opens when a write is refused), then writes tags and acknowledges alarms.
 # The project import below replaces the project only, so the account stays.
 
 # True when the operator signs in with the range password and is in the

@@ -106,7 +106,7 @@ Host metadata, selected by `type`:
 | `sim-ctl` | `federates` (plant.yaml's for this host) | As `sim-federate` when it runs any |
 | `sim-federate` | `federates` (plant.yaml's for this host), `logLevel` (`INFO`) | `helics.json`, `/etc/cherrymountain/federates`, `/etc/default/cm-federate-<name>`, `cm-federate@.service`, `60-cm-federates.sh` |
 | `historian` | `interface` (IF0) | `/etc/default/cm-historian`, Telegraf, Mosquitto, Grafana data sources and dashboard, systemd drop-ins, `cm-historian-provision` and its unit and hook, `cm-export-historian` |
-| `hmi` | `fuxa` (`scada-fuxa`), `view` (`Overview`), `interface` (the FUXA host's, IF0) | `/etc/default/cm-kiosk`, `cm-kiosk`, XDG autostart entry |
+| `hmi` | `fuxa` (`scada-fuxa`), `view` (`Overview`), `interface` (the FUXA host's, IF0) | `/etc/default/cm-kiosk` (the view's URL), `/etc/default/cm-kiosk-credentials` (0600: the `operator` sign-in), `cm-kiosk`, XDG autostart entry ([HMI kiosk](#hmi-kiosk)) |
 | `guacamole` | `connections` (`ews-rdp`, `ews-ssh`), `recording` (true), `totp` (true) | Guacamole initdb SQL (salted hash only), `/etc/default/cm-guacamole` |
 | `wazuh-manager` | | With the app's `wazuh` block: the enrollment and dashboard admin passwords (`/etc/default/cm-wazuh-manager`) and the boot hook |
 | `bbmd` | | Nothing; the topology injects cm-bbmd.service and its settings from `phenix-injects/bbmd/`. Checked only (SoH: the `cm_bbmd.py` process) |
@@ -282,14 +282,15 @@ services agree. Files that hold one are written and injected mode 0600.
   account (`fuxaPassword`). `operator` (`fuxaOperatorPassword`) is in FUXA's
   Operator group (`groups: 2`): it may write tags from a view and acknowledge
   alarms, and cannot open the editor or call the project, users, settings, or
-  device APIs, which FUXA keeps for administrators (`groups` -1 or 255). The
-  HMI kiosks open `/home` with no session, which FUXA treats as the guest: the
-  guest sees the views and FUXA refuses its writes (the settings leave
-  `secureOnlyEditor` and `userRole` unset, and the app never sets them). To
-  write a setpoint at a kiosk, click the account icon at the top right of the
-  header (or write a value, which opens the same dialog), sign in as
-  `operator` with the password from `secrets.json`, and write again; the
-  session ends after `tokenExpiresIn` (12 h) or at sign-out. `cm-fuxa-provision`
+  device APIs, which FUXA keeps for administrators (`groups` -1 or 255). A client
+  that opens `/home` with no session is the guest: it sees the views and FUXA
+  refuses its writes (the settings leave `secureOnlyEditor` and `userRole` unset,
+  and the app never sets them). The HMI kiosks sign themselves in as `operator`
+  ([HMI kiosk](#hmi-kiosk)), so an operator station writes values and presses
+  buttons with nobody at it; any other browser signs in by hand (the account icon
+  at the top right of the header, or a write, which opens the same dialog) with the
+  password from `secrets.json`, and the session ends after `tokenExpiresIn` (12 h)
+  or at sign-out. `cm-fuxa-provision`
   creates the account after it sets the admin password, resets its password and
   group when they differ, and fails when FUXA lets the account use the users API.
   A re-run (a reboot) and a project re-import leave it alone. The SoH check
@@ -327,6 +328,150 @@ SoH test scripts never hold one: a check that needs one sources the root-only
 settings file on the VM. Errors and warnings name the host and field, never
 the value.
 
+## HMI kiosk
+
+`hmi-brewhouse` and `hmi-packaging` sign themselves in to FUXA as `operator`, so
+an operator station writes values and presses buttons with nobody at it, for the
+whole run. `/usr/local/bin/cm-kiosk` does it. It is a Python 3 script (standard
+library only: noble's `python3-pydantic` is 1.x), started at login by
+`/etc/xdg/autostart/cm-kiosk.desktop` as root, because the desktops autologin as
+root.
+
+1. It waits until FUXA's project has the view (`KIOSK_WAIT`, 10 minutes, then it
+   goes on anyway). `cm-fuxa-provision` makes the account first and imports the
+   project after it, and a page that loaded the old project keeps it: FUXA's
+   client does not notice an import (seen, below).
+2. It starts Chromium on the view with the flags it always had, plus
+   `--remote-debugging-pipe` and a new `--user-data-dir` in `/run/cm-kiosk`. The
+   debugging protocol then runs over two inherited file descriptors (3 and 4): no
+   port, no socket.
+3. It signs in with `POST /api/signin` itself, so the password never enters the
+   browser, and hands the browser the profile FUXA answered. FUXA's client keeps
+   its session in `sessionStorage` (`currentUser`), per tab, and reads it once
+   when the page starts (`auth.service.ts`, constructor); it opens its socket with
+   the token (`hmi.service.ts`), and the server checks the token when the socket
+   connects (`server/runtime/index.js`). So the script registers a snippet with
+   `Page.addScriptToEvaluateOnNewDocument` that writes the profile into
+   `sessionStorage` before the page's own scripts run (for the view's origin, in
+   the top frame only), and reloads the page. FUXA reloads the page itself after
+   a server restart or a sign-out; the snippet restores the session then too.
+4. Every `KIOSK_POLL` seconds it asks the page what it holds. When the token has
+   spent two thirds of its life (8 h of 12 h), it signs in again, replaces the
+   snippet, and reloads the page, so a half-typed value is lost and the view
+   flickers about every 8 hours. FUXA's own renewal does not do this for a screen
+   nobody touches: `/api/heartbeat` renews only after a click, and at expiry it
+   answers `guest`, whereupon the page signs out and reloads as a guest.
+
+| Situation | What the kiosk does |
+|---|---|
+| FUXA is down, or has no project yet, at start | Waits `KIOSK_WAIT`, then opens the view anyway (Chromium's error page while FUXA is down) |
+| A sign-in fails: FUXA down, the account not made yet (401), a wrong password | The view stays, as a guest, which cannot write. The status says `sign-in as operator failed: <reason>`. It tries again after 10, 20, 40, 80, then every 120 s (`KIOSK_RETRY_MIN`, `KIOSK_RETRY_MAX`), and turns an error page into the view when FUXA answers |
+| FUXA restarts, the token is still good | The page's socket reconnects with its token; if FUXA reloads the page, the snippet restores the session |
+| A person signs in as another account at the kiosk | Signed back in as `operator` at the next poll: the kiosk is an operator station (the editor is for `ews`). To let another live session stand, make `judge()` in the script accept it |
+| FUXA is down longer than the token lives | The page is a guest from its first reconnect (`jwt expired`); the next sign-in after FUXA answers restores it, within `KIOSK_RETRY_MAX` |
+| The browser exits (crash, kill) | Started again after 10 s, 20 s, ... 120 s while it keeps exiting within a minute; signs in again |
+| The browser does not answer for 60 s (a tab crash: "Aw, Snap!") | Killed and started again |
+| The debugging pipe is unusable (Chromium exits at once, or never answers) | The next browser starts without the pipe: the view, as a guest. The one after it tries the pipe again |
+| No `/etc/default/cm-kiosk-credentials`, or no user or password in it | A guest kiosk, as before |
+
+Files:
+
+| File | Holds |
+|---|---|
+| `/etc/default/cm-kiosk` (0644) | `KIOSK_URL`; optional `KIOSK_BROWSER` (`chromium`), `KIOSK_WAIT` (600), `KIOSK_POLL` (5), `KIOSK_RETRY_MIN` (10), `KIOSK_RETRY_MAX` (120), seconds |
+| `/etc/default/cm-kiosk-credentials` (0600) | `KIOSK_USER` (`operator`) and `KIOSK_PASSWORD` (`fuxa_operator_password`). Only the HMI hosts get it, like the Malcolm credentials file only the Malcolm sensor does. The kiosk's user is root; the file is root-only |
+| `/run/cm-kiosk/status` | `state` (`operator`, `guest`, `starting`, `down`), `detail`, `updated`. No secret. The SoH check `kiosk-operator-session` reads it (and fails when it is older than two minutes); the SoH process check is the browser (`chromium.*--kiosk`), because `cm-kiosk` stays up to restart it |
+
+The password is never on a command line or in the browser's environment, and the
+script logs only the reason a sign-in failed. The browser holds the operator's token
+(12 h, renewed), which any script in the FUXA page can read anyway. The sign-in is
+an HTTP `POST /api/signin` on port 1881, in clear text like a person's, so the
+HMI VLAN's capture shows it at each start and renewal, and a kiosk that cannot
+sign in shows as a `401` every 2 minutes.
+
+**Why a pipe.** `--remote-debugging-port` would let any local process and user
+drive the browser: read the token, run script in the FUXA page as the operator,
+open `file://` pages. A pipe has no address: only the two processes that hold its
+descriptors can use it (`/proc/<pid>/fd/3` and `4` are readable by root only), and
+both run as root, who can read the credentials file anyway. Nothing listens on the
+network or on loopback (`ss -ltunp` shows no Chromium socket). The packaged
+`/usr/bin/chromium` (xtradeb 156) keeps descriptors 3 and 4 through its `exec`.
+Not used: an extension with a content script (with the image's Chromium and
+`--incognito`, its content script did not run, and without `--incognito` it did;
+"allow in incognito" is a profile setting with no flag, and dropping `--incognito`
+changes what the kiosk keeps on disk); FUXA's refresh-cookie mode (`enableRefreshCookieAuth`
+changes every client's sign-in, the cookie is `HttpOnly` with path `/api/refresh`
+and lasts 7 days, so seeding it needs the browser's cookie store or the debugging
+protocol anyway, and `POST /api/signout` clears it); typing into the dialog with
+`xdotool` (blind: it depends on focus, layout, and timing, and every X client on
+the display can watch the keystrokes); a proxy on loopback that adds the token
+(the page would still think it is a guest, and any local request would get
+operator rights).
+
+**By hand, in a real browser** (no VM; this is what was run). You need a FUXA 1.3.6
+checkout with `node_modules`, node, Xvfb, `xdotool`, and the image's Chromium: on
+a noble machine, `apt-get install chromium` from the xtradeb source of
+`phenix-images/cm-desktop.yml`, or `dpkg-deb -x` its `chromium` and
+`chromium-common` packages into a directory and run `usr/lib/chromium/chromium`
+with the five libraries a plain noble container lacked (`libopenh264-7`,
+`libdouble-conversion3`, `libharfbuzz-subset0`, `libxnvctrl0`, `libminizip1t64`).
+
+1. In an empty user directory, `_appdata/mysettings.json` with `secureEnabled: true`,
+   a `secretCode`, `tokenExpiresIn` (`12h`, or `1m` to see the renewal), and `uiPort`;
+   start `node main.js --userDir <dir> --port <port>` in the checkout's `server/`.
+2. `FUXA_URL=http://127.0.0.1:<port> FUXA_ADMIN_PASSWORD=... FUXA_OPERATOR_PASSWORD=...
+   FUXA_PROJECT=fuxa/full/scada-fuxa-project.json bash phenix-injects/fuxa/cm-fuxa-provision.sh`
+   (its output ends `PASS: project imported`). Without PLCs the project's devices
+   show errors and the batch engine refuses a Start, but the Batch view's buttons
+   still write FUXA's own `BATCH.CMD`. The run below had stand-in PLCs (an OPC UA
+   server for plc-brewhouse and a Modbus server for plc-cellar, on loopback, with
+   those two devices' addresses changed in the project and the others disabled).
+3. Write the two settings files as the app renders them (`KIOSK_URL=http://127.0.0.1:<port>/home?viewName=Batch`,
+   `KIOSK_BROWSER=<chromium>`; `KIOSK_USER`, `KIOSK_PASSWORD`, 0600) and run
+   `DISPLAY=:99 python3.12 cm-kiosk --env <file> --credentials <file> --state-dir <dir>`
+   on `Xvfb :99 -screen 0 1440x900x24`, with `KIOSK_*` tuning in the environment.
+4. Click Start with `DISPLAY=:99 xdotool mousemove 380 457 click 1` and read FUXA's
+   log (`api-signin`, `Client connected with authenticated token`, `unauthorized
+   write attempt from guest`), the account icon (blue when signed in), and the
+   engine tags with `GET /api/getTagValue` as `admin`.
+
+What it showed, with Chromium 156.0.8078.73 from the image's package, Python 3.12,
+and FUXA 1.3.6 in secure mode:
+
+| Run | Seen |
+|---|---|
+| Today's kiosk (the old `cm-kiosk` flags, no script), Start | `device-values: unauthorized write attempt from guest`, the sign-in dialog, `BATCH.CMD` stays 0 |
+| `cm-kiosk`, 12 h tokens, Start | No dialog. FUXA: `api-signin: operator`, then `Client connected with authenticated token` (after one guest connection while the first page load ran). `BATCH.CMD` 1, then the engine: `Batch FOP-0001 running: MILL (1 of 11)`. No `unauthorized` line |
+| `tokenExpiresIn` 1m, 2.5 minutes, then Start | A sign-in every 40 s, each followed by an authenticated connection. Start, 1.5 minutes after the first token expired, ran the batch |
+| Same, FUXA stopped for 80 s (the token expired meanwhile) | Kiosk log: `operator`, `sign-in as operator failed: ConnectionRefusedError`, `guest`, `operator`. FUXA: `Token error: TokenExpiredError: jwt expired` at the page's reconnect, a sign-in 3 s later. Abort then aborted the batch |
+| FUXA stopped, then the kiosk started | No browser, status `starting`; about 5 s after FUXA started, the browser was up and signed in |
+| `KIOSK_WAIT=5`, FUXA stopped | The error page ("This site can't be reached"), `sign-in as operator failed: ConnectionRefusedError`; after FUXA started, the next try turned it into the signed-in view |
+| Fresh FUXA (no account, no project), default wait | No browser until the import finished; the browser started 1 s after, signed in 0.2 s later |
+| Fresh FUXA, `KIOSK_WAIT=5` | The guest view; `HTTP 401` at 0, 10, 30, and 70 s (FUXA's log); after provisioning, the try at 150 s signed in and reloaded |
+| `SIGKILL` of the browser | Started again after 10 s, signed in |
+| `SIGSEGV` of its renderer | "Aw, Snap!"; no answer for 60 s; browser killed, started again, signed in |
+| A launcher that closes descriptors 3 and 4 | Chromium: `Remote debugging pipe file descriptors are not open.` and exits; the next browser ran without the pipe, the view as a guest (black account icon) |
+| Control: the script signs in once and never again (`KIOSK_POLL=100000`), 1m tokens | At +5:00 FUXA's heartbeat: `POST /api/heartbeat 200`, `POST /api/signout 204`, a reload, two guest connections. FUXA's own renewal does not keep a screen nobody touches signed in |
+| A project POSTed while a page shows the old one | The page kept the old project (the sidebar still had the renamed view) |
+| `ss -ltunp`, `/proc/<pid>/fd` | No Chromium socket; `fd/3` and `fd/4` are pipes; no process has the password in its command line or environment |
+
+Two things in that run are Chromium 156's: a `Page.addScriptToEvaluateOnNewDocument`
+script is registered but never runs until `Page.enable` has been called on the
+session (the script calls it first), and the top-level target list also holds
+`browser_ui` targets (the script takes the one of type `page`).
+
+Not seen yet, and for the first boot of an HMI VM to show: that the XDG autostart
+entry starts `cm-kiosk` when the XFCE session can run Chromium (`DISPLAY` set,
+`/run` writable) and that `cm-kiosk` is then running as root with the packaged
+`python3` (3.12); that a VM's clock agrees with FUXA's to within the token's life
+(the page and the script each judge a token by their own clock); that a real
+screen at 1440x900 under xfwm4 shows the view full screen, and that the reload at
+each renewal looks acceptable there (the harness had no window manager); that
+SoH's `pgrep -f chromium.*--kiosk` finds the browser through miniccc, and the
+`kiosk-operator-session` check passes once the account exists; and that the
+kiosk's sign-ins and `401`s raise nothing in Wazuh, Suricata, or Zeek that the
+blue team would take for an attack.
+
 ## Troubleshooting
 
 | Message | Cause and fix |
@@ -361,12 +506,22 @@ the real plantgen output, program ZIP, and FUXA builder from this repository.
 phenix does, through configure and two starts.
 `fixtures/debug_map-plc-cellar.json` is the strucpp (`fcccfbdf`) debug map of
 the committed plc-cellar program, recorded to test the OPC UA config.
+`test_kiosk.py` runs `cm-kiosk` as a process against `fuxa_fake.py` (FUXA's
+sign-in, with real-looking tokens) and `kiosk_fake_browser.py` (Chromium's
+debugging pipe), with its waits cut to milliseconds: no browser. It proves the
+script's logic (when it signs in and renews, what the browser is given, that the
+password goes nowhere else, the retries and their growing waits, the restarts, the
+fallback without the pipe); the snippet's JavaScript is run by node when node is
+installed. That the real Chromium takes what the script hands it is the run by hand
+in [HMI kiosk](#hmi-kiosk).
 
 ## Limitations
 
 - **Not run on a VM.** Every image the app renders for exists
   (`phenix-images/`), but none of it has booted: the historian, Guacamole,
-  Wazuh, and the HMI kiosk render and pass their tests only. TODO(verify) notes
+  and Wazuh render and pass their tests only. The HMI kiosk's script ran against
+  a real FUXA and the image's Chromium on a virtual display, not on its VM
+  ([HMI kiosk](#hmi-kiosk) lists what a first boot must still show). TODO(verify) notes
   in `render.py` mark guesses: FUXA's InfluxDB DAQ store keys, the Grafana query
   fields, the s7comm mapping types beyond `int_output`/`int_input`, and the
   Guacamole schema version.

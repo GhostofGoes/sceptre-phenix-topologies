@@ -398,6 +398,17 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     raised to 990, so nothing else comes from it. A flags file in
     `/etc/chromium.d` adds `--no-sandbox` (the desktop runs as root) and
     `--disable-gpu`.
+  - What the HMI kiosk needs from the image, and nothing more: `chromium` (above),
+    and `python3` (3.12) for the app's `cm-kiosk` script, which uses the standard
+    library only, because noble's `python3-pydantic` is 1.10, not the 2.x the
+    app uses (a script that imports `StringConstraints` from pydantic, or calls
+    `model_validate`, does not run on it). The script starts
+    Chromium with `--remote-debugging-pipe` (no port) and signs in to FUXA as
+    `operator` for it ([HMI kiosk](../apps/cherrymountain_apps/cherrymountain/README.md#hmi-kiosk)).
+    Checked with the packaged `/usr/bin/chromium`: its `exec` keeps the pipe's
+    descriptors 3 and 4, `/etc/chromium.d/cm-range` adds `--no-sandbox` as the
+    root session needs, and an extension's content script does not run under
+    `--incognito`, which is why an extension was not used.
   - `wireguard-tools`, for `vendor-ws` (the phenix `wireguard` app injects
     `wg0.conf` and enables the tunnel).
   - Xfce settings that turn off the screen saver, the lock screen, and display
@@ -414,9 +425,10 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   `soc-analyst`.
 - **Pinned versions:** the Wazuh agent `4.14.10-1`. Chromium is not pinned: the
   PPA carries only its newest build (`156.0.8078.73-1xtradeb1.2404.1` when the
-  dependencies were checked with `apt-get -s`), and the build log prints the
-  version installed. The PPA key is checked against fingerprint
-  `5301FA4FD93244FBC6F6149982BB6851C64F6880`.
+  dependencies were checked with `apt-get -s`; the HMI kiosk's debugging pipe and
+  sign-in were run against that build, from its two packages, on noble), and the
+  build log prints the version installed. The PPA key is checked against
+  fingerprint `5301FA4FD93244FBC6F6149982BB6851C64F6880`.
 
 ## cm-ews
 

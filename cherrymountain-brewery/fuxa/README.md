@@ -218,9 +218,11 @@ for the fermenters' status. Seen there:
 
 TODO(verify): still open on the first boot of the range: that OpenPLC's OPC UA
 server lets FUXA's session write the plc-brewhouse command, phase, parameter,
-accepted-count, and setpoint tags; that the buttons work for the signed-in
-operator with `secureEnabled` on (the run above had it off); and that the phase
-timeouts, which are estimates, are longer than the real phases.
+accepted-count, and setpoint tags; and that the phase timeouts, which are
+estimates, are longer than the real phases. (The buttons do work for the signed-in
+`operator` with `secureEnabled` on: the HMI kiosk's script signed in, and Start
+and Abort reached the engine, in a real FUXA 1.3.6 with the image's Chromium; see
+the app's README, "HMI kiosk".)
 
 TODO(verify): alarm records omit `permission` and `permissionRoles`. Confirm
 all signed-in users see the alarms with `secureEnabled` on.

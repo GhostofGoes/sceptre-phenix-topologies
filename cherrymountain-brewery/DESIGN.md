@@ -821,7 +821,7 @@ host is in the path:
 | EP-1 dead (detection panel unpowered) | The relay drops: carbonation is inhibited (de-energize to trip). The purge fans are on EP-1 too and stop |
 | CO₂ at or above 15,000 ppm | The relay drops: carbonation and hop-port purges are inhibited until the sensed value falls 10 % below the tier and the release delay passes |
 | rio-cellar or the FIELD-CEL link down | `plc-cellar`'s Modbus master keeps the last input values, so the inhibit holds its last state. A RIO heartbeat would let the PLC fail safe here too; it is open work ([§19](#19-risks-and-open-questions)) |
-| plc-cellar stopped | Its outputs stop updating; rio-cellar keeps the last commands. Without a PLC the cellar autopilot takes over after 300 s and honors the relay itself ([§9.6](#96-implementation-status-and-validation)) |
+| plc-cellar stopped | Its outputs stop updating; rio-cellar keeps the last commands (unverified: the runtime may write 0 to its outputs when it stops, [§19](#19-risks-and-open-questions)). Without a PLC the cellar autopilot takes over after 300 s and honors the relay itself ([§9.6](#96-implementation-status-and-validation)) |
 | CO₂ at or above 30,000 ppm in any area (cellar, bulk tank, filler, cold room) | The shutoff relay drops: the bulk CO₂ valve closes through its solenoid, and plc-utilities latches the shutoff until the operator resets it with the relay healthy for 60 s. A leak on the supply piping stops as the header bleeds down |
 | Gas-detection panel failed (`gas-detection` event) | Both relays drop: carbonation is inhibited and the CO₂ supply shuts off (loss of detection fails closed) |
 | EP-1 dead | Both relays drop; the CO₂ supply shuts off as well as carbonation |
@@ -4228,6 +4228,43 @@ silently.
 
 These items have been evaluated but are not scheduled.
 
+- **PLC programs that follow the Top 20 Secure PLC Coding Practices.** The five
+  PLC programs were reviewed against the [Top 20 Secure PLC Coding
+  Practices](https://plc-security.com/content/Top_20_Secure_PLC_Coding_Practices_V1.0.pdf)
+  (version 1.0): [docs/plc-secure-coding-review.md](docs/plc-secure-coding-review.md)
+  rates each practice for each program and gives the evidence. The programs are
+  sound as control programs (one generated alarm block, range-limited setpoints,
+  a defined start) and have no security layer on top: no practice is met by all
+  of them. The plain defects the review found are fixed; what is left is the
+  practices themselves, in the review's order of importance:
+  - **State that survives a restart and an outside write** (practices 10, 15,
+    20). The entry permits, the entry-violation latches, and the CO₂ shutoff
+    latch are plain coils: a restart clears them, and one Modbus write clears
+    them. Keep each in an internal, retained variable and publish a copy.
+  - **What a stopped PLC does to its outputs** (practice 15). Unverified, and
+    it may be the opposite of what [§6.7](#67-cellar-co2-life-safety-interlock)
+    assumes ([§19](#19-risks-and-open-questions)).
+  - **Timeouts and permissives in the PLC, not the HMI** (practices 3, 12). A
+    brewhouse phase that waits on a process value has no PLC timeout, and the
+    knockout's destination check is in the batch engine.
+  - **Plausibility of inputs** (practices 7, 11, 12): a command against its
+    feedback, a level switch against its transmitter, a stuck or out-of-range
+    value, a maximum dose time.
+  - **Process limits on what an operator may write** (practices 6, 8),
+    generated from `plant.yaml`, with a counter for refused writes.
+  - **Alarms that cannot be missed or forged** (practice 20): an off-delay on
+    every alarm, a latch on the critical ones, and a check of each alarm bit
+    against what the block computed.
+  - **The PLC's own health on the HMI** (practices 2, 5, 16 to 19): a scan
+    counter, the time since start, a restart count, and the loaded program's
+    hash, trended and alarmed.
+  - **Structure** (practices 1, 4, 10): function blocks for the hand-written
+    logic, error counters, and writable registers apart from computed ones.
+
+  Not all of it should be done on this range. Some weaknesses are its attack
+  surface by decision (the anonymous OPC UA operator role, a PLC image that any
+  client on its port may write); the review's section 3 lists them.
+
 - **SOC case management with DFIR-IRIS.** The SOC can triage alerts in Wazuh
   and Malcolm, but no tool covers the response side: who owns an alert,
   grouping alerts into an incident, playbook tasks, and a timeline the white
@@ -4400,6 +4437,7 @@ reach a plant like this, and the row says why.
 
 | Risk | Mitigation |
 |---|---|
+| A stopped or faulted OpenPLC v4 runtime may drive every output to 0, where this design assumes the remote I/O keeps the last commands ([§6.7](#67-cellar-co2-life-safety-interlock)). OpenPLC's `docs/ARCHITECTURE.md` (watchdog) says a stop writes 0 to all `%Q` and pushes it in a final I/O cycle. For plc-power, 0 on `PWR.MAIN.HS01.CMD` opens the main breaker ([the PLC review](docs/plc-secure-coding-review.md), F2) | Unverified either way: read in the runtime's documentation, not run. Check it on the first VM run (stop plc-power, read 52-M). If it is so, make 0 the safe state of every command or have the remote I/O hold on a lost master, and correct §6.7 |
 | OpenPLC v4 has no documented unattended ST → ZIP path; plugin configs live inside the ZIP (resolved: the spike found the path) | Headless `build_zip.sh` with strucpp pinned; `generated_debug.cpp` required; configs in `conf/`; OPC UA configs derived from the debug map (§12.1). v3 fallback retired. Still open: VM reboot, and the memory of a full-size compile (161 MiB steady, 361 MiB peak for a three-variable program) |
 | FUXA project JSON schema is undocumented and changes between releases | Pin the version; generate from a skeleton exported by that version; test import in CI |
 | Three Modbus addressing conventions | `plantgen` single source; CI gap/mismatch checks |

@@ -153,8 +153,8 @@ export const scenarios = {
       await r.until(() => r.state === COMPLETE, 8 * HOUR, 'the batch to complete');
       assert.deepEqual(r.phases(), WHOLE_BREW);
       const s = r.plc.starts;
-      // the recipe's parameters reach the PLC: grain kg, mash minutes, boil, whirlpool
-      assert.deepEqual(s.map((x) => x.param), [503, 0, 0, 60, 10, 0, 0, 60, 20, 0, 0]);
+      // the recipe's parameters reach the PLC: grain kg, strike liters, mash minutes, boil, whirlpool
+      assert.deepEqual(s.map((x) => x.param), [503, 0, 1310, 60, 10, 0, 0, 60, 20, 0, 0]);
       // strike water (167.4 degF by Palmer, set as 167) until the mash is in, then the
       // sparge temperature; the mash steps
       assert.deepEqual(s.map((x) => x.hlt), [1670, 1670, 1670, 1680, 1680, 1680, 1680, 1680, 1680, 1680, 1680]);

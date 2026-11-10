@@ -28,7 +28,7 @@ MASH_HOLD: float = 3600.0
 WHIRLPOOL_TIME: float = 1200.0
 HOP_DOSE_TIME: float = 30.0
 BOIL_MINUTES_X10: int = 600
-MASH_IN_LEVEL: int = 600
+MASH_IN_LEVEL: int = 554  # 1,310 L of strike liquor on 503 kg of grist in the 3,000 L tun
 KETTLE_FULL: int = 850
 KETTLE_EMPTY: int = 50
 LEVEL_LOW: int = 600
@@ -130,7 +130,7 @@ class Plc:
             self.hlt_fill = True
         elif hlt >= LEVEL_HIGH:
             self.hlt_fill = False
-        out["hlt.fill_valve"] = self.hlt_fill and clt > 100
+        out["hlt.fill_valve"] = self.hlt_fill and clt > 100 and not (running and self.active == 3)
         # BH.HLT.LSL01: steam only while the jacket is covered.
         out["hlt.steam_valve_pct"] = (
             pvalve(self.hlt_sp, raw("hlt.temp_f"), 20) if bit("hlt.low_level") else 0

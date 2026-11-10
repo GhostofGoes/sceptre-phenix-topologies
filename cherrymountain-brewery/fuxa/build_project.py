@@ -622,8 +622,9 @@ BATCH_RECIPE_CODE: str = "FOP"
 #: The tag that tells the builder the brewhouse PLC (and so the engine) is there.
 BATCH_PLC_STATE_TAG: str = "BH.BATCH.XS01.STATE"
 FUXA_SERVER_ID: str = "0"
-#: The most a pipe and tun lose between the HLT and the grist (K); the sim's
-#: operator adds the same to the strike temperature.
+#: What the strike liquor loses to the pipe and the tun between the HLT and the
+#: grist (K). The simulation takes the same from the liquor
+#: (sim/cherrymountain_sim/brewhouse.py, STRIKE_LOSS_K), and a test holds the two equal.
 STRIKE_LOSS_K: float = 1.0
 #: Fermenters the engine may choose from, and the brews one holds (a 30 bbl FV
 #: takes two 15 bbl brews: DESIGN.md 3.1).
@@ -673,6 +674,8 @@ class BatchRecipe(BaseModel):
     code: str
     name: str
     grain_kg: float
+    #: The strike liquor of the first mash step, liters (MASH_IN's parameter).
+    strike_l: float
     mash: list[MashStep]
     boil_minutes: int
     whirlpool_minutes: int
@@ -884,6 +887,7 @@ def load_batch_recipe(path: Path = RECIPE_PATH) -> BatchRecipe:
         code=BATCH_RECIPE_CODE,
         name=name,
         grain_kg=round(grain_kg, 1),
+        strike_l=infusion_l,
         mash=mash,
         boil_minutes=boil_minutes,
         whirlpool_minutes=whirlpool_minutes,
@@ -919,7 +923,7 @@ def batch_sequence(recipe: BatchRecipe) -> list[SequenceStep]:
     first, last = recipe.mash[0], recipe.mash[-1]
     add(1, round(recipe.grain_kg), first.temp_f, "MILL")
     add(2, 0, first.temp_f, "HLT_HEAT")
-    add(3, 0, first.temp_f, "MASH_IN")
+    add(3, round(recipe.strike_l), first.temp_f, "MASH_IN")
     for i, step in enumerate(recipe.mash, start=1):
         label: str = f"MASH_STEP {i} of {len(recipe.mash)} ({step.name}, {step.temp_f:g} F)"
         add(4, step.minutes, step.temp_f, label)

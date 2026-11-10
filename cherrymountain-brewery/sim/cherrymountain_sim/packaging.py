@@ -431,6 +431,7 @@ class PackagingFederate(Federate):
             if not m.executing:
                 yield self.env.timeout(1.0)
                 continue
+            m.stop_reason = STOP_NONE  # it runs: whatever stopped it last is over
             yield self.env.timeout(60.0 / m.spec.rate_bpm)
             if m.executing:
                 m.processed += 1

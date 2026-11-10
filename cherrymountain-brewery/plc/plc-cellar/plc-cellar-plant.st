@@ -126,7 +126,23 @@ END_FUNCTION_BLOCK
    the vessel or finished the fermentation, and the stage it would end is one
    the program cannot get back to. Beer the program has not followed from its
    fill (after a start of the PLC) is taken as crashed when it is already cold,
-   and as starting its rest otherwise. *)
+   and as starting its rest otherwise.
+
+   The setpoint is one the vessel can follow, so that the deviation alarm means
+   a fault and not a stage:
+   - A fermenter has jackets and no heater. On the way up (wort pitched under
+     the fermentation temperature, the free rise to the rest) the setpoint
+     leads the beer by LEAD and goes no higher than the stage's temperature. It
+     does not come back down with the beer: beer that cools in these stages has
+     a glycol valve that leaks. Only a fill is different: for FILL_MS after a
+     fermentation starts the setpoint follows the vessel down too, to the
+     temperature of the wort that is coming in.
+   - The crash falls from where the beer is toward the glycol's temperature, by
+     CRASH_PCT_H percent of what is left each hour, and stops at CRASH_SP. That
+     is the curve of a jacketed tank, a little slower than this one cools, so
+     beer that falls behind it has lost its cooling.
+   - An empty vessel's setpoint stays LEAD above the vessel: its jackets stay
+     shut, the next wort is not chilled on its way in, and nothing alarms. *)
 FUNCTION_BLOCK FermentProfile
   VAR_INPUT
     EXTRACT : UINT;            (* apparent extract, degP x 100 *)
@@ -140,15 +156,26 @@ FUNCTION_BLOCK FermentProfile
     TERMINAL : UINT := 500;    (* under 5 degP the beer is near terminal gravity *)
     COLD : UINT := 6000;       (* under 60 degF the beer has been crashed *)
     SETTLE_MS : UDINT := 60000;  (* a reading ends a stage once it has held this long *)
+    LEAD : UINT := 100;        (* on the way up the setpoint leads the beer by 1 degF *)
+    GLYCOL : UINT := 2800;     (* the glycol supply, degF x 100: the crash falls toward it *)
+    CRASH_PCT_H : UINT := 25;  (* ... by this share of what is left, each hour *)
+    SP_MIN : UINT := 2000;     (* the setpoint limits of the program *)
+    SP_MAX : UINT := 9000;
+    FILL_MS : UDINT := 1800000;  (* a knockout into the vessel is over in this time *)
   END_VAR
   VAR_OUTPUT
     STAGE : UINT;              (* 0 empty, 1 fermenting, 2 diacetyl rest, 3 crash *)
-    SP : UINT;                 (* the stage's temperature, degF x 100 *)
+    SP : UINT;                 (* the stage's setpoint now, degF x 100 *)
   END_VAR
   VAR
     rest_ms : UDINT;           (* time in the rest so far *)
     empty_ms : UDINT;          (* how long the meter has read no extract *)
     terminal_ms : UDINT;       (* how long it has read under TERMINAL *)
+    last_stage : UINT := 99;   (* the stage of the scan before; 99 before the first *)
+    sp_now : REAL := 0.0;      (* the setpoint, degF x 100, between scans *)
+    lead_sp : REAL;
+    cap : REAL;
+    stage_ms : UDINT;          (* time in the stage, up to FILL_MS *)
   END_VAR
   IF EXTRACT < EMPTY THEN
     empty_ms := MIN(empty_ms + SCAN_MS, SETTLE_MS);
@@ -187,15 +214,39 @@ FUNCTION_BLOCK FermentProfile
       rest_ms := rest_ms + SCAN_MS;
     END_IF;
   END_IF;
-  (* An empty vessel waits at the fermentation temperature: its jackets stay
-     shut, and the next wort is not chilled on its way in. *)
-  IF STAGE = 2 THEN
-    SP := REST_SP;
-  ELSIF STAGE = 3 THEN
-    SP := CRASH_SP;
+
+  lead_sp := UINT_TO_REAL(TEMP) + UINT_TO_REAL(LEAD);
+  IF STAGE = 3 THEN
+    IF last_stage <> 3 THEN
+      sp_now := UINT_TO_REAL(TEMP);   (* the crash starts from where the beer is *)
+    END_IF;
+    sp_now := sp_now - (sp_now - UINT_TO_REAL(GLYCOL)) * UINT_TO_REAL(CRASH_PCT_H) / 100.0
+      * UDINT_TO_REAL(SCAN_MS) / 3600000.0;
+    sp_now := MAX(sp_now, UINT_TO_REAL(CRASH_SP));
+  ELSIF STAGE = 0 THEN
+    sp_now := lead_sp;
   ELSE
-    SP := FERMENT_SP;
+    IF STAGE = 2 THEN
+      cap := UINT_TO_REAL(REST_SP);
+    ELSE
+      cap := UINT_TO_REAL(FERMENT_SP);
+    END_IF;
+    IF last_stage <> STAGE THEN
+      stage_ms := 0;
+      IF last_stage <> 1 THEN
+        sp_now := 0.0;                (* nothing to carry over: start from the beer *)
+      END_IF;
+    ELSE
+      stage_ms := MIN(stage_ms + SCAN_MS, FILL_MS);
+    END_IF;
+    IF STAGE = 1 AND stage_ms < FILL_MS THEN
+      sp_now := MIN(cap, lead_sp);    (* a fill: down to the wort's temperature too *)
+    ELSE
+      sp_now := MIN(cap, MAX(sp_now, lead_sp));
+    END_IF;
   END_IF;
+  last_stage := STAGE;
+  SP := REAL_TO_UINT(LIMIT(UINT_TO_REAL(SP_MIN), sp_now, UINT_TO_REAL(SP_MAX)));
 END_FUNCTION_BLOCK
 
 PROGRAM plc_cellar

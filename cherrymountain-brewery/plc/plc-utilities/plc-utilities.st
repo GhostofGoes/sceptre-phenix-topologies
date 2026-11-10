@@ -18,7 +18,9 @@
     and only once the relay has been healthy for CO2_RESET_DELAY. The latch
     arms the first time the relay is healthy, so a power-up is not a trip.
   - Wastewater neutralization: caustic below pH 6.5, acid above pH 8.5 (each
-    with hysteresis), and the discharge valve only between pH 6.0 and 9.0.
+    with hysteresis), and the discharge valve only between pH 6.0 and 9.0. No
+    dosing in the first seconds after a start: until the remote I/O has been
+    read the pH is 0, which is not a reading.
   - CIP: route verification, then pre-rinse, caustic, rinse, acid, rinse,
     sanitize. A start (XC01.CMD 1) is taken only while idle or done and with
     the route verified; a refused start is dropped, not kept for later. A
@@ -58,6 +60,7 @@ PROGRAM plc_utilities
     CIP_STEP_TIME : TIME := T#300s;   (* each wash step, compressed for the range *)
     CIP_FLOW_PROVE : TIME := T#30s;   (* the return flow switch makes within this of the pumps starting *)
     CIP_CIRCUITS : UINT := 7;
+    IO_SETTLE : TIME := T#5s;         (* the remote I/O has been read by now *)
     CIP_HEAT_GAIN : DINT := 20;       (* % x 10 per degF x 10 of error *)
     CIP_CMD_START : UINT := 1;
     CIP_CMD_HOLD : UINT := 2;
@@ -80,6 +83,7 @@ PROGRAM plc_utilities
     cip_vessel_ok : BOOL;
     cip_flow_t : TON;
     cip_flow_lost : BOOL := FALSE;
+    io_ready : TON;
     co2_healthy : TON;
     co2_armed : BOOL := FALSE;
   END_VAR
@@ -137,6 +141,11 @@ PROGRAM plc_utilities
   IF UTL_WWN_AT01_PV > PH_ACID_ON THEN
     acid_dose := TRUE;
   ELSIF UTL_WWN_AT01_PV <= PH_ACID_OFF THEN
+    acid_dose := FALSE;
+  END_IF;
+  io_ready(IN := TRUE, PT := IO_SETTLE);
+  IF NOT io_ready.Q THEN
+    caustic_dose := FALSE;
     acid_dose := FALSE;
   END_IF;
   UTL_WWN_XV01_CMD := caustic_dose;

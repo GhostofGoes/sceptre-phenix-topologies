@@ -18,9 +18,14 @@
 
   The batch engine also writes the phase parameter BH.BATCH.XC03.PARAM, latched
   at Start like the phase (ISA-88 formal parameters are fixed for a phase run):
-  MILL the grain bill in kg (2 s per kg at 0.5 kg/s), MASH_STEP the rest in
-  minutes, BOIL the boil in minutes, WHIRLPOOL the stand in minutes. A parameter
-  of 0 keeps the default below.
+  MILL the grain bill in kg (2 s per kg at 0.5 kg/s), MASH_IN the strike liquor
+  in liters, MASH_STEP the rest in minutes, BOIL the boil in minutes, WHIRLPOOL
+  the stand in minutes. A parameter of 0 keeps the default below.
+
+  MASH_IN fills the tun to the level that the strike liquor and the grain last
+  milled come to (the grist takes 0.7 L/kg in the mash), and the HLT takes no
+  cold liquor while it runs: the mash lands on its temperature only when it gets
+  the recipe's liquor, all of it at the strike temperature.
 
   The batch request handshake with the engine (DESIGN.md 12.2): the engine
   reads the panel's request counter (BH.BATCH.XI02.REQUESTS, a RIO input) over
@@ -73,7 +78,11 @@ PROGRAM plc_brewhouse
     BOIL_MINUTES_X10 : UINT := 600;   (* 60 min *)
     MILL_MS_PER_KG : UDINT := 2000;   (* 0.5 kg/s *)
     PARAM_MAX_MIN : UINT := 600;      (* a minutes parameter is at most 10 h *)
-    MASH_IN_LEVEL : UINT := 600;      (* 60 % *)
+    GRAIN_BILL_KG : UINT := 503;          (* the recipe's grain bill *)
+    RECIPE_STRIKE_L : UINT := 1310;       (* and its strike liquor: 2.6 L/kg *)
+    STRIKE_MAX_L : UINT := 2300;      (* the tun does not hold more liquor on a grain bill *)
+    MLT_VOLUME_L : UDINT := 3000;     (* 100 % on BH.MLT.LT01 *)
+    GRIST_ML_PER_KG : UDINT := 700;   (* what a kilogram of grist takes up in the mash *)
     MASH_RAMP_ALLOW : TIME := T#15m;  (* a mash step may take this long to reach its temperature *)
     KETTLE_FULL : UINT := 850;        (* 85 % *)
     KETTLE_EMPTY : UINT := 50;        (* 5 % *)
@@ -91,6 +100,9 @@ PROGRAM plc_brewhouse
     param : UINT := 0;                (* the phase parameter latched at Start *)
     limit_ms : UDINT := 0;            (* how long the latched phase's step runs *)
     boil_x10 : UINT := 600;           (* the latched boil, tenths of a minute *)
+    grain_kg : UINT := 503;           (* the grain bill last milled *)
+    strike_l : UINT := 1310;          (* the strike liquor of the latched mash-in *)
+    mash_in_level : UINT := 554;      (* the tun level they come to, % x 10 *)
     param_min : UINT;
     step_ms : UDINT := 0;             (* time the latched phase's step has run *)
     timing : BOOL;                    (* the step's time counts this scan *)
@@ -169,9 +181,19 @@ PROGRAM plc_brewhouse
         CASE active OF
           1:
             limit_ms := MILL_MS;
+            grain_kg := GRAIN_BILL_KG;
             IF param > 0 THEN
               limit_ms := UINT_TO_UDINT(param) * MILL_MS_PER_KG;
+              grain_kg := param;
             END_IF;
+          3:
+            strike_l := RECIPE_STRIKE_L;
+            IF param > 0 THEN
+              strike_l := MIN(param, STRIKE_MAX_L);
+            END_IF;
+            mash_in_level := UDINT_TO_UINT(MIN(
+              (UINT_TO_UDINT(strike_l) * 1000 + UINT_TO_UDINT(grain_kg) * GRIST_ML_PER_KG) / MLT_VOLUME_L,
+              900));
           4:
             limit_ms := MASH_HOLD_MS;
             IF param > 0 THEN
@@ -229,7 +251,9 @@ PROGRAM plc_brewhouse
   ELSIF BH_HLT_LT01_PV >= HLT_HIGH THEN
     hlt_fill := FALSE;
   END_IF;
-  BH_HLT_XV01_CMD := hlt_fill AND BH_CLT_LT01_PV > 100;
+  (* No cold liquor into the HLT while the strike liquor is drawn: it would chill
+     the last of it, and the mash with it. HLT_HEAT has seen to the level. *)
+  BH_HLT_XV01_CMD := hlt_fill AND BH_CLT_LT01_PV > 100 AND NOT (running AND active = 3);
   IF BH_HLT_LSL01_PV THEN
     BH_HLT_TV01_OUT := PValve(SP := BH_HLT_TT01_SP, PV := BH_HLT_TT01_PV, GAIN := 20);
   ELSE
@@ -287,7 +311,7 @@ PROGRAM plc_brewhouse
         BH_MLT_XV01_CMD := TRUE;
         BH_MLT_HS01_CMD := TRUE;
         BH_MLT_SC01_OUT := 300;
-        complete := BH_MLT_LT01_PV >= MASH_IN_LEVEL;
+        complete := BH_MLT_LT01_PV >= mash_in_level;
       4:  (* MASH_STEP: hold the rest temperature *)
         BH_MLT_HS01_CMD := TRUE;
         BH_MLT_SC01_OUT := 300;

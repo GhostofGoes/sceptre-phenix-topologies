@@ -26,15 +26,16 @@ compiled program and that fail on the program as it was:
 | F5 | plc-brewhouse: the mash deviation alarm was enabled only at temperature, so a mash that stayed cold (no steam) never alarmed and its rest never counted | The alarm is also enabled once a mash step has run 15 minutes, wherever the temperature is. The rest still counts only at temperature | `sim/tests/test_plc_brewhouse_mash.py`; the whole-brew test checks that a normal brew does not raise it |
 | F6 (part) | plc-cellar: one scan of 0 from a fermenter's density meter made the vessel "empty", which put a crashed beer back to 66 degF and then through a second rest | A reading must hold for 60 s before it ends a stage (empty, or the end of the fermentation) | `sim/tests/test_plc_cellar.py` |
 
-Looked at and left as they are:
+A second pass took up the two things the first had left:
 
-- **The OEE's quality term falls back to 1.0** when the line's bottle counter is
-  below its reject counter (practice 4). The counters are 16-bit and would have to
-  wrap for that, which takes more than 36 hours of filling at 30 bottles a minute.
-- **First-scan values** (practice 15: the spunding setpoints and the caustic pump
-  for one scan before the first I/O poll). They were seen with every input at 0 in
-  the test harness. Whether the OpenPLC runtime scans before its first poll is
-  not known, and one scan of either does nothing to the plant.
+| Finding | What was wrong | Fix | Tests |
+|---|---|---|---|
+| Practices 4 and 6 (PKG-5) | plc-packaging: the line's "bottles this shift", its rejects, and the shift OEE came from the machines' lifetime counters, which are 16 bits and never restart. After about four shifts the filler's counter wrapped, and the OEE read 100 % and then too low | The program adds up what each machine has counted since the last scan (a wrap allowed for) and starts the counts again when the line starts after four hours stopped | `sim/tests/test_plc_packaging.py` |
+| Practice 15 (UTL-8) | plc-utilities: before the first poll of the remote I/O the pH reads 0, which ran the caustic pump for the first scans after a start | No dosing for the first 5 s. plc-packaging waits the same 5 s before it counts bottles | `sim/tests/test_plc_utilities.py`, `sim/tests/test_plc_packaging.py` |
+
+Left as it is: for one scan before the first poll, plc-cellar writes the
+12 psig spunding setpoint to every fermenter (an input of 0 reads as beer at
+terminal gravity). A setpoint for one scan moves no valve.
 
 Everything else in this document is as the reviewer wrote it, and is security
 practice: it is the list for the future work.

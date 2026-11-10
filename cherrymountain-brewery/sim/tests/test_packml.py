@@ -105,3 +105,7 @@ def test_packaging_shift_is_legal_and_produces() -> None:
     assert (State.ABORTED, State.CLEARING) in labeler
     oee = fed.oee()
     assert 0.5 < oee["oee"] <= 1.0
+    # a machine that runs has no stop reason: the keg line kept "operator" from
+    # before its start for as long as it ran
+    kegger = fed.machines["kegger"]
+    assert kegger.executing and kegger.stop_reason == 0

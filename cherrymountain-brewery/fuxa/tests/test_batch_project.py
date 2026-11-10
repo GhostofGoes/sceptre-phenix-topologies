@@ -151,7 +151,8 @@ def test_the_recipe_gives_the_phase_parameters() -> None:
     assert recipe.strike_temp_f == 167.0
     seq = BUILDER.batch_sequence(recipe)
     assert [s.n for s in seq] == [1, 2, 3, 4, 4, 5, 6, 7, 8, 9, 10]
-    assert [s.param for s in seq] == [503, 0, 0, 60, 10, 0, 0, 60, 20, 0, 0]
+    # MILL the grain in kg, MASH_IN the strike liquor in liters, then minutes
+    assert [s.param for s in seq] == [503, 0, 1310, 60, 10, 0, 0, 60, 20, 0, 0]
     assert [s.hlt for s in seq][:4] == [167, 167, 167, 168]
     assert [s.mlt for s in seq][:5] == [152, 152, 152, 152, 168]
     assert {s.ko for s in seq} == {64}
@@ -161,6 +162,15 @@ def test_the_recipe_gives_the_phase_parameters() -> None:
     # plc-brewhouse.st) and every parameter fits its register
     assert all(0 <= s.param <= 65535 for s in seq)
     assert all(32 <= s.hlt <= 205 and 32 <= s.mlt <= 180 and 32 <= s.ko <= 100 for s in seq)
+
+
+def test_the_strike_allowance_is_what_the_simulated_liquor_loses() -> None:
+    """The engine adds to the strike temperature what the liquor loses on its way
+    to the grist; the simulation takes the same from it (brewhouse.py)."""
+    text = (ROOT / "sim" / "cherrymountain_sim" / "brewhouse.py").read_text(encoding="utf-8")
+    match = re.search(r"^STRIKE_LOSS_K: float = ([0-9.]+)$", text, flags=re.M)
+    assert match is not None
+    assert float(match.group(1)) == BUILDER.STRIKE_LOSS_K
 
 
 def test_a_recipe_the_builder_cannot_read_is_an_error(tmp_path: Any) -> None:

@@ -181,3 +181,25 @@ def test_a_start_without_a_route_is_dropped(template: st_engine.CompiledPlc) -> 
     assert b.step == 0 and b.plc.get("UTL_CIP_XC01_CMD") == 0
     b.scan(20, UTL_CIP_ZS02_PV=1)  # swinging the panel later must not start the wash
     assert b.step == 0
+
+
+def test_no_dosing_before_the_remote_io_has_been_read(template: st_engine.CompiledPlc) -> None:
+    """The pH reads 0 until the first poll of rio-utilities, which used to run
+    the caustic pump for the first scans after every start."""
+    plc = template.fresh()
+    ns = 0
+    for _ in range(40):  # 4 s, every input still 0
+        plc.scan(ns)
+        ns += SCAN_NS
+        assert plc.get("UTL_WWN_XV01_CMD") == 0 and plc.get("UTL_WWN_XV02_CMD") == 0
+    plc.set("UTL_WWN_AT01_PV", 700)  # the poll: pH 7.00
+    for _ in range(30):
+        plc.scan(ns)
+        ns += SCAN_NS
+    assert plc.get("UTL_WWN_XV01_CMD") == 0 and plc.get("UTL_WWN_XV02_CMD") == 0
+    plc.set("UTL_WWN_AT01_PV", 600)  # and the dosing works as before: caustic under pH 6.5
+    plc.scan(ns)
+    assert plc.get("UTL_WWN_XV01_CMD") == 1 and plc.get("UTL_WWN_XV02_CMD") == 0
+    plc.set("UTL_WWN_AT01_PV", 900)
+    plc.scan(ns + SCAN_NS)
+    assert plc.get("UTL_WWN_XV01_CMD") == 0 and plc.get("UTL_WWN_XV02_CMD") == 1

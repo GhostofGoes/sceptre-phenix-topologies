@@ -65,6 +65,10 @@ from cherrymountain_sim.recipe import Recipe, default
 LPM_PER_GPM: float = 3.785411784
 WATER_CP: float = 4180.0  # J/(kg K)
 GRAIN_CP: float = 0.4 * WATER_CP
+#: What the strike liquor loses to the pipe and the tun between the HLT and the
+#: grist (K). The strike temperature allows for it (``Autopilot.strike_c`` here,
+#: ``STRIKE_LOSS_K`` in fuxa/build_project.py for the batch engine).
+STRIKE_LOSS_K: float = 1.0
 WORT_CP: float = 4000.0
 GLYCOL_CP: float = 3800.0
 H_FG: float = 2.27e6  # J/kg, latent heat at about 95 °C
@@ -248,10 +252,10 @@ class Autopilot:
     @property
     def strike_c(self) -> float:
         """Strike liquor temperature for the first mash step (metric form),
-        plus 1 K for the pipe and tun losses."""
+        plus what the liquor loses to the pipe and the tun on its way."""
         r = self.recipe
         mash_c = r.mash[0].temp_c if r.mash else f_to_c(152.0)
-        return strike_temperature(mash_c, 18.3, r.mash_ratio_l_kg, metric=True) + 1.0
+        return strike_temperature(mash_c, 18.3, r.mash_ratio_l_kg, metric=True) + STRIKE_LOSS_K
 
     @property
     def phase(self) -> int:
@@ -698,17 +702,18 @@ class BrewhouseFederate(Federate):
             liters = p.hlt.take(150.0 / 60.0 * dt)
             grist = min(liters / r.mash_ratio_l_kg, p.grist_kg)
             p.grist_kg -= grist
+            strike_c = p.hlt.temp_c - STRIKE_LOSS_K  # what the pipe and the tun take
             if grist > 0:  # grist at the room temperature enters the mash
                 cap_old = p.mlt.liters * WATER_CP + p.grain_kg * GRAIN_CP
                 cap_new = cap_old + liters * WATER_CP + grist * GRAIN_CP
                 p.mlt.temp_c = (
                     cap_old * p.mlt.temp_c
-                    + liters * WATER_CP * p.hlt.temp_c
+                    + liters * WATER_CP * strike_c
                     + grist * GRAIN_CP * 18.3
                 ) / cap_new
                 p.mlt.liters += liters
             else:
-                p.mlt.add(liters, p.hlt.temp_c)
+                p.mlt.add(liters, strike_c)
             p.grain_kg += grist
             p.extract_kg += grist * EXTRACT_POTENTIAL
         p.sparge_lpm = self.num("mlt.sparge_valve_pct") / 100 * 40.0

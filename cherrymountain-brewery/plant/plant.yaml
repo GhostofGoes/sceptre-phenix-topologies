@@ -1345,7 +1345,7 @@ areas:
           # The phase parameter of the next Start, latched at the Start: MILL the
           # grain bill in kg, MASH_STEP the hold in minutes, BOIL the boil in
           # minutes, WHIRLPOOL the stand in minutes. 0 keeps the program's default.
-          - { id: XC03.PARAM, desc: "Phase parameter (MILL kg, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)", type: analog-read-write, range: [0, 65535], scaling: 0 }
+          - { id: XC03.PARAM, desc: "Phase parameter (MILL kg, MASH_IN liters, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)", type: analog-read-write, range: [0, 65535], scaling: 0 }
           # Batch requests from the brewhouse panel (the batch-panel device). The
           # engine reads the request counter, queues the brews, and writes its
           # accepted count to XC02; the program forwards it to the panel as XI03.

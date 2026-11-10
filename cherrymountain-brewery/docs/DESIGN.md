@@ -535,6 +535,15 @@ flowchart LR
     ratioed to wort flow.
 - **ISA-88 phases:** `MILL`, `HLT_HEAT`, `MASH_IN`, `MASH_STEP`, `VORLAUF`,
   `LAUTER`, `BOIL`, `WHIRLPOOL`, `KNOCKOUT`, `CIP_READY`.
+- **Landing the mash.** A mash lands on its temperature only when it gets the
+  recipe's strike liquor, all of it at the strike temperature. `MASH_IN`
+  takes the liquor in liters as its parameter (1,310 L for the 503 kg grain
+  bill) and fills the tun to the level the liquor and the grist come to
+  (0.7 L/kg of grist, in the 3,000 L tun: 55.4 %). The HLT takes no cold liquor
+  while it runs. The strike temperature is Palmer's ([§9.3](#93-models)) plus
+  1 K for what the pipe and the tun take, which the simulation takes from the
+  liquor too. Both mashes of a double-brew day then land within 1 °F under the
+  152 °F setpoint, the side the jacket can correct.
 
 **Cellar**
 
@@ -560,10 +569,21 @@ flowchart LR
 
     | Stage | When | Both setpoints |
     |---|---|---|
-    | 0 empty | The meter reads under 0.5 °P | `TC01.SP` (66 °F), so the jackets stay shut and the next wort is not chilled |
-    | 1 fermenting | Extract at or above 5 °P | `TC01.SP` (66 °F) |
-    | 2 diacetyl rest | Extract under 5 °P, for `KC01.SP` minutes (180, which is 144 h of fermentation on the range's 48x clock) | `TC02.SP` (70 °F) |
-    | 3 crash | After the rest, until the vessel is empty | `TC03.SP` (34 °F) |
+    | 0 empty | The meter reads under 0.5 °P | 1 °F above the vessel, so the jackets stay shut and the next wort is not chilled |
+    | 1 fermenting | Extract at or above 5 °P | `TC01.SP` (66 °F), reached from below: 1 °F ahead of the beer |
+    | 2 diacetyl rest | Extract under 5 °P, for `KC01.SP` minutes (180, which is 144 h of fermentation on the range's 48x clock) | `TC02.SP` (70 °F), reached by free rise: 1 °F ahead of the beer |
+    | 3 crash | After the rest, until the vessel is empty | From the beer's temperature down to `TC03.SP` (34 °F), a quarter of what is left to the glycol's 28 °F each hour |
+
+    The setpoint is one the vessel can follow, so that the deviation alarm
+    means a fault and not a stage. A fermenter has jackets and no heater, so
+    on the way up the setpoint leads the beer and does not come back down with
+    it (beer that cools in these stages has a leaking glycol valve); for the
+    first 30 minutes of a fermentation it also follows the vessel down, to the
+    temperature of the wort that is coming in. The crash follows the curve of
+    a jacketed tank, a little slower than this one cools: from 70 °F it passes
+    40 °F after five hours and reaches 34 °F after eight. Stepping the setpoints
+    instead kept the high-priority deviation alarm up for hours in every stage,
+    an empty vessel included.
 
     A reading ends a stage only once it has held for a minute, so a density
     meter that drops out for a few seconds does not empty a vessel or end a
@@ -614,6 +634,11 @@ flowchart LR
     correctly.
   - PackTags: `ProdProcessedCount`, `ProdDefectiveCount`, state, current
     speed, and stop reason.
+  - The line's counts and its OEE are the shift's. A machine's own counters
+    are 16 bits and never restart, so `plc-packaging` adds up what each has
+    counted since the last scan and starts again when the line starts after
+    four hours stopped. As built, the shift OEE is performance times quality
+    (filler speed over its setpoint, times good bottles over processed).
   - The filler is interlocked to BBT pressure and product supply.
 
 **Utilities**

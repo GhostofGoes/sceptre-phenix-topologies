@@ -420,3 +420,92 @@ def test_a_held_button_is_one_command_and_the_hmi_goes_first(st_packaging: st_en
     scan(13)  # not a PackML command
     scan(0)
     assert given[-2:] == [0, 0]
+
+
+class Counts:
+    """The compiled program with the machines' counters set by hand."""
+
+    SCAN_NS: int = 100_000_000
+    STOPPED, EXECUTE = 2, 6
+    REJECTERS: tuple[str, ...] = ("RINSER", "FILLER", "CODER", "LABELER", "PACKER")
+
+    def __init__(self, plc: st_engine.CompiledPlc) -> None:
+        self.plc = plc.fresh()
+        self.ns = 0
+        self.line(self.STOPPED)
+        self.scan(60)  # past the wait for the first I/O poll
+
+    def scan(self, scans: int = 1) -> None:
+        for _ in range(scans):
+            self.plc.scan(self.ns)
+            self.ns += self.SCAN_NS
+
+    def hours(self, h: float) -> None:
+        """Let the clock run: a few scans, hours apart."""
+        for _ in range(8):
+            self.ns += int(h * 3600e9 / 8)
+            self.plc.scan(self.ns)
+
+    def line(self, state: int) -> None:
+        self.plc.set("PKG_FILLER_PACKML_STATE", state)
+
+    def machines(self, filled: int, rejects: tuple[int, int, int, int, int] = (0, 0, 0, 0, 0)) -> None:
+        self.plc.set("PKG_FILLER_PACKML_PROCESSED", filled % 65536)
+        for name, n in zip(self.REJECTERS, rejects, strict=True):
+            self.plc.set(f"PKG_{name}_PACKML_DEFECTIVE", n % 65536)
+        self.scan(2)
+
+    @property
+    def shift(self) -> tuple[int, int, int]:
+        """The line's bottles and rejects of the shift, and its OEE (% x 10)."""
+        return (self.plc.get("PKG_LINE_PACKML_PROCESSED"), self.plc.get("PKG_LINE_PACKML_DEFECTIVE"),
+                self.plc.get("PKG_LINE_KQ01_OEE"))
+
+
+def test_the_lines_counts_are_the_shifts_and_survive_a_counter_wrap(st_packaging: st_engine.CompiledPlc) -> None:
+    """The line showed the filler's lifetime counter as "bottles this shift". The
+    machines' counters are 16 bits and never restart: after four shifts the
+    filler's wrapped to a few hundred while the rejects stood at several hundred,
+    and the shift OEE read 100 % and then far too low."""
+    c = Counts(st_packaging)
+    c.plc.set("PKG_FILLER_PACKML_SPEED", 300)  # at the setpoint: performance 1
+    c.machines(60000, (100, 200, 0, 300, 0))   # what the machines have counted in their lives
+    assert c.shift[:2] == (60000, 600)         # no long stop yet: one shift so far
+    c.hours(15.5)                              # the night
+    c.line(c.EXECUTE)
+    c.scan(2)
+    assert c.shift == (0, 0, 1000)             # a new shift: nothing filled, nothing lost
+    c.machines(60000 + 5000, (110, 220, 0, 320, 0))
+    assert c.shift == (5000, 50, 990)
+    c.machines(60000 + 7000, (112, 230, 0, 328, 0))  # the filler's counter has wrapped
+    assert c.plc.get("PKG_FILLER_PACKML_PROCESSED") == 1464
+    assert c.shift == (7000, 70, 990)
+    # a stop of two minutes in the shift is not a new shift
+    c.line(c.STOPPED)
+    c.scan(1200)
+    c.line(c.EXECUTE)
+    c.scan(2)
+    assert c.shift[:2] == (7000, 70)
+    # the next morning is
+    c.line(c.STOPPED)
+    c.hours(15.5)
+    assert c.shift[:2] == (7000, 70)           # the counts stay up until the line starts
+    c.line(c.EXECUTE)
+    c.scan(2)
+    assert c.shift[:2] == (0, 0)
+
+
+def test_the_first_read_of_the_machines_is_not_production(st_packaging: st_engine.CompiledPlc) -> None:
+    """After a start of the PLC the counters step from 0 to what the machines hold."""
+    plc = st_packaging.fresh()
+    ns = 0
+    for i in range(80):
+        if i == 10:  # the first poll of rio-packaging
+            plc.set("PKG_FILLER_PACKML_PROCESSED", 41000)
+            plc.set("PKG_LABELER_PACKML_DEFECTIVE", 900)
+        plc.scan(ns)
+        ns += 100_000_000
+    assert (plc.get("PKG_LINE_PACKML_PROCESSED"), plc.get("PKG_LINE_PACKML_DEFECTIVE")) == (0, 0)
+    plc.set("PKG_FILLER_PACKML_PROCESSED", 41030)
+    plc.scan(ns)
+    assert plc.get("PKG_LINE_PACKML_PROCESSED") == 30

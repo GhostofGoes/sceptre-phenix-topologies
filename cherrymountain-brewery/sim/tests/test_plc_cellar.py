@@ -19,6 +19,7 @@ from cherrymountain_sim.plcloop import PlcLink
 
 FULL: Path = Path(__file__).resolve().parents[2] / "plant" / "generated" / "full"
 SCAN_NS: int = 100_000_000  # the task interval: 100 ms
+SETTLE: int = 600  # scans a reading must hold before it ends a stage (60 s)
 EMPTY, FERMENTING, REST, CRASH = 0, 1, 2, 3
 
 
@@ -90,6 +91,9 @@ def test_a_fill_ferments_rests_for_its_minutes_and_is_crashed(template: st_engin
     b.beer(1, 5.2, 66.0)
     assert b.stage(1) == FERMENTING
     b.beer(1, 4.9, 66.0)
+    b.scan(SETTLE - 3)
+    assert b.stage(1) == FERMENTING  # under terminal gravity, but not for a minute yet
+    b.scan(1)
     assert (b.stage(1), b.setpoints(1)) == (REST, (7000, 7000))
     b.beer(1, 5.1, 70.0)  # the meter's noise at the threshold does not restart the rest
     b.scan(1190)  # 119.4 s of the rest so far
@@ -109,10 +113,42 @@ def test_an_emptied_fermenter_goes_back_to_the_fermentation_temperature(template
     b.beer(4, 3.0, 36.0)
     assert (b.stage(4), b.setpoints(4)) == (CRASH, (3400, 3400))
     b.beer(4, 0.0, 36.0)
+    b.scan(SETTLE)
     assert (b.stage(4), b.setpoints(4)) == (EMPTY, (6600, 6600))
     assert b.plc.get("CEL_FV104_TV01_CMD") == 0 and b.plc.get("CEL_FV104_TV02_CMD") == 0
     b.beer(4, 14.2, 64.0)
     assert b.stage(4) == FERMENTING
+
+
+def test_a_density_meter_that_drops_out_does_not_end_a_stage(template: st_engine.CompiledPlc) -> None:
+    """One scan of 0 from the meter used to make a crashed fermenter "empty": its
+    setpoint went back to 66 degF, and when the reading returned the beer was
+    warmed for a second rest. A reading now has to hold for a minute."""
+    b = Bench(template)
+    b.scan(3)
+    b.plc.set("CEL_PROFILE_KC01_SP", 2)  # a two-minute rest
+    b.beer(2, 12.0, 66.0)  # fermenting
+    b.beer(3, 3.2, 68.0)   # resting
+    b.beer(4, 3.0, 36.0)   # crashed
+    assert [b.stage(n) for n in (2, 3, 4)] == [FERMENTING, REST, CRASH]
+    # every meter reads 0 for 30 s
+    b.scan(300, CEL_FV102_DT01_PV=0, CEL_FV103_DT01_PV=0, CEL_FV104_DT01_PV=0)
+    assert [b.stage(n) for n in (2, 3, 4)] == [FERMENTING, REST, CRASH]
+    assert b.setpoints(4) == (3400, 3400) and b.setpoints(2) == (6600, 6600)
+    # the readings come back: nothing started over
+    b.scan(2, CEL_FV102_DT01_PV=1200, CEL_FV103_DT01_PV=320, CEL_FV104_DT01_PV=300)
+    assert [b.stage(n) for n in (2, 3, 4)] == [FERMENTING, REST, CRASH]
+    # the rest's clock waited through the dropout and did not restart: about two
+    # minutes of rest in all, not two minutes after the dropout
+    b.scan(1150)
+    assert b.stage(3) == REST
+    b.scan(60)
+    assert b.stage(3) == CRASH
+    # a low reading for a few seconds does not end a fermentation either
+    b.scan(50, CEL_FV102_DT01_PV=300)
+    b.scan(2, CEL_FV102_DT01_PV=1200)
+    b.scan(SETTLE)
+    assert b.stage(2) == FERMENTING
 
 
 def test_a_fermenter_taken_off_the_profile_keeps_the_operators_setpoints(template: st_engine.CompiledPlc) -> None:

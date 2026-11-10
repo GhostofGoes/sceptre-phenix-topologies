@@ -74,6 +74,7 @@ PROGRAM plc_brewhouse
     MILL_MS_PER_KG : UDINT := 2000;   (* 0.5 kg/s *)
     PARAM_MAX_MIN : UINT := 600;      (* a minutes parameter is at most 10 h *)
     MASH_IN_LEVEL : UINT := 600;      (* 60 % *)
+    MASH_RAMP_ALLOW : TIME := T#15m;  (* a mash step may take this long to reach its temperature *)
     KETTLE_FULL : UINT := 850;        (* 85 % *)
     KETTLE_EMPTY : UINT := 50;        (* 5 % *)
     CLT_LOW : UINT := 600;
@@ -104,6 +105,8 @@ PROGRAM plc_brewhouse
     want : UINT;
     blocked_mlt : BOOL;
     blocked_ktl : BOOL;
+    mash_ramp : TON;
+    mash_at_temp : BOOL;
   END_VAR
 
   IF NOT started THEN
@@ -269,6 +272,7 @@ PROGRAM plc_brewhouse
   complete := FALSE;
   timing := FALSE;
 
+  mash_ramp(IN := running AND active = 4, PT := MASH_RAMP_ALLOW);
   IF running THEN
     CASE active OF
       1:  (* MILL *)
@@ -288,8 +292,12 @@ PROGRAM plc_brewhouse
         BH_MLT_HS01_CMD := TRUE;
         BH_MLT_SC01_OUT := 300;
         BH_MLT_TV01_OUT := PValve(SP := BH_MLT_TT01_SP, PV := BH_MLT_TT01_PV, GAIN := 30);
-        BH_MLT_XS01_ACTIVE := BH_MLT_TT01_PV + 20 >= BH_MLT_TT01_SP;
-        timing := BH_MLT_XS01_ACTIVE;  (* the rest counts only at temperature *)
+        mash_at_temp := BH_MLT_TT01_PV + 20 >= BH_MLT_TT01_SP;
+        (* The deviation alarm is enabled at temperature, and after the ramp
+           allowance wherever the mash is: a mash that never gets there (no
+           steam) must alarm too, not wait in silence. *)
+        BH_MLT_XS01_ACTIVE := mash_at_temp OR mash_ramp.Q;
+        timing := mash_at_temp;  (* the rest counts only at temperature *)
         complete := step_ms >= limit_ms;
       5:  (* VORLAUF: recirculate until the runnings clear *)
         BH_MLT_FV01_OUT := 300;

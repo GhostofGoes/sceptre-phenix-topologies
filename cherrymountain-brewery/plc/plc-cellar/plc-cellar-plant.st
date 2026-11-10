@@ -121,9 +121,12 @@ END_FUNCTION_BLOCK
    beer is in, and the temperature that goes with it. A stage follows from the
    density meter: a vessel that reads no extract is empty, wort above TERMINAL is
    fermenting, and beer under it rests warm for REST_MIN minutes (counted in
-   scans) and is then crashed. Beer the program has not followed from its fill
-   (after a start of the PLC) is taken as crashed when it is already cold, and
-   as starting its rest otherwise. *)
+   scans) and is then crashed. A reading must hold for SETTLE_MS before it ends
+   a stage: a meter that drops out for a scan or a few seconds has not emptied
+   the vessel or finished the fermentation, and the stage it would end is one
+   the program cannot get back to. Beer the program has not followed from its
+   fill (after a start of the PLC) is taken as crashed when it is already cold,
+   and as starting its rest otherwise. *)
 FUNCTION_BLOCK FermentProfile
   VAR_INPUT
     EXTRACT : UINT;            (* apparent extract, degP x 100 *)
@@ -136,6 +139,7 @@ FUNCTION_BLOCK FermentProfile
     EMPTY : UINT := 50;        (* under 0.5 degP the vessel is empty *)
     TERMINAL : UINT := 500;    (* under 5 degP the beer is near terminal gravity *)
     COLD : UINT := 6000;       (* under 60 degF the beer has been crashed *)
+    SETTLE_MS : UDINT := 60000;  (* a reading ends a stage once it has held this long *)
   END_VAR
   VAR_OUTPUT
     STAGE : UINT;              (* 0 empty, 1 fermenting, 2 diacetyl rest, 3 crash *)
@@ -143,9 +147,25 @@ FUNCTION_BLOCK FermentProfile
   END_VAR
   VAR
     rest_ms : UDINT;           (* time in the rest so far *)
+    empty_ms : UDINT;          (* how long the meter has read no extract *)
+    terminal_ms : UDINT;       (* how long it has read under TERMINAL *)
   END_VAR
   IF EXTRACT < EMPTY THEN
-    STAGE := 0;
+    empty_ms := MIN(empty_ms + SCAN_MS, SETTLE_MS);
+  ELSE
+    empty_ms := 0;
+  END_IF;
+  IF EXTRACT < TERMINAL THEN
+    terminal_ms := MIN(terminal_ms + SCAN_MS, SETTLE_MS);
+  ELSE
+    terminal_ms := 0;
+  END_IF;
+  IF EXTRACT < EMPTY THEN
+    (* Until the reading has held, the stage stays as it is (and a rest's clock
+       waits): this may be the meter, not the vessel. *)
+    IF empty_ms >= SETTLE_MS THEN
+      STAGE := 0;
+    END_IF;
   ELSIF STAGE = 0 THEN
     IF EXTRACT >= TERMINAL THEN
       STAGE := 1;
@@ -156,7 +176,7 @@ FUNCTION_BLOCK FermentProfile
       rest_ms := 0;
     END_IF;
   ELSIF STAGE = 1 THEN
-    IF EXTRACT < TERMINAL THEN
+    IF terminal_ms >= SETTLE_MS THEN
       STAGE := 2;
       rest_ms := 0;
     END_IF;

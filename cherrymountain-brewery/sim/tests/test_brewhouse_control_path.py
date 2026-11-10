@@ -86,7 +86,10 @@ def test_a_start_batch_event_brews_a_double_brew_day_through_the_plc_and_the_eng
     seen: list[int] = []        # the phase of each Start the PLC took (state left Idle)
     first_wort: dict[str, float] = {}
     state = 0
+    cold_mash_alarms = 0
     for _ in range(14 * 3600):
+        if cp.plc.get("BH_MLT_TT01_ALM_DEVIATION") and cp.plc.get("BH_MLT_TT01_PV") < cp.plc.get("BH_MLT_TT01_SP"):
+            cold_mash_alarms += 1
         now = int(cp.plc.get("BH_BATCH_XS01_STATE"))
         if state == 0 and now in (1, 5):
             seen.append(int(cp.plc.get("ACTIVE")))
@@ -119,6 +122,11 @@ def test_a_start_batch_event_brews_a_double_brew_day_through_the_plc_and_the_eng
     assert cp.max_ibu > 40.0, "the boil and whirlpool hops went in"
     assert cp.bh.proc.grain_kg == 0.0 and cp.bh.proc.mlt.liters == 0.0 and cp.bh.proc.kettle.liters == 0.0
     assert cp.bh.proc.silo_kg < 18000.0 - 2 * 480.0, "the silo gave up two grain bills"
+    # both mash steps of both brews reached their temperatures within the time the
+    # PLC allows a ramp, so the mash deviation alarm never came up for a cold mash.
+    # (It does come up in the second brew, as it always has: that mash-in lands about
+    # 2.5 degF over its setpoint in a tun still warm from the first brew.)
+    assert cold_mash_alarms == 0
     # every alarm of the engine is clear, and the PLC is back to Idle
     assert [cp.tag(f"BATCH.ALM_{k}") for k in ("TIMEOUT", "PLC", "REFUSED", "NOFV", "ENGINE")] == [0] * 5
     assert int(cp.plc.get("BH_BATCH_XS01_STATE")) == 0

@@ -592,7 +592,9 @@ flowchart LR
     | 2 diacetyl rest | Extract under 5 °P, for `KC01.SP` minutes (180, which is 144 h of fermentation on the range's 48x clock) | `TC02.SP` (70 °F) |
     | 3 crash | After the rest, until the vessel is empty | `TC03.SP` (34 °F) |
 
-    The four recipe values are the operator's, within the setpoint limits.
+    A reading ends a stage only once it has held for a minute, so a density
+    meter that drops out for a few seconds does not empty a vessel or end a
+    fermentation. The four recipe values are the operator's, within the setpoint limits.
     With `AUTO` clear, the fermenter's setpoints are the operator's again. Beer
     the program did not see being filled (after a start of the PLC) is taken as
     crashed when it is under 60 °F and as starting its rest otherwise, so a
@@ -679,7 +681,9 @@ flowchart LR
   - CIP sequence: pre-rinse → caustic (about 175 °F / 80 °C, 1.5–2%) →
     rinse → acid (periodic, for example weekly) → rinse → sanitize (PAA,
     ambient). The route must be verified first, and the return flow must be
-    proven.
+    proven within 30 s of the pumps starting. A wash without it is held with
+    its pumps off and alarms (`UTL.CIP.XA01.PV`) until the operator commands
+    Hold and Resume, or Abort.
   - A peer interlock with `plc-cellar` uses Modbus reads
     ([§6.6](#66-cross-system-interactions)).
 
@@ -2763,7 +2767,7 @@ exposed ranges and read 0.
 ### 12.6 Plant tag database
 
 `plant/plant.yaml` is the single source of truth. It now covers every area:
-43 hosts, 501 tags (`plant/generated/full/tags.json`), and 97 rationalized alarms
+43 hosts, 516 tags (`plant/generated/full/tags.json`), and 98 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
 ```yaml

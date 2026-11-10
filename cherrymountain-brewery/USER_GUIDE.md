@@ -451,7 +451,7 @@ How to read a screen:
 | Change the fermentation profile for every fermenter | `CEL.PROFILE.TC01.SP` (fermenting, 66), `TC02.SP` (rest, 70), `TC03.SP` (crash, 34), `KC01.SP` (rest minutes, 180) | Cellar points |
 | Brew | the **Start** button ([Brew a batch](#brew-a-batch)) | Batch |
 | Run one brewhouse phase by hand, only while the Batch view says Idle | `BH.BATCH.XC01.PHASE` (1 to 10), then `BH.BATCH.XC01.CMD` (1 start, 2 hold, 3 restart, 4 abort, 5 reset) | Brewhouse points |
-| Start a cleaning (CIP) circuit | Type the circuit (1 to 7) in **Circuit**, then **Start**. **Hold**, **Resume**, and **Abort** are beside it (`UTL.CIP.XC01.CIRCUIT` and `XC01.CMD`) | Utilities |
+| Start a cleaning (CIP) circuit | Type the circuit (1 to 7) in **Circuit**, then **Start**. **Hold**, **Resume**, and **Abort** are beside it (`UTL.CIP.XC01.CIRCUIT` and `XC01.CMD`). A wash whose return flow does not prove itself in 30 s is held with its pumps off (**Held: return flow lost**, an alarm): fix the route, then **Hold** and **Resume** | Utilities |
 | Start or stop the packaging line outside its shift | **Reset**, then **Start**; **Stop** (`PKG.LINE.PACKML.CMD` 1, 2, 3) | Packaging |
 | Keep the packaging line stopped during its shift | **Hold**, and **Unhold** to let it go. A **Stop** lasts about two minutes: the line's operator starts the line again | Packaging |
 | Change the line's speed | The **Speed setpoint** box | Packaging |

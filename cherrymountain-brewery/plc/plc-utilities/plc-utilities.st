@@ -21,7 +21,12 @@
     with hysteresis), and the discharge valve only between pH 6.0 and 9.0.
   - CIP: route verification, then pre-rinse, caustic, rinse, acid, rinse,
     sanitize. A start (XC01.CMD 1) is taken only while idle or done and with
-    the route verified; a refused start is dropped, not kept for later. The
+    the route verified; a refused start is dropped, not kept for later. A
+    circuit number above 7 is no circuit: it is set to 0, which has no route.
+    A wash whose return pump runs for 30 s without the return flow switch
+    making is held and stays held (XA01.PV, an alarm): the hold stops the
+    pumps, so the flow could never prove itself again. The operator finds the
+    cause, then commands Hold and Resume to try again, or Abort. The
     cellar circuits also need plc-cellar's CIP permit, read
     peer to peer (CEL.XFER.XS02.CIP_PERMIT into UTL.CIP.XS04.PV, which reads 0
     when plc-cellar is unreachable, so CIP fails safe; DESIGN.md 6.6 #4). A cellar vessel locked out
@@ -51,6 +56,8 @@ PROGRAM plc_utilities
     PH_PERMIT_HIGH : UINT := 900;
     WWN_DISCHARGE_MIN_LEVEL : UINT := 200;   (* 20 % *)
     CIP_STEP_TIME : TIME := T#300s;   (* each wash step, compressed for the range *)
+    CIP_FLOW_PROVE : TIME := T#30s;   (* the return flow switch makes within this of the pumps starting *)
+    CIP_CIRCUITS : UINT := 7;
     CIP_HEAT_GAIN : DINT := 20;       (* % x 10 per degF x 10 of error *)
     CIP_CMD_START : UINT := 1;
     CIP_CMD_HOLD : UINT := 2;
@@ -71,6 +78,8 @@ PROGRAM plc_utilities
     cip_timer : TON;
     cip_wash : BOOL;
     cip_vessel_ok : BOOL;
+    cip_flow_t : TON;
+    cip_flow_lost : BOOL := FALSE;
     co2_healthy : TON;
     co2_armed : BOOL := FALSE;
   END_VAR
@@ -86,7 +95,9 @@ PROGRAM plc_utilities
   UTL_CHL_TT01_SP := LIMIT(GLYCOL_SP_MIN, UTL_CHL_TT01_SP, GLYCOL_SP_MAX);
   UTL_GLY_PT01_SP := MIN(UTL_GLY_PT01_SP, 1000);
   UTL_CIP_TT01_SP := LIMIT(320, UTL_CIP_TT01_SP, 2000);
-  UTL_CIP_XC01_CIRCUIT := MIN(UTL_CIP_XC01_CIRCUIT, 7);
+  IF UTL_CIP_XC01_CIRCUIT > CIP_CIRCUITS THEN
+    UTL_CIP_XC01_CIRCUIT := 0;   (* not a circuit: no route, so no wash starts on it *)
+  END_IF;
 
   (* ---- glycol ------------------------------------------------------------------- *)
   UTL_CHL_HS01_CMD := TRUE;
@@ -174,10 +185,20 @@ PROGRAM plc_utilities
     END_IF;
     UTL_CIP_XC01_CMD := 0;
   END_IF;
-  (* Hold on command, or when the route is lost or (once the pumps run) the return
-     flow is not proven. *)
-  cip_hold := (UTL_CIP_XC01_CMD = CIP_CMD_HOLD) OR (NOT UTL_CIP_XS02_ROUTE_OK)
-    OR (UTL_CIP_HS02_CMD AND cip_timer.ET > T#30s AND NOT UTL_CIP_FS01_PV);
+  (* The return pump has run for CIP_FLOW_PROVE and the flow switch has not made:
+     the return flow is lost. That is latched, because the hold it causes stops the
+     pumps, and the flow can then never prove itself. A Hold command (the operator
+     has seen it), an abort, or the end of the wash clears it. *)
+  cip_flow_t(IN := UTL_CIP_HS02_CMD AND NOT UTL_CIP_FS01_PV, PT := CIP_FLOW_PROVE);
+  IF cip_flow_t.Q THEN
+    cip_flow_lost := TRUE;
+  END_IF;
+  IF cip_step = 0 OR cip_step = CIP_STEP_DONE OR UTL_CIP_XC01_CMD = CIP_CMD_HOLD THEN
+    cip_flow_lost := FALSE;
+  END_IF;
+  UTL_CIP_XA01_PV := cip_flow_lost;
+  (* Hold on command, or when the route or the return flow is lost. *)
+  cip_hold := (UTL_CIP_XC01_CMD = CIP_CMD_HOLD) OR (NOT UTL_CIP_XS02_ROUTE_OK) OR cip_flow_lost;
   cip_wash := cip_step >= 1 AND cip_step <= 6;
   IF cip_step <> cip_last_step THEN
     cip_timer(IN := FALSE, PT := CIP_STEP_TIME);  (* restart the step timer *)

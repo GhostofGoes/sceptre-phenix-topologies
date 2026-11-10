@@ -1059,6 +1059,12 @@ alarm_rationale:
     consequence: Tank overflow to the floor drain (permit violation)
     action: Stop CIP and brewhouse drains until the tank is neutralized and discharged
     response_time: 15m
+  cip-no-return-flow:
+    priority: medium
+    cause: A closed valve or a wrong hose on the circuit, a tripped pump, or a failed flow switch
+    consequence: The wash is held with its pumps stopped; the vessel is not clean and stays out of use
+    action: Check the circuit's valves, hoses, and pumps; then Hold and Resume, or Abort the wash
+    response_time: 15m
   cip-temp-deviation:
     priority: low
     cause: Steam valve fault or low steam pressure
@@ -1264,7 +1270,7 @@ areas:
           - { id: FV02.OUT, desc: Sparge valve position, io: mlt.sparge_valve_pct, units: "%", range: [0, 100] }
           - { id: SC01.OUT, desc: Rake speed reference, io: mlt.rake_speed_pct, units: "%", range: [0, 100] }
           - { id: TT01.SP, desc: Mash step temperature setpoint, type: analog-read-write, units: degF, range: [32, 212], scaling: 1 }
-          - { id: XS01.ACTIVE, desc: Mash step holding (deviation alarm enabled), type: binary-read }
+          - { id: XS01.ACTIVE, desc: "Mash step at temperature, or 15 min into it (deviation alarm enabled)", type: binary-read }
 
       - id: KTL
         name: Kettle/whirlpool
@@ -2176,10 +2182,10 @@ areas:
           # Circuits: 1 brewhouse, 2-5 FV-101..104, 6-7 BBT-201/202, 8 transfer
           # lines. Steps: 0 idle, 1 pre-rinse, 2 caustic, 3 rinse, 4 acid,
           # 5 rinse, 6 sanitize, 7 done.
-          - { id: XC01.CIRCUIT, desc: CIP circuit selected, type: analog-read-write, range: [0, 8], scaling: 0 }
+          - { id: XC01.CIRCUIT, desc: "CIP circuit selected (1 to 7; 0 none)", type: analog-read-write, range: [0, 7], scaling: 0 }
           - { id: XC01.CMD, desc: "CIP sequence command (1 start, 2 hold, 3 abort)", type: analog-read-write, range: [0, 3], scaling: 0 }
           - { id: XS01.STEP, desc: CIP sequence step, type: analog-read, range: [0, 7], scaling: 0 }
-          - { id: XS02.ROUTE_OK, desc: CIP route verified and return flow proven, type: binary-read }
+          - { id: XS02.ROUTE_OK, desc: "CIP route verified (the swing panel is on the circuit and the cellar permits it)", type: binary-read }
           # Peer reads of plc-cellar's coils (DESIGN.md 6.6 #4), FC1 over CTRL into %IX120.0 up;
           # a lost peer reads 0, so the CIP permit fails safe.
           - { id: XS03.PV, desc: Cellar transfer in progress (peer read from plc-cellar), peer: CEL.XFER.XS01.ACTIVE }
@@ -2192,6 +2198,13 @@ areas:
           - { id: XS08.PV, desc: FV-104 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS14.CIP_OK }
           - { id: XS09.PV, desc: BBT-201 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS15.CIP_OK }
           - { id: XS10.PV, desc: BBT-202 not in entry (peer read from plc-cellar), peer: CEL.ENTRY.XS16.CIP_OK }
+          # Last in the unit and the area, so that it takes the next free coil and
+          # moves no other address.
+          - id: XA01.PV
+            desc: "CIP held: return flow lost (the pumps stay off until Hold and Resume, or Abort)"
+            type: binary-read
+            alarms:
+              - { kind: state, limit: 1, delay: 0s, rationale: cip-no-return-flow }
 
   - id: PWR
     name: Electrical

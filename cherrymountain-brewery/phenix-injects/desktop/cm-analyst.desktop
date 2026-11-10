@@ -3,6 +3,7 @@ Type=Application
 Name=CherryMountain SOC consoles
 Comment=Opens Malcolm and Wazuh for the analyst
 Exec=/usr/local/bin/cm-analyst-console
+Icon=cherrymountain
 Terminal=false
 NoDisplay=true
 X-GNOME-Autostart-enabled=true

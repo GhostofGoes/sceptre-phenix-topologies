@@ -1137,6 +1137,22 @@ spec:
       os_type: linux
       vcpus: 2
     injections:
+    - description: the brewery's wallpaper (1920x1080; the desktop runs 1440x900)
+      dst: /usr/share/backgrounds/cherrymountain.png
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/wallpaper-1080p.png
+    - description: the brewery's mark, the icon of its launchers
+      dst: /usr/share/pixmaps/cherrymountain.png
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/icon-256.png
+    - description: set the wallpaper at login (the image's own start-up script sets a stock one)
+      dst: /usr/local/bin/cm-brand-wallpaper
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper
+    - description: start it at login
+      dst: /etc/xdg/autostart/cm-brand-wallpaper.desktop
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper.desktop
     - description: range-only vendor persona (the local account the Guacamole session logs in as)
       dst: /etc/cherrymountain/ridgeline.env
       permissions: '0600'
@@ -1216,6 +1232,23 @@ spec:
       memory: 3072
       os_type: linux
       vcpus: 2
+    injections:
+    - description: the brewery's wallpaper (1920x1080; the desktop runs 1440x900)
+      dst: /usr/share/backgrounds/cherrymountain.png
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/wallpaper-1080p.png
+    - description: the brewery's mark, the icon of its launchers
+      dst: /usr/share/pixmaps/cherrymountain.png
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/icon-256.png
+    - description: set the wallpaper at login (the image's own start-up script sets a stock one)
+      dst: /usr/local/bin/cm-brand-wallpaper
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper
+    - description: start it at login
+      dst: /etc/xdg/autostart/cm-brand-wallpaper.desktop
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper.desktop
     labels:
       zone: hmi
     network:
@@ -1244,6 +1277,23 @@ spec:
       memory: 3072
       os_type: linux
       vcpus: 2
+    injections:
+    - description: the brewery's wallpaper (1920x1080; the desktop runs 1440x900)
+      dst: /usr/share/backgrounds/cherrymountain.png
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/wallpaper-1080p.png
+    - description: the brewery's mark, the icon of its launchers
+      dst: /usr/share/pixmaps/cherrymountain.png
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/icon-256.png
+    - description: set the wallpaper at login (the image's own start-up script sets a stock one)
+      dst: /usr/local/bin/cm-brand-wallpaper
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper
+    - description: start it at login
+      dst: /etc/xdg/autostart/cm-brand-wallpaper.desktop
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper.desktop
     labels:
       zone: hmi
     network:
@@ -1268,6 +1318,23 @@ spec:
       memory: 3072
       os_type: linux
       vcpus: 2
+    injections:
+    - description: the brewery's wallpaper (1920x1080; the desktop runs 1440x900)
+      dst: /usr/share/backgrounds/cherrymountain.png
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/wallpaper-1080p.png
+    - description: the brewery's mark, the icon of its launchers
+      dst: /usr/share/pixmaps/cherrymountain.png
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/brand/icon-256.png
+    - description: set the wallpaper at login (the image's own start-up script sets a stock one)
+      dst: /usr/local/bin/cm-brand-wallpaper
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper
+    - description: start it at login
+      dst: /etc/xdg/autostart/cm-brand-wallpaper.desktop
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/desktop/cm-brand-wallpaper.desktop
     labels:
       zone: corp
     network:

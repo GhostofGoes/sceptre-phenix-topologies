@@ -311,10 +311,10 @@ flowchart TB
 ### SCADA and HMI
 
 Two FUXA servers supervise the plant. `scada-fuxa` reads and writes all five
-PLCs in their own protocols, shows the process views and alarms, and runs the
-batch engine: a server script that takes the brewhouse PLC through a brew, phase
-by phase, from the recipe. `bas-fuxa` is the front end of the building
-controllers, over BACnet. The two HMI stations are Chromium kiosks on scada-fuxa
+PLCs in their own protocols, shows the process graphics, a table of points for
+each controller, and the alarms, and runs the batch engine: a server script that
+takes the brewhouse PLC through a brew, phase by phase, from the recipe.
+`bas-fuxa` is the front end of the building controllers, over BACnet. The two HMI stations are Chromium kiosks on scada-fuxa
 views that sign themselves in as the operator. The historian keeps FUXA's values
 in InfluxDB and graphs them in Grafana. Engineers work from `ews`, which has the
 PLC tools.
@@ -550,67 +550,108 @@ the pictures, and the rules for the staged values, are in
 
 ### SCADA (scada-fuxa)
 
-![The Cellar view](docs/examples/fuxa-scada-cellar.png)
+Every picture here shows the plant at 11:00 on its first Wednesday (simulated time)
+with nothing injected, unless the caption says otherwise. To read a screen (gray is
+normal, color is a medium or an alarm, a flag is an alarm), see [How to read a
+screen](USER_GUIDE.md#operate-the-plant-scada-fuxa). A trend holds only the seconds
+since FUXA started, because the capture opens the view moments after it starts FUXA.
+Where a caption says a value reads 0 because the PLC computes it, no PLC ran, and the
+capture [stages what it can](docs/examples/capture/README.md#where-the-values-come-from).
 
-The **Cellar** view with the fermentation profile rows: for each fermenter a "Profile
-on" lamp (lit), its stage (1 fermenting, 3 crash, 3 crash, and 0 empty for FV-104), and
-the "Profile on" and "By hand" buttons. Temperatures, head pressures, and extract come
-from the offline cellar, and the setpoints follow the stage. All the fermenters' alarm
-lamps are off; the bell's one alarm is the packaging filler's low bowl (the packaging
-tank is empty at 11:00).
+![The Overview screen](docs/examples/fuxa-scada-overview.png)
 
-![The Cellar points view](docs/examples/fuxa-scada-cellar-points.png)
+The **Overview**, which scada-fuxa opens on. Product moves from left to right: the
+brewhouse vessels, the four fermenters and two bright tanks, and the bottling line;
+below are the utilities on scales, the power one-line, the cellar's CO₂ sensors, and
+two trends. The values come from the offline simulation. The brewhouse is idle (the
+phase bar's "No phase" is PLC state, which reads 0). The bottling line is Held with an
+empty OEE arc, because BBT-202 is empty (0.0 %): the filler's low-bowl lamp is lit,
+the yellow flag beside it is the alarm the bell counts, and the line state, bottle
+counts, and OEE are staged from the machines by the rules of `plc-packaging`. The
+OEE dial draws an arc and no number.
 
-The **Cellar points** view, one row for each `plc-cellar` tag, with the same values. The
-view continues in a second band below the three columns (the page scrolls), with the
-lockouts, permits, and the profile tags, and the picture is tall enough to show both.
+![The Brewhouse screen](docs/examples/fuxa-scada-brewhouse.png)
 
-![The Utilities view](docs/examples/fuxa-scada-utilities.png)
+The **Brewhouse** screen with the brewhouse idle: the phase bar reads "No phase" and
+"Idle" with the batch counters at 0, because the phase, state, and counters are PLC
+state. Vessel levels and temperatures come from the offline brewhouse (hot liquor 167.9
+°F at 88.0 %, mash tun 167.1 °F, kettle 193.9 °F), and steam is 12.6 psig. The Batch
+view and a brew in progress are under [Scenarios](#scenarios).
 
-The **Utilities** view: glycol, steam, compressed air, CO₂, water treatment, and CIP
-values from the utilities federate; the CIP step, route, and circuit tags are PLC
-state, so they read 0.
+![The Cellar screen](docs/examples/fuxa-scada-cellar.png)
 
-![The Power view](docs/examples/fuxa-scada-power.png)
+The **Cellar** screen. Each fermenter has its side and cone temperatures with setpoint
+boxes, a head-pressure scale with the spunding setpoint, its extract, and the
+fermentation profile: the stage lamps show FV-101 fermenting, FV-102 and FV-103
+crashing, and FV-104 empty, and the "Profile on" and "By hand" buttons. The bright
+tanks show level, temperature, pressure, and CO₂ volumes. Temperatures, pressures, and
+extract come from the offline cellar, and the setpoints follow the stage. No flag is
+up. "CIP permitted" is lit, which the capture stages from the transfer pump being off.
 
-The **Power** view with the plant on utility power, values from the power federate
-(OpenDSS).
+![The Packaging screen](docs/examples/fuxa-scada-packaging.png)
 
-![The Packaging view](docs/examples/fuxa-scada-packaging.png)
+The **Packaging** screen at 08:00, with the line running (served over S7 from the
+packaging federate). The line is Execute, and the OEE arc is filled to about 99 %: the
+filler runs at 30.0 of 30 bottles/min and 28 of 2,894 bottles are rejected. Each machine
+shows its state, speed, counts, and jam lamp, and the backed-up eyes of conveyors 1
+and 3 are lit. The keg line is Execute, with the wash water at 160 °F and its heater on. The
+line's state, counts, stop reason (0), OEE, and the heater and conveyor commands are
+staged from the machines with the program's rules.
 
-The **Packaging** view at 08:00, with the line running: served over S7 from the packaging
-federate, in three columns that fit a 1440 px screen (the rinser, filler, date coder,
-labeler, case packer, keg washer, the conveyors, and the operator panel's line
-command, which is the simulation's value). The bottling line's own rows (PackML state,
-shift counts, OEE) are PLC computations and read 0.
+![The Utilities screen](docs/examples/fuxa-scada-utilities.png)
 
-![The Cellar CO2 view](docs/examples/fuxa-scada-cellar-co2.png)
+The **Utilities** screen: glycol, steam, compressed air, CO₂ supply, water, wastewater
+neutralization, and the CIP skid, from the utilities federate. The CIP skid reads Idle
+at circuit 0, because its step and circuit are PLC state. "Cellar permits CIP" is lit,
+which the capture stages from the cellar's transfer pump being off.
 
-The **Cellar CO2** view, read over BACnet/IP from the building federate's `bas-vent`
-point values, with normal CO₂ (about 900 to 1,000 ppm) and both purge fans off.
+![The Power screen](docs/examples/fuxa-scada-power.png)
+
+The **Power** screen with the plant on utility power, values from the power federate
+(OpenDSS): 25.1 kW import, 70.5 kW from the PV, and the battery idle at 71 % charge.
+What the power PLC computes reads 0: the month's peak demand, and the on-peak, load
+shed, brew day, exercise, and clock-ok lamps are not staged, so the lamps are dark.
+
+![The Cellar CO2 screen](docs/examples/fuxa-scada-cellar-co2.png)
+
+The **Cellar CO2** screen, read over BACnet/IP from the building federate's `bas-vent`
+point values: the four sensors at 899 to 964 ppm, both purge fans off, the alarm tiers
+dark, and the shutoff relay healthy. The screen is read only.
+
+![The Cellar points table](docs/examples/fuxa-scada-cellar-points.png)
+
+The **Cellar points** table, one row for each `plc-cellar` tag, with the same values. The
+table continues in a second band below the three columns (the page scrolls), with the
+lockouts, CIP permits, and profile tags, and the picture is tall enough to show both.
+No entry permit is set, so the lockout lamps are dark and every vessel is CIP
+permitted.
 
 ![The sign-in dialog](docs/examples/fuxa-scada-sign-in.png)
 
-The sign-in dialog FUXA opens for the `operator` account, over the Cellar view, as
+The sign-in dialog FUXA opens for the `operator` account, over the Overview, as
 branded by the project's layout.
 
 ### BAS (bas-fuxa)
 
-![The Building view](docs/examples/fuxa-bas-building.png)
+![The Building screen](docs/examples/fuxa-bas-building.png)
 
-The **Building** view of bas-fuxa: the taproom rooftop unit, the cold room, and
-ventilation, read over BACnet/IP from three stand-in devices that serve the building
-federate's values.
+The **Building** screen of bas-fuxa: the taproom (77.0 °F, unoccupied) and its
+rooftop unit, the cold room (35.0 °F, compressor on), the brewhouse hood, the cellar
+plan with its four CO₂ sensors (899 to 964 ppm) and purge fans, and the alarm tiers.
+The values are read over BACnet/IP from three stand-in devices that serve the building
+federate's values. No alarm is up.
 
 ### HMI stations
 
 ![The brewhouse HMI station](docs/examples/hmi-brewhouse-station.png)
 
 The brewhouse station: the range's `cm-kiosk` script ran Chromium in kiosk mode on a
-1440x900 display, opened the Brewhouse view, and signed in as `operator` by itself
-(the name is beside the account icon). The values are 1.5 simulated hours into a
-`start-batch` run (see [Scenarios](#scenarios)). There is no window manager or
-desktop around it, so this is the browser only, not the VM's screen.
+1440x900 display, opened the Brewhouse screen, and signed in as `operator` by itself
+(the name is beside the account icon). The batch engine was brewing against the tests'
+port of the brewhouse PLC: a request was raised about half a minute earlier, and the
+phase bar is on Heat liquor, which reads Complete. The vessel values are the plant's at
+11:00 (see [Scenarios](#scenarios)). There is no window manager or desktop around it,
+so this is the browser only, not the VM's screen.
 
 ### White-cell 3D view (cm-viz)
 
@@ -643,20 +684,25 @@ attacks in the last three groups are the scripted scenarios of the cm-viz harnes
 would; the SCORCH runs of [USER_GUIDE.md](USER_GUIDE.md#run-an-exercise) inject the
 events only. The same simulated moment feeds cm-viz and the FUXA picture beside it.
 
-**baseline-brew-day.** The `start-batch` event, shown in two ways.
+**baseline-brew-day.** A brew request at the brewhouse panel, which the event raises, and the batch engine taking it. These two pictures come from one live run, not from a cm-viz moment.
 
-![Brewhouse view during a brew](docs/examples/fuxa-scenario-brew-day-brewhouse.png)
+![Brewhouse screen during a brew](docs/examples/fuxa-scenario-brew-day-brewhouse.png)
 
-The **Brewhouse** view 1.5 simulated hours after `start-batch brews=1`, from the
-offline brewhouse federate's own autopilot: the mash tun at 151.9 °F and the rake
-running.
+The **Brewhouse** screen during a brew, from the same run as the Batch picture below.
+The batch engine takes a brew through the brewhouse PLC's handshake, and the phase bar
+is on Heat liquor, which reads Complete, with the batch number at 1 and one request
+accepted. The step in the phase is 0. The vessel values are the plant's at 11:00, not
+a brew's, and do not follow the phase: the mash tun is at 167.1 °F with its setpoint at
+152.0 °F.
 
 ![Batch view with a brew running](docs/examples/fuxa-scenario-brew-day-batch.png)
 
 The **Batch** view while the real batch engine script, running in FUXA, takes a brew
-through the PLC handshake. The brewhouse PLC was the tests' port of its program
-(`fuxa/tests/brewhouse_sim.mjs`) with 4-second phases, and the panel's request counter
-was raised once, as the event does. The times are the machine's wall clock.
+through the PLC handshake: batch FOP-0001 is Running in HLT_HEAT, phase 2 of 11, and
+the PLC's phase state is 5 (Complete). The brewhouse PLC was the tests' port of its
+program (`fuxa/tests/brewhouse_sim.mjs`) with 4-second phases, and the panel's request
+counter was raised once, as the event does. A phase takes the engine about 18 s, and the
+picture was taken about 25 s after the request. The times are the machine's wall clock.
 
 **utility-outage.**
 
@@ -667,8 +713,11 @@ is dead, the genset runs, and the ATS has moved EP-1 to it.
 
 ![Power view during the outage](docs/examples/fuxa-scenario-utility-outage-power.png)
 
-The **Power** view of the same moment: service voltage 0 V, the genset running, the ATS
-on the emergency source, and the one alarm that is on.
+The **Power** screen of the same moment, with the alarm list open over the trends:
+service voltage 0 V, the genset running at 3.1 kW, the ATS on the emergency source
+with its triangle flag, and the one alarm that is on. "Load shed" and the month's peak
+read 0, and the boiler, packaging, and RTU-1 feeders are drawn closed, because the
+power PLC that sheds them is not in the capture.
 
 **cellar-co2-leak.** The `co2-release` event at FV-102 at 40 g/s.
 
@@ -694,13 +743,17 @@ alarm "Normal", relay closed.
 
 ![Cellar CO2 view during the attack](docs/examples/fuxa-scenario-co2-attack-scada.png)
 
-The **Cellar CO2** view of scada-fuxa for the same moment, with no replay (FUXA shows
-the simulated values): four CO₂ sensors at about 36,000 to 38,500 ppm, the tiers lit, the
-fans off, and FUXA's four high-high alarms in its alarm list.
+The **Cellar CO2** screen of scada-fuxa for the same moment, with no replay (FUXA shows
+the simulated values): four CO₂ sensors at 35,948 to 38,542 ppm, each with a square flag
+(1, high-high) and a triangle flag (2, high), the three tiers and the horns lit, and
+the fans off. The bell counts 9 alarms: the four sensors' high and high-high alarms and
+the cellar PLC's carbonation inhibit. FUXA raises a high alarm after 30 s, so the
+picture was taken 40 s after the view opened.
 
 ![Building view during the attack](docs/examples/fuxa-scenario-co2-attack-bas.png)
 
-The **Building** view of bas-fuxa for the same moment, with the same four alarms.
+The **Building** screen of bas-fuxa for the same moment, with the same flags on the
+cellar plan. The bell counts 8 alarms, the four sensors' high and high-high alarms.
 
 **Rogue Modbus master (spunding).** A host on FIELD-CEL writes a 30 psig spunding
 setpoint to FV-102 every minute, above the 15 psig relief limit (the harness's
@@ -713,21 +766,27 @@ lifted, venting 25 g/s into the cellar, and the findings that name the setpoint.
 
 ![Cellar view during the spunding attack](docs/examples/fuxa-scenario-spunding-attack-cellar.png)
 
-The **Cellar** view of the same moment: FV-102's spunding setpoint at 42.10 psia (30
-psig), its head pressure at 27.09 psia, and the high-pressure alarm.
+The **Cellar** screen of the same moment, with the alarm list open over the trends:
+FV-102's spunding setpoint at 42.1 psia (30 psig) and its head pressure at 27.1 psia,
+with the triangle flag beside the pressure scale and the high-pressure alarm in the
+list.
 
 **packaging-shift.** The `jam` event on the labeler and the filler.
 
 ![Packaging view during the jam](docs/examples/fuxa-scenario-packaging-jam.png)
 
-The **Packaging** view at 08:00 after the two jams: the labeler's and the filler's jam
-lamps are lit, both machines are in state 11 (Held) with speed 0 and stop reason 10,
-and the rinser, date coder, and case packer have gone idle (state 5) behind them.
+The **Packaging** screen at 08:00 after the two jams: the labeler's and the filler's jam
+lamps are lit, each with a diamond flag (low priority), and both machines are Held
+(state 11) with speed 0 and stop reason 10. The rinser, date coder, and case packer are
+Suspended (state 5) behind them. The line is Held, with a diamond flag beside its state
+that the capture stages without the alarm's 10-minute delay. Its stop reason is 2, the
+filler, which is the first machine in line order that is jammed or Held. The OEE arc is
+empty because the filler's speed is 0, and the conveyors' run commands are 0.
 
 ![The packaging HMI station during the jam](docs/examples/hmi-packaging-station-jam.png)
 
-The packaging station (`cm-kiosk`, as above) showing the same moment. All three columns
-of the view fit the station's 1440x900 screen.
+The packaging station (`cm-kiosk`, as above) showing the same moment, signed in as
+`operator`. The whole Packaging screen fits the station's 1440x900 display.
 
 **vendor-maintenance and the detections.** The SOC's side of these scenarios is on
 Malcolm and Wazuh, which could not run here. For one rule the repository has a

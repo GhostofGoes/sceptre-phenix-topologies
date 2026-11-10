@@ -18,13 +18,42 @@ a scenario, and writes a JSON file of engineering values by FUXA tag name:
   federate's built-in operator holds (``Federate._autopilot``).
 - **program**: a setpoint the PLC program initializes (``NAME_SP := n;`` in
   ``plc/*/*.st``) takes that number divided by the tag's divisor.
+- **packaging**: what plc-packaging computes from the machines' own values, with the
+  program's rules (``plc/plc-packaging/plc-packaging.st``) taken at one moment: the
+  line state and mode are the filler's; ``XS01.RUN`` is 1 unless the line state is 2
+  (Stopped) or 9 (Aborted); the line's processed count is the filler's and its
+  defective count is the sum of the five bottling machines' (the keg line is not
+  in it); the stop reason is the first of rinser, filler, coder, labeler, packer, and
+  keg that is jammed or Held (1 to 6, else 0); the shift OEE is the filler's speed
+  over the line's speed setpoint (at most 1) times the good share of processed
+  bottles (1 while none are processed), in percent to 0.1; a conveyor runs when the
+  machine it feeds is Executing and its jam eye is clear; the filler's product valve
+  is open while the filler Executes; the keg washer's heater is on under 165 degF and
+  off from 175 degF (between the two it depends on the heater's last state, so that
+  value stays the simulation's). The line's mode command is 1 (production), the
+  program's starting value, and its command register is 0, because a command is
+  cleared on the scan after it is taken. The conveyor and valve values replace the
+  simulation's, which do not follow the machines' states. The speed is one reading
+  (the PLC sees it every scan), and REAL_TO_UINT is taken as rounding, so the OEE can
+  differ from a truncating runtime by 0.1 %.
+- **cellar**: what plc-cellar computes that one moment shows: the transfer is active
+  when the transfer pump runs (``CEL.XFER.YS01.PV``) and the CIP permit is its
+  opposite; no entry permit is set, so every vessel's ``CIP_OK`` is 1; the carbonation
+  inhibit is 1 while the gas relay is open and 0 while it is closed (the PLC holds it
+  for a delay after the relay closes, and the moments captured here are long past
+  that); and plc-utilities's peer copies of these (``UTL.CIP.XS03`` to ``XS10``) take
+  the same values. The entry permits themselves (``HS0n.ENTRY``, ``XS0n.LOCKED``)
+  stay 0.
 - **alarm**: a PLC alarm bit (``source: plc`` in plantgen's tag list) of kind high,
   highhigh, or state is 1 when its alarm's source value is past the limit in
   ``alarms.json``. The PLC's on-delay and deadband are not applied, and the low and
   deviation alarms are not staged (they depend on the PLC's delays and on what
-  its controller is doing), so they read 0.
-- every other tag the PLC computes (states, counters, permits) is not in the
-  file, and the stand-in serves 0 for it.
+  its controller is doing), so they read 0. An alarm with a ``suppress`` bit that
+  this file stages (the packaging jam alarms and ``PKG.LINE.XS01.RUN``) is 0 while that
+  bit is 0, as in the PLC.
+- every other tag the PLC computes (batch state, CIP step, entry permits, the
+  power PLC's schedule bits, a held-off latch) is not in the file, and the
+  stand-in serves 0 for it.
 
     python fuxa_snapshot.py SCENARIO OUT.json [--root DIR]
 
@@ -106,6 +135,72 @@ def program_setpoints() -> dict[str, int]:
     return out
 
 
+PACKAGING_MACHINES: tuple[str, ...] = ("RINSER", "FILLER", "CODER", "LABELER", "PACKER", "KEG")
+STATE_STOPPED, STATE_EXECUTE, STATE_ABORTED, STATE_HELD = 2, 6, 9, 11
+KEG_WASH_ON_F, KEG_WASH_OFF_F = 165.0, 175.0
+
+
+def stage_packaging(eng: dict[str, Any], kind: dict[str, str], tags: dict[str, Any]) -> None:
+    """Stage what plc-packaging computes, from the machines' values (see the header)."""
+
+    def get(name: str) -> float:
+        return float(eng.get(name, 0.0))
+
+    def put(name: str, value: float) -> None:
+        assert name in tags, name
+        eng[name] = value
+        kind[name] = "packaging"
+
+    state = get("PKG.FILLER.PACKML.STATE")
+    put("PKG.LINE.PACKML.STATE", state)
+    put("PKG.LINE.PACKML.MODE", get("PKG.FILLER.PACKML.MODE"))
+    put("PKG.LINE.PACKML.MODE_CMD", 1.0)
+    put("PKG.LINE.PACKML.CMD", 0.0)
+    put("PKG.LINE.XS01.RUN", int(state not in (STATE_STOPPED, STATE_ABORTED)))
+    processed = get("PKG.FILLER.PACKML.PROCESSED")
+    defective = min(sum(get(f"PKG.{m}.PACKML.DEFECTIVE") for m in PACKAGING_MACHINES[:5]), 65535.0)
+    put("PKG.LINE.PACKML.PROCESSED", processed)
+    put("PKG.LINE.PACKML.DEFECTIVE", defective)
+    reason = 0
+    for i, m in enumerate(PACKAGING_MACHINES, start=1):
+        if get(f"PKG.{m}.YA01.PV") or get(f"PKG.{m}.PACKML.STATE") == STATE_HELD:
+            reason = i
+            break
+    put("PKG.LINE.PACKML.STOP_REASON", reason)
+    speed_sp = get("PKG.LINE.PACKML.SPEED_SP")
+    perf = min(get("PKG.FILLER.PACKML.SPEED") / speed_sp, 1.0) if speed_sp > 0 else 0.0
+    quality = (processed - defective) / processed if processed > 0 and processed >= defective else 1.0
+    put("PKG.LINE.KQ01.OEE", round(perf * quality * 1000.0) / 10.0)
+    for n, machine in ((1, "RINSER"), (2, "CODER"), (3, "PACKER"), (4, "PACKER")):
+        executing = get(f"PKG.{machine}.PACKML.STATE") == STATE_EXECUTE
+        put(f"PKG.CONV.HS0{n}.CMD", int(executing and not get(f"PKG.CONV.YA0{n}.PV")))
+    put("PKG.FILLER.XV01.CMD", int(get("PKG.FILLER.PACKML.STATE") == STATE_EXECUTE))
+    wash = get("PKG.KEG.TT01.PV")
+    if wash < KEG_WASH_ON_F or wash >= KEG_WASH_OFF_F:
+        put("PKG.KEG.HS01.CMD", int(wash < KEG_WASH_ON_F))
+
+
+def stage_cellar(eng: dict[str, Any], kind: dict[str, str], tags: dict[str, Any]) -> None:
+    """Stage plc-cellar's transfer, entry, and CO2 interlock bits, and the peer copies of them."""
+
+    def put(name: str, value: float) -> None:
+        assert name in tags, name
+        eng[name] = value
+        kind[name] = "cellar"
+
+    transfer = int(bool(eng.get("CEL.XFER.YS01.PV", 0)))  # the panel's own button is never pressed
+    put("CEL.XFER.XS01.ACTIVE", transfer)
+    put("CEL.XFER.XS02.CIP_PERMIT", 1 - transfer)
+    for n in range(11, 17):  # no entry permit is set, so no vessel is locked and every one may be cleaned
+        put(f"CEL.ENTRY.XS{n}.CIP_OK", 1)
+    put("CEL.SYS.XS01.CO2_INHIBIT", 0 if eng.get("CEL.SYS.XS01.CO2_OK", 0) else 1)
+    # plc-utilities reads these from plc-cellar over the network.
+    put("UTL.CIP.XS03.PV", transfer)
+    put("UTL.CIP.XS04.PV", 1 - transfer)
+    for n in range(5, 11):
+        put(f"UTL.CIP.XS{n:02d}.PV", 1)
+
+
 def main() -> int:
     """Run the scenario and write the values."""
     ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
@@ -177,6 +272,8 @@ def main() -> int:
         if tname and tname not in eng:
             eng[tname] = raw / divisor.get(tname, 1.0)
             kind[tname] = "program"
+    stage_packaging(eng, kind, tags)
+    stage_cellar(eng, kind, tags)
     alarms = json.loads((plant / "alarms.json").read_text())["alarms"]
     for a in alarms:
         bit = a["name"]
@@ -191,6 +288,8 @@ def main() -> int:
                 on = pv >= lim
             case _:
                 continue
+        if on and kind.get(a.get("suppress", "")) == "packaging" and not eng[a["suppress"]]:
+            on = False  # the PLC holds the alarm off while its suppress bit is 0
         eng[bit] = int(on)
         kind[bit] = "alarm"
     args.out.write_text(
@@ -207,7 +306,7 @@ def main() -> int:
             sort_keys=True,
         )
     )
-    counts = {k: sum(1 for v in kind.values() if v == k) for k in ("sim", "profile", "autopilot", "program", "alarm")}
+    counts = {k: sum(1 for v in kind.values() if v == k) for k in ("sim", "profile", "autopilot", "program", "packaging", "cellar", "alarm")}
     print(f"{name}: {len(eng)} of {len(tags)} tags, {counts}, at {src.fed.t:.0f} s", file=sys.stderr)
     return 0
 

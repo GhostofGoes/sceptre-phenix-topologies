@@ -39,61 +39,76 @@ fi
 
 if want fuxa; then
   : "${FUXA_SERVER:?set FUXA_SERVER}" "${FUXA_PKG:?set FUXA_PKG}"
-  for s in midday brew-day co2-attack spunding-attack outage packaging-run packaging-jam; do snapshot "$s"; done
+  for s in midday co2-attack spunding-attack outage packaging-run packaging-jam; do snapshot "$s"; done
+
+  # A graphic's pointers and fills move for about 9 s after the view opens, and its
+  # trends load FUXA's stored history a little later, so every view waits 10 s or more.
 
   # The plant at 11:00 on a working day, nothing injected.
   "${RUN}" up scada "${SNAP}/midday.json" | tail -1
   shots 11881 1440 900 '[
-    {"name":"fuxa-scada-cellar","view":"Cellar"},
-    {"name":"fuxa-scada-utilities","view":"Utilities"},
-    {"name":"fuxa-scada-power","view":"Power"},
-    {"name":"fuxa-scada-cellar-co2","view":"Cellar CO2"},
-    {"name":"fuxa-scada-sign-in","view":"Cellar","login":true,"wait":3000}]'
+    {"name":"fuxa-scada-overview","view":"Overview","wait":14000},
+    {"name":"fuxa-scada-brewhouse","view":"Brewhouse","wait":12000},
+    {"name":"fuxa-scada-cellar","view":"Cellar","wait":12000},
+    {"name":"fuxa-scada-utilities","view":"Utilities","wait":10000},
+    {"name":"fuxa-scada-power","view":"Power","wait":12000},
+    {"name":"fuxa-scada-cellar-co2","view":"Cellar CO2","wait":12000},
+    {"name":"fuxa-scada-sign-in","view":"Overview","login":true,"wait":15000}]'
   shots 11881 1440 1620 '[{"name":"fuxa-scada-cellar-points","view":"Cellar points"}]'
 
   # The packaging line running, at 08:00 (the cellar crew has put beer in BBT-202).
   "${RUN}" up scada "${SNAP}/packaging-run.json" | tail -1
-  shots 11881 1440 900 '[{"name":"fuxa-scada-packaging","view":"Packaging"}]'
-
-  # baseline-brew-day: the start-batch event, 1.5 simulated hours on.
-  "${RUN}" up scada "${SNAP}/brew-day.json" | tail -1
-  shots 11881 1440 900 '[{"name":"fuxa-scenario-brew-day-brewhouse","view":"Brewhouse"}]'
+  shots 11881 1440 900 '[{"name":"fuxa-scada-packaging","view":"Packaging","wait":14000}]'
 
   # baseline-brew-day: the real batch engine brewing against the stand-in brewhouse PLC.
+  # The values are the plant's at 11:00; the phase, step, and batch tags are the
+  # brewhouse PLC port's. A phase takes about 18 s, so both pictures, taken 25 s
+  # after the request, show the brew in its first two phases.
   "${RUN}" up scada "${SNAP}/midday.json" live | tail -1
   sleep 12
   curl -sS "http://127.0.0.1:18181/request?n=1" > /dev/null
-  sleep 40
-  shots 11881 1440 900 '[{"name":"fuxa-scenario-brew-day-batch","view":"Batch","wait":2000}]'
+  sleep 25
+  shots 11881 1440 900 '[
+    {"name":"fuxa-scenario-brew-day-brewhouse","view":"Brewhouse","wait":3000},
+    {"name":"fuxa-scenario-brew-day-batch","view":"Batch","wait":2000}]'
 
   # cellar-co2-leak with the purge fans stopped (the co2-attack of the viz scenarios).
+  # FUXA raises a "high" CO2 alarm only after 30 s above its limit, so these two
+  # pictures wait 40 s: by then the flags and the bell agree. The alarm list is
+  # closed, because it would cover the trend (Cellar CO2) and the cellar's sensors
+  # (Building); the spunding and outage pictures below have it open.
   "${RUN}" up scada "${SNAP}/co2-attack.json" | tail -1
-  shots 11881 1440 1000 '[{"name":"fuxa-scenario-co2-attack-scada","view":"Cellar CO2","alarms":true}]'
+  shots 11881 1440 900 '[{"name":"fuxa-scenario-co2-attack-scada","view":"Cellar CO2","wait":40000}]'
   "${RUN}" up bas "${SNAP}/co2-attack.json" | tail -1
-  shots 11882 1440 1000 '[{"name":"fuxa-scenario-co2-attack-bas","view":"Building","alarms":true,"wait":8000}]'
+  shots 11882 1440 900 '[{"name":"fuxa-scenario-co2-attack-bas","view":"Building","wait":40000}]'
 
   # A rogue Modbus master raises FV-102's spunding setpoint to 30 psig.
   "${RUN}" up scada "${SNAP}/spunding-attack.json" | tail -1
-  shots 11881 1440 1000 '[{"name":"fuxa-scenario-spunding-attack-cellar","view":"Cellar","alarms":true}]'
+  shots 11881 1440 900 '[{"name":"fuxa-scenario-spunding-attack-cellar","view":"Cellar","alarms":true,"wait":12000}]'
 
   # utility-outage: the utility breaker open, the genset carrying the emergency loads.
   "${RUN}" up scada "${SNAP}/outage.json" | tail -1
-  shots 11881 1440 1000 '[{"name":"fuxa-scenario-utility-outage-power","view":"Power","alarms":true}]'
+  shots 11881 1440 900 '[{"name":"fuxa-scenario-utility-outage-power","view":"Power","alarms":true,"wait":12000}]'
 
   # packaging-shift: the labeler and the filler jammed.
   "${RUN}" up scada "${SNAP}/packaging-jam.json" | tail -1
-  shots 11881 1440 900 '[{"name":"fuxa-scenario-packaging-jam","view":"Packaging"}]'
+  shots 11881 1440 900 '[{"name":"fuxa-scenario-packaging-jam","view":"Packaging","wait":14000}]'
 
   # The building automation view, no event.
   "${RUN}" up bas "${SNAP}/midday.json" | tail -1
-  shots 11882 1440 900 '[{"name":"fuxa-bas-building","view":"Building","wait":9000}]'
+  shots 11882 1440 900 '[{"name":"fuxa-bas-building","view":"Building","wait":12000}]'
   "${RUN}" down
 fi
 
 if want hmi; then
   : "${FUXA_SERVER:?set FUXA_SERVER}" "${FUXA_PKG:?set FUXA_PKG}"
-  snapshot brew-day; snapshot packaging-jam
-  "${RUN}" up scada "${SNAP}/brew-day.json" | tail -1
+  snapshot midday; snapshot packaging-jam
+  # The brewhouse station during a brew: the batch handshake is live, as for the
+  # Batch picture above, and the kiosk picture is taken about 35 s after the request.
+  "${RUN}" up scada "${SNAP}/midday.json" live | tail -1
+  sleep 12
+  curl -sS "http://127.0.0.1:18181/request?n=1" > /dev/null
+  sleep 15
   OPERATOR_PW="${OPERATOR_PW}" "${HERE}/hmi_kiosk.sh" Brewhouse "${OUT}/hmi-brewhouse-station.png"
   "${RUN}" up scada "${SNAP}/packaging-jam.json" | tail -1
   OPERATOR_PW="${OPERATOR_PW}" "${HERE}/hmi_kiosk.sh" Packaging "${OUT}/hmi-packaging-station-jam.png"

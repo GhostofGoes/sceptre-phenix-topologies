@@ -1026,6 +1026,12 @@ def render_historian(ctx: Context, hostname: str, md: HistorianHost) -> list[Inj
 
 # ---------------------------------------------------------------- HMI
 
+#: The FUXA account the kiosks sign in as: the one cm-fuxa-provision.sh makes
+#: (``OPERATOR_USER``), in FUXA's Operator group.
+FUXA_OPERATOR_USER: Final[str] = "operator"
+#: What the kiosk reads its sign-in from (templates/scripts/cm-kiosk).
+KIOSK_CREDENTIALS: Final[str] = "/etc/default/cm-kiosk-credentials"
+
 
 def kiosk_url(ctx: Context, md: HmiHost) -> str:
     """The kiosk's start page. FUXA's home page takes the view to open from the
@@ -1040,10 +1046,30 @@ def kiosk_url(ctx: Context, md: HmiHost) -> str:
 
 
 def render_hmi(ctx: Context, hostname: str, md: HmiHost) -> list[Injection]:
+    """The kiosk's URL (world readable), and its sign-in as the FUXA operator
+    account: a file of its own, 0600, which only the kiosk's user reads (the desktops
+    log in as root), and which only the HMI hosts get. It follows the Malcolm
+    credentials file, ``render_malcolm``."""
     out: Path = ctx.host_dir(hostname) / "kiosk"
     env: Path = write(out / "cm-kiosk.env", env_file({"KIOSK_URL": kiosk_url(ctx, md)}))
+    sign_in: Path = write(
+        out / "cm-kiosk-credentials.env",
+        env_file(
+            {
+                "KIOSK_USER": FUXA_OPERATOR_USER,
+                "KIOSK_PASSWORD": ctx.creds.fuxa_operator_password.get_secret_value(),
+            }
+        ),
+        private=True,
+    )
     return [
         Injection(src=env, dst="/etc/default/cm-kiosk", description="HMI kiosk URL"),
+        Injection(
+            src=sign_in,
+            dst=KIOSK_CREDENTIALS,
+            description="HMI kiosk sign-in as the FUXA operator (per-experiment)",
+            permissions="0600",
+        ),
         *_packaged(
             ctx,
             hostname,

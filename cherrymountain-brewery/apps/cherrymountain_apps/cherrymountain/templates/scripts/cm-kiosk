@@ -1,18 +1,741 @@
-#!/bin/bash
-# HMI kiosk (cherrymountain app, DESIGN.md 12.2): wait for the FUXA view, then
-# open it full screen. Started by /etc/xdg/autostart/cm-kiosk.desktop.
-# Env (from /etc/default/cm-kiosk): KIOSK_URL, KIOSK_BROWSER.
-set -euo pipefail
+#!/usr/bin/env python3
+"""HMI kiosk (cherrymountain app, DESIGN.md 12.2): the FUXA view, full screen,
+signed in as the FUXA ``operator`` account.
 
-# shellcheck source=/dev/null
-. /etc/default/cm-kiosk
-: "${KIOSK_URL:?set KIOSK_URL}"
-BROWSER="${KIOSK_BROWSER:-chromium}"
+Started by /etc/xdg/autostart/cm-kiosk.desktop at login, as root (the desktops
+autologin as root). It
 
-for _ in $(seq 1 120); do
-  if curl -sS -m 5 -o /dev/null "${KIOSK_URL}"; then break; fi
-  sleep 5
-done
+1. waits until FUXA has the view (KIOSK_WAIT seconds at most, then goes on),
+2. starts Chromium on the view with ``--remote-debugging-pipe``: the debugging
+   protocol runs over two inherited file descriptors, so there is no port and no
+   socket, and only this process and the browser hold the pipe,
+3. signs in to FUXA itself (``POST /api/signin``, so the password never enters the
+   browser) and hands the browser the session, and
+4. looks at the page every KIOSK_POLL seconds: it renews the session before it
+   expires, restores it when the page lost it, and restarts a browser that exits
+   or stops answering.
 
-exec "${BROWSER}" --kiosk --no-first-run --noerrdialogs --disable-infobars \
-  --disable-session-crashed-bubble --incognito "${KIOSK_URL}"
+How the browser gets the session. FUXA's client keeps it in ``sessionStorage``
+(``currentUser``, client/src/app/_services/auth.service.ts), which is per tab and
+read once, when the page starts. So the script registers a snippet with
+``Page.addScriptToEvaluateOnNewDocument`` that writes the operator's profile there
+before any page script runs, and reloads the page. The snippet runs again when
+FUXA reloads the page itself (after a restart of the server, or when it signs
+out). FUXA's own renewal (``/api/heartbeat``) only runs after a click, and at
+expiry it signs the page out, so a screen nobody touches is renewed here.
+
+The view always opens, signed in or not. A sign-in that fails (FUXA down, the
+account not made yet, a wrong password) leaves the guest view, which cannot write,
+and is tried again after 10 s, 20 s, ... 120 s (KIOSK_RETRY_MIN, KIOSK_RETRY_MAX).
+If the debugging pipe does not work at all, the next browser starts without it.
+
+Files: /etc/default/cm-kiosk (KIOSK_URL, KIOSK_BROWSER, tuning; 0644) and
+/etc/default/cm-kiosk-credentials (KIOSK_USER, KIOSK_PASSWORD; 0600). Nothing
+secret is logged, put on a command line, or written to the status file
+/run/cm-kiosk/status that the SoH check reads. Standard library only: the image's
+python3-pydantic is the 1.x of noble.
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import fcntl
+import http.client
+import json
+import os
+import select
+import shutil
+import signal
+import sys
+import time
+import urllib.error
+import urllib.request
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Final
+from urllib.parse import parse_qs, urlsplit
+
+ENV_FILE: Final[Path] = Path("/etc/default/cm-kiosk")
+CREDENTIALS_FILE: Final[Path] = Path("/etc/default/cm-kiosk-credentials")
+STATE_DIR: Final[Path] = Path("/run/cm-kiosk")
+
+#: What the kiosk has always passed to Chromium. The flags of the image
+#: (/etc/chromium.d/cm-range) come from its launcher script.
+BROWSER_FLAGS: Final[tuple[str, ...]] = (
+    "--kiosk",
+    "--no-first-run",
+    "--noerrdialogs",
+    "--disable-infobars",
+    "--disable-session-crashed-bubble",
+    "--incognito",
+)
+#: A session is renewed once this share of its token's life has passed.
+RENEW_SHARE: Final[float] = 2 / 3
+#: A browser that stays up this many seconds is not crash-looping.
+STABLE_SECONDS: Final[float] = 60.0
+#: A browser that has not answered for this many polls is restarted.
+UNRESPONSIVE_POLLS: Final[int] = 12
+
+#: No proxy: FUXA is on the range network, and an http_proxy variable must not
+#: carry the operator's password anywhere else.
+OPENER: Final[urllib.request.OpenerDirector] = urllib.request.build_opener(
+    urllib.request.ProxyHandler({})
+)
+
+#: What the script asks of the page: where it is, and what it holds in sessionStorage.
+PROBE: Final[str] = (
+    "(() => { let user = null;"
+    " try { user = sessionStorage.getItem('currentUser'); } catch (e) {}"
+    " return { href: location.href, user }; })()"
+)
+
+
+def log(message: str) -> None:
+    print(f"cm-kiosk: {message}", file=sys.stderr, flush=True)
+
+
+class Stop(BaseException):
+    """SIGTERM or SIGINT: stop the browser and leave."""
+
+
+class CdpError(Exception):
+    """The browser did not answer, or answered with an error."""
+
+
+class SignInError(Exception):
+    """FUXA refused the sign-in, or did not answer. Never holds a credential."""
+
+
+# ---------------------------------------------------------------- settings
+
+
+def read_env(path: Path) -> dict[str, str]:
+    """KEY=VALUE lines of an /etc/default file (the app writes them, quoting a
+    value only when it has a space). A missing file is an empty one."""
+    values: dict[str, str] = {}
+    try:
+        text: str = path.read_text(encoding="utf-8")
+    except OSError:
+        return values
+    for line in text.splitlines():
+        key, sep, value = line.strip().partition("=")
+        if not sep or key.startswith("#"):
+            continue
+        if len(value) >= 2 and value[0] == value[-1] == '"':
+            value = value[1:-1]
+        values[key.strip()] = value
+    return values
+
+
+def number(values: Mapping[str, str], key: str, default: float) -> float:
+    try:
+        value: float = float(values[key]) if key in values else default
+    except ValueError:
+        value = default
+    return value if value > 0 else default
+
+
+@dataclass(frozen=True)
+class Settings:
+    url: str
+    browser: str = "chromium"
+    user: str = ""
+    password: str = field(default="", repr=False)
+    wait: float = 600.0
+    poll: float = 5.0
+    retry_min: float = 10.0
+    retry_max: float = 120.0
+
+    @property
+    def origin(self) -> str:
+        parts = urlsplit(self.url)
+        return f"{parts.scheme}://{parts.netloc}"
+
+    @property
+    def signs_in(self) -> bool:
+        return bool(self.user and self.password)
+
+    @classmethod
+    def load(
+        cls, env_file: Path, credentials: Path, environ: Mapping[str, str]
+    ) -> Settings:
+        """The two files, then KIOSK_* from the environment (for tests and tuning)."""
+        values: dict[str, str] = {**read_env(env_file), **read_env(credentials)}
+        values.update({k: v for k, v in environ.items() if k.startswith("KIOSK_")})
+        url: str = values.get("KIOSK_URL", "")
+        if urlsplit(url).scheme not in ("http", "https") or not urlsplit(url).netloc:
+            raise ValueError(f"KIOSK_URL is not an http(s) URL (set it in {env_file})")
+        retry_min: float = number(values, "KIOSK_RETRY_MIN", cls.retry_min)
+        return cls(
+            url=url,
+            browser=values.get("KIOSK_BROWSER") or cls.browser,
+            user=values.get("KIOSK_USER", ""),
+            password=values.get("KIOSK_PASSWORD", ""),
+            wait=number(values, "KIOSK_WAIT", cls.wait),
+            poll=number(values, "KIOSK_POLL", cls.poll),
+            retry_min=retry_min,
+            retry_max=max(retry_min, number(values, "KIOSK_RETRY_MAX", cls.retry_max)),
+        )
+
+
+class Backoff:
+    """lo, 2 lo, 4 lo, ... up to hi, until reset."""
+
+    def __init__(self, lo: float, hi: float) -> None:
+        self.lo: float = lo
+        self.hi: float = hi
+        self.count: int = 0
+
+    def next(self) -> float:
+        self.count += 1
+        return min(self.hi, self.lo * 2.0 ** (self.count - 1))
+
+    def reset(self) -> None:
+        self.count = 0
+
+
+# ---------------------------------------------------------------- FUXA
+
+
+def view_ready(cfg: Settings) -> bool:
+    """True when FUXA's project has the view the kiosk opens. cm-fuxa-provision
+    imports the project after FUXA has started, and a page that loaded the project
+    before keeps the old one: FUXA's client does not notice an import (seen with a
+    real FUXA)."""
+    try:
+        with OPENER.open(f"{cfg.origin}/api/project", timeout=10) as reply:
+            hmi: Any = json.load(reply).get("hmi")
+    except (OSError, http.client.HTTPException, ValueError, AttributeError):
+        return False
+    views: Any = hmi.get("views") if isinstance(hmi, dict) else None
+    if not isinstance(views, list | dict):
+        return True  # a project this script does not know: do not hold the screen
+    wanted: str = parse_qs(urlsplit(cfg.url).query).get("viewName", [""])[0]
+    names: list[Any] = [
+        v.get("name")
+        for v in (views.values() if isinstance(views, dict) else views)
+        if isinstance(v, dict)
+    ]
+    return wanted in names if wanted else bool(names)
+
+
+def token_times(token: object) -> tuple[float, float] | None:
+    """``(iat, exp)`` of a JWT, or None when it is not one that carries both."""
+    if not isinstance(token, str):
+        return None
+    try:
+        payload: str = token.split(".")[1]
+        claims: Any = json.loads(
+            base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4))
+        )
+        return float(claims["iat"]), float(claims["exp"])
+    except (IndexError, KeyError, TypeError, ValueError):
+        return None
+
+
+def sign_in(origin: str, user: str, password: str) -> dict[str, Any]:
+    """``POST /api/signin``: the profile FUXA answers (``username``, ``groups``,
+    ``token``, ...), which is what its client stores in sessionStorage. FUXA
+    (server/api/auth/index.js) answers 401 to a wrong password or an unknown user,
+    and 404 while it has no project."""
+    body: bytes = json.dumps({"username": user, "password": password}).encode()
+    request = urllib.request.Request(
+        f"{origin}/api/signin",
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with OPENER.open(request, timeout=10) as reply:
+            doc: Any = json.load(reply)
+    except urllib.error.HTTPError as ex:
+        raise SignInError(f"HTTP {ex.code}") from None
+    except (OSError, http.client.HTTPException, ValueError) as ex:
+        # URLError wraps the socket error that says what happened.
+        raise SignInError(type(getattr(ex, "reason", ex)).__name__) from None
+    data: Any = doc.get("data") if isinstance(doc, dict) else None
+    if (
+        not isinstance(data, dict)
+        or data.get("username") != user
+        or token_times(data.get("token")) is None
+    ):
+        raise SignInError("no usable token in the reply")
+    return data
+
+
+def judge(stored: object, user: str, now: float) -> str:
+    """The session in the page's ``currentUser``: ``ok``, ``renew`` (valid, but
+    most of its life has passed), or ``none`` (no session of ``user``, or one that
+    has expired)."""
+    try:
+        profile: Any = json.loads(stored) if isinstance(stored, str) else None
+    except ValueError:
+        return "none"
+    if not isinstance(profile, dict) or profile.get("username") != user:
+        return "none"
+    times: tuple[float, float] | None = token_times(profile.get("token"))
+    if times is None or now >= times[1]:
+        return "none"
+    iat, exp = times
+    return "renew" if now >= iat + RENEW_SHARE * (exp - iat) else "ok"
+
+
+def session_script(origin: str, profile: Mapping[str, Any]) -> str:
+    """The snippet that puts ``profile`` into sessionStorage of every new
+    document of ``origin``, top frame only. FUXA's client reads it there when it
+    starts (auth.service.ts constructor) and opens its socket with the token."""
+    return (
+        "(() => {"
+        f" if (window.top !== window || location.origin !== {json.dumps(origin)}) return;"
+        f" try {{ sessionStorage.setItem('currentUser', {json.dumps(json.dumps(profile))}); }}"
+        " catch (e) {}"
+        "})();"
+    )
+
+
+# ---------------------------------------------------------------- the browser
+
+
+class Cdp:
+    """The Chrome DevTools Protocol over the debugging pipe: JSON messages, each
+    ended by a NUL byte, written to the browser's file descriptor 3 and read from
+    its file descriptor 4."""
+
+    def __init__(self, read_fd: int, write_fd: int) -> None:
+        self.read_fd: int = read_fd
+        self.write_fd: int = write_fd
+        self.buffer: bytes = b""
+        self.last_id: int = 0
+        #: Seconds to wait for the answer to a command.
+        self.timeout: float = 10.0
+
+    def close(self) -> None:
+        for fd in (self.read_fd, self.write_fd):
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+    def _message(self, deadline: float) -> dict[str, Any]:
+        while b"\0" not in self.buffer:
+            wait: float = deadline - time.monotonic()
+            if wait <= 0:
+                raise CdpError("no answer in time")
+            if select.select([self.read_fd], [], [], wait)[0]:
+                chunk: bytes = os.read(self.read_fd, 65536)
+                if not chunk:
+                    raise CdpError("the browser closed the pipe")
+                self.buffer += chunk
+        raw, _, self.buffer = self.buffer.partition(b"\0")
+        try:
+            message: Any = json.loads(raw)
+        except ValueError:
+            return {}
+        return message if isinstance(message, dict) else {}
+
+    def call(
+        self,
+        method: str,
+        params: Mapping[str, Any] | None = None,
+        session: str | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """One command, and its result. The events that come before the answer are
+        read and dropped, so the pipe never fills."""
+        self.last_id += 1
+        command: dict[str, Any] = {
+            "id": self.last_id,
+            "method": method,
+            "params": dict(params or {}),
+        }
+        if session is not None:
+            command["sessionId"] = session
+        try:
+            os.write(self.write_fd, json.dumps(command).encode() + b"\0")
+        except OSError as ex:
+            raise CdpError(f"{method}: {ex.strerror}") from None
+        deadline: float = time.monotonic() + (timeout or self.timeout)
+        while True:
+            reply: dict[str, Any] = self._message(deadline)
+            if reply.get("id") == self.last_id:
+                break
+        if "error" in reply:
+            raise CdpError(f"{method}: {reply['error'].get('message', 'error')}")
+        result: Any = reply.get("result")
+        return result if isinstance(result, dict) else {}
+
+
+class Browser:
+    """Chromium, started in its own process group."""
+
+    def __init__(self, pid: int, cdp: Cdp | None) -> None:
+        self.pid: int = pid
+        self.cdp: Cdp | None = cdp
+        self.status: int | None = None
+
+    @classmethod
+    def launch(cls, argv: Sequence[str], pipe: bool) -> Browser:
+        """With ``pipe``, the browser's file descriptors 3 and 4 are the two ends
+        of new pipes (``--remote-debugging-pipe`` reads commands from 3 and writes
+        answers to 4). Python makes its own descriptors non-inheritable, so these
+        are the only ones the browser gets."""
+        if not pipe:
+            return cls(
+                os.posix_spawnp(
+                    argv[0],
+                    list(argv),
+                    os.environ,
+                    setpgroup=0,
+                    setsigdef=[signal.SIGPIPE],
+                ),
+                None,
+            )
+        command_read, command_write = os.pipe()
+        answer_read, answer_write = os.pipe()
+        # Out of the way of 3 and 4, so the two dup2 below cannot overwrite each other.
+        child_read: int = fcntl.fcntl(command_read, fcntl.F_DUPFD_CLOEXEC, 10)
+        child_write: int = fcntl.fcntl(answer_write, fcntl.F_DUPFD_CLOEXEC, 10)
+        try:
+            pid: int = os.posix_spawnp(
+                argv[0],
+                list(argv),
+                os.environ,
+                file_actions=[
+                    (os.POSIX_SPAWN_DUP2, child_read, 3),
+                    (os.POSIX_SPAWN_DUP2, child_write, 4),
+                ],
+                setpgroup=0,
+                setsigdef=[signal.SIGPIPE],
+            )
+        except OSError:
+            os.close(answer_read)
+            os.close(command_write)
+            raise
+        finally:
+            for fd in (command_read, answer_write, child_read, child_write):
+                os.close(fd)
+        return cls(pid, Cdp(answer_read, command_write))
+
+    def alive(self) -> bool:
+        if self.status is None:
+            try:
+                pid, status = os.waitpid(self.pid, os.WNOHANG)
+            except ChildProcessError:
+                pid, status = self.pid, 0
+            if pid:
+                self.status = status
+        return self.status is None
+
+    def stop(self, grace: float = 10.0) -> None:
+        """SIGTERM to the whole group, SIGKILL after ``grace`` seconds."""
+        for sig, wait in ((signal.SIGTERM, grace), (signal.SIGKILL, 5.0)):
+            if not self.alive():
+                break
+            try:
+                os.killpg(self.pid, sig)
+            except ProcessLookupError:
+                break
+            deadline: float = time.monotonic() + wait
+            while self.alive() and time.monotonic() < deadline:
+                time.sleep(0.1)
+        if self.cdp is not None:
+            self.cdp.close()
+
+
+class Page:
+    """The browser's tab, over the debugging pipe."""
+
+    def __init__(self, cdp: Cdp) -> None:
+        self.cdp: Cdp = cdp
+        self.session: str | None = None
+        #: The snippet this session registered, and the identifier it got.
+        self.script: str | None = None
+        self.script_id: str | None = None
+
+    def attach(self) -> str:
+        targets: list[Any] = self.cdp.call("Target.getTargets").get("targetInfos") or []
+        pages: list[Any] = [t for t in targets if t.get("type") == "page"]
+        if not pages:
+            raise CdpError("no page yet")
+        result: dict[str, Any] = self.cdp.call(
+            "Target.attachToTarget",
+            {"targetId": pages[0].get("targetId"), "flatten": True},
+        )
+        session: Any = result.get("sessionId")
+        if not isinstance(session, str):
+            raise CdpError("Target.attachToTarget: no session")
+        self.session = session
+        # What a session registered goes with it.
+        self.script = self.script_id = None
+        # Without Page.enable, Chromium 156 accepts a new-document script and never
+        # runs it (seen with the image's build; it ran at once after Page.enable).
+        self.call("Page.enable")
+        return session
+
+    def call(
+        self, method: str, params: Mapping[str, Any] | None = None
+    ) -> dict[str, Any]:
+        session: str = self.session or self.attach()
+        try:
+            return self.cdp.call(method, params, session=session)
+        except CdpError:
+            # Whatever went wrong, start again from a new session; the old one
+            # must not keep a snippet that a newer one replaces.
+            self.session = None
+            try:
+                self.cdp.call(
+                    "Target.detachFromTarget", {"sessionId": session}, timeout=2.0
+                )
+            except CdpError:
+                pass
+            raise
+
+    def observe(self) -> dict[str, Any]:
+        value: Any = (
+            self.call("Runtime.evaluate", {"expression": PROBE, "returnByValue": True})
+            .get("result", {})
+            .get("value")
+        )
+        if not isinstance(value, dict):
+            raise CdpError("Runtime.evaluate: no value")
+        return value
+
+    def install(self, script: str) -> None:
+        """Register ``script`` for new documents, in place of the one before."""
+        old: str | None = self.script_id
+        added: Any = self.call(
+            "Page.addScriptToEvaluateOnNewDocument", {"source": script}
+        ).get("identifier")
+        if not isinstance(added, str):
+            raise CdpError("Page.addScriptToEvaluateOnNewDocument: no identifier")
+        self.script_id, self.script = added, script
+        if old is not None:
+            self.call("Page.removeScriptToEvaluateOnNewDocument", {"identifier": old})
+
+    def reload(self) -> None:
+        self.call("Page.reload")
+
+    def navigate(self, url: str) -> None:
+        self.call("Page.navigate", {"url": url})
+
+
+# ---------------------------------------------------------------- the session
+
+
+def same_origin(href: object, url: str) -> bool:
+    if not isinstance(href, str):
+        return False
+    a, b = urlsplit(href), urlsplit(url)
+    return (a.scheme, a.netloc) == (b.scheme, b.netloc)
+
+
+def write_status(state_dir: Path, state: str, detail: str = "") -> None:
+    """``state`` is ``operator``, ``guest``, ``starting``, or ``down``. The SoH
+    check reads it. A status that cannot be written must not stop the kiosk."""
+    text: str = f"state={state}\ndetail={' '.join(detail.splitlines())}\nupdated={int(time.time())}\n"
+    try:
+        scratch: Path = state_dir / "status.tmp"
+        scratch.write_text(text, encoding="utf-8")
+        scratch.chmod(0o644)
+        scratch.replace(state_dir / "status")
+    except OSError:
+        pass
+
+
+class Session:
+    """Keeps the page signed in. One :meth:`tick` per poll."""
+
+    def __init__(self, cfg: Settings, page: Page, state_dir: Path) -> None:
+        self.cfg: Settings = cfg
+        self.page: Page = page
+        self.state_dir: Path = state_dir
+        #: How long to wait after a sign-in that failed, and after a session that
+        #: the page has not shown yet; each starts again when the page shows one.
+        self.failures: Backoff = Backoff(cfg.retry_min, cfg.retry_max)
+        self.unconfirmed: Backoff = Backoff(cfg.retry_min, cfg.retry_max)
+        #: Not before this (time.monotonic) is the next action.
+        self.next_try: float = 0.0
+        self.script: str | None = None
+        self.detail: str = ""
+        self.reported: tuple[str, str] = ("", "")
+
+    def report(self, state: str) -> None:
+        write_status(self.state_dir, state, self.detail)
+        if (state, self.detail) != self.reported:
+            self.reported = (state, self.detail)
+            log(f"{state}: {self.detail}" if self.detail else state)
+
+    def login(self) -> dict[str, Any] | None:
+        try:
+            profile: dict[str, Any] = sign_in(
+                self.cfg.origin, self.cfg.user, self.cfg.password
+            )
+        except SignInError as ex:
+            self.detail = f"sign-in as {self.cfg.user} failed: {ex}"
+            return None
+        self.detail = ""
+        self.failures.reset()
+        return profile
+
+    def tick(self) -> None:
+        seen: dict[str, Any] = self.page.observe()
+        if self.script is not None and self.page.script != self.script:
+            self.page.install(self.script)
+        wanted: bool = self.cfg.signs_in
+        verdict: str = (
+            judge(seen.get("user"), self.cfg.user, time.time()) if wanted else "none"
+        )
+        on_origin: bool = same_origin(seen.get("href"), self.cfg.url)
+        if verdict == "ok":
+            self.failures.reset()
+            self.unconfirmed.reset()
+        self.report("operator" if verdict in ("ok", "renew") else "guest")
+        needs_login: bool = wanted and verdict != "ok"
+        if (on_origin and not needs_login) or time.monotonic() < self.next_try:
+            return
+        profile: dict[str, Any] | None = self.login() if needs_login else None
+        wait: float = (
+            self.unconfirmed.next() if profile is not None else self.failures.next()
+        )
+        self.next_try = time.monotonic() + wait
+        if profile is not None:
+            self.script = session_script(self.cfg.origin, profile)
+            self.page.install(self.script)
+        if not on_origin:
+            self.page.navigate(self.cfg.url)
+        elif profile is not None:
+            self.page.reload()
+
+
+def drive(cfg: Settings, browser: Browser, state_dir: Path) -> bool:
+    """Keep the session of one browser run, until the browser exits or stops
+    answering. True when the debugging pipe worked at least once."""
+    assert browser.cdp is not None
+    browser.cdp.timeout = max(1.0, 2 * cfg.poll)
+    session = Session(cfg, Page(browser.cdp), state_dir)
+    attached: bool = False
+    broken_since: float | None = None
+    pause: float = min(1.0, cfg.poll)
+    while browser.alive():
+        time.sleep(pause)
+        pause = cfg.poll
+        try:
+            session.tick()
+        except CdpError as ex:
+            now: float = time.monotonic()
+            if broken_since is None:
+                log(f"the browser does not answer: {ex}")
+                broken_since = now
+            if now - broken_since >= UNRESPONSIVE_POLLS * cfg.poll:
+                log("the browser still does not answer; restarting it")
+                break
+        else:
+            attached, broken_since = True, None
+    return attached
+
+
+def run_browser(cfg: Settings, state_dir: Path, pipe: bool) -> bool:
+    """One browser, from start to exit. True when the debugging pipe worked.
+    The profile is new each time: the browser is incognito, and a profile left by
+    a crashed one holds a lock and a restore prompt."""
+    profile: Path = state_dir / "profile"
+    shutil.rmtree(profile, ignore_errors=True)
+    argv: list[str] = [cfg.browser, *BROWSER_FLAGS, f"--user-data-dir={profile}"]
+    if pipe:
+        argv.append("--remote-debugging-pipe")
+    argv.append(cfg.url)
+    try:
+        browser: Browser = Browser.launch(argv, pipe)
+    except OSError as ex:
+        log(f"cannot start {cfg.browser}: {ex.strerror}")
+        return False
+    attached: bool = False
+    try:
+        if pipe:
+            attached = drive(cfg, browser, state_dir)
+        else:
+            write_status(
+                state_dir, "guest", "the browser runs without a debugging pipe"
+            )
+            while browser.alive():
+                time.sleep(cfg.poll)
+    finally:
+        browser.stop()
+    return attached
+
+
+def wait_for_view(cfg: Settings) -> None:
+    deadline: float = time.monotonic() + cfg.wait
+    while not view_ready(cfg):
+        if time.monotonic() >= deadline:
+            log(f"{cfg.url} is not there after {cfg.wait:.0f} s; opening it anyway")
+            return
+        time.sleep(cfg.poll)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="HMI kiosk: the FUXA view, signed in as the operator."
+    )
+    parser.add_argument("--env", type=Path, default=ENV_FILE, help="settings file")
+    parser.add_argument(
+        "--credentials", type=Path, default=CREDENTIALS_FILE, help="sign-in file"
+    )
+    parser.add_argument(
+        "--state-dir",
+        type=Path,
+        default=STATE_DIR,
+        help="status file and browser profile",
+    )
+    args = parser.parse_args(argv)
+    try:
+        cfg: Settings = Settings.load(args.env, args.credentials, os.environ)
+    except ValueError as ex:
+        log(str(ex))
+        return 1
+    if not cfg.signs_in:
+        log(f"no sign-in in {args.credentials}: the kiosk stays a guest")
+
+    def stop(_signum: int, _frame: object) -> None:
+        raise Stop
+
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
+    try:
+        args.state_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
+    except OSError as ex:
+        log(f"cannot make {args.state_dir}: {ex.strerror}")
+    write_status(args.state_dir, "starting")
+    backoff = Backoff(cfg.retry_min, cfg.retry_max)
+    pipe: bool = True
+    try:
+        wait_for_view(cfg)
+        while True:
+            started: float = time.monotonic()
+            try:
+                attached: bool = run_browser(cfg, args.state_dir, pipe)
+            except Exception as ex:  # a bug must not leave the screen without a browser
+                log(f"{type(ex).__name__}: {ex}")
+                attached = False
+            # A browser whose debugging pipe never worked is replaced by one that
+            # runs without it (the view, as a guest); the one after that tries again.
+            pipe = attached or not pipe
+            if time.monotonic() - started >= STABLE_SECONDS:
+                backoff.reset()
+            delay: float = backoff.next()
+            write_status(
+                args.state_dir,
+                "down",
+                f"the browser exited; starting it again in {delay:.0f} s",
+            )
+            log(f"the browser exited; starting it again in {delay:.0f} s")
+            time.sleep(delay)
+    except Stop:
+        write_status(args.state_dir, "down", "stopped")
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

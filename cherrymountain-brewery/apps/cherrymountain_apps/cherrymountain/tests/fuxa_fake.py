@@ -13,6 +13,9 @@ It follows the server at the cm-fuxa pin (frangoteam/FUXA ``b2972583``):
 * A project import does not touch the users (``users.fuxap.db`` is opened once,
   at start-up).
 * ``GET /api/project`` answers any caller, the guest included.
+* With ``lifetime`` set, a token is a JWT (unsigned here) with ``iat`` and ``exp``
+  claims, as ``jsonwebtoken`` makes them in server/api/auth/index.js
+  ``buildAccessToken``; otherwise it is an opaque string.
 
 It is a model of what the script relies on, not FUXA: whether the real server
 behaves so is what the first boot has to show.
@@ -20,8 +23,10 @@ behaves so is what the first boot has to show.
 
 from __future__ import annotations
 
+import base64
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Final
 
@@ -45,7 +50,12 @@ class User:
 class FakeFuxa:
     """The server state and a counter for every write."""
 
-    def __init__(self) -> None:
+    def __init__(self, lifetime: int | None = None) -> None:
+        #: Seconds a token lives (a JWT with iat and exp), or None for opaque tokens.
+        self.lifetime: int | None = lifetime
+        #: The time of every sign-in request, and of those it accepted (time, user).
+        self.attempts: list[float] = []
+        self.signins: list[tuple[float, str]] = []
         #: The seeded administrator of a fresh users database.
         self.users: dict[str, User] = {
             "admin": User(SEED_PASSWORD, -1, "Administrator Account")
@@ -68,7 +78,26 @@ class FakeFuxa:
         host, port = self.server.server_address[:2]
         return f"http://{host!s}:{port}"
 
-    def start(self) -> None:
+    def token(self, name: str, groups: int) -> str:
+        if self.lifetime is None:
+            return f"token-{len(self.tokens)}-{name}"
+
+        def part(doc: dict[str, Any]) -> str:
+            raw: bytes = json.dumps(doc).encode()
+            return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+        now: int = int(time.time())
+        claims: dict[str, Any] = {
+            "id": name,
+            "groups": groups,
+            "iat": now,
+            "exp": now + self.lifetime,
+        }
+        return (
+            f"{part({'alg': 'HS256', 'typ': 'JWT'})}.{part(claims)}.{len(self.tokens)}"
+        )
+
+    def start(self, port: int = 0) -> None:
         fake: FakeFuxa = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -152,6 +181,7 @@ class FakeFuxa:
                     self._send(404)
 
             def _signin(self, body: Any) -> None:
+                fake.attempts.append(time.time())
                 name: Any = (body or {}).get("username")
                 user: User | None = (
                     fake.users.get(name) if isinstance(name, str) else None
@@ -166,8 +196,9 @@ class FakeFuxa:
                         },
                     )
                     return
-                token: str = f"token-{len(fake.tokens)}-{name}"
+                token: str = fake.token(name, user.groups)
                 fake.tokens[token] = name
+                fake.signins.append((time.time(), name))
                 self._send(
                     200,
                     {
@@ -222,7 +253,7 @@ class FakeFuxa:
                     existing.info = info
                 self._send(200)
 
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
         self.thread = threading.Thread(
             target=self.server.serve_forever,
             kwargs={"poll_interval": 0.02},

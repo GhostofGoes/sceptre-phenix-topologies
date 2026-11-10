@@ -15,6 +15,7 @@ import pytest
 from cherrymountain_apps.cherrymountain import render
 from cherrymountain_apps.cherrymountain.metadata import (
     BbmdHost,
+    FuxaHost,
     GuacamoleHost,
     HistorianHost,
     HmiHost,
@@ -140,25 +141,52 @@ def test_full_renderers_with_existing_inputs(ctx: Context) -> None:
     }
 
 
-def test_full_kiosk_soh_check_matches_the_process_that_runs(ctx: Context) -> None:
-    """SoH looks for a process with ``pgrep -f <pattern>``. cm-kiosk replaces
-    itself with the browser once FUXA answers, so no command line holds its
-    name after that: the pattern must match the launcher and the browser."""
+def test_full_kiosk_soh_checks_match_the_browser_and_the_session(ctx: Context) -> None:
+    """SoH looks for a process with ``pgrep -f <pattern>``. cm-kiosk stays up as the
+    browser's supervisor, so the pattern must be the browser's, not the script's."""
     import re
 
     from cherrymountain_apps.cherrymountain import soh
+    from cherrymountain_apps.cherrymountain.tests.test_kiosk import kiosk
 
     hmi = ctx.hosts["hmi-brewhouse"]
     assert isinstance(hmi, HmiHost)
     profile = soh.profile(ctx, "hmi-brewhouse", hmi)
     assert profile is not None
     (pattern,) = profile["processes"]
-    script: str = render.template("scripts", "cm-kiosk").read_text()
-    (launch,) = [line for line in script.splitlines() if line.startswith("exec ")]
-    assert "cm-kiosk" not in launch  # the launcher's name does not survive the exec
-    browser: str = launch.removeprefix("exec ").replace('"${BROWSER}"', "/usr/lib/chromium/chromium")
-    for command_line in ("/bin/bash /usr/local/bin/cm-kiosk", browser):
-        assert re.search(pattern, command_line), command_line
+    # The command line Chromium gets: the image's wrapper adds its flags, then the
+    # kiosk's arguments (the view first, as the wrapper moves the flags after it).
+    browser: str = " ".join(
+        ["/usr/lib/chromium/chromium", "--no-sandbox", "--disable-gpu", "http://x/home"]
+        + list(kiosk.BROWSER_FLAGS)
+        + ["--remote-debugging-pipe"]
+    )
+    assert re.search(pattern, browser)
+    assert not re.search(pattern, "/usr/bin/python3 /usr/local/bin/cm-kiosk")
+    (check,) = profile["customTests"]
+    assert check["name"] == "kiosk-operator-session"
+    assert check["testStdout"] == "kiosk-operator-ok"
+    # The check reads the kiosk's status file, which holds no credential.
+    password: str = ctx.creds.fuxa_operator_password.get_secret_value()
+    assert password not in json.dumps(profile)
+
+
+def test_full_the_operator_password_goes_only_to_fuxa_and_the_kiosks(ctx: Context) -> None:
+    """Every file the app injects that holds the FUXA operator password, by host:
+    the FUXA hosts' provisioning settings, which set the account up, and the
+    kiosks' sign-in file, which uses it. Both are root-only."""
+    password: bytes = ctx.creds.fuxa_operator_password.get_secret_value().encode()
+    holders: dict[str, list[tuple[str, str]]] = {}
+    for host, injects in render.render_all(ctx).items():
+        for inject in injects:
+            if password in Path(inject.src).read_bytes():
+                holders.setdefault(host, []).append((inject.dst, inject.permissions))
+    expected: dict[str, list[tuple[str, str]]] = {
+        **{h: [("/etc/default/cm-fuxa", "0600")] for h in ctx.hosts_of(FuxaHost)},
+        **{h: [(render.KIOSK_CREDENTIALS, "0600")] for h in ctx.hosts_of(HmiHost)},
+    }
+    assert set(expected) == {"scada-fuxa", "bas-fuxa", "hmi-brewhouse", "hmi-packaging"}
+    assert holders == expected
 
 
 def test_full_sim_ctl_gets_the_ground_truth_marker(ctx: Context) -> None:

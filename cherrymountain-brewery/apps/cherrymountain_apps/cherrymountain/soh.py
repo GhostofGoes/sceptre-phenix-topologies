@@ -36,11 +36,11 @@ from cherrymountain_apps.cherrymountain.render import (
 
 #: Modbus function codes a read test may use (coils, discrete, holding, input).
 READ_FCS: Final[frozenset[int]] = frozenset({1, 2, 3, 4})
-#: The ``pgrep -f`` pattern of the HMI kiosk. cm-kiosk waits for FUXA and then
-#: replaces itself with the browser (``exec chromium --kiosk ... <URL>``), so
-#: its own name is on a command line only until the view opens: the pattern
-#: matches the launcher while it waits and the browser's ``--kiosk`` after.
-KIOSK_PROCESS: Final[str] = "kiosk"
+#: The ``pgrep -f`` pattern of the HMI kiosk's browser. cm-kiosk (a Python
+#: supervisor) stays up for the whole session and starts the browser again when
+#: it exits, so its own name would match while the browser is down; the browser
+#: is the process that has ``--kiosk`` after its binary's name.
+KIOSK_PROCESS: Final[str] = "chromium.*--kiosk"
 #: plant.yaml roles of the ot-sim devices that serve Modbus from an I/O module.
 IO_MODULE_ROLES: Final[frozenset[str]] = frozenset({"rio", "field", "bas"})
 
@@ -118,6 +118,23 @@ groups=$(field groups)
 [ "${{groups}}" = 2 ] || {{ echo "operator-wrong-group ${{groups}}"; exit 0; }}
 code=$(printf 'x-access-token: %s\\n' "${{token}}" | curl -sS --max-time 10 -o /dev/null -w '%{{http_code}}' -H @- "${{url}}/api/users")
 if [ "${{code}}" = 401 ]; then echo "operator-ok"; else echo "operator-is-admin ${{code}}"; fi
+"""
+
+
+#: The kiosk's own report (templates/scripts/cm-kiosk writes it at every poll, 5 s):
+#: signed in as the operator, and fresh. It holds no credential, so unlike the
+#: checks above this one needs none.
+KIOSK_SESSION: Final[str] = """\
+status=/run/cm-kiosk/status
+[ -r "${status}" ] || { echo "kiosk-no-status"; exit 0; }
+age=$(( $(date +%s) - $(stat -c %Y "${status}") ))
+[ "${age}" -le 120 ] || { echo "kiosk-status-stale ${age}s"; exit 0; }
+state=$(sed -n 's/^state=//p' "${status}")
+if [ "${state}" = operator ]; then
+  echo "kiosk-operator-ok"
+else
+  echo "kiosk-${state:-unknown} $(sed -n 's/^detail=//p' "${status}")"
+fi
 """
 
 
@@ -245,6 +262,9 @@ def profile(ctx: Context, hostname: str, md: HostBase) -> dict[str, Any] | None:
                 )
     elif isinstance(md, HmiHost):
         processes.append(KIOSK_PROCESS)
+        tests.append(
+            _test("kiosk-operator-session", KIOSK_SESSION, "kiosk-operator-ok")
+        )
     elif isinstance(md, GuacamoleHost):
         listeners.append(":443")
     elif isinstance(md, WazuhManagerHost):

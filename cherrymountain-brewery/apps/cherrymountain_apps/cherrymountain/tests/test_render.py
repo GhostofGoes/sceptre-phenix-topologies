@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import json
 import shutil
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -256,6 +257,39 @@ def test_hmi_kiosk_url(ctx: Context) -> None:
     env = Path(injects["/etc/default/cm-kiosk"].src).read_text()
     assert "KIOSK_URL=http://10.20.10.10:1881/home?viewName=Cellar" in env
     assert "/etc/xdg/autostart/cm-kiosk.desktop" in injects
+
+
+def test_hmi_kiosk_signs_in_with_the_operator_account_from_a_root_only_file(
+    ctx: Context,
+) -> None:
+    host = md(HmiHost, {"type": "hmi", "view": "Cellar"})
+    injects = by_dst(render.render_hmi(ctx, "hmi-brewhouse", host))
+    password = ctx.creds.fuxa_operator_password.get_secret_value()
+    sign_in = injects[render.KIOSK_CREDENTIALS]
+    assert render.KIOSK_CREDENTIALS == "/etc/default/cm-kiosk-credentials"
+    # Like the Malcolm credentials file: 0600 where it is written and in the guest,
+    # where the desktop's only user is root.
+    assert sign_in.permissions == "0600"
+    assert stat.S_IMODE(Path(sign_in.src).stat().st_mode) == 0o600
+    lines = Path(sign_in.src).read_text().splitlines()
+    assert [x for x in lines if not x.startswith("#")] == [
+        "KIOSK_USER=operator",
+        f"KIOSK_PASSWORD={password}",
+    ]
+    # No other file of the kiosk (the URL file is world readable) holds it.
+    for dst, inject in injects.items():
+        if dst != render.KIOSK_CREDENTIALS:
+            assert password not in Path(inject.src).read_text(), dst
+    # The account is the one cm-fuxa-provision makes in FUXA's Operator group, and
+    # the password is the one it sets (the same range value).
+    script = (ROOT / "phenix-injects" / "fuxa" / "cm-fuxa-provision.sh").read_text()
+    assert f"\nOPERATOR_USER={render.FUXA_OPERATOR_USER}\n" in script
+    assert "\nOPERATOR_GROUPS=2\n" in script
+    fuxa_injects = by_dst(
+        render.render_fuxa(ctx, "scada-fuxa", md(FuxaHost, {"type": "fuxa"}))
+    )
+    fuxa_env = Path(fuxa_injects["/etc/default/cm-fuxa"].src).read_text()
+    assert f"FUXA_OPERATOR_PASSWORD={password}" in fuxa_env
 
 
 def test_guacamole_sql_has_the_connections_and_only_a_salted_hash(ctx: Context) -> None:

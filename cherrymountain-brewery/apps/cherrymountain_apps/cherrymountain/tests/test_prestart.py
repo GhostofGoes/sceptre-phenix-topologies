@@ -153,11 +153,13 @@ def test_ci_has_no_web_console_credentials(run_app: RunApp) -> None:
             assert "cm-wazuh" not in inj.dst, n.general.hostname
 
 
-def test_kiosk_guests_keep_what_they_may_do(run_app: RunApp) -> None:
-    """The kiosks open /home with no session, which FUXA treats as the guest.
-    The guest sees the views and FUXA refuses its writes only while the settings
-    leave secureOnlyEditor and userRole unset (server/runtime/index.js
-    isSocketWriteAuthorized); the operator account must not change that."""
+def test_guests_keep_what_they_may_do(run_app: RunApp) -> None:
+    """The kiosks sign in as the operator (cm-kiosk), so every other client that opens
+    /home with no session is a guest. The guest sees the views and FUXA refuses its
+    writes only while the settings leave secureOnlyEditor and userRole unset
+    (server/runtime/index.js isSocketWriteAuthorized): with secureOnlyEditor, any
+    host that reaches port 1881 could write, and the kiosks' sign-in would mean
+    nothing."""
     app = run_app("pre-start")
     settings = json.loads(
         Path(

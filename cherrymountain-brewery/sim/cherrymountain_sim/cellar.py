@@ -23,7 +23,7 @@ from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from cherrymountain_sim.carbonation import BrightTank
+from cherrymountain_sim.carbonation import BrightTank, equilibrium_volumes
 from cherrymountain_sim.fermentation import (
     ALE,
     CO2_PER_ETHANOL,
@@ -46,6 +46,10 @@ PA_PER_PSI: float = 6894.757
 VACUUM_RELIEF_PSI: float = 0.3
 #: Longest kinetic sub-step, hours.
 MAX_KINETIC_STEP_H: float = 0.05
+LITERS_PER_GAL: float = 3.78541
+#: The share of its equilibrium CO2 a racked beer still holds in the bright tank
+#: (a transfer under counter-pressure loses some; an assumption, not a measurement).
+RACK_CO2_KEPT: float = 0.8
 
 
 class FermenterConfig(BaseModel):
@@ -115,6 +119,19 @@ class InitialState(BaseModel):
     co2_vol: float | None = None
 
 
+class Transfer(BaseModel):
+    """Beer moving from one vessel to another through the transfer pump."""
+
+    src: str
+    dst: str
+    gpm: float = 30.0
+    #: Liters that stay in the source (the yeast and trub racking leaves).
+    leave_l: float = 0.0
+    moved_l: float = 0.0
+    #: The source ran dry (down to ``leave_l``) or the destination is full.
+    done: bool = False
+
+
 class Leak(BaseModel):
     """A scenario CO2 release into the cellar room (event API)."""
 
@@ -141,6 +158,10 @@ class Fermenter:
     co2_generated_g: float
     liquid_l: float
     age_h: float
+    #: Cleaned since it was last emptied (it matters while the vessel is empty).
+    clean: bool
+    #: Wort went in before the vessel was cleaned (this batch is at risk).
+    dirty_fill: bool
 
     def __init__(
         self,
@@ -185,6 +206,8 @@ class Fermenter:
         self.co2_generated_g = 0.0
         self.liquid_l = 0.0
         self.age_h = 0.0  # kinetic hours since pitch (the autopilot stages on it)
+        self.clean = True
+        self.dirty_fill = False
 
     # -- setup -------------------------------------------------------------------------
 
@@ -226,6 +249,25 @@ class Fermenter:
         if self.state is None:
             self.state = pitch(self.cfg.wort.fermentable, self.cfg.pitch_g_l)
             self.age_h = 0.0
+            self.dirty_fill = not self.clean
+
+    def draw(self, liters: float) -> float:
+        """Racking: beer leaves through the racking arm; returns the liters taken."""
+        taken = min(max(liters, 0.0), self.liquid_l)
+        self._set_liquid(self.liquid_l - taken)
+        return taken
+
+    def dump(self) -> float:
+        """Empty the vessel after racking: the yeast and trub left in the cone go
+        to the drain, and the vessel is open and dirty. Returns the liters dumped."""
+        left = self.liquid_l
+        self._set_liquid(0.0)
+        self.state = None
+        self.age_h = 0.0
+        self.clean = False
+        self.dirty_fill = False
+        self.gas_mol = self.mol_at(self.env.ambient_psia)
+        return left
 
     def advance_kinetics(self, sim_hours: float, temp_f: float) -> None:
         """Run the kinetics alone (isothermal), e.g. to set an initial state."""
@@ -372,6 +414,12 @@ class Cellar:
     bbts: dict[str, BrightTank]
     leaks: list[Leak]
     knockout_target: str | None
+    #: The transfer the pump is making (the crew sets and clears it).
+    transfer: Transfer | None
+    #: What the transfer pump moved in the last step, gal/min.
+    transfer_gpm: float
+    #: Wort that arrived with the fermenter full or none to take it, L.
+    knockout_lost_l: float
 
     def __init__(
         self,
@@ -391,6 +439,10 @@ class Cellar:
         self.bbts = {}
         self.leaks = []
         self.knockout_target = None
+        self.transfer = None
+        self.transfer_gpm = 0.0
+        self.knockout_lost_l = 0.0
+        self._knockout_flowing = False
         for unit in units:
             init = (initial or {}).get(unit) or InitialState()
             fv = Fermenter(unit, self.env, cfg, temp_f=init.temp_f)
@@ -433,6 +485,7 @@ class Cellar:
     def step(self, wall_dt_s: float) -> None:
         """Advance every vessel and the sim clock."""
         self._knockout(wall_dt_s)
+        self._transfer(wall_dt_s)
         for fv in self.fermenters.values():
             fv.step(wall_dt_s, self.tb)
         serving = next(
@@ -453,20 +506,69 @@ class Cellar:
         self.sim_hours += self.tb.kinetic_hours(wall_dt_s)
 
     def _knockout(self, wall_dt_s: float) -> None:
-        """Route knockout wort to the first empty (or filling) fermenter."""
+        """Route knockout wort to the first empty (or filling) fermenter.
+
+        The fermenter is chosen when a knockout starts and keeps the whole of
+        it: wort that arrives once it is full goes to the drain. A brew day's
+        second brew can overfill its fermenter by a barrel or two, and that
+        must not start a batch of its own in the next empty vessel.
+        """
         gpm = self.env.knockout_gpm
+        starting = gpm > 0 and not self._knockout_flowing
+        self._knockout_flowing = gpm > 0
         if gpm <= 0:
             return
         target = self.knockout_target
-        if target is None or (
-            self.fermenters[target].liquid_l >= self.fermenters[target].cfg.volume_l
+        if starting and (
+            target is None
+            or self.fermenters[target].liquid_l >= self.fermenters[target].cfg.volume_l
         ):
             target = next(
                 (u for u, fv in self.fermenters.items() if not fv.filled), None
             )
             self.knockout_target = target
-        if target is not None:
-            self.fermenters[target].receive(gpm * 3.78541 / 60.0 * wall_dt_s, 64.0)
+        liters = gpm * LITERS_PER_GAL / 60.0 * wall_dt_s
+        if target is None:
+            self.knockout_lost_l += liters
+            return
+        fv = self.fermenters[target]
+        room = max(fv.cfg.volume_l - fv.liquid_l, 0.0)
+        fv.receive(min(liters, room), 64.0)
+        self.knockout_lost_l += max(liters - room, 0.0)
+
+    def _transfer(self, wall_dt_s: float) -> None:
+        """Move beer along the transfer in progress, at the pump's rate, until
+        the source is down to what it keeps or the destination is full."""
+        t = self.transfer
+        self.transfer_gpm = 0.0
+        if t is None or t.done or wall_dt_s <= 0:
+            return
+        dst = self.bbts[t.dst]
+        want = t.gpm * LITERS_PER_GAL / 60.0 * wall_dt_s
+        room = max(dst.capacity_l - dst.liquid_l, 0.0)
+        fv = self.fermenters.get(t.src)
+        if fv is not None:
+            move = min(want, max(fv.liquid_l - t.leave_l, 0.0), room)
+            temp_f = fv.zone_temp_f("cone")
+            co2 = RACK_CO2_KEPT * equilibrium_volumes(temp_f, fv.pressure_psia)
+            moved = dst.receive(fv.draw(move), temp_f, co2) if move > 0 else 0.0
+        else:
+            src = self.bbts[t.src]
+            move = min(want, max(src.liquid_l - t.leave_l, 0.0), room)
+            temp_f, co2 = src.temp_f, src.co2_vol
+            moved = dst.receive(src.draw(move), temp_f, co2) if move > 0 else 0.0
+        t.moved_l += moved
+        t.done = move < want - 1e-9
+        self.transfer_gpm = moved / LITERS_PER_GAL / wall_dt_s * 60.0
+
+    @property
+    def beer_supply_psia(self) -> float:
+        """Pressure in the beer line to the filler: the head of the bright tank
+        on line (outlet open, beer in it), or 0 with no tank on line."""
+        return next(
+            (b.pressure_psia for b in self.bbts.values() if b.outlet_open and b.liquid_l > 0),
+            0.0,
+        )
 
     @property
     def co2_vent_gps(self) -> float:

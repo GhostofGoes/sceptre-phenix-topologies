@@ -569,8 +569,10 @@ class PackagingFederate(Federate):
 
     @property
     def supply_psia(self) -> float:
-        """BBT-202 head pressure at the filler's product valve."""
-        return max(self.input("cellar/bbt202.pressure_psia", 25.0) - 1.0, 0.0)
+        """Pressure at the filler's product valve: the beer line from the bright
+        tank on line, which is at 0 when no tank is (the cellar closed the
+        outlet of an empty tank, or the tank ran dry)."""
+        return max(self.input("cellar/beer.supply_psia", 25.0) - 1.0, 0.0)
 
     @property
     def bowl_psia(self) -> float:

@@ -71,6 +71,7 @@ federates:
       - { key: co2.vent_gps, type: double, units: g/s, desc: CO2 vented into the cellar room (to building) }
       - { key: glycol.load_kw, type: double, units: kW, desc: Jacket heat load on the glycol loop (to utilities) }
       - { key: co2.draw_slpm, type: double, units: L/min, desc: CO2 drawn for BBT carbonation and purges (to utilities), variants: [full, lite] }
+      - { key: beer.supply_psia, type: double, units: psia, desc: "Pressure in the beer line to the filler: the head of the bright tank on line, 0 with none (to packaging)", variants: [full, lite] }
     # Inputs from other federates. A subscription is generated only when the
     # source federate is part of the variant; otherwise `default` is used.
     inputs:
@@ -172,7 +173,7 @@ federates:
       - { key: fill.mean_floz, type: double, units: fl oz, desc: "Mean bottle fill this lot (NIST HB 133), for the KPI API" }
       - { key: fill.under_mav, type: double, desc: "Bottles rejected below the maximum allowable variation, for the KPI API" }
     inputs:
-      - { key: cellar/bbt202.pressure_psia, type: double, units: psia, default: 25.0 }
+      - { key: cellar/beer.supply_psia, type: double, units: psia, default: 25.0 }
       - { key: utilities/air.psig, type: double, units: psig, default: 100.0 }
       - { key: utilities/co2.supply_psig, type: double, units: psig, default: 60.0 }
   power:

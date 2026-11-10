@@ -147,13 +147,13 @@ def test_a_low_supply_holds_the_filler_and_it_recovers() -> None:
     rig = Rig()
     rig.start_line()
     rig.scan(60)
-    rig.fed.apply_input("cellar/bbt202.pressure_psia", 12.0)
+    rig.fed.apply_input("cellar/beer.supply_psia", 12.0)
     rig.scan(10)
     assert rig.state("filler") == State.HELD
     assert not rig.fed.product_open
     rig.scan(120)
     assert rig.state("filler") == State.HELD
-    rig.fed.apply_input("cellar/bbt202.pressure_psia", 25.0)
+    rig.fed.apply_input("cellar/beer.supply_psia", 25.0)
     rig.scan(20)
     assert rig.state("filler") == State.EXECUTE
     assert rig.fed.product_open

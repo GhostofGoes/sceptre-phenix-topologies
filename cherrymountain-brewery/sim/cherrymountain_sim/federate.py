@@ -28,7 +28,8 @@ from typing import Any, ClassVar, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from cherrymountain_sim.carbonation import equilibrium_volumes, site_gauge_psig
-from cherrymountain_sim.cellar import Cellar, Environment, InitialState, Sensor
+from cherrymountain_sim.cellar import LITERS_PER_BBL, Cellar, Environment, InitialState, Sensor
+from cherrymountain_sim.crew import CellarCrew, CrewSettings
 from cherrymountain_sim.timebase import DEFAULT_COMPRESSION, TimeBase
 
 LOG: logging.Logger = logging.getLogger("cherrymountain_sim")
@@ -145,6 +146,8 @@ class SimSettings(BaseModel):
     #: The built-in cellar operator: ``auto`` runs it while no PLC writes (the
     #: hand-off of :attr:`Federate.plc_driving`), ``on`` always, ``off`` never.
     autopilot: Literal["auto", "on", "off"] = "auto"
+    #: The cellar crew's hand work: racking, beer to the filler, cleaning.
+    crew: CrewSettings = Field(default_factory=CrewSettings)
 
 
 class FederateConfig(BaseModel):
@@ -450,6 +453,7 @@ class CellarFederate(Federate):
 
     name: ClassVar[str] = "cellar"
     cellar: Cellar
+    crew: CellarCrew
     sensor: Sensor
     settings: SimSettings
 
@@ -473,6 +477,7 @@ class CellarFederate(Federate):
             initial=self.settings.initial_state,
             bbts=bbts,
         )
+        self.crew = CellarCrew(self.cellar, self.settings.crew)
         self.sensor = Sensor(self.settings.seed, self.settings.noise)
 
     @staticmethod
@@ -530,9 +535,11 @@ class CellarFederate(Federate):
         return mode == "on" or (mode == "auto" and not self.plc_driving)
 
     def advance(self, wall_dt_s: float) -> None:
-        """Advance the cellar model (the autopilot first, while it drives)."""
+        """Advance the cellar model (the autopilot first, while it drives). The
+        crew's hand work goes on whoever drives (crew.py)."""
         if self.autopilot:
             self._autopilot()
+        self.crew.step(self.t)
         self.cellar.step(wall_dt_s)
 
     def _autopilot(self) -> None:
@@ -579,6 +586,8 @@ class CellarFederate(Federate):
             return self.cellar.glycol_load_kw
         if name == "co2.draw_slpm":
             return self.cellar.co2_draw_slpm
+        if name == "beer.supply_psia":
+            return self.cellar.beer_supply_psia
         unit, _, field = name.partition(".")
         if field in UNIT_OUTPUTS:
             return self._unit_output(unit.upper(), field)
@@ -641,9 +650,11 @@ class CellarFederate(Federate):
     def _shared(self, device: str, point: str) -> Value:
         """Dry-hop doser, transfer panel, and gas relay: commands and feedback.
 
-        The hop port is closed unless a dose is in progress; the transfer
-        route is verified (swing panel in place) and the pump moves 30 gal/min
-        when it runs.
+        The hop port is closed unless a dose is in progress. The transfer
+        route is verified while the crew has the swing panel on a transfer, the
+        pump runs when the crew runs it in Hand or its run command is written,
+        and the flow is what the transfer in progress moves: a pump that runs
+        with no route open moves nothing.
         """
         cmd = self.commands
         match point:
@@ -655,11 +666,11 @@ class CellarFederate(Federate):
             case "port_closed":
                 return not bool(cmd.get(f"{device}.dose_valve", False))
             case "route_ok":
-                return True
+                return self.crew.route_set
             case "pump_running":
-                return bool(cmd.get(f"{device}.pump_run", False))
+                return self.crew.pumping or bool(cmd.get(f"{device}.pump_run", False))
             case "flow_gpm":
-                return 30.0 if cmd.get(f"{device}.pump_run", False) else 0.0
+                return self.cellar.transfer_gpm
         return bool(cmd.get(f"{device}.{point}", False))
 
     def truth(self) -> dict[str, Any]:
@@ -676,6 +687,16 @@ class CellarFederate(Federate):
             }
             for unit, fv in self.cellar.fermenters.items()
         }
+        doc["bright_tanks"] = {
+            unit: {
+                "level_pct": bbt.level_pct,
+                "co2_vol": bbt.co2_vol,
+                "on_line": bbt.outlet_open and bbt.liquid_l > 0,
+            }
+            for unit, bbt in self.cellar.bbts.items()
+        }
+        doc["crew"] = self.crew.truth()
+        doc["knockout_lost_bbl"] = round(self.cellar.knockout_lost_l / LITERS_PER_BBL, 2)
         doc["relief_valves"] = {
             unit: {
                 "lifted": self.cellar.psv(unit).open,

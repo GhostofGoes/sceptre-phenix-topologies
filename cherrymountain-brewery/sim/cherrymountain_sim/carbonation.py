@@ -139,6 +139,8 @@ class BrightTank:
     stone_slpm: float
     regulator_slpm: float
     psv: ReliefValve
+    #: Cleaned since it was last emptied (it matters while the tank is empty).
+    clean: bool
 
     def __init__(
         self,
@@ -185,6 +187,7 @@ class BrightTank:
         self.stone_slpm = 0.0
         self.regulator_slpm = 0.0
         self.psv = ReliefValve(self.cfg.relief)
+        self.clean = True
 
     # -- state -------------------------------------------------------------------------
 
@@ -254,6 +257,44 @@ class BrightTank:
                 raise KeyError(f"bbt has no writable point {point}")
 
     # -- dynamics ----------------------------------------------------------------------
+
+    @property
+    def capacity_l(self) -> float:
+        """Working volume, L."""
+        return self.cfg.capacity_bbl * LITERS_PER_BBL
+
+    def receive(self, liters: float, temp_f: float, co2_vol: float) -> float:
+        """Beer arrives from a fermenter or another bright tank; returns the liters
+        taken (the tank's room limits it). The beer mixes in, and the head keeps
+        its pressure: a transfer is made against the tank's counter-pressure with
+        the vent cracked."""
+        taken = min(max(liters, 0.0), max(self.capacity_l - self.liquid_l, 0.0))
+        if taken <= 0:
+            return 0.0
+        head = self.pressure_psia
+        total = self.liquid_l + taken
+        zone = self.vessel.zones[0]
+        zone.temp_c += taken / total * (f_to_c(temp_f) - zone.temp_c)
+        self.co2_vol += taken / total * (co2_vol - self.co2_vol)
+        self.liquid_l = total
+        zone.liquid_kg = total * BEER_KG_PER_L
+        self.gas_mol = self._mol_at(head)
+        return taken
+
+    def draw(self, liters: float) -> float:
+        """A transfer out to another tank; returns the liters taken. CO2 top
+        pressure pushes the beer, so the head keeps its pressure."""
+        taken = min(max(liters, 0.0), self.liquid_l)
+        if taken <= 0:
+            return 0.0
+        head = self.pressure_psia
+        self.liquid_l -= taken
+        self.vessel.zones[0].liquid_kg = self.liquid_l * BEER_KG_PER_L
+        self.gas_mol = self._mol_at(head)
+        if self.liquid_l <= 0:
+            self.co2_vol = 0.0
+            self.clean = False
+        return taken
 
     def step(
         self,

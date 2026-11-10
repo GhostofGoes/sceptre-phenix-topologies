@@ -432,7 +432,9 @@ Open `http://localhost:11881`. The views are **Cellar**, **Brewhouse**,
 The plant also runs on a clock. It starts on a Wednesday at 04:30 (simulated
 local time), brew days are Monday and Wednesday at 05:00, the packaging shift
 is 06:00 to 14:30 on weekdays, and the power PLC exercises the generator on
-Wednesdays at 10:00. Nobody has to start the packaging line: its operator (a
+Wednesdays at 10:00. The cellar crew racks finished fermenters, keeps the
+serving tank filled, and cleans emptied vessels as the plant needs it. Nobody
+has to start the packaging line: its operator (a
 part of the simulation) presses Reset and Start at the line's panel at 06:00
 and Stop at 14:30, and starts the line again when it has stood stopped for two
 minutes during the shift. Fermentation runs 48 times faster than real time, so a
@@ -695,10 +697,20 @@ the full list.
   compiler. The first things to check on a real range are that FUXA may write
   to the brewhouse PLC over OPC UA, and that Wazuh takes the `admin` password
   from `secrets.json`.
-- **Only the first brew day brews.** One fermenter, FV-101, starts empty, and
-  the cellar does not yet move beer on to the bright tanks. The first day's two
-  brews fill FV-101. After that the Batch view refuses a start with "no
-  fermenter is empty", and a multi-day run goes static in the cellar.
+- **A fermenter empties only after somebody crashes it.** The cellar crew (a
+  part of the simulation) racks a fermenter into BBT-201 once its beer is done
+  and at or below 40 °F, moves bright beer from BBT-201 to BBT-202, and cleans
+  what it emptied. It does not change setpoints, and the cellar PLC has no
+  fermentation profile. So when a fermentation is done (about five and a half
+  hours after the knockout, at 48 times real time), set that fermenter's
+  `CEL.FV10n.TT01.SP` to 34 on the Cellar view. It takes about three hours to
+  get cold, and then the crew racks it. FV-104 starts at 34 °F and is racked
+  on the first morning. Until a fermenter is empty the Batch view refuses a start with "no
+  fermenter is empty".
+- **The bottling line waits for beer.** The filler holds when BBT-202 runs dry
+  and starts again when the crew has refilled it. The line empties a tank in
+  about 3.5 hours and two brew days make two tanks a week, so expect it to
+  stand held for much of the week.
 - **The batch engine's time limits are estimates.** If a healthy phase is held
   for "phase timed out", press Restart, and tell us which phase.
 

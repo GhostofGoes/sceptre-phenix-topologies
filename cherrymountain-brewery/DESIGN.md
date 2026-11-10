@@ -1723,6 +1723,22 @@ values:
   HMI. A line in Hold is left alone, and so is a line somebody started outside
   the shift. A Stop written from the HMI or by an attacker during the shift
   therefore lasts about two minutes; a Hold lasts until an Unhold.
+- The cellar crew (`sim/cherrymountain_sim/crew.py`) does the hand work that
+  moves beer, whoever controls the cellar, because no PLC point does it. It
+  racks a fermenter into BBT-201 once the beer is 264 kinetic hours old and at
+  or below 40 °F, leaves 7 % behind as yeast and trub, dumps that, and cleans
+  the fermenter (45 minutes). It moves BBT-201's beer into BBT-202 once it is
+  bright (2.4 vol, 38 °F or colder) and BBT-202 is down to 10 %, and cleans
+  BBT-201. A transfer takes 10 minutes to set up and runs at 30 gal/min with
+  the transfer pump in Hand at its starter: plc-cellar gives the pump no
+  command and reads its run feedback as a transfer in progress, which withdraws
+  the CIP permit. The tanks keep the roles plc-cellar gives them: BBT-201
+  conditions, BBT-202 serves and is topped up with the same beer. The crew
+  never changes a setpoint, so it racks only what somebody has crashed.
+- The filler's supply is the beer line (`cellar/beer.supply_psia`): the head of
+  the bright tank whose outlet is open and that holds beer, and 0 otherwise. A
+  filler without product holds on its low bowl and unholds when a tank is on
+  line again.
 - Built-in operators (the `autopilot` setting) run the brewhouse, utilities,
   and packaging while no PLC is writing. They hand over on the first write
   and take control back after 300 federate seconds without one (a stopped
@@ -4348,10 +4364,10 @@ reach a plant like this, and the row says why.
 | The ci topology still injects the static sim, OpenPLC, and FUXA files beside the app's rendered ones ([§16](#16-new-and-extended-software)) | The app replaces an injection to the same destination, and `60-cm-federates.sh` leaves the federate to the static `cm-cellar.service`; the app's status check accepts either unit. Open: drop the static injects from `topology-ci.yml` once the app has run on a VM |
 | Every start is a first boot: phenix runs each node as a snapshot and builds its disk again from the image ([§15.9](#159-operations)) | By design of phenix. Consequences to plan for: Malcolm loads its container images on every start (10 to 15 minutes), the retention settings bound one continuous run, and whatever a VM stores is lost at a stop unless the cleanup stage exports it |
 | The simulation ends after `end_time_s`: 7 days in full and lite, 24 hours in ci. ot-sim's I/O modules finalize then and do not rejoin | Decided by the range owner: kept as the length of one exercise. Stop and start the experiment for a longer run, or raise it in `plant.yaml` |
-| The cellar has no material flow over days: fermenters never empty, the bright tanks are not refilled, knockout wort has nowhere to go once the fermenters are full, and packaging goes on counting bottles from an empty tank (a 72 h offline run) | Open: racking and bright-tank rotation in the cellar model, a no-product hold on the filler (packaging must subscribe to the tank level), and realistic packaging rates. Until then a multi-day run goes static after the first day |
+| The cellar had no material flow over days: fermenters never emptied, the bright tanks were not refilled, and packaging went on counting bottles from an empty tank (partly resolved) | Done: the cellar crew racks a finished, cold fermenter into BBT-201, moves bright beer from BBT-201 into BBT-202, and cleans what it emptied; the filler takes its supply from the beer line of the tank on line and holds on no product; a knockout keeps to one fermenter ([§9.6](#96-implementation-status-and-validation)). A whole-plant offline run of 54 h without PLCs racked all four fermenters (112 bbl) and put 139 bbl on line, with the filler holding between tanks. Open: (1) with plc-cellar in control nothing crashes a fermenter, because its temperature setpoints are operator values and the program has no fermentation profile, so only FV-104 (set to 34 °F from the start) becomes ready unless somebody lowers a setpoint from the HMI; (2) the crew cleans by hand, and the CIP skid's circuits are run only from the HMI; (3) the line outruns the brewhouse (a tank lasts about 3.5 h of a shift and two brew days make two tanks a week), so the filler waits for product most of the week |
 | Nothing started the packaging shift once the PLCs were in control: plc-packaging only relays an operator's command (resolved) | The federate's line operator starts and stops the shift at the line's operator panel, through plc-packaging ([§9.6](#96-implementation-status-and-validation)). Run offline against the compiled program; the path through rio-packaging's Modbus server is for the first VM run. Brewing was resolved before: with plc-brewhouse in control, `start-batch` and the 05:00 schedule request brews at the panel and the FUXA batch engine runs them ([§12.2](#122-fuxa-two-instances)) |
 | The batch engine has not met OpenPLC: whether its OPC UA server lets FUXA's session write the command, phase, parameter, accepted-count, and setpoint tags, and whether the phase timeouts (estimates) outlast the real phases | Open until a VM run. Everything on FUXA's side ran in a real FUXA server ([fuxa/README.md](fuxa/README.md#checked-against-fuxa-source)) |
-| Only the first brew day finds a fermenter: FV-101 is the one empty vessel at the start and nothing empties a fermenter | The engine refuses a start with "no fermenter is empty" and keeps the request queued. Resolved by the cellar's material flow (open, above) |
+| Only the first brew day found a fermenter: FV-101 was the one empty vessel at the start and nothing emptied a fermenter (resolved for a run without PLCs) | The crew empties and cleans fermenters, so later brew days find one. With plc-cellar in control a fermenter empties only after somebody crashes it (the row above); until then the engine refuses a start with "no fermenter is empty" and keeps the request queued |
 | The Wazuh admin password from `secrets.json` rests on `wazuh-passwords-tool.sh -a -f <file>` replacing only the admin user's generated password, read from the tool's source (4.14) and not run | The script checks the sign-in afterwards and only warns; `passwords.txt` on the VM always holds what the tool set. Confirm on the first boot |
 | A SoH UDP probe is a single datagram with a 500 ms reply window, and `delay.c2` has no timeout ([§15.4](#154-state-of-health)) | Accepted: a BACnet, NTP, or DNS probe can fail once without a fault, and a VM that never registers its C2 client holds back every VM behind it. Look at that VM's console |
 | `vendor-ws` brings its WireGuard tunnel up at boot (`boot: true`), so the tunnel rules 100201, 100204, and 100205 fire at every experiment start | Decided by the range owner: the tunnel stays up from boot. Expect those three rules at every experiment start; set `boot: false` on vendor-ws to change it |

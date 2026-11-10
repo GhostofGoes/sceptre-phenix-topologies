@@ -97,6 +97,14 @@ the addresses and every allowed flow.
   - [Vendor remote access](#vendor-remote-access)
   - [Orchestration and the plant model](#orchestration-and-the-plant-model)
   - [White cell](#white-cell)
+- [Examples](#examples)
+  - [SCADA (scada-fuxa)](#scada-scada-fuxa)
+  - [BAS (bas-fuxa)](#bas-bas-fuxa)
+  - [HMI stations](#hmi-stations)
+  - [White-cell 3D view (cm-viz)](#white-cell-3d-view-cm-viz)
+  - [Brand](#brand)
+  - [Scenarios](#scenarios)
+  - [Not captured yet](#not-captured-yet)
 - [What exists](#what-exists)
 - [The ci variant](#the-ci-variant)
 - [Regenerate and test](#regenerate-and-test)
@@ -529,6 +537,257 @@ flowchart LR
   API -- "state snapshot" --> VIZ
 ```
 
+## Examples
+
+These are captures of real software showing the range's real files, taken offline
+in a container, because nothing has booted on a phenix host yet. FUXA is the
+pinned 1.3.6 server running the generated projects, the HMI pictures come from the
+range's own `cm-kiosk` script, and cm-viz is this repository's page. What is staged
+is data, and each caption says where its values came from. The parts that could not
+run here are listed in [Not captured yet](#not-captured-yet). The scripts that take
+the pictures are in [docs/examples/capture](docs/examples/capture/README.md).
+
+**Where the values come from.**
+
+- **cm-viz** runs the real federates in one process (`cherrymountain_sim.local`, no
+  HELICS) and plays one of the scenarios of `viz/cherrymountain_viz/scenarios.py`.
+  The weather is the simulation's synthetic Denver year, because the TMY3 file is not
+  on the machine that took the pictures.
+- **FUXA** is a real server with the unchanged `fuxa/full/*-project.json` (only the
+  devices' addresses were changed to loopback) and the range's own
+  `cm-fuxa-provision.sh`. Behind it a stand-in plant serves values over OPC UA,
+  Modbus TCP, S7, and BACnet/IP in place of the PLCs and building controllers. Every
+  tag the I/O map ties to a federate value shows that value from the offline
+  simulation. The fermentation profile is something the PLC computes, so it is staged
+  from the offline cellar's state: the profile is on for all four fermenters; a
+  fermenter's stage is 0 when its extract is under 0.5 °P, 1 at 5 °P or more, 3 under
+  5 °P with the side temperature under 60 °F, and 2 otherwise; and its setpoints are
+  66 °F for stage 0 or 1, 70 °F for stage 2, and 34 °F for stage 3, which is what the PLC
+  writes with the profile on. The bright tanks' setpoints are the targets of the
+  offline cellar's built-in operator, and the other setpoints are the numbers the PLC
+  programs start with. A high, high-high, or state alarm bit is 1 when the simulated
+  value is past its limit in `alarms.json` (the PLC's on-delay is not applied). Low
+  and deviation alarms, and everything else a PLC program would compute (PackML line
+  state and totals, shift OEE, entry permits), read 0. The offline cellar has a crew
+  that racks finished fermenters into BBT-201, moves bright beer to BBT-202, and cleans
+  vessels, and the filler holds when it has no product, so fills, tank levels, and the
+  line's states depend on the time of day.
+- Unless a caption says otherwise the plant is at 11:00 on its first Wednesday
+  (simulated time) with nothing injected; the packaging pictures are from 08:00, when
+  the line has beer to fill. The FUXA and HMI pictures are saved with a
+  256-color palette to keep the files small.
+
+### SCADA (scada-fuxa)
+
+![The Cellar view](docs/examples/fuxa-scada-cellar.png)
+
+The **Cellar** view with the fermentation profile rows: for each fermenter a "Profile
+on" lamp (lit), its stage (1 fermenting, 3 crash, 3 crash, and 0 empty for FV-104), and
+the "Profile on" and "By hand" buttons. Temperatures, head pressures, and extract come
+from the offline cellar, and the setpoints follow the stage. All the fermenters' alarm
+lamps are off; the bell's one alarm is the packaging filler's low bowl (the packaging
+tank is empty at 11:00).
+
+![The Cellar points view](docs/examples/fuxa-scada-cellar-points.png)
+
+The **Cellar points** view, one row for each `plc-cellar` tag, with the same values. The
+view continues in a second band below the three columns (the page scrolls), with the
+lockouts, permits, and the profile tags, and the picture is tall enough to show both.
+
+![The Utilities view](docs/examples/fuxa-scada-utilities.png)
+
+The **Utilities** view: glycol, steam, compressed air, CO₂, water treatment, and CIP
+values from the utilities federate; the CIP step, route, and circuit tags are PLC
+state, so they read 0.
+
+![The Power view](docs/examples/fuxa-scada-power.png)
+
+The **Power** view with the plant on utility power, values from the power federate
+(OpenDSS).
+
+![The Packaging view](docs/examples/fuxa-scada-packaging.png)
+
+The **Packaging** view at 08:00, with the line running: served over S7 from the packaging
+federate, in three columns that fit a 1440 px screen (the rinser, filler, date coder,
+labeler, case packer, keg washer, the conveyors, and the operator panel's line
+command, which is the simulation's value). The bottling line's own rows (PackML state,
+shift counts, OEE) are PLC computations and read 0.
+
+![The Cellar CO2 view](docs/examples/fuxa-scada-cellar-co2.png)
+
+The **Cellar CO2** view, read over BACnet/IP from the building federate's `bas-vent`
+point values, with normal CO₂ (about 900 to 1,000 ppm) and both purge fans off.
+
+![The sign-in dialog](docs/examples/fuxa-scada-sign-in.png)
+
+The sign-in dialog FUXA opens for the `operator` account, over the Cellar view, as
+branded by the project's layout.
+
+### BAS (bas-fuxa)
+
+![The Building view](docs/examples/fuxa-bas-building.png)
+
+The **Building** view of bas-fuxa: the taproom rooftop unit, the cold room, and
+ventilation, read over BACnet/IP from three stand-in devices that serve the building
+federate's values.
+
+### HMI stations
+
+![The brewhouse HMI station](docs/examples/hmi-brewhouse-station.png)
+
+The brewhouse station: the range's `cm-kiosk` script ran Chromium in kiosk mode on a
+1440x900 display, opened the Brewhouse view, and signed in as `operator` by itself
+(the name is beside the account icon). The values are 1.5 simulated hours into a
+`start-batch` run (see [Scenarios](#scenarios)). There is no window manager or
+desktop around it, so this is the browser only, not the VM's screen.
+
+### White-cell 3D view (cm-viz)
+
+Two of the three scenes in normal running; the Fermenters scene is under
+[Scenarios](#scenarios). The page is cm-viz's own, drawn by headless Chromium with
+software WebGL (the footer names the renderer).
+
+![Cellar CO2 scene, normal](docs/examples/viz-cellar-normal.png)
+
+The **Cellar CO₂** scene 15 minutes after the start: sensors near 1,200 ppm, both
+fans off, nothing wrong.
+
+![Plant power scene, normal](docs/examples/viz-power-normal.png)
+
+The **Plant power** scene at 11:00: utility import, PV output, and the main bus.
+
+### Brand
+
+![The desktop wallpaper](docs/examples/brand-wallpaper-1080p.png)
+
+The desktop wallpaper, `brand/wallpaper-1080p.png`. This is the asset, not a picture
+of a desktop; the frame colors and the mark show in every FUXA and cm-viz picture
+above.
+
+### Scenarios
+
+What the range's example scenarios look like on the screens that run here. The
+attacks in the last three groups are the scripted scenarios of the cm-viz harness
+(`viz/cherrymountain_viz/scenarios.py`), which write the values a compromised host
+would; the SCORCH runs of [USER_GUIDE.md](USER_GUIDE.md#run-an-exercise) inject the
+events only. The same simulated moment feeds cm-viz and the FUXA picture beside it.
+
+**baseline-brew-day.** The `start-batch` event, shown in two ways.
+
+![Brewhouse view during a brew](docs/examples/fuxa-scenario-brew-day-brewhouse.png)
+
+The **Brewhouse** view 1.5 simulated hours after `start-batch brews=1`, from the
+offline brewhouse federate's own autopilot: the mash tun at 151.9 °F and the rake
+running.
+
+![Batch view with a brew running](docs/examples/fuxa-scenario-brew-day-batch.png)
+
+The **Batch** view while the real batch engine script, running in FUXA, takes a brew
+through the PLC handshake. The brewhouse PLC was the tests' port of its program
+(`fuxa/tests/brewhouse_sim.mjs`) with 4-second phases, and the panel's request counter
+was raised once, as the event does. The times are the machine's wall clock.
+
+**utility-outage.**
+
+![Power scene during the outage](docs/examples/viz-power-outage.png)
+
+The **Plant power** scene after `utility-breaker open` at 10:58: the main switchboard
+is dead, the genset runs, and the ATS has moved EP-1 to it.
+
+![Power view during the outage](docs/examples/fuxa-scenario-utility-outage-power.png)
+
+The **Power** view of the same moment: service voltage 0 V, the genset running, the ATS
+on the emergency source, and the one alarm that is on.
+
+**cellar-co2-leak.** The `co2-release` event at FV-102 at 40 g/s.
+
+![Cellar scene during the leak](docs/examples/viz-cellar-co2-leak.png)
+
+The **Cellar CO₂** scene 25 minutes in: sensors at about 11,000 ppm (tier 1), the
+plume at FV-102, and both purge fans running.
+
+**CO₂ leak with the purge fans stopped.** The same release, then a BACnet write from a
+compromised bas-fuxa that stops both fans (the harness's `co2-attack`).
+
+![Cellar scene during the attack](docs/examples/viz-cellar-co2-attack.png)
+
+The **Cellar CO₂** scene, ground truth: about 37,500 ppm (tier 3), the fans off, the
+gas-detection relay open, and the findings that name the fans' command. The "HMI
+shows 1,638 ppm" label is the scenario's stand-in for a replay on the supervisory
+path, which freezes the HMI's values.
+
+![Cellar scene, operator view](docs/examples/viz-cellar-co2-attack-operator-view.png)
+
+The same moment in the **operator view**, with what the frozen HMI shows: 1,638 ppm,
+alarm "Normal", relay closed.
+
+![Cellar CO2 view during the attack](docs/examples/fuxa-scenario-co2-attack-scada.png)
+
+The **Cellar CO2** view of scada-fuxa for the same moment, with no replay (FUXA shows
+the simulated values): four CO₂ sensors at about 36,000 to 38,500 ppm, the tiers lit, the
+fans off, and FUXA's four high-high alarms in its alarm list.
+
+![Building view during the attack](docs/examples/fuxa-scenario-co2-attack-bas.png)
+
+The **Building** view of bas-fuxa for the same moment, with the same four alarms.
+
+**Rogue Modbus master (spunding).** A host on FIELD-CEL writes a 30 psig spunding
+setpoint to FV-102 every minute, above the 15 psig relief limit (the harness's
+`spunding-attack`).
+
+![Fermenters scene during the spunding attack](docs/examples/viz-fermenters-psv-lift.png)
+
+The **Fermenters** scene 57 minutes in: FV-102 at 14.3 psig with its relief valve
+lifted, venting 25 g/s into the cellar, and the findings that name the setpoint.
+
+![Cellar view during the spunding attack](docs/examples/fuxa-scenario-spunding-attack-cellar.png)
+
+The **Cellar** view of the same moment: FV-102's spunding setpoint at 42.10 psia (30
+psig), its head pressure at 27.09 psia, and the high-pressure alarm.
+
+**packaging-shift.** The `jam` event on the labeler and the filler.
+
+![Packaging view during the jam](docs/examples/fuxa-scenario-packaging-jam.png)
+
+The **Packaging** view at 08:00 after the two jams: the labeler's and the filler's jam
+lamps are lit, both machines are in state 11 (Held) with speed 0 and stop reason 10,
+and the rinser, date coder, and case packer have gone idle (state 5) behind them.
+
+![The packaging HMI station during the jam](docs/examples/hmi-packaging-station-jam.png)
+
+The packaging station (`cm-kiosk`, as above) showing the same moment. All three columns
+of the view fit the station's 1440x900 screen.
+
+**vendor-maintenance and the detections.** The SOC's side of these scenarios is on
+Malcolm and Wazuh, which could not run here. For one rule the repository has a
+fixture: `phenix-injects/wazuh/samples.txt` holds a log line for each rule, written as
+the id of the rule that must fire and the line (`tests/soc/test_wazuh.py` checks it
+offline; `cm-wazuh-selftest` runs it through `wazuh-logtest` on the manager). These are
+the lines for the PLC actions the EWS's `cm_plc_tool.py` logs (the vendor-maintenance
+run re-uploads a program with it). They are the fixture's input, not Wazuh's output:
+
+```text
+100411|Nov  9 12:00:13 ews cm-plc-tool: event=plc_upload plc=plc-cellar host=10.20.10.12 user=ridgeline-akim
+100412|Nov  9 12:00:14 ews cm-plc-tool: event=plc_start plc=plc-cellar host=10.20.10.12 user=ridgeline-akim
+100413|Nov  9 12:00:15 ews cm-plc-tool: event=plc_failed plc=plc-cellar host=10.20.10.12 user=ridgeline-akim
+```
+
+### Not captured yet
+
+Each of these needs a booted range. Capture them after the first boot, in the state of
+the scenario beside them.
+
+| Part | Status | What to capture |
+|---|---|---|
+| Malcolm | not captured yet: needs a booted range | Dashboards (Zeek Modbus, BACnet, OPC UA; Suricata alerts) and Arkime sessions, during `baseline-brew-day`, `cellar-co2-leak`, and `vendor-maintenance` |
+| Wazuh | not captured yet: needs a booted range | Threat Hunting with the `cm_vendor`, `cm_wireguard`, and `cm_firewall` groups; the alerts of rules 100100 to 100413 during `vendor-maintenance` |
+| Grafana (historian) and the "CherryMountain ground truth" dashboard | not captured yet: needs a booted range | The historian's process and production panels, and the ground-truth panels with the injected events listed |
+| Guacamole (sign-in, one-time code, an RDP session to the EWS) | not captured yet: needs a booted range | The sign-in page with the branding extension, and the vendor's session on `ews-rdp-ridgeline-akim` (the Guacamole web app was not run here either) |
+| VM desktops: ews (xrdp sign-in, tools), vendor-ws, soc-analyst, corp-ws, and the two HMI VMs under XFCE | not captured yet: needs a booted range | Each console as phenix shows it, with the wallpaper and the panel |
+| phenix's own pages (experiment view, VM screenshots, Files tab) | not captured yet: needs a booted range | The experiment running, and the SCORCH run's files |
+| scada-fuxa and bas-fuxa with the real PLCs (OpenPLC) and ot-sim behind them | not captured yet: needs a booted range | The views above with live values, and a real brew from the Batch view |
+| cm-viz in the range (sim-ctl as its source, beside FUXA) | not captured yet: needs a booted range | The three scenes through the autotunnel, during a SCORCH run |
+
 ## What exists
 
 | Path | Contents |
@@ -552,6 +811,7 @@ flowchart LR
 | `tests/bacnet/` | The ot-sim BACnet module against a real BACpypes3 client and real ZeroMQ sockets on loopback |
 | `brand/` | The brewery's mark, colors (`tokens.json`), and wallpaper, with the rules for using them ([README](brand/README.md)); `sync.py` copies them to every screen, and `tests/brand/` checks the scripts that apply them |
 | `viz/` | `cherrymountain_viz`: cm-viz, the white cell's 3D view of ground truth (three.js, vendored), with tests ([README](viz/README.md)) |
+| `docs/examples/` | The screenshots of the [Examples](#examples) section and the scripts that take them ([README](docs/examples/capture/README.md)) |
 | `fuxa/` | `build_project.py` and the FUXA projects it builds: scada-fuxa for ci, and scada-fuxa and bas-fuxa for full and lite (`fuxa/<variant>/`); `batch_engine.js`, the ISA-88 batch engine that the full and lite scada-fuxa projects carry, with its tests in `fuxa/tests/` ([README](fuxa/README.md)) |
 | `tools/lint/` | Hook scripts for prek: systemd-analyze on units and shellcheck on shell in image YAML |
 | `spikes/` | Phase 0 spike kits, each with its go/no-go result ([summary](spikes/README.md)) |

@@ -8,9 +8,10 @@ has a frame to color. One source, here; the screens take copies of these files.
 | `icon.svg` | The mark: a phoenix rising behind the summit. Use at 48 px and above |
 | `icon-small.svg` | The mark for 16 to 32 px (browser tabs, taskbars): the same bird and summit without the fine parts |
 | `icon-<n>.png`, `favicon.ico` | Rendered from the two SVGs (16 and 32 from the small one). The ICO holds 16, 32, and 48 |
-| `wallpaper.png` | 1920x1080 desktop background and sign-in backdrop |
+| `wallpaper.png`, `wallpaper-1080p.png` | The desktop wallpaper at 3840x2160 and 1920x1080: the Front Range at dusk, the phoenix of the mark in front of the sun, and the brewery in the foothills. The upper left is dark sky, so desktop icons stay readable; the name is at the lower left |
+| `wallpaper.cjs` | Draws the wallpaper as an SVG from a fixed seed, so it comes out the same every time |
 | `tokens.json` | The colors by name, what each is for, and the colors reserved for alarms |
-| `render_assets.cjs` | Renders the PNGs, the ICO, and the wallpaper again: `node brand/render_assets.cjs` (Playwright with Chromium). Run it by hand after a change to an SVG or the tokens, and commit the results |
+| `render_assets.cjs` | Renders the PNGs, the ICO, and both wallpapers again: `node brand/render_assets.cjs` (Playwright with Chromium). Run it by hand after a change to an SVG or the tokens, and commit the results |
 
 ## Colors (the "Phenix Fire" scheme)
 

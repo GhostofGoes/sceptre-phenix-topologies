@@ -1,10 +1,12 @@
 // Renders the raster files of this folder from icon.svg, icon-small.svg, and tokens.json:
-// icon-<n>.png, favicon.ico (16, 32, 48), and wallpaper.png (1920x1080). Run by hand after a change
+// icon-<n>.png, favicon.ico (16, 32, 48), and the wallpaper (wallpaper.png at 3840x2160 and
+// wallpaper-1080p.png), which wallpaper.cjs draws. Run by hand after a change
 // to either SVG or the tokens:  node brand/render_assets.cjs   (needs Playwright with Chromium).
 // The outputs are committed, so nothing on the range needs a browser.
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright');
+const { wallpaperSvg, W, H } = require('./wallpaper.cjs');
 
 const here = __dirname;
 const tokens = JSON.parse(fs.readFileSync(path.join(here, 'tokens.json'), 'utf8'));
@@ -41,20 +43,15 @@ function ico(pngs) { // [[size, Buffer]] -> an ICO that holds the PNGs as they a
   }
   fs.writeFileSync(path.join(here, 'favicon.ico'), ico([16, 32, 48].map((n) => [n, made[n]])));
 
-  const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
-  await page.setContent(`<body style="margin:0;width:1920px;height:1080px;background:${c.ink};overflow:hidden;position:relative;
-      font-family:'DejaVu Sans','Liberation Sans',Arial,sans-serif;color:${c.paper}">
-    <svg viewBox="0 0 1920 1080" style="position:absolute;inset:0" aria-hidden="true">
-      <path d="M0 1080 V820 L210 640 L330 740 L560 500 L700 660 L820 580 L1010 800 L1160 690 L1340 860 L1500 760 L1700 900 L1920 780 V1080 Z" fill="${c.coal}"/>
-      <rect x="0" y="1068" width="1920" height="12" fill="${c.ember}"/>
-      <rect x="0" y="1062" width="1920" height="6" fill="${c.flame}"/>
-    </svg>
-    <div style="position:absolute;left:150px;top:330px;display:flex;align-items:center;gap:56px">
-      <img src="${uri('icon.svg')}" style="width:320px;height:320px">
-      <div><div style="font-size:92px;font-weight:700;line-height:1.05;letter-spacing:-1px">CherryMountain<br>Brewery</div>
-        <div style="font-size:30px;margin-top:22px;color:${c.flame}">Colorado Front Range</div></div>
-    </div></body>`);
-  fs.writeFileSync(path.join(here, 'wallpaper.png'), await page.screenshot());
+  // The wallpaper is drawn by wallpaper.cjs; rendered at 3840x2160 and again at 1920x1080.
+  const art = 'data:image/svg+xml;base64,' + Buffer.from(wallpaperSvg(tokens)).toString('base64');
+  for (const [w, h, name] of [[W, H, 'wallpaper.png'], [1920, 1080, 'wallpaper-1080p.png']]) {
+    const page = await browser.newPage({ viewport: { width: w, height: h }, deviceScaleFactor: 1 });
+    await page.setContent(`<body style="margin:0;background:${c.ink}"><img src="${art}" style="display:block;width:${w}px;height:${h}px"></body>`);
+    await page.waitForFunction(() => document.images[0].complete && document.images[0].naturalWidth > 0);
+    fs.writeFileSync(path.join(here, name), await page.screenshot());
+    await page.close();
+  }
   await browser.close();
-  console.log('wrote', SIZES.map(([n]) => `icon-${n}.png`).join(' '), 'favicon.ico wallpaper.png');
+  console.log('wrote', SIZES.map(([n]) => `icon-${n}.png`).join(' '), 'favicon.ico wallpaper.png wallpaper-1080p.png');
 })();

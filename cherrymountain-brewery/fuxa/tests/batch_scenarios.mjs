@@ -320,8 +320,9 @@ export const scenarios = {
   // No fermenter that is empty and lined up: the wort waits in the kettle, then goes.
   async no_fermenter_waits_then_proceeds(project) {
     await using(project, {}, async (r) => {
-      r.plant.cellar.fv[0].extract = 5.0;              // every fermenter holds beer
       r.plant.request(1);
+      await r.until(() => r.state === RUNNING, 60, 'the start');
+      r.plant.cellar.fv[0].extract = 5.0;              // FV-101 is lost after the start: all hold beer
       await r.until(() => r.tag('BATCH.WAITING') === 1, 6 * HOUR, 'the wait for a fermenter');
       assert.deepEqual(r.phases(), WHOLE_BREW.slice(0, 9));   // up to WHIRLPOOL
       assert.equal(r.tag('BATCH.REASON'), 10);
@@ -339,6 +340,44 @@ export const scenarios = {
       assert.equal(r.alarms().NOFV, 0);
       await r.until(() => r.state === COMPLETE, 2 * HOUR, 'the batch to complete');
       assert.equal(r.plant.cellar.fv[2].extract, 16.1);
+    });
+  },
+
+  // A start is refused while no fermenter is empty and lined up: the brewhouse is
+  // not touched, the request stays queued, and the brew starts when one is free.
+  async start_refused_without_a_fermenter(project) {
+    await using(project, {}, async (r) => {
+      r.plant.cellar.fv[0].extract = 5.0;              // every fermenter holds beer
+      r.plant.request(1);
+      await r.run(60);
+      assert.equal(r.state, IDLE);
+      assert.equal(r.plc.starts.length, 0, 'nothing is milled with nowhere to send the wort');
+      assert.deepEqual(r.plc.commands, []);
+      assert.equal(r.tag('BATCH.QUEUE'), 1, 'the request stays queued');
+      assert.equal(r.tag('BATCH.REASON'), 17);
+      assert.equal(r.alarms().REFUSED, 1);
+      assert.match(r.status, /refused.*fermenter/i);
+      r.plant.cellar.fv[3].extract = 0.0;              // FV-104 is emptied and cleaned
+      await r.until(() => r.state === RUNNING, 60, 'the start');
+      assert.equal(r.alarms().REFUSED, 0);
+      await r.until(() => r.state === COMPLETE, 10 * HOUR, 'the batch to complete');
+      assert.equal(r.tag('BATCH.FV'), 4);
+      assert.equal(r.plant.cellar.fv[3].extract, 16.1);
+    });
+  },
+
+  // A fermenter that has taken its two brews is shown as full, and a third brew
+  // the same day is not started into nowhere.
+  async a_full_fermenter_is_not_offered_again(project) {
+    await using(project, {}, async (r) => {
+      r.plant.request(3);
+      await r.until(() => r.tag('BATCH.COMPLETED') === 2, 16 * HOUR, 'two brews');
+      await r.run(60);
+      assert.equal(r.tag('BATCH.FV_NAME'), 'FV-101 (full)');
+      assert.equal(r.state, COMPLETE);
+      assert.equal(r.tag('BATCH.QUEUE'), 1);
+      assert.equal(r.tag('BATCH.REASON'), 17);
+      assert.deepEqual(r.phases(), [...WHOLE_BREW, ...WHOLE_BREW]);
     });
   },
 

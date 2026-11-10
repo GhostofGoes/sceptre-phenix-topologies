@@ -346,7 +346,10 @@ class ViewBuilder:
 
     def button(self, x: int, y: int, w: int, h: int, text: str, tag_name: str, value: int) -> None:
         """A button that writes ``value`` to a tag: the editor's ``html_button``
-        with its ``set`` action."""
+        with its ``set`` action. The editor draws the group with
+        ``pointer-events:none`` and drops that style when it saves the view; a
+        group that keeps it never gets the click (seen in FUXA 1.3.6: the view's
+        ``svg`` takes it instead), so this one is written as a saved button is."""
         tag_id: str = self._tag_id(tag_name)
         gid: str = uid("HXB_", f"{tag_name}/{value}")
         style: str = (
@@ -355,7 +358,7 @@ class ViewBuilder:
             "font-size:14px;font-family:sans-serif;"
         )
         self.svg.append(
-            f'<g id="{gid}" type="svg-ext-html_button" style="pointer-events:none"'
+            f'<g id="{gid}" type="svg-ext-html_button"'
             f' fill="rgba(0,0,0,0)" stroke="rgba(0,0,0,0)" xml:space="preserve">'
             f'<rect id="{uid("svg_", f"{tag_name}/{value}/rect")}" x="{x}" y="{y}" width="{w}"'
             f' height="{h}" stroke-width="0"/>'
@@ -1196,7 +1199,7 @@ BATCH_ALARMS: tuple[tuple[str, str, str], ...] = (
     ("alm_plc", "high", "The brewhouse PLC did not answer, lost, or aborted a batch phase: check plc-brewhouse, then Restart or Abort"),
     ("alm_engine", "high", "The batch engine script is failing: see the FUXA log"),
     ("alm_nofv", "low", "Knockout is waiting for a fermenter that is empty and lined up: the wort stays in the kettle"),
-    ("alm_refused", "info", "A batch start is refused (brewhouse not Idle or a vessel in entry): clear the cause, or Reset to drop the queue"),
+    ("alm_refused", "info", "A batch start is refused (brewhouse not Idle, a vessel in entry, or no fermenter empty and lined up): clear the cause, or Reset to drop the queue"),
 )
 
 
@@ -1225,7 +1228,7 @@ def build_batch_view(recipe: BatchRecipe) -> dict[str, Any]:
     the engine's alarms, and the recipe the batch follows."""
     ids: dict[str, str] = batch_tag_ids()
     internal: dict[str, str] = {t.name: ids[t.name] for t in BATCH_TAGS}
-    width, height = 820, 560
+    width, height = 820, 610
     vb: ViewBuilder = ViewBuilder({}, width=width, height=height, internal=internal)
     vb.text(LEFT, 28, f"Batch: {recipe.name}", size=18, bold=True)
     rows: tuple[tuple[str, str, int, str], ...] = (
@@ -1233,7 +1236,7 @@ def build_batch_view(recipe: BatchRecipe) -> dict[str, Any]:
         ("State", "BATCH.STATE_TEXT", 0, ""),
         ("Phase", "BATCH.PHASE_NAME", 0, ""),
         ("Status", "BATCH.STATUS", 0, ""),
-        ("Reserved fermenter", "BATCH.FV_NAME", 0, ""),
+        ("Fermenter", "BATCH.FV_NAME", 0, ""),
         ("Brews queued", "BATCH.QUEUE", 0, ""),
         ("Brews completed", "BATCH.COMPLETED", 0, ""),
         ("Batch started", "BATCH.STARTED", 0, ""),
@@ -1257,7 +1260,7 @@ def build_batch_view(recipe: BatchRecipe) -> dict[str, Any]:
         vb.text(lx + 14, y0 + 84, key.removeprefix("alm_").capitalize(), size=11)
     vb.text(LEFT, y0 + 118, "Phases", size=12, bold=True)
     for i, p in enumerate(PHASES):
-        px: int = LEFT + 40 + 74 * i
+        px: int = LEFT + 100 + 68 * i
         vb.number_lamp(px, y0 + 114, "BATCH.PHASE", p.number, "#1e88e5")
         vb.text(px, y0 + 138, p.name.replace("_", " ").lower(), size=9, anchor="middle")
     recipe_lines: list[str] = [

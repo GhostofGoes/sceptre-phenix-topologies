@@ -15,10 +15,13 @@
 // What it does, one tick at a time, from what the PLC reports (level-triggered,
 // so a restart or a lost write repeats nothing and misses nothing):
 //   queue    brews from the Batch view (Start) and from the brewhouse panel
-//   start    refused unless the brewhouse PLC is Idle and no vessel is in entry
+//   start    refused unless the brewhouse PLC is Idle, no vessel is in entry, and
+//            a fermenter is empty and lined up (a brewer does not mash in with
+//            nowhere to send the wort)
 //   per phase  PREP (setpoints, phase parameter, phase number) -> START (command
 //            1) -> RUN (wait for Complete, with a timeout) -> RESET (command 5)
-//   KNOCKOUT first reserves a fermenter that plc-cellar reports empty and lined up
+//   KNOCKOUT first reserves a fermenter that plc-cellar reports empty and lined up,
+//            and waits with an alarm if that one was lost since the start
 //   Hold / Restart / Abort from the Batch view, a timeout held with an alarm
 //
 // FUXA API used (server/runtime/scripts/index.js, devices/index.js): $getTagId
@@ -41,7 +44,7 @@ const PREP = 1, START = 2, RUN = 3, RESET = 4, FVWAIT = 5, HOLDING = 6, HELD = 7
   RESTARTING = 8, ABORTING = 9, ABORT_RESET = 10;
 const W_OPERATOR = 1, W_TIMEOUT = 2, W_HANDSHAKE = 3, W_PLC_HELD = 4, W_PLC_ABORT = 5,
   W_PLC_LOST = 6, W_LINK = 7, W_NOFV = 10, W_NOT_IDLE = 11, W_LOCKOUT = 12,
-  W_NEEDS_RESET = 13, W_NO_LINK = 14, W_ABORTED = 15, W_ENTRY_HOLD = 16;
+  W_NEEDS_RESET = 13, W_NO_LINK = 14, W_ABORTED = 15, W_ENTRY_HOLD = 16, W_START_NOFV = 17;
 // The PLC's phase states and commands (plc-brewhouse.st).
 const P_IDLE = 0, P_RUNNING = 1, P_HOLDING = 2, P_HELD = 3, P_RESTARTING = 4,
   P_COMPLETE = 5, P_ABORTED = 6;
@@ -63,6 +66,7 @@ const WHY_TEXT = {
   14: 'start refused: no link to the brewhouse PLC',
   15: 'aborted',
   16: 'held: a brewhouse vessel is in entry',
+  17: 'start refused: no fermenter is empty and lined up',
 };
 
 // The state that persists (restored by FUXA), as logical name -> tag.
@@ -229,6 +233,7 @@ async function tick(now) {
   }
 
   function restart() {
+    if (!P.ok) { S.why = W_LINK; return; }              // nothing to restart without the PLC
     if (anyLock()) { S.why = W_ENTRY_HOLD; return; }    // not into an occupied vessel
     S.alm_timeout = 0; S.alm_plc = 0; S.why = 0;
     const r = S.resume;
@@ -251,6 +256,7 @@ async function tick(now) {
     if (!P.ok) { return W_NO_LINK; }
     if (P.state !== P_IDLE) { return W_NOT_IDLE; }
     if (anyLock()) { return W_LOCKOUT; }
+    if (!chooseFv()) { return W_START_NOFV; }
     return 0;
   }
 
@@ -507,15 +513,22 @@ async function tick(now) {
     } else if (S.st === ABORTED) {
       status = 'Batch ' + id + ' aborted';
     }
-    if (S.why && WHY_TEXT[S.why]) { status += ' - ' + WHY_TEXT[S.why]; }
+    // 'aborted' alone says the operator's Abort; any other reason is worth showing.
+    if (S.why && WHY_TEXT[S.why] && !(S.st === ABORTED && S.why === W_ABORTED)) {
+      status += ' - ' + WHY_TEXT[S.why];
+    }
     if (S.queue > 0) { status += ' [' + S.queue + ' queued]'; }
     if (!P.ok && P.stateRaw === null) { status += ' [no PLC link]'; }
     const iso = (s) => (s > 0 ? new Date(s * 1000).toISOString() : '');
+    // The fermenter of this brew day; one that has taken its brews is shown as full
+    // until the next knockout reserves another.
+    let fvName = 'none';
+    if (S.fv > 0) { fvName = 'FV-10' + S.fv + (S.fv_brews >= T.brews_per_fv ? ' (full)' : ''); }
     const out = {
       state_text: stateText, status, id, recipe: CFG.recipe.name,
       phase: ph ? ph.n : 0, phase_name: ph ? ph.label : '',
       plc_mirror: P.state === null ? -1 : P.state,
-      wait: waiting, fv_name: S.fv > 0 ? 'FV-10' + S.fv : 'none',
+      wait: waiting, fv_name: fvName,
       start: iso(S.t_batch), phase_start: S.t_phase && ph ? iso(S.t_phase) : '',
       beat: now,
     };

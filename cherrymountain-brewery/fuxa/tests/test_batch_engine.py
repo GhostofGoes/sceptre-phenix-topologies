@@ -7,7 +7,7 @@ pins) and a simulator of plc-brewhouse's handshake, plc-cellar's fermenter statu
 and the panel's request counter (brewhouse_sim.mjs). Each scenario of
 batch_scenarios.mjs is one test: a whole unattended brew through all ten phases, a
 double-brew day, Hold and Restart, Abort, a phase that never completes, no fermenter
-ready, a start refused (PLC not idle, vessel in entry), a lost PLC link, a PLC or FUXA
+ready, a start refused (PLC not idle, vessel in entry, no fermenter), a lost PLC link, a PLC or FUXA
 restart, a request that arrives while FUXA is down, and a script that fails.
 """
 
@@ -83,6 +83,7 @@ def test_the_harness_covers_what_the_task_names() -> None:
         "phase_timeout_raises_the_alarm",
         "no_fermenter_waits_then_proceeds",
         "start_refused_when_not_idle",
+        "start_refused_without_a_fermenter",
         "entry_lockout_refuses_and_holds",
     }
     if NODE is None:

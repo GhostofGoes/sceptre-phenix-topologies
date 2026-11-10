@@ -85,9 +85,10 @@ restart resumes the batch where it was; the Batch view shows those tags.
 **Operator, on the Batch view** (the buttons write `BATCH.CMD`; the engine takes
 the command and clears it):
 
-- **Start** adds one brew to the queue. It starts when the brewhouse PLC is Idle
-  and neither brewhouse vessel is in confined-space entry; otherwise the Status
-  line says why and, after 10 s, the *Refused* alarm lights.
+- **Start** adds one brew to the queue. It starts when the brewhouse PLC is Idle,
+  neither brewhouse vessel is in confined-space entry, and a fermenter is empty
+  and lined up; otherwise the Status line says why and, after 10 s, the *Refused*
+  alarm lights. The brew stays queued and starts when the cause clears.
 - **Hold** is taken at the next safe point: at once between phases, or by
   commanding Hold of the running PLC phase (every phase output off; a timed step
   keeps the time it has served). **Restart** continues from Held, and is refused
@@ -105,10 +106,15 @@ The engine queues every new count, writes the count it has taken to
 request made while FUXA is down waits at the panel and is taken when it is back.
 Without a PLC the federate runs its own autopilot instead (`sim/README.md`).
 
-**Knockout** first reserves a fermenter that plc-cellar reports empty (extract
-meter at 0) and lined up (not in entry, CIP permitted); with none, the batch waits
-in KNOCKOUT with the *Fermenter* alarm after 10 min and the wort stays in the
-kettle. A brew day's two brews go into the same fermenter.
+**Fermenters.** A fermenter is free when plc-cellar reports it empty (extract
+meter at 0) and lined up (not in entry, CIP permitted). A brew does not start
+without one. Knockout then reserves it; if it was lost since the start, the batch
+waits in KNOCKOUT with the *Nofv* alarm after 10 min and the wort stays in the
+kettle. A brew day's two brews go into the same fermenter, which the view then
+shows as full. The reservation is the engine's check and display: the wort goes
+where the cellar federate sends it (the fermenter it is already filling, else
+the first empty one), which is the same vessel unless a lower-numbered one is
+empty but in entry.
 
 **Faults.** A phase that does not complete in its timeout holds the PLC phase,
 raises the *Timeout* alarm, and holds the batch; so do a PLC that does not answer
@@ -124,10 +130,11 @@ FUXA's script API and a simulator of plc-brewhouse and the cellar's status:
 python3 -m pytest fuxa/tests         # from cherrymountain-brewery/
 ```
 
-`test_batch_engine.py` runs 23 scenarios (an unattended brew, a double brew day,
-Hold and Restart, Abort, a phase that never completes, no fermenter, refused
-starts, a lost link, a PLC or FUXA restart, a request while FUXA is down, a failing
-script), `test_batch_project.py` checks what the builder writes, and
+`test_batch_engine.py` runs 25 scenarios (an unattended brew, a double brew day,
+Hold and Restart, Abort, a phase that never completes, no fermenter at the start
+or at knockout, refused starts, a lost link, a PLC or FUXA restart, a request
+while FUXA is down, a failing script), `test_batch_project.py` checks what the
+builder writes, and
 `test_plc_port.py` holds the simulator's handshake to plc-brewhouse's compiled
 program scan by scan (it needs strucpp and g++, as `sim/tests/st_engine.py` does,
 and skips without them). `sim/tests/test_brewhouse_control_path.py` runs the script
@@ -190,14 +197,30 @@ TODO(verify): layout enum spellings. Navigation `mode: fix` and `type: inline`
 follow the demo project (enum keys). The header `alarms: fix` and the layout
 `zoom: enabled` follow the same convention but no sample confirms them.
 
-TODO(verify): the batch engine and its Batch view have run only against the
-stubs in `tests/` and the compiled PLC, never in a live FUXA. On the first boot of
-the range, open the Batch view as the operator, press Start with the PLC Idle, and
-watch `BATCH.STATUS`, the `FUXA Server` tags, and the FUXA log for
-`[cmBatchEngine]` lines; confirm that the `FUXA Server` tags keep their values
-across a FUXA restart (`daq.restored`), that the script runs once a second, that
-the buttons write `BATCH.CMD`, and that an anonymous or operator OPC UA session may
-write the plc-brewhouse command, phase, parameter, and setpoint tags.
+The batch engine and its Batch view were run once by hand in a real FUXA server
+(1.3.6 at the pinned commit, with the `node-opcua` and `modbus-serial` drivers),
+not in CI: the generated full scada-fuxa project was imported through
+`POST /api/project` with only the two device addresses changed, against an OPC UA
+server that ran the tests' port of plc-brewhouse's handshake and a Modbus server
+for the fermenters' status. Seen there:
+
+- FUXA runs the script, and a request at the panel counter becomes a batch that
+  goes through all eleven phase runs, with the setpoints and the parameter
+  arriving at the PLC as the registers the tests expect (167 F as 1670).
+- The script's hand-over to the PLC costs about 10 s a phase run, 2 min a brew.
+- Knockout reserves FV-101 from the real Modbus reads, and the second brew goes
+  into the same fermenter.
+- FUXA restores all 21 state tags after it is stopped in the boil and started
+  again, and the batch goes on without a second Start of the boil.
+- The Batch view renders in Chromium, and Start, Hold, Restart, Abort, and Reset
+  each reach the engine and the PLC. That run found the buttons dead as first
+  generated (see `ViewBuilder.button`) and the view too short for its last line.
+
+TODO(verify): still open on the first boot of the range: that OpenPLC's OPC UA
+server lets FUXA's session write the plc-brewhouse command, phase, parameter,
+accepted-count, and setpoint tags; that the buttons work for the signed-in
+operator with `secureEnabled` on (the run above had it off); and that the phase
+timeouts, which are estimates, are longer than the real phases.
 
 TODO(verify): alarm records omit `permission` and `permissionRoles`. Confirm
 all signed-in users see the alarms with `secureEnabled` on.

@@ -62,6 +62,23 @@ Build in the phenix container: `xubuntu-desktop` recommends Ubuntu's `firefox`
 package, which installs a snap through the host's snapd when the build host
 has one (`/run/snapd.socket`), and skips it when it has none.
 
+## The brand
+
+No image carries the mark, the wallpaper, or a color of the brand ([brand/](../brand/README.md)):
+the images are built without this repository, so the brand reaches the VMs as injections at
+boot, from the copies `sync.py` keeps in `phenix-injects/brand/`. The image configs only
+provide what those injections need, and the verbatim `POSTBUILD_*` defaults are untouched.
+
+| Image | What the brand does there | What the image provides |
+|---|---|---|
+| `cm-fuxa` | The tab icon over `/opt/fuxa/client/dist/favicon.ico`, the mark at `/opt/fuxa/server/_images/Brand/icon.svg`, and `66-fuxa-brand.sh` writes the page title into `client/dist/index.html` | FUXA at the pinned commit, which tracks its built client in `client/dist` and serves `server/_images` at `/_images` |
+| `cm-historian`, `cm-sim` | `cm-grafana-brand` copies the mark, tab icon, touch icon, and sign-in background over Grafana's own image files under `/usr/share/grafana/public` (checked against the `grafana_12.4.14` package; the image installs `12.*`) | Grafana from the vendor's APT repository. `cm-sim` no longer carries the ground-truth dashboard: the app renders and injects it with the series colors |
+| `cm-desktop`, `cm-ews` | The wallpaper at `/usr/share/backgrounds/cherrymountain.png` and `cm-brand-wallpaper` (an XDG autostart entry) set it for every session, the vendor's xrdp session on `ews` included | `/root/.init.sh` (the phenix `POSTBUILD_GUI` default) sets its stock wallpaper ten seconds after login on `monitorVirtual-1`; the autostart script looks again until its wallpaper has stayed. The desktops run 1440x900, so they take the 1920x1080 wallpaper |
+| `cm-guacamole` | The branding extension `cherrymountain-brand.jar` is mounted into the `guacamole/guacamole:1.6.0` container by `docker-compose.yml` | Nothing: the extension is read by the container's entrypoint |
+
+Not branded, because they are not the brewery's screens: Malcolm and Wazuh (a SOC's own
+tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
+
 ## cm-sim
 
 - **Purpose:** the simulation nodes: the HELICS root broker, the
@@ -80,10 +97,12 @@ has one (`/run/snapd.socket`), and skips it when it has none.
     installed.
   - OpenSearch (single node, `0.0.0.0:9200`, security plugin disabled, 2 GB
     heap) for the ground-truth indexes `cherrymountain-truth-*`.
-  - Grafana with the `grafana-opensearch-datasource` plugin, a provisioned
-    "Ground truth" data source on `127.0.0.1:9200`, and a starter dashboard.
-    It serves an anonymous read-only view on port 3000; the admin password
-    comes from `ground-truth.env`.
+  - Grafana with the `grafana-opensearch-datasource` plugin and a provisioned
+    "Ground truth" data source on `127.0.0.1:9200`. The dashboard is not in the
+    image: the `cherrymountain` app renders `cm-ground-truth.json` (its lines take
+    the brand's series colors) and injects it with `ground-truth.env`. Grafana
+    serves an anonymous read-only view on port 3000; the admin password comes
+    from `ground-truth.env`.
   - Both units carry a drop-in with
     `ConditionPathExists=/etc/cherrymountain/ground-truth.env`. The
     `cherrymountain` app injects that file on sim-ctl in the full and lite

@@ -64,8 +64,8 @@ spec:
       # --------------------------------------------- OpenPLC runtime v4 -----------------------------------------------
       # Native (source) install of the pinned runtime. The runtime compiles uploaded
       # programs on the device, so the toolchain install.sh pulls in stays.
-      # TODO(verify): install.sh --native inside the image-build chroot; the spike in
-      # spikes/openplc-v4 runs the same install on a live VM.
+      # TODO(verify): install.sh --native inside the image-build chroot; the retired
+      # openplc-v4 spike ran the same install in a container.
       export DEBIAN_FRONTEND=noninteractive
       OPENPLC_REF=v4.3.2
       # The commit the tag names: a moved tag fails the build instead of changing it.

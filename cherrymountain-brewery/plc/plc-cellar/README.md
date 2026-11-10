@@ -70,7 +70,7 @@ plc/plc-cellar/build_zip.sh --check    # rebuild to a temp file; fail if the com
 `${XDG_CACHE_HOME:-~/.cache}/cherrymountain/` on first use (git, Node 22 or
 later, npm); set `STRUCPP` to use an existing checkout, which must be at the
 pinned commit. Run it after every change to `plant.yaml` or the program, and
-after `python -m plantgen` and `python sync_ci.py`. `sync_ci.py --check` fails
+after `python -m plantgen` and `python sync.py`. `sync.py --check` fails
 when the ZIP's `defines.h` MD5 or its `conf/` files are stale, without needing
 Node.
 
@@ -83,7 +83,7 @@ runtime and checks the running program (see the topology README).
 The Editor still works for hand changes: create a v4 project, import the two
 function blocks and the program from `build/plc-cellar-full.st`, and export the
 ZIP (Editor 4.3.3 or later for runtime 4.3.2). The headless build is the one
-CI and `sync_ci.py` check.
+CI and `sync.py` check.
 
 ## Modbus layout
 

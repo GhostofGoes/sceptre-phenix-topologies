@@ -2,7 +2,7 @@
 
 A GRFICS-style view of the plant in which attacks have visible physical
 consequences ([DESIGN.md §15.10](../DESIGN.md#1510-white-cell-3d-view-cm-viz),
-the [viz3d spike](../spikes/viz3d/README.md)). It shows **ground truth**, so it
+which records what the retired viz3d spike found). It shows **ground truth**, so it
 is for the white cell: never route it through Guacamole or show it to trainees
 without a white-cell decision.
 

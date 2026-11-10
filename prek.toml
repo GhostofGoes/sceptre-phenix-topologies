@@ -232,7 +232,7 @@ files = '^cherrymountain-brewery/'
 exclude = '^cherrymountain-brewery/spikes/'
 priority = "check"
 
-# Compose files. There are none yet; the hook is skipped until one appears.
+# Compose files (phenix-injects/guacamole/docker-compose.yml today).
 [[repos]]
 repo = "https://github.com/docker-compose-linter/pre-commit-dclint"
 rev = "v3.1.0"
@@ -480,12 +480,12 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(sync(_ci)?\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|recipes/|phenix-injects/(openplc|fuxa)/)'
+files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|recipes/|phenix-injects/(openplc|fuxa)/)'
 pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
-# .desktop files. There are none yet; the hook is skipped until one appears.
+# .desktop files (the analyst console and the kiosk launcher today).
 # desktop-file-validate is a system tool (package `desktop-file-utils`).
 id = "desktop-file-validate"
 name = "desktop-file-validate"

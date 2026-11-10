@@ -53,8 +53,6 @@ KB_WATER: float = 0.512
 MALTOSE_G_PER_MOL: float = 342.3
 #: Tinseth's isomerization time constant at 100 °C, 1/min.
 TINSETH_K: float = 0.04
-#: mg/L of α-acid per (fraction AA × oz / gal), Tinseth's 7490.
-MG_L_PER_OZ_GAL: float = 7490.0
 #: Hosom's mIBU temperature function: U_rel(T) = A·exp(-B/T), T in K.
 HOSOM_A: float = 2.39e11
 HOSOM_B: float = 9773.0

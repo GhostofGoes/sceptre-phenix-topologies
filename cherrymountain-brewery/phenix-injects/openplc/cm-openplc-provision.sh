@@ -2,11 +2,12 @@
 # Provision the OpenPLC v4 runtime on plc-cellar (DESIGN.md 12.1, steps 3-5):
 #   repack ZIP with plugin configs -> create-user -> login -> upload-file ->
 #   poll compilation-status -> start-plc -> confirm STATUS:RUNNING.
-# Follows spikes/openplc-v4/provision.sh. Installed as
+# Follows tests/integration/openplc_provision.sh (from the retired openplc-v4
+# spike). Installed as
 # /usr/local/bin/cm-openplc-provision and run by cm-openplc-provision.service.
 #
 # Inputs (paths are injected by the topology):
-#   ZIP   $CM_PLC_ZIP   program ZIP built in the OpenPLC Editor
+#   ZIP   $CM_PLC_ZIP   program ZIP (plc/common/build_zip.sh builds it, headless)
 #   CONF  $CM_PLC_CONF  directory of plugin JSON files (modbus_master.json, ...)
 # Env (from /etc/default/cm-openplc): OPENPLC_USER, OPENPLC_PASSWORD,
 # OPENPLC_PORT, OPENPLC_COMPILE_TIMEOUT.

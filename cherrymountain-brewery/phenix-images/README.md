@@ -167,8 +167,8 @@ has one (`/run/snapd.socket`), and skips it when it has none.
 - **Pinned versions:** `OPENPLC_REF=v4.3.2` (a tag of
   `Autonomy-Logic/openplc-runtime`), checked against its commit
   `9fb5e1a29b574806f5aea3a4e78202c7a5d658ee` so a moved tag fails the build. Whether `install.sh --native` works in the
-  build chroot is marked `TODO(verify)`; `spikes/openplc-v4` runs the same
-  install on a live VM.
+  build chroot is marked `TODO(verify)`; the retired `openplc-v4` spike ran the
+  same install in a container.
 
 ## cm-fuxa
 

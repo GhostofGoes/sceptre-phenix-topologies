@@ -19,7 +19,7 @@
 #                made on first use with `npm ci && npm run build`; needs git,
 #                node >= 22, and npm)
 #   OUT          output ZIP path (default: the committed path above)
-# Run plantgen (python -m plantgen) and sync_ci.py first: conf/ is read from
+# Run plantgen (python -m plantgen) and sync.py first: conf/ is read from
 # plant/generated/ci/openplc/plc-cellar/ and the program from located_vars.st.
 set -euo pipefail
 

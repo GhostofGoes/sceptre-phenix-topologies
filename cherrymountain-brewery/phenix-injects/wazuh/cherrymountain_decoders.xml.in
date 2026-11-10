@@ -12,7 +12,7 @@
     cm-wg-watch    cm_wg_watch.py on dmz-vpn: WireGuard peer events
     cm-guacamole   the Guacamole web app on dmz-jump (login events)
     cm-guacd       guacd on dmz-jump (sessions)
-    cm-plc-tool    cm_plc_reupload.py on the EWS: OpenPLC REST actions of the engineer
+    cm-plc-tool    cm_plc_tool.py on the EWS: OpenPLC REST actions of the engineer
   Wazuh runs the first child of a parent whose prematch matches, then that child's
   siblings (the same name, no prematch); a child of a built-in parent (kernel) is
   reported, and matched by <decoded_as>, under the parent's name. Every sample of

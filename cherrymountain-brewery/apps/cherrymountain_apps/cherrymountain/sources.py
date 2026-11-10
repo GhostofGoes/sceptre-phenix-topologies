@@ -305,6 +305,3 @@ class Sources:
     def inject_file(self, *parts: str) -> Path:
         """A file under phenix-injects/, reused as it is."""
         return self.require(self.injects.joinpath(*parts))
-
-    def has_injects_dir(self, name: str) -> bool:
-        return (self.injects / name).is_dir()

@@ -141,10 +141,6 @@ class PackMLMachine(BaseModel):
         self._go(target)
         return target
 
-    def complete_execute(self) -> None:
-        """Execute's state-complete (a batch or keg cycle finished)."""
-        if self.state == S.EXECUTE:
-            self._go(EXECUTE_COMPLETE)
 
     def set_mode(self, mode: Mode) -> None:
         """Mode changes are allowed only in Stopped, Idle, Aborted (TR88)."""

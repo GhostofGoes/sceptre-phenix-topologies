@@ -2404,14 +2404,16 @@ retired. For reference, the pattern would have been GRFICSv3's: bake
 - Pin FUXA exactly. The latest published Docker image is 1.3.5 and there is
   no 1.3.6 tag, so `cm-fuxa` builds a pinned commit from source. The
   integration test runs the 1.3.5 image.
-- The drivers (Modbus, OPC UA, S7, BACnet) are not baked into FUXA. They
-  install on demand into `server/_pkg/runtime/node_modules` through
-  `POST /api/plugins` (an `npm install --save-exact`), 92 MB for
-  `modbus-serial`, `node-opcua`, `node-snap7`, and `node-bacnet`.
-  - The image build runs the four installs once, at the pinned versions in
-    [§15.7](#157-images), and ships `server/_pkg/`.
-  - The range then runs offline: the spike copied that `_pkg/` into a fresh
-    container with no network, and all four drivers loaded.
+- The drivers (Modbus, OPC UA, S7, BACnet) are not baked into FUXA: they are
+  optional npm packages, 92 MB for `modbus-serial`, `node-opcua`, `node-snap7`,
+  and `node-bacnet`.
+  - The image build installs the four into `server/node_modules` with
+    `npm install`, at the pinned versions in [§15.7](#157-images), so the range
+    runs offline.
+  - The spike took the other route FUXA offers, `POST /api/plugins`, which
+    installs on demand into `server/_pkg/runtime/node_modules`: it copied that
+    `_pkg/` into a fresh container with no network, and all four drivers
+    loaded. The image does not use that route.
 
 **Provisioning**
 
@@ -2686,8 +2688,7 @@ The slave addresses depend on the PLC's whole located set: adding a %QW moves
 every %MW, so regenerate and rebuild the ZIP together
 (`python -m plantgen`, `python sync.py`, then `plc/<plc>/build_zip.sh`).
 `sync.py --check` fails when the committed ZIP's `conf/` files or
-`PROGRAM_MD5` are stale. `sync.py` replaces `sync_ci.py` for all three variants
-(`sync_ci.py` only calls it for `ci`). It is aware of Git LFS pointers: where the
+`PROGRAM_MD5` are stale. It handles all three variants and is aware of Git LFS pointers: where the
 ZIP is still a pointer, it skips the ZIP check. The integration test pins the clamp and segment rules
 by uploading two deliberately different `modbus_slave.json` files.
 
@@ -3082,8 +3083,8 @@ cherrymountain-brewery/
 │   ├── scenario-lite.yml
 │   └── scenario-ci.yml
 ├── phenix-injects/                 # -> /phenix/injects/cherrymountain-brewery
-│   ├── bbmd/  desktop/  docker/  ews/  fuxa/  guacamole/  inet-nuke/
-│   └── malcolm/  openplc/  ot-svc/  sim/  vrouter/  wazuh/  wireguard/
+│   ├── bbmd/  desktop/  docker/  ews/  fuxa/  guacamole/  inet-nuke/  malcolm/
+│   └── openplc/  ot-svc/  otsim/  sim/  vrouter/  wazuh/  wireguard/
 ├── phenix-images/                  # Image configs (cm-*.yml) and README; built with phenix image build
 ├── apps/                           # cherrymountain_apps: the cherrymountain phenix app (with its script, systemd, and template files, which include the historian and federate units), the plantevent SCORCH component, simctl.py
 ├── sim/                            # cherrymountain_sim federates package and tests
@@ -3095,12 +3096,12 @@ cherrymountain-brewery/
 ├── plant/generated/{ci,full,lite}/ # plantgen output (committed, checked current)
 ├── recipes/fire-of-the-phenix.json # BeerJSON
 ├── sync.py                         # embeds plantgen blocks in the scenarios, copies generated files into phenix-injects/
-├── sync_ci.py                      # runs sync.py --variant ci
 ├── tools/plantgen/                 # offline generator
 ├── tools/netcheck/                 # static check of the IP plan and conduit matrix
 ├── tools/lint/                     # image-script and systemd-unit lint helpers (run by prek)
-├── tests/{integration,soc}/        # CI-slice and render checks; SOC detection, Wazuh, vendor-access, and WireGuard tests
-├── spikes/                         # spike kits (bacnet, bbmd, fuxa, malcolm, openplc-v4, otsim-noble, serial, vyos-ipsec, autotunnel, viz3d, thehive) and their CI images (ci)
+├── tests/{integration,soc,bacnet}/ # CI-slice and render checks; SOC detection, Wazuh, vendor-access, and WireGuard tests; the ot-sim BACnet module's tests
+├── brand/                          # the brewery's mark, colors, and wallpaper
+├── spikes/                         # spike kits (bacnet, bbmd, fuxa, malcolm, otsim-noble, serial, vyos-ipsec, autotunnel, thehive) and their CI images (ci); openplc-v4 and viz3d are retired
 └── .yamllint-block-style.yml       # block-style rule for phenix YAML
 ```
 
@@ -3712,7 +3713,7 @@ It is not built; revisit if a fourth copy of a helper appears.
 
 ### 15.10 White-cell 3D view (cm-viz)
 
-The [viz3d spike](spikes/viz3d/README.md) recommended a GRFICS-style view in
+The viz3d spike (retired; [spikes/README.md](spikes/README.md#retired-kits)) recommended a GRFICS-style view in
 which attacks have visible physical consequences, built from open-source parts
 and rendered by the white cell's own browser. `cm-viz` (`viz/`) is that view.
 
@@ -3843,7 +3844,7 @@ scene.
 | `vyatta.tmpl` and VyOS image fixes (upstream) | `sandialabs/sceptre-phenix`, `sandialabs/sceptre-phenix-images` | `set vpn ipsec ike-group IKE-1W key-exchange ikev2`; the `ike-group` fix if `main` still has the `esp-group` typo; `build-vyos.sh` fixes for the current vyos-build image naming |
 | phenix `vrouter` app limitations (upstream) | `sandialabs/sceptre-phenix` | Found while building the network. (1) The app keeps the NTP address of the first router that has one and uses it for every later router, so isp-rtr comes first in the topology and `cm-vyos-config.sh` sets fw-ot's source. (2) The rendered rulesets filter only the `forward` chain, so traffic to a router's own address (IKE, SSH, NTP, syslog) is never filtered. (3) Rules have no `log` field, so `cm-vyos-config.sh` turns on `default-log`. (4) netem `loss` is an integer percent (the design wants 0.1 %, the files use 1). (5) The template has no `key-exchange`, which the row above also asks for. (6) Rules have no IPsec policy match (`ipsec match-ipsec-in`), so a rule for traffic that should arrive only through a tunnel also passes a spoofed plaintext packet; `cm-vyos-config.sh` adds it to the utility DNP3 rule. Until these merge, the script and the topology order work around them |
 | phenix PR #130 follow-up (upstream) | `sandialabs/sceptre-phenix` (PR 130, `activeshadow:serial-app`) | Reconnect the host `socat` when a VM is redeployed (after `vm kill` it exits and is never restarted), lower the `-d -d -d -d` log volume (4.4 MB per 5 minutes), and isolate why a restarted VM did not register its C2 client. The design stays on the current serial app until then ([§15.2](#152-apps)) |
-| `sync.py` and `netcheck` | repository root, `tools/netcheck/` | `sync.py` embeds plantgen's app blocks in the scenarios, copies generated files into `phenix-injects/`, and checks them (LFS-pointer aware; it replaces `sync_ci.py`). `netcheck` traces every §10.3 conduit and default drop statically ([§17](#17-testing-and-validation)). Built |
+| `sync.py` and `netcheck` | repository root, `tools/netcheck/` | `sync.py` embeds plantgen's app blocks in the scenarios, copies generated files into `phenix-injects/`, and checks them (LFS-pointer aware). `netcheck` traces every §10.3 conduit and default drop statically ([§17](#17-testing-and-validation)). Built |
 | Repository lint hooks | `tools/lint/` | prek hooks that run `systemd-analyze` on units and shellcheck on shell embedded in image YAML ([§17](#17-testing-and-validation)) |
 | phenix `ot-sim` app: BACnet support (optional upstream) | `sandialabs/sceptre-phenix-apps` | The app knows only Modbus and DNP3: for a host with only a `bacnet` block it renders no I/O module and sets no `helics/federate` annotation. Until it supports per-host `bacnet: {interface: IF0:47808, instance: N, devices: [...]}` and `bacnet:` point attributes, the `cherrymountain` app adds the I/O module, the BACnet module, and the annotation for those hosts (`render_otsim`), and a test fails when the upstream app starts to render them |
 | phenix `ot-sim` app: telnet support (optional upstream) | `sandialabs/sceptre-phenix-apps`; banner in `patsec/ot-sim` | Generate the `telnet` module config, which the `cherrymountain` app injects until then. Optionally add an SEL-style banner to ot-sim's banner map |
@@ -4058,7 +4059,7 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
 
 | Phase | Scope | Exit criteria | Status |
 |---|---|---|---|
-| 0: Spikes | **Done.** See the spike results below | Each spike has a written go/no-go decision (all nine are go) | Done, with a second round that closed the gaps |
+| 0: Spikes | **Done.** See the spike results below | Each spike has a written go/no-go decision (ten are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to future work) | Done, with a second round that closed the gaps |
 | 1: Network | Core topology, VyOS conduits and static routes, ot-svc, SoH reachability | All §10.3 conduits pass; blocked paths fail | **Implemented**: topology modules, rulesets, services, BBMDs, the post-boot VyOS script, and SoH probes. Validated statically by `netcheck`; the VM run is pending |
 | 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic | **Largely implemented**: `plant.yaml`, plantgen, seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). The cellar autopilot and the peer reads of `plc-cellar` are built. Remaining: the ot-sim `logic` blocks and the 24 h soak |
 | 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized | **In progress.** All five PLC programs and their full and lite ZIPs are built by `plc/common` (alarms generated from `alarms.json` with deadbands, C++ checked; none run in an OpenPLC runtime yet), including the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)) and the peer reads. The images exist, and the `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks. The FUXA batch engine sequences the brewhouse and brews a double-brew day unattended in the offline federation (compiled plc-brewhouse, the federates, the engine under Node), and it ran in a real FUXA server against a stand-in PLC, with its Batch view and the operator sign-in driven from a browser. Open: views beyond the generated tag lists, the cellar's transfers (so only the first brew day finds a fermenter), and any VM run |
@@ -4075,7 +4076,7 @@ autotunnel, and ot-sim's own Modbus RTU).
 | Spike | Decision | What changed in this design | Still untested |
 |---|---|---|---|
 | OpenPLC v4 | Go (v4). Docker only | ZIP contents, headless build, plugin configs, memory ([§12.1](#121-openplc-v4-runtime-v3-fallback)); the v4 Modbus map ([§12.5](#125-addressing-conventions-high-off-by-one-risk)) | VM reboot, VM RAM with a real program, `modbus_master` against ot-sim (the integration test later covered this) |
-| FUXA | Go, with changes | Drivers install into `_pkg/`, project replace semantics, secure flow ([§12.2](#122-fuxa-two-instances)) | A posted view rendering in a browser, a 10-minute soak |
+| FUXA | Go, with changes | Drivers are separate npm packages installed at image build, project replace semantics, secure flow ([§12.2](#122-fuxa-two-instances)) | A posted view rendering in a browser, a 10-minute soak |
 | ot-sim on noble | Go: noble for every node, DNP3 included | Build recipe pins ([§12.3](#123-ot-sim-field-devices)); focal fallback retired | ot-sim under systemd, a VM image |
 | BACnet | Go: the module scope holds | FUXA connect needs a Who-Is ([§8.1](#81-spaces-equipment-and-bacnet-devices)) | The ot-sim module itself, COV |
 | BBMD | Go, with more ACL rules than assumed. Round 2: a real FUXA 1.3.5 reads device 3003 through the BBMDs behind the stateful ACL, on VyOS and on a Linux router | BBMD nodes and rules ([§10.3](#103-conduit-matrix-default-deny-stateful-logged), [§10.4](#104-protocol-map), [§11](#11-node-inventory-and-resources)); rule 3 is optional; the `broadcastAddress` alternative ([§8.1](#81-spaces-equipment-and-bacnet-devices)) | BBMD on `ot-svc` itself under systemd, foreign-device registration, FUXA on the BAS side |

@@ -6,15 +6,16 @@ index ``<index_base>-<federate>-<YYYY.MM.DD>`` through the OpenSearch
 (Elasticsearch-compatible) ``_bulk`` API.
 
 **Time.** ``@timestamp`` is the wall clock (UTC) when the document was taken,
-and so is the date in the index name: the same clock Malcolm, Wazuh, and the
-ot-sim ground-truth module stamp their records with, so "what happened" and
+and so is the date in the index name: the same clock Malcolm and Wazuh
+stamp their records with, so "what happened" and
 "what was observed" line up without a conversion, and the Grafana dashboard's
 default range (around now) shows the run. The simulated date and time is in
 ``sim_time`` and the federate seconds in ``t_s``.
 
 **Mapping.** Before its first write the writer puts an index template for
 ``<index_base>-*``. It covers this module's documents and those of the ot-sim
-ground-truth module, which uses the same index base: ``@timestamp`` is a date
+ground-truth module, which the range leaves off (DESIGN.md 9.5) but which
+would use the same index base if someone turned it on: ``@timestamp`` is a date
 (the ot-sim module sends epoch milliseconds, which map to a number without a
 template), ``federate``, ``source``, and ``field`` are keywords (a dashboard
 groups by them), and every number is a double (a value first seen as ``0``

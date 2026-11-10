@@ -219,9 +219,6 @@ class SlaveLayout(BaseModel):
         }
 
 
-def iec_to_slave(iec: IecAddress, layout: SlaveLayout) -> tuple[str, int]:
-    """Northbound ``modbus_slave`` (space, PDU address) for an IEC address."""
-    return layout.to_slave(iec)
 
 
 class RioRegister(BaseModel):

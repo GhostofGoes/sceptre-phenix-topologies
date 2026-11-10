@@ -46,13 +46,6 @@ TEMPLATES: Final[Path] = Path(__file__).parent / "templates"
 STARTUP: Final[str] = "/etc/phenix/startup"
 CONF_DIR: Final[str] = "/etc/cherrymountain"
 OPENPLC_DIR: Final[str] = "/opt/cherrymountain/openplc"
-#: The OpenPLC plugin config file names the runtime looks for in conf/.
-PLC_PLUGINS: Final[tuple[str, ...]] = (
-    "modbus_master",
-    "modbus_slave",
-    "opcua",
-    "s7comm",
-)
 #: plant.yaml northbound -> OpenPLC plugin.
 NORTHBOUND_PLUGIN: Final[dict[str, str]] = {
     "modbus": "modbus_slave",
@@ -1249,25 +1242,6 @@ def add_telnet(config_xml: str, endpoint: str, banner: str) -> str:
     # No XML declaration or comment before <ot-sim>: the C++ DNP3 module rejects
     # a root comment (DESIGN.md 12.3).
     return ET.tostring(root, encoding="unicode") + "\n"
-
-
-def render_telnet(ctx: Context, hostname: str, md: RioHost, rendered: str | None) -> list[Injection]:
-    """The ot-sim config.xml the ot-sim app rendered for ``hostname`` (its
-    injection source), with the telnet module added."""
-    if md.telnet is None:
-        return []
-    if rendered is None:
-        logger.warning(f"{hostname}: no ot-sim config.xml injection; the telnet module was not added")
-        return []
-    endpoint: str = f"{ctx.ip(hostname, md.telnet.interface)}:{md.telnet.port}"
-    text: str = add_telnet(Path(rendered).read_text(encoding="utf-8"), endpoint, md.telnet.banner)
-    return [
-        Injection(
-            src=write(ctx.host_dir(hostname) / "ot-sim-config.xml", text),
-            dst=OTSIM_CONFIG,
-            description="ot-sim config with the telnet module",
-        )
-    ]
 
 
 # ---------------------------------------------------------------- ot-sim BACnet

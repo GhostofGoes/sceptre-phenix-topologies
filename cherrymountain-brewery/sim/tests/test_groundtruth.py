@@ -106,7 +106,8 @@ def writer_for(url: str) -> TruthWriter:
 
 def test_the_template_maps_both_kinds_of_document() -> None:
     """One template covers the federates' documents and the ot-sim
-    ground-truth module's: dates, keywords to group by, and doubles."""
+    ground-truth module's (off in the range, but mapped in case it is turned
+    on): dates, keywords to group by, and doubles."""
     template = index_template("cherrymountain-truth")
     assert template["index_patterns"] == ["cherrymountain-truth-*"]
     assert template["priority"] > 0

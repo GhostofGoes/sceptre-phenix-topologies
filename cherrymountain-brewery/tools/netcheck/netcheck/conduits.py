@@ -469,7 +469,6 @@ CONDUITS: tuple[Conduit, ...] = (
     ),
 )
 
-CONDUIT_BY_ID: dict[str, Conduit] = {c.id: c for c in CONDUITS}
 
 
 class BlockedProbe(BaseModel):

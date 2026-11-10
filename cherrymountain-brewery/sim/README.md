@@ -139,7 +139,7 @@ and model state every 10 s to the in-experiment OpenSearch
 thread (`groundtruth.py`).
 
 - **Time.** `@timestamp` and the date in the index name are the wall clock
-  (UTC), the clock Malcolm, Wazuh, and the ot-sim ground-truth module use, so
+  (UTC), the clock Malcolm and Wazuh use, so
   the records line up without a conversion and Grafana's default range shows
   the run. `sim_time` holds the simulated date and time and `t_s` the federate
   seconds.
@@ -182,6 +182,8 @@ so `plant.yaml` is unchanged.
 | `test_brewhouse_panel.py` | The panel's request counter and its accepted echo: the `start-batch` event and the 05:00 schedule go to the autopilot with no PLC and to the panel with one, the counters wrap at 16 bits, and a request nobody accepts is warned about, kept, and not adopted by the autopilot |
 | `test_brewhouse_control_path.py` | The whole control path offline: a `start-batch` event brews a double-brew day through the compiled plc-brewhouse, the FUXA batch engine script (run under Node), and the federates (about 11 h of plant time: the ten phases of each brew in order, both brews into one fermenter, the hops in), a request made while FUXA is down waits at the panel, and the 05:00 schedule starts the engine without an event |
 | `test_plc_packaging.py` | The line driven by a port of plc-packaging: the filler runs once the PLC opens its product valve, holds on a low supply and recovers, a jam clears after its time, and a commanded Hold stays |
+| `test_life_safety.py` | The life-safety and equipment-safety points: the CO₂ supply shutoff at tier 3, CO₂ detection beyond the cellar, the chiller's refrigerant detector and charge record, the BESS cell temperature and off-gas detector, and the boiler's safety valve |
+| `test_relief.py` | The vessels' pressure-relief valves and the per-vessel truth outputs |
 | `test_groundtruth.py` | The writer against a stand-in OpenSearch (template first, documents kept through an outage, rejected documents logged), boolean and float values whoever wrote the command, and the event API's `starting`, `ok`, and `stalled` health |
 
 ## A PLC in the offline federation

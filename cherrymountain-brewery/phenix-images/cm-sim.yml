@@ -99,9 +99,8 @@ spec:
       /opt/cherrymountain/venv/bin/python -c "import cherrymountain_viz.server as s; assert (s.WEB / 'vendor/three/three.module.js').is_file()"
       install -d -m 0755 /etc/cherrymountain
 
-      # Ground truth (DESIGN.md 9.5): a single-node OpenSearch that the federates and
-      # the ot-sim ground-truth modules write to over MGMT, and Grafana for the white
-      # cell. Both are installed on every sim node but start only where the
+      # Ground truth (DESIGN.md 9.5): a single-node OpenSearch that the federates
+      # write to over MGMT, and Grafana for the white cell. Both are installed on every sim node but start only where the
       # cherrymountain app injects /etc/cherrymountain/ground-truth.env (sim-ctl in the
       # full and lite variants; the ci variant has no ground truth).
       install -d -m 0755 /etc/apt/keyrings

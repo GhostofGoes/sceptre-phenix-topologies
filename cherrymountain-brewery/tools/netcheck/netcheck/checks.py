@@ -23,7 +23,6 @@ from netcheck.sim import Net, Verdict, flow, trace
 
 #: DESIGN.md section 11 totals: (VMs, vCPUs, GB).
 DESIGN_TOTALS: dict[str, tuple[int, int, int]] = {"full": (43, 67, 113), "lite": (37, 48, 71)}
-CORE_NODE_COUNT: int = 37
 
 #: Ports swept for flows that no conduit allows, beyond the conduit ports.
 EXTRA_SERVICES: tuple[conduits.Service, ...] = (

@@ -106,8 +106,6 @@ MAX_BRIDGE_NAME: int = 15
 VYOS_PERSISTENCE: str = "/usr/lib/live/mount/persistence"
 VYOS_INJECT_ROOT: str = "/boot/vyos/rw/"
 
-#: Zones that are routed by a firewall (not FIELD islands, MGMT, or MIRROR).
-OT_ROUTED_VLANS: tuple[str, ...] = ("OPS", "HMI", "CTRL", "DERLINK", "BAS", "SOC")
 
 
 class Nic(BaseModel):
@@ -269,13 +267,6 @@ PLCS: tuple[str, ...] = (
 )
 POWER_DEVICES: tuple[str, ...] = ("relay-main", "pv-inverter", "bess-pcs", "gen-ats")
 BAS_DEVICES: tuple[str, ...] = ("bas-rtu-taproom", "bas-coldroom", "bas-vent")
-RIOS: tuple[str, ...] = (
-    "rio-brewhouse",
-    "rio-cellar",
-    "rio-packaging",
-    "rio-utilities",
-    "glycol-chiller",
-)
 
 # fmt: off
 _FIELD_NODES: list[Node] = [
@@ -343,18 +334,6 @@ NODES: tuple[Node, ...] = (
 
 NODE_BY_NAME: dict[str, Node] = {n.name: n for n in NODES}
 
-# Section 14: Linux hosts with a Wazuh agent.
-WAZUH_AGENT_HOSTS: tuple[str, ...] = (
-    "scada-fuxa",
-    "historian",
-    "ews",
-    "ot-svc",
-    "hmi-brewhouse",
-    "hmi-packaging",
-    "bas-fuxa",
-    "dmz-vpn",
-    "dmz-jump",
-)
 
 
 def nodes_for(variant: str) -> list[Node]:

@@ -153,11 +153,6 @@ class TNode(BaseModel):
                 return i
         return None
 
-    def iface_index(self, name: str) -> int:
-        for idx, i in enumerate(self.interfaces):
-            if i.name == name:
-                return idx
-        raise KeyError(f"{self.hostname}: no interface {name}")
 
 
 class App(BaseModel):
@@ -361,7 +356,6 @@ class Variant(BaseModel):
     workflow: Workflow
     topology: Topology
     scenario: Scenario | None
-    scenario_file: Path | None = None
 
 
 WORKFLOW_FILES: dict[str, str] = {

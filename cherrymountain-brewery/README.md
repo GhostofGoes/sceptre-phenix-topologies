@@ -1,7 +1,7 @@
 # CherryMountain Brewery
 
 > **Status:** in progress; nothing has run on a VM yet. The design is complete
-> and the Phase 0 spikes are done (all nine are go; DESIGN.md has the decisions).
+> and the Phase 0 spikes are done (ten are go and one, TheHive, is a no; DESIGN.md has the decisions).
 > The **ci variant** (the cellar slice, five VMs) is built and its integration
 > test passes in Docker (ot-sim, OpenPLC, FUXA). **Phase 1 (network)** is built
 > for the full and lite variants and checked statically by `tools/netcheck`.
@@ -59,7 +59,7 @@ integration, new software, testing, roadmap, risks, and references.
 | `phenix.yml`, `phenix-lite.yml`, `phenix-configs/` | Workflows for the full and lite variants; topology modules `topology-{core,soc,remote-access}.yml`, `topology-{full,lite}.yml` (they include the modules), and `scenario-{full,lite}.yml` |
 | `phenix-injects/{ot-svc,bbmd,inet-nuke,vrouter,malcolm}/` | The network phase's injects: ot-svc DNS, syslog relay, and chrony hook; the `cm-bbmd` BACnet BBMD service; inet-nuke DNS; the VyOS settings script; malcolm's capture flow |
 | `phenix-injects/otsim/` | `cm_otsim_bacnet.py`, the BACnet/IP server module of the building controllers, which the `cherrymountain` app injects and adds to their ot-sim config ([README](phenix-injects/otsim/README.md)) |
-| `sync.py` | Embeds plantgen's per-variant app blocks into the scenarios and copies generated files into `phenix-injects/`; aware of Git LFS pointers. It replaces `sync_ci.py`, which now only calls it for `ci` |
+| `sync.py` | Embeds plantgen's per-variant app blocks into the scenarios and copies generated files into `phenix-injects/`; aware of Git LFS pointers |
 | `tools/netcheck/` | Static check of the topology, scenario, and workflow against the IP plan and conduit matrix: every conduit and every default drop, with tests ([README](tools/netcheck/README.md)) |
 | `phenix-injects/` | Files the ci scenario injects: federate units, OpenPLC and FUXA provisioning, generated copies |
 | `phenix-images/` | Image configs for every role (noble): `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa`, `cm-svc`, `cm-desktop`, `cm-ews`, `cm-historian`, `cm-guacamole`, `cm-wireguard`, `cm-malcolm`, `cm-wazuh`, with [one README](phenix-images/README.md) that has a section per image |
@@ -98,9 +98,10 @@ host itself the forward listens on a random port: find it with
 `cc tunnel list scada-fuxa` (the row with `dst port 1881`). The `cherrymountain` app generates the range
 passwords for each experiment: FUXA's `admin` is `fuxa_password` and its
 `operator` (the account that may write values, which the HMI stations sign in with by themselves) is `fuxa_operator_password` in
-`<experiment directory>/cherrymountain/secrets.json`. The fixed one in
-`phenix-injects/fuxa/fuxa.env` applies only where the app does not run (the
-Docker integration test).
+`<experiment directory>/cherrymountain/secrets.json`. The fixed ones in
+`phenix-injects/fuxa/fuxa.env` are what the ci topology injects; the app's
+rendered file replaces them when it runs, so they apply only to a ci experiment
+started without the app.
 
 ## Regenerate and test
 
@@ -250,8 +251,7 @@ it matters):
   sceptre-phenix-images. None has been built on a phenix host yet.
 - **Generated blocks.** `ot-sim`, `cherrymountain`, `helics`, `ntp`, and
   `wireguard` come from plantgen through `sync.py`; the soh checks of plantgen
-  are merged into the hand-written ones. Until plantgen emits one, its marker
-  holds a placeholder comment.
+  are merged into the hand-written ones.
 
 ## Applying the full design
 

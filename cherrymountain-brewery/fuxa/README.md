@@ -20,7 +20,7 @@ python3 -I build_project.py --check  # fail if it is stale
 The builder reads `plant/generated/ci/fuxa/scada-fuxa-tags.json` and
 `plant/generated/ci/alarms.json`, so tag IDs, addresses, and alarm texts always
 come from `plant.yaml`. After a change, run plantgen, then `build_project.py`,
-then `../sync_ci.py` (it copies the project into `phenix-injects/fuxa/`).
+then `../sync.py` (it copies the project into `phenix-injects/fuxa/`).
 
 ## Contents
 

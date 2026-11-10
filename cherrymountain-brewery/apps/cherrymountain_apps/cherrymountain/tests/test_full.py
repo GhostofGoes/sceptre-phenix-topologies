@@ -458,7 +458,7 @@ def test_full_relay_main_gets_the_telnet_module(ctx: Context, tmp_path: Path) ->
         "<ot-sim><cpu><module name=\"backplane\">ot-sim-message-bus {{config_file}}</module></cpu>"
         "<modbus name=\"modbus\" mode=\"server\"><endpoint>10.20.16.20:502</endpoint></modbus></ot-sim>"
     )
-    (inject,) = render.render_telnet(ctx, "relay-main", md, str(rendered))
+    (inject,) = render.render_otsim(ctx, "relay-main", md, str(rendered))
     assert inject.dst == "/etc/ot-sim/config.xml"
     text = Path(inject.src).read_text()
     assert text.startswith("<ot-sim>")
@@ -466,7 +466,7 @@ def test_full_relay_main_gets_the_telnet_module(ctx: Context, tmp_path: Path) ->
     assert [m.get("name") for m in root.find("cpu")] == ["backplane", "telnet"]  # type: ignore[union-attr]
     assert root.findtext("telnet/endpoint") == "10.20.16.20:23"
     assert render.add_telnet(text, "10.20.16.20:23", "default").count("<telnet") == 1
-    assert render.render_telnet(ctx, "relay-main", md, None) == []
+    assert render.render_otsim(ctx, "relay-main", md, None) == []
 
 
 def test_full_restart_reads_the_config_the_ot_sim_app_just_rendered(

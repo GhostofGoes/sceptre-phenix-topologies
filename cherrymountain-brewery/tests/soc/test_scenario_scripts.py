@@ -78,3 +78,21 @@ def test_every_injected_soc_script_exists(topology_nodes: dict[str, dict]) -> No
         if not (INJECTS / str(inject["src"]).removeprefix(prefix)).is_file()
     ]
     assert not missing, "injections without a source file: " + ", ".join(missing)
+
+
+def test_the_scenario_captures_what_plantgen_lists() -> None:
+    """The four ``pcap`` components of scenario-full.yml are written by hand from
+    plantgen's ``scorch/pcap.yaml`` (sync.py does not embed them), so this keeps
+    the two the same: every run plantgen lists has a ``pcap-<run>`` component with
+    exactly its VMs and interfaces, and the scenario has no other capture."""
+    generated: dict[str, Any] = yaml.safe_load(
+        (ROOT / "plant" / "generated" / "full" / "scorch" / "pcap.yaml").read_text(encoding="utf-8")
+    )["runs"]
+    scenario = yaml.safe_load((CONFIGS / "scenario-full.yml").read_text(encoding="utf-8"))
+    (scorch,) = [a for a in scenario["spec"]["apps"] if a["name"] == "scorch"]
+    captures: dict[str, Any] = {
+        c["name"].removeprefix("pcap-"): {"type": c["type"], "metadata": {"vms": c["metadata"]["vms"]}}
+        for c in scorch["metadata"]["components"]
+        if c["type"] == "pcap"
+    }
+    assert captures == generated

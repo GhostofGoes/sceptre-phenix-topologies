@@ -200,7 +200,7 @@
           },
           "injections": [
             {
-              "description": "OpenPLC Editor program ZIP (built by the Editor, stored in Git LFS)",
+              "description": "OpenPLC program ZIP (built headless by plc/plc-cellar/build_zip.sh, stored in Git LFS)",
               "src": "/phenix/injects/${BRANCH_NAME}/openplc/plc-cellar.zip",
               "dst": "/opt/cherrymountain/openplc/plc-cellar.zip",
               "permissions": "0644"

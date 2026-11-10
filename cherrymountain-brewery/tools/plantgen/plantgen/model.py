@@ -62,12 +62,6 @@ type BacnetObjectType = Literal[
     "multi-state-value",
 ]
 
-TAG_TYPES: tuple[str, ...] = (
-    "analog-read",
-    "analog-read-write",
-    "binary-read",
-    "binary-read-write",
-)
 PRIORITIES: tuple[str, ...] = ("critical", "high", "medium", "low")
 ALARM_KINDS: tuple[str, ...] = (
     "deviation",

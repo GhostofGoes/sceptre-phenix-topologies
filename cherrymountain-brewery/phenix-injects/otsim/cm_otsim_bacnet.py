@@ -90,7 +90,6 @@ ObjectKind = Literal[
 ]
 ANALOG: Final[frozenset[str]] = frozenset({"analog-input", "analog-output", "analog-value"})
 BINARY: Final[frozenset[str]] = frozenset({"binary-input", "binary-output", "binary-value"})
-INPUTS: Final[frozenset[str]] = frozenset({"analog-input", "binary-input"})
 #: Output objects always have a priority array (ASHRAE 135 clause 19.2).
 OUTPUTS: Final[frozenset[str]] = frozenset({"analog-output", "binary-output"})
 #: Object types that can have a priority array.

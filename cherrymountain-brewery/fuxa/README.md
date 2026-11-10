@@ -324,6 +324,12 @@ Checked against `frangoteam/FUXA` at `b2972583` (server 1.3.6), the commit the
 
 ## Unverified
 
+TODO(verify): a trend's first hour on lite and full. A trend loads what FUXA has
+stored and then follows live values. It did so with FUXA's SQLite store (the ci
+plant's, and the capture run's). On lite and full the store is InfluxDB 2
+(`mysettings.json` `daqstore`), which has not been run: if FUXA cannot read the
+hour back from it, a trend starts empty when its view opens and fills from then on.
+
 TODO(verify): layout enum spellings. Navigation `mode: fix` and `type: inline`
 follow the demo project (enum keys). The header `alarms: fix` and the layout
 `zoom: enabled` follow the same convention but no sample confirms them.

@@ -319,7 +319,7 @@ def brewhouse(plant: Plant) -> Screen:
     c.label(304, 300, "set °F", size=9)
     c.entry(336, 285, "BH.HLT.TT01.SP", 60, 200, digits=0)
     c.valve(143, 160, "BH.CLT.XV01.CMD", size=6)
-    c.label(143, 176, "RO water", size=9, anchor="middle")
+    c.label(140, 176, "RO in", size=9, anchor="middle")
     c.valve(273, 196, "BH.HLT.XV01.CMD", size=7)
     c.valve(405, 180, "BH.MLT.XV01.CMD", size=6)
     c.label(405, 170, "strike", size=9, anchor="middle")

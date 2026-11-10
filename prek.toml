@@ -308,7 +308,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/netcheck/|sync\.py$|phenix-injects/(bbmd|vrouter)/)'
+files = '^cherrymountain-brewery/(tools/netcheck/|sync\.py$|brand/|phenix-injects/(bbmd|vrouter|guacamole)/)'
 pass_filenames = false
 priority = "check"
 
@@ -346,6 +346,23 @@ additional_dependencies = [
     "pytest==9.2.0",
 ]
 files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The brand on the screens that cannot be booted here: the desktops' wallpaper script
+# against a stand-in xfconf-query, Grafana's image script on a tree laid out like the
+# 12.4.14 package, FUXA's page-title script, the Guacamole extension against the compose
+# pin, and what the topologies inject (see brand/README.md and each product's README).
+id = "cm-brand-tests"
+name = "pytest (brand on the screens)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/brand"
+additional_dependencies = [
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(brand/|tests/brand/|sync\.py$|phenix-injects/(brand|desktop|grafana|fuxa|guacamole)/|phenix-configs/topology-|phenix-images/cm-(desktop|ews)\.yml|viz/cherrymountain_viz/web/)'
 pass_filenames = false
 priority = "check"
 
@@ -405,7 +422,7 @@ additional_dependencies = [
     "opendssdirect.py==0.8.4",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(viz/|sim/|plant/generated/)'
+files = '^cherrymountain-brewery/(viz/|sim/|brand/|plant/generated/)'
 pass_filenames = false
 priority = "check"
 
@@ -428,7 +445,7 @@ additional_dependencies = [
     "pytest==9.2.0",
     "pytest-mock==3.15.1",
 ]
-files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|recipes/|plc/|phenix-injects/(openplc|otsim|fuxa)/|phenix-configs/)'
+files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|recipes/|plc/|brand/|phenix-images/cm-sim\.yml|phenix-injects/(openplc|otsim|fuxa|brand|grafana)/|phenix-configs/)'
 pass_filenames = false
 priority = "check"
 
@@ -443,7 +460,7 @@ entry = "python cherrymountain-brewery/fuxa/build_project.py --all --check"
 additional_dependencies = [
     "pydantic==2.14.3",
 ]
-files = '^cherrymountain-brewery/(fuxa/|plant/|recipes/)'
+files = '^cherrymountain-brewery/(fuxa/|plant/|recipes/|brand/)'
 pass_filenames = false
 priority = "check"
 
@@ -463,7 +480,7 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(fuxa/|recipes/|plant/generated/|plc/plc-brewhouse/|sim/tests/st_engine\.py)'
+files = '^cherrymountain-brewery/(fuxa/|recipes/|brand/|plant/generated/|plc/plc-brewhouse/|sim/tests/st_engine\.py)'
 pass_filenames = false
 priority = "check"
 
@@ -480,7 +497,7 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|recipes/|phenix-injects/(openplc|fuxa)/)'
+files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole)/)'
 pass_filenames = false
 priority = "check"
 

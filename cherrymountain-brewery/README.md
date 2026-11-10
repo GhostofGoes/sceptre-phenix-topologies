@@ -85,6 +85,7 @@ the addresses and every allowed flow.
 
 - [Status](#status)
 - [Overview](#overview)
+- [Brewing](#brewing)
 - [Architecture](#architecture)
   - [Process simulation](#process-simulation)
   - [Field devices](#field-devices)
@@ -149,6 +150,114 @@ See [DESIGN.md](docs/DESIGN.md) for the full design: plant and process design,
 power and building models, simulation, network architecture, phenix
 integration, new software, testing, roadmap, risks, and references.
 [FUTURE_WORK.md](docs/FUTURE_WORK.md) has what is planned and not done.
+
+## Brewing
+
+Beer is made from malted grain, water, hops, and yeast. CherryMountain makes
+its IPA 15 barrels (465 gallons) at a time: a day in the brewhouse, about two
+weeks in the cellar, and a shift on the packaging line. This is the process
+the range simulates and controls.
+
+```mermaid
+flowchart LR
+  subgraph HOT["Brewhouse: make wort, about 5.5 hours"]
+    direction LR
+    MILL[Mill the malt] --> MASH[Mash and lauter]
+    MASH --> BOIL[Boil with hops]
+    BOIL --> WP[Whirlpool]
+  end
+  subgraph COLD["Cellar: make beer, about two weeks"]
+    direction LR
+    FV[Ferment] --> COND[Rest and cold crash]
+    COND --> BBT[Carbonate in a bright tank]
+  end
+  subgraph PKG["Packaging: one shift"]
+    direction LR
+    BOT[Bottles] ~~~ KEG[Kegs]
+  end
+  WP -- "cool to 64 °F, add oxygen and yeast" --> FV
+  BBT --> BOT
+  BBT --> KEG
+```
+
+**Brewhouse: make wort.** Wort is the sweet liquid that yeast turns into beer.
+
+1. **Mill.** Rollers crack the malt so that water can reach the starch.
+2. **Mash.** The cracked malt steeps in hot water at 152 °F for an hour in the
+   mash/lauter tun. The malt's own enzymes turn its starch into sugar. Heating
+   the mash to 168 °F stops them.
+3. **Lauter.** The wort drains through the grain bed into the kettle. It is
+   recirculated first until it runs clear, and hot water rinses the last sugar
+   out of the grain (the sparge).
+4. **Boil.** The wort boils for an hour with hops, which make it bitter. At
+   5,200 ft it boils at about 203 °F, not 212.
+5. **Whirlpool.** The wort is spun so that the solids settle in the middle.
+   More hops go in here, for aroma.
+6. **Knockout.** A pump sends the wort through a heat exchanger that cools it
+   from near boiling to 64 °F in one pass. Oxygen and yeast go in on the way to
+   the fermenter. Two brews, made back to back, fill one 30-barrel fermenter.
+
+**Cellar: make beer.** The yeast eats the sugar and makes alcohol, CO₂, and
+heat. Brewers follow it by the sugar that is left, in degrees Plato (°P): this
+beer starts near 16 °P and ends near 3.
+
+```mermaid
+gantt
+  title One fermenter of beer, by day
+  dateFormat YYYY-MM-DD
+  axisFormat %-d
+  tickInterval 1day
+  section Brewhouse
+    Two brews fill the fermenter        :b1, 2001-01-01, 1d
+  section Fermenter
+    Ferment at 66 °F                    :f1, 2001-01-01, 5d
+    Add the dry hops                    :milestone, 2001-01-05, 0d
+    Rest at 70 °F                       :f2, after f1, 6d
+    Cold crash to 34 °F                 :f3, after f2, 2d
+  section Bright tank
+    Carbonate                           :t1, after f3, 1d
+  section Packaging
+    Bottle and keg                      :p1, after t1, 1d
+```
+
+- **Ferment.** Jackets of chilled glycol around the fermenter take the heat
+  away and hold 66 °F. Too warm, and the beer tastes of solvent and fruit; too
+  cold, and the yeast stops.
+- **Rest.** When most of the sugar is gone the tank is closed in to hold
+  pressure (spunding), which keeps the CO₂ in the beer, and warmed to 70 °F so
+  that the yeast cleans up a buttery off-flavor. Hops added now (dry hops) give
+  the IPA its smell.
+- **Cold crash.** Chilling to 34 °F drops the yeast and the haze to the bottom.
+- **Carbonate.** The clear beer moves to a bright tank, where CO₂ is bubbled in
+  until the beer holds 2.6 times its own volume of gas.
+
+**Packaging.** The line rinses 12 oz bottles, fills and caps them against CO₂
+pressure so the beer does not foam, prints a date, labels them, and packs them
+in cases, about 1,800 bottles an hour. Kegs are washed and filled beside it.
+
+**The services behind it.** Nothing above works without them, which is why the
+range models each one:
+
+```mermaid
+flowchart LR
+  STEAM[Steam boiler] -- heats --> H["Hot water, mash tun, kettle"]
+  GLY[Glycol chiller] -- cools --> C["Fermenters, bright tanks, wort"]
+  CO2[CO₂ tank] -- "carbonates and pushes beer" --> B["Bright tanks, filler"]
+  CIP[Clean-in-place skid] -- "washes without opening" --> V["Every vessel and line"]
+  WATER[Water treatment] --> W["Brewing water"]
+  V --> WW[Wastewater neutralization] --> SEWER[Sewer]
+```
+
+CO₂ is also the plant's main hazard. It is heavier than air and collects in
+the cellar, so the cellar has gas sensors, purge fans, and a relay that shuts
+the supply off.
+
+Each step is a control loop or a sequence in a PLC, and each one can go wrong
+in its own way: a mash that is a few degrees off, a fermenter that loses its
+cooling, a tank closed in at the wrong pressure, a cellar that fills with CO₂.
+Those are what the range's scenarios play out. [DESIGN.md](docs/DESIGN.md) has
+the plant's sizes and the recipe (section 3), a glossary (section 4), and every
+loop and interlock (section 6).
 
 ## Architecture
 

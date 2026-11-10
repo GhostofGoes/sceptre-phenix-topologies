@@ -568,10 +568,11 @@ def _fermenter(c: Canvas, x: float, y: float, fv: str, n: int, whole: bool) -> N
     c.state_circle(x + w + 52, y + 8, 4, f"{t}.ZSO01.PV", on=MEDIA["co2"])
     # setpoints
     base: float = y + h + cone + 54
-    c.label(x - 6, base, "set  side", size=9)
-    c.entry(x + 34, base - 15, f"{t}.TT01.SP", 20, 90, w=44, digits=0)
-    c.label(x + 84, base, "cone", size=9)
-    c.entry(x + 106, base - 15, f"{t}.TT02.SP", 20, 90, w=44, digits=0)
+    c.label(x - 8, base, "set  side", size=9)
+    # a number box keeps about 15 px for its spin buttons: 54 px shows "65.2"
+    c.entry(x + 30, base - 15, f"{t}.TT01.SP", 20, 90, w=54, digits=1)
+    c.label(x + 90, base, "cone", size=9)
+    c.entry(x + 112, base - 15, f"{t}.TT02.SP", 20, 90, w=54, digits=1)
     if whole:
         c.label(x - 6, base + 26, "spund set", size=9)
         c.number(x + 66, base + 26, f"{t}.PCV01.SP", digits=1, size=11)

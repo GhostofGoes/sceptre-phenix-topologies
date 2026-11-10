@@ -758,6 +758,12 @@
           "output": "co2.draw_slpm"
         },
         {
+          "key": "cellar/beer.supply_psia",
+          "type": "double",
+          "units": "psia",
+          "output": "beer.supply_psia"
+        },
+        {
           "key": "cellar/fv101.level_pct",
           "type": "double",
           "units": "%",
@@ -4384,7 +4390,7 @@
       ],
       "subscriptions": [
         {
-          "key": "cellar/bbt202.pressure_psia",
+          "key": "cellar/beer.supply_psia",
           "type": "double",
           "units": "psia"
         },

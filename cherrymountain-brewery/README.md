@@ -504,13 +504,13 @@ copy drifts from its source.
 flowchart LR
   PLANT["plant/plant.yaml"] --> GEN["plantgen"]
   GEN --> REG["register maps, tags, alarms"]
-  GEN --> HEL["HELICS and ot-sim settings"]
+  GEN --> HSET["HELICS and ot-sim settings"]
   GEN --> PLCV["PLC variables, Modbus configs"]
   GEN --> FT["FUXA tags"]
   PLCV --> ZIP["build_zip.sh<br/>PLC programs"]
   FT --> PROJ["build_project.py<br/>FUXA projects"]
   REG --> SYNC["sync.py"]
-  HEL --> SYNC
+  HSET --> SYNC
   ZIP --> SYNC
   PROJ --> SYNC
   SYNC --> CFG["phenix-configs/<br/>phenix-injects/"]

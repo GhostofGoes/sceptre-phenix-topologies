@@ -43,6 +43,18 @@ the bright tanks at 34 °F, and carbonates toward 2.6 vol only while the CO2
 relay (`building/vent.co2_relay_ok`) is healthy; plc-cellar takes over on its
 first write.
 
+**Who starts a brew day.** The `start-batch` event and the 05:00 schedule of a
+brew day are a request for brews (`brews`, default 2). With no PLC writing, the
+request goes to the autopilot. With plc-brewhouse driving, the federate raises the
+brewhouse panel's request counter (`panel.requests`, `BH.BATCH.XI02.REQUESTS`); the
+FUXA batch engine (`fuxa/README.md`) reads it through the PLC, queues the brews,
+and answers with the count it has accepted (`BH.BATCH.XC02.ACCEPTED`, which the
+PLC echoes to the panel's `panel.accepted`). If the engine never answers (FUXA is
+down), the request stays at the panel: it is logged as a warning after 5 minutes,
+shows as `batch.panel.pending` in the ground truth, and the engine takes it when
+it returns. The autopilot does not adopt it, even if the PLC stops. The counters
+are 16-bit and wrap.
+
 **What stays manual with a PLC in control.** A PLC writes field points; some
 jobs have none, so the model does them when the plant's state calls for them:
 
@@ -102,7 +114,7 @@ than 0 and at most 86,400):
 
 | Event | Parameters | Federate |
 |---|---|---|
-| `start-batch` | `brews` 1-4 (default 2), `batch_id`, `recipe` (`fire-of-the-phenix`). It queues brews for the autopilot; with plc-brewhouse in control it starts nothing | brewhouse |
+| `start-batch` | `brews` 1-4 (default 2), `batch_id`, `recipe` (`fire-of-the-phenix`). It queues brews for the autopilot; with plc-brewhouse in control it raises the panel's request counter, and the FUXA batch engine starts the brews | brewhouse |
 | `utility-breaker` | `action`: `open` or `close` (required) | power |
 | `genset-exercise` | `action`: `start` (default) or `stop`; `load_bank_kw` 0-100; `duration` (default 1,800) | power |
 | `bess-thermal` | `action`: `start` (default) or `clear` | power |
@@ -167,6 +179,8 @@ so `plant.yaml` is unchanged.
 | `test_compliance.py` | The genset exercise under load and its log (33 kW EP-1 meets 30 % of nameplate; the everyday 15 kW does not until a 40 kW load bank is added; an outage during a test becomes an emergency run), the wastewater discharge record (a caustic slug is inhibited and logged, the discharge stays in 6.0-9.0), a verified caustic CIP record and an unverified rinse, fill-level rejects against the Handbook 133 MAV with the lot mean at or above 12 fl oz and the quarterly variance inside the TTB 0.5 %, and the event API's validation of `genset-exercise` |
 | `test_fermentation.py`, `test_thermal.py`, `test_timebase.py`, `test_federate.py` | The cellar slice's existing tests |
 | `test_plc_brewhouse.py` | Two brews driven by a port of plc-brewhouse's phases: the HLT heats while its jacket is covered, each brew is counted, the tun and kettle are empty between brews, the second mash-in takes as long as the first, the hops go in, and an interrupted knockout counts once |
+| `test_brewhouse_panel.py` | The panel's request counter and its accepted echo: the `start-batch` event and the 05:00 schedule go to the autopilot with no PLC and to the panel with one, the counters wrap at 16 bits, and a request nobody accepts is warned about, kept, and not adopted by the autopilot |
+| `test_brewhouse_control_path.py` | The whole control path offline: a `start-batch` event brews a double-brew day through the compiled plc-brewhouse, the FUXA batch engine script (run under Node), and the federates (about 11 h of plant time: the ten phases of each brew in order, both brews into one fermenter, the hops in), a request made while FUXA is down waits at the panel, and the 05:00 schedule starts the engine without an event |
 | `test_plc_packaging.py` | The line driven by a port of plc-packaging: the filler runs once the PLC opens its product valve, holds on a low supply and recovers, a jam clears after its time, and a commanded Hold stays |
 | `test_groundtruth.py` | The writer against a stand-in OpenSearch (template first, documents kept through an outage, rejected documents logged), boolean and float values whoever wrote the command, and the event API's `starting`, `ok`, and `stalled` health |
 
@@ -189,7 +203,10 @@ python -m pytest tests/test_plc_power.py tests/test_plant.py
 The compiled runs skip, with the reason, where Node, a built strucpp checkout
 (`~/.cache/cherrymountain/strucpp-fcccfbdf5370`, or `$STRUCPP`), or `g++` is
 missing; the model runs always, and `test_compiled_st_agrees_with_the_model` ties
-the two where both exist. What neither covers is the OpenPLC runtime: the
+the two where both exist. `tests/brewhouse_sil.py` does the same for plc-brewhouse
+and also runs the FUXA batch engine (`fuxa/tests/engine_runner.mjs`, under Node)
+against the PLC's registers once a second, as FUXA's OPC UA driver would hold them.
+What neither covers is the OpenPLC runtime: the
 image-table binding, the Modbus master's polling and its torn reads, and scan
 jitter. The loop scans once per federation step, not every 100 ms.
 

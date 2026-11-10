@@ -42,7 +42,8 @@ class StartBatch(MetadataBlock):
     event: Literal["start-batch"]
     #: The plant has one recipe (DESIGN.md 3.2); the sim rejects any other.
     recipe: Literal["fire-of-the-phenix"] = "fire-of-the-phenix"
-    #: Brews the brewhouse autopilot queues back to back.
+    #: Brews requested back to back: queued in the brewhouse autopilot, or, with
+    #: plc-brewhouse in control, at the brewhouse panel for the FUXA batch engine.
     brews: Annotated[int, Field(ge=1, le=4)] = 2
     batch_id: Name | None = None
 

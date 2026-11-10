@@ -66,7 +66,7 @@ Events (`event` selects the kind):
 
 | `event` | Fields | Meaning |
 |---|---|---|
-| `start-batch` | `recipe` (default `fire-of-the-phenix`), `brews` (1-4, default 2: brews queued back to back), `batch_id` | Start a brew |
+| `start-batch` | `recipe` (default `fire-of-the-phenix`), `brews` (1-4, default 2: brews queued back to back), `batch_id` | Start a brew day. With no PLC writing, the brewhouse autopilot runs the brews; with plc-brewhouse in control the request is counted at the brewhouse panel and the FUXA batch engine on scada-fuxa starts them (a request made while FUXA is down waits at the panel until it is back) |
 | `utility-breaker` | `action`: `open` or `close` (required) | Utility outage and restoration |
 | `genset-exercise` | `action`: `start` (default) or `stop`, `load_bank_kw` (0-100, default 0), `duration` (default 1800 s, the NFPA 110 monthly minimum) | Exercise the standby genset under load; the run goes into the genset test log and the 40 CFR 60.4211(f) test hours |
 | `chiller-fault` | `compressor` (1 or 2, default 1), `action`: `fail` (default) or `clear` | Glycol chiller compressor fault |

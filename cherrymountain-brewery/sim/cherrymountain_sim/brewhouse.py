@@ -6,12 +6,22 @@ the model computes or a command (valves, pumps, speed references) the model
 obeys.
 
 **Who drives the commands.** In the full range plc-brewhouse runs the ISA-88
-phases and writes the commands through rio-brewhouse. Until it does, a
-built-in operator (:class:`Autopilot`) runs the double-brew day of the
-recipe, so the plant moves on its own (sim settings ``autopilot``: ``auto``
-hands control to the PLC on its first write, ``on`` keeps it, ``off`` never
-runs it). The autopilot also starts a double batch at ``auto_start`` on the
-``brew_weekdays`` and on the ``start-batch`` scenario event.
+phases and writes the commands through rio-brewhouse, sequenced by the FUXA
+batch engine. Until the PLC writes, a built-in operator (:class:`Autopilot`)
+runs the double-brew day of the recipe, so the plant moves on its own (sim
+settings ``autopilot``: ``auto`` hands control to the PLC on its first write,
+``on`` keeps it, ``off`` never runs it).
+
+**Who starts a brew day.** A brew day is requested at ``auto_start`` on the
+``brew_weekdays`` and by the ``start-batch`` scenario event. While the
+autopilot drives, the request queues brews in it. While the PLC drives, it
+raises the brewhouse panel's request counter (``panel.requests``, a RIO input),
+which the batch engine reads through the PLC and answers with the count it has
+accepted (``panel.accepted``, written back through the PLC). A request nobody
+accepts (the engine's host is down) stays at the panel: it is counted, logged
+after :data:`PANEL_ACK_WARN_S`, and kept in the ground truth, and the engine
+takes it when it returns. Nothing is dropped, and the autopilot does not adopt
+it.
 
 Simplifications: grist and liquor mix instantly; the whirlpool cools the wort
 to its stand temperature with a 5-minute time constant (the operator's
@@ -21,6 +31,7 @@ groundwater temperature.
 
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any, ClassVar, Literal
 
@@ -73,6 +84,12 @@ BOILER_W: float = 196e3
 KETTLE_HEEL_PCT: float = 6.0
 #: Wort that must have run off a mash before the brewer grains out, L.
 GRAIN_OUT_MIN_RUNOFF_L: float = 1000.0
+LOG: logging.Logger = logging.getLogger("cherrymountain_sim.brewhouse")
+#: The panel's request and accepted counters are 16-bit registers that wrap.
+PANEL_COUNTER_MODULUS: int = 65536
+#: Federate seconds a panel request may wait for the batch engine before the
+#: federate logs that nobody has accepted it.
+PANEL_ACK_WARN_S: float = 300.0
 #: ISA-88 phase numbers (plant.yaml BH.BATCH.XC01.PHASE).
 PHASES: dict[str, int] = {
     "IDLE": 0,
@@ -194,6 +211,8 @@ DEFAULT_COMMANDS: dict[str, Value] = {
     "knockout.pump_speed_pct": 0.0,
     "knockout.glycol_valve_pct": 0.0,
     "knockout.o2_sp_slpm": 0.0,
+    #: The batch engine's accepted-request count, forwarded by the PLC.
+    "panel.accepted": 0.0,
 }
 
 
@@ -415,6 +434,13 @@ class BrewhouseFederate(Federate):
     started_days: set[str]
     #: The ``batch_id`` of the latest ``start-batch`` event (ground truth only).
     batch_id: str
+    #: Brews requested at the panel while the PLC drove (the 16-bit counter the
+    #: panel publishes as ``panel.requests``).
+    panel_requests: int
+    #: Unaccepted requests at the last step, and when that count was reached.
+    panel_pending_seen: int
+    panel_pending_since: float
+    panel_warned: bool
 
     def __init__(self, cfg: FederateConfig, clock: SimClock | None = None) -> None:
         super().__init__(cfg, clock)
@@ -426,6 +452,10 @@ class BrewhouseFederate(Federate):
         self.mash_params = MashParams()
         self.started_days = set()
         self.batch_id = ""
+        self.panel_requests = 0
+        self.panel_pending_seen = 0
+        self.panel_pending_since = 0.0
+        self.panel_warned = False
 
     # -- control authority -------------------------------------------------------------
 
@@ -450,12 +480,58 @@ class BrewhouseFederate(Federate):
         return bool(self.cmd(tag))
 
     def on_event(self, event: ScenarioEvent) -> None:
-        """``start-batch`` queues brews for the autopilot."""
+        """``start-batch`` requests a brew day (:meth:`request_brews`)."""
         super().on_event(event)
         if event.type == "start-batch":
             # simctl checks the recipe (the plant has one) and the brew count.
             self.batch_id = str(event.params.get("batch_id", ""))
-            self.pilot.start(int(event.params.get("brews", 2)))
+            self.request_brews(int(event.params.get("brews", 2)))
+
+    # -- brew requests -----------------------------------------------------------------
+
+    def request_brews(self, brews: int) -> None:
+        """Ask for ``brews`` brews: queue them in the autopilot while it drives,
+        else press the panel's request counter for the batch engine."""
+        if self.autopilot:
+            self.pilot.start(brews)
+            return
+        self.panel_requests = (self.panel_requests + brews) % PANEL_COUNTER_MODULUS
+        LOG.info(
+            "brewhouse: %d brew(s) requested at the panel (counter %d)",
+            brews,
+            self.panel_requests,
+        )
+
+    @property
+    def panel_accepted(self) -> int:
+        """The count the batch engine has accepted, as the PLC last wrote it."""
+        return int(float(self.commands.get("panel.accepted", 0.0))) % PANEL_COUNTER_MODULUS
+
+    @property
+    def panel_pending(self) -> int:
+        """Requests at the panel the engine has not accepted yet."""
+        return (self.panel_requests - self.panel_accepted) % PANEL_COUNTER_MODULUS
+
+    def _watch_panel(self) -> None:
+        """Log once when a request has waited :data:`PANEL_ACK_WARN_S` unaccepted."""
+        pending = self.panel_pending
+        if pending != self.panel_pending_seen:
+            self.panel_pending_seen = pending
+            self.panel_pending_since = self.t
+            self.panel_warned = False
+        if (
+            pending
+            and not self.panel_warned
+            and self.t - self.panel_pending_since >= PANEL_ACK_WARN_S
+        ):
+            self.panel_warned = True
+            LOG.warning(
+                "brewhouse: %d brew request(s) at the panel not accepted for %.0f s;"
+                " the batch engine (scada-fuxa) or plc-brewhouse is not answering."
+                " They stay queued at the panel",
+                pending,
+                self.t - self.panel_pending_since,
+            )
 
     # -- helpers used by the autopilot -------------------------------------------------
 
@@ -539,6 +615,7 @@ class BrewhouseFederate(Federate):
     def advance(self, wall_dt_s: float) -> None:
         """Advance the brewhouse ``wall_dt_s`` seconds."""
         self._schedule()
+        self._watch_panel()
         if self.autopilot:
             self.pilot.step(self, wall_dt_s)
         p = self.proc
@@ -590,7 +667,7 @@ class BrewhouseFederate(Federate):
         if day not in self.started_days and (now.hour, now.minute) >= (hh, mm):
             self.started_days.add(day)
             if now.hour < hh + 2:  # not when the run starts late in the day
-                self.pilot.start(s.brews_per_day)
+                self.request_brews(s.brews_per_day)
 
     def _mill(self, dt: float, powered: bool) -> None:
         p = self.proc
@@ -805,6 +882,7 @@ class BrewhouseFederate(Federate):
             "knockout.o2_slpm": p.o2_slpm,
             "knockout.do_ppm": p.do_ppm,
             "knockout.pump_running": p.wort_lpm > 0,
+            "panel.requests": float(self.panel_requests),
         }
         if tag not in values:
             raise KeyError(f"no model value for {pub.key}")
@@ -860,6 +938,11 @@ class BrewhouseFederate(Federate):
             "phase": self.pilot.phase,
             "batch_id": self.batch_id,
             "autopilot": self.autopilot,
+            "panel": {
+                "requested": self.panel_requests,
+                "accepted": self.panel_accepted,
+                "pending": self.panel_pending,
+            },
             "boil_min": p.boil_min,
             "kettle_plato": p.kettle.plato,
             "ibu": self.ibu,

@@ -135,10 +135,48 @@ Hold and Restart, Abort, a phase that never completes, no fermenter at the start
 or at knockout, refused starts, a lost link, a PLC or FUXA restart, a request
 while FUXA is down, a failing script), `test_batch_project.py` checks what the
 builder writes, and
+`test_brand.py` checks the frame and the process views against `brand/tokens.json`, and
 `test_plc_port.py` holds the simulator's handshake to plc-brewhouse's compiled
 program scan by scan (it needs strucpp and g++, as `sim/tests/st_engine.py` does,
 and skips without them). `sim/tests/test_brewhouse_control_path.py` runs the script
 against the compiled PLC and the federates.
+
+## The brand on FUXA's screens
+
+Both FUXA hosts wear the brewery's frame ([brand/README.md](../brand/README.md)): the
+header is ink with paper text, the brewery's name, and a 3 px ember stripe under it; the
+menu is coal with paper text and the full mark (48 px) at its top; the tab has the
+brewery's icon and the title "CherryMountain Brewery SCADA" (or "... BAS"); and the sign-in
+dialog is a coal card with the mark above its title, ink fields, and an ember OK button.
+The process views keep their gray background and their own colors, and the alarm levels keep
+the reserved colors. Where each piece comes from:
+
+| Piece | Mechanism | Source |
+|---|---|---|
+| Header and menu colors, the mark in the menu | `layout.header.bkcolor`/`fgcolor`/`height`, `layout.navigation.bkcolor`/`fgcolor`/`logo` (a URL), written by `build_layout` from `brand/tokens.json` roles (`header_bg`, `header_fg`, `menu_bg`, `menu_fg`) | `client/src/app/_models/hmi.ts` (`HeaderSettings`, `NavigationSettings`); the menu template `sidenav.component.html` shows `logo` in place of FUXA's title |
+| The name in the header | A header item of type `label` with the name in `property.text`. FUXA reads `header.title` but its home template never shows it | `home.component.html` (`header-items-button`), `home.component.ts` `loadHeaderItems` |
+| The ember stripe, the signed-in icon, the mark's row, the sign-in dialog | `layout.customStyles`, a CSS string FUXA adds to every page; `frame_css()` writes it with the token colors, and every rule starts at `.header`, `.sidenav-menu`, `.mat-mdc-dialog-container:has(app-login)`, or `app-login`, so no view takes one | `app.component.ts` `applyCustomCss`; the dialog is Angular Material 18's MDC dialog, themed by its own custom properties (`--mdc-dialog-container-color`, `--mdc-protected-button-container-color`) |
+| The mark as a file | `brand/icon.svg`, injected to `/opt/fuxa/server/_images/Brand/icon.svg`; FUXA serves `_images` at `/_images` with no sign-in | `server/main.js` (`imagesFileDir`, `app.use('/_images', ...)`) |
+| The tab icon | `brand/favicon.ico`, injected over `/opt/fuxa/client/dist/favicon.ico` | `client/dist/index.html` links `favicon.ico` |
+| The page title | `66-fuxa-brand.sh` rewrites `<title>FUXA</title>` in `client/dist/index.html` from `FUXA_TITLE` (the app writes it from the host's role; the ci slice's `fuxa.env` holds it). FUXA has no setting for it | `client/dist/index.html` at the pin |
+
+Everything on the table that is a file comes from `brand/` through `sync.py`'s copies in
+`phenix-injects/brand/`; the cherrymountain app injects it (`brand.py`) and the ci topology
+injects the same files. `tests/test_brand.py` checks that the frame colors are the tokens,
+that the CSS names only brand colors (and no alarm color), that every rule starts in the
+frame, that no view paints a brand color, that the alarm levels keep their reserved colors,
+and that the Batch view's buttons keep their own readable style.
+
+Seen rendered, in a real FUXA 1.3.6 (the pinned commit, with the `node-opcua` and
+`modbus-serial` drivers, `secureEnabled` on), through the real `cm-fuxa-provision.sh` on a
+fresh user directory (seeded admin, operator account, project import), with `66-fuxa-brand.sh`
+run on the client's `index.html`, the two files injected, and a fake PLC behind it: the
+guest view, the sign-in dialog, the operator's Cellar, Batch, Brewhouse, Cellar points, and
+Packaging views, three active alarms (high, medium, and message levels in their reserved
+colors) with the alarm list open, the tab's icon and title as the server serves them, and no
+request to anything outside FUXA. Pressing Start on the Batch view as the signed-in operator
+started a batch (the engine ran MILL), which also settles the open question below about the
+buttons with `secureEnabled` on.
 
 ## Checked against FUXA source
 
@@ -178,6 +216,13 @@ Checked against `frangoteam/FUXA` at `b2972583` (server 1.3.6), the commit the
   into an integer before applying the linear scale (`devices/opcua/index.js`
   `setValue`: `_toValue`, then `tagRawCalculator`), so the engine writes whole
   degrees.
+- Layout and brand: `NavigationSettings.logo` is the menu's image (`sidenav.component.ts`
+  `setLayout` copies it, the template shows it instead of the title), a header `label`
+  item takes its text from `property.text` (`loadHeaderItems`), `layout.customStyles` is
+  appended as a `<style>` (`applyCustomCss`), the header's account icon is colored
+  `rgb(59, 144, 255)` inline once someone signed in (`home.component.html`), `index.html`
+  names the page `FUXA` and links `favicon.ico`, and `server/_images` is served at `/_images`
+  without sign-in (`main.js`).
 - The project imported on a local FUXA 1.3.6 through `cm-fuxa-provision`, the
   device loaded with the `modbus-serial` plugin installed, and the admin
   password change worked on a first run and a re-run.
@@ -223,6 +268,16 @@ estimates, are longer than the real phases. (The buttons do work for the signed-
 `operator` with `secureEnabled` on: the HMI kiosk's script signed in, and Start
 and Abort reached the engine, in a real FUXA 1.3.6 with the image's Chromium; see
 the app's README, "HMI kiosk".)
+
+TODO(verify): on the first boot, that the injected files land where FUXA reads them
+(`/opt/fuxa/client/dist/favicon.ico`, `/opt/fuxa/server/_images/Brand/icon.svg`: the
+service's working directory is `/opt/fuxa/server`, and the unit may write only under
+`/opt/fuxa`), and that `66-fuxa-brand.sh` runs before anyone opens the page. The harness
+ran FUXA with `--userDir`, so its `_images` was in the user directory.
+
+`cm-fuxa-provision` does not import a project again when FUXA already holds the same
+devices and tags, so a layout-only change (as the brand is) does not reach a FUXA that
+was provisioned before it: redeploy the experiment, or POST the project by hand.
 
 TODO(verify): alarm records omit `permission` and `permissionRoles`. Confirm
 all signed-in users see the alarms with `secureEnabled` on.

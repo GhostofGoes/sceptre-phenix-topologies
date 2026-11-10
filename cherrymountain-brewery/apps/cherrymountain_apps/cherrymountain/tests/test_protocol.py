@@ -60,7 +60,7 @@ def test_the_app_leaves_no_bytecode_in_the_topology_directory(
     from cherrymountain_apps.cherrymountain.tests.conftest import ROOT
 
     source: Path = tmp_path / "cherrymountain-brewery"
-    for part in ("plant", "tools/plantgen", "fuxa", "phenix-injects"):
+    for part in ("plant", "tools/plantgen", "fuxa", "phenix-injects", "brand"):
         shutil.copytree(
             ROOT / part,
             source / part,

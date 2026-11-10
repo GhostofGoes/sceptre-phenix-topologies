@@ -23,6 +23,7 @@ apps/
 └── cherrymountain_apps/
     ├── simctl.py              event API client and cc tunnel lookup (shared)
     ├── cherrymountain/        the app: metadata, validation, render, soh, kpi
+    │   ├── brand.py           which brand file goes where on a FUXA or Grafana host
     │   ├── templates/         scripts, systemd units, .desktop, Mako configs
     │   └── tests/             stage tests on the recorded ci experiment
     └── plantevent/            the SCORCH component and its tests

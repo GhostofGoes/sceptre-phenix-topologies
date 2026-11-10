@@ -26,6 +26,7 @@ from phenix_apps.common import utils
 from phenix_apps.common.logger import logger
 from pydantic import BaseModel, ConfigDict
 
+from cherrymountain_apps.cherrymountain import brand
 from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, host_keys, totp_secret, write_private
 from cherrymountain_apps.cherrymountain.metadata import (
     AppMetadata,
@@ -563,6 +564,8 @@ def render_fuxa(ctx: Context, hostname: str, md: FuxaHost) -> list[Injection]:
                 "FUXA_PROJECT": f"{CONF_DIR}/fuxa/project.json",
                 # cm-fuxa-provision requires each of these after the import.
                 "FUXA_EXPECT_DEVICES": " ".join(expect),
+                # 66-fuxa-brand.sh writes it into the client's index.html.
+                "FUXA_TITLE": brand.FUXA_TITLES[md.role],
             }
         ),
         private=True,
@@ -609,6 +612,27 @@ def render_fuxa(ctx: Context, hostname: str, md: FuxaHost) -> list[Injection]:
                 "0755",
                 "start provisioning after the network is up",
             ),
+        ],
+    )
+    # The brand (brand.py): the tab icon and the mark, copied from phenix-injects/brand/,
+    # and the script that sets the page title.
+    injects += _shared(
+        ctx,
+        hostname,
+        "brand",
+        [(f.name, f.dst, "0644", f.description) for f in brand.FUXA_FILES],
+    )
+    injects += _shared(
+        ctx,
+        hostname,
+        "fuxa",
+        [
+            (
+                "66-fuxa-brand.sh",
+                f"{STARTUP}/66-fuxa-brand.sh",
+                "0755",
+                "set FUXA's page title",
+            )
         ],
     )
     injects += _packaged(

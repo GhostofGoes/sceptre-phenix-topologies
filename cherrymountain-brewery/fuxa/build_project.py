@@ -39,6 +39,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 HERE: Path = Path(__file__).resolve().parent
 PLANT_GENERATED: Path = HERE.parents[0] / "plant" / "generated"
+BRAND_TOKENS: Path = HERE.parent / "brand" / "tokens.json"
 NAMESPACE: uuid.UUID = uuid.uuid5(uuid.NAMESPACE_URL, "cherrymountain-brewery/fuxa")
 FUXA_PROJECT_VERSION: str = "1.01"
 PROJECT_NAME: str = "cherrymountain-ci"
@@ -49,6 +50,50 @@ OUTPUT_UNIT: int = 1  # PropertyType.output in the FUXA editor (unit and digits)
 def uid(prefix: str, name: str) -> str:
     """Stable ID for ``name``: ``<prefix>_<uuid5>``."""
     return f"{prefix}{uuid.uuid5(NAMESPACE, name)}"
+
+
+# ---------------------------------------------------------------- brand
+
+
+class Brand(BaseModel):
+    """``brand/tokens.json``: the colors by name, the roles that name them, the
+    colors reserved for alarms, and the process area's gray."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    colors: dict[str, str]
+    roles: dict[str, str | list[str]]
+    reserved_for_alarms: dict[str, str]
+    process_area: dict[str, str]
+
+    def color(self, name: str) -> str:
+        """The ``#RRGGBB`` value of a named color."""
+        return self.colors[name]
+
+    def role(self, role: str) -> str:
+        """The value of the color a role names (``header_bg`` -> ink -> ``#1B1B1F``)."""
+        name: str | list[str] = self.roles[role]
+        if not isinstance(name, str):
+            raise ValueError(f"role {role} names several colors, not one")
+        return self.colors[name]
+
+    def alarm(self, level: str) -> str:
+        """The color reserved for an alarm level (``critical``, ``high``, ``medium``, ``low``)."""
+        return self.reserved_for_alarms[level]
+
+    def process_bkcolor(self) -> str:
+        """The process area's background as FUXA writes a view's ``bkcolor``
+        (lowercase, with an alpha byte)."""
+        return self.process_area["background"].lower() + "ff"
+
+
+def load_brand(path: Path = BRAND_TOKENS) -> Brand:
+    if not path.is_file():
+        raise SystemExit(f"missing {path}: the FUXA frame takes its colors from the brand tokens")
+    return Brand.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+BRAND: Brand = load_brand()
 
 
 # ---------------------------------------------------------------- inputs
@@ -453,7 +498,7 @@ def build_cellar_view(tags: dict[str, PlantTag]) -> dict[str, Any]:
         "profile": {
             "width": width,
             "height": 470,
-            "bkcolor": "#f5f5f5ff",
+            "bkcolor": BRAND.process_bkcolor(),
             "margin": 10,
             "align": "topCenter",
             "gridType": "fixed",
@@ -466,27 +511,111 @@ def build_cellar_view(tags: dict[str, PlantTag]) -> dict[str, Any]:
     }
 
 
+#: The brewery's name as it is written on every screen.
+BRAND_NAME: str = "CherryMountain Brewery"
+#: Where the mark is served from (FUXA serves ``<server>/_images`` at ``/_images``, no sign-in
+#: needed): the cherrymountain app and the ci topology inject ``brand/icon.svg`` there.
+LOGO_URL: str = "_images/Brand/icon.svg"
+#: The header's height in px (FUXA's default is 46): room for the mark at 48 px in the menu
+#: above it, and a 3 px stripe at the bottom.
+HEADER_HEIGHT: int = 56
+STRIPE_HEIGHT: int = 3
+#: The mark's size in px: 48 is where the full drawing starts to hold up (brand/README.md).
+LOGO_SIZE: int = 48
+
+
+#: The inline color FUXA gives the header's account icon once someone is signed in
+#: (``home.component.html``); the CSS recolors exactly that state.
+FUXA_SIGNED_IN_BLUE: str = "59, 144, 255"
+
+
+def frame_css(brand: Brand = BRAND) -> str:
+    """The CSS FUXA adds to every page (``layout.customStyles``, applied by
+    ``app.component.ts`` ``applyCustomCss``): the ember stripe under the header, the
+    signed-in account icon, the mark's row at the top of the menu, and the sign-in
+    dialog. It only reaches the frame: every rule names the header, the menu, or the
+    sign-in dialog, never a view or a view's buttons."""
+    ink, coal, ash = brand.color("ink"), brand.color("coal"), brand.color("ash")
+    paper, flame = brand.role("header_fg"), brand.role("link")
+    stripe, primary, primary_fg = brand.role("stripe"), brand.role("primary"), brand.role("primary_fg")
+    return textwrap.dedent(
+        f"""\
+        /* The frame of {BRAND_NAME}: header, menu, and sign-in dialog. Colors are the brand tokens. */
+        .header {{
+          background-image: linear-gradient({stripe}, {stripe});
+          background-size: 100% {STRIPE_HEIGHT}px;
+          background-repeat: no-repeat;
+          background-position: left bottom;
+        }}
+        .header .header-items-button button {{ pointer-events: none; }}
+        .header .header-items-button .mdc-button__label {{ font-weight: 700; }}
+        .header .header-login mat-icon[style*="{FUXA_SIGNED_IN_BLUE}"] {{ color: {flame} !important; }}
+        .sidenav-menu .sidenav-header {{ height: {HEADER_HEIGHT}px !important; padding-bottom: 0 !important; }}
+        .sidenav-menu .sidenav-header img {{ width: {LOGO_SIZE}px; height: {LOGO_SIZE}px; }}
+        .mat-mdc-dialog-container:has(app-login) {{
+          --mdc-dialog-container-color: {coal};
+          --mdc-dialog-subhead-color: {paper};
+          --mdc-dialog-supporting-text-color: {paper};
+        }}
+        .mat-mdc-dialog-container:has(app-login) .mdc-dialog__surface {{ border-top: {STRIPE_HEIGHT}px solid {stripe}; }}
+        app-login h1.mat-mdc-dialog-title::before {{
+          content: "";
+          display: block;
+          width: {LOGO_SIZE}px;
+          height: {LOGO_SIZE}px;
+          margin: 14px 0 10px;
+          background: url({LOGO_URL}) center / contain no-repeat;
+        }}
+        app-login .my-form-field span {{ color: {paper}; }}
+        app-login .my-form-field input {{ background-color: {ink}; color: {paper}; }}
+        .mat-mdc-dialog-container app-login .mat-mdc-raised-button.mat-primary {{
+          --mdc-protected-button-container-color: {primary};
+          --mdc-protected-button-label-text-color: {primary_fg};
+        }}
+        .mat-mdc-dialog-container app-login .mat-mdc-raised-button.mat-unthemed {{
+          --mdc-protected-button-container-color: {ash};
+          --mdc-protected-button-label-text-color: {paper};
+        }}
+        """
+    )
+
+
 def build_layout(view_id: str) -> dict[str, Any]:
-    """Navigation: the Cellar view is the start view; alarms show in the header."""
+    """Navigation and header: the Cellar view is the start view; alarms show in the
+    header. The header is ink with paper text and an ember stripe, the menu coal with
+    paper text and the mark at its top, and the sign-in dialog is themed by the CSS."""
     return {
         "start": view_id,
         "navigation": {
             "mode": "fix",
             "type": "inline",
-            "bkcolor": "#F4F5F7",
-            "fgcolor": "#1D1D1D",
+            "bkcolor": BRAND.role("menu_bg"),
+            "fgcolor": BRAND.role("menu_fg"),
+            "logo": LOGO_URL,
             "items": [{"icon": "dashboard", "view": view_id, "link": "", "text": "Cellar"}],
         },
         "header": {
-            "title": "CherryMountain Brewery",
+            "title": BRAND_NAME,
             "alarms": "fix",
             "infos": "hide",
-            "bkcolor": "#ffffff",
-            "fgcolor": "#000000",
-            "items": [],
+            "bkcolor": BRAND.role("header_bg"),
+            "fgcolor": BRAND.role("header_fg"),
+            "height": HEADER_HEIGHT,
+            "fontSize": 18,
+            "loginInfo": "username",
+            "items": [
+                {
+                    "id": uid("i_", "brand-name"),
+                    "type": "label",
+                    "marginLeft": 5,
+                    "marginRight": 5,
+                    "property": {"text": BRAND_NAME, "events": [], "actions": []},
+                }
+            ],
         },
         "showdev": False,
         "zoom": "enabled",
+        "customStyles": frame_css(),
     }
 
 
@@ -502,10 +631,10 @@ ACK_MODE: dict[str, str] = {
     "info": "float",
 }
 COLORS: dict[str, tuple[str, str]] = {
-    "highhigh": ("#B71C1C", "#FFFFFF"),
-    "high": ("#FF4848", "#FFFFFF"),
-    "low": ("#F9CF59", "#000000"),
-    "info": ("#66CCFF", "#000000"),
+    "highhigh": (BRAND.alarm("critical"), "#FFFFFF"),
+    "high": (BRAND.alarm("high"), "#FFFFFF"),
+    "low": (BRAND.alarm("medium"), "#000000"),
+    "info": (BRAND.alarm("low"), "#000000"),
 }
 
 
@@ -746,7 +875,7 @@ def build_device_view(
         "profile": {
             "width": width,
             "height": height,
-            "bkcolor": "#f5f5f5ff",
+            "bkcolor": BRAND.process_bkcolor(),
             "margin": 10,
             "align": "topCenter",
             "gridType": "fixed",
@@ -1277,7 +1406,7 @@ def build_batch_view(recipe: BatchRecipe) -> dict[str, Any]:
         "profile": {
             "width": width,
             "height": height,
-            "bkcolor": "#f5f5f5ff",
+            "bkcolor": BRAND.process_bkcolor(),
             "margin": 10,
             "align": "topCenter",
             "gridType": "fixed",

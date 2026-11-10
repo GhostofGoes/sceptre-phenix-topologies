@@ -3,7 +3,7 @@
 This guide takes you from an empty host to a running CherryMountain range, and
 then shows you how to reach and use each part of it. Follow it top to bottom
 the first time. [README.md](README.md) says what is in this directory, and
-[DESIGN.md](DESIGN.md) explains why the range is built the way it is.
+[DESIGN.md](docs/DESIGN.md) explains why the range is built the way it is.
 
 > **Read this first.** The range has **not booted on a real phenix host yet**.
 > The simulation, the apps, the PLC programs, and the network rules are tested
@@ -720,7 +720,7 @@ docker exec phenix phenix experiment delete cherrymountain-lite    # remove it, 
 
 ## Known limits
 
-Be ready for these. [DESIGN.md §19](DESIGN.md#19-risks-and-open-questions) has
+Be ready for these. [DESIGN.md §19](docs/DESIGN.md#19-risks-and-open-questions) has
 the full list.
 
 - **Nothing has run on VMs.** The first boot of each image is the first real
@@ -744,12 +744,12 @@ the full list.
 
 ## Where to go next
 
-- [DESIGN.md §15.9](DESIGN.md#159-operations): the operations runbook, failure
+- [DESIGN.md §15.9](docs/DESIGN.md#159-operations): the operations runbook, failure
   modes, and the range's own security.
-- [§10](DESIGN.md#10-network-architecture): zones, addresses, and what may talk
-  to what. [§14](DESIGN.md#14-blue-team-monitoring): the detections.
-- [§15.6](DESIGN.md#156-scorch-pipelines): the SCORCH runs.
-  [§15.10](DESIGN.md#1510-white-cell-3d-view-cm-viz): the 3D view.
+- [§10](docs/DESIGN.md#10-network-architecture): zones, addresses, and what may talk
+  to what. [§14](docs/DESIGN.md#14-blue-team-monitoring): the detections.
+- [§15.6](docs/DESIGN.md#156-scorch-pipelines): the SCORCH runs.
+  [§15.10](docs/DESIGN.md#1510-white-cell-3d-view-cm-viz): the 3D view.
 - [sim/README.md](sim/README.md): the simulation and every event.
 - [apps/README.md](apps/README.md): the range's phenix app and its status.
 - After a change to `plant/plant.yaml`: "Regenerate and test" in

@@ -7,7 +7,7 @@ reviewer (a Claude agent) that read the practices' full text, compiled every
 program, and ran it. Nobody has checked its findings one by one except where "Since
 the review" says a finding was reproduced and fixed. Bringing the programs into line
 with the practices is future work
-([DESIGN.md, Future work](../DESIGN.md#future-work)).
+([FUTURE_WORK.md](FUTURE_WORK.md#plc-programs-that-follow-the-top-20-secure-plc-coding-practices)).
 
 File and line references are to the tree at commit `d5520d1`, before the fixes
 below; `git show d5520d1:<path>` shows a cited line.

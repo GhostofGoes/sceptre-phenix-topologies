@@ -18,7 +18,7 @@ lists and alarm list. This file describes the ci project first, then
 
 `scada-fuxa-project.json` is the project that `cm-fuxa-provision` POSTs to
 FUXA's `/api/project` on scada-fuxa ([DESIGN.md
-12.2](../DESIGN.md#122-fuxa-two-instances)). It is generated; do not edit it by
+12.2](../docs/DESIGN.md#122-fuxa-two-instances)). It is generated; do not edit it by
 hand.
 
 ```shell
@@ -158,7 +158,7 @@ To see a change, build the projects and run the capture scripts' FUXA
 The scada-fuxa project of `full` and `lite` (not ci, which has no brewhouse, and
 not bas-fuxa) carries one server script, `cmBatchEngine`, from `batch_engine.js`,
 and a **Batch** view after Brewhouse ([DESIGN.md
-12.2](../DESIGN.md#122-fuxa-two-instances)). The script runs every second and
+12.2](../docs/DESIGN.md#122-fuxa-two-instances)). The script runs every second and
 sequences the ten phases of plc-brewhouse, one brew after another: set the
 phase's setpoints and parameter, command Start, wait for Complete, command Reset,
 go on to the next. The recipe's numbers (grain bill, mash steps, boil and

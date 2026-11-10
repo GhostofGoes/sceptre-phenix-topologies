@@ -1,7 +1,7 @@
 # plc-cellar program (ci variant)
 
 IEC 61131-3 Structured Text for the cellar PLC ([DESIGN.md
-12.1](../../DESIGN.md#121-openplc-v4-runtime-v3-fallback)).
+12.1](../../docs/DESIGN.md#121-openplc-v4-runtime-v3-fallback)).
 
 | File | Purpose |
 |---|---|

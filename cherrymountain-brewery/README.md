@@ -77,7 +77,7 @@ flowchart TB
 The network of the full variant: 43 VMs on 16 networks, plus the simulation's
 and the capture mirror's.
 Hexagons are routers and firewalls, and dotted lines are the simulation's own
-network, which is not part of the brewery. [DESIGN.md](DESIGN.md) section 10 has
+network, which is not part of the brewery. [DESIGN.md](docs/DESIGN.md) section 10 has
 the addresses and every allowed flow.
 
 <details>
@@ -117,7 +117,7 @@ the addresses and every allowed flow.
 ## Status
 
 Everything is built and tested offline, and nothing has run on a phenix host
-yet: [Status in DESIGN.md](DESIGN.md#status) has the detail.
+yet: [Status in DESIGN.md](docs/DESIGN.md#status) has the detail.
 
 ## Overview
 
@@ -145,9 +145,10 @@ To run it on your own host, follow [USER_GUIDE.md](USER_GUIDE.md): the
 repositories to clone, the builds, the first start of each variant, and what to
 check.
 
-See [DESIGN.md](DESIGN.md) for the full design: plant and process design,
+See [DESIGN.md](docs/DESIGN.md) for the full design: plant and process design,
 power and building models, simulation, network architecture, phenix
 integration, new software, testing, roadmap, risks, and references.
+[FUTURE_WORK.md](docs/FUTURE_WORK.md) has what is planned and not done.
 
 ## Architecture
 
@@ -422,7 +423,7 @@ flowchart LR
   ALL["every plant host"] -- "NTP, DNS, syslog" --> SVC["ot-svc"]
 ```
 
-The main conduits. [DESIGN.md](DESIGN.md) section 10.3 lists every one, and a
+The main conduits. [DESIGN.md](docs/DESIGN.md) section 10.3 lists every one, and a
 flow that is not listed is dropped.
 
 ### Blue team
@@ -841,6 +842,8 @@ the scenario beside them.
 | `tests/bacnet/` | The ot-sim BACnet module against a real BACpypes3 client and real ZeroMQ sockets on loopback |
 | `brand/` | The brewery's mark, colors (`tokens.json`), and wallpaper, with the rules for using them ([README](brand/README.md)); `sync.py` copies them to every screen, and `tests/brand/` checks the scripts that apply them |
 | `viz/` | `cherrymountain_viz`: cm-viz, the white cell's 3D view of ground truth (three.js, vendored), with tests ([README](viz/README.md)) |
+| `docs/DESIGN.md` | The design: the plant, the models, the network, the control system, the phenix integration, testing, and references. Its Status section is the authoritative status |
+| `docs/FUTURE_WORK.md` | Everything that is planned or considered and not done |
 | `docs/examples/` | The screenshots of the [Examples](#examples) section and the scripts that take them ([README](docs/examples/capture/README.md)) |
 | `docs/plc-secure-coding-review.md` | A review of the five PLC programs against the Top 20 Secure PLC Coding Practices: a rating per practice and program, the findings, and which of them are fixed |
 | `fuxa/` | `build_project.py` and the FUXA projects it builds: scada-fuxa for ci, and scada-fuxa and bas-fuxa for full and lite (`fuxa/<variant>/`); `batch_engine.js`, the ISA-88 batch engine that the full and lite scada-fuxa projects carry, with its tests in `fuxa/tests/` ([README](fuxa/README.md)) |

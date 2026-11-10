@@ -1,6 +1,6 @@
 # cherrymountain_sim
 
-The CherryMountain Brewery simulation ([DESIGN.md §9](../DESIGN.md#9-simulation-and-co-simulation)):
+The CherryMountain Brewery simulation ([DESIGN.md §9](../docs/DESIGN.md#9-simulation-and-co-simulation)):
 one HELICS federate per process area, the process, power, and building models
 behind them, and the sim-ctl event API. Every federate publishes and subscribes
 exactly the keys plantgen lists in `plant/generated/<variant>/helics.json`.

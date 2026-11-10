@@ -4,7 +4,7 @@
 > [Status](#status) below is the one place that says what is done and what is
 > left. This document specifies the CherryMountain Brewery topology for
 > [phēnix](https://github.com/sandialabs/sceptre-phenix): the configs, images,
-> programs, and simulation code of the range. [USER_GUIDE.md](USER_GUIDE.md) is
+> programs, and simulation code of the range. [USER_GUIDE.md](../USER_GUIDE.md) is
 > the step-by-step guide to building, starting, reaching, and using it.
 >
 > **tl;dr:** a 43-VM, all open-source OT cyber range of a Colorado
@@ -24,12 +24,12 @@ section is right.
 tested as far as it can be without one. The `ci` variant (the cellar slice,
 five VMs) is the furthest along: its integration test runs ot-sim, the OpenPLC
 v4 runtime, and FUXA together in Docker. Every image has a config
-([phenix-images/README.md](phenix-images/README.md)); none has been built on a
+([phenix-images/README.md](../phenix-images/README.md)); none has been built on a
 phenix host.
 
 | Phase | Status | Left to do |
 |---|---|---|
-| 0: Spikes | **Done.** Ten spikes are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to future work. A second round closed the gaps of the first | Nothing. What each spike left untested is in its row of [§18](#18-implementation-roadmap) |
+| 0: Spikes | **Done.** Ten spikes are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to [future work](FUTURE_WORK.md#soc-case-management-with-dfir-iris). A second round closed the gaps of the first | Nothing. What each spike left untested is in its row of [§18](#18-implementation-roadmap) |
 | 1: Network | **Built, checked statically.** The topology modules, the firewall rulesets, the services on ot-svc, both BBMDs, the post-boot VyOS script, and the SoH probes. `netcheck` compares all of it with the conduit matrix | The VM run: every conduit and every blocked path under SoH, and the VyOS script on VyOS |
 | 2: Simulation | **Built, run offline.** `plant.yaml`, plantgen, the seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). A simulated brewer, cellar crew, and line operator do the hand work, so beer moves from the brewhouse to the filler over days. The whole plant ran offline for 54 simulated hours | The ot-sim `logic` blocks, and a 24 h soak under HELICS |
 | 3: Control | **Built, run offline.** All five PLC programs and their full and lite ZIPs, with the alarm logic generated from `alarms.json`, the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)), the peer reads, the fermentation profile, and the packaging line's operator panel. Four of the five run in the tests as compiled programs against the federates (plc-utilities is compiled but not run). The scada-fuxa and bas-fuxa projects are generated; the batch engine brews a double-brew day unattended in the offline federation and ran in a real FUXA server against a stand-in PLC, with the operator sign-in and the kiosk's automatic sign-in. The `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks | The full and lite programs in an OpenPLC runtime, FUXA writing to plc-brewhouse over OPC UA, hand-laid views beyond Cellar and Batch, and alarm suppression during a crash |
@@ -40,7 +40,7 @@ phenix host.
 [§18](#18-implementation-roadmap) has each phase's scope and exit criteria and
 the spike results. [§19](#19-risks-and-open-questions) lists the risks, the
 decisions taken, and every open item, and the user guide's
-[Known limits](USER_GUIDE.md#known-limits) says what to check on the first
+[Known limits](../USER_GUIDE.md#known-limits) says what to check on the first
 start.
 
 ## Contents
@@ -2378,7 +2378,7 @@ provisioning below) or in the OpenPLC Editor:
 - **plc-power:** load shed, BESS dispatch, PV site limit, and ATS
   supervision.
 
-**As built** (`plc/<plc>/`, [plc/common/README.md](plc/common/README.md)).
+**As built** (`plc/<plc>/`, [plc/common/README.md](../plc/common/README.md)).
 The programs are simpler than the targets above, and the gaps are open work:
 plc-brewhouse uses proportional valves rather than PID and runs one phase per
 Start; the FUXA batch engine sequences them ([§12.2](#122-fuxa-two-instances)).
@@ -2421,7 +2421,7 @@ uploaded.
    slice's ZIP and `plc/common/build_zip.sh` the ZIPs of all five PLCs for the
    full and lite variants (`phenix-injects/openplc/<variant>/<plc>.zip`, with
    the alarm logic generated from `alarms.json` and the strucpp
-   `debug_map.json` inside; [plc/common/README.md](plc/common/README.md)). Both
+   `debug_map.json` inside; [plc/common/README.md](../plc/common/README.md)). Both
    build headless, with strucpp pinned at `fcccfbdf`, and the ZIPs are
    committed through Git LFS. The
    OpenPLC Editor (4.3.3 or later, as the runtime reports in
@@ -2563,7 +2563,7 @@ whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
   Cellar (FV/BBT grid), Packaging (line and OEE), Utilities, Electrical
   one-line, Alarms, Trends, and Batch (recipe "Fire of the Phenix", batch
   ID, phase status). **As built** (`fuxa/hmi_views.py`, drawn with
-  `fuxa/hmi_kit.py`; [fuxa/README.md](fuxa/README.md#the-process-graphics)):
+  `fuxa/hmi_kit.py`; [fuxa/README.md](../fuxa/README.md#the-process-graphics)):
   - **The hierarchy.** *Overview* is level 1: the whole plant on one screen,
     product moving left to right, nothing to operate, each panel a link to
     its area. *Brewhouse*, *Cellar*, *Packaging*, *Utilities*, *Power* (the
@@ -2594,7 +2594,7 @@ whose brewhouse PLC serves OPC UA could not fall back to v3 anyway.
 - **Server scripts:**
   - An ISA-88 batch engine that sequences PLC phases from recipe parameters
     and coordinates unit-to-unit transfers. **As built** (`fuxa/batch_engine.js`,
-    [fuxa/README.md](fuxa/README.md#the-brewhouse-batch-engine)): one server
+    [fuxa/README.md](../fuxa/README.md#the-brewhouse-batch-engine)): one server
     script in the full and lite scada-fuxa projects, run by FUXA every second,
     with the BeerJSON recipe embedded by the builder. For each of a brew's
     eleven phase runs it writes the setpoints and the parameter, commands
@@ -3599,7 +3599,7 @@ is never hand-written.
 ### 15.9 Operations
 
 This subsection is the operator's runbook for the range. Items marked
-**TODO** are designed here and not built yet. [USER_GUIDE.md](USER_GUIDE.md)
+**TODO** are designed here and not built yet. [USER_GUIDE.md](../USER_GUIDE.md)
 is the step-by-step version: the repositories to clone, the builds, the first
 start of each variant, and what to check.
 
@@ -3822,7 +3822,7 @@ It is not built; revisit if a fourth copy of a helper appears.
 
 ### 15.10 White-cell 3D view (cm-viz)
 
-The viz3d spike (retired; [spikes/README.md](spikes/README.md#retired-kits)) recommended a GRFICS-style view in
+The viz3d spike (retired; [spikes/README.md](../spikes/README.md#retired-kits)) recommended a GRFICS-style view in
 which attacks have visible physical consequences, built from open-source parts
 and rendered by the white cell's own browser. `cm-viz` (`viz/`) is that view.
 
@@ -3939,7 +3939,7 @@ scene.
 ### 15.11 Brand
 
 The brewery has one mark and one color scheme, kept in `brand/`
-([brand/README.md](brand/README.md)): a phoenix rising behind a summit, and the
+([brand/README.md](../brand/README.md)): a phoenix rising behind a summit, and the
 "Phenix Fire" colors as named tokens. The rules: brand color goes on the frame
 of a screen (header, menu, sign-in, wallpaper, chart lines), process graphics
 stay gray, and the alarm colors are reserved. `sync.py` copies the files to
@@ -3969,8 +3969,8 @@ title, which the open-source edition cannot change.
 | `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the proposed `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current (`cm-plantgen-tests`, `cm-sync-check`) |
 | `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)), tested in CI (`cm-sim-tests`) |
 | `cm-viz` | `viz/` | The white cell's 3D view of ground truth: a Python bridge from the sim-ctl snapshot to a read-only WebSocket, and a three.js page with three scenes and an SVG fallback ([§15.10](#1510-white-cell-3d-view-cm-viz)); tested in CI (`cm-viz-tests`) and in headless Chromium (`-m browser`) |
-| **FUXA batch engine** (`batch_engine.js`) | `fuxa/` (a FUXA server script, embedded by `build_project.py`; [README](fuxa/README.md#the-brewhouse-batch-engine)) | Sequences plc-brewhouse's ISA-88 phases from the BeerJSON recipe, with a Batch view, and takes brew requests from the view or the brewhouse panel ([§12.2](#122-fuxa-two-instances)). Built; run in a real FUXA server against a stand-in PLC, not yet against OpenPLC |
-| **ot-sim BACnet module** (`cm_otsim_bacnet.py`) | `phenix-injects/otsim/` (BACpypes3 and pyzmq; [README](phenix-injects/otsim/README.md)) | A BACnet/IP server for the BAS controllers, built in this repository with no fork of ot-sim. The ot-sim CPU module starts it from `config.xml`, and it speaks ot-sim's message bus directly. It maps AI/AO/AV/BI/BO/BV/MSV objects to message-bus tags. Outputs, and value objects that take writes, have a priority array: a command overrides the controller's own logic in the building federate, and relinquishing the last priority sends a null value that hands the point back. Every other write answers `write-access-denied` (BACpypes3 alone accepts any). It answers Who-Is, including one a BBMD forwarded (a unicast I-Am to the client), ReadProperty, ReadPropertyMultiple, and WriteProperty; an object without a fresh value reports a fault. FUXA calls no SubscribeCOV. No BBMD in the module: the BBMDs are separate services ([§11](#11-node-inventory-and-resources)). Built and tested against a real BACpypes3 client, BAC0, and, on loopback, a HELICS broker with the building federate and ot-sim's own I/O module; not run on a VM |
+| **FUXA batch engine** (`batch_engine.js`) | `fuxa/` (a FUXA server script, embedded by `build_project.py`; [README](../fuxa/README.md#the-brewhouse-batch-engine)) | Sequences plc-brewhouse's ISA-88 phases from the BeerJSON recipe, with a Batch view, and takes brew requests from the view or the brewhouse panel ([§12.2](#122-fuxa-two-instances)). Built; run in a real FUXA server against a stand-in PLC, not yet against OpenPLC |
+| **ot-sim BACnet module** (`cm_otsim_bacnet.py`) | `phenix-injects/otsim/` (BACpypes3 and pyzmq; [README](../phenix-injects/otsim/README.md)) | A BACnet/IP server for the BAS controllers, built in this repository with no fork of ot-sim. The ot-sim CPU module starts it from `config.xml`, and it speaks ot-sim's message bus directly. It maps AI/AO/AV/BI/BO/BV/MSV objects to message-bus tags. Outputs, and value objects that take writes, have a priority array: a command overrides the controller's own logic in the building federate, and relinquishing the last priority sends a null value that hands the point back. Every other write answers `write-access-denied` (BACpypes3 alone accepts any). It answers Who-Is, including one a BBMD forwarded (a unicast I-Am to the client), ReadProperty, ReadPropertyMultiple, and WriteProperty; an object without a fresh value reports a fault. FUXA calls no SubscribeCOV. No BBMD in the module: the BBMDs are separate services ([§11](#11-node-inventory-and-resources)). Built and tested against a real BACpypes3 client, BAC0, and, on loopback, a HELICS broker with the building federate and ot-sim's own I/O module; not run on a VM |
 | BBMD service (`cm-bbmd`) | `phenix-injects/bbmd/` (BACpypes3) | A small BACpypes3 BBMD with a configurable BDT and listen prefix, run as `cm-bbmd.service` on ot-svc (`/0` prefix) and bas-bbmd. Based on the `bbmd` spike's `bbmd.py`. Its settings are static topology injects, not rendered by the app. Built; not yet run under systemd |
 | phenix `mirror` app follow-up (upstream) | `sandialabs/sceptre-phenix-apps` | Until it lands, the `cherrymountain` app sets the first and the cm-malcolm image the second. In `setupOVS` mode, set `options:df_default=false` on the host's GRE port and add the capture-VM flow `in_port=sniffer,actions=output:phenix` (then `ip link set phenix up`), instead of leaving both to the image ([§14](#14-blue-team-monitoring)) |
 | phenix autotunnel loop (upstream) | `sandialabs/sceptre-phenix` | The fork's fixes (branch `ci-e2e-minimega`): a loop in `phenix ui` that creates tunnels for every experiment, including CLI-started ones, waits for C2 as long as it runs, and re-creates tunnels after VM restarts, reboots, and long pauses. It also needs a way to read the host port (the forwards API reports only the annotation label) |
@@ -4042,7 +4042,7 @@ five stages) and follows the pattern of sceptre-phenix-apps:
     and bas-fuxa (every device type, the process graphics, a generated table
     per device, the PLC alarm bits and FUXA's own BACnet alarms). They import
     into a real FUXA 1.3.6 and show values from a stand-in plant
-    ([docs/examples/capture](docs/examples/capture/README.md)); against the
+    ([docs/examples/capture](examples/capture/README.md)); against the
     range's own PLCs, the OPC UA namespace index and the S7 tag types they
     assume are unverified.
   - Drop the static sim, OpenPLC, and FUXA topology injects once the app runs.
@@ -4113,7 +4113,7 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
   script). Where strucpp and g++ exist, `test_plc_port.py` holds that port to
   the compiled program scan by scan. Run once by hand: the engine, its view,
   the provisioning script, and the operator sign-in in a real FUXA server
-  ([fuxa/README.md](fuxa/README.md#checked-against-fuxa-source)).
+  ([fuxa/README.md](../fuxa/README.md#checked-against-fuxa-source)).
 - **BACnet module tests (the `cm-bacnet-tests` hook).** `tests/bacnet` runs
   the ot-sim BACnet module against a real BACpypes3 client and real ZeroMQ
   sockets on loopback: values that follow the message bus, commands at several
@@ -4121,7 +4121,7 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
   a Who-Is forwarded by a BBMD. The app's `test_bacnet.py` checks that the
   module loads every `bacnet` element the app renders. Run once by hand: the
   whole loop with a HELICS broker, the building federate, and ot-sim's own I/O
-  module ([phenix-injects/otsim/README.md](phenix-injects/otsim/README.md)).
+  module ([phenix-injects/otsim/README.md](../phenix-injects/otsim/README.md)).
 - **PLC programs in the loop (in `cm-sim-tests`).** `plcloop.py` runs a PLC
   engine in the offline federation from plantgen's tag table. plc-power runs
   as a Python model always and as its strucpp-compiled C++ where Node, strucpp,
@@ -4197,7 +4197,7 @@ is left in each phase is in [Status](#status), at the top of this document.
 
 | Phase | Scope | Exit criteria |
 |---|---|---|
-| 0: Spikes | The feasibility spikes: see the results below | Each spike has a written go/no-go decision (ten are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to future work) |
+| 0: Spikes | The feasibility spikes: see the results below | Each spike has a written go/no-go decision (ten are go; the TheHive case-management spike is a no, with DFIR-IRIS deferred to [future work](FUTURE_WORK.md#soc-case-management-with-dfir-iris)) |
 | 1: Network | Core topology, VyOS conduits and static routes, ot-svc, SoH reachability | All §10.3 conduits pass; blocked paths fail |
 | 2: Simulation | HELICS federation, all ot-sim devices, ground truth | Federates in sync for 24 h; ground truth in Elastic |
 | 3: Control | PLC programs, FUXA projects, HMIs, historian | Full brew-day batch runs unattended; alarms rationalized |
@@ -4230,69 +4230,8 @@ silently.
 
 ### Future work
 
-These items have been evaluated but are not scheduled.
-
-- **PLC programs that follow the Top 20 Secure PLC Coding Practices.** The five
-  PLC programs were reviewed against the [Top 20 Secure PLC Coding
-  Practices](https://plc-security.com/content/Top_20_Secure_PLC_Coding_Practices_V1.0.pdf)
-  (version 1.0): [docs/plc-secure-coding-review.md](docs/plc-secure-coding-review.md)
-  rates each practice for each program and gives the evidence. The programs are
-  sound as control programs (one generated alarm block, range-limited setpoints,
-  a defined start) and have no security layer on top: no practice is met by all
-  of them. The plain defects the review found are fixed; what is left is the
-  practices themselves, in the review's order of importance:
-  - **State that survives a restart and an outside write** (practices 10, 15,
-    20). The entry permits, the entry-violation latches, and the CO₂ shutoff
-    latch are plain coils: a restart clears them, and one Modbus write clears
-    them. Keep each in an internal, retained variable and publish a copy.
-  - **What a stopped PLC does to its outputs** (practice 15). Unverified, and
-    it may be the opposite of what [§6.7](#67-cellar-co2-life-safety-interlock)
-    assumes ([§19](#19-risks-and-open-questions)).
-  - **Timeouts and permissives in the PLC, not the HMI** (practices 3, 12). A
-    brewhouse phase that waits on a process value has no PLC timeout, and the
-    knockout's destination check is in the batch engine.
-  - **Plausibility of inputs** (practices 7, 11, 12): a command against its
-    feedback, a level switch against its transmitter, a stuck or out-of-range
-    value, a maximum dose time.
-  - **Process limits on what an operator may write** (practices 6, 8),
-    generated from `plant.yaml`, with a counter for refused writes.
-  - **Alarms that cannot be missed or forged** (practice 20): an off-delay on
-    every alarm, a latch on the critical ones, and a check of each alarm bit
-    against what the block computed.
-  - **The PLC's own health on the HMI** (practices 2, 5, 16 to 19): a scan
-    counter, the time since start, a restart count, and the loaded program's
-    hash, trended and alarmed.
-  - **Structure** (practices 1, 4, 10): function blocks for the hand-written
-    logic, error counters, and writable registers apart from computed ones.
-
-  Not all of it should be done on this range. Some weaknesses are its attack
-  surface by decision (the anonymous OPC UA operator role, a PLC image that any
-  client on its port may write); the review's section 3 lists them.
-
-- **SOC case management with DFIR-IRIS.** The SOC can triage alerts in Wazuh
-  and Malcolm, but no tool covers the response side: who owns an alert,
-  grouping alerts into an incident, playbook tasks, and a timeline the white
-  cell can score against ground truth. The
-  [case-management spike](spikes/thehive/README.md) rejected TheHive 5/6,
-  because it is closed source and its Community licence is non-commercial and
-  capped at 2 users ([§2](#2-goals-and-non-goals), [§20](#20-licensing)). It
-  recommends **DFIR-IRIS 2.4** (LGPL-3.0) instead:
-  - It would run on one optional VM, `soc-ir` (2 vCPU, 3 GB RAM, 16 GB disk,
-    on the SOC VLAN), in the `full` variant only. `ci` and `lite` would not
-    change.
-  - A custom Wazuh integration would file CherryMountain alerts of level 7
-    and up as IRIS alerts, with severity mapping, deduplication and a case
-    template picked from the rule group.
-  - Malcolm's alerts would reach IRIS through Wazuh.
-  - ICS playbooks, such as a PLC program change or the CO₂ life-safety event,
-    would become IRIS case templates.
-
-  The spike proved the integration in Docker against a real Wazuh 4.14.1
-  manager. Its plan takes 8–12 days in five phases, with a go/no-go after the
-  image phase: stop if the VM needs more than 3 GB or can't boot offline. The
-  spike also lists SOC gaps that apply with or without a case tool. Examples
-  are that Malcolm's detections don't reach Wazuh and that FUXA process alarms
-  have no Wazuh rules.
+All future work is in [FUTURE_WORK.md](FUTURE_WORK.md): what has been evaluated
+and not scheduled, and the follow-ups this document mentions where they arise.
 
 ## 18A. Regulatory and standards context
 
@@ -4441,7 +4380,7 @@ reach a plant like this, and the row says why.
 
 | Risk | Mitigation |
 |---|---|
-| A stopped or faulted OpenPLC v4 runtime may drive every output to 0, where this design assumes the remote I/O keeps the last commands ([§6.7](#67-cellar-co2-life-safety-interlock)). OpenPLC's `docs/ARCHITECTURE.md` (watchdog) says a stop writes 0 to all `%Q` and pushes it in a final I/O cycle. For plc-power, 0 on `PWR.MAIN.HS01.CMD` opens the main breaker ([the PLC review](docs/plc-secure-coding-review.md), F2) | Unverified either way: read in the runtime's documentation, not run. Check it on the first VM run (stop plc-power, read 52-M). If it is so, make 0 the safe state of every command or have the remote I/O hold on a lost master, and correct §6.7 |
+| A stopped or faulted OpenPLC v4 runtime may drive every output to 0, where this design assumes the remote I/O keeps the last commands ([§6.7](#67-cellar-co2-life-safety-interlock)). OpenPLC's `docs/ARCHITECTURE.md` (watchdog) says a stop writes 0 to all `%Q` and pushes it in a final I/O cycle. For plc-power, 0 on `PWR.MAIN.HS01.CMD` opens the main breaker ([the PLC review](plc-secure-coding-review.md), F2) | Unverified either way: read in the runtime's documentation, not run. Check it on the first VM run (stop plc-power, read 52-M). If it is so, make 0 the safe state of every command or have the remote I/O hold on a lost master, and correct §6.7 |
 | OpenPLC v4 has no documented unattended ST → ZIP path; plugin configs live inside the ZIP (resolved: the spike found the path) | Headless `build_zip.sh` with strucpp pinned; `generated_debug.cpp` required; configs in `conf/`; OPC UA configs derived from the debug map (§12.1). v3 fallback retired. Still open: VM reboot, and the memory of a full-size compile (161 MiB steady, 361 MiB peak for a three-variable program) |
 | FUXA project JSON schema is undocumented and changes between releases | Pin the version; generate from a skeleton exported by that version; test import in CI |
 | Three Modbus addressing conventions | `plantgen` single source; CI gap/mismatch checks |
@@ -4488,7 +4427,7 @@ reach a plant like this, and the row says why.
 | The simulation ends after `end_time_s`: 7 days in full and lite, 24 hours in ci. ot-sim's I/O modules finalize then and do not rejoin | Decided by the range owner: kept as the length of one exercise. Stop and start the experiment for a longer run, or raise it in `plant.yaml` |
 | The cellar had no material flow over days: fermenters never emptied, the bright tanks were not refilled, and packaging went on counting bottles from an empty tank (resolved, with limits) | The cellar crew racks a finished, cold fermenter into BBT-201, moves bright beer from BBT-201 into BBT-202, and cleans what it emptied; the filler takes its supply from the beer line of the tank on line and holds on no product; a knockout keeps to one fermenter ([§9.6](#96-implementation-status-and-validation)). plc-cellar runs the fermentation profile, so beer is crashed with the PLC in control too ([§6.3](#63-areas-equipment-and-control-strategies)). Run offline: the whole plant for 54 h without PLCs (all four fermenters racked, 112 bbl, and 139 bbl put on line), and the cellar for 36 h under the compiled plc-cellar (the same four rackings). Limits: (1) the crew cleans by hand, and the CIP skid's circuits are run only from the HMI; (2) the line outruns the brewhouse (a tank lasts about 3.5 h of a shift and two brew days make two tanks a week), so the filler waits for product most of the week; (3) a crash raises the fermenter's two temperature deviation alarms until the beer is cold, about three hours: nuisance alarms that state-based suppression should remove |
 | Nothing started the packaging shift once the PLCs were in control: plc-packaging only relays an operator's command (resolved) | The federate's line operator starts and stops the shift at the line's operator panel, through plc-packaging ([§9.6](#96-implementation-status-and-validation)). Run offline against the compiled program; the path through rio-packaging's Modbus server is for the first VM run. Brewing was resolved before: with plc-brewhouse in control, `start-batch` and the 05:00 schedule request brews at the panel and the FUXA batch engine runs them ([§12.2](#122-fuxa-two-instances)) |
-| The batch engine has not met OpenPLC: whether its OPC UA server lets FUXA's session write the command, phase, parameter, accepted-count, and setpoint tags, and whether the phase timeouts (estimates) outlast the real phases | Open until a VM run. Everything on FUXA's side ran in a real FUXA server ([fuxa/README.md](fuxa/README.md#checked-against-fuxa-source)) |
+| The batch engine has not met OpenPLC: whether its OPC UA server lets FUXA's session write the command, phase, parameter, accepted-count, and setpoint tags, and whether the phase timeouts (estimates) outlast the real phases | Open until a VM run. Everything on FUXA's side ran in a real FUXA server ([fuxa/README.md](../fuxa/README.md#checked-against-fuxa-source)) |
 | Only the first brew day found a fermenter: FV-101 was the one empty vessel at the start and nothing emptied a fermenter (resolved) | The profile crashes a fermenter and the crew empties and cleans it, so later brew days find one. While none is empty the engine refuses a start with "no fermenter is empty" and keeps the request queued |
 | The Wazuh admin password from `secrets.json` rests on `wazuh-passwords-tool.sh -a -f <file>` replacing only the admin user's generated password, read from the tool's source (4.14) and not run | The script checks the sign-in afterwards and only warns; `passwords.txt` on the VM always holds what the tool set. Confirm on the first boot |
 | A SoH UDP probe is a single datagram with a 500 ms reply window, and `delay.c2` has no timeout ([§15.4](#154-state-of-health)) | Accepted: a BACnet, NTP, or DNS probe can fail once without a fault, and a VM that never registers its C2 client holds back every VM behind it. Look at that VM's console |

@@ -1,7 +1,7 @@
 # PLC program builder (full and lite variants)
 
 Builds the OpenPLC v4 program ZIPs of the five PLCs for the full and lite
-variants ([DESIGN.md 12.1](../../DESIGN.md#121-openplc-v4-runtime-v3-fallback)).
+variants ([DESIGN.md 12.1](../../docs/DESIGN.md#121-openplc-v4-runtime-v3-fallback)).
 The ci slice's plc-cellar ZIP keeps its own builder in `plc/plc-cellar/`.
 
 | File | Purpose |

@@ -1,7 +1,7 @@
 # plantgen
 
 plantgen reads the plant tag database, `plant/plant.yaml`
-([DESIGN.md §12.6](../../DESIGN.md#126-plant-tag-database)), validates it with
+([DESIGN.md §12.6](../../docs/DESIGN.md#126-plant-tag-database)), validates it with
 Pydantic, assigns every address, and writes the derived files for each topology
 variant under `plant/generated/<variant>/`. The outputs are committed, and
 `--check` fails when they are stale.
@@ -61,7 +61,7 @@ The `phenix/*.yaml` files are complete app entries (`name`, `metadata`,
 
 ### Addressing conventions
 
-See [DESIGN.md §12.5](../../DESIGN.md#125-addressing-conventions-high-off-by-one-risk)
+See [DESIGN.md §12.5](../../docs/DESIGN.md#125-addressing-conventions-high-off-by-one-risk)
 and the docstring of `plantgen/allocate.py`. In short:
 
 - **ot-sim** numbers registers per space (coil 1, discrete 10001, input
@@ -126,7 +126,7 @@ The app's own schema, plus three things:
   `connected_rtus: [rtu-der]`.
 - **BACnet controllers (proposed shape).** The phenix ot-sim app and the ot-sim
   BACnet module do not exist upstream yet
-  ([DESIGN.md §16](../../DESIGN.md#16-new-and-extended-software)). plantgen
+  ([DESIGN.md §16](../../docs/DESIGN.md#16-new-and-extended-software)). plantgen
   emits the shape this design proposes, so the app extension and the module
   can be written against it:
 
@@ -181,7 +181,7 @@ The app's own schema, plus three things:
 ### `bacnet/<host>.json`
 
 The resolved object table of one controller, which is what the module config
-(the [DESIGN.md §16](../../DESIGN.md#16-new-and-extended-software) XML sketch)
+(the [DESIGN.md §16](../../docs/DESIGN.md#16-new-and-extended-software) XML sketch)
 carries:
 
 ```text
@@ -228,7 +228,7 @@ and point order, from 0 per kind. ot-sim scales analog points by
 - OPC UA and S7 tags leave `address` null. `fuxa/build_project.py` fills it in:
   the OPC UA node id is `ns=2;s=<tag name>` (the node id the `cherrymountain`
   app gives the variable in the `opcua` plugin's config,
-  [DESIGN.md §12.1](../../DESIGN.md#121-openplc-v4-runtime-v3-fallback)), and
+  [DESIGN.md §12.1](../../docs/DESIGN.md#121-openplc-v4-runtime-v3-fallback)), and
   the S7 address comes from `plc_iec`. FUXA applies `divisor` to Modbus tags
   only, so the builder gives OPC UA and S7 tags the same factor as a linear
   `scale`.
@@ -310,7 +310,7 @@ runs:
 ```
 
 Each run's list is the SCORCH `pcap` component metadata
-([DESIGN.md §15.6](../../DESIGN.md#156-scorch-pipelines)), filtered to the
+([DESIGN.md §15.6](../../docs/DESIGN.md#156-scorch-pipelines)), filtered to the
 variant's hosts.
 
 ## plant.yaml schema notes
@@ -353,7 +353,7 @@ slice it has:
 ## Checks
 
 `plantgen` runs these on every generation, and the tests run them on every
-variant ([DESIGN.md §17](../../DESIGN.md#17-testing-and-validation)):
+variant ([DESIGN.md §17](../../docs/DESIGN.md#17-testing-and-validation)):
 
 - Unique tag names; every tag has an owner (a PLC, or the BACnet controller);
   every field point is bound to exactly one tag.

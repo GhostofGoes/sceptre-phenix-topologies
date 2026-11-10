@@ -3,8 +3,8 @@
 `cm_otsim_bacnet.py` is a BACnet/IP server for ot-sim devices. ot-sim has
 Modbus and DNP3 modules but no BACnet one, and the three building controllers
 (`bas-rtu-taproom`, `bas-coldroom`, `bas-vent`) must serve BACnet to bas-fuxa
-and, through the BBMDs, to scada-fuxa ([DESIGN.md §8.1](../../DESIGN.md#81-spaces-equipment-and-bacnet-devices),
-[§16](../../DESIGN.md#16-new-and-extended-software)).
+and, through the BBMDs, to scada-fuxa ([DESIGN.md §8.1](../../docs/DESIGN.md#81-spaces-equipment-and-bacnet-devices),
+[§16](../../docs/DESIGN.md#16-new-and-extended-software)).
 
 It needs no fork of ot-sim: the ot-sim CPU module starts it like any other
 module, and it talks to the device's message bus.
@@ -145,7 +145,7 @@ the EWS, against this module on loopback.
 
 The EWS reaches the BAS devices by unicast through `fw-ot`. A write from the
 EWS is what the Suricata and Zeek BACnet-write detections watch for
-([DESIGN.md §14](../../DESIGN.md#14-blue-team-monitoring)).
+([DESIGN.md §14](../../docs/DESIGN.md#14-blue-team-monitoring)).
 
 ## Tests
 

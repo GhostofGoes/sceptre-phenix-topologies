@@ -2,8 +2,8 @@
 
 SCORCH component that injects operational events into the CherryMountain
 Brewery simulation through the sim-ctl event API
-([DESIGN.md 9.5](../../../DESIGN.md#95-scenario-events-and-ground-truth),
-[15.6](../../../DESIGN.md#156-scorch-pipelines)).
+([DESIGN.md 9.5](../../../docs/DESIGN.md#95-scenario-events-and-ground-truth),
+[15.6](../../../docs/DESIGN.md#156-scorch-pipelines)).
 
 ```
 type:   plantevent

@@ -1,7 +1,7 @@
 # CherryMountain Brewery phenix apps
 
 The topology's own phenix software
-([DESIGN.md 16](../DESIGN.md#16-new-and-extended-software)), one Python
+([DESIGN.md 16](../docs/DESIGN.md#16-new-and-extended-software)), one Python
 package with two executables:
 
 | Executable | What | README |

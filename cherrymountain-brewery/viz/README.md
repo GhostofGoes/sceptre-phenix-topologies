@@ -1,7 +1,7 @@
 # cm-viz: the white cell's 3D view
 
 A GRFICS-style view of the plant in which attacks have visible physical
-consequences ([DESIGN.md §15.10](../DESIGN.md#1510-white-cell-3d-view-cm-viz),
+consequences ([DESIGN.md §15.10](../docs/DESIGN.md#1510-white-cell-3d-view-cm-viz),
 which records what the retired viz3d spike found). It shows **ground truth**, so it
 is for the white cell: never route it through Guacamole or show it to trainees
 without a white-cell decision.

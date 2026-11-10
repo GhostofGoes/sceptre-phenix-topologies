@@ -1,7 +1,7 @@
 # cherrymountain App
 
 phenix user app that provisions the CherryMountain Brewery topology
-([DESIGN.md 16](../../../DESIGN.md#16-new-and-extended-software)): it checks
+([DESIGN.md 16](../../../docs/DESIGN.md#16-new-and-extended-software)): it checks
 the scenario against `plant/plant.yaml`, renders every per-host file the VMs
 need at boot, watches provisioning, and exports the run's data at the end.
 
@@ -15,7 +15,7 @@ stages: configure, pre-start, post-start, running, cleanup
 
 After `ot-sim` and before `helics`. ot-sim annotates the field devices with
 `helics/federate`, this app annotates the sim-* federate nodes, and helics
-counts both ([DESIGN.md 15.2](../../../DESIGN.md#152-apps)).
+counts both ([DESIGN.md 15.2](../../../docs/DESIGN.md#152-apps)).
 
 In the full scenario the `mirror` app comes before this one: phenix runs the
 apps of every stage in the order of the scenario's list, and this app's post-start
@@ -118,7 +118,7 @@ Every topology node with a `mgmt` NIC, listed in the app or not, gets
 address), and the startup hook `4-cm-mgmt-nftables.sh`. The policy only matches
 the MGMT interface and allows ICMP echo, HELICS, OpenSearch, and NTP to sim-ctl,
 and HELICS from the broker to the federate cores; everything else on MGMT is
-dropped ([DESIGN.md 10.1](../../../DESIGN.md#101-zones-and-conduits-purdue-model--isaiec-62443)).
+dropped ([DESIGN.md 10.1](../../../docs/DESIGN.md#101-zones-and-conduits-purdue-model--isaiec-62443)).
 phenix does not rename a guest's NICs, so the hook runs after
 `3_interfaces-start.sh`, finds the device that holds the MGMT address, and
 passes its name to the ruleset (`nft -D mgmt_if=<device>`).

@@ -2911,6 +2911,22 @@
                     }
                   }
                 },
+                "batch-panel": {
+                  "requests": {
+                    "type": "analog-read",
+                    "modbus": {
+                      "data-type": "uint16",
+                      "scaling": 0
+                    }
+                  },
+                  "accepted": {
+                    "type": "analog-read-write",
+                    "modbus": {
+                      "data-type": "uint16",
+                      "scaling": 0
+                    }
+                  }
+                },
                 "sim-clock": {
                   "sim_hours": {
                     "type": "analog-read",
@@ -4110,6 +4126,11 @@
                       "name": "brewhouse/knockout",
                       "type": "knockout",
                       "endpoint": "updates"
+                    },
+                    {
+                      "name": "brewhouse/panel",
+                      "type": "batch-panel",
+                      "endpoint": "updates"
                     }
                   ]
                 }
@@ -4500,6 +4521,54 @@
                 "connected_rtus": [
                   "rtu-der"
                 ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "mirror",
+          "metadata": {
+            "version": "v1",
+            "mirrorNet": "172.30.0.0/16",
+            "mirrorVLAN": "MIRROR",
+            "mirrorBridge": "cherrymtn"
+          },
+          "hosts": [
+            {
+              "hostname": "malcolm",
+              "metadata": {
+                "interface": "mirror",
+                "setupOVS": true,
+                "vlans": [
+                  "OPS",
+                  "HMI",
+                  "CTRL",
+                  "FIELD-BH",
+                  "FIELD-CEL",
+                  "FIELD-PKG",
+                  "FIELD-UTL",
+                  "FIELD-PWR",
+                  "DERLINK",
+                  "BAS",
+                  "DMZ"
+                ],
+                "sohProfile": {
+                  "processes": [
+                    "dockerd",
+                    "ovs-vswitchd"
+                  ],
+                  "listeners": [
+                    ":443"
+                  ],
+                  "customTests": [
+                    {
+                      "name": "malcolm-health",
+                      "executor": "bash",
+                      "testScript": "/usr/local/sbin/cm-malcolm-health\n",
+                      "testStdout": "HEALTHY"
+                    }
+                  ]
+                }
               }
             }
           ]
@@ -6458,54 +6527,6 @@
                     "keepalive": 25
                   }
                 ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "mirror",
-          "metadata": {
-            "version": "v1",
-            "mirrorNet": "172.30.0.0/16",
-            "mirrorVLAN": "MIRROR",
-            "mirrorBridge": "cherrymtn"
-          },
-          "hosts": [
-            {
-              "hostname": "malcolm",
-              "metadata": {
-                "interface": "mirror",
-                "setupOVS": true,
-                "vlans": [
-                  "OPS",
-                  "HMI",
-                  "CTRL",
-                  "FIELD-BH",
-                  "FIELD-CEL",
-                  "FIELD-PKG",
-                  "FIELD-UTL",
-                  "FIELD-PWR",
-                  "DERLINK",
-                  "BAS",
-                  "DMZ"
-                ],
-                "sohProfile": {
-                  "processes": [
-                    "dockerd",
-                    "ovs-vswitchd"
-                  ],
-                  "listeners": [
-                    ":443"
-                  ],
-                  "customTests": [
-                    {
-                      "name": "malcolm-health",
-                      "executor": "bash",
-                      "testScript": "/usr/local/sbin/cm-malcolm-health\n",
-                      "testStdout": "HEALTHY"
-                    }
-                  ]
-                }
               }
             }
           ]

@@ -11,8 +11,8 @@
   "slave_layouts": {
     "plc-brewhouse": {
       "holding_registers": {
-        "qw_count": 110,
-        "mw_count": 10,
+        "qw_count": 111,
+        "mw_count": 12,
         "md_count": 0,
         "ml_count": 0
       },
@@ -24,7 +24,7 @@
         "ix_bits": 808
       },
       "input_registers": {
-        "iw_count": 120
+        "iw_count": 121
       }
     },
     "plc-cellar": {
@@ -438,9 +438,9 @@
       "plc_iec": "%MW0",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 110,
+      "slave_pdu_address": 111,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 111,
+      "fuxa_address": 112,
       "scada_access": "read-write"
     },
     {
@@ -742,9 +742,9 @@
       "plc_iec": "%MW1",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 111,
+      "slave_pdu_address": 112,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 112,
+      "fuxa_address": 113,
       "scada_access": "read-write"
     },
     {
@@ -932,9 +932,9 @@
       "plc_iec": "%MW2",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 112,
+      "slave_pdu_address": 113,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 113,
+      "fuxa_address": 114,
       "scada_access": "read"
     },
     {
@@ -951,9 +951,9 @@
       "plc_iec": "%MW3",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 113,
+      "slave_pdu_address": 114,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 114,
+      "fuxa_address": 115,
       "scada_access": "read"
     },
     {
@@ -1236,9 +1236,9 @@
       "plc_iec": "%MW4",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 114,
+      "slave_pdu_address": 115,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 115,
+      "fuxa_address": 116,
       "scada_access": "read-write"
     },
     {
@@ -1255,9 +1255,9 @@
       "plc_iec": "%MW5",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 115,
+      "slave_pdu_address": 116,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 116,
+      "fuxa_address": 117,
       "scada_access": "read-write"
     },
     {
@@ -1274,9 +1274,9 @@
       "plc_iec": "%MW6",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 116,
+      "slave_pdu_address": 117,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 117,
+      "fuxa_address": 118,
       "scada_access": "read-write"
     },
     {
@@ -1293,9 +1293,9 @@
       "plc_iec": "%MW7",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 117,
+      "slave_pdu_address": 118,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 118,
+      "fuxa_address": 119,
       "scada_access": "read"
     },
     {
@@ -1312,9 +1312,9 @@
       "plc_iec": "%MW8",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 118,
+      "slave_pdu_address": 119,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 119,
+      "fuxa_address": 120,
       "scada_access": "read"
     },
     {
@@ -1331,10 +1331,86 @@
       "plc_iec": "%MW9",
       "slave_space": "holding",
       "slave_read_fc": 3,
-      "slave_pdu_address": 119,
+      "slave_pdu_address": 120,
       "fuxa_memaddress": "400000",
-      "fuxa_address": 120,
+      "fuxa_address": 121,
       "scada_access": "read-write"
+    },
+    {
+      "tag": "BH.BATCH.XC03.PARAM",
+      "type": "analog-read-write",
+      "units": null,
+      "scaling": 0,
+      "rio": null,
+      "rio_space": null,
+      "otsim_register": null,
+      "master_fc": null,
+      "master_offset": null,
+      "plc": "plc-brewhouse",
+      "plc_iec": "%MW10",
+      "slave_space": "holding",
+      "slave_read_fc": 3,
+      "slave_pdu_address": 121,
+      "fuxa_memaddress": "400000",
+      "fuxa_address": 122,
+      "scada_access": "read-write"
+    },
+    {
+      "tag": "BH.BATCH.XI02.REQUESTS",
+      "type": "analog-read",
+      "units": null,
+      "scaling": 0,
+      "rio": "rio-brewhouse",
+      "rio_space": "input",
+      "otsim_register": 30021,
+      "master_fc": 4,
+      "master_offset": 30021,
+      "plc": "plc-brewhouse",
+      "plc_iec": "%IW120",
+      "slave_space": "input",
+      "slave_read_fc": 4,
+      "slave_pdu_address": 120,
+      "fuxa_memaddress": "300000",
+      "fuxa_address": 121,
+      "scada_access": "read"
+    },
+    {
+      "tag": "BH.BATCH.XC02.ACCEPTED",
+      "type": "analog-read-write",
+      "units": null,
+      "scaling": 0,
+      "rio": null,
+      "rio_space": null,
+      "otsim_register": null,
+      "master_fc": null,
+      "master_offset": null,
+      "plc": "plc-brewhouse",
+      "plc_iec": "%MW11",
+      "slave_space": "holding",
+      "slave_read_fc": 3,
+      "slave_pdu_address": 122,
+      "fuxa_memaddress": "400000",
+      "fuxa_address": 123,
+      "scada_access": "read-write"
+    },
+    {
+      "tag": "BH.BATCH.XI03.ACCEPTED",
+      "type": "analog-read-write",
+      "units": null,
+      "scaling": 0,
+      "rio": "rio-brewhouse",
+      "rio_space": "holding",
+      "otsim_register": 40011,
+      "master_fc": 16,
+      "master_offset": 40011,
+      "plc": "plc-brewhouse",
+      "plc_iec": "%QW110",
+      "slave_space": "holding",
+      "slave_read_fc": 3,
+      "slave_pdu_address": 110,
+      "fuxa_memaddress": "400000",
+      "fuxa_address": 111,
+      "scada_access": "read"
     },
     {
       "tag": "BH.ENTRY.HS01.ENTRY",

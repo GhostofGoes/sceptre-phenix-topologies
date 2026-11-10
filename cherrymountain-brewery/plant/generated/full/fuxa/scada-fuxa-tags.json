@@ -902,6 +902,70 @@
           ]
         },
         {
+          "id": "t_049363c1-6864-5b51-9cd7-3dda74026cab",
+          "name": "BH.BATCH.XC03.PARAM",
+          "label": "Phase parameter (MILL kg, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XC03_PARAM",
+          "plc_iec": "%MW10",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_7413bfeb-8f1f-549a-8310-703177bea722",
+          "name": "BH.BATCH.XI02.REQUESTS",
+          "label": "Brews requested at the brewhouse panel since the start (16-bit counter)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XI02_REQUESTS",
+          "plc_iec": "%IW120",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_4a5cfb2b-7caa-5c5a-91ce-01e3ec92141e",
+          "name": "BH.BATCH.XC02.ACCEPTED",
+          "label": "Brew requests the batch engine has accepted (16-bit counter; the engine writes it)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XC02_ACCEPTED",
+          "plc_iec": "%MW11",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_b21cc90c-221c-55c7-9827-4552de39a6c9",
+          "name": "BH.BATCH.XI03.ACCEPTED",
+          "label": "Accepted-request counter sent to the panel (the program forwards XC02)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XI03_ACCEPTED",
+          "plc_iec": "%QW110",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
           "id": "t_73cdddb2-5edd-56d7-b8ab-3850b35e3d04",
           "name": "BH.ENTRY.HS01.ENTRY",
           "label": "MLT entry permit issued (entry supervisor; locks the vessel out)",

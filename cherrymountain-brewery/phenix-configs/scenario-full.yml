@@ -227,6 +227,17 @@ spec:
               modbus:
                 data-type: uint16
                 scaling: 2
+          batch-panel:
+            requests:
+              type: analog-read
+              modbus:
+                data-type: uint16
+                scaling: 0
+            accepted:
+              type: analog-read-write
+              modbus:
+                data-type: uint16
+                scaling: 0
           sim-clock:
             sim_hours:
               type: analog-read
@@ -1056,6 +1067,9 @@ spec:
             endpoint: updates
           - name: brewhouse/knockout
             type: knockout
+            endpoint: updates
+          - name: brewhouse/panel
+            type: batch-panel
             endpoint: updates
     - hostname: rio-cellar
       metadata:

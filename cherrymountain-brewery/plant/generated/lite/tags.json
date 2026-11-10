@@ -1127,6 +1127,74 @@
       "plc": "plc-brewhouse"
     },
     {
+      "name": "BH.BATCH.XC03.PARAM",
+      "desc": "Phase parameter (MILL kg, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.BATCH.XI02.REQUESTS",
+      "desc": "Brews requested at the brewhouse panel since the start (16-bit counter)",
+      "type": "analog-read",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "panel",
+      "device_type": "batch-panel",
+      "point": "requests",
+      "helics_key": "brewhouse/panel.requests"
+    },
+    {
+      "name": "BH.BATCH.XC02.ACCEPTED",
+      "desc": "Brew requests the batch engine has accepted (16-bit counter; the engine writes it)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "plc",
+      "plc": "plc-brewhouse"
+    },
+    {
+      "name": "BH.BATCH.XI03.ACCEPTED",
+      "desc": "Accepted-request counter sent to the panel (the program forwards XC02)",
+      "type": "analog-read-write",
+      "range": [
+        0.0,
+        65535.0
+      ],
+      "scaling": 0,
+      "area": "BH",
+      "unit": "BATCH",
+      "source": "io",
+      "plc": "plc-brewhouse",
+      "rio": "rio-brewhouse",
+      "federate": "brewhouse",
+      "device": "panel",
+      "device_type": "batch-panel",
+      "point": "accepted",
+      "helics_key": "brewhouse/panel.accepted"
+    },
+    {
       "name": "BH.ENTRY.HS01.ENTRY",
       "desc": "MLT entry permit issued (entry supervisor; locks the vessel out)",
       "type": "binary-read-write",

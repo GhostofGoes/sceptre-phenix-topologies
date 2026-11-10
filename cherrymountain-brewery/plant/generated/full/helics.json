@@ -2021,7 +2021,8 @@
         "knockout.to_fv_valve",
         "knockout.pump_speed_pct",
         "knockout.glycol_valve_pct",
-        "knockout.o2_sp_slpm"
+        "knockout.o2_sp_slpm",
+        "panel.accepted"
       ],
       "publications": [
         {
@@ -2529,6 +2530,28 @@
           "device_type": "knockout",
           "zone": null,
           "point": "o2_sp_slpm"
+        },
+        {
+          "key": "brewhouse/panel.requests",
+          "type": "double",
+          "units": null,
+          "tag": "BH.BATCH.XI02.REQUESTS",
+          "unit": "BATCH",
+          "device": "panel",
+          "device_type": "batch-panel",
+          "zone": null,
+          "point": "requests"
+        },
+        {
+          "key": "brewhouse/panel.accepted",
+          "type": "double",
+          "units": null,
+          "tag": "BH.BATCH.XI03.ACCEPTED",
+          "unit": "BATCH",
+          "device": "panel",
+          "device_type": "batch-panel",
+          "zone": null,
+          "point": "accepted"
         },
         {
           "key": "brewhouse/steam.demand_kw",
@@ -5719,7 +5742,9 @@
         "brewhouse/knockout.to_fv_valve",
         "brewhouse/knockout.pump_speed_pct",
         "brewhouse/knockout.glycol_valve_pct",
-        "brewhouse/knockout.o2_sp_slpm"
+        "brewhouse/knockout.o2_sp_slpm",
+        "brewhouse/panel.requests",
+        "brewhouse/panel.accepted"
       ],
       "endpoint": "rio-brewhouse/updates",
       "sends": [
@@ -5801,6 +5826,10 @@
         },
         {
           "tag": "knockout.o2_sp_slpm",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "panel.accepted",
           "endpoint": "brewhouse/updates"
         }
       ]

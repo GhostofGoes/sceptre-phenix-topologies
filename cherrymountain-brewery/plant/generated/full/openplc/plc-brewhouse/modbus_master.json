@@ -22,7 +22,7 @@
           "fc": 4,
           "offset": "30001",
           "iec_location": "%IW100",
-          "len": 20,
+          "len": 21,
           "cycle_time_ms": 100,
           "error_handling": "keep-last-value"
         },
@@ -38,7 +38,7 @@
           "fc": 16,
           "offset": "40001",
           "iec_location": "%QW100",
-          "len": 10,
+          "len": 11,
           "cycle_time_ms": 100,
           "error_handling": "keep-last-value"
         }

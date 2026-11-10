@@ -420,7 +420,8 @@ Open `http://localhost:11881`. The views are **Cellar**, **Brewhouse**,
 
 | To do this | Write | On view |
 |---|---|---|
-| Change a fermenter's temperature | `CEL.FV101.TT01.SP` | Cellar |
+| Change a fermenter's temperature | Press **By hand** for that fermenter, then set `CEL.FV101.TT01.SP` and `TT02.SP`. **Profile on** gives it back to the PLC's fermentation profile | Cellar |
+| Change the fermentation profile for every fermenter | `CEL.PROFILE.TC01.SP` (fermenting, 66), `TC02.SP` (rest, 70), `TC03.SP` (crash, 34), `KC01.SP` (rest minutes, 180) | Cellar points |
 | Brew | the **Start** button ([Brew a batch](#brew-a-batch)) | Batch |
 | Run one brewhouse phase by hand, only while the Batch view says Idle | `BH.BATCH.XC01.PHASE` (1 to 10), then `BH.BATCH.XC01.CMD` (1 start, 2 hold, 3 restart, 4 abort, 5 reset) | Brewhouse |
 | Start a cleaning (CIP) circuit | `UTL.CIP.XC01.CIRCUIT` (1 to 7), then `UTL.CIP.XC01.CMD` (1 start, 2 hold, 0 resume, 3 abort) | Utilities |
@@ -697,16 +698,11 @@ the full list.
   compiler. The first things to check on a real range are that FUXA may write
   to the brewhouse PLC over OPC UA, and that Wazuh takes the `admin` password
   from `secrets.json`.
-- **A fermenter empties only after somebody crashes it.** The cellar crew (a
-  part of the simulation) racks a fermenter into BBT-201 once its beer is done
-  and at or below 40 °F, moves bright beer from BBT-201 to BBT-202, and cleans
-  what it emptied. It does not change setpoints, and the cellar PLC has no
-  fermentation profile. So when a fermentation is done (about five and a half
-  hours after the knockout, at 48 times real time), set that fermenter's
-  `CEL.FV10n.TT01.SP` to 34 on the Cellar view. It takes about three hours to
-  get cold, and then the crew racks it. FV-104 starts at 34 °F and is racked
-  on the first morning. Until a fermenter is empty the Batch view refuses a start with "no
-  fermenter is empty".
+- **A crash sets off the fermenter's deviation alarms.** The cellar PLC takes
+  each fermenter through its profile (66 °F fermenting, 70 °F for a three-hour
+  rest, then 34 °F), and the cellar crew racks it once it is cold. While the
+  beer cools, for about three hours, the fermenter's two temperature deviation
+  alarms are on. They clear by themselves.
 - **The bottling line waits for beer.** The filler holds when BBT-202 runs dry
   and starts again when the crew has refilled it. The line empties a tank in
   about 3.5 hours and two brew days make two tanks a week, so expect it to

@@ -86,9 +86,8 @@ hand work, with or without a PLC: no PLC point does it.
 | Clean an emptied fermenter or BBT-201 | It is empty and not clean | 45 minutes by hand (`clean_min`). The CIP skid is not used |
 
 The crew does one job at a time and never changes a setpoint: somebody has to
-crash a fermenter before it is racked (the built-in operator does from day 10;
-plc-cellar has no profile, so with it in control the setpoint comes from the
-HMI). `crew: { enabled: false }` turns the crew off. The transfer panel's points
+crash a fermenter before it is racked (the built-in operator does from day 10,
+and plc-cellar's fermentation profile does after a three-hour rest). `crew: { enabled: false }` turns the crew off. The transfer panel's points
 show the work (`route_ok`, `pump_running`, `flow_gpm`), the ground truth has it
 under `crew` and `bright_tanks`, and `knockout_lost_bbl` counts wort that arrived
 with its fermenter full: a knockout keeps to the fermenter it started in.
@@ -224,6 +223,7 @@ so `plant.yaml` is unchanged.
 | `test_brewhouse_panel.py` | The panel's request counter and its accepted echo: the `start-batch` event and the 05:00 schedule go to the autopilot with no PLC and to the panel with one, the counters wrap at 16 bits, and a request nobody accepts is warned about, kept, and not adopted by the autopilot |
 | `test_brewhouse_control_path.py` | The whole control path offline: a `start-batch` event brews a double-brew day through the compiled plc-brewhouse, the FUXA batch engine script (run under Node), and the federates (about 11 h of plant time: the ten phases of each brew in order, both brews into one fermenter, the hops in), a request made while FUXA is down waits at the panel, and the 05:00 schedule starts the engine without an event |
 | `test_plc_packaging.py` | The line driven by a port of plc-packaging: the filler runs once the PLC opens its product valve, holds on a low supply and recovers, a jam clears after its time, and a commanded Hold stays. The line operator at the panel: the shift's start and end, a day without a shift, a line started outside the shift, a Stop during the shift (with and without a reaction time), and a power cut. The shift's start again, and one press being one command, against the compiled plc-packaging |
+| `test_plc_cellar.py` | plc-cellar's fermentation profile in the compiled program: the recipe and the first scan, the stage a start of the PLC finds for each fermenter, a fill through fermenting, rest, and crash, an emptied fermenter, a fermenter taken off the profile, the recipe's limits, and nine hours in control of the cellar federate with the crew, from a fill to a racked fermenter |
 | `test_cellar_flow.py` | Beer through the cellar: a transfer's rate and its two ends, racking's yeast and CO2, the crew's jobs and their order, a crew that is off, the ci slice, a knockout that keeps to one fermenter, wort into an uncleaned fermenter, the transfer panel's points, the beer line's pressure, and the filler holding without product and running again |
 | `test_life_safety.py` | The life-safety and equipment-safety points: the CO₂ supply shutoff at tier 3, CO₂ detection beyond the cellar, the chiller's refrigerant detector and charge record, the BESS cell temperature and off-gas detector, and the boiler's safety valve |
 | `test_relief.py` | The vessels' pressure-relief valves and the per-vessel truth outputs |

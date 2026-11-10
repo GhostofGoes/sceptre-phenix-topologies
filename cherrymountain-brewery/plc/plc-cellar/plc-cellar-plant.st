@@ -8,6 +8,14 @@
     - the spunding setpoint: 1 psig while the beer is fermenting, 12 psig once
       the apparent extract falls below 5 degP (near terminal gravity), written
       to the RIO as absolute pressure every scan
+    - the fermentation profile (FermentProfile): while CEL.PROFILE.HSnn.AUTO is
+      set, the program writes both temperature setpoints for the beer's stage,
+      66 degF fermenting, 70 degF for the diacetyl rest, 34 degF for the crash
+      (CEL.PROFILE.TC01 to TC03, the operator's), and shows the stage in
+      KSnn.STAGE. The rest lasts KC01 minutes: 180, which is 144 h of
+      fermentation on the range's 48x clock. With AUTO clear the setpoints are
+      the operator's. A crash raises the fermenter's temperature deviation
+      alarms until the beer is cold.
   Per bright tank BBT-201 and BBT-202:
     - jacket glycol valve on/off control
     - the equilibrium head pressure for the carbonation target at the
@@ -109,6 +117,67 @@ FUNCTION_BLOCK Carbonation
   END_IF;
 END_FUNCTION_BLOCK
 
+(* The fermentation profile of one fermenter (DESIGN.md 6.3): which stage the
+   beer is in, and the temperature that goes with it. A stage follows from the
+   density meter: a vessel that reads no extract is empty, wort above TERMINAL is
+   fermenting, and beer under it rests warm for REST_MIN minutes (counted in
+   scans) and is then crashed. Beer the program has not followed from its fill
+   (after a start of the PLC) is taken as crashed when it is already cold, and
+   as starting its rest otherwise. *)
+FUNCTION_BLOCK FermentProfile
+  VAR_INPUT
+    EXTRACT : UINT;            (* apparent extract, degP x 100 *)
+    TEMP : UINT;               (* side temperature, degF x 100 *)
+    FERMENT_SP : UINT;         (* temperature while fermenting, degF x 100 *)
+    REST_SP : UINT;            (* temperature of the diacetyl rest, degF x 100 *)
+    CRASH_SP : UINT;           (* temperature of the crash, degF x 100 *)
+    REST_MIN : UINT;           (* rest length, minutes *)
+    SCAN_MS : UDINT;           (* the task interval, ms *)
+    EMPTY : UINT := 50;        (* under 0.5 degP the vessel is empty *)
+    TERMINAL : UINT := 500;    (* under 5 degP the beer is near terminal gravity *)
+    COLD : UINT := 6000;       (* under 60 degF the beer has been crashed *)
+  END_VAR
+  VAR_OUTPUT
+    STAGE : UINT;              (* 0 empty, 1 fermenting, 2 diacetyl rest, 3 crash *)
+    SP : UINT;                 (* the stage's temperature, degF x 100 *)
+  END_VAR
+  VAR
+    rest_ms : UDINT;           (* time in the rest so far *)
+  END_VAR
+  IF EXTRACT < EMPTY THEN
+    STAGE := 0;
+  ELSIF STAGE = 0 THEN
+    IF EXTRACT >= TERMINAL THEN
+      STAGE := 1;
+    ELSIF TEMP < COLD THEN
+      STAGE := 3;
+    ELSE
+      STAGE := 2;
+      rest_ms := 0;
+    END_IF;
+  ELSIF STAGE = 1 THEN
+    IF EXTRACT < TERMINAL THEN
+      STAGE := 2;
+      rest_ms := 0;
+    END_IF;
+  ELSIF STAGE = 2 THEN
+    IF rest_ms >= UINT_TO_UDINT(REST_MIN) * 60000 THEN
+      STAGE := 3;
+    ELSE
+      rest_ms := rest_ms + SCAN_MS;
+    END_IF;
+  END_IF;
+  (* An empty vessel waits at the fermentation temperature: its jackets stay
+     shut, and the next wort is not chilled on its way in. *)
+  IF STAGE = 2 THEN
+    SP := REST_SP;
+  ELSIF STAGE = 3 THEN
+    SP := CRASH_SP;
+  ELSE
+    SP := FERMENT_SP;
+  END_IF;
+END_FUNCTION_BLOCK
+
 PROGRAM plc_cellar
   (* LOCATED_VARS: plcbuild.py splices the located variables and alarm instances here. *)
 
@@ -124,6 +193,8 @@ PROGRAM plc_cellar
     CO2_RELEASE_DELAY : TIME := T#60s;  (* relay must be healthy this long *)
     DH_PURGE_TIME : TIME := T#30s;      (* hop-port CO2 purge before a dose *)
     DH_DOSE_TIME : TIME := T#60s;       (* dose valve open *)
+    SCAN_MS : UDINT := 100;           (* the task interval plcbuild.py sets (T#100ms) *)
+    REST_MIN_MAX : UINT := 6000;      (* 100 h *)
   END_VAR
 
   VAR
@@ -136,6 +207,10 @@ PROGRAM plc_cellar
     fv103_cone : GlycolZone;
     fv104_side : GlycolZone;
     fv104_cone : GlycolZone;
+    fv101_profile : FermentProfile;
+    fv102_profile : FermentProfile;
+    fv103_profile : FermentProfile;
+    fv104_profile : FermentProfile;
     bbt201_zone : GlycolZone;
     bbt202_zone : GlycolZone;
     bbt201_carb : Carbonation;
@@ -162,6 +237,15 @@ PROGRAM plc_cellar
     CEL_BBT202_TT01_SP := 3400;
     CEL_BBT201_AT01_SP := 260;
     CEL_BBT202_AT01_SP := 260;
+    (* The recipe's profile (fire-of-the-phenix), on for every fermenter. *)
+    CEL_PROFILE_TC01_SP := 6600;
+    CEL_PROFILE_TC02_SP := 7000;
+    CEL_PROFILE_TC03_SP := 3400;
+    CEL_PROFILE_KC01_SP := 180;
+    CEL_PROFILE_HS01_AUTO := TRUE;
+    CEL_PROFILE_HS02_AUTO := TRUE;
+    CEL_PROFILE_HS03_AUTO := TRUE;
+    CEL_PROFILE_HS04_AUTO := TRUE;
     started := TRUE;
   END_IF;
 
@@ -177,6 +261,44 @@ PROGRAM plc_cellar
   CEL_BBT202_TT01_SP := LIMIT(TEMP_SP_MIN, CEL_BBT202_TT01_SP, TEMP_SP_MAX);
   CEL_BBT201_AT01_SP := MIN(CEL_BBT201_AT01_SP, VOL_SP_MAX);
   CEL_BBT202_AT01_SP := MIN(CEL_BBT202_AT01_SP, VOL_SP_MAX);
+  CEL_PROFILE_TC01_SP := LIMIT(TEMP_SP_MIN, CEL_PROFILE_TC01_SP, TEMP_SP_MAX);
+  CEL_PROFILE_TC02_SP := LIMIT(TEMP_SP_MIN, CEL_PROFILE_TC02_SP, TEMP_SP_MAX);
+  CEL_PROFILE_TC03_SP := LIMIT(TEMP_SP_MIN, CEL_PROFILE_TC03_SP, TEMP_SP_MAX);
+  CEL_PROFILE_KC01_SP := MIN(CEL_PROFILE_KC01_SP, REST_MIN_MAX);
+
+  (* ---- fermentation profile: the stage's temperature for a fermenter on AUTO --- *)
+  fv101_profile(EXTRACT := CEL_FV101_DT01_PV, TEMP := CEL_FV101_TT01_PV,
+    FERMENT_SP := CEL_PROFILE_TC01_SP, REST_SP := CEL_PROFILE_TC02_SP,
+    CRASH_SP := CEL_PROFILE_TC03_SP, REST_MIN := CEL_PROFILE_KC01_SP, SCAN_MS := SCAN_MS);
+  CEL_PROFILE_KS01_STAGE := fv101_profile.STAGE;
+  IF CEL_PROFILE_HS01_AUTO THEN
+    CEL_FV101_TT01_SP := fv101_profile.SP;
+    CEL_FV101_TT02_SP := fv101_profile.SP;
+  END_IF;
+  fv102_profile(EXTRACT := CEL_FV102_DT01_PV, TEMP := CEL_FV102_TT01_PV,
+    FERMENT_SP := CEL_PROFILE_TC01_SP, REST_SP := CEL_PROFILE_TC02_SP,
+    CRASH_SP := CEL_PROFILE_TC03_SP, REST_MIN := CEL_PROFILE_KC01_SP, SCAN_MS := SCAN_MS);
+  CEL_PROFILE_KS02_STAGE := fv102_profile.STAGE;
+  IF CEL_PROFILE_HS02_AUTO THEN
+    CEL_FV102_TT01_SP := fv102_profile.SP;
+    CEL_FV102_TT02_SP := fv102_profile.SP;
+  END_IF;
+  fv103_profile(EXTRACT := CEL_FV103_DT01_PV, TEMP := CEL_FV103_TT01_PV,
+    FERMENT_SP := CEL_PROFILE_TC01_SP, REST_SP := CEL_PROFILE_TC02_SP,
+    CRASH_SP := CEL_PROFILE_TC03_SP, REST_MIN := CEL_PROFILE_KC01_SP, SCAN_MS := SCAN_MS);
+  CEL_PROFILE_KS03_STAGE := fv103_profile.STAGE;
+  IF CEL_PROFILE_HS03_AUTO THEN
+    CEL_FV103_TT01_SP := fv103_profile.SP;
+    CEL_FV103_TT02_SP := fv103_profile.SP;
+  END_IF;
+  fv104_profile(EXTRACT := CEL_FV104_DT01_PV, TEMP := CEL_FV104_TT01_PV,
+    FERMENT_SP := CEL_PROFILE_TC01_SP, REST_SP := CEL_PROFILE_TC02_SP,
+    CRASH_SP := CEL_PROFILE_TC03_SP, REST_MIN := CEL_PROFILE_KC01_SP, SCAN_MS := SCAN_MS);
+  CEL_PROFILE_KS04_STAGE := fv104_profile.STAGE;
+  IF CEL_PROFILE_HS04_AUTO THEN
+    CEL_FV104_TT01_SP := fv104_profile.SP;
+    CEL_FV104_TT02_SP := fv104_profile.SP;
+  END_IF;
 
 
   (* ---- confined-space entry (29 CFR 1910.146, DESIGN.md 6.3) ------------------ *)

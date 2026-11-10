@@ -50,7 +50,9 @@ projects at pre-start, so these files are for review and for the `--check`.
   tags carry the same factor as a linear `scale` (`rawHigh` = the factor),
   which every driver applies on reads and inverts on writes. BACnet values
   are engineering values already.
-- **Views.** The hand-laid Cellar view, and a generated view per device:
+- **Views.** The hand-laid Cellar view (in the full and lite plants it also
+  shows each fermenter's profile stage and has the buttons that put it on the
+  PLC's fermentation profile or take it off), and a generated view per device:
   Brewhouse, Cellar points, Packaging, Utilities, Power, and Cellar CO2 on
   scada-fuxa; Building on bas-fuxa. Each row is a label and a value or lamp.
   A tag the operator may write (`access: read-write` in the plantgen tag

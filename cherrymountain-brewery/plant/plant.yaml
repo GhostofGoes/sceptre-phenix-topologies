@@ -1748,6 +1748,29 @@ areas:
             alarms:
               - { kind: state, limit: 1, delay: 0s, rationale: vessel-entry-violation }
 
+      # The fermentation profile plc-cellar runs for each fermenter (DESIGN.md
+      # §6.3): 66 degF while the beer ferments, a diacetyl rest at 70 degF from
+      # 5 degP for KC01 minutes, then a crash to 34 degF. HSnn.AUTO puts a
+      # fermenter on it; with it off the setpoints are the operator's. The four
+      # recipe values are the operator's too. Last in the area, so no register of
+      # the other units moved when it was added; ci does not list it.
+      - id: PROFILE
+        name: Fermentation profile (plc-cellar)
+        model: ferment-profile
+        tags:
+          - { id: HS01.AUTO, desc: "FV-101 fermentation profile on (plc-cellar sets its temperature setpoints)", type: binary-read-write }
+          - { id: HS02.AUTO, desc: "FV-102 fermentation profile on (plc-cellar sets its temperature setpoints)", type: binary-read-write }
+          - { id: HS03.AUTO, desc: "FV-103 fermentation profile on (plc-cellar sets its temperature setpoints)", type: binary-read-write }
+          - { id: HS04.AUTO, desc: "FV-104 fermentation profile on (plc-cellar sets its temperature setpoints)", type: binary-read-write }
+          - { id: KS01.STAGE, desc: "FV-101 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)", type: analog-read, range: [0, 3], scaling: 0 }
+          - { id: KS02.STAGE, desc: "FV-102 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)", type: analog-read, range: [0, 3], scaling: 0 }
+          - { id: KS03.STAGE, desc: "FV-103 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)", type: analog-read, range: [0, 3], scaling: 0 }
+          - { id: KS04.STAGE, desc: "FV-104 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)", type: analog-read, range: [0, 3], scaling: 0 }
+          - { id: TC01.SP, desc: Profile temperature while the beer ferments, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: TC02.SP, desc: Profile temperature of the diacetyl rest, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: TC03.SP, desc: Profile temperature of the crash, type: analog-read-write, units: degF, range: [20, 90], scaling: 2 }
+          - { id: KC01.SP, desc: "Diacetyl rest length in plant minutes (180 is 144 h of fermentation on the range's 48x clock)", type: analog-read-write, units: min, range: [0, 6000], scaling: 0 }
+
   - id: PKG
     name: Packaging
     plc: plc-packaging

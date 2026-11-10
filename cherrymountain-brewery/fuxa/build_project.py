@@ -446,10 +446,18 @@ ALARM_LAMPS: tuple[tuple[str, str], ...] = (
 
 
 def build_cellar_view(tags: dict[str, PlantTag]) -> dict[str, Any]:
-    """The Cellar view: one column per fermenter."""
+    """The Cellar view: one column per fermenter. Where plc-cellar runs the
+    fermentation profile (the full and lite plants), each column also shows the
+    profile's stage and switches the fermenter on and off it; the alarm lamps
+    move down to make room."""
     width: int = LEFT * 2 + COLUMN_WIDTH * len(FERMENTERS)
-    vb: ViewBuilder = ViewBuilder(tags, width=width, height=470)
+    profile: bool = "CEL.PROFILE.HS01.AUTO" in tags
+    drop: int = 70 if profile else 0
+    height: int = 470 + drop
+    vb: ViewBuilder = ViewBuilder(tags, width=width, height=height)
     vb.text(LEFT, 28, "Cellar: fermenters FV-101 to FV-104", size=18, bold=True)
+    if profile:
+        vb.text(LEFT + 330, 28, "Profile stage: 0 empty, 1 fermenting, 2 diacetyl rest, 3 crash", size=11)
     vb.text(width - LEFT, 28, "Sim hours", size=12, anchor="end")
     vb.value(width - LEFT - 100, 28, "CEL.CLK.KI01.PV", digits=1, unit="h")
 
@@ -459,7 +467,7 @@ def build_cellar_view(tags: dict[str, PlantTag]) -> dict[str, Any]:
         side_x: int = x0 + 150
         cone_x: int = x0 + 225
         if i:
-            vb.line(x0 - 8, 50, x0 - 8, 450)
+            vb.line(x0 - 8, 50, x0 - 8, 450 + drop)
         vb.text(x0, 62, f"FV-{fv[2:]}", size=16, bold=True)
         vb.text(side_x, 62, "Side", size=12, anchor="middle")
         vb.text(cone_x, 62, "Cone", size=12, anchor="middle")
@@ -485,11 +493,22 @@ def build_cellar_view(tags: dict[str, PlantTag]) -> dict[str, Any]:
         vb.text(label_x, 316, "Extract")
         vb.value(side_x, 316, f"CEL.{fv}.DT01.PV", digits=2, unit="P")
 
-        vb.text(label_x, 356, "Alarms", size=12, bold=True)
+        if profile:
+            # With the profile on, plc-cellar writes both setpoints every scan:
+            # switch it off to set a temperature by hand.
+            n: str = fv[-1]
+            vb.text(label_x, 346, "Profile on")
+            vb.lamp(side_x, 341, f"CEL.PROFILE.HS0{n}.AUTO", "#43a047")
+            vb.text(cone_x - 50, 346, "Stage", size=11)
+            vb.value(cone_x, 346, f"CEL.PROFILE.KS0{n}.STAGE", digits=0, unit="")
+            vb.button(label_x, 360, 96, 28, "Profile on", f"CEL.PROFILE.HS0{n}.AUTO", 1)
+            vb.button(label_x + 106, 360, 96, 28, "By hand", f"CEL.PROFILE.HS0{n}.AUTO", 0)
+
+        vb.text(label_x, 356 + drop, "Alarms", size=12, bold=True)
         for j, (suffix, caption) in enumerate(ALARM_LAMPS):
             lx: int = x0 + 10 + j * 54
-            vb.lamp(lx, 380, f"CEL.{fv}.{suffix}", "#e53935")
-            vb.text(lx, 408, caption, size=9, anchor="middle")
+            vb.lamp(lx, 380 + drop, f"CEL.{fv}.{suffix}", "#e53935")
+            vb.text(lx, 408 + drop, caption, size=9, anchor="middle")
 
     view_id: str = uid("v_", "Cellar")
     return {
@@ -497,7 +516,7 @@ def build_cellar_view(tags: dict[str, PlantTag]) -> dict[str, Any]:
         "name": "Cellar",
         "profile": {
             "width": width,
-            "height": 470,
+            "height": height,
             "bkcolor": BRAND.process_bkcolor(),
             "margin": 10,
             "align": "topCenter",

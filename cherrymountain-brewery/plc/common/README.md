@@ -16,7 +16,8 @@ The ci slice's plc-cellar ZIP keeps its own builder in `plc/plc-cellar/`.
 The programs are `plc/plc-brewhouse/plc-brewhouse.st` (ISA-88 phases and their
 parameter for the FUXA batch engine, the batch request handshake with the panel,
 the liquor tanks, boil detection), `plc/plc-cellar/
-plc-cellar-plant.st` (glycol zones, spunding, carbonation, the CO2 interlock,
+plc-cellar-plant.st` (glycol zones, the fermentation profile, spunding,
+carbonation, the CO2 interlock,
 the dry-hop sequence, the peer status bits), `plc/plc-packaging/
 plc-packaging.st` (the PackML line over the machines, the operator panel's
 command, OEE, conveyors),

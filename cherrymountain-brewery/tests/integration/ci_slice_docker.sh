@@ -7,8 +7,8 @@
 #
 # Everything is the repo's own artifact: the ot-sim config is rendered from
 # plant/generated/ci/phenix/ot-sim.yaml by the phenix-apps ot-sim app, the PLC
-# runs phenix-injects/openplc/plc-cellar.zip uploaded by spikes/openplc-v4/
-# provision.sh, and FUXA gets phenix-injects/fuxa/scada-fuxa-project.json through
+# runs phenix-injects/openplc/plc-cellar.zip uploaded by openplc_provision.sh
+# (beside this script), and FUXA gets phenix-injects/fuxa/scada-fuxa-project.json through
 # phenix-injects/fuxa/cm-fuxa-provision.sh. The containers sit on one bridge
 # network with the topology's own addresses (rio-cellar 10.20.12.10, plc-cellar
 # 10.20.10.12), so no config is edited.
@@ -39,7 +39,7 @@ phenix_apps="${CM_PHENIX_APPS:-${work}/sceptre-phenix-apps}"
 gen="${root}/plant/generated/ci"
 injects="${root}/phenix-injects"
 
-# Pins (see spikes/openplc-v4 and spikes/fuxa for how they were chosen).
+# Pins (DESIGN.md 12.1 and spikes/fuxa say how they were chosen).
 OPENPLC_COMMIT=9fb5e1a29b574806f5aea3a4e78202c7a5d658ee   # runtime v4.3.2
 # The fork commit the app tests use too (prek.toml, cm-app-tests).
 PHENIX_APPS_COMMIT=771e8d87a64770265862468664a1368dcfcbb99d
@@ -203,12 +203,12 @@ wait_http() {  # url seconds
 }
 provision_plc() {  # zip
   PLC="${PLC_IP}" ZIP="$1" USER_NAME="${PLC_USER}" USER_PASS="${PLC_PASS}" TIMEOUT=600 CLEAN=0 \
-    timeout 900 bash "${root}/spikes/openplc-v4/provision.sh" >"${work}/logs/provision-plc.log" 2>&1 \
+    timeout 900 bash "${here}/openplc_provision.sh" >"${work}/logs/provision-plc.log" 2>&1 \
     || { tail -n 30 "${work}/logs/provision-plc.log"; die "OpenPLC provisioning failed"; }
   grep -E 'compile_seconds|PASS' "${work}/logs/provision-plc.log" | tr '\n' ' '; echo
 }
 wait_http "https://${PLC_IP}:8443/api/version" 180
-log "uploading plc-cellar.zip with spikes/openplc-v4/provision.sh"
+log "uploading plc-cellar.zip with openplc_provision.sh"
 provision_plc "${injects}/openplc/plc-cellar.zip"
 
 wait_http "http://${FUXA_IP}:1881/api/version" 120

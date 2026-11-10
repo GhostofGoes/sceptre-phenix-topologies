@@ -1,7 +1,7 @@
 # Phase 0 spike kit
 
 Runnable checks for the Phase 0 spikes in [DESIGN.md §18](../DESIGN.md). The
-openplc-v4, fuxa, otsim-noble and bacnet kits were run in Docker containers on
+fuxa, otsim-noble and bacnet kits were run in Docker containers on
 a no-KVM host. The VM spikes (malcolm, vyos-ipsec, autotunnel, serial, bbmd)
 run in CI on GitHub-hosted runners with KVM (the Malcolm and the netns BBMD jobs need Docker only, and the BBMD jobs run FUXA in Docker): workflow
 [`cherrymountain-spikes.yml`](../../.github/workflows/cherrymountain-spikes.yml),
@@ -12,11 +12,13 @@ spike can also be run by hand on your own phenix/minimega host. Every
 remaining guess about an upstream API is marked `TODO(verify):`.
 
 Each spike writes a go/no-go decision into the **Result** section of its own
-README. Phase 1 should not start until the "blocking" spikes have a decision.
+README. Every spike has its decision, and the phases they unblocked are built
+([DESIGN.md §18](../DESIGN.md)). A kit stays here while it is the only runnable
+proof of its answer or the spike workflow still runs it; the others are under
+[Retired kits](#retired-kits).
 
 | Spike | Question | Unblocks | Est. time | Status |
 |---|---|---|---|---|
-| [openplc-v4](openplc-v4/README.md) | Can OpenPLC v4 be provisioned unattended (ZIP upload, plugin configs, OPC UA rebind) within the RAM budget? | v4 vs v3 decision (§12.1) | 3-4 h | partial |
 | [fuxa](fuxa/README.md) | Do offline plugins load, and does the secure sign-in, password, `/api/project` flow work? Do FUXA OPC UA and S7 clients talk to the v4 plugins? | FUXA image and boot script (§12.2) | 3 h | partial |
 | [otsim-noble](otsim-noble/README.md) | Does ot-sim run on noble: Python HELICS federate and C++ DNP3 master/outstation? | `cm-otsim` base image or focal fallback for DNP3 nodes (§12.3) | 3-4 h | pass |
 | [bacnet](bacnet/README.md) | Can a BACnet device answer ReadProperty on device 3003 and be read by FUXA `node-bacnet`? | BACnet module scope or bennu `hvac` fallback (§8.1, §15.2) | 4-6 h | pass |
@@ -39,6 +41,17 @@ README. Phase 1 should not start until the "blocking" spikes have a decision.
 
 The workflow's `serial-pr130` job (spike name `serial-pr130`) applies
 `serial/pr130-serial.patch` to the fork's phenix; it is part of the default set.
+
+## Retired kits
+
+These kits were removed once the range's own code and tests replaced them. Their
+decisions and measurements are in DESIGN.md, and the kits themselves are in the
+history of this repository (last present in commit `9cf6dea`).
+
+| Spike | Decision | Replaced by |
+|---|---|---|
+| openplc-v4 | Go for OpenPLC v4: unattended provisioning works, the plugin configs travel in the program ZIP, and the runtime fits the RAM budget (DESIGN.md §12.1) | `plc/common/` and `plc/plc-cellar/` build the ZIPs, `phenix-injects/openplc/cm-openplc-provision.sh` provisions a PLC, and `tests/integration/` runs a real runtime in Docker with the spike's provisioning script (`openplc_provision.sh`) |
+| viz3d | Go for a 3D white-cell view: three.js renders with no GPU when Chromium opts in, and the federates can drive it (DESIGN.md §15.10) | `viz/` (`cm-viz`), with its own tests and a headless browser check |
 
 ## Conventions
 

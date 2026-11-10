@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Unattended OpenPLC v4 provisioning probe (design §12.1, steps 4-5).
+# Unattended OpenPLC v4 provisioning for the Docker integration test (DESIGN.md
+# 12.1, steps 4-5). It came from the openplc-v4 spike, whose kit is retired; the
+# range's own provisioner is phenix-injects/openplc/cm-openplc-provision.sh.
 #   create-user -> login -> upload-file -> poll compilation-status -> start-plc
-# Usage: PLC=10.20.40.10 ZIP=./prog.zip ./provision.sh
+# Usage: PLC=10.20.40.10 ZIP=./prog.zip ./openplc_provision.sh
 # Env: PLC (required), ZIP (required), PORT=8443, USER_NAME=admin,
 #      USER_PASS=cm-spike-pass, TIMEOUT=600 (compile timeout, seconds),
 #      CLEAN=0 (set 1 to force a full rebuild: upload-file?clean=1)
@@ -9,7 +11,7 @@
 set -euo pipefail
 
 : "${PLC:?set PLC to the runtime address}"
-: "${ZIP:?set ZIP to the program ZIP built in the OpenPLC Editor}"
+: "${ZIP:?set ZIP to the program ZIP (plc/plc-cellar/build_zip.sh builds it)}"
 PORT="${PORT:-8443}"
 USER_NAME="${USER_NAME:-admin}"
 USER_PASS="${USER_PASS:-cm-spike-pass}"

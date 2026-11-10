@@ -27,7 +27,7 @@ DNP3 nodes (rtu-der, utility-derms) per DESIGN §12.3.
    (see Result); the C++ `ot-sim-e2e-dnp3-master` (cmake `-DBUILD_E2E=ON`)
    replaces it, and is what upstream's own CI uses.
 5. Modbus sanity (optional): the single-device example (`Procfile.single`)
-   and `mbpoll`/`../openplc-v4/modbus_read.py` against it. Not run.
+   and `mbpoll` against it. Not run.
 6. If steps 3 or 4 fail on noble, repeat on Ubuntu 20.04 (focal) to confirm
    the fallback, using `renewables/wind/turbine/phenix-images/ot-sim.yml` as
    the image recipe template. Not needed: they passed.

@@ -16,7 +16,8 @@ plugins? **Decides:** the FUXA image recipe and boot script (DESIGN §12.2).
   `/usr/src/app/FUXA/server/_appdata/`, or `<userDir>/_appdata/`) and is read
   at boot by `server/main.js`; `secureEnabled`, `secretCode`, `uiPort`,
   `nodeRedEnabled`, `tokenExpiresIn`, `daqstore` and others are honored.
-- For step 5: the OpenPLC v4 PLC from the `openplc-v4` spike with `opcua`
+- For step 5: an OpenPLC v4 PLC (as `tests/integration/ci_slice_docker.sh`
+  runs one; the `openplc-v4` spike kit is retired) with `opcua`
   and `s7comm` plugins enabled.
 
 Upstream facts used (read from frangoteam/FUXA `server/api`): `POST

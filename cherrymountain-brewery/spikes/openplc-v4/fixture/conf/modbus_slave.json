@@ -1,7 +1,0 @@
-{
-  "network_configuration": {
-    "host": "0.0.0.0",
-    "port": 502
-  },
-  "buffer_mapping": {}
-}

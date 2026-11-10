@@ -991,62 +991,8 @@
             },
             "label": "Shapes"
           },
-          "GSE_22664012-36f3-579c-ab9f-28bccfbb2281": {
-            "id": "GSE_22664012-36f3-579c-ab9f-28bccfbb2281",
-            "type": "svg-ext-gauge_semaphore",
-            "name": "FAC.VENT.FAN03.CMD",
-            "property": {
-              "events": [],
-              "variableId": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
-              "ranges": [
-                {
-                  "min": -1000000000.0,
-                  "max": 0.5,
-                  "color": "#FFFFFF",
-                  "stroke": "#2F3640"
-                },
-                {
-                  "min": 0.500001,
-                  "max": 1000000000.0,
-                  "color": "#2B6C8A",
-                  "stroke": "#2F3640"
-                }
-              ]
-            },
-            "label": "HtmlSemaphore"
-          },
-          "svg_9bdc0f0c-9bdb-5b43-a8f3-6456e38253f0": {
-            "id": "svg_9bdc0f0c-9bdb-5b43-a8f3-6456e38253f0",
-            "type": "svg-ext-shapes-g",
-            "name": "FAC.VENT.FAN03.CMD blades",
-            "property": {
-              "events": [],
-              "ranges": [],
-              "actions": [
-                {
-                  "variableId": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
-                  "range": {
-                    "min": 0.500001,
-                    "max": 1000000000.0
-                  },
-                  "type": "clockwise",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
-                  "range": {
-                    "min": -1000000000.0,
-                    "max": 0.5
-                  },
-                  "type": "stop",
-                  "options": {}
-                }
-              ]
-            },
-            "label": "Shapes"
-          },
-          "VAL_6de8b35b-a4a9-58b6-b494-449af5de27e3": {
-            "id": "VAL_6de8b35b-a4a9-58b6-b494-449af5de27e3",
+          "VAL_2d64e578-80ab-5c02-b509-7ad66ba580ee": {
+            "id": "VAL_2d64e578-80ab-5c02-b509-7ad66ba580ee",
             "type": "svg-ext-value",
             "name": "FAC.VENT.TT01.PV",
             "property": {
@@ -1065,308 +1011,8 @@
             },
             "label": "Value"
           },
-          "VAL_e55ec752-e44a-5255-a4b3-fb52d6fab486": {
-            "id": "VAL_e55ec752-e44a-5255-a4b3-fb52d6fab486",
-            "type": "svg-ext-value",
-            "name": "FAC.VENT.AT05.PV",
-            "property": {
-              "events": [],
-              "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
-              "ranges": [
-                {
-                  "type": 1,
-                  "min": 0,
-                  "max": 0,
-                  "text": "",
-                  "textId": "",
-                  "fractionDigits": 0
-                }
-              ]
-            },
-            "label": "Value"
-          },
-          "svg_1d4c3449-a02d-5c6c-bf28-b461a8765f49": {
-            "id": "svg_1d4c3449-a02d-5c6c-bf28-b461a8765f49",
-            "type": "svg-ext-shapes-g",
-            "name": "FAC.VENT.AT05.ALM_HIGHHIGH",
-            "property": {
-              "events": [],
-              "actions": [
-                {
-                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
-                  "range": {
-                    "min": 30000.0,
-                    "max": 1000000000.0
-                  },
-                  "type": "show",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
-                  "range": {
-                    "min": -1000000000.0,
-                    "max": 29999.999999
-                  },
-                  "type": "hide",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
-                  "range": {
-                    "min": 1000000000.000001,
-                    "max": 1000000000.0
-                  },
-                  "type": "hide",
-                  "options": {}
-                }
-              ],
-              "ranges": []
-            },
-            "label": "Shapes",
-            "hide": true
-          },
-          "svg_754df1dd-9524-5510-8edb-0e05d430fe54": {
-            "id": "svg_754df1dd-9524-5510-8edb-0e05d430fe54",
-            "type": "svg-ext-shapes-g",
-            "name": "FAC.VENT.AT05.ALM_HIGH",
-            "property": {
-              "events": [],
-              "actions": [
-                {
-                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
-                  "range": {
-                    "min": 15000.0,
-                    "max": 1000000000.0
-                  },
-                  "type": "show",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
-                  "range": {
-                    "min": -1000000000.0,
-                    "max": 14999.999999
-                  },
-                  "type": "hide",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
-                  "range": {
-                    "min": 1000000000.000001,
-                    "max": 1000000000.0
-                  },
-                  "type": "hide",
-                  "options": {}
-                }
-              ],
-              "ranges": []
-            },
-            "label": "Shapes",
-            "hide": true
-          },
-          "VAL_6713818c-6cfd-5141-814e-fab002fd48ab": {
-            "id": "VAL_6713818c-6cfd-5141-814e-fab002fd48ab",
-            "type": "svg-ext-value",
-            "name": "FAC.VENT.AT06.PV",
-            "property": {
-              "events": [],
-              "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
-              "ranges": [
-                {
-                  "type": 1,
-                  "min": 0,
-                  "max": 0,
-                  "text": "",
-                  "textId": "",
-                  "fractionDigits": 0
-                }
-              ]
-            },
-            "label": "Value"
-          },
-          "svg_0a9a61ef-a656-5271-8e4d-f7c6efeeb9a5": {
-            "id": "svg_0a9a61ef-a656-5271-8e4d-f7c6efeeb9a5",
-            "type": "svg-ext-shapes-g",
-            "name": "FAC.VENT.AT06.ALM_HIGHHIGH",
-            "property": {
-              "events": [],
-              "actions": [
-                {
-                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
-                  "range": {
-                    "min": 30000.0,
-                    "max": 1000000000.0
-                  },
-                  "type": "show",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
-                  "range": {
-                    "min": -1000000000.0,
-                    "max": 29999.999999
-                  },
-                  "type": "hide",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
-                  "range": {
-                    "min": 1000000000.000001,
-                    "max": 1000000000.0
-                  },
-                  "type": "hide",
-                  "options": {}
-                }
-              ],
-              "ranges": []
-            },
-            "label": "Shapes",
-            "hide": true
-          },
-          "svg_0c674e4a-e50b-56d8-8bad-268a30d41b02": {
-            "id": "svg_0c674e4a-e50b-56d8-8bad-268a30d41b02",
-            "type": "svg-ext-shapes-g",
-            "name": "FAC.VENT.AT06.ALM_HIGH",
-            "property": {
-              "events": [],
-              "actions": [
-                {
-                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
-                  "range": {
-                    "min": 15000.0,
-                    "max": 1000000000.0
-                  },
-                  "type": "show",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
-                  "range": {
-                    "min": -1000000000.0,
-                    "max": 14999.999999
-                  },
-                  "type": "hide",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
-                  "range": {
-                    "min": 1000000000.000001,
-                    "max": 1000000000.0
-                  },
-                  "type": "hide",
-                  "options": {}
-                }
-              ],
-              "ranges": []
-            },
-            "label": "Shapes",
-            "hide": true
-          },
-          "VAL_f81bed5b-1b5b-5311-99b5-69ea375573ab": {
-            "id": "VAL_f81bed5b-1b5b-5311-99b5-69ea375573ab",
-            "type": "svg-ext-value",
-            "name": "FAC.VENT.AT07.PV",
-            "property": {
-              "events": [],
-              "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
-              "ranges": [
-                {
-                  "type": 1,
-                  "min": 0,
-                  "max": 0,
-                  "text": "",
-                  "textId": "",
-                  "fractionDigits": 0
-                }
-              ]
-            },
-            "label": "Value"
-          },
-          "svg_33067f76-eae7-5234-8409-876c803830fa": {
-            "id": "svg_33067f76-eae7-5234-8409-876c803830fa",
-            "type": "svg-ext-shapes-g",
-            "name": "FAC.VENT.AT07.ALM_HIGHHIGH",
-            "property": {
-              "events": [],
-              "actions": [
-                {
-                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
-                  "range": {
-                    "min": 30000.0,
-                    "max": 1000000000.0
-                  },
-                  "type": "show",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
-                  "range": {
-                    "min": -1000000000.0,
-                    "max": 29999.999999
-                  },
-                  "type": "hide",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
-                  "range": {
-                    "min": 1000000000.000001,
-                    "max": 1000000000.0
-                  },
-                  "type": "hide",
-                  "options": {}
-                }
-              ],
-              "ranges": []
-            },
-            "label": "Shapes",
-            "hide": true
-          },
-          "svg_af1d8877-e77a-5ae5-9e1c-940380f7d6bf": {
-            "id": "svg_af1d8877-e77a-5ae5-9e1c-940380f7d6bf",
-            "type": "svg-ext-shapes-g",
-            "name": "FAC.VENT.AT07.ALM_HIGH",
-            "property": {
-              "events": [],
-              "actions": [
-                {
-                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
-                  "range": {
-                    "min": 15000.0,
-                    "max": 1000000000.0
-                  },
-                  "type": "show",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
-                  "range": {
-                    "min": -1000000000.0,
-                    "max": 14999.999999
-                  },
-                  "type": "hide",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
-                  "range": {
-                    "min": 1000000000.000001,
-                    "max": 1000000000.0
-                  },
-                  "type": "hide",
-                  "options": {}
-                }
-              ],
-              "ranges": []
-            },
-            "label": "Shapes",
-            "hide": true
-          },
-          "VAL_71c50aa9-32e1-58f1-bfed-291b728246f1": {
-            "id": "VAL_71c50aa9-32e1-58f1-bfed-291b728246f1",
+          "VAL_85f9b4c2-cf0a-5d9b-a0e6-4ae8fda0c1bd": {
+            "id": "VAL_85f9b4c2-cf0a-5d9b-a0e6-4ae8fda0c1bd",
             "type": "svg-ext-value",
             "name": "FAC.VENT.AT01.PV",
             "property": {
@@ -1385,8 +1031,8 @@
             },
             "label": "Value"
           },
-          "svg_562b95b9-5003-5dbd-ba17-3300e6215fee": {
-            "id": "svg_562b95b9-5003-5dbd-ba17-3300e6215fee",
+          "svg_3943f85f-749c-5528-b4fd-7c728c4d791d": {
+            "id": "svg_3943f85f-749c-5528-b4fd-7c728c4d791d",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AT01.ALM_HIGHHIGH",
             "property": {
@@ -1425,8 +1071,8 @@
             "label": "Shapes",
             "hide": true
           },
-          "svg_cb072a82-c996-5557-9ef8-f2efcdf2450e": {
-            "id": "svg_cb072a82-c996-5557-9ef8-f2efcdf2450e",
+          "svg_c4a9b331-246f-55ab-829c-e1b1e8301f8b": {
+            "id": "svg_c4a9b331-246f-55ab-829c-e1b1e8301f8b",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AT01.ALM_HIGH",
             "property": {
@@ -1465,8 +1111,92 @@
             "label": "Shapes",
             "hide": true
           },
-          "VAL_f1cec606-b51a-5535-a650-cbeb395cc1df": {
-            "id": "VAL_f1cec606-b51a-5535-a650-cbeb395cc1df",
+          "svg_43247c8b-c7bb-5aee-8518-e36ed17962b6": {
+            "id": "svg_43247c8b-c7bb-5aee-8518-e36ed17962b6",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT01.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 0.0,
+                    "valueMax": 5000.0,
+                    "positionMin": -6.666666666666664,
+                    "positionMax": 42.0,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_10e27cba-e2ab-5ee6-9d73-538e7e3d9f33": {
+            "id": "svg_10e27cba-e2ab-5ee6-9d73-538e7e3d9f33",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT01.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 5000.0,
+                    "valueMax": 15000.0,
+                    "positionMin": 41.99999999999999,
+                    "positionMax": 90.66666666666666,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_60b25494-9ea7-569f-856c-9ff632070bfb": {
+            "id": "svg_60b25494-9ea7-569f-856c-9ff632070bfb",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT01.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 15000.0,
+                    "valueMax": 30000.0,
+                    "positionMin": 90.66666666666666,
+                    "positionMax": 139.33333333333331,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "VAL_0a8667b7-8047-5454-8dda-afa9799d6bea": {
+            "id": "VAL_0a8667b7-8047-5454-8dda-afa9799d6bea",
             "type": "svg-ext-value",
             "name": "FAC.VENT.AT02.PV",
             "property": {
@@ -1485,8 +1215,8 @@
             },
             "label": "Value"
           },
-          "svg_bb3184df-9327-50aa-a0ac-3b5563c71193": {
-            "id": "svg_bb3184df-9327-50aa-a0ac-3b5563c71193",
+          "svg_7590d8c1-9046-5062-925c-80f92f7c1d6c": {
+            "id": "svg_7590d8c1-9046-5062-925c-80f92f7c1d6c",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AT02.ALM_HIGHHIGH",
             "property": {
@@ -1525,8 +1255,8 @@
             "label": "Shapes",
             "hide": true
           },
-          "svg_1ea24c79-c554-5b17-954b-e3a8ca94a015": {
-            "id": "svg_1ea24c79-c554-5b17-954b-e3a8ca94a015",
+          "svg_46b61a71-a432-596b-a3a9-8d8ecd308446": {
+            "id": "svg_46b61a71-a432-596b-a3a9-8d8ecd308446",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AT02.ALM_HIGH",
             "property": {
@@ -1565,8 +1295,92 @@
             "label": "Shapes",
             "hide": true
           },
-          "VAL_28cb6fb0-0f27-5e52-bee7-b994490f116f": {
-            "id": "VAL_28cb6fb0-0f27-5e52-bee7-b994490f116f",
+          "svg_91270920-bd4f-56c5-85cb-0a309d51b48f": {
+            "id": "svg_91270920-bd4f-56c5-85cb-0a309d51b48f",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT02.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 0.0,
+                    "valueMax": 5000.0,
+                    "positionMin": 169.33333333333334,
+                    "positionMax": 218.0,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_096a4880-df9b-5072-850f-bfd50a3eafc2": {
+            "id": "svg_096a4880-df9b-5072-850f-bfd50a3eafc2",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT02.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 5000.0,
+                    "valueMax": 15000.0,
+                    "positionMin": 218.00000000000003,
+                    "positionMax": 266.6666666666667,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_0fb4c3dc-6889-5193-85e2-6fd4f972f0bb": {
+            "id": "svg_0fb4c3dc-6889-5193-85e2-6fd4f972f0bb",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT02.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 15000.0,
+                    "valueMax": 30000.0,
+                    "positionMin": 266.66666666666663,
+                    "positionMax": 315.3333333333333,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "VAL_ee289945-24c5-51b3-b689-9e15c2a1c24f": {
+            "id": "VAL_ee289945-24c5-51b3-b689-9e15c2a1c24f",
             "type": "svg-ext-value",
             "name": "FAC.VENT.AT03.PV",
             "property": {
@@ -1585,8 +1399,8 @@
             },
             "label": "Value"
           },
-          "svg_bd8a6c38-eb55-5b8b-8715-f6fb9c728b98": {
-            "id": "svg_bd8a6c38-eb55-5b8b-8715-f6fb9c728b98",
+          "svg_d365b4d2-bcd0-521c-b61f-71070f282389": {
+            "id": "svg_d365b4d2-bcd0-521c-b61f-71070f282389",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AT03.ALM_HIGHHIGH",
             "property": {
@@ -1625,8 +1439,8 @@
             "label": "Shapes",
             "hide": true
           },
-          "svg_c1d22e09-2bfb-5ca9-ad78-d58f1e5453e8": {
-            "id": "svg_c1d22e09-2bfb-5ca9-ad78-d58f1e5453e8",
+          "svg_c5959379-b221-5687-a0bb-1fb99fb15a58": {
+            "id": "svg_c5959379-b221-5687-a0bb-1fb99fb15a58",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AT03.ALM_HIGH",
             "property": {
@@ -1665,8 +1479,92 @@
             "label": "Shapes",
             "hide": true
           },
-          "VAL_5f0c78fc-a5de-5cfa-84bd-f7256ecf1269": {
-            "id": "VAL_5f0c78fc-a5de-5cfa-84bd-f7256ecf1269",
+          "svg_2c3827d0-e412-5b9c-bf9d-67a9b460997a": {
+            "id": "svg_2c3827d0-e412-5b9c-bf9d-67a9b460997a",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT03.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 0.0,
+                    "valueMax": 5000.0,
+                    "positionMin": 345.3333333333333,
+                    "positionMax": 394.0,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_44585b3c-8375-5f1a-af69-ab2849a394f5": {
+            "id": "svg_44585b3c-8375-5f1a-af69-ab2849a394f5",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT03.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 5000.0,
+                    "valueMax": 15000.0,
+                    "positionMin": 394.0,
+                    "positionMax": 442.6666666666667,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_09fb637b-2e17-5017-bef6-faffcf188812": {
+            "id": "svg_09fb637b-2e17-5017-bef6-faffcf188812",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT03.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 15000.0,
+                    "valueMax": 30000.0,
+                    "positionMin": 442.66666666666663,
+                    "positionMax": 491.3333333333333,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "VAL_f9f40334-64e4-583e-85d2-922b4861239e": {
+            "id": "VAL_f9f40334-64e4-583e-85d2-922b4861239e",
             "type": "svg-ext-value",
             "name": "FAC.VENT.AT04.PV",
             "property": {
@@ -1685,8 +1583,8 @@
             },
             "label": "Value"
           },
-          "svg_1580b3fa-1cf4-5902-91fe-c1312350205d": {
-            "id": "svg_1580b3fa-1cf4-5902-91fe-c1312350205d",
+          "svg_702163dc-6ccb-5b70-aeb4-9a2695499d5e": {
+            "id": "svg_702163dc-6ccb-5b70-aeb4-9a2695499d5e",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AT04.ALM_HIGHHIGH",
             "property": {
@@ -1725,8 +1623,8 @@
             "label": "Shapes",
             "hide": true
           },
-          "svg_412cedf6-cb22-575c-96b2-d1fcd8ccd689": {
-            "id": "svg_412cedf6-cb22-575c-96b2-d1fcd8ccd689",
+          "svg_9f341bde-1658-556c-9866-55e94f5dfbda": {
+            "id": "svg_9f341bde-1658-556c-9866-55e94f5dfbda",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AT04.ALM_HIGH",
             "property": {
@@ -1765,8 +1663,92 @@
             "label": "Shapes",
             "hide": true
           },
-          "GSE_dd5055c4-147d-5f44-928d-e6a98f5aade7": {
-            "id": "GSE_dd5055c4-147d-5f44-928d-e6a98f5aade7",
+          "svg_87ae75fe-cbae-5c75-a4a8-856c124bc8d7": {
+            "id": "svg_87ae75fe-cbae-5c75-a4a8-856c124bc8d7",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT04.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_70b4581a-43d8-5578-83cc-a137de2e05a1",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 0.0,
+                    "valueMax": 5000.0,
+                    "positionMin": 169.33333333333334,
+                    "positionMax": 218.0,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_4a07ab27-ab46-5b18-be64-a44deb2a5728": {
+            "id": "svg_4a07ab27-ab46-5b18-be64-a44deb2a5728",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT04.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_70b4581a-43d8-5578-83cc-a137de2e05a1",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 5000.0,
+                    "valueMax": 15000.0,
+                    "positionMin": 218.00000000000003,
+                    "positionMax": 266.6666666666667,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_f08b2b4f-9850-58d7-a6e3-9802fb7edd81": {
+            "id": "svg_f08b2b4f-9850-58d7-a6e3-9802fb7edd81",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT04.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_70b4581a-43d8-5578-83cc-a137de2e05a1",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 15000.0,
+                    "valueMax": 30000.0,
+                    "positionMin": 266.66666666666663,
+                    "positionMax": 315.3333333333333,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "GSE_05dcc246-3510-5ee7-892c-ebdca294ddc9": {
+            "id": "GSE_05dcc246-3510-5ee7-892c-ebdca294ddc9",
             "type": "svg-ext-gauge_semaphore",
             "name": "FAC.VENT.FAN01.PV",
             "property": {
@@ -1789,8 +1771,8 @@
             },
             "label": "HtmlSemaphore"
           },
-          "svg_9cfe8961-5632-51cd-8d0c-f6bcb731698c": {
-            "id": "svg_9cfe8961-5632-51cd-8d0c-f6bcb731698c",
+          "svg_988a4193-9170-5481-a018-aa0569fcb076": {
+            "id": "svg_988a4193-9170-5481-a018-aa0569fcb076",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.FAN01.PV blades",
             "property": {
@@ -1819,8 +1801,8 @@
             },
             "label": "Shapes"
           },
-          "GSE_f99915a9-2f98-5b91-8c37-8d7862d7388b": {
-            "id": "GSE_f99915a9-2f98-5b91-8c37-8d7862d7388b",
+          "GSE_25b5c2ea-796f-51c2-84ff-f159643107d2": {
+            "id": "GSE_25b5c2ea-796f-51c2-84ff-f159643107d2",
             "type": "svg-ext-gauge_semaphore",
             "name": "FAC.VENT.FAN02.PV",
             "property": {
@@ -1843,8 +1825,8 @@
             },
             "label": "HtmlSemaphore"
           },
-          "svg_a8ae0199-2ce3-560d-8231-97394e16877b": {
-            "id": "svg_a8ae0199-2ce3-560d-8231-97394e16877b",
+          "svg_4c9cadd5-6726-5177-8a57-2aeb84ec3042": {
+            "id": "svg_4c9cadd5-6726-5177-8a57-2aeb84ec3042",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.FAN02.PV blades",
             "property": {
@@ -1873,8 +1855,8 @@
             },
             "label": "Shapes"
           },
-          "GSE_f289b714-62c2-56ab-b5d9-199ee880c59b": {
-            "id": "GSE_f289b714-62c2-56ab-b5d9-199ee880c59b",
+          "GSE_7f9789a3-d1c4-569c-9730-743c534640cc": {
+            "id": "GSE_7f9789a3-d1c4-569c-9730-743c534640cc",
             "type": "svg-ext-gauge_semaphore",
             "name": "FAC.VENT.AY01.TIER1",
             "property": {
@@ -1897,8 +1879,8 @@
             },
             "label": "HtmlSemaphore"
           },
-          "svg_e2dcba5f-1292-5d81-830e-b0e6adcc285e": {
-            "id": "svg_e2dcba5f-1292-5d81-830e-b0e6adcc285e",
+          "svg_611f12f5-f8d2-5a6c-a22d-dc6049550d7b": {
+            "id": "svg_611f12f5-f8d2-5a6c-a22d-dc6049550d7b",
             "type": "svg-ext-shapes-g",
             "name": "FAC.VENT.AY01.ALM_STATE",
             "property": {
@@ -1937,8 +1919,180 @@
             "label": "Shapes",
             "hide": true
           },
-          "GSE_d51a4821-63e6-546a-8200-ca976bbef6a8": {
-            "id": "GSE_d51a4821-63e6-546a-8200-ca976bbef6a8",
+          "GSE_24d60c51-b2a4-5879-8a5b-8aee2d9052be": {
+            "id": "GSE_24d60c51-b2a4-5879-8a5b-8aee2d9052be",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.FAN01.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_38d6ffb6-5d6c-5763-8f98-444312331a94",
+              "ranges": [
+                {
+                  "min": -1000000000.0,
+                  "max": 0.5,
+                  "color": "#FFFFFF",
+                  "stroke": "#2F3640"
+                },
+                {
+                  "min": 0.500001,
+                  "max": 1000000000.0,
+                  "color": "#2B6C8A",
+                  "stroke": "#2F3640"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "svg_59f506bd-8ac0-5d1b-997d-d5b684b1ac75": {
+            "id": "svg_59f506bd-8ac0-5d1b-997d-d5b684b1ac75",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.FAN01.PV blades",
+            "property": {
+              "events": [],
+              "ranges": [],
+              "actions": [
+                {
+                  "variableId": "t_38d6ffb6-5d6c-5763-8f98-444312331a94",
+                  "range": {
+                    "min": 0.500001,
+                    "max": 1000000000.0
+                  },
+                  "type": "clockwise",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_38d6ffb6-5d6c-5763-8f98-444312331a94",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 0.5
+                  },
+                  "type": "stop",
+                  "options": {}
+                }
+              ]
+            },
+            "label": "Shapes"
+          },
+          "HXB_66ba7e31-e0a7-5605-b42d-4d2ffa6c48cb": {
+            "id": "HXB_66ba7e31-e0a7-5605-b42d-4d2ffa6c48cb",
+            "type": "svg-ext-html_button",
+            "name": "Run",
+            "property": {
+              "events": [],
+              "actions": [],
+              "variableId": "t_77303b80-3b12-5394-b8de-7722b1971ef2",
+              "text": "Run",
+              "buttonAction": {
+                "mode": "set",
+                "setValue": "1"
+              }
+            },
+            "label": "HtmlButton"
+          },
+          "HXB_67b214d4-9fa4-5f62-9a77-e81a42b6632e": {
+            "id": "HXB_67b214d4-9fa4-5f62-9a77-e81a42b6632e",
+            "type": "svg-ext-html_button",
+            "name": "Stop",
+            "property": {
+              "events": [],
+              "actions": [],
+              "variableId": "t_77303b80-3b12-5394-b8de-7722b1971ef2",
+              "text": "Stop",
+              "buttonAction": {
+                "mode": "set",
+                "setValue": "0"
+              }
+            },
+            "label": "HtmlButton"
+          },
+          "GSE_f0a62df5-fb74-5821-97f7-49f828139b57": {
+            "id": "GSE_f0a62df5-fb74-5821-97f7-49f828139b57",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.FAN02.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_1197242d-e278-5ca9-9cab-7877448dc71e",
+              "ranges": [
+                {
+                  "min": -1000000000.0,
+                  "max": 0.5,
+                  "color": "#FFFFFF",
+                  "stroke": "#2F3640"
+                },
+                {
+                  "min": 0.500001,
+                  "max": 1000000000.0,
+                  "color": "#2B6C8A",
+                  "stroke": "#2F3640"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "svg_cdf4ba6b-ba8c-5d11-8c2a-3661abae628d": {
+            "id": "svg_cdf4ba6b-ba8c-5d11-8c2a-3661abae628d",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.FAN02.PV blades",
+            "property": {
+              "events": [],
+              "ranges": [],
+              "actions": [
+                {
+                  "variableId": "t_1197242d-e278-5ca9-9cab-7877448dc71e",
+                  "range": {
+                    "min": 0.500001,
+                    "max": 1000000000.0
+                  },
+                  "type": "clockwise",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_1197242d-e278-5ca9-9cab-7877448dc71e",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 0.5
+                  },
+                  "type": "stop",
+                  "options": {}
+                }
+              ]
+            },
+            "label": "Shapes"
+          },
+          "HXB_a9b09d37-7a3c-52a6-b295-de7d17edf99c": {
+            "id": "HXB_a9b09d37-7a3c-52a6-b295-de7d17edf99c",
+            "type": "svg-ext-html_button",
+            "name": "Run",
+            "property": {
+              "events": [],
+              "actions": [],
+              "variableId": "t_d883a76c-849c-5d99-be72-ba1d2df1b1ae",
+              "text": "Run",
+              "buttonAction": {
+                "mode": "set",
+                "setValue": "1"
+              }
+            },
+            "label": "HtmlButton"
+          },
+          "HXB_4a38e547-511e-5d6b-9457-56f26b089209": {
+            "id": "HXB_4a38e547-511e-5d6b-9457-56f26b089209",
+            "type": "svg-ext-html_button",
+            "name": "Stop",
+            "property": {
+              "events": [],
+              "actions": [],
+              "variableId": "t_d883a76c-849c-5d99-be72-ba1d2df1b1ae",
+              "text": "Stop",
+              "buttonAction": {
+                "mode": "set",
+                "setValue": "0"
+              }
+            },
+            "label": "HtmlButton"
+          },
+          "GSE_1ecb3ec4-0704-5c22-834c-91f7041125e3": {
+            "id": "GSE_1ecb3ec4-0704-5c22-834c-91f7041125e3",
             "type": "svg-ext-gauge_semaphore",
             "name": "FAC.VENT.AY01.TIER2",
             "property": {
@@ -1961,8 +2115,8 @@
             },
             "label": "HtmlSemaphore"
           },
-          "GSE_159a8ddc-fc87-5ced-b88b-bb8011673453": {
-            "id": "GSE_159a8ddc-fc87-5ced-b88b-bb8011673453",
+          "GSE_fae931a1-3b59-5b2e-8912-a61245923a73": {
+            "id": "GSE_fae931a1-3b59-5b2e-8912-a61245923a73",
             "type": "svg-ext-gauge_semaphore",
             "name": "FAC.VENT.AY01.TIER3",
             "property": {
@@ -1985,96 +2139,8 @@
             },
             "label": "HtmlSemaphore"
           },
-          "GSE_7ce3e1d0-495e-5384-a475-d986bb677b80": {
-            "id": "GSE_7ce3e1d0-495e-5384-a475-d986bb677b80",
-            "type": "svg-ext-gauge_semaphore",
-            "name": "FAC.VENT.AY02.TIER1",
-            "property": {
-              "events": [],
-              "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
-              "ranges": [
-                {
-                  "min": -1000000000.0,
-                  "max": 0.5,
-                  "color": "#FFFFFF",
-                  "stroke": "#2F3640"
-                },
-                {
-                  "min": 0.500001,
-                  "max": 1000000000.0,
-                  "color": "#2B6C8A",
-                  "stroke": "#2F3640"
-                }
-              ]
-            },
-            "label": "HtmlSemaphore"
-          },
-          "svg_bf193c63-7e36-5b62-b147-15345da5c401": {
-            "id": "svg_bf193c63-7e36-5b62-b147-15345da5c401",
-            "type": "svg-ext-shapes-g",
-            "name": "FAC.VENT.AY02.ALM_STATE",
-            "property": {
-              "events": [],
-              "actions": [
-                {
-                  "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
-                  "range": {
-                    "min": 1.0,
-                    "max": 1.0
-                  },
-                  "type": "show",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
-                  "range": {
-                    "min": -1000000000.0,
-                    "max": 0.999999
-                  },
-                  "type": "hide",
-                  "options": {}
-                },
-                {
-                  "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
-                  "range": {
-                    "min": 1.000001,
-                    "max": 1000000000.0
-                  },
-                  "type": "hide",
-                  "options": {}
-                }
-              ],
-              "ranges": []
-            },
-            "label": "Shapes",
-            "hide": true
-          },
-          "GSE_ae09a286-9783-5ea7-b43b-b44636a0002a": {
-            "id": "GSE_ae09a286-9783-5ea7-b43b-b44636a0002a",
-            "type": "svg-ext-gauge_semaphore",
-            "name": "FAC.VENT.XS01.SHUTOFF_OK",
-            "property": {
-              "events": [],
-              "variableId": "t_f0285b70-2c03-5312-9cb9-d0490368f1d9",
-              "ranges": [
-                {
-                  "min": -1000000000.0,
-                  "max": 0.5,
-                  "color": "#FFFFFF",
-                  "stroke": "#2F3640"
-                },
-                {
-                  "min": 0.500001,
-                  "max": 1000000000.0,
-                  "color": "#2B6C8A",
-                  "stroke": "#2F3640"
-                }
-              ]
-            },
-            "label": "HtmlSemaphore"
-          },
-          "GSE_30e43ab4-fcee-525f-9a33-8abf92c4ba97": {
-            "id": "GSE_30e43ab4-fcee-525f-9a33-8abf92c4ba97",
+          "GSE_05a32bd0-6b28-5ef7-8093-f71a56f57743": {
+            "id": "GSE_05a32bd0-6b28-5ef7-8093-f71a56f57743",
             "type": "svg-ext-gauge_semaphore",
             "name": "FAC.VENT.XA01.CMD",
             "property": {
@@ -2129,45 +2195,13 @@
             },
             "label": "HtmlButton"
           },
-          "HXB_66ba7e31-e0a7-5605-b42d-4d2ffa6c48cb": {
-            "id": "HXB_66ba7e31-e0a7-5605-b42d-4d2ffa6c48cb",
-            "type": "svg-ext-html_button",
-            "name": "Run",
-            "property": {
-              "events": [],
-              "actions": [],
-              "variableId": "t_77303b80-3b12-5394-b8de-7722b1971ef2",
-              "text": "Run",
-              "buttonAction": {
-                "mode": "set",
-                "setValue": "1"
-              }
-            },
-            "label": "HtmlButton"
-          },
-          "HXB_67b214d4-9fa4-5f62-9a77-e81a42b6632e": {
-            "id": "HXB_67b214d4-9fa4-5f62-9a77-e81a42b6632e",
-            "type": "svg-ext-html_button",
-            "name": "Stop",
-            "property": {
-              "events": [],
-              "actions": [],
-              "variableId": "t_77303b80-3b12-5394-b8de-7722b1971ef2",
-              "text": "Stop",
-              "buttonAction": {
-                "mode": "set",
-                "setValue": "0"
-              }
-            },
-            "label": "HtmlButton"
-          },
-          "GSE_d030fd0d-7748-5c1b-a15c-3fa4466454f0": {
-            "id": "GSE_d030fd0d-7748-5c1b-a15c-3fa4466454f0",
+          "GSE_90a9cda7-034f-5209-a439-a4bca5c1e6b2": {
+            "id": "GSE_90a9cda7-034f-5209-a439-a4bca5c1e6b2",
             "type": "svg-ext-gauge_semaphore",
-            "name": "FAC.VENT.FAN01.PV",
+            "name": "FAC.VENT.XS01.SHUTOFF_OK",
             "property": {
               "events": [],
-              "variableId": "t_38d6ffb6-5d6c-5763-8f98-444312331a94",
+              "variableId": "t_f0285b70-2c03-5312-9cb9-d0490368f1d9",
               "ranges": [
                 {
                   "min": -1000000000.0,
@@ -2185,45 +2219,565 @@
             },
             "label": "HtmlSemaphore"
           },
-          "HXB_a9b09d37-7a3c-52a6-b295-de7d17edf99c": {
-            "id": "HXB_a9b09d37-7a3c-52a6-b295-de7d17edf99c",
-            "type": "svg-ext-html_button",
-            "name": "Run",
+          "VAL_16323ccf-55a3-5b78-99da-854c992233c6": {
+            "id": "VAL_16323ccf-55a3-5b78-99da-854c992233c6",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT05.PV",
             "property": {
               "events": [],
-              "actions": [],
-              "variableId": "t_d883a76c-849c-5d99-be72-ba1d2df1b1ae",
-              "text": "Run",
-              "buttonAction": {
-                "mode": "set",
-                "setValue": "1"
-              }
+              "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
             },
-            "label": "HtmlButton"
+            "label": "Value"
           },
-          "HXB_4a38e547-511e-5d6b-9457-56f26b089209": {
-            "id": "HXB_4a38e547-511e-5d6b-9457-56f26b089209",
-            "type": "svg-ext-html_button",
-            "name": "Stop",
+          "svg_60173b68-6c64-5a59-85a9-f9a87781158b": {
+            "id": "svg_60173b68-6c64-5a59-85a9-f9a87781158b",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.AT05.ALM_HIGHHIGH",
             "property": {
               "events": [],
-              "actions": [],
-              "variableId": "t_d883a76c-849c-5d99-be72-ba1d2df1b1ae",
-              "text": "Stop",
-              "buttonAction": {
-                "mode": "set",
-                "setValue": "0"
-              }
+              "actions": [
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": 30000.0,
+                    "max": 1000000000.0
+                  },
+                  "type": "show",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 29999.999999
+                  },
+                  "type": "hide",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": 1000000000.000001,
+                    "max": 1000000000.0
+                  },
+                  "type": "hide",
+                  "options": {}
+                }
+              ],
+              "ranges": []
             },
-            "label": "HtmlButton"
+            "label": "Shapes",
+            "hide": true
           },
-          "GSE_b14abde8-f959-5d5c-a2aa-7ebe69e4a27e": {
-            "id": "GSE_b14abde8-f959-5d5c-a2aa-7ebe69e4a27e",
+          "svg_963572c7-0590-532d-b23b-aa07f8281532": {
+            "id": "svg_963572c7-0590-532d-b23b-aa07f8281532",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.AT05.ALM_HIGH",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": 15000.0,
+                    "max": 1000000000.0
+                  },
+                  "type": "show",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 14999.999999
+                  },
+                  "type": "hide",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": 1000000000.000001,
+                    "max": 1000000000.0
+                  },
+                  "type": "hide",
+                  "options": {}
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes",
+            "hide": true
+          },
+          "svg_01edf4b7-6439-50d8-94b2-4a00346f553d": {
+            "id": "svg_01edf4b7-6439-50d8-94b2-4a00346f553d",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT05.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 0.0,
+                    "valueMax": 5000.0,
+                    "positionMin": 1001.3333333333334,
+                    "positionMax": 1050.0,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_79ad9827-1c93-5bf5-a944-a143c303bbe6": {
+            "id": "svg_79ad9827-1c93-5bf5-a944-a143c303bbe6",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT05.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 5000.0,
+                    "valueMax": 15000.0,
+                    "positionMin": 1050.0,
+                    "positionMax": 1098.6666666666667,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_38a95528-614d-5991-842f-f1a16601961c": {
+            "id": "svg_38a95528-614d-5991-842f-f1a16601961c",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT05.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 15000.0,
+                    "valueMax": 30000.0,
+                    "positionMin": 1098.6666666666665,
+                    "positionMax": 1147.3333333333333,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "VAL_e7fcd37d-aa38-5c7c-af73-9c40403e4f6b": {
+            "id": "VAL_e7fcd37d-aa38-5c7c-af73-9c40403e4f6b",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT06.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "svg_1d432225-caa8-5898-9fb1-dbf8623d62c0": {
+            "id": "svg_1d432225-caa8-5898-9fb1-dbf8623d62c0",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.AT06.ALM_HIGHHIGH",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": 30000.0,
+                    "max": 1000000000.0
+                  },
+                  "type": "show",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 29999.999999
+                  },
+                  "type": "hide",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": 1000000000.000001,
+                    "max": 1000000000.0
+                  },
+                  "type": "hide",
+                  "options": {}
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes",
+            "hide": true
+          },
+          "svg_611f383a-393e-5189-b0fd-b988c8801c6b": {
+            "id": "svg_611f383a-393e-5189-b0fd-b988c8801c6b",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.AT06.ALM_HIGH",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": 15000.0,
+                    "max": 1000000000.0
+                  },
+                  "type": "show",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 14999.999999
+                  },
+                  "type": "hide",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": 1000000000.000001,
+                    "max": 1000000000.0
+                  },
+                  "type": "hide",
+                  "options": {}
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes",
+            "hide": true
+          },
+          "svg_137549c3-b177-50e3-9fa4-22435cb374ee": {
+            "id": "svg_137549c3-b177-50e3-9fa4-22435cb374ee",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT06.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 0.0,
+                    "valueMax": 5000.0,
+                    "positionMin": 1001.3333333333334,
+                    "positionMax": 1050.0,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_d5ebec42-91a1-56ff-adb7-d61ced961377": {
+            "id": "svg_d5ebec42-91a1-56ff-adb7-d61ced961377",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT06.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 5000.0,
+                    "valueMax": 15000.0,
+                    "positionMin": 1050.0,
+                    "positionMax": 1098.6666666666667,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_ed11f781-b973-5eb7-a198-ca6667c3ab2e": {
+            "id": "svg_ed11f781-b973-5eb7-a198-ca6667c3ab2e",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT06.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 15000.0,
+                    "valueMax": 30000.0,
+                    "positionMin": 1098.6666666666665,
+                    "positionMax": 1147.3333333333333,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "VAL_7943049d-38bd-56e1-ac09-bb868a1da74b": {
+            "id": "VAL_7943049d-38bd-56e1-ac09-bb868a1da74b",
+            "type": "svg-ext-value",
+            "name": "FAC.VENT.AT07.PV",
+            "property": {
+              "events": [],
+              "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+              "ranges": [
+                {
+                  "type": 1,
+                  "min": 0,
+                  "max": 0,
+                  "text": "",
+                  "textId": "",
+                  "fractionDigits": 0
+                }
+              ]
+            },
+            "label": "Value"
+          },
+          "svg_e9298011-c2ea-57ac-ad9b-48646e45d156": {
+            "id": "svg_e9298011-c2ea-57ac-ad9b-48646e45d156",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.AT07.ALM_HIGHHIGH",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": 30000.0,
+                    "max": 1000000000.0
+                  },
+                  "type": "show",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 29999.999999
+                  },
+                  "type": "hide",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": 1000000000.000001,
+                    "max": 1000000000.0
+                  },
+                  "type": "hide",
+                  "options": {}
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes",
+            "hide": true
+          },
+          "svg_b03e2609-3dae-53e0-80f5-dc8b416ded98": {
+            "id": "svg_b03e2609-3dae-53e0-80f5-dc8b416ded98",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.AT07.ALM_HIGH",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": 15000.0,
+                    "max": 1000000000.0
+                  },
+                  "type": "show",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 14999.999999
+                  },
+                  "type": "hide",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": 1000000000.000001,
+                    "max": 1000000000.0
+                  },
+                  "type": "hide",
+                  "options": {}
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes",
+            "hide": true
+          },
+          "svg_b8c08594-d763-58b1-9c7e-93b5d4b3c2f9": {
+            "id": "svg_b8c08594-d763-58b1-9c7e-93b5d4b3c2f9",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT07.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 0.0,
+                    "valueMax": 5000.0,
+                    "positionMin": 1001.3333333333334,
+                    "positionMax": 1050.0,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_3ce6cf43-683c-5c7f-953b-b916497308dc": {
+            "id": "svg_3ce6cf43-683c-5c7f-953b-b916497308dc",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT07.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 5000.0,
+                    "valueMax": 15000.0,
+                    "positionMin": 1050.0,
+                    "positionMax": 1098.6666666666667,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "svg_54c6c7be-4ced-57c2-a93f-1457cc4e3f7d": {
+            "id": "svg_54c6c7be-4ced-57c2-a93f-1457cc4e3f7d",
+            "type": "svg-ext-shapes-rect",
+            "name": "FAC.VENT.AT07.PV fill",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+                  "range": {
+                    "min": 0,
+                    "max": 0
+                  },
+                  "type": "moveByTags",
+                  "options": {
+                    "axis": "x",
+                    "valueMin": 15000.0,
+                    "valueMax": 30000.0,
+                    "positionMin": 1098.6666666666665,
+                    "positionMax": 1147.3333333333333,
+                    "duration": 600
+                  }
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes"
+          },
+          "GSE_fa185311-39cb-5080-a241-021a9da83a29": {
+            "id": "GSE_fa185311-39cb-5080-a241-021a9da83a29",
             "type": "svg-ext-gauge_semaphore",
-            "name": "FAC.VENT.FAN02.PV",
+            "name": "FAC.VENT.AY02.TIER1",
             "property": {
               "events": [],
-              "variableId": "t_1197242d-e278-5ca9-9cab-7877448dc71e",
+              "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
               "ranges": [
                 {
                   "min": -1000000000.0,
@@ -2240,10 +2794,104 @@
               ]
             },
             "label": "HtmlSemaphore"
+          },
+          "svg_9b050f27-f5e5-57cb-abfc-7c4d70790b81": {
+            "id": "svg_9b050f27-f5e5-57cb-abfc-7c4d70790b81",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.AY02.ALM_STATE",
+            "property": {
+              "events": [],
+              "actions": [
+                {
+                  "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
+                  "range": {
+                    "min": 1.0,
+                    "max": 1.0
+                  },
+                  "type": "show",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 0.999999
+                  },
+                  "type": "hide",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
+                  "range": {
+                    "min": 1.000001,
+                    "max": 1000000000.0
+                  },
+                  "type": "hide",
+                  "options": {}
+                }
+              ],
+              "ranges": []
+            },
+            "label": "Shapes",
+            "hide": true
+          },
+          "GSE_265d869e-c6a9-5597-b57e-f0985ebabe8a": {
+            "id": "GSE_265d869e-c6a9-5597-b57e-f0985ebabe8a",
+            "type": "svg-ext-gauge_semaphore",
+            "name": "FAC.VENT.FAN03.CMD",
+            "property": {
+              "events": [],
+              "variableId": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
+              "ranges": [
+                {
+                  "min": -1000000000.0,
+                  "max": 0.5,
+                  "color": "#FFFFFF",
+                  "stroke": "#2F3640"
+                },
+                {
+                  "min": 0.500001,
+                  "max": 1000000000.0,
+                  "color": "#2B6C8A",
+                  "stroke": "#2F3640"
+                }
+              ]
+            },
+            "label": "HtmlSemaphore"
+          },
+          "svg_5c81fd16-46d6-5d98-a545-79bec2875d6d": {
+            "id": "svg_5c81fd16-46d6-5d98-a545-79bec2875d6d",
+            "type": "svg-ext-shapes-g",
+            "name": "FAC.VENT.FAN03.CMD blades",
+            "property": {
+              "events": [],
+              "ranges": [],
+              "actions": [
+                {
+                  "variableId": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
+                  "range": {
+                    "min": 0.500001,
+                    "max": 1000000000.0
+                  },
+                  "type": "clockwise",
+                  "options": {}
+                },
+                {
+                  "variableId": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
+                  "range": {
+                    "min": -1000000000.0,
+                    "max": 0.5
+                  },
+                  "type": "stop",
+                  "options": {}
+                }
+              ]
+            },
+            "label": "Shapes"
           }
         },
         "variables": {},
-        "svgcontent": "<svg width=\"1240\" height=\"820\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><defs><clipPath id=\"clip_ca13e1ce-678b-55fb-aa32-296dde3638f4\"><path d=\"M330 290 h190 v10 h-190 Z\"/></clipPath><clipPath id=\"clip_1315a36e-79e1-54d4-8020-6ce0ba9da42c\"><path d=\"M990 126 h160 v10 h-160 Z\"/></clipPath></defs>\n <g>\n  <title>Layer 1</title>\n  <text xml:space=\"preserve\" x=\"20\" y=\"30\" font-size=\"18\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Building</text>\n  <text xml:space=\"preserve\" x=\"124\" y=\"30\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">taproom rooftop unit, cold room, and ventilation</text>\n  <rect x=\"20\" y=\"60\" width=\"560\" height=\"300\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"3\"/>\n  <text xml:space=\"preserve\" x=\"34\" y=\"84\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">TAPROOM</text>\n  <g id=\"VAL_9db63e04-4cf4-5f9e-9a80-f6826f198482\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"40\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_9004b10c-af2c-53e9-993b-01a297f26ccb\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"40\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"150\" y=\"150\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"154\" y=\"150\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">°F</text>\n  <g id=\"svg_1dc9a627-f404-59fd-8953-77a85f1f1c14\"><title>Taproom zone temperature: high alarm</title><path d=\"M207 120 L214 127 L207 134 L200 127 Z\" fill=\"#66CCFF\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"207\" y=\"130.5\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">4</text></g>\n  <rect x=\"236\" y=\"96\" width=\"12\" height=\"120\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <rect x=\"236\" y=\"138\" width=\"12\" height=\"24\" rx=\"0\" fill=\"#BFD3E0\" stroke=\"none\" stroke-width=\"0\"/>\n  <rect x=\"236\" y=\"96\" width=\"12\" height=\"120\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <path d=\"M232 126 L248 126\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <path id=\"svg_b3da86e0-9191-5935-9291-a9ccc5bcc25e\" d=\"M228 212 l6 4 l-6 4 Z\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"1\"></path>\n  <path id=\"svg_48de608e-e318-52d7-888d-1e76e3b2c349\" d=\"M234 216 L250 216 l7 -5 l0 10 l-7 -5 Z\" fill=\"#2F3640\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\"></path>\n  <text id=\"svg_c3a44cee-8f97-55f2-a5d6-a49fc413305f\" x=\"40\" y=\"180\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Occupied</text>\n  <text id=\"svg_b35e4e50-2423-58db-9efc-9595d1f4ea65\" x=\"40\" y=\"180\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Unoccupied</text>\n  <text id=\"svg_b837eaf6-26a5-5279-9937-5cead5b0f67a\" x=\"40\" y=\"180\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Standby</text>\n  <text xml:space=\"preserve\" x=\"40\" y=\"214\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Cool to °F</text>\n  <g id=\"HXI_36e44d0f-c263-5423-85f8-77151f0ade31\" stroke=\"#6B7280\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_1ef8d9ef-4aa9-58a2-8514-f8361c0d39b7\" stroke=\"#6B7280\" fill=\"#FFFFFF\" height=\"22\" width=\"46\" y=\"199\" x=\"120\" stroke-width=\"1\"/><foreignObject id=\"H-HXI_8ec18e0b-40a2-5e84-97e2-49b006d1c88c\" width=\"46\" height=\"22\" y=\"199\" x=\"120\"><INPUT id=\"I-HXI_7824c3a0-6df2-52c0-9e8d-262ab0ea1073\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(47, 54, 64); font-size: 12px; vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"40\" y=\"242\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Heat to °F</text>\n  <g id=\"HXI_baac026b-b872-596d-b54a-54e9905214ce\" stroke=\"#6B7280\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_fb0a3f44-b51f-5d19-b2bb-f41bc3fb9cf5\" stroke=\"#6B7280\" fill=\"#FFFFFF\" height=\"22\" width=\"46\" y=\"227\" x=\"120\" stroke-width=\"1\"/><foreignObject id=\"H-HXI_3285f53f-d9da-5569-baa8-885a06386d87\" width=\"46\" height=\"22\" y=\"227\" x=\"120\"><INPUT id=\"I-HXI_6da5ccd6-dfd3-5125-9646-425f8b064eb4\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(47, 54, 64); font-size: 12px; vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"40\" y=\"274\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Room CO2</text>\n  <g id=\"VAL_399b6fa0-88c7-5085-9665-04975012d34e\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_ed91476c-8981-5f95-a2be-f303571668db\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"144\" y=\"274\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"147\" y=\"274\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <rect x=\"330\" y=\"92\" width=\"234\" height=\"160\" rx=\"6\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\"/>\n  <text xml:space=\"preserve\" x=\"447\" y=\"112\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Rooftop unit RTU-1</text>\n  <g id=\"GSE_e7690e39-ec9b-5d31-bd58-f69225bb2226\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_347cf22c-47f6-5e2d-b82b-2c8defa0c1d2\" cx=\"370\" cy=\"156\" r=\"16\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_194af20f-61f4-5be7-8e23-158af1c5ad71\"><circle cx=\"370\" cy=\"156\" r=\"12.48\" fill=\"none\" stroke=\"none\"/><path d=\"M370 156 L370 143.52\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M370 156 L370 143.52\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M370 156 L380.808 162.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M370 156 L380.808 162.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M370 156 L359.192 162.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M370 156 L359.192 162.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"370\" y=\"190\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">supply fan</text>\n  <g id=\"GSE_3c3ed161-4c77-5a55-87ea-bb6156b0dfaa\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_beddbf19-e9c8-5505-a215-3b622400e72f\" cx=\"432\" cy=\"156\" r=\"9\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"GSE_fe69d5ed-b282-535e-8054-360997a62f18\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_bc079df6-a109-5991-b68c-01ecc9d7b939\" cx=\"460\" cy=\"156\" r=\"9\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"446\" y=\"190\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">cooling 1, 2</text>\n  <g id=\"GSE_6123f844-a3b0-57a8-a896-62c7d7079dde\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_da33cb51-2913-5d09-b3fa-ad8a02c33f4b\" cx=\"522\" cy=\"156\" r=\"9\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"522\" y=\"190\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">heat</text>\n  <text xml:space=\"preserve\" x=\"346\" y=\"222\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Supply air</text>\n  <g id=\"VAL_26f6391f-316d-5192-996b-12bceac8c2e6\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_22690a12-cd4a-5f9d-a871-111a77381d31\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"470\" y=\"222\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"473\" y=\"222\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">°F</text>\n  <text xml:space=\"preserve\" x=\"346\" y=\"240\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Power</text>\n  <g id=\"VAL_bc4d1a33-3e01-5891-a0a6-090fea6728fd\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_e42e92b2-52ff-5d7f-9c3c-5abcf4e5ce20\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"470\" y=\"240\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"473\" y=\"240\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">kW</text>\n  <text xml:space=\"preserve\" x=\"330\" y=\"282\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">economizer damper %</text>\n  <rect x=\"330\" y=\"290\" width=\"190\" height=\"10\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_ca13e1ce-678b-55fb-aa32-296dde3638f4)\">\n  <rect id=\"svg_ca89337e-e471-5ab6-b729-a4d2f7277d49\" x=\"140\" y=\"290\" width=\"190\" height=\"10\" fill=\"#B4C3D3\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"330\" y=\"290\" width=\"190\" height=\"10\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <g id=\"VAL_826f84c8-84e9-5b98-9580-3744db9acca5\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_ee688162-e29b-52d8-9a0d-f96892da9478\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"556\" y=\"300\">##.##</text></g>\n  <rect x=\"600\" y=\"60\" width=\"300\" height=\"300\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"3\"/>\n  <text xml:space=\"preserve\" x=\"614\" y=\"84\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">COLD ROOM</text>\n  <g id=\"VAL_d724de02-9722-5a3b-ae42-7a47cd4dab6e\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"40\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_17204f16-93f3-5f7f-bb69-51c03d28f0bb\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"40\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"740\" y=\"150\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"744\" y=\"150\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">°F</text>\n  <g id=\"svg_ddf59dc9-5a39-5724-86be-1557220edac6\"><title>Cold room temperature: high alarm</title><path d=\"M790 120 L804 120 L797 134 Z\" fill=\"#F9CF59\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"797\" y=\"129\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">3</text></g>\n  <rect x=\"840\" y=\"96\" width=\"12\" height=\"120\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <rect x=\"840\" y=\"161.455\" width=\"12\" height=\"27.2727\" rx=\"0\" fill=\"#BFD3E0\" stroke=\"none\" stroke-width=\"0\"/>\n  <rect x=\"840\" y=\"96\" width=\"12\" height=\"120\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <path d=\"M836 139.636 L852 139.636\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <path id=\"svg_59fde420-dcca-5323-87af-ed37d069e0c7\" d=\"M832 212 l6 4 l-6 4 Z\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"1\"></path>\n  <path id=\"svg_c12e3cad-75fc-5d3e-b2b1-a5ebf6c83ba0\" d=\"M838 216 L854 216 l7 -5 l0 10 l-7 -5 Z\" fill=\"#2F3640\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\"></path>\n  <text xml:space=\"preserve\" x=\"620\" y=\"196\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Hold at °F</text>\n  <g id=\"HXI_539b4a96-5baf-5d20-980a-4daddcd475fa\" stroke=\"#6B7280\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_5aad441f-8870-5d0c-8db3-00d0df07a0a4\" stroke=\"#6B7280\" fill=\"#FFFFFF\" height=\"22\" width=\"46\" y=\"181\" x=\"690\" stroke-width=\"1\"/><foreignObject id=\"H-HXI_9c2c7b6c-b950-5213-a656-5460b42d9ef7\" width=\"46\" height=\"22\" y=\"181\" x=\"690\"><INPUT id=\"I-HXI_e3c12544-0e7c-5f6b-ae8f-b57cd32c45cc\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(47, 54, 64); font-size: 12px; vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"620\" y=\"232\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Door open today</text>\n  <g id=\"VAL_e22d987d-fee2-5d88-8211-48f5a243ca69\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_d6267729-1c1c-5037-b0e5-cdafe8930a1d\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"764\" y=\"232\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"767\" y=\"232\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">min</text>\n  <g id=\"GSE_7174e124-0408-52ea-aaf9-ca249bdb579b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_b29824fa-df21-5c14-bfe4-600cd99a52a2\" cx=\"625\" cy=\"266\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"636\" y=\"270\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Door open</text>\n  <g id=\"GSE_b1195f08-8900-55d2-aed2-d068b3283f14\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_0ba2fb58-2ede-5b90-a477-34e4b13492a8\" cx=\"625\" cy=\"294\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"636\" y=\"298\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Compressor</text>\n  <g id=\"GSE_8863f383-5033-5bd0-9b3b-520cf2a0cfb4\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_bb97d4bf-d8bb-5c8a-8007-e6230f427575\" cx=\"625\" cy=\"322\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"636\" y=\"326\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Defrost</text>\n  <rect x=\"920\" y=\"60\" width=\"300\" height=\"300\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"3\"/>\n  <text xml:space=\"preserve\" x=\"934\" y=\"84\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">BREWHOUSE AND OTHER AREAS</text>\n  <g id=\"GSE_d70ac1d9-95d6-56ef-afed-31af383b50ad\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_b32b6f48-71a9-5a79-8304-5fc774f8e65e\" cx=\"960\" cy=\"130\" r=\"16\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_55f42272-1077-52a5-9f16-5dd9fa2c08a2\"><circle cx=\"960\" cy=\"130\" r=\"12.48\" fill=\"none\" stroke=\"none\"/><path d=\"M960 130 L960 117.52\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 130 L960 117.52\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 130 L970.808 136.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 130 L970.808 136.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 130 L949.192 136.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 130 L949.192 136.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"990\" y=\"118\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">kettle hood exhaust %</text>\n  <rect x=\"990\" y=\"126\" width=\"160\" height=\"10\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_1315a36e-79e1-54d4-8020-6ce0ba9da42c)\">\n  <rect id=\"svg_f3c2840e-cd91-5afe-8bb7-249daf19601d\" x=\"830\" y=\"126\" width=\"160\" height=\"10\" fill=\"#B4C3D3\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"990\" y=\"126\" width=\"160\" height=\"10\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <g id=\"VAL_5f135337-8114-52ec-983c-e75fff6d614c\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_24d73d11-4c4d-5d5f-bf44-1db014628160\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1196\" y=\"136\">##.##</text></g>\n  <g id=\"GSE_1106382f-37cd-5c0c-bc21-5953b8262489\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_88470d28-5746-5837-88fd-6563827a3290\" cx=\"960\" cy=\"186\" r=\"12\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_485a48a9-0441-5c37-b71b-1ca255cc2bea\"><circle cx=\"960\" cy=\"186\" r=\"9.36\" fill=\"none\" stroke=\"none\"/><path d=\"M960 186 L960 176.64\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 186 L960 176.64\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 186 L968.106 190.68\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 186 L968.106 190.68\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 186 L951.894 190.68\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 186 L951.894 190.68\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"986\" y=\"190\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Makeup air unit</text>\n  <g id=\"GSE_22664012-36f3-579c-ab9f-28bccfbb2281\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_609c2546-9662-5e96-902c-77dd6a66f095\" cx=\"960\" cy=\"222\" r=\"12\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_9bdc0f0c-9bdb-5b43-a8f3-6456e38253f0\"><circle cx=\"960\" cy=\"222\" r=\"9.36\" fill=\"none\" stroke=\"none\"/><path d=\"M960 222 L960 212.64\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 222 L960 212.64\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 222 L968.106 226.68\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 222 L968.106 226.68\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 222 L951.894 226.68\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 222 L951.894 226.68\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"986\" y=\"226\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Area exhaust fans</text>\n  <text xml:space=\"preserve\" x=\"940\" y=\"266\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Makeup air discharge</text>\n  <g id=\"VAL_6de8b35b-a4a9-58b6-b494-449af5de27e3\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_37c7e5ee-f99c-5795-9ffc-32ce94f2e597\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1114\" y=\"266\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"1117\" y=\"266\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">°F</text>\n  <text xml:space=\"preserve\" x=\"940\" y=\"292\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 at the bulk CO2 tank</text>\n  <g id=\"VAL_e55ec752-e44a-5255-a4b3-fb52d6fab486\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_bb537e76-3866-5093-a9cf-9bd4479bbc6d\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1114\" y=\"292\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"1117\" y=\"292\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_1d4c3449-a02d-5c6c-bf28-b461a8765f49\"><title>Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted): highhigh alarm</title><path d=\"M1159.8 281 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1166.8\" y=\"292\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_754df1dd-9524-5510-8edb-0e05d430fe54\"><title>Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted): high alarm</title><path d=\"M1183.8 281 L1190.8 295 L1176.8 295 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1183.8\" y=\"294\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <text xml:space=\"preserve\" x=\"940\" y=\"314\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 at the filler</text>\n  <g id=\"VAL_6713818c-6cfd-5141-814e-fab002fd48ab\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_fde106bd-bbc0-5cb3-94f5-034aca24b32d\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1114\" y=\"314\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"1117\" y=\"314\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_0a9a61ef-a656-5271-8e4d-f7c6efeeb9a5\"><title>Filler (packaging) area CO2 sensor (low-mounted): highhigh alarm</title><path d=\"M1159.8 303 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1166.8\" y=\"314\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_0c674e4a-e50b-56d8-8bad-268a30d41b02\"><title>Filler (packaging) area CO2 sensor (low-mounted): high alarm</title><path d=\"M1183.8 303 L1190.8 317 L1176.8 317 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1183.8\" y=\"316\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <text xml:space=\"preserve\" x=\"940\" y=\"336\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 at the cold room</text>\n  <g id=\"VAL_f81bed5b-1b5b-5311-99b5-69ea375573ab\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_be04650d-5c0f-524e-b55b-807796df293b\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1114\" y=\"336\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"1117\" y=\"336\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_33067f76-eae7-5234-8409-876c803830fa\"><title>Cold room and draft system CO2 sensor (low-mounted): highhigh alarm</title><path d=\"M1159.8 325 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1166.8\" y=\"336\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_af1d8877-e77a-5ae5-9e1c-940380f7d6bf\"><title>Cold room and draft system CO2 sensor (low-mounted): high alarm</title><path d=\"M1183.8 325 L1190.8 339 L1176.8 339 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1183.8\" y=\"338\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"20\" y=\"404\" width=\"700\" height=\"330\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"3\"/>\n  <text xml:space=\"preserve\" x=\"24\" y=\"396\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Cellar, from above. CO2 is heavier than air: it pools at the floor.</text>\n  <path d=\"M110 484 m-36 0 a36 36 0 1 0 72 0 a36 36 0 1 0 -72 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"110\" y=\"488\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">FV-101</text>\n  <path d=\"M210 484 m-36 0 a36 36 0 1 0 72 0 a36 36 0 1 0 -72 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"210\" y=\"488\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">FV-102</text>\n  <path d=\"M310 484 m-36 0 a36 36 0 1 0 72 0 a36 36 0 1 0 -72 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"310\" y=\"488\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">FV-103</text>\n  <path d=\"M410 484 m-36 0 a36 36 0 1 0 72 0 a36 36 0 1 0 -72 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"410\" y=\"488\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">FV-104</text>\n  <path d=\"M560 484 m-30 0 a30 30 0 1 0 60 0 a30 30 0 1 0 -60 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"560\" y=\"488\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">BBT-201</text>\n  <path d=\"M640 484 m-30 0 a30 30 0 1 0 60 0 a30 30 0 1 0 -60 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"640\" y=\"488\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">BBT-202</text>\n  <rect x=\"48\" y=\"574\" width=\"124\" height=\"56\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"56\" y=\"590\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 sensor 1</text>\n  <g id=\"VAL_71c50aa9-32e1-58f1-bfed-291b728246f1\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_df020a51-1ef6-5f9c-a217-7581bbfee6ae\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"114\" y=\"616\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"117\" y=\"616\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_562b95b9-5003-5dbd-ba17-3300e6215fee\"><title>Cellar CO2 sensor 1 (low-mounted): highhigh alarm</title><path d=\"M140 578 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"147\" y=\"589\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_cb072a82-c996-5557-9ef8-f2efcdf2450e\"><title>Cellar CO2 sensor 1 (low-mounted): high alarm</title><path d=\"M163 578 L170 592 L156 592 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"163\" y=\"591\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"248\" y=\"574\" width=\"124\" height=\"56\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"256\" y=\"590\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 sensor 2</text>\n  <g id=\"VAL_f1cec606-b51a-5535-a650-cbeb395cc1df\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_7b7ed89a-83cf-50d9-a862-c9070dc68e90\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"314\" y=\"616\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"317\" y=\"616\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_bb3184df-9327-50aa-a0ac-3b5563c71193\"><title>Cellar CO2 sensor 2 (low-mounted): highhigh alarm</title><path d=\"M340 578 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"347\" y=\"589\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_1ea24c79-c554-5b17-954b-e3a8ca94a015\"><title>Cellar CO2 sensor 2 (low-mounted): high alarm</title><path d=\"M363 578 L370 592 L356 592 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"363\" y=\"591\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"448\" y=\"574\" width=\"124\" height=\"56\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"456\" y=\"590\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 sensor 3</text>\n  <g id=\"VAL_28cb6fb0-0f27-5e52-bee7-b994490f116f\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_76797351-dcf0-5adc-9291-c7ef6be3d485\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"514\" y=\"616\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"517\" y=\"616\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_bd8a6c38-eb55-5b8b-8715-f6fb9c728b98\"><title>Cellar CO2 sensor 3 (low-mounted): highhigh alarm</title><path d=\"M540 578 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"547\" y=\"589\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_c1d22e09-2bfb-5ca9-ad78-d58f1e5453e8\"><title>Cellar CO2 sensor 3 (low-mounted): high alarm</title><path d=\"M563 578 L570 592 L556 592 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"563\" y=\"591\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"248\" y=\"660\" width=\"124\" height=\"56\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"256\" y=\"676\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 sensor 4</text>\n  <g id=\"VAL_5f0c78fc-a5de-5cfa-84bd-f7256ecf1269\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_71092cd4-1ad2-548f-b2f0-03e57598c35b\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"314\" y=\"702\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"317\" y=\"702\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_1580b3fa-1cf4-5902-91fe-c1312350205d\"><title>Cellar CO2 sensor 4 (low-mounted): highhigh alarm</title><path d=\"M340 664 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"347\" y=\"675\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_412cedf6-cb22-575c-96b2-d1fcd8ccd689\"><title>Cellar CO2 sensor 4 (low-mounted): high alarm</title><path d=\"M363 664 L370 678 L356 678 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"363\" y=\"677\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <text xml:space=\"preserve\" x=\"710\" y=\"554\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#6B7280\" stroke-width=\"0\">wall</text>\n  <g id=\"GSE_dd5055c4-147d-5f44-928d-e6a98f5aade7\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_8fbb0b68-75d2-5278-95de-fc564829343b\" cx=\"720\" cy=\"604\" r=\"16\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_9cfe8961-5632-51cd-8d0c-f6bcb731698c\"><circle cx=\"720\" cy=\"604\" r=\"12.48\" fill=\"none\" stroke=\"none\"/><path d=\"M720 604 L720 591.52\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M720 604 L720 591.52\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M720 604 L730.808 610.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M720 604 L730.808 610.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M720 604 L709.192 610.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M720 604 L709.192 610.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"744\" y=\"596\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">purge fan 1</text>\n  <path d=\"M773 609 L780 616 L773 623 Z\" fill=\"#6B7280\" stroke=\"#6B7280\" stroke-width=\"1\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <g id=\"GSE_f99915a9-2f98-5b91-8c37-8d7862d7388b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_0b1c52d6-2b2e-5dc9-b88a-aca3789b4791\" cx=\"720\" cy=\"684\" r=\"16\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_a8ae0199-2ce3-560d-8231-97394e16877b\"><circle cx=\"720\" cy=\"684\" r=\"12.48\" fill=\"none\" stroke=\"none\"/><path d=\"M720 684 L720 671.52\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M720 684 L720 671.52\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M720 684 L730.808 690.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M720 684 L730.808 690.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M720 684 L709.192 690.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M720 684 L709.192 690.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"744\" y=\"676\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">purge fan 2</text>\n  <path d=\"M773 689 L780 696 L773 703 Z\" fill=\"#6B7280\" stroke=\"#6B7280\" stroke-width=\"1\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <rect x=\"880\" y=\"380\" width=\"340\" height=\"424\" rx=\"6\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"890\" y=\"397\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">CELLAR VENTILATION</text>\n  <g id=\"GSE_f289b714-62c2-56ab-b5d9-199ee880c59b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_94ef3031-b29c-5fb2-b70f-8bb78d62871d\" cx=\"902\" cy=\"416\" r=\"6\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"914\" y=\"420\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Tier 1: 5,000 ppm, purge fans on</text>\n  <g id=\"svg_e2dcba5f-1292-5d81-830e-b0e6adcc285e\"><title>Cellar CO2 tier 1 (5,000 ppm, purge fans on): state alarm</title><path d=\"M1106.2 409 L1113.2 416 L1106.2 423 L1099.2 416 Z\" fill=\"#66CCFF\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1106.2\" y=\"419.5\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">4</text></g>\n  <g id=\"GSE_d51a4821-63e6-546a-8200-ca976bbef6a8\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_a2b84da7-eafa-5845-8b82-016658409b17\" cx=\"902\" cy=\"444\" r=\"6\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"914\" y=\"448\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Tier 2: 15,000 ppm, carbonation inhibited</text>\n  <g id=\"GSE_159a8ddc-fc87-5ced-b88b-bb8011673453\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_2b8457bc-d24b-51b6-8865-8d50de6b6386\" cx=\"902\" cy=\"472\" r=\"6\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"914\" y=\"476\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Tier 3: 30,000 ppm, evacuate; CO2 supply shut off</text>\n  <g id=\"GSE_7ce3e1d0-495e-5384-a475-d986bb677b80\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_d23dfc0c-0988-5b8e-93f0-6d41e608e8ae\" cx=\"901\" cy=\"514\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"912\" y=\"518\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Tier 1 at the bulk tank, filler, or cold room</text>\n  <g id=\"svg_bf193c63-7e36-5b62-b147-15345da5c401\"><title>CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on: state alarm</title><path d=\"M1177 507 L1184 514 L1177 521 L1170 514 Z\" fill=\"#66CCFF\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1177\" y=\"517.5\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">4</text></g>\n  <g id=\"GSE_ae09a286-9783-5ea7-b43b-b44636a0002a\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_8d29c350-fcd5-5af4-ac4b-bab18c48f339\" cx=\"901\" cy=\"542\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"912\" y=\"546\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">CO2 shutoff relay energized (healthy)</text>\n  <g id=\"GSE_30e43ab4-fcee-525f-9a33-8abf92c4ba97\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_1e2a5511-f505-5cf6-8dea-0c21c91dab3d\" cx=\"901\" cy=\"570\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"912\" y=\"574\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Horns and strobes</text>\n  <g id=\"HXB_81784ba1-5842-5918-8b4b-722428805179\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_cb6e5d3e-3e7c-5954-85d7-89355bb52064\" x=\"1070\" y=\"558\" width=\"62\" height=\"26\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_26b0d6ea-8c5e-5b9c-b0fd-87bf8f5f9a07\" x=\"1070\" y=\"558\" width=\"62\" height=\"26\"><button id=\"B-HXB_4694854f-40cd-5a2e-b327-c8f7da35f99c\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Sound</button></foreignObject></g>\n  <g id=\"HXB_7cbfebf1-11fb-5be2-9829-047c52b2e6b4\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_d3b91363-4cff-557e-a0c3-4d59e2b19585\" x=\"1138\" y=\"558\" width=\"62\" height=\"26\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_cf03a464-4893-520e-941f-a25fdf9cfe22\" x=\"1138\" y=\"558\" width=\"62\" height=\"26\"><button id=\"B-HXB_cd8638ca-8b66-5f69-b40a-25dba33e8e2a\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Silence</button></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"896\" y=\"626\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Purge fan 1</text>\n  <g id=\"HXB_66ba7e31-e0a7-5605-b42d-4d2ffa6c48cb\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_d661e6d3-8c72-53ef-9b87-66a2e488c1cb\" x=\"990\" y=\"608\" width=\"62\" height=\"26\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_4bdc3918-2a43-5a6c-835f-3c9b581fe2f4\" x=\"990\" y=\"608\" width=\"62\" height=\"26\"><button id=\"B-HXB_0c1b2d04-37b8-5298-afb4-6dc99e02f115\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Run</button></foreignObject></g>\n  <g id=\"HXB_67b214d4-9fa4-5f62-9a77-e81a42b6632e\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_3ea344c6-1227-52a9-a314-04e4bcb4601d\" x=\"1058\" y=\"608\" width=\"62\" height=\"26\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_be5ddbc0-5be4-5d5e-b98f-2c65caf720ac\" x=\"1058\" y=\"608\" width=\"62\" height=\"26\"><button id=\"B-HXB_1659165a-5da3-530a-b97d-f5084f2d27c6\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Stop</button></foreignObject></g>\n  <g id=\"GSE_d030fd0d-7748-5c1b-a15c-3fa4466454f0\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_e0f41c1c-c7d3-5e5a-b095-e077a1b12d52\" cx=\"1140\" cy=\"621\" r=\"6\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"1152\" y=\"626\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">running</text>\n  <text xml:space=\"preserve\" x=\"896\" y=\"666\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Purge fan 2</text>\n  <g id=\"HXB_a9b09d37-7a3c-52a6-b295-de7d17edf99c\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_8c7d10a8-9910-54d5-b731-a8a974d80020\" x=\"990\" y=\"648\" width=\"62\" height=\"26\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_3de7730f-c232-5a3c-bb40-6011a4272831\" x=\"990\" y=\"648\" width=\"62\" height=\"26\"><button id=\"B-HXB_767dce85-da39-52a5-81a6-eb92a15477a4\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Run</button></foreignObject></g>\n  <g id=\"HXB_4a38e547-511e-5d6b-9457-56f26b089209\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_a4d6f652-ff9d-54ea-aeda-08dd5e73268d\" x=\"1058\" y=\"648\" width=\"62\" height=\"26\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_7ebe28ce-89af-5c36-96dd-1ae648b13ef2\" x=\"1058\" y=\"648\" width=\"62\" height=\"26\"><button id=\"B-HXB_20958843-9158-5ad4-8b61-b86c99ef0be0\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Stop</button></foreignObject></g>\n  <g id=\"GSE_b14abde8-f959-5d5c-a2aa-7ebe69e4a27e\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_add2cea8-456c-5c89-a2b6-fe9f8c9ef092\" cx=\"1140\" cy=\"661\" r=\"6\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"1152\" y=\"666\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">running</text>\n </g>\n</svg>",
+        "svgcontent": "<svg width=\"1240\" height=\"820\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:svg=\"http://www.w3.org/2000/svg\"><defs><clipPath id=\"clip_ca13e1ce-678b-55fb-aa32-296dde3638f4\"><path d=\"M330 290 h190 v10 h-190 Z\"/></clipPath><clipPath id=\"clip_1315a36e-79e1-54d4-8020-6ce0ba9da42c\"><path d=\"M990 126 h160 v10 h-160 Z\"/></clipPath><clipPath id=\"clip_80628981-4b63-58e6-bf91-193c3fa03fa1\"><path d=\"M42 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_5bc67412-9543-5c6c-ad7d-856704135593\"><path d=\"M90.6667 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_6710e556-2b06-5a2d-ac9b-afa71ba2252b\"><path d=\"M139.333 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_071e4be5-7ba9-5cdb-a78f-acd04bc75251\"><path d=\"M218 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_cfe902e0-c427-5c70-8812-25a299b527a0\"><path d=\"M266.667 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_b4032a6f-c75a-5d0a-a8b6-cc9d61b825b4\"><path d=\"M315.333 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_4c6dddc8-3f7a-5dd1-8777-59e1d1706f7f\"><path d=\"M394 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_ef1258d2-8b72-5595-b2d3-85679b18618e\"><path d=\"M442.667 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_82c7f255-114b-594d-919b-ae9ec7663d6e\"><path d=\"M491.333 616 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_824e4466-83ed-53a6-99db-ae6b064bf2aa\"><path d=\"M218 708 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_2b7ef177-7dd6-5985-bc88-7c2a7093054c\"><path d=\"M266.667 708 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_783a1d17-c9ba-5d27-a6f9-fe06ea7c4024\"><path d=\"M315.333 708 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_71ad70e8-802d-5633-aa68-c366438891fb\"><path d=\"M1050 476 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_74755f61-8519-5541-8737-b27da1070249\"><path d=\"M1098.67 476 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_c914c796-8587-5f03-9849-bef000307a78\"><path d=\"M1147.33 476 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_a7a6c1fa-0a00-5cf5-82df-c7f2b3fbfc1a\"><path d=\"M1050 558 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_2e396a45-492e-550f-bb10-cad524fc0ba3\"><path d=\"M1098.67 558 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_2778e76a-a71e-535d-8a7c-466f8c466bb4\"><path d=\"M1147.33 558 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_3824e2f1-b014-5852-9c12-8cfcac822091\"><path d=\"M1050 640 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_d9aa19a1-c051-5b0b-8f1d-3e5308b52bb7\"><path d=\"M1098.67 640 h48.6667 v9 h-48.6667 Z\"/></clipPath><clipPath id=\"clip_12532c33-3add-52f6-a745-cbea6d2d7695\"><path d=\"M1147.33 640 h48.6667 v9 h-48.6667 Z\"/></clipPath></defs>\n <g>\n  <title>Layer 1</title>\n  <text xml:space=\"preserve\" x=\"20\" y=\"30\" font-size=\"18\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Building</text>\n  <text xml:space=\"preserve\" x=\"124\" y=\"30\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">taproom rooftop unit, cold room, and ventilation</text>\n  <rect x=\"20\" y=\"60\" width=\"560\" height=\"300\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"3\"/>\n  <text xml:space=\"preserve\" x=\"34\" y=\"84\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">TAPROOM</text>\n  <g id=\"VAL_9db63e04-4cf4-5f9e-9a80-f6826f198482\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"40\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_9004b10c-af2c-53e9-993b-01a297f26ccb\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"40\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"150\" y=\"150\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"154\" y=\"150\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">°F</text>\n  <g id=\"svg_1dc9a627-f404-59fd-8953-77a85f1f1c14\"><title>Taproom zone temperature: high alarm</title><path d=\"M207 120 L214 127 L207 134 L200 127 Z\" fill=\"#66CCFF\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"207\" y=\"130.5\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">4</text></g>\n  <rect x=\"236\" y=\"96\" width=\"12\" height=\"120\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <rect x=\"236\" y=\"138\" width=\"12\" height=\"24\" rx=\"0\" fill=\"#BFD3E0\" stroke=\"none\" stroke-width=\"0\"/>\n  <rect x=\"236\" y=\"96\" width=\"12\" height=\"120\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <path d=\"M232 126 L248 126\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <path id=\"svg_b3da86e0-9191-5935-9291-a9ccc5bcc25e\" d=\"M228 212 l6 4 l-6 4 Z\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"1\"></path>\n  <path id=\"svg_48de608e-e318-52d7-888d-1e76e3b2c349\" d=\"M234 216 L250 216 l7 -5 l0 10 l-7 -5 Z\" fill=\"#2F3640\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\"></path>\n  <text id=\"svg_c3a44cee-8f97-55f2-a5d6-a49fc413305f\" x=\"40\" y=\"180\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Occupied</text>\n  <text id=\"svg_b35e4e50-2423-58db-9efc-9595d1f4ea65\" x=\"40\" y=\"180\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Unoccupied</text>\n  <text id=\"svg_b837eaf6-26a5-5279-9937-5cead5b0f67a\" x=\"40\" y=\"180\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Standby</text>\n  <text xml:space=\"preserve\" x=\"40\" y=\"214\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Cool to °F</text>\n  <g id=\"HXI_36e44d0f-c263-5423-85f8-77151f0ade31\" stroke=\"#6B7280\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_1ef8d9ef-4aa9-58a2-8514-f8361c0d39b7\" stroke=\"#6B7280\" fill=\"#FFFFFF\" height=\"22\" width=\"46\" y=\"199\" x=\"120\" stroke-width=\"1\"/><foreignObject id=\"H-HXI_8ec18e0b-40a2-5e84-97e2-49b006d1c88c\" width=\"46\" height=\"22\" y=\"199\" x=\"120\"><INPUT id=\"I-HXI_7824c3a0-6df2-52c0-9e8d-262ab0ea1073\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(47, 54, 64); font-size: 12px; vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"40\" y=\"242\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Heat to °F</text>\n  <g id=\"HXI_baac026b-b872-596d-b54a-54e9905214ce\" stroke=\"#6B7280\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_fb0a3f44-b51f-5d19-b2bb-f41bc3fb9cf5\" stroke=\"#6B7280\" fill=\"#FFFFFF\" height=\"22\" width=\"46\" y=\"227\" x=\"120\" stroke-width=\"1\"/><foreignObject id=\"H-HXI_3285f53f-d9da-5569-baa8-885a06386d87\" width=\"46\" height=\"22\" y=\"227\" x=\"120\"><INPUT id=\"I-HXI_6da5ccd6-dfd3-5125-9646-425f8b064eb4\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(47, 54, 64); font-size: 12px; vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"40\" y=\"274\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Room CO2</text>\n  <g id=\"VAL_399b6fa0-88c7-5085-9665-04975012d34e\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_ed91476c-8981-5f95-a2be-f303571668db\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"144\" y=\"274\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"147\" y=\"274\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <rect x=\"330\" y=\"92\" width=\"234\" height=\"160\" rx=\"6\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\"/>\n  <text xml:space=\"preserve\" x=\"447\" y=\"112\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Rooftop unit RTU-1</text>\n  <g id=\"GSE_e7690e39-ec9b-5d31-bd58-f69225bb2226\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_347cf22c-47f6-5e2d-b82b-2c8defa0c1d2\" cx=\"370\" cy=\"156\" r=\"16\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_194af20f-61f4-5be7-8e23-158af1c5ad71\"><circle cx=\"370\" cy=\"156\" r=\"12.48\" fill=\"none\" stroke=\"none\"/><path d=\"M370 156 L370 143.52\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M370 156 L370 143.52\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M370 156 L380.808 162.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M370 156 L380.808 162.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M370 156 L359.192 162.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M370 156 L359.192 162.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"370\" y=\"190\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">supply fan</text>\n  <g id=\"GSE_3c3ed161-4c77-5a55-87ea-bb6156b0dfaa\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_beddbf19-e9c8-5505-a215-3b622400e72f\" cx=\"432\" cy=\"156\" r=\"9\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"GSE_fe69d5ed-b282-535e-8054-360997a62f18\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_bc079df6-a109-5991-b68c-01ecc9d7b939\" cx=\"460\" cy=\"156\" r=\"9\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"446\" y=\"190\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">cooling 1, 2</text>\n  <g id=\"GSE_6123f844-a3b0-57a8-a896-62c7d7079dde\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_da33cb51-2913-5d09-b3fa-ad8a02c33f4b\" cx=\"522\" cy=\"156\" r=\"9\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"522\" y=\"190\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">heat</text>\n  <text xml:space=\"preserve\" x=\"346\" y=\"222\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Supply air</text>\n  <g id=\"VAL_26f6391f-316d-5192-996b-12bceac8c2e6\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_22690a12-cd4a-5f9d-a871-111a77381d31\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"470\" y=\"222\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"473\" y=\"222\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">°F</text>\n  <text xml:space=\"preserve\" x=\"346\" y=\"240\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Power</text>\n  <g id=\"VAL_bc4d1a33-3e01-5891-a0a6-090fea6728fd\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_e42e92b2-52ff-5d7f-9c3c-5abcf4e5ce20\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"470\" y=\"240\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"473\" y=\"240\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">kW</text>\n  <text xml:space=\"preserve\" x=\"330\" y=\"282\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">economizer damper %</text>\n  <rect x=\"330\" y=\"290\" width=\"190\" height=\"10\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_ca13e1ce-678b-55fb-aa32-296dde3638f4)\">\n  <rect id=\"svg_ca89337e-e471-5ab6-b729-a4d2f7277d49\" x=\"140\" y=\"290\" width=\"190\" height=\"10\" fill=\"#B4C3D3\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"330\" y=\"290\" width=\"190\" height=\"10\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <g id=\"VAL_826f84c8-84e9-5b98-9580-3744db9acca5\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_ee688162-e29b-52d8-9a0d-f96892da9478\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"556\" y=\"300\">##.##</text></g>\n  <rect x=\"600\" y=\"60\" width=\"300\" height=\"300\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"3\"/>\n  <text xml:space=\"preserve\" x=\"614\" y=\"84\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">COLD ROOM</text>\n  <g id=\"VAL_d724de02-9722-5a3b-ae42-7a47cd4dab6e\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"40\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_17204f16-93f3-5f7f-bb69-51c03d28f0bb\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"40\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"740\" y=\"150\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"744\" y=\"150\" font-size=\"14\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">°F</text>\n  <g id=\"svg_ddf59dc9-5a39-5724-86be-1557220edac6\"><title>Cold room temperature: high alarm</title><path d=\"M790 120 L804 120 L797 134 Z\" fill=\"#F9CF59\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"797\" y=\"129\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">3</text></g>\n  <rect x=\"840\" y=\"96\" width=\"12\" height=\"120\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <rect x=\"840\" y=\"161.455\" width=\"12\" height=\"27.2727\" rx=\"0\" fill=\"#BFD3E0\" stroke=\"none\" stroke-width=\"0\"/>\n  <rect x=\"840\" y=\"96\" width=\"12\" height=\"120\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <path d=\"M836 139.636 L852 139.636\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <path id=\"svg_59fde420-dcca-5323-87af-ed37d069e0c7\" d=\"M832 212 l6 4 l-6 4 Z\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"1\"></path>\n  <path id=\"svg_c12e3cad-75fc-5d3e-b2b1-a5ebf6c83ba0\" d=\"M838 216 L854 216 l7 -5 l0 10 l-7 -5 Z\" fill=\"#2F3640\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\"></path>\n  <text xml:space=\"preserve\" x=\"620\" y=\"196\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Hold at °F</text>\n  <g id=\"HXI_539b4a96-5baf-5d20-980a-4daddcd475fa\" stroke=\"#6B7280\" text-anchor=\"right\" font-family=\"sans-serif\" font-size=\"12\" fill=\"#f1f1f1ff\" type=\"svg-ext-html_input\"><rect id=\"svg_5aad441f-8870-5d0c-8db3-00d0df07a0a4\" stroke=\"#6B7280\" fill=\"#FFFFFF\" height=\"22\" width=\"46\" y=\"181\" x=\"690\" stroke-width=\"1\"/><foreignObject id=\"H-HXI_9c2c7b6c-b950-5213-a656-5460b42d9ef7\" width=\"46\" height=\"22\" y=\"181\" x=\"690\"><INPUT id=\"I-HXI_e3c12544-0e7c-5f6b-ae8f-b57cd32c45cc\" style=\"width: calc(100% - 7px); height: calc(100% - 7px); text-align: right; border: unset; background-color: rgb(255, 255, 255); color: rgb(47, 54, 64); font-size: 12px; vector-effect: non-scaling-stroke;\" type=\"text\"/></foreignObject></g>\n  <text xml:space=\"preserve\" x=\"620\" y=\"232\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Door open today</text>\n  <g id=\"VAL_e22d987d-fee2-5d88-8211-48f5a243ca69\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_d6267729-1c1c-5037-b0e5-cdafe8930a1d\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"764\" y=\"232\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"767\" y=\"232\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">min</text>\n  <g id=\"GSE_7174e124-0408-52ea-aaf9-ca249bdb579b\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_b29824fa-df21-5c14-bfe4-600cd99a52a2\" cx=\"625\" cy=\"266\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"636\" y=\"270\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Door open</text>\n  <g id=\"GSE_b1195f08-8900-55d2-aed2-d068b3283f14\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_0ba2fb58-2ede-5b90-a477-34e4b13492a8\" cx=\"625\" cy=\"294\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"636\" y=\"298\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Compressor</text>\n  <g id=\"GSE_8863f383-5033-5bd0-9b3b-520cf2a0cfb4\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_bb97d4bf-d8bb-5c8a-8007-e6230f427575\" cx=\"625\" cy=\"322\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"636\" y=\"326\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Defrost</text>\n  <rect x=\"920\" y=\"60\" width=\"300\" height=\"300\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"3\"/>\n  <text xml:space=\"preserve\" x=\"934\" y=\"84\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">BREWHOUSE VENTILATION</text>\n  <g id=\"GSE_d70ac1d9-95d6-56ef-afed-31af383b50ad\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_b32b6f48-71a9-5a79-8304-5fc774f8e65e\" cx=\"960\" cy=\"130\" r=\"16\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_55f42272-1077-52a5-9f16-5dd9fa2c08a2\"><circle cx=\"960\" cy=\"130\" r=\"12.48\" fill=\"none\" stroke=\"none\"/><path d=\"M960 130 L960 117.52\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 130 L960 117.52\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 130 L970.808 136.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 130 L970.808 136.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 130 L949.192 136.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 130 L949.192 136.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"990\" y=\"118\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">kettle hood exhaust %</text>\n  <rect x=\"990\" y=\"126\" width=\"160\" height=\"10\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_1315a36e-79e1-54d4-8020-6ce0ba9da42c)\">\n  <rect id=\"svg_f3c2840e-cd91-5afe-8bb7-249daf19601d\" x=\"830\" y=\"126\" width=\"160\" height=\"10\" fill=\"#B4C3D3\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"990\" y=\"126\" width=\"160\" height=\"10\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <g id=\"VAL_5f135337-8114-52ec-983c-e75fff6d614c\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_24d73d11-4c4d-5d5f-bf44-1db014628160\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1196\" y=\"136\">##.##</text></g>\n  <g id=\"GSE_1106382f-37cd-5c0c-bc21-5953b8262489\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_88470d28-5746-5837-88fd-6563827a3290\" cx=\"960\" cy=\"186\" r=\"12\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_485a48a9-0441-5c37-b71b-1ca255cc2bea\"><circle cx=\"960\" cy=\"186\" r=\"9.36\" fill=\"none\" stroke=\"none\"/><path d=\"M960 186 L960 176.64\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 186 L960 176.64\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 186 L968.106 190.68\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 186 L968.106 190.68\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M960 186 L951.894 190.68\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M960 186 L951.894 190.68\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"986\" y=\"190\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Makeup air unit</text>\n  <text xml:space=\"preserve\" x=\"940\" y=\"236\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Makeup air discharge</text>\n  <g id=\"VAL_2d64e578-80ab-5c02-b509-7ad66ba580ee\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_aff83e6e-ef6c-5bdb-8a0f-aa76ceb79f7d\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"12\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1114\" y=\"236\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"1117\" y=\"236\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">°F</text>\n  <rect x=\"20\" y=\"404\" width=\"610\" height=\"350\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#2F3640\" stroke-width=\"3\"/>\n  <text xml:space=\"preserve\" x=\"24\" y=\"396\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Cellar, from above. CO2 is heavier than air: it pools at the floor, where the sensors hang.</text>\n  <path d=\"M90 508 m-34 0 a34 34 0 1 0 68 0 a34 34 0 1 0 -68 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"90\" y=\"506\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">FV-101</text>\n  <path d=\"M185 508 m-34 0 a34 34 0 1 0 68 0 a34 34 0 1 0 -68 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"185\" y=\"506\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">FV-102</text>\n  <path d=\"M280 508 m-34 0 a34 34 0 1 0 68 0 a34 34 0 1 0 -68 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"280\" y=\"506\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">FV-103</text>\n  <path d=\"M375 508 m-34 0 a34 34 0 1 0 68 0 a34 34 0 1 0 -68 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"375\" y=\"506\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">FV-104</text>\n  <path d=\"M480 508 m-30 0 a30 30 0 1 0 60 0 a30 30 0 1 0 -60 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"480\" y=\"512\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">BBT-201</text>\n  <path d=\"M560 508 m-30 0 a30 30 0 1 0 60 0 a30 30 0 1 0 -60 0\" fill=\"#DDE1E6\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"560\" y=\"512\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">BBT-202</text>\n  <rect x=\"32\" y=\"570\" width=\"166\" height=\"74\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"40\" y=\"584\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 sensor 1</text>\n  <g id=\"VAL_85f9b4c2-cf0a-5d9b-a0e6-4ae8fda0c1bd\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_dd32800b-5d3e-5358-8d41-93012271f015\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"106\" y=\"608\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"109\" y=\"608\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_3943f85f-749c-5528-b4fd-7c728c4d791d\"><title>Cellar CO2 sensor 1 (low-mounted): highhigh alarm</title><path d=\"M160 576 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"167\" y=\"587\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_c4a9b331-246f-55ab-829c-e1b1e8301f8b\"><title>Cellar CO2 sensor 1 (low-mounted): high alarm</title><path d=\"M183 576 L190 590 L176 590 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"183\" y=\"589\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"42\" y=\"616\" width=\"146\" height=\"9\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_80628981-4b63-58e6-bf91-193c3fa03fa1)\">\n  <rect id=\"svg_43247c8b-c7bb-5aee-8518-e36ed17962b6\" x=\"-6.66667\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_5bc67412-9543-5c6c-ad7d-856704135593)\">\n  <rect id=\"svg_10e27cba-e2ab-5ee6-9d73-538e7e3d9f33\" x=\"42\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_6710e556-2b06-5a2d-ac9b-afa71ba2252b)\">\n  <rect id=\"svg_60b25494-9ea7-569f-856c-9ff632070bfb\" x=\"90.6667\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"42\" y=\"616\" width=\"146\" height=\"9\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"42\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">0</text>\n  <path d=\"M90.6667 612 L90.6667 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"90.6667\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">5,000</text>\n  <path d=\"M139.333 612 L139.333 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"139.333\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">15,000</text>\n  <path d=\"M188 612 L188 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"188\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#6B7280\" stroke-width=\"0\">30,000</text>\n  <rect x=\"208\" y=\"570\" width=\"166\" height=\"74\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"216\" y=\"584\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 sensor 2</text>\n  <g id=\"VAL_0a8667b7-8047-5454-8dda-afa9799d6bea\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_320fb8c9-92e0-5d9d-9597-96f369ece3f6\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"282\" y=\"608\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"285\" y=\"608\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_7590d8c1-9046-5062-925c-80f92f7c1d6c\"><title>Cellar CO2 sensor 2 (low-mounted): highhigh alarm</title><path d=\"M336 576 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"343\" y=\"587\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_46b61a71-a432-596b-a3a9-8d8ecd308446\"><title>Cellar CO2 sensor 2 (low-mounted): high alarm</title><path d=\"M359 576 L366 590 L352 590 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"359\" y=\"589\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"218\" y=\"616\" width=\"146\" height=\"9\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_071e4be5-7ba9-5cdb-a78f-acd04bc75251)\">\n  <rect id=\"svg_91270920-bd4f-56c5-85cb-0a309d51b48f\" x=\"169.333\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_cfe902e0-c427-5c70-8812-25a299b527a0)\">\n  <rect id=\"svg_096a4880-df9b-5072-850f-bfd50a3eafc2\" x=\"218\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_b4032a6f-c75a-5d0a-a8b6-cc9d61b825b4)\">\n  <rect id=\"svg_0fb4c3dc-6889-5193-85e2-6fd4f972f0bb\" x=\"266.667\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"218\" y=\"616\" width=\"146\" height=\"9\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"218\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">0</text>\n  <path d=\"M266.667 612 L266.667 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"266.667\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">5,000</text>\n  <path d=\"M315.333 612 L315.333 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"315.333\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">15,000</text>\n  <path d=\"M364 612 L364 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"364\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#6B7280\" stroke-width=\"0\">30,000</text>\n  <rect x=\"384\" y=\"570\" width=\"166\" height=\"74\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"392\" y=\"584\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 sensor 3</text>\n  <g id=\"VAL_ee289945-24c5-51b3-b689-9e15c2a1c24f\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_ca94be0a-2fc9-50a5-b2ed-b6badc7dd518\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"458\" y=\"608\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"461\" y=\"608\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_d365b4d2-bcd0-521c-b61f-71070f282389\"><title>Cellar CO2 sensor 3 (low-mounted): highhigh alarm</title><path d=\"M512 576 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"519\" y=\"587\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_c5959379-b221-5687-a0bb-1fb99fb15a58\"><title>Cellar CO2 sensor 3 (low-mounted): high alarm</title><path d=\"M535 576 L542 590 L528 590 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"535\" y=\"589\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"394\" y=\"616\" width=\"146\" height=\"9\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_4c6dddc8-3f7a-5dd1-8777-59e1d1706f7f)\">\n  <rect id=\"svg_2c3827d0-e412-5b9c-bf9d-67a9b460997a\" x=\"345.333\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_ef1258d2-8b72-5595-b2d3-85679b18618e)\">\n  <rect id=\"svg_44585b3c-8375-5f1a-af69-ab2849a394f5\" x=\"394\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_82c7f255-114b-594d-919b-ae9ec7663d6e)\">\n  <rect id=\"svg_09fb637b-2e17-5017-bef6-faffcf188812\" x=\"442.667\" y=\"616\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"394\" y=\"616\" width=\"146\" height=\"9\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"394\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">0</text>\n  <path d=\"M442.667 612 L442.667 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"442.667\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">5,000</text>\n  <path d=\"M491.333 612 L491.333 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"491.333\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">15,000</text>\n  <path d=\"M540 612 L540 627\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"540\" y=\"636\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#6B7280\" stroke-width=\"0\">30,000</text>\n  <rect x=\"208\" y=\"662\" width=\"166\" height=\"74\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"216\" y=\"676\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">CO2 sensor 4</text>\n  <g id=\"VAL_f9f40334-64e4-583e-85d2-922b4861239e\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_345e587b-ec36-5289-909c-b0f12ae7cdd0\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"282\" y=\"700\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"285\" y=\"700\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_702163dc-6ccb-5b70-aeb4-9a2695499d5e\"><title>Cellar CO2 sensor 4 (low-mounted): highhigh alarm</title><path d=\"M336 668 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"343\" y=\"679\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_9f341bde-1658-556c-9866-55e94f5dfbda\"><title>Cellar CO2 sensor 4 (low-mounted): high alarm</title><path d=\"M359 668 L366 682 L352 682 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"359\" y=\"681\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"218\" y=\"708\" width=\"146\" height=\"9\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_824e4466-83ed-53a6-99db-ae6b064bf2aa)\">\n  <rect id=\"svg_87ae75fe-cbae-5c75-a4a8-856c124bc8d7\" x=\"169.333\" y=\"708\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_2b7ef177-7dd6-5985-bc88-7c2a7093054c)\">\n  <rect id=\"svg_4a07ab27-ab46-5b18-be64-a44deb2a5728\" x=\"218\" y=\"708\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_783a1d17-c9ba-5d27-a6f9-fe06ea7c4024)\">\n  <rect id=\"svg_f08b2b4f-9850-58d7-a6e3-9802fb7edd81\" x=\"266.667\" y=\"708\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"218\" y=\"708\" width=\"146\" height=\"9\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"218\" y=\"728\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">0</text>\n  <path d=\"M266.667 704 L266.667 719\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"266.667\" y=\"728\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">5,000</text>\n  <path d=\"M315.333 704 L315.333 719\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"315.333\" y=\"728\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">15,000</text>\n  <path d=\"M364 704 L364 719\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"364\" y=\"728\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#6B7280\" stroke-width=\"0\">30,000</text>\n  <text xml:space=\"preserve\" x=\"624\" y=\"594\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#2F3640\" stroke-width=\"0\">purge fan 1</text>\n  <g id=\"GSE_05dcc246-3510-5ee7-892c-ebdca294ddc9\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_de0295c8-ab29-5f17-985f-c6c58146875a\" cx=\"630\" cy=\"618\" r=\"16\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_988a4193-9170-5481-a018-aa0569fcb076\"><circle cx=\"630\" cy=\"618\" r=\"12.48\" fill=\"none\" stroke=\"none\"/><path d=\"M630 618 L630 605.52\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M630 618 L630 605.52\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M630 618 L640.808 624.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M630 618 L640.808 624.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M630 618 L619.192 624.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M630 618 L619.192 624.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <path d=\"M650 618 L666 618\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <path d=\"M667 613 L672 618 L667 623 Z\" fill=\"#6B7280\" stroke=\"#6B7280\" stroke-width=\"1\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"624\" y=\"680\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#2F3640\" stroke-width=\"0\">purge fan 2</text>\n  <g id=\"GSE_25b5c2ea-796f-51c2-84ff-f159643107d2\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_87581479-46dd-5cc7-a8eb-40f62c05e430\" cx=\"630\" cy=\"704\" r=\"16\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_4c9cadd5-6726-5177-8a57-2aeb84ec3042\"><circle cx=\"630\" cy=\"704\" r=\"12.48\" fill=\"none\" stroke=\"none\"/><path d=\"M630 704 L630 691.52\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M630 704 L630 691.52\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M630 704 L640.808 710.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M630 704 L640.808 710.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M630 704 L619.192 710.24\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M630 704 L619.192 710.24\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <path d=\"M650 704 L666 704\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <path d=\"M667 699 L672 704 L667 709 Z\" fill=\"#6B7280\" stroke=\"#6B7280\" stroke-width=\"1\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <rect x=\"690\" y=\"380\" width=\"530\" height=\"430\" rx=\"6\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"700\" y=\"397\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">CELLAR CO2: WHAT THE DETECTION HAS DONE</text>\n  <text xml:space=\"preserve\" x=\"706\" y=\"418\" font-size=\"10\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">A tier trips when any one cellar sensor reaches it.</text>\n  <g id=\"GSE_7f9789a3-d1c4-569c-9730-743c534640cc\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_2e7ad4a7-2b9e-5a45-bfd9-af87e8572070\" cx=\"715\" cy=\"445\" r=\"8\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"732\" y=\"450\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Tier 1</text>\n  <text xml:space=\"preserve\" x=\"780\" y=\"450\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">5,000 ppm: purge the cellar</text>\n  <g id=\"svg_611f12f5-f8d2-5a6c-a22d-dc6049550d7b\"><title>Cellar CO2 tier 1 (5,000 ppm, purge fans on): state alarm</title><path d=\"M963 438 L970 445 L963 452 L956 445 Z\" fill=\"#66CCFF\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"963\" y=\"448.5\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">4</text></g>\n  <path d=\"M715 458 L715 472 L728 472\" fill=\"none\" stroke=\"#B8BEC7\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <g id=\"GSE_24d60c51-b2a4-5879-8a5b-8aee2d9052be\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_38cbe761-4769-5eaf-8bb6-98228103ffc2\" cx=\"744\" cy=\"472\" r=\"10\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_59f506bd-8ac0-5d1b-997d-d5b684b1ac75\"><circle cx=\"744\" cy=\"472\" r=\"7.8\" fill=\"none\" stroke=\"none\"/><path d=\"M744 472 L744 464.2\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M744 472 L744 464.2\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M744 472 L750.755 475.9\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M744 472 L750.755 475.9\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M744 472 L737.245 475.9\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M744 472 L737.245 475.9\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"762\" y=\"476\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Purge fan 1 running</text>\n  <g id=\"HXB_66ba7e31-e0a7-5605-b42d-4d2ffa6c48cb\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_d661e6d3-8c72-53ef-9b87-66a2e488c1cb\" x=\"902\" y=\"459\" width=\"54\" height=\"24\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_4bdc3918-2a43-5a6c-835f-3c9b581fe2f4\" x=\"902\" y=\"459\" width=\"54\" height=\"24\"><button id=\"B-HXB_0c1b2d04-37b8-5298-afb4-6dc99e02f115\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Run</button></foreignObject></g>\n  <g id=\"HXB_67b214d4-9fa4-5f62-9a77-e81a42b6632e\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_3ea344c6-1227-52a9-a314-04e4bcb4601d\" x=\"962\" y=\"459\" width=\"54\" height=\"24\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_be5ddbc0-5be4-5d5e-b98f-2c65caf720ac\" x=\"962\" y=\"459\" width=\"54\" height=\"24\"><button id=\"B-HXB_1659165a-5da3-530a-b97d-f5084f2d27c6\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Stop</button></foreignObject></g>\n  <path d=\"M715 486 L715 500 L728 500\" fill=\"none\" stroke=\"#B8BEC7\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <g id=\"GSE_f0a62df5-fb74-5821-97f7-49f828139b57\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_d5a40d6d-4ef5-5d56-8df2-dc0513197beb\" cx=\"744\" cy=\"500\" r=\"10\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_cdf4ba6b-ba8c-5d11-8c2a-3661abae628d\"><circle cx=\"744\" cy=\"500\" r=\"7.8\" fill=\"none\" stroke=\"none\"/><path d=\"M744 500 L744 492.2\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M744 500 L744 492.2\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M744 500 L750.755 503.9\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M744 500 L750.755 503.9\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M744 500 L737.245 503.9\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M744 500 L737.245 503.9\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"762\" y=\"504\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Purge fan 2 running</text>\n  <g id=\"HXB_a9b09d37-7a3c-52a6-b295-de7d17edf99c\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_8c7d10a8-9910-54d5-b731-a8a974d80020\" x=\"902\" y=\"487\" width=\"54\" height=\"24\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_3de7730f-c232-5a3c-bb40-6011a4272831\" x=\"902\" y=\"487\" width=\"54\" height=\"24\"><button id=\"B-HXB_767dce85-da39-52a5-81a6-eb92a15477a4\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Run</button></foreignObject></g>\n  <g id=\"HXB_4a38e547-511e-5d6b-9457-56f26b089209\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_a4d6f652-ff9d-54ea-aeda-08dd5e73268d\" x=\"962\" y=\"487\" width=\"54\" height=\"24\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_7ebe28ce-89af-5c36-96dd-1ae648b13ef2\" x=\"962\" y=\"487\" width=\"54\" height=\"24\"><button id=\"B-HXB_20958843-9158-5ad4-8b61-b86c99ef0be0\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Stop</button></foreignObject></g>\n  <g id=\"GSE_1ecb3ec4-0704-5c22-834c-91f7041125e3\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_e5c44973-5527-56d8-a49a-edd42ca853b8\" cx=\"715\" cy=\"537\" r=\"8\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"732\" y=\"542\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Tier 2</text>\n  <text xml:space=\"preserve\" x=\"780\" y=\"542\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">15,000 ppm: stop adding CO2</text>\n  <path d=\"M715 550 L715 562 L728 562\" fill=\"none\" stroke=\"#B8BEC7\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"736\" y=\"566\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">The cellar relay opens: plc-cellar stops carbonating</text>\n  <g id=\"GSE_fae931a1-3b59-5b2e-8912-a61245923a73\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_d1eba934-6b1f-5621-9f29-803f6059b9f2\" cx=\"715\" cy=\"595\" r=\"8\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"732\" y=\"600\" font-size=\"13\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\" font-weight=\"bold\">Tier 3</text>\n  <text xml:space=\"preserve\" x=\"780\" y=\"600\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">30,000 ppm: evacuate, and shut the supply</text>\n  <path d=\"M715 608 L715 620 L728 620\" fill=\"none\" stroke=\"#B8BEC7\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <g id=\"GSE_05a32bd0-6b28-5ef7-8093-f71a56f57743\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_2db4eff3-7810-5e32-b0a8-d0b2274cd3a6\" cx=\"739\" cy=\"620\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"750\" y=\"624\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Horns and strobes</text>\n  <g id=\"HXB_81784ba1-5842-5918-8b4b-722428805179\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_cb6e5d3e-3e7c-5954-85d7-89355bb52064\" x=\"902\" y=\"607\" width=\"54\" height=\"24\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_26b0d6ea-8c5e-5b9c-b0fd-87bf8f5f9a07\" x=\"902\" y=\"607\" width=\"54\" height=\"24\"><button id=\"B-HXB_4694854f-40cd-5a2e-b327-c8f7da35f99c\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Sound</button></foreignObject></g>\n  <g id=\"HXB_7cbfebf1-11fb-5be2-9829-047c52b2e6b4\" type=\"svg-ext-html_button\" fill=\"rgba(0,0,0,0)\" stroke=\"rgba(0,0,0,0)\" xml:space=\"preserve\"><rect id=\"svg_d3b91363-4cff-557e-a0c3-4d59e2b19585\" x=\"962\" y=\"607\" width=\"54\" height=\"24\" stroke-width=\"0\"/><foreignObject id=\"H-HXB_cf03a464-4893-520e-941f-a25fdf9cfe22\" x=\"962\" y=\"607\" width=\"54\" height=\"24\"><button id=\"B-HXB_cd8638ca-8b66-5f69-b40a-25dba33e8e2a\" class=\"md-btn  md-btn-raised\" style=\"width:calc(100% - 6px);height:calc(100% - 6px);text-align:center;background-color:#FFFFFF;color:#2F3640;border:1px solid #6B7280;border-radius:3px;font-size:13px;font-family:sans-serif;\">Silence</button></foreignObject></g>\n  <path d=\"M715 632 L715 644 L728 644\" fill=\"none\" stroke=\"#B8BEC7\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"736\" y=\"648\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">The shutoff relay opens: plc-utilities closes the CO2 supply</text>\n  <path d=\"M706 662 L1016 662\" fill=\"none\" stroke=\"#B8BEC7\" stroke-width=\"1\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"706\" y=\"680\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">THE RELAYS (LIT: HEALTHY, AND HOLDING THE CO2 ON)</text>\n  <g id=\"GSE_90a9cda7-034f-5209-a439-a4bca5c1e6b2\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_552a89ad-a4cd-5277-850b-cb6af8daef94\" cx=\"711\" cy=\"698\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"722\" y=\"702\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Shutoff relay, as the building drives it</text>\n  <text xml:space=\"preserve\" x=\"1040\" y=\"418\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\" font-weight=\"bold\">CO2 IN THE OTHER AREAS</text>\n  <rect x=\"1040\" y=\"430\" width=\"166\" height=\"74\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"1048\" y=\"444\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Bulk CO2 tank</text>\n  <g id=\"VAL_16323ccf-55a3-5b78-99da-854c992233c6\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_3749e1ae-e939-538e-b4cb-9aa924594b8c\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1114\" y=\"468\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"1117\" y=\"468\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_60173b68-6c64-5a59-85a9-f9a87781158b\"><title>Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted): highhigh alarm</title><path d=\"M1168 436 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1175\" y=\"447\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_963572c7-0590-532d-b23b-aa07f8281532\"><title>Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted): high alarm</title><path d=\"M1191 436 L1198 450 L1184 450 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1191\" y=\"449\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"1050\" y=\"476\" width=\"146\" height=\"9\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_71ad70e8-802d-5633-aa68-c366438891fb)\">\n  <rect id=\"svg_01edf4b7-6439-50d8-94b2-4a00346f553d\" x=\"1001.33\" y=\"476\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_74755f61-8519-5541-8737-b27da1070249)\">\n  <rect id=\"svg_79ad9827-1c93-5bf5-a944-a143c303bbe6\" x=\"1050\" y=\"476\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_c914c796-8587-5f03-9849-bef000307a78)\">\n  <rect id=\"svg_38a95528-614d-5991-842f-f1a16601961c\" x=\"1098.67\" y=\"476\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"1050\" y=\"476\" width=\"146\" height=\"9\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"1050\" y=\"496\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">0</text>\n  <path d=\"M1098.67 472 L1098.67 487\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1098.67\" y=\"496\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">5,000</text>\n  <path d=\"M1147.33 472 L1147.33 487\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1147.33\" y=\"496\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">15,000</text>\n  <path d=\"M1196 472 L1196 487\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1196\" y=\"496\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#6B7280\" stroke-width=\"0\">30,000</text>\n  <rect x=\"1040\" y=\"512\" width=\"166\" height=\"74\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"1048\" y=\"526\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Filler</text>\n  <g id=\"VAL_e7fcd37d-aa38-5c7c-af73-9c40403e4f6b\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_200b4e32-fee0-5b92-84d0-aab2dde83d0a\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1114\" y=\"550\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"1117\" y=\"550\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_1d432225-caa8-5898-9fb1-dbf8623d62c0\"><title>Filler (packaging) area CO2 sensor (low-mounted): highhigh alarm</title><path d=\"M1168 518 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1175\" y=\"529\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_611f383a-393e-5189-b0fd-b988c8801c6b\"><title>Filler (packaging) area CO2 sensor (low-mounted): high alarm</title><path d=\"M1191 518 L1198 532 L1184 532 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1191\" y=\"531\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"1050\" y=\"558\" width=\"146\" height=\"9\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_a7a6c1fa-0a00-5cf5-82df-c7f2b3fbfc1a)\">\n  <rect id=\"svg_137549c3-b177-50e3-9fa4-22435cb374ee\" x=\"1001.33\" y=\"558\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_2e396a45-492e-550f-bb10-cad524fc0ba3)\">\n  <rect id=\"svg_d5ebec42-91a1-56ff-adb7-d61ced961377\" x=\"1050\" y=\"558\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_2778e76a-a71e-535d-8a7c-466f8c466bb4)\">\n  <rect id=\"svg_ed11f781-b973-5eb7-a198-ca6667c3ab2e\" x=\"1098.67\" y=\"558\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"1050\" y=\"558\" width=\"146\" height=\"9\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"1050\" y=\"578\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">0</text>\n  <path d=\"M1098.67 554 L1098.67 569\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1098.67\" y=\"578\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">5,000</text>\n  <path d=\"M1147.33 554 L1147.33 569\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1147.33\" y=\"578\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">15,000</text>\n  <path d=\"M1196 554 L1196 569\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1196\" y=\"578\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#6B7280\" stroke-width=\"0\">30,000</text>\n  <rect x=\"1040\" y=\"594\" width=\"166\" height=\"74\" rx=\"4\" fill=\"#FBFBFC\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"1048\" y=\"608\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">Cold room</text>\n  <g id=\"VAL_7943049d-38bd-56e1-ac09-bb868a1da74b\" type=\"svg-ext-value\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" stroke-width=\"0\" font-family=\"sans-serif\" text-anchor=\"end\"><text stroke-width=\"0\" id=\"VAL_6a73a4f5-d62e-5b6f-b474-1ab4b0909723\" fill=\"#2F3640\" stroke=\"#2F3640\" font-size=\"20\" font-family=\"sans-serif\" text-anchor=\"end\" font-weight=\"bold\" xml:space=\"preserve\" x=\"1114\" y=\"632\">##.##</text></g>\n  <text xml:space=\"preserve\" x=\"1117\" y=\"632\" font-size=\"9\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">ppm</text>\n  <g id=\"svg_e9298011-c2ea-57ac-ad9b-48646e45d156\"><title>Cold room and draft system CO2 sensor (low-mounted): highhigh alarm</title><path d=\"M1168 600 h14 v14 h-14 Z\" fill=\"#B71C1C\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1175\" y=\"611\" font-size=\"11\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">1</text></g>\n  <g id=\"svg_b03e2609-3dae-53e0-80f5-dc8b416ded98\"><title>Cold room and draft system CO2 sensor (low-mounted): high alarm</title><path d=\"M1191 600 L1198 614 L1184 614 Z\" fill=\"#FF4848\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1191\" y=\"613\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#FFFFFF\" stroke-width=\"0\">2</text></g>\n  <rect x=\"1050\" y=\"640\" width=\"146\" height=\"9\" rx=\"0\" fill=\"#FFFFFF\" stroke=\"#B8BEC7\" stroke-width=\"1\"/>\n  <g clip-path=\"url(#clip_3824e2f1-b014-5852-9c12-8cfcac822091)\">\n  <rect id=\"svg_b8c08594-d763-58b1-9c7e-93b5d4b3c2f9\" x=\"1001.33\" y=\"640\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_d9aa19a1-c051-5b0b-8f1d-3e5308b52bb7)\">\n  <rect id=\"svg_3ce6cf43-683c-5c7f-953b-b916497308dc\" x=\"1050\" y=\"640\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <g clip-path=\"url(#clip_12532c33-3add-52f6-a745-cbea6d2d7695)\">\n  <rect id=\"svg_54c6c7be-4ced-57c2-a93f-1457cc4e3f7d\" x=\"1098.67\" y=\"640\" width=\"48.6667\" height=\"9\" fill=\"#9BB39A\" stroke=\"none\"></rect>\n  </g>\n  <rect x=\"1050\" y=\"640\" width=\"146\" height=\"9\" rx=\"0\" fill=\"none\" stroke=\"#6B7280\" stroke-width=\"1\"/>\n  <text xml:space=\"preserve\" x=\"1050\" y=\"660\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#6B7280\" stroke-width=\"0\">0</text>\n  <path d=\"M1098.67 636 L1098.67 651\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1098.67\" y=\"660\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">5,000</text>\n  <path d=\"M1147.33 636 L1147.33 651\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1147.33\" y=\"660\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"middle\" fill=\"#6B7280\" stroke-width=\"0\">15,000</text>\n  <path d=\"M1196 636 L1196 651\" fill=\"none\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>\n  <text xml:space=\"preserve\" x=\"1196\" y=\"660\" font-size=\"8\" font-family=\"sans-serif\" text-anchor=\"end\" fill=\"#6B7280\" stroke-width=\"0\">30,000</text>\n  <g id=\"GSE_fa185311-39cb-5080-a241-021a9da83a29\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_e1dfe1f7-a27d-5025-802c-17a63f938161\" cx=\"1045\" cy=\"692\" r=\"5\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <text xml:space=\"preserve\" x=\"1056\" y=\"696\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Tier 1 at one of them</text>\n  <g id=\"svg_9b050f27-f5e5-57cb-abfc-7c4d70790b81\"><title>CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on: state alarm</title><path d=\"M1186.6 685 L1193.6 692 L1186.6 699 L1179.6 692 Z\" fill=\"#66CCFF\" stroke=\"#2F3640\" stroke-width=\"1\" stroke-linejoin=\"round\"/><text x=\"1186.6\" y=\"695.5\" font-size=\"9\" font-family=\"sans-serif\" font-weight=\"bold\" text-anchor=\"middle\" fill=\"#2F3640\" stroke-width=\"0\">4</text></g>\n  <g id=\"GSE_265d869e-c6a9-5597-b57e-f0985ebabe8a\" type=\"svg-ext-gauge_semaphore\" stroke=\"#2F3640\" stroke-width=\"1.5\"><circle id=\"GSE_1d8f94d1-7b3f-5551-b998-7be26bfe4af3\" cx=\"1052\" cy=\"722\" r=\"10\" fill=\"#FFFFFF\" stroke=\"#2F3640\"/></g>\n  <g id=\"svg_5c81fd16-46d6-5d98-a545-79bec2875d6d\"><circle cx=\"1052\" cy=\"722\" r=\"7.8\" fill=\"none\" stroke=\"none\"/><path d=\"M1052 722 L1052 714.2\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M1052 722 L1052 714.2\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M1052 722 L1058.75 725.9\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M1052 722 L1058.75 725.9\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M1052 722 L1045.25 725.9\" stroke=\"#FFFFFF\" stroke-width=\"4\" stroke-linecap=\"round\"/><path d=\"M1052 722 L1045.25 725.9\" stroke=\"#2F3640\" stroke-width=\"1.5\" stroke-linecap=\"round\"/></g>\n  <text xml:space=\"preserve\" x=\"1070\" y=\"726\" font-size=\"11\" font-family=\"sans-serif\" text-anchor=\"start\" fill=\"#2F3640\" stroke-width=\"0\">Area exhaust fans</text>\n </g>\n</svg>",
         "type": "svg"
       },
       {

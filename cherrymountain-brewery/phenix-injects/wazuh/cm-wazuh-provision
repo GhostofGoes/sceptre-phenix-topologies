@@ -14,19 +14,24 @@
 #      have no internet)
 #   4. the dashboard: certificates, indexer address, start
 #   5. new passwords for the indexer and API users (wazuh-passwords-tool.sh), last,
-#      as in Wazuh's guide: the tool updates the dashboard's keystore and wazuh.yml
+#      as in Wazuh's guide: the tool updates the dashboard's keystore and wazuh.yml.
+#      The tool generates every password; the admin user's (the dashboard login) is
+#      the cherrymountain app's when it gave one
 #   6. index retention (ISM) policies: alerts 30 days, archives 7 (DESIGN.md 14)
 # The rules and decoders are injected into /var/ossec/etc/{rules,decoders}/ before
 # the manager first starts, so they load with it.
 #
-# Env (from /etc/default/cm-wazuh, optional): CM_WAZUH_IP (default: the first global
-# IPv4 address). Re-running is safe. It stops early once
-# /var/lib/cm-wazuh/provisioned exists. Step 4 writes the marker
+# Env (from /etc/default/cm-wazuh and /etc/default/cm-wazuh-manager, which the unit
+# reads; all optional): CM_WAZUH_IP (default: the first global IPv4 address), and
+# WAZUH_ADMIN_PASSWORD, the admin user's password (the app's secrets.json
+# wazuh_password; without it the tool generates one). Re-running is safe. It stops
+# early once /var/lib/cm-wazuh/provisioned exists. Step 4 writes the marker
 # /var/lib/cm-wazuh/passwords-changed as soon as the password tool succeeds, and a
 # run that finds it keeps the certificates and skips the security initialization,
 # the keystore setup, and the password change: each of those would put the default
 # admin credentials back, or overwrite the only record of the new passwords. The
-# generated passwords are in /var/lib/cm-wazuh/passwords.txt (root only).
+# passwords, the admin user's included, are in /var/lib/cm-wazuh/passwords.txt
+# (root only).
 #
 # TODO(verify): unverified on a VM. The commands follow Wazuh 4.14's documentation;
 # check each step on the first run, above all the password tool (step 4), which
@@ -42,6 +47,24 @@ OSSEC_CONF="${OSSEC}/etc/ossec.conf"
 WUI_CONF=/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
 
 log() { echo "cm-wazuh-provision: $*"; }
+
+# The admin password from the app. It is kept out of every child's environment and
+# off every command line: the tool reads it from a file.
+admin_password="${WAZUH_ADMIN_PASSWORD:-}"
+unset WAZUH_ADMIN_PASSWORD
+
+# admin_password_ok PASSWORD: the rule of passwords_checkPassword in
+# wazuh-passwords-tool.sh 4.14 (8 to 64 characters with an upper case letter, a lower
+# case letter, a digit, and one of .*+?-), cut to what the tool takes safely: it reads
+# a new password from a file only when it is made of \w.*+?-, and it puts the password
+# unquoted into an eval, so * and ? (globs) and a leading - are refused too. The app
+# generates within the same rule (metadata.wazuh_password_problem).
+admin_password_ok() {
+  local LC_ALL=C pw="$1"
+  [ "${#pw}" -ge 8 ] && [ "${#pw}" -le 64 ] || return 1
+  [[ "$pw" =~ ^[A-Za-z0-9_.+-]+$ && "$pw" != -* ]] || return 1
+  [[ "$pw" =~ [A-Z] && "$pw" =~ [a-z] && "$pw" =~ [0-9] && "$pw" =~ [.+-] ]]
+}
 
 wait_for() {
   # wait_for SECONDS DESCRIPTION COMMAND...
@@ -81,6 +104,10 @@ PASSWORDS_MARKER="${STATE}/passwords-changed"
 passwords_changed() { [ -f "$PASSWORDS_MARKER" ]; }
 if passwords_changed; then
   log "passwords were already changed: keeping the certificates and skipping the security initialization, keystores, and password steps"
+elif [ -n "$admin_password" ] && ! admin_password_ok "$admin_password"; then
+  # Before the long steps, not after the indexer already runs. The value is not shown.
+  log "FAIL: WAZUH_ADMIN_PASSWORD does not meet the Wazuh password policy (8 to 64 characters of letters, digits, and _.+-, with an upper case letter, a lower case letter, a digit, and one of .+-)"
+  exit 1
 fi
 
 # --- 1. certificates ----------------------------------------------------------------
@@ -182,13 +209,39 @@ wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:44
 wait_for 300 "the dashboard's wazuh.yml" test -f "$WUI_CONF" || log "WARNING: ${WUI_CONF} is missing; the wazuh-wui password is set once it exists"
 
 # --- 5. passwords -----------------------------------------------------------------------
+# admin_login_ok: the indexer accepts the admin user with the app's password (HTTP
+# 200). curl reads the credentials from stdin, so they are on no command line.
+admin_login_ok() {
+  [ "$(printf 'user = "admin:%s"\n' "$admin_password" \
+    | curl -sk -K - -o /dev/null -w '%{http_code}' "https://${node_ip}:9200/" || true)" = 200 ]
+}
 if ! passwords_changed; then
   # -A (--api) is required with -au and -ap: without it the tool prints its help
-  # and exits 1.
-  (umask 077 && bash "${TOOLS}/wazuh-passwords-tool.sh" -A -a -au wazuh -ap wazuh > "${STATE}/passwords.txt" 2>&1)
+  # and exits 1. -a gives every user a generated password. With the app's admin
+  # password, -f names a file that replaces the admin user's (the tool checks it
+  # against its policy again, and the other users keep the generated ones). The
+  # file is root-only and goes as soon as the tool is done; the password is on no
+  # command line.
+  extra_args=()
+  password_file="${STATE}/admin-password.yml"
+  if [ -n "$admin_password" ]; then
+    trap 'rm -f "$password_file"' EXIT
+    (umask 077 && printf "  indexer_username: 'admin'\n  indexer_password: '%s'\n" "$admin_password" > "$password_file")
+    extra_args=(-f "$password_file")
+  fi
+  (umask 077 && bash "${TOOLS}/wazuh-passwords-tool.sh" -A -a -au wazuh -ap wazuh "${extra_args[@]}" > "${STATE}/passwords.txt" 2>&1)
+  rm -f "$password_file"
   # Mark it now: from here on the default credentials no longer work.
   touch "$PASSWORDS_MARKER"
   log "new passwords are in ${STATE}/passwords.txt"
+  if [ -n "$admin_password" ]; then
+    # Not fatal: the generated passwords in passwords.txt keep the SIEM usable.
+    if wait_for 120 "the indexer accepting the app's admin password" admin_login_ok; then
+      log "the admin user signs in with the app's password"
+    else
+      log "WARNING: the indexer does not accept the app's admin password; read the one the tool set in ${STATE}/passwords.txt"
+    fi
+  fi
 fi
 # The tool waits only 60 s for wazuh.yml. If the file came later, the dashboard
 # still holds the default wazuh-wui password and cannot reach the Wazuh API.

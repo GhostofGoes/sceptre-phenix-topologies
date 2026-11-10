@@ -351,6 +351,34 @@ def test_full_both_fuxa_hosts_get_the_operator_password(ctx: Context) -> None:
     assert len(passwords) == 1
 
 
+def test_full_malcolm_and_wazuh_get_the_generated_web_passwords(ctx: Context) -> None:
+    """The consoles' passwords are in secrets.json with the others, and root-only
+    on the two VMs where the provisioning units read them. The topology keeps
+    /etc/default/cm-malcolm (the sizing profile, world readable)."""
+    plan = render.render_all(ctx)
+    malcolm = {i.dst: i for i in plan["malcolm"]}
+    inject = malcolm["/etc/default/cm-malcolm-credentials"]
+    assert inject.permissions == "0600"
+    assert env(Path(inject.src)) == {
+        "MALCOLM_ADMIN_PASSWORD": ctx.creds.malcolm_password.get_secret_value()
+    }
+    assert "/etc/default/cm-malcolm" not in malcolm
+    wazuh = {i.dst: i for i in plan["wazuh"]}
+    manager = wazuh["/etc/default/cm-wazuh-manager"]
+    assert manager.permissions == "0600"
+    assert env(Path(manager.src)) == {
+        "WAZUH_REGISTRATION_PASSWORD": ctx.creds.wazuh_enrollment.get_secret_value(),
+        "WAZUH_ADMIN_PASSWORD": ctx.creds.wazuh_password.get_secret_value(),
+    }
+    # Nobody else gets either: the agents get the enrollment password only.
+    for host, injects in plan.items():
+        for i in injects:
+            if host not in ("malcolm", "wazuh") and Path(i.src).is_file():
+                data = Path(i.src).read_bytes()
+                assert ctx.creds.malcolm_password.get_secret_value().encode() not in data, (host, i.dst)
+                assert ctx.creds.wazuh_password.get_secret_value().encode() not in data, (host, i.dst)
+
+
 def test_full_fuxa_views_have_unique_names_and_the_kiosks_views_exist(ctx: Context) -> None:
     """FUXA opens a view by its name (/home?viewName=<name>, the kiosk URL), so no two
     views of a project may share one: plc-cellar's generated view is "Cellar

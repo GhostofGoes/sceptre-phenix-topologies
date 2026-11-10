@@ -12,6 +12,8 @@ StartLimitIntervalSec=0
 Type=oneshot
 RemainAfterExit=yes
 EnvironmentFile=-/etc/default/cm-malcolm
+# The cherrymountain app's file: the web password, root-only. Only this unit reads it.
+EnvironmentFile=-/etc/default/cm-malcolm-credentials
 ExecStart=/usr/local/sbin/cm-malcolm-provision
 TimeoutStartSec=30min
 Restart=on-failure

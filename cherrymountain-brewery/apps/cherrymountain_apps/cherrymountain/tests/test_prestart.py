@@ -144,6 +144,15 @@ def test_an_operator_password_is_added_to_an_older_secrets_file(
     assert again["fuxa_operator_password"]
 
 
+def test_ci_has_no_web_console_credentials(run_app: RunApp) -> None:
+    """ci has no Malcolm or Wazuh: the app renders no file for them."""
+    app = run_app("pre-start")
+    for n in app.experiment.spec.topology.nodes:
+        for inj in n.get("injections") or []:
+            assert "cm-malcolm" not in inj.dst, n.general.hostname
+            assert "cm-wazuh" not in inj.dst, n.general.hostname
+
+
 def test_kiosk_guests_keep_what_they_may_do(run_app: RunApp) -> None:
     """The kiosks open /home with no session, which FUXA treats as the guest.
     The guest sees the views and FUXA refuses its writes only while the settings

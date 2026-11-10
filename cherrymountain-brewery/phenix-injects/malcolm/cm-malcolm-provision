@@ -18,8 +18,12 @@
 #   4. Custom Suricata rules use sids from 9000101 on. Malcolm's own OT rules use
 #      1000001 and up, and Suricata drops a duplicate sid.
 #
-# Env (from /etc/default/cm-malcolm, all optional): CM_MALCOLM_PROFILE (auto,
-# full, slim), MALCOLM_ADMIN_PASSWORD, CM_CAPTURE_IFACE, CM_ZEEK_LOCAL_NETS.
+# Env (from /etc/default/cm-malcolm and /etc/default/cm-malcolm-credentials, which
+# the unit reads, all optional): CM_MALCOLM_PROFILE (auto, full, slim),
+# MALCOLM_ADMIN_PASSWORD (the web password of the user malcolm: the cherrymountain
+# app renders it into the credentials file from secrets.json malcolm_password;
+# without one this script generates one), CM_CAPTURE_IFACE, CM_ZEEK_LOCAL_NETS.
+# The password is in /var/lib/cm-malcolm/admin-password (root only) either way.
 # Re-running is safe: it stops early once /var/lib/cm-malcolm/provisioned exists.
 set -euo pipefail
 
@@ -156,9 +160,18 @@ fi
 password="${MALCOLM_ADMIN_PASSWORD:-}"
 if [ -z "$password" ]; then
   password=$(openssl rand -base64 24 | tr -d '/+=' | cut -c1-20)
-  (umask 077 && printf '%s\n' "$password" > "${STATE}/admin-password")
-  log "generated the admin password; it is in ${STATE}/admin-password"
+  log "generated the admin password"
+elif [ "${#password}" -lt 8 ] || [ "${#password}" -gt 72 ]; then
+  # Malcolm wants 8 or more characters, and htpasswd -B (bcrypt) takes 72 at most.
+  log "FAIL: MALCOLM_ADMIN_PASSWORD must have 8 to 72 characters"
+  exit 1
+else
+  log "the admin password is MALCOLM_ADMIN_PASSWORD (the app's secrets.json malcolm_password)"
 fi
+# A root-only copy on the sensor, so the console path works whichever way the
+# password came.
+(umask 077 && printf '%s\n' "$password" > "${STATE}/admin-password")
+log "the admin password is in ${STATE}/admin-password"
 password_hash=$(printf '%s' "$password" | openssl passwd -6 -stdin)
 # Non-interactive auth_setup writes nginx/htpasswd only from this bcrypt hash; without it
 # the file stays empty and nobody can sign in to the web UI.
@@ -176,7 +189,7 @@ chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
 as_malcolm env "PATH=/opt/malcolm-venv/bin:${PATH}" ./scripts/auth_setup \
   --auth-noninteractive --auth-method basic \
   --auth-admin-username malcolm --auth-admin-password-openssl "$password_hash" --auth-admin-password-htpasswd "$htpasswd_hash" \
-  --auth-arkime-password "$password" \
+  --auth-arkime-password="$password" \
   --auth-generate-webcerts --auth-generate-opensearch-internal-creds \
   --auth-generate-netbox-passwords --auth-generate-valkey-password \
   --auth-generate-postgres-password -f docker-compose.yml

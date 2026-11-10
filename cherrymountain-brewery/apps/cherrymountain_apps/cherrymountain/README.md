@@ -84,7 +84,7 @@ App block:
 | `wazuh.manager` | hostname | `wazuh` | Wazuh manager; no `wazuh` block means no Wazuh files |
 | `wazuh.interface`, `wazuh.enrollmentPort` | interface, port | `IF0`, `1515` | Where agents enroll |
 | `wazuh.agents` | hostnames | `[]` | The hosts that run an agent and get the enrollment password: an explicit allowlist (plantgen writes it from plant.yaml `app.wazuh.agents`). Empty enrolls nobody |
-| `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaOperatorPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment`, `vendorGuacPassword`, `vendorTotpSecret` (Base32), `vendorEwsPassword` |
+| `secrets.*` | string | generated | `openplcPassword`, `fuxaPassword`, `fuxaOperatorPassword`, `fuxaJwtSecret`, `influxPassword`, `influxToken`, `grafanaPassword`, `guacamolePassword`, `wazuhEnrollment`, `malcolmPassword`, `wazuhPassword`, `vendorGuacPassword`, `vendorTotpSecret` (Base32), `vendorEwsPassword` |
 | `wireguardKeys` | `generate` or `scenario` | `generate` | `generate` replaces the scenario's `wireguard` keys (plantgen's fixed-seed keys) with per-experiment ones at configure |
 | `verify.timeout`, `verify.clientGrace` | seconds | `15`, `5` | Per-check timeouts in post-start and running |
 | `verify.recheck` | `unprovisioned` or `all` | `unprovisioned` | Which hosts `running` asks again. A check sets minimega's cc filter, which is one per namespace, for a moment; a command that phenix's soh app or a SCORCH component sends from another process in that moment goes to the wrong VM. So by default a host is not asked again once it is `provisioned` (the state is then kept until the next start), and a settled plant gets no cc commands from this app. `all` asks every host on every pass. State of health is the check for a service that stops later |
@@ -103,7 +103,7 @@ Host metadata, selected by `type`:
 | `historian` | `interface` (IF0) | `/etc/default/cm-historian`, Telegraf, Mosquitto, Grafana data sources and dashboard, systemd drop-ins, `cm-historian-provision` and its unit and hook, `cm-export-historian` |
 | `hmi` | `fuxa` (`scada-fuxa`), `view` (`Overview`), `interface` (the FUXA host's, IF0) | `/etc/default/cm-kiosk`, `cm-kiosk`, XDG autostart entry |
 | `guacamole` | `connections` (`ews-rdp`, `ews-ssh`), `recording` (true), `totp` (true) | Guacamole initdb SQL (salted hash only), `/etc/default/cm-guacamole` |
-| `wazuh-manager` | | With the app's `wazuh` block: the enrollment password and boot hook |
+| `wazuh-manager` | | With the app's `wazuh` block: the enrollment and dashboard admin passwords (`/etc/default/cm-wazuh-manager`) and the boot hook |
 | `bbmd` | | Nothing; the topology injects cm-bbmd.service and its settings from `phenix-injects/bbmd/`. Checked only (SoH: the `cm_bbmd.py` process) |
 | `ews` | | `/etc/default/cm-ews` (0600): the OpenPLC REST account `cm_plc_tool.py` uses, the same one the app creates on every PLC |
 
@@ -236,6 +236,30 @@ services agree. Files that hold one are written and injected mode 0600.
   group when they differ, and fails when FUXA lets the account use the users API.
   A re-run (a reboot) and a project re-import leave it alone. The SoH check
   `fuxa-operator-account` signs in as `operator` and checks the same.
+- **Web consoles.** `malcolm_password` (Malcolm's user `malcolm`) and
+  `wazuh_password` (the Wazuh dashboard's user `admin`) are generated like the
+  rest, so the passwords are in `secrets.json` and nobody has to open a VM's
+  console to read them. Both are 24 characters of letters and digits; the Wazuh
+  one also has one of `.+-`, because the Wazuh passwords tool takes only 8 to 64
+  characters with an upper case letter, a lower case letter, a digit, and one of
+  `.*+?-` (it also puts the password into an `eval`, so the app leaves out `*` and
+  `?`). A value set under `secrets` that breaks its rule is refused at
+  configure, and so is a hand-edited `secrets.json` (delete the key to
+  regenerate). Where they go:
+  - Malcolm: for every node the topology gives `cm-malcolm-provision` (malcolm),
+    `/etc/default/cm-malcolm-credentials` (0600, `MALCOLM_ADMIN_PASSWORD`),
+    which only `cm-malcolm-provision.service` reads, after the topology's own
+    `/etc/default/cm-malcolm` (the sizing profile, which the app does not touch).
+  - Wazuh: `WAZUH_ADMIN_PASSWORD` in `/etc/default/cm-wazuh-manager` (0600),
+    read by `cm-wazuh-provision.service`. The script has the passwords tool
+    set the `admin` user's password from a root-only file (`-f`), so it is on no
+    command line, and the tool still generates the other users' (the indexer
+    service accounts and the Wazuh API users); all of them are in
+    `/var/lib/cm-wazuh/passwords.txt` on the VM.
+  Without the app's value (the scripts run by hand), each script generates its own
+  as before. The VMs keep a root-only copy either way
+  (`/var/lib/cm-malcolm/admin-password`, `/var/lib/cm-wazuh/passwords.txt`), so
+  the console path still works.
 - **WireGuard.** With `wireguardKeys: generate`, configure replaces each
   `wireguard` host's private key with one kept in
   `<experiment dir>/cherrymountain/wireguard.json` (0600) and rewrites every

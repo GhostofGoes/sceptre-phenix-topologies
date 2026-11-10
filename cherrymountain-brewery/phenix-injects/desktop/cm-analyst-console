@@ -7,9 +7,11 @@
 # Env (from /etc/default/cm-analyst, optional): ANALYST_URLS, a space separated list
 # (default: Malcolm https://10.40.10.10/ and Wazuh https://10.40.10.11/), and
 # ANALYST_BROWSER (default chromium). Both consoles use self-signed certificates, so
-# the first visit shows a warning; Malcolm asks for the admin user and password that
-# the first boot wrote to /var/lib/cm-malcolm/admin-password on malcolm, and Wazuh for
-# the admin password in /var/lib/cm-wazuh/passwords.txt on wazuh.
+# the first visit shows a warning; Malcolm asks for the user malcolm and its password,
+# and Wazuh for the user admin and its password. Both come from the experiment's
+# secrets.json (malcolm_password and wazuh_password); the VMs also keep them in
+# /var/lib/cm-malcolm/admin-password on malcolm and /var/lib/cm-wazuh/passwords.txt
+# on wazuh.
 set -euo pipefail
 
 if [ -f /etc/default/cm-analyst ]; then

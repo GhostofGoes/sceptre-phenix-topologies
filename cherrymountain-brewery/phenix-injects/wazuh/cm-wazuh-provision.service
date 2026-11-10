@@ -14,6 +14,8 @@ StartLimitBurst=5
 Type=oneshot
 RemainAfterExit=yes
 EnvironmentFile=-/etc/default/cm-wazuh
+# The cherrymountain app's file: the dashboard admin password, root-only.
+EnvironmentFile=-/etc/default/cm-wazuh-manager
 ExecStart=/usr/local/sbin/cm-wazuh-provision
 TimeoutStartSec=45min
 Restart=on-failure

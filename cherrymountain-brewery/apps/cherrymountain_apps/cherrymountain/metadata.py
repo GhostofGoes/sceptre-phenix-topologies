@@ -161,6 +161,48 @@ class Wazuh(Closed):
 #: sourced by shell scripts, so shell metacharacters are refused up front.
 SECRET_CHARS: re.Pattern[str] = re.compile(r"[A-Za-z0-9._~@%+=:,-]+")
 
+#: The Wazuh passwords tool (``wazuh-passwords-tool.sh`` 4.14, the cm-wazuh pin)
+#: accepts a password of 8 to 64 characters with an upper case letter, a lower
+#: case letter, a digit, and one of ``.*+?-`` (``passwords_checkPassword``), and
+#: reads one from a file only when it is made of ``\w.*+?-``
+#: (``passwords_readFileUsers``). It also puts the password, unquoted, into an
+#: ``eval``, so ``*`` and ``?`` (shell globs) are left out here, and a leading
+#: ``-`` is refused: this is the subset the app accepts and generates.
+WAZUH_PASSWORD_CHARS: re.Pattern[str] = re.compile(r"[A-Za-z0-9_.+-]+")
+WAZUH_PASSWORD_SYMBOLS: str = ".+-"
+WAZUH_PASSWORD_LENGTH: tuple[int, int] = (8, 64)
+#: Malcolm's web password (``htpasswd -B``, bcrypt, takes 72 bytes at most;
+#: Malcolm's own limits are 8 to 128).
+MALCOLM_PASSWORD_LENGTH: tuple[int, int] = (8, 72)
+
+
+def wazuh_password_problem(value: str) -> str | None:
+    """Why ``value`` is not a password the Wazuh passwords tool accepts, or
+    None. The message never holds the value."""
+    low, high = WAZUH_PASSWORD_LENGTH
+    if not low <= len(value) <= high:
+        return f"the Wazuh admin password must have {low} to {high} characters"
+    if not WAZUH_PASSWORD_CHARS.fullmatch(value) or value.startswith("-"):
+        return "the Wazuh admin password may use only letters, digits, and . _ + - (and not start with -)"
+    if not (
+        any(c.isupper() for c in value)
+        and any(c.islower() for c in value)
+        and any(c.isdigit() for c in value)
+        and any(c in WAZUH_PASSWORD_SYMBOLS for c in value)
+    ):
+        return "the Wazuh admin password needs an upper case letter, a lower case letter, a digit, and one of . + -"
+    return None
+
+
+def malcolm_password_problem(value: str) -> str | None:
+    """Why ``value`` is not a password for Malcolm's web console, or None."""
+    low, high = MALCOLM_PASSWORD_LENGTH
+    if not low <= len(value) <= high:
+        return f"the Malcolm password must have {low} to {high} characters"
+    if value.startswith("-"):
+        return "the Malcolm password must not start with -"
+    return None
+
 
 class Secrets(Closed):
     """Range-only credentials. Each one that is not set is generated once per
@@ -175,6 +217,26 @@ class Secrets(Closed):
             )
         return value
 
+    @field_validator("wazuh_password")
+    @classmethod
+    def _wazuh_policy(cls, value: SecretStr | None) -> SecretStr | None:
+        problem: str | None = (
+            None if value is None else wazuh_password_problem(value.get_secret_value())
+        )
+        if problem:
+            raise ValueError(problem)
+        return value
+
+    @field_validator("malcolm_password")
+    @classmethod
+    def _malcolm_policy(cls, value: SecretStr | None) -> SecretStr | None:
+        problem: str | None = (
+            None if value is None else malcolm_password_problem(value.get_secret_value())
+        )
+        if problem:
+            raise ValueError(problem)
+        return value
+
     openplc_password: SecretStr | None = None
     fuxa_password: SecretStr | None = None
     fuxa_jwt_secret: SecretStr | None = None
@@ -187,6 +249,11 @@ class Secrets(Closed):
     grafana_password: SecretStr | None = None
     guacamole_password: SecretStr | None = None
     wazuh_enrollment: SecretStr | None = None
+    #: The web console passwords (DESIGN.md 14): Malcolm's user ``malcolm`` and
+    #: the Wazuh dashboard's user ``admin``, which the VMs would otherwise
+    #: generate for themselves at first boot.
+    malcolm_password: SecretStr | None = None
+    wazuh_password: SecretStr | None = None
     #: The vendor persona (DESIGN.md 13): the Guacamole account, its TOTP key
     #: (RFC 6238, Base32), and the EWS account's password.
     vendor_guac_password: SecretStr | None = None

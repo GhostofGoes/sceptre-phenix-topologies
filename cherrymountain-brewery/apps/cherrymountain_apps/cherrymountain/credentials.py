@@ -13,16 +13,24 @@ import base64
 import json
 import os
 import secrets
+import string
 from collections.abc import Callable
 from pathlib import Path
 from typing import Final
 
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, SecretStr, field_validator
 
-from cherrymountain_apps.cherrymountain.metadata import Secrets
+from cherrymountain_apps.cherrymountain.metadata import (
+    WAZUH_PASSWORD_SYMBOLS,
+    Secrets,
+    malcolm_password_problem,
+    wazuh_password_problem,
+)
 
 #: Characters of entropy for generated values (token_urlsafe bytes).
 TOKEN_BYTES: Final[int] = 24
+#: The characters of a console password (credentials.console_password).
+ALNUM_CHARS: Final[str] = string.ascii_letters + string.digits
 
 
 class RangeSecrets(BaseModel):
@@ -37,9 +45,32 @@ class RangeSecrets(BaseModel):
     grafana_password: SecretStr
     guacamole_password: SecretStr
     wazuh_enrollment: SecretStr
+    malcolm_password: SecretStr
+    wazuh_password: SecretStr
     vendor_guac_password: SecretStr
     vendor_totp_secret: SecretStr
     vendor_ews_password: SecretStr
+
+    @field_validator("wazuh_password")
+    @classmethod
+    def _wazuh_policy(cls, value: SecretStr) -> SecretStr:
+        # A stored value too: a hand-edited secrets.json must not reach the VM.
+        if wazuh_password_problem(value.get_secret_value()):
+            raise ValueError(
+                "wazuh_password in secrets.json does not meet the Wazuh password "
+                "policy; delete it to regenerate"
+            )
+        return value
+
+    @field_validator("malcolm_password")
+    @classmethod
+    def _malcolm_policy(cls, value: SecretStr) -> SecretStr:
+        if malcolm_password_problem(value.get_secret_value()):
+            raise ValueError(
+                "malcolm_password in secrets.json is not usable as the Malcolm "
+                "password; delete it to regenerate"
+            )
+        return value
 
 
 def totp_secret() -> str:
@@ -47,8 +78,41 @@ def totp_secret() -> str:
     return base64.b32encode(secrets.token_bytes(20)).decode("ascii")
 
 
+def console_password(length: int = 24, symbols: str = "") -> str:
+    """A password for a web console that a person types in. It is made of
+    letters and digits, with at least one lower case letter, one upper case
+    letter, and one digit, and one of ``symbols`` when any are given; a symbol is
+    never first or last (a leading ``-`` would pass for an option in a command
+    line, and a trailing ``.`` is lost when the password is copied from text)."""
+    middle: list[str] = [
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.digits),
+    ]
+    if symbols:
+        middle.append(secrets.choice(symbols))
+    middle += [
+        secrets.choice(ALNUM_CHARS + symbols) for _ in range(length - 2 - len(middle))
+    ]
+    secrets.SystemRandom().shuffle(middle)
+    return secrets.choice(ALNUM_CHARS) + "".join(middle) + secrets.choice(ALNUM_CHARS)
+
+
+def malcolm_password() -> str:
+    return console_password()
+
+
+def wazuh_password() -> str:
+    """Within what the Wazuh passwords tool accepts (metadata.WAZUH_PASSWORD_*)."""
+    return console_password(symbols=WAZUH_PASSWORD_SYMBOLS)
+
+
 #: Generators for values that are not plain tokens.
-GENERATORS: Final[dict[str, Callable[[], str]]] = {"vendor_totp_secret": totp_secret}
+GENERATORS: Final[dict[str, Callable[[], str]]] = {
+    "vendor_totp_secret": totp_secret,
+    "malcolm_password": malcolm_password,
+    "wazuh_password": wazuh_password,
+}
 
 
 def _write_private(path: Path, text: str) -> None:

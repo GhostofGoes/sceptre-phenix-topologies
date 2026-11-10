@@ -335,7 +335,12 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     custom Suricata rules with a sid below 9000101; `cm-malcolm-wait-ready` waits
     for the processors' ZeroMQ subscriptions before the first pcap. The capture
     unit adds the OpenFlow flow (`in_port=sniffer,actions=output:phenix`) and
-    brings the `phenix` port up (DESIGN.md 14).
+    brings the `phenix` port up (DESIGN.md 14). The web password of the user
+    `malcolm` comes from the cherrymountain app (`malcolm_password` in the
+    experiment's `secrets.json`, injected root-only as
+    `/etc/default/cm-malcolm-credentials`, which only the provisioning unit
+    reads); without the app the first boot generates one. Either way it is in
+    `/var/lib/cm-malcolm/admin-password` on the VM.
 - **Build:** the commands above, with `<name>` set to `cm-malcolm`. The build
   downloads about 10 GB from `ghcr.io` and needs the 64 GB disk.
 - **Used by:** `malcolm`.
@@ -364,7 +369,10 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     and `vm.max_map_count`.
   - The topology injects the rules, decoders, agent group settings, the syslog
     listener, and the provisioning unit. The cherrymountain app's
-    `80-cm-wazuh-manager.sh` turns on password enrollment.
+    `80-cm-wazuh-manager.sh` turns on password enrollment, and its
+    `/etc/default/cm-wazuh-manager` gives the dashboard's `admin` password
+    (`wazuh_password` in `secrets.json`; the password tool generates the other
+    users', and `/var/lib/cm-wazuh/passwords.txt` holds all of them).
 - **Build:** the commands above, with `<name>` set to `cm-wazuh`.
 - **Used by:** `wazuh`.
 - **Pinned versions:** `wazuh-manager`, `wazuh-indexer`, `wazuh-dashboard`

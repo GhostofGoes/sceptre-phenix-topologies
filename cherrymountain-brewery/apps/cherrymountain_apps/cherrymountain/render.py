@@ -1548,16 +1548,23 @@ def render_wazuh(ctx: Context) -> dict[str, list[Injection]]:
         )
     plan: dict[str, list[Injection]] = {}
     out: Path = ctx.host_dir(cfg.manager) / "wazuh"
+    # The enrollment password is for 80-cm-wazuh-manager.sh; the admin password
+    # is for cm-wazuh-provision, whose unit reads this file (EnvironmentFile=).
     env: Path = write(
         out / "cm-wazuh-manager.env",
-        env_file({"WAZUH_REGISTRATION_PASSWORD": password}),
+        env_file(
+            {
+                "WAZUH_REGISTRATION_PASSWORD": password,
+                "WAZUH_ADMIN_PASSWORD": ctx.creds.wazuh_password.get_secret_value(),
+            }
+        ),
         private=True,
     )
     plan[cfg.manager] = [
         Injection(
             src=env,
             dst="/etc/default/cm-wazuh-manager",
-            description="Wazuh enrollment password",
+            description="Wazuh enrollment and dashboard admin passwords",
             permissions="0600",
         ),
         *_packaged(
@@ -1610,6 +1617,43 @@ def render_wazuh(ctx: Context) -> dict[str, list[Injection]]:
             ),
         ]
     return plan
+
+
+# ---------------------------------------------------------------- Malcolm
+
+#: The script the topology injects on the Malcolm sensor (phenix-injects/malcolm)
+#: and the file its unit reads for the credentials the app renders.
+MALCOLM_PROVISION: Final[str] = "/usr/local/sbin/cm-malcolm-provision"
+MALCOLM_CREDENTIALS: Final[str] = "/etc/default/cm-malcolm-credentials"
+
+
+def render_malcolm(ctx: Context) -> dict[str, list[Injection]]:
+    """The web password of Malcolm's user ``malcolm`` (DESIGN.md 14) for every
+    node the topology gives ``cm-malcolm-provision``. The topology owns
+    ``/etc/default/cm-malcolm`` (the sizing profile and the capture port, world
+    readable); the password goes into a file of its own that only the
+    provisioning unit reads, so it does not reach the sensor's other services."""
+    hosts: list[str] = sorted(
+        name
+        for name, node in ctx.nodes.items()
+        if any(i.get("dst") == MALCOLM_PROVISION for i in node.get("injections") or [])
+    )
+    out: dict[str, list[Injection]] = {}
+    for host in hosts:
+        src: Path = write(
+            ctx.host_dir(host) / "malcolm" / "cm-malcolm-credentials.env",
+            env_file({"MALCOLM_ADMIN_PASSWORD": ctx.creds.malcolm_password.get_secret_value()}),
+            private=True,
+        )
+        out[host] = [
+            Injection(
+                src=src,
+                dst=MALCOLM_CREDENTIALS,
+                description="Malcolm web password (per-experiment)",
+                permissions="0600",
+            )
+        ]
+    return out
 
 
 def _os(ctx: Context, hostname: str) -> str:
@@ -1732,7 +1776,7 @@ def render_all(ctx: Context) -> dict[str, list[Injection]]:
             add(name, renderer(ctx, name, md))
         except SourceError as ex:
             failures.append(f"{name}: {ex}")
-    for step in (render_wazuh, render_mgmt, render_vendor):
+    for step in (render_wazuh, render_malcolm, render_mgmt, render_vendor):
         try:
             for name, injects in step(ctx).items():
                 add(name, injects)

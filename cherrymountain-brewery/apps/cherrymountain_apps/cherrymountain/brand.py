@@ -4,12 +4,15 @@
 ``phenix-injects/brand/`` and the renderers inject them from there, so a changed mark
 reaches every host through the copy step and nothing here holds a second copy. This
 module only says which file lands where on which kind of host. The colors of the
-screens are not here: FUXA's come from ``fuxa/build_project.py``.
+screens are not here: FUXA's come from ``fuxa/build_project.py`` and the Grafana series
+colors from ``tokens.json`` through :func:`series_colors`.
 """
 
 from __future__ import annotations
 
-from typing import ClassVar, Final
+import json
+from pathlib import Path
+from typing import Any, ClassVar, Final
 
 from pydantic import BaseModel, ConfigDict
 
@@ -51,3 +54,49 @@ FUXA_TITLES: Final[dict[str, str]] = {
     "scada": f"{NAME} SCADA",
     "bas": f"{NAME} BAS",
 }
+
+
+#: Where the Grafana hosts keep the brand files that cm-grafana-brand copies over Grafana's
+#: own images (phenix-injects/grafana/cm-grafana-brand names the same files).
+GRAFANA_BRAND_DIR: Final[str] = "/opt/cherrymountain/brand"
+GRAFANA_FILES: Final[tuple[BrandFile, ...]] = tuple(
+    BrandFile(
+        name=name,
+        dst=f"{GRAFANA_BRAND_DIR}/{name}",
+        description=f"the brewery's {what} for Grafana",
+    )
+    for name, what in (
+        ("icon.svg", "mark (menu, sign-in, and loading logo)"),
+        ("icon-32.png", "tab icon"),
+        ("icon-256.png", "touch icon"),
+        ("login-background.svg", "sign-in page background"),
+    )
+)
+
+
+def series_colors(tokens_json: Path) -> list[str]:
+    """The chart series colors of ``tokens.json`` (``roles.chart_series``), in order, as
+    ``#RRGGBB``: what a Grafana panel's lines use, ember first."""
+    tokens: dict[str, dict[str, object]] = json.loads(
+        tokens_json.read_text(encoding="utf-8")
+    )
+    names: object = tokens["roles"]["chart_series"]
+    if not isinstance(names, list):
+        raise ValueError("tokens.json roles.chart_series must be a list of color names")
+    colors: dict[str, str] = {k: str(v) for k, v in tokens["colors"].items()}
+    return [colors[str(n)] for n in names]
+
+
+def line_color(regex: str, color: str, dashed: bool = False) -> dict[str, Any]:
+    """A Grafana field override: the series whose name matches ``regex`` (``byRegexp``,
+    a match anywhere in the display name) are drawn in ``color``, dashed if asked.
+    ``fixedColor`` and ``custom.lineStyle`` are the ids Grafana's own panels use
+    (12.4.14, ``public/build``)."""
+    properties: list[dict[str, Any]] = [
+        {"id": "color", "value": {"mode": "fixed", "fixedColor": color}}
+    ]
+    if dashed:
+        properties.append(
+            {"id": "custom.lineStyle", "value": {"fill": "dash", "dash": [10, 10]}}
+        )
+    return {"matcher": {"id": "byRegexp", "options": regex}, "properties": properties}

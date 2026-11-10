@@ -1,0 +1,63 @@
+#!/bin/bash
+# Put the brewery's images into Grafana's web application (historian and sim-ctl).
+# Installed as /usr/local/bin/cm-grafana-brand and run by 67-grafana-brand.sh at boot.
+#
+# Open-source Grafana has no setting for its logo, favicon, or sign-in background (white
+# labeling is an Enterprise feature), and its package says the files under public/ are not
+# for modification (public/img/DO_NOT_MODIFY.md): replacing the files is what is left.
+# That is how it is done here, from the files the app injects into /opt/cherrymountain/brand.
+# At 12.4.14 (checked against the grafana_12.4.14 package, the newest 12.x) each image is
+# on disk three times, byte for byte the same:
+#   public/img/<name>                       the original
+#   public/build/img/<name>                 the copy the index page names: favicon,
+#                                           apple touch icon, loading logo (pkg/api)
+#   public/build/static/img/<stem>.<hash>.<ext>
+#                                           webpack's copy, which the menu and sign-in logo
+#                                           (grafana_icon) and the sign-in background
+#                                           (g8_login_dark, g8_login_light) are loaded from
+# The hash changes with every Grafana build, so the third is found by its stem. Every file of
+# those names that exists is replaced; the script fails when it finds none, which is what a
+# Grafana that moved its images looks like.
+#
+# Not changed, because OSS Grafana has no way: the page title ("... - Grafana"), the alt text
+# of the logo, and the colors of the interface (the theme).
+#
+# Env (optional, for tests): GRAFANA_PUBLIC (default /usr/share/grafana/public) and
+# CM_BRAND_DIR (default /opt/cherrymountain/brand). Safe to run again.
+set -euo pipefail
+
+PUBLIC="${GRAFANA_PUBLIC:-/usr/share/grafana/public}"
+BRAND="${CM_BRAND_DIR:-/opt/cherrymountain/brand}"
+
+log() { echo "cm-grafana-brand: $*"; }
+
+# The name Grafana ships an image under -> the brand file that replaces it.
+declare -A SOURCE=(
+  [grafana_icon.svg]=icon.svg
+  [fav32.png]=icon-32.png
+  [apple-touch-icon.png]=icon-256.png
+  [g8_login_dark.svg]=login-background.svg
+  [g8_login_light.svg]=login-background.svg
+)
+
+replaced=0
+for name in "${!SOURCE[@]}"; do
+  src="${BRAND}/${SOURCE[$name]}"
+  if [ ! -f "$src" ]; then
+    log "FAIL: no ${src}"
+    exit 1
+  fi
+  stem="${name%.*}"
+  ext="${name##*.}"
+  for target in "${PUBLIC}/img/${name}" "${PUBLIC}/build/img/${name}" "${PUBLIC}/build/static/img/${stem}".*."${ext}"; do
+    [ -f "$target" ] || continue
+    install -m 0644 "$src" "$target"
+    replaced=$((replaced + 1))
+  done
+done
+
+if [ "$replaced" -eq 0 ]; then
+  log "FAIL: none of Grafana's images are under ${PUBLIC}"
+  exit 1
+fi
+log "replaced ${replaced} image file(s) under ${PUBLIC}"

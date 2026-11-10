@@ -206,25 +206,10 @@ spec:
           options:
             path: /var/lib/grafana/dashboards/cherrymountain
       EOF
-      # The documents carry the wall clock in @timestamp and the simulated time in
-      # sim_time, so the dashboard opens on the last day of the run.
-      cat > /var/lib/grafana/dashboards/cherrymountain/cm-ground-truth.json <<'EOF'
-      {"uid": "cm-ground-truth", "title": "CherryMountain ground truth", "schemaVersion": 39,
-       "time": {"from": "now-24h", "to": "now+24h"}, "refresh": "30s",
-       "panels": [
-        {"id": 1, "type": "timeseries", "title": "Documents per federate", "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
-         "datasource": {"type": "grafana-opensearch-datasource", "uid": "cm-ground-truth"},
-         "targets": [{"refId": "A", "query": "*", "metrics": [{"id": "1", "type": "count"}],
-                      "bucketAggs": [{"id": "2", "type": "terms", "field": "federate", "settings": {"size": "10"}},
-                                     {"id": "3", "type": "date_histogram", "field": "@timestamp", "settings": {"interval": "auto"}}],
-                      "timeField": "@timestamp"}]},
-        {"id": 2, "type": "logs", "title": "Scenario events", "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
-         "datasource": {"type": "grafana-opensearch-datasource", "uid": "cm-ground-truth"},
-         "targets": [{"refId": "A", "query": "federate:weather AND _exists_:events", "metrics": [{"id": "1", "type": "logs"}],
-                      "bucketAggs": [], "timeField": "@timestamp"}]}
-       ]}
-      EOF
-      chown grafana:grafana /var/lib/grafana/dashboards/cherrymountain/cm-ground-truth.json
+      # The dashboard (cm-ground-truth.json) is not in the image: the cherrymountain app renders
+      # and injects it, so its lines can take the brand's series colors (render.py
+      # ground_truth_dashboard). The documents carry the wall clock in @timestamp and the
+      # simulated time in sim_time, so it opens on the last day of the run.
       systemctl enable opensearch.service grafana-server.service
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------

@@ -56,6 +56,7 @@ the phenix container (`phenix workflow apply` reads it from there):
 | `phenix-injects/openplc/<program>.zip` (ci), `phenix-injects/openplc/<variant>/<program>.zip` (full, lite) | The program ZIPs that `plc/plc-cellar/build_zip.sh` and `plc/common/build_zip.sh` build (Git LFS; a pointer file fails pre-start with a message that says to run `git lfs pull`) |
 | `fuxa/build_project.py` | The FUXA project of each FUXA host (scada-fuxa, and bas-fuxa in full and lite), built for the variant |
 | `phenix-injects/openplc/`, `phenix-injects/fuxa/` | The provisioning scripts and units, injected as they are |
+| `phenix-injects/brand/`, `phenix-injects/grafana/` | The brewery's mark, icons, and colors (copies of `brand/` that `sync.py` keeps), and Grafana's image script. `brand.py` says which file goes where on which host |
 
 plantgen and the FUXA builder are imported from `sourceDir`, not installed in
 the image, so the code always matches the plant data next to it.
@@ -103,9 +104,9 @@ Host metadata, selected by `type`:
 | `openplc` | `program` (the hostname), `northbound` (plant.yaml's: `modbus_slave`, `opcua`, `s7comm`), `opcua.port` (4840), `opcua.interface` (IF0), `opcua.debugMap`, `opcua.cycleTimeMs` (100), `s7comm.port` (102), `restPort` (8443), `compileTimeout` (900) | Program ZIP, `conf/modbus_master.json` and `modbus_slave.json` (plantgen), `conf/opcua.json` (from the compiled program's debug map) or `conf/s7comm.json`, `/etc/default/cm-openplc`, the provisioning script, unit, and boot hook |
 | `fuxa` | `role` (`scada`), `project` (built), `expectDevices` (every project device), `daq` (`auto`: InfluxDB when the app has a historian, else SQLite), `bucket` (the role), `port` (1881) | Project JSON, `mysettings.json` (secure mode, JWT secret, DAQ store, no Node-RED), `/etc/default/cm-fuxa` (the `admin` and `operator` passwords), the provisioning script, unit, and hook, `cm-export-fuxa`, and the brand: the tab icon, the mark, and `66-fuxa-brand.sh` with `FUXA_TITLE` ("CherryMountain Brewery SCADA" or "... BAS") |
 | `rio` | `telnet` (`interface` IF0, `port` 23, `banner` default) | Nothing, unless `telnet` is set: then the ot-sim `config.xml` the ot-sim app rendered gets the telnet module (relay-main). Checked otherwise (ot-sim devices of any role) |
-| `sim-ctl` | `federates` (plant.yaml's for this host) | As `sim-federate` when it runs any |
+| `sim-ctl` | `federates` (plant.yaml's for this host) | As `sim-federate` when it runs any. Where the ground-truth Grafana runs (`ground-truth.env`): its dashboard with the brand's series colors, and the brand's Grafana images and script |
 | `sim-federate` | `federates` (plant.yaml's for this host), `logLevel` (`INFO`) | `helics.json`, `/etc/cherrymountain/federates`, `/etc/default/cm-federate-<name>`, `cm-federate@.service`, `60-cm-federates.sh` |
-| `historian` | `interface` (IF0) | `/etc/default/cm-historian`, Telegraf, Mosquitto, Grafana data sources and dashboard, systemd drop-ins, `cm-historian-provision` and its unit and hook, `cm-export-historian` |
+| `historian` | `interface` (IF0) | `/etc/default/cm-historian`, Telegraf, Mosquitto, Grafana data sources and dashboard, systemd drop-ins, `cm-historian-provision` and its unit and hook, `cm-export-historian`, and the brand's Grafana images and script (the plant dashboard's lines take the series colors of `brand/tokens.json`) |
 | `hmi` | `fuxa` (`scada-fuxa`), `view` (`Overview`), `interface` (the FUXA host's, IF0) | `/etc/default/cm-kiosk` (the view's URL), `/etc/default/cm-kiosk-credentials` (0600: the `operator` sign-in), `cm-kiosk`, XDG autostart entry ([HMI kiosk](#hmi-kiosk)) |
 | `guacamole` | `connections` (`ews-rdp`, `ews-ssh`), `recording` (true), `totp` (true) | Guacamole initdb SQL (salted hash only), `/etc/default/cm-guacamole` |
 | `wazuh-manager` | | With the app's `wazuh` block: the enrollment and dashboard admin passwords (`/etc/default/cm-wazuh-manager`) and the boot hook |

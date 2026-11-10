@@ -486,6 +486,42 @@ def _packaged(
     ]
 
 
+# ---------------------------------------------------------------- brand
+
+
+def brand_grafana(ctx: Context, hostname: str) -> list[Injection]:
+    """The brewery's images for the Grafana of a host (the historian, and sim-ctl where
+    ground truth runs): the brand files, copied from phenix-injects/brand/, and the
+    script that puts them over Grafana's own (brand.py, phenix-injects/grafana/)."""
+    return [
+        *_shared(
+            ctx,
+            hostname,
+            "brand",
+            [(f.name, f.dst, "0644", f.description) for f in brand.GRAFANA_FILES],
+        ),
+        *_shared(
+            ctx,
+            hostname,
+            "grafana",
+            [
+                (
+                    "cm-grafana-brand",
+                    "/usr/local/bin/cm-grafana-brand",
+                    "0755",
+                    "put the brewery's images into Grafana",
+                ),
+                (
+                    "67-grafana-brand.sh",
+                    f"{STARTUP}/67-grafana-brand.sh",
+                    "0755",
+                    "brand Grafana at boot",
+                ),
+            ],
+        ),
+    ]
+
+
 # ---------------------------------------------------------------- FUXA
 
 
@@ -692,6 +728,19 @@ def render_sim(
                     permissions="0600",
                 )
             )
+            # The brand: Grafana's images, and the dashboard with the brand's series
+            # colors (the image no longer carries a dashboard of its own).
+            truth += brand_grafana(ctx, hostname)
+            truth.append(
+                Injection(
+                    src=write(
+                        out / "cm-ground-truth.json",
+                        to_json(ground_truth_dashboard(ctx)),
+                    ),
+                    dst="/var/lib/grafana/dashboards/cherrymountain/cm-ground-truth.json",
+                    description="ground-truth Grafana dashboard",
+                )
+            )
     federates: list[str] = ctx.federates_of(hostname, md)
     if not federates:
         return truth
@@ -834,7 +883,13 @@ def grafana_dashboard_provider() -> dict[str, Any]:
 
 
 def _panel(
-    pid: int, title: str, bucket: str, flux: str, unit: str, y: int
+    pid: int,
+    title: str,
+    bucket: str,
+    flux: str,
+    unit: str,
+    y: int,
+    overrides: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "id": pid,
@@ -842,9 +897,33 @@ def _panel(
         "title": title,
         "datasource": {"type": "influxdb", "uid": f"cm-influx-{bucket}"},
         "gridPos": {"h": 8, "w": 24, "x": 0, "y": y},
-        "fieldConfig": {"defaults": {"unit": unit}, "overrides": []},
+        "fieldConfig": {"defaults": {"unit": unit}, "overrides": overrides or []},
         "targets": [{"refId": "A", "query": flux}],
     }
+
+
+#: The four fermenters of the cellar, in the order their lines take the brand's series colors.
+FERMENTERS: Final[tuple[str, ...]] = ("FV101", "FV102", "FV103", "FV104")
+
+
+def fermenter_overrides(
+    ctx: Context, sensors: tuple[str, ...], dashed: tuple[str, ...] = ()
+) -> list[dict[str, Any]]:
+    """One color per fermenter from the brand's chart series (``tokens.json``, ember
+    first), one override per sensor line; a ``dashed`` sensor's lines are dashed, so the
+    side and cone temperatures of a fermenter differ by dash, not by color."""
+    colors: list[str] = brand.series_colors(
+        ctx.sources.inject_file("brand", "tokens.json")
+    )
+    if len(colors) < len(FERMENTERS):
+        raise SourceError(
+            "tokens.json has fewer chart series colors than the cellar has fermenters"
+        )
+    return [
+        brand.line_color(rf"\.{fv}\.{sensor}\.PV", colors[i], dashed=sensor in dashed)
+        for i, fv in enumerate(FERMENTERS)
+        for sensor in sensors
+    ]
 
 
 #: Where the historian finds the records task (cm-historian-provision).
@@ -903,9 +982,93 @@ def grafana_dashboard(ctx: Context) -> dict[str, Any]:
                 ferm,
                 "fahrenheit",
                 0,
+                fermenter_overrides(ctx, ("TT01", "TT02"), dashed=("TT02",)),
             ),
-            _panel(2, "Apparent extract", scada, gravity, "none", 8),
+            _panel(
+                2,
+                "Apparent extract",
+                scada,
+                gravity,
+                "none",
+                8,
+                fermenter_overrides(ctx, ("DT01",)),
+            ),
             _panel(3, "Packaging PackTags (OEE)", oee, packtags, "none", 16),
+        ],
+    }
+
+
+def ground_truth_dashboard(ctx: Context) -> dict[str, Any]:
+    """The white cell's dashboard on sim-ctl (OpenSearch ground truth): documents per
+    federate, and the scenario events. It was a heredoc in the cm-sim image; it is
+    rendered here so the federates' lines can take the brand's series colors from
+    ``tokens.json`` (one color per federate of plant.yaml, ember first, the cycle
+    starting over after the fifth)."""
+    colors: list[str] = brand.series_colors(
+        ctx.sources.inject_file("brand", "tokens.json")
+    )
+    federates: list[str] = list(ctx.sources.plant().federates)
+    overrides: list[dict[str, Any]] = [
+        brand.line_color(rf"\b{name}\b", colors[i % len(colors)])
+        for i, name in enumerate(federates)
+    ]
+    source: dict[str, str] = {
+        "type": "grafana-opensearch-datasource",
+        "uid": "cm-ground-truth",
+    }
+    return {
+        "uid": "cm-ground-truth",
+        "title": "CherryMountain ground truth",
+        "schemaVersion": 39,
+        "time": {"from": "now-24h", "to": "now+24h"},
+        "refresh": "30s",
+        "panels": [
+            {
+                "id": 1,
+                "type": "timeseries",
+                "title": "Documents per federate",
+                "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+                "datasource": source,
+                "fieldConfig": {"defaults": {}, "overrides": overrides},
+                "targets": [
+                    {
+                        "refId": "A",
+                        "query": "*",
+                        "metrics": [{"id": "1", "type": "count"}],
+                        "bucketAggs": [
+                            {
+                                "id": "2",
+                                "type": "terms",
+                                "field": "federate",
+                                "settings": {"size": "10"},
+                            },
+                            {
+                                "id": "3",
+                                "type": "date_histogram",
+                                "field": "@timestamp",
+                                "settings": {"interval": "auto"},
+                            },
+                        ],
+                        "timeField": "@timestamp",
+                    }
+                ],
+            },
+            {
+                "id": 2,
+                "type": "logs",
+                "title": "Scenario events",
+                "gridPos": {"h": 10, "w": 24, "x": 0, "y": 8},
+                "datasource": source,
+                "targets": [
+                    {
+                        "refId": "A",
+                        "query": "federate:weather AND _exists_:events",
+                        "metrics": [{"id": "1", "type": "logs"}],
+                        "bucketAggs": [],
+                        "timeField": "@timestamp",
+                    }
+                ],
+            },
         ],
     }
 
@@ -1038,6 +1201,7 @@ def render_historian(ctx: Context, hostname: str, md: HistorianHost) -> list[Inj
             ),
         ],
     )
+    injects += brand_grafana(ctx, hostname)
     return injects
 
 

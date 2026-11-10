@@ -565,10 +565,10 @@ brewhouse vessels, the four fermenters and two bright tanks, and the bottling li
 below are the utilities on scales, the power one-line, the cellar's CO₂ sensors, and
 two trends. The values come from the offline simulation. The brewhouse is idle (the
 phase bar's "No phase" is PLC state, which reads 0). The bottling line is Held with an
-empty OEE arc, because BBT-202 is empty (0.0 %): the filler's low-bowl lamp is lit,
+shift OEE of 0, because BBT-202 is empty (0.0 %): the filler's low-bowl lamp is lit,
 the yellow flag beside it is the alarm the bell counts, and the line state, bottle
 counts, and OEE are staged from the machines by the rules of `plc-packaging`. The
-OEE dial draws an arc and no number.
+OEE dial reads 0 with an empty arc.
 
 ![The Brewhouse screen](docs/examples/fuxa-scada-brewhouse.png)
 
@@ -591,7 +591,7 @@ up. "CIP permitted" is lit, which the capture stages from the transfer pump bein
 ![The Packaging screen](docs/examples/fuxa-scada-packaging.png)
 
 The **Packaging** screen at 08:00, with the line running (served over S7 from the
-packaging federate). The line is Execute, and the OEE arc is filled to about 99 %: the
+packaging federate). The line is Execute, and the OEE dial reads 99 and its arc is nearly full: the
 filler runs at 30.0 of 30 bottles/min and 28 of 2,894 bottles are rejected. Each machine
 shows its state, speed, counts, and jam lamp, and the backed-up eyes of conveyors 1
 and 3 are lit. The keg line is Execute, with the wash water at 160 °F and its heater on. The
@@ -649,7 +649,7 @@ The brewhouse station: the range's `cm-kiosk` script ran Chromium in kiosk mode 
 1440x900 display, opened the Brewhouse screen, and signed in as `operator` by itself
 (the name is beside the account icon). The batch engine was brewing against the tests'
 port of the brewhouse PLC: a request was raised about half a minute earlier, and the
-phase bar is on Heat liquor, which reads Complete. The vessel values are the plant's at
+phase bar is on Heat liquor, which reads Idle. The vessel values are the plant's at
 11:00 (see [Scenarios](#scenarios)). There is no window manager or desktop around it,
 so this is the browser only, not the VM's screen.
 
@@ -690,8 +690,8 @@ events only. The same simulated moment feeds cm-viz and the FUXA picture beside 
 
 The **Brewhouse** screen during a brew, from the same run as the Batch picture below.
 The batch engine takes a brew through the brewhouse PLC's handshake, and the phase bar
-is on Heat liquor, which reads Complete, with the batch number at 1 and one request
-accepted. The step in the phase is 0. The vessel values are the plant's at 11:00, not
+is on Heat liquor, which reads Running, with the batch number at 1 and one request
+accepted. The step in the phase is 1. The vessel values are the plant's at 11:00, not
 a brew's, and do not follow the phase: the mash tun is at 167.1 °F with its setpoint at
 152.0 °F.
 
@@ -699,7 +699,7 @@ a brew's, and do not follow the phase: the mash tun is at 167.1 °F with its set
 
 The **Batch** view while the real batch engine script, running in FUXA, takes a brew
 through the PLC handshake: batch FOP-0001 is Running in HLT_HEAT, phase 2 of 11, and
-the PLC's phase state is 5 (Complete). The brewhouse PLC was the tests' port of its
+the PLC's phase state is 5 (Complete), a few seconds after the Brewhouse picture. The brewhouse PLC was the tests' port of its
 program (`fuxa/tests/brewhouse_sim.mjs`) with 4-second phases, and the panel's request
 counter was raised once, as the event does. A phase takes the engine about 18 s, and the
 picture was taken about 25 s after the request. The times are the machine's wall clock.
@@ -780,8 +780,8 @@ lamps are lit, each with a diamond flag (low priority), and both machines are He
 (state 11) with speed 0 and stop reason 10. The rinser, date coder, and case packer are
 Suspended (state 5) behind them. The line is Held, with a diamond flag beside its state
 that the capture stages without the alarm's 10-minute delay. Its stop reason is 2, the
-filler, which is the first machine in line order that is jammed or Held. The OEE arc is
-empty because the filler's speed is 0, and the conveyors' run commands are 0.
+filler, which is the first machine in line order that is jammed or Held. The OEE dial
+reads 0 because the filler's speed is 0, and the conveyors' run commands are 0.
 
 ![The packaging HMI station during the jam](docs/examples/hmi-packaging-station-jam.png)
 

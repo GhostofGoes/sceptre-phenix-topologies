@@ -67,6 +67,7 @@ VNC, and low-CPU displays; it redraws only when a frame arrives.
 | `cherrymountain_viz/server.py` | One port: the page, the read-only `/ws`, `/frame.json`, `/healthz`; a CSP that allows nothing off the server |
 | `cherrymountain_viz/web/` | `index.html`, `app.js`, `scenes/{common,cellar,power}.js`, `svg.html`/`svg.js`, styles |
 | `cherrymountain_viz/web/vendor/three/` | three.js 0.186.1 (MIT, `LICENSE`), vendored unmodified from the npm tarball |
+| `cherrymountain_viz/web/brand/` | The brewery's mark (`icon.svg`, `icon-small.svg`), the tab icon (`favicon.ico`), and `tokens.css`: copies of `../brand/` and a file made from its `tokens.json`. Written by `../sync.py`, never by hand |
 | `tests/` | Frames, the server and its WebSocket, the sim-ctl source against the real event API, the scenarios; `test_browser.py` (marked `browser`) |
 | `tools/shoot.cjs`, `tools/screenshots.py` | Screenshots of the scenes with the offline harness |
 
@@ -75,6 +76,20 @@ SHA-256 `8cd068708ea44f2c73c944b1cead2ba2f0d5c15c8fc194e5700f4e4f4a033fe7`):
 `build/three.module.js`, `build/three.core.js`,
 `examples/jsm/controls/OrbitControls.js`, and `LICENSE`. To bump, replace them
 from the new tarball and run the browser test.
+
+## The brand
+
+The pages wear the brewery's frame ([brand/README.md](../brand/README.md)): an ink page,
+coal panels, paper text, an ember stripe under the header and an ember active tab, the
+small mark at 32 px beside the name, the tab icon, and the title "CherryMountain Brewery
+3D view" (2.5D view on `svg.html`). `style.css` reads the colors from the custom
+properties of `web/brand/tokens.css` (`--cm-ink`, `--cm-coal`, `--cm-paper`, ...), which
+`python3 sync.py` writes from `brand/tokens.json` along with the copies of the mark, so
+nothing here holds a color of the brand or a second copy of the mark. The colors that
+mean something are not the brand's and stay as they were: the stale and no-WebGL banners,
+the data-age pills, the findings' reds, ambers, and blue, the operator-view toggle's
+amber, and everything inside the scenes. No page fetches anything from outside the
+server.
 
 ## Run it
 

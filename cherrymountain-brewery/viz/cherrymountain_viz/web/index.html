@@ -3,8 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CherryMountain 3D view</title>
-  <link rel="icon" href="data:,">
+  <title>CherryMountain Brewery 3D view</title>
+  <link rel="icon" href="brand/favicon.ico" sizes="any">
+  <link rel="icon" href="brand/icon-small.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="brand/tokens.css">
   <link rel="stylesheet" href="style.css">
   <script type="importmap">{"imports": {"three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/"}}</script>
 </head>
@@ -12,8 +14,11 @@
   <canvas id="scene" aria-label="3D view of the plant"></canvas>
   <header class="panel top">
     <div class="brand">
-      <h1>CherryMountain: ground truth</h1>
-      <p>White-cell view. Not part of the plant; never show trainees without a white-cell decision.</p>
+      <img class="mark" src="brand/icon-small.svg" alt="" width="32" height="32">
+      <div>
+        <h1>CherryMountain Brewery: ground truth</h1>
+        <p>White-cell view. Not part of the plant; never show trainees without a white-cell decision.</p>
+      </div>
     </div>
     <nav class="tabs" aria-label="Scene">
       <button data-scene="cellar">Cellar CO₂</button>

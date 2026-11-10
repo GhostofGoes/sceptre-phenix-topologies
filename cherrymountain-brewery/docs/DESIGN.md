@@ -952,15 +952,16 @@ flowchart TB
   chiller, MCC, fans, air, HVAC, base loads). Brew days are scheduled away
   from packaging shifts where possible, but a coincident day peaks near
   330 kW. These are the peaks the BESS shaves.
-- **Emergency panel.** EP-1 runs about 30 kW (chiller at full stage, cold
-  room, purge fans, OT racks, egress lighting). The 100 kW genset leaves
-  margin for compressor starting.
+- **Emergency panel.** EP-1's rated load is 33 kW (chiller and pumps 22, fans
+  6, cold room 3, OT racks 2; `plant.yaml` `loads`), plus egress lighting. The
+  100 kW genset leaves margin for compressor starting. The model puts the whole
+  6 kW fan load (kettle exhaust, makeup air, purge) on EP-1.
 - **Service.** T-1 (500 kVA) has a full-load current of about 601 A at
   480 V. The main breaker and MSB are 800 A, which is within the 125%
   allowance for transformer secondary protection. PV and BESS backfeed
   through the MSB.
-- **Code notes (the one-line is notional).** Two things a real installation
-  would do differently, which the model ignores:
+- **Code notes (the one-line is notional).** What a real installation would
+  do differently or add, which the model ignores:
   - EP-1 carries NFPA 70 (NEC) Article 700 *emergency* loads (egress
     lighting) together with Article 701/702 *standby* loads (glycol, cold
     room, CO₂ detection and purge fans, racks). NEC 700.10(B) requires
@@ -979,18 +980,15 @@ flowchart TB
     municipality may be stricter). Denver's 2025 Building and Fire Code,
     adopted 2025-06-13, is based on the 2024 I-codes with the 2021 IECC kept
     as the energy code. The 200 kWh lithium-ion BESS would be installed to
-    NFPA 855 (2023 edition in force in most adoptions; the 2026 edition adds
-    installation-level large-scale fire testing) and the IFC's ESS section:
-    UL 9540 listing, UL 9540A fire-propagation test data, a hazard mitigation
-    analysis, an emergency response plan, explosion control to NFPA 68 or 69,
-    and commissioning and decommissioning plans submitted to the fire code
-    official. The paper part is not modeled. The `bess-pcs` points carry
-    power, state of charge, connection, and a fault bit, plus the BMS's
-    hottest cell temperature (`PWR.BESS.TT01.PV`; Medium at 122 °F, High at
-    140 °F, where the PCS trips) and an enclosure off-gas detector
-    (`PWR.BESS.AT01.PV`, Critical at 50 ppm), the early warning UL 9540A
-    testing is built around. A `bess-thermal` event drives a failing cell
-    toward thermal runaway ([§18A](#18a-regulatory-and-standards-context)).
+    NFPA 855, UL 9540, and UL 9540A and the IFC's ESS section, with the
+    listing, test data, analyses, and plans of
+    [§18A.3](#18a3-life-safety-fire-and-equipment); that paper part is not
+    modeled. The `bess-pcs` points carry power, state of charge, connection,
+    and a fault bit, plus the BMS's hottest cell temperature
+    (`PWR.BESS.TT01.PV`; Medium at 122 °F, High at 140 °F, where the PCS
+    trips) and an enclosure off-gas detector (`PWR.BESS.AT01.PV`, Critical at
+    50 ppm), the early warning UL 9540A testing is built around. A
+    `bess-thermal` event drives a failing cell toward thermal runaway.
 
 ### 7.3 Power control (`plc-power`)
 
@@ -1001,14 +999,16 @@ flowchart TB
      connected to EP-1, and v1 has no grid-forming BESS.
   2. The ATS senses the loss, starts the genset, and transfers EP-1 within
      about 10 s.
-  3. `plc-power` opens and holds open the large MSB feeders (boiler,
-     packaging, RTU), so restoration can be staged. It sheds EP-1 sub-loads
-     if genset load exceeds 80%.
-  4. When the utility returns, the ATS retransfers after its stable-source
-     timer. PV and BESS reconnect after the IEEE 1547-2018 enter-service
-     intentional delay (clause 4.10.3, Table 39: 300 s by default, adjustable
-     0–600 s; the power federate uses 300 s). `plc-power` recloses the MSB
-     feeders in stages to limit inrush.
+  3. `plc-power` opens and holds open the boiler and packaging feeders and
+     the RTU-1 breaker while the utility is lost or the ATS is still on the
+     genset, so restoration can be staged. It has no EP-1 points and does not
+     shed loads within EP-1; the genset carries EP-1's 33 kW rated load.
+  4. When the utility returns, the ATS retransfers after its 120 s
+     stable-source timer. PV and BESS reconnect after the IEEE 1547-2018
+     enter-service intentional delay (clause 4.10.3, Table 39: 300 s by
+     default, adjustable 0–600 s; the power federate uses 300 s). `plc-power`
+     recloses the feeders one every 60 s (boiler, packaging, then RTU-1) to
+     limit inrush.
 - **BESS dispatch (100 kW / 200 kWh, a 2-hour battery):**
   1. *Priority 1: monthly demand cap.* Demand is billed on the monthly
      peak at all hours, so the BESS holds 15-minute demand under a
@@ -1029,17 +1029,17 @@ flowchart TB
   update and never at startup, so the site dispatch runs until the utility
   acts.
 - **Genset exercise:** weekly, scheduled by `plc-power` through
-  `gen-ats.gen_start` (`PWR.GEN.HS01.CMD`). The exercise runs **under load**:
+  `gen-ats.gen_start` (`PWR.GEN.HS01.CMD`): a 32-minute command at the first
+  moment between 10:00 and 16:00 on Wednesdays when the plant is on the
+  utility with every feeder restored. The exercise runs **under load**:
   once the set is up, the ATS transfers EP-1 to it for the duration of the
   command and retransfers at once when the command clears, then the engine
   cools down for 300 s. That is how NFPA 110 has the monthly test carry the
   emergency loads through the transfer switch: at least 30 minutes at not
   less than 30 % of nameplate kW (30 kW here) or at the manufacturer's
-  exhaust temperature, with weekly inspections, monthly transfer-switch
-  operation, an annual supplemental load test when the monthly load falls
-  short, and written records of every inspection, test, and repair (as the
-  Minnesota Department of Health summarizes the standard's Chapter 8; the
-  NFPA text itself was not read, [§21.3](#213-standards-regulations-and-safety-guidance)).
+  exhaust temperature (the rest of NFPA 110's testing and records, and the
+  summary it was read through, are in [§18A.5](#18a5-electrical-der-and-energy);
+  the NFPA text itself was not read).
   EP-1's rated load is 33 kW, so a brew-day exercise meets the 30 % rule and
   an off-day exercise at about 15 kW does not. A `genset-exercise` event
   ([§9.5](#95-scenario-events-and-ground-truth)) runs a timed test with a
@@ -1065,7 +1065,6 @@ EIA ID 15466), effective 2026-01-01.
 | Generation/transmission demand (seasonal) | same record, TOU demand periods | **Summer (Jun–Sep): $27.14/kW**; **other months: $19.79/kW**. All hours (the record defines no hourly demand window) |
 | Energy TOU window | Schedule SG-TOU ([URDB 69bdaa2ade50eca8ee0baa6a](https://apps.openei.org/USURDB/rate/view/69bdaa2ade50eca8ee0baa6a)) | **On-peak: weekdays 17:00–21:00, all year**; weekends off-peak |
 | Energy rates | same record | On-peak $0.38375/kWh (Jun–Sep), $0.23371/kWh (Oct–May); off-peak $0.09927/kWh |
-
 | Fixed charge | both records | $91.79/month |
 
 Notes and disclosures:
@@ -1091,17 +1090,12 @@ Notes and disclosures:
   small-commercial customers, announced for October 2025 and in effect from
   November 1, 2025. SG-TOU is that small-commercial schedule, which is why
   its window is used. Holidays are not modeled.
-- **Demand interval.** The URDB records leave the demand interval blank, so
-  SV-SGT assumes the common 15-minute interval.
+- **Demand interval.** The URDB records leave the demand interval blank
+  (`demandwindow` is null), so SV-SGT assumes the common 15-minute interval.
 - **Verification.** Both records were re-read through the URDB API on
   2026-11-09 (`api.openei.org/utility_rates`, `getpage=<id>`,
-  `detail=full`). SG's `demandratestructure` is period 1 ($19.79/kW) in
-  January–May and October–December and period 2 ($27.14/kW) in June–September,
-  for all 24 hours on weekdays and weekends. SG-TOU's `energyweekdayschedule`
-  puts hours 17–20 (17:00–21:00) in the $0.38375 period in June–September and
-  the $0.23371 period in the other months, with every other weekday hour and
-  every weekend hour at $0.09927; `peakkwcapacitymax` is 50 and
-  `demandwindow` is null in both records.
+  `detail=full`) and match the table: SG's demand periods cover all 24 hours
+  every day, and SG-TOU's on-peak period is weekday hours 17–20 only.
 
 **Operational consequences built into the scenario:**
 
@@ -1110,7 +1104,10 @@ Notes and disclosures:
 - Demand is billed at all hours on the monthly peak, so brew-day boiler
   peaks are the primary shaving target (BESS priority 1). The 17:00–21:00
   energy shift is secondary.
-- Grafana tracks monthly demand cost and kWh/bbl.
+- The power federate publishes the month-to-date bill
+  (`power/tariff.cost_usd`) and the monthly peak into the ground truth, and the
+  `cherrymountain` app reports demand, peak demand, and kWh/bbl in its KPIs
+  ([§9.5](#95-scenario-events-and-ground-truth)).
 
 ### 7.5 Utility DER link
 
@@ -1143,6 +1140,8 @@ Modbus raw value, engineering value × 10^scale.
 | AI | 7 | PV active power limit in effect, % (pv-inverter) | `PWR.PV.JY01.PV` | 1 |
 | AI | 8 | BESS power, discharge positive (bess-pcs) | `PWR.BESS.JT01.PV` | 1 |
 | AI | 9 | BESS state of charge (bess-pcs) | `PWR.BESS.EY01.PV` | 1 |
+| AI | 10 | BESS hottest cell temperature (bess-pcs) | `PWR.BESS.TT01.PV` | 1 |
+| AI | 11 | BESS enclosure off-gas, ppm (bess-pcs) | `PWR.BESS.AT01.PV` | 0 |
 | BI | 0 | 52-M main breaker closed (relay-main) | `PWR.MAIN.ZS01.PV` | |
 | BI | 1 | 52-M tripped on overcurrent (relay-main) | `PWR.MAIN.YA01.PV` | |
 | BI | 2 | Boiler feeder closed (relay-main) | `PWR.MAIN.ZS02.PV` | |
@@ -1189,17 +1188,19 @@ Modbus raw value, engineering value × 10^scale.
 | `bas-coldroom` (device 3002) | Walk-in cold room (kegs, 36 °F): 1.5 hp condensing unit, defrost, door switch | AI room temperature, AV setpoint, BO compressor, BO defrost, BI door, AV door-open minutes |
 | `bas-vent` (device 3003) | Brewhouse and cellar ventilation, and the CO₂ gas-detection controller for the whole site: kettle hood exhaust fan (VFD), makeup-air unit (gas), 2 cellar purge fans, 4 cellar CO₂ sensors, one CO₂ sensor each at the bulk tank and vaporizer, the filler, and the cold room and draft system, the area exhaust fans, horns and strobes, and two hardwired relays (to rio-cellar and rio-utilities) | AI CO₂ ×7, AI MUA discharge temperature, AO exhaust speed, BO purge fans, BO area exhaust, BO horns and strobes, BO MUA enable, BV CO₂ alarm tiers (cellar), BV area tier 1, BV shutoff relay, BI purge-fan status |
 
-**Local logic.** Each controller runs its own interlocks in ot-sim logic,
-the way real BAS controllers do. For example, CO₂ ≥ 5,000 ppm starts the
+**Local logic.** Each controller has its own interlocks, the way real BAS
+controllers do. They run in the `building` federate, standing in for the ot-sim
+`logic` blocks a device would run ([§12.3](#123-ot-sim-field-devices)). For
+example, CO₂ ≥ 5,000 ppm starts the
 purge fans locally, and bas-vent's gas-detection relay, hardwired into
 rio-cellar, drops at 15,000 ppm so plc-cellar inhibits carbonation; its
 second relay, hardwired into rio-utilities, drops at 30,000 ppm in any area
 and closes the bulk CO₂ supply ([§6.7](#67-cellar-co2-life-safety-interlock)).
-The new sensors sit on bas-vent rather than a new BAS device because bas-vent
-is already the gas-detection controller whose relay §6.7 relies on, one
-controller per detection system is how such panels are built, and the objects
-are appended after the cellar's, so no BACnet instance moves (no new VM, IP,
-or conduit). The `bas-fuxa` front end supervises,
+The area sensors outside the cellar sit on bas-vent rather than a separate BAS
+device because bas-vent is the gas-detection controller whose relay §6.7
+relies on, and one controller per detection system is how such panels are
+built; their objects come after the cellar's in instance order. The `bas-fuxa`
+front end supervises,
 schedules, and alarms. `scada-fuxa` only reads the CO₂ objects for the process
 HMI.
 
@@ -1231,10 +1232,9 @@ router, and it read device 3003.
   `broadcastAddress` to the device's own IP turns the Who-Is into a unicast.
   FUXA then reads the device with no BBMD, with only the FUXA-to-device rule and
   the established-reply rule, and it needs one FUXA device per BACnet device.
-  The design leaves `broadcastAddress` unset on `scada-fuxa`, as the spike did,
-  so FUXA's discovery exercises the BBMDs. plantgen omits the property on
-  `scada-fuxa` (its devices sit on the BAS subnet, behind fw-ot), so the
-  Who-Is goes to `255.255.255.255`, which the OPS BBMD's `/0` prefix hears.
+  plantgen leaves the property unset on `scada-fuxa`, as the spike did, so its
+  Who-Is goes to `255.255.255.255`, which the OPS BBMD's `/0` prefix hears, and
+  FUXA's discovery exercises the BBMDs.
 - **FUXA marks a BACnet device "connected" on the first I-Am from anything**,
   including the OPS BBMD's own. A device that never answers leaves its tags
   `null` while FUXA says connected. SoH and health checks therefore read a tag
@@ -1252,30 +1252,32 @@ A building model treats each space as a **heat bucket**:
 - **Weather:** drives the outside conditions.
 
 The outputs are room temperature, humidity and CO₂, and equipment power.
-Fidelity is a ladder:
+Fidelity is a ladder, from low to high lift:
 
-1. **RC networks (low lift).** An electrical analogy: R is insulation, C is
-   heat storage. A 1R1C model has one mass. 2R2C and 3R2C separate the fast
-   air node from the slow wall/floor mass. That is about 3–10 parameters and
-   about 100 lines of Python. ISO 13790's 5R1C model with solar gains is
-   implemented in `RC_BuildingSimulator` (MIT-style).
-2. **BOPTEST.** Modelica-based emulators in Docker with a REST API
-   (`/advance`, `/inputs`, `/measurements`). The `bestest_air` case, a
-   single-zone office, uses Denver TMY weather.
-3. **EnergyPlus.** Detailed whole-building simulation with a Python
-   callback API (`pyenergyplus`). Related tools: OpenStudio for geometry and
-   Alfalfa for live point read/write.
-4. **Modelica Buildings / Spawn of EnergyPlus.** Equation-based,
-   highest-fidelity HVAC and controls, run as FMUs. This needs a Modelica
-   toolchain.
+1. **RC networks.** An electrical analogy: R is insulation, C is heat
+   storage. A 1R1C model has one mass; 2R2C and 3R2C separate the fast air
+   node from the slow wall/floor mass. About 3–10 parameters and 100 lines of
+   Python. ISO 13790's 5R1C model is implemented in `RC_BuildingSimulator`.
+2. **BOPTEST.** Modelica-based emulators in Docker with a REST API. The
+   `bestest_air` case is a single-zone office on Denver TMY weather.
+3. **EnergyPlus** (with OpenStudio and Alfalfa). Detailed whole-building
+   simulation with a Python callback API.
+4. **Modelica Buildings / Spawn of EnergyPlus.** Equation-based HVAC and
+   controls as FMUs; needs a Modelica toolchain.
+
+The range uses RC networks and well-mixed volumes
+([§8.3](#83-recommendation)). BOPTEST `bestest_air` remains an optional
+upgrade for the office.
 
 ### 8.3 Recommendation
 
-| Space | Model | Effort |
-|---|---|---|
-| Taproom/office | 3R2C zone + RTU model (DX stages, gas heat, economizer, fan) + occupancy-driven CO₂ balance | Days |
-| Walk-in cold room | 1R1C + condensing-unit thermostat + defrost timer + door-open infiltration events | About 1 day |
-| Brewhouse and cellar | Well-mixed volumes: heat and vapor from the kettle; cellar CO₂ balance driven by fermentation | 2–3 days |
+| Space | Model |
+|---|---|
+| Taproom/office | 3R2C zone + RTU model (two DX stages, gas heat, economizer, fan) + occupancy-driven CO₂ balance |
+| Walk-in cold room | 1R1C + condensing-unit thermostat + defrost timer + door-open infiltration events |
+| Cellar | Well-mixed CO₂ balance driven by the CO₂ the tanks vent into the room (spunding, relief valves, scenario releases) |
+| Brewhouse | No room model: the kettle's heat sets the hood exhaust fan speed |
+| Bulk CO₂ tank and vaporizer, filler area, cold room and draft system | Well-mixed CO₂ volumes, one low sensor each, fed by leaks and the filler's vented CO₂ ([§6.7](#67-cellar-co2-life-safety-interlock)) |
 
 **Model equations.** T_a is the air temperature, T_m the mass temperature,
 and T_o the outdoor temperature. The taproom 3R2C zone:
@@ -1287,26 +1289,24 @@ Cold room: C·dT/dt = (T_o − T)/R + Q_door − Q_ref·u
 
 Cellar CO₂ (ppm): V·dC/dt = G_CO₂(t)·10⁶ + Q_vent·(C_out − C)
 
-- G_CO₂ is in m³/s, converted from the fermentation federate's mass flow
+- G_CO₂ is in m³/s, converted from the cellar federate's mass flow
   (`cellar/co2.vent_gps`, [§9.3](#93-models)): G_CO₂ = ṁ_CO₂ / ρ_CO₂.
 - ρ_CO₂ is the site density, about 1.51 kg/m³ at 83.4 kPa and 68 °F. The
   sea-level value, about 1.83 kg/m³, would be 22% off.
 - The room is treated as well mixed. CO₂ is heavier than air, so the
   sensors are mounted low (12–18 in above the floor), and a stratification
-  factor scales the concentration the low sensors read.
+  factor (1.25) scales the concentration the low sensors read.
 
 **Weather.** The weather federate reads the EnergyPlus-distributed
-`USA_CO_Golden-NREL.724666_TMY3.epw` and
-`USA_CO_Denver-Aurora-Buckley.AFB.724695_TMY3.epw` files with its own EPW
-reader. The files are not committed, so without one the federate synthesizes
-Denver weather. The implementation uses neither pvlib nor CoolProp
-([§9.6](#96-implementation-status-and-validation)).
+`USA_CO_Golden-NREL.724666_TMY3.epw` or
+`USA_CO_Denver-Aurora-Buckley.AFB.724695_TMY3.epw` file, when one is
+configured, with its own EPW reader. The files are not committed, so without
+one the federate synthesizes Denver weather.
 
 - The EPW station elevations differ from the site: Golden is at 1,829 m
   (mean 82.1 kPa) and Buckley at 1,726 m (82.7 kPa).
 - The federate therefore corrects the hourly station pressure to the
   site's 1,585 m with the barometric formula before publishing it.
-- BOPTEST `bestest_air` remains an optional upgrade for the office.
 
 **Standards the BAS stands in for.** The current BACnet standard is
 ANSI/ASHRAE 135-2024 (published 2024-12-31, folding 17 addenda into
@@ -1377,11 +1377,11 @@ flowchart LR
 
 | Federate | Host | Step | Publishes (examples) | Subscribes (examples) |
 |---|---|---|---|---|
-| `weather` | sim-ctl | 1 s (the weather itself changes each minute) | `weather/ambient.temp_f`, `weather/ghi.wm2`, `weather/pressure.kpa` | The KPI keys and the 3D view's keys (`plant.yaml` `snapshot`; 188 in full and lite), served as `GET /api/v1/state` and `/kpis` ([§9.5](#95-scenario-events-and-ground-truth)) |
-| `brewhouse` | sim-process | 1 s | `brewhouse/<device>.<point>`, `brewhouse/load.boiler.kw` | `brewhouse/updates` (endpoint), `power/bus.msb.energized`, `weather/pressure.kpa` |
-| `cellar` | sim-process | 1 s (kinetics compressed; exported fluxes real-time-equivalent, [§9.4](#94-time-and-initial-state)) | `cellar/fv101.temp_f`, `cellar/co2.vent_gps`, `cellar/clock.sim_hours` | `cellar/updates`, `weather/ambient.temp_f`, `weather/pressure.kpa` |
-| `utilities` | sim-process | 1 s | `utilities/glycol.supply_f`, `utilities/load.chiller.kw` | `utilities/updates`, `weather/ambient.temp_f` |
-| `packaging` | sim-process | 1 s | `packaging/line.state`, `packaging/load.line.kw` | `packaging/updates` |
+| `weather` | sim-ctl | 1 s (the weather itself changes each minute) | `weather/ambient.temp_f`, `weather/ghi.wm2`, `weather/pressure.kpa` | The KPI keys and the 3D view's keys (`plant.yaml` `snapshot`; 191 in full and lite), served as `GET /api/v1/state` and `/kpis` ([§9.5](#95-scenario-events-and-ground-truth)) |
+| `brewhouse` | sim-process | 1 s | `brewhouse/<device>.<point>`, `brewhouse/load.mcc1.kw` | `brewhouse/updates` (endpoint), `power/bus.mcc1.energized`, `weather/pressure.kpa` |
+| `cellar` | sim-process | 1 s (kinetics compressed; exported fluxes real-time-equivalent, [§9.4](#94-time-and-initial-state)) | `cellar/fv101-side.temp_f`, `cellar/co2.vent_gps`, `cellar/clock.sim_hours` | `cellar/updates`, `utilities/glycol.supply_f`, `weather/pressure.kpa` |
+| `utilities` | sim-process | 1 s | `utilities/glycol.supply_f`, `utilities/load.boiler.kw`, `utilities/load.chiller.kw` | `utilities/updates`, `weather/ambient.temp_f` |
+| `packaging` | sim-process | 1 s | `packaging/line.state`, `packaging/load.line.kw` | `packaging/updates`, `cellar/beer.supply_psia` |
 | `power` | sim-power | 1 s | `power/<device>.<point>`, `power/bus.ep1.energized` | each `<fed>/load.<feeder>.kw` (enumerated by plantgen), `power/updates`, `weather/ghi.wm2` |
 | `building` | sim-building | 10 s | `building/<device>.<point>`, `building/load.rtu.kw` | `building/updates`, `cellar/co2.vent_gps`, `weather/ambient.temp_f`, `weather/ghi.wm2` |
 | ot-sim `io` | each field device | Real-time HELICS federate (no tunable step; ot-sim `start-time`/`end-time`/`real-time` settings) | protocol writes → `<fed>/updates` | `<fed>/<device>.<point>` |
@@ -1395,10 +1395,11 @@ flowchart LR
   one-step (1 s) latency by design, because every federate has a non-zero
   period.
 - **Broker.** HELICS uses the zmq core on its default broker port.
-- **Real-time pacing.** Federates run in HELICS real-time mode, with lag and
-  lead tolerances set per federate.
-- **End time.** The phenix ot-sim app's default HELICS `end-time` of 36000 s
-  must be raised for multi-day experiments.
+- **Real-time pacing.** Federates run in HELICS real-time mode, with 1 s lag
+  and lead tolerances.
+- **End time.** The phenix ot-sim app's default HELICS `end-time` is 36000 s
+  (10 h). `plant.yaml` sets 604800 s (one week) in full and lite and 86400 s
+  in ci.
 
 ### 9.3 Models
 
@@ -1406,8 +1407,10 @@ No mature open-source brewery process simulator exists. The models below are
 written as one Python package (`sim/cherrymountain_sim`). It builds on SimPy
 and OpenDSSDirect.py. SciPy, the CalebBell `ht` library, and PackMLpy are used
 to check the models in the tests. The package has its own helper for the
-HELICS federates. Where this section names CoolProp or pvlib, the code uses its
-own functions instead ([§9.6](#96-implementation-status-and-validation)).
+HELICS federates. It uses neither CoolProp nor pvlib: it has its own EPW
+reader, synthetic Denver weather when no EPW file is present
+([§8.3](#83-recommendation)), and a constant glycol c_p; where this section
+names CoolProp, it is the reference value.
 
 **Mash** (`brewhouse`)
 
@@ -1455,7 +1458,7 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
 
 **Knockout heat exchanger** (`brewhouse`)
 
-- Counterflow ε-NTU, solved for each stage with `ht`:
+- Counterflow ε-NTU for each stage, checked against `ht` in the tests:
   ε = (1 − e^(−NTU(1−Cr))) / (1 − Cr·e^(−NTU(1−Cr))) for Cr < 1. For
   balanced flow (Cr = 1), ε = NTU/(1 + NTU).
 - Stage 1 uses CLT water, whose temperature follows the seasonal Denver
@@ -1510,9 +1513,9 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
 - This fit is in sea-level gauge pressure. CherryMountain adds the ambient
   pressure difference (14.7 − 12.1 = 2.6 psi):
   - 2.6 vol at 34 °F ≈ 10.2 psig at sea level ≈ **12.8 psig gauge on site**.
-  - The provenance of the fit is unconfirmed, so cross-check it with
-    Henry's law (k_H(298 K) ≈ 0.034 mol·kg⁻¹·bar⁻¹, with van 't Hoff
-    temperature dependence).
+  - The provenance of the fit is unconfirmed, so the tests cross-check it
+    with Henry's law (k_H(298 K) ≈ 0.034 mol·kg⁻¹·bar⁻¹, with van 't Hoff
+    temperature dependence); the two agree within 6 %.
 
 **Relief valves** (`cellar`, `sim/cherrymountain_sim/relief.py`)
 
@@ -1556,14 +1559,15 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
 - OpenDSS via OpenDSSDirect.py, based on ot-sim's OpenDSS federate example
   (`testing/e2e/helics/opendss-federate.py` in patsec/ot-sim).
 - 480 V three-phase circuit with a Vsource at 12.47 kV behind T-1.
-- Loads are `Load` elements with kW from the process federates.
+- Loads are `Load` elements with kW from the other federates.
 - PV is a `PVSystem` with irradiance from `weather`. The BESS is a
   `Storage` element with state of charge.
-- Breakers and the ATS are switchable `Line`/`SwtControl` elements.
+- Breakers and the ATS are switchable `Line` elements (`switch=yes`).
 - **Genset:** a second `Vsource` on the EP-1 island bus, enabled only while
-  the genset runs. OpenDSS needs a source element in every island, so this
-  is a modeling convention.
-- pandapower is a documented fallback if islanding proves awkward.
+  the genset carries EP-1. OpenDSS needs a source element in every island, so
+  this is a modeling convention.
+- Bus energization comes from the breaker and ATS logic, not from OpenDSS:
+  elements on a de-energized bus are disabled before each solve.
 
 **Building** (`building`)
 
@@ -1645,14 +1649,14 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
   ground-truth snapshot for the white cell's 3D view
   ([§15.10](#1510-white-cell-3d-view-cm-viz)). Both are built from the weather
   federate's subscriptions, which plantgen derives from `plant.yaml`
-  `snapshot` (the KPI keys were published all along, but nothing subscribed,
-  so the KPIs read zero until this was added). The API rejects an event with a
+  `snapshot`. The API rejects an event with a
   400 when a parameter is unusable, including a `duration` that is not a number
   (a boolean counts as not a number), not positive (0 is allowed for
   `weather-step`, where it holds the step), or longer than 24 hours. A federate
   that still receives a bad event or message logs it and drops it, and keeps
   stepping.
-- **Ground truth.** Each federate writes its true state every step to an
+- **Ground truth.** Each federate writes its true state every 10 federate
+  seconds to an
   in-experiment OpenSearch node on `sim-ctl` (indexes
   `cherrymountain-truth-<federate>-<date>`) over MGMT. A document's
   `@timestamp` is the wall clock, so it lines up with Malcolm and Wazuh, and
@@ -1669,9 +1673,10 @@ own functions instead ([§9.6](#96-implementation-status-and-validation)).
 - **Separation.** Ground truth is deliberately separate from the blue team's
   Malcolm view, so exercises can compare "what happened" with "what was
   observed".
-- **Synthetic data.** No public fermentation time-series dataset exists.
-  Synthetic curves are exported in the Fermentrack/iSpindel CSV schema
-  (`log_time, beer_temp, gravity`), so standard tools can read them.
+- **Synthetic data.** No public fermentation time-series dataset exists, so
+  the cellar federate's curves (in the ground truth) are the range's own. An
+  export in the Fermentrack/iSpindel CSV schema (`log_time, beer_temp,
+  gravity`), so standard tools can read them, is not built.
 
 ### 9.6 Implementation status and validation
 
@@ -1700,21 +1705,18 @@ values:
 | PackML | Matches PackMLpy's table; 5000-command fuzz |
 | Cellar CO₂ | 2627 ppm steady state at 1 g/s (3284 ppm sensed, below the purge stop); tiers clear 10 % below their limit |
 | Relief valves | A 30 psig spunding setpoint holds FV-102 between 13.5 and 15.5 psig with repeated lifts, all vented gas reaching the room; a forced stone lifts the BBT PSV; normal carbonation peaks at 25.4 psia (13.3 psig) at 2.6 vol and 25.6 psia at 2.8 and 3.0 vol over 6 h, never over the 26.1 psia alarm and with no lift (`test_relief.py`) |
-| KPI API | After 2.5 h offline: 2,376 bottles, 28 kegs, 221 kWh, 128 kW demand, 21.2 TTB barrels, 12.04 fl oz mean fill (all zeros before the weather federate subscribed) |
+| KPI API | After 2.5 h offline: 2,376 bottles, 28 kegs, 221 kWh, 128 kW demand, 21.2 TTB barrels, 12.04 fl oz mean fill |
 | Genset exercise (NFPA 110, 40 CFR 60.4211(f)) | A remote start transfers EP-1 and runs 33 kW for 40 min: logged as an exercise that met 30 min at 30 % of nameplate; the everyday 15 kW does not until a 40 kW load bank is added; an outage during a test is logged as an emergency run; test hours accrue against the 100 h/yr cap |
 | Wastewater discharge record (40 CFR 403.5, POTW permit) | A pH 12 caustic slug with the discharge valve commanded is inhibited (120 s inhibited, 1 event); the discharge that follows stays inside 6.0–9.0; hourly samples accumulate |
 | CIP verification record | A 60 min caustic wash on FV-102 is verified (supply past 160 °F, return past 40 mS/cm, flow proven 10 min); a 2 min rinse is logged and not verified |
 | Fill level (NIST HB 133 Table 2-6, 27 CFR 25.142(d)) | 5,000+ bottles in a shift: rejects below 11.5 fl oz under 1 %, lot mean at or above 12 fl oz, quarterly barrel-equivalent variance inside 0.5 %, packaged barrels per the 25.158 case table |
 | 12 h offline run | 2 brews, 14,327 bottles, 227 kW peak |
 
-- **IBU reference.** The check uses the published Tinseth formula. Brewtarget
-  itself was not run.
-- **Not run yet.** A 24 h HELICS soak, and anything on a VM.
+The IBU check uses the published Tinseth formula; Brewtarget itself was not
+run.
 
-**Deviations from the design above** (each is also recorded where it matters):
+**Implementation notes** (behavior the sections above do not spell out):
 
-- The weather federate steps at 1 s, not 60 s. The weather values change once a
-  minute.
 - Chiller staging, the BAS interlocks, and the PV site limit live in the
   federates, not in ot-sim `logic` blocks ([§12.3](#123-ot-sim-field-devices)).
 - **Who starts a brew day.** The 05:00 schedule on brew days and the
@@ -1779,33 +1781,29 @@ values:
   70 °F with the spunding valve sealed from day 4, then a 34 °F crash from day
   10; it holds the bright tanks at 34 °F and carbonates them toward 2.6 vol
   only while the CO₂ relay is healthy ([§6.7](#67-cellar-co2-life-safety-interlock)).
-- PackML uses PackMLpy's transition table on a custom synchronous machine.
-- There is no CoolProp or pvlib. The code has its own EPW reader, synthetic
-  Denver weather when no EPW file is present, and a constant glycol c_p.
 - The live kettle IBU keeps rising through the whirlpool (72 to 86 IBU), above
   the recipe's 68 IBU stand-only estimate.
-- The `plant.yaml` schema grew: signed `int16` points, `written_by` holding
-  registers, alarm kinds `highhigh`, `lowlow`, and `state`, ISA-18.2 `suppress`
-  bits, PACKML tags, and NTP role defaults.
+- Beyond the sketch of [§12.6](#126-plant-tag-database), the `plant.yaml`
+  schema has signed `int16` points, `written_by` holding registers, alarm
+  kinds `highhigh`, `lowlow`, and `state`, ISA-18.2 `suppress` bits, PACKML
+  tags, and NTP role defaults.
 - The FUXA tags for OPC UA and S7 points have `address: null`. The
   `cherrymountain` app resolves them from the compiled program's
   `debug_map.json` ([§12.1](#121-openplc-v4-runtime-v3-fallback)).
-- The event API binds `127.0.0.1:8080` on the weather federate and is reached
-  through the cc tunnel. The `ci` variant has none.
 - The compliance records of [§18A](#18a-regulatory-and-standards-context)
   (the genset test log, the wastewater discharge record, the CIP verification
   records, the fill statistics and TTB barrels) live in the federates and ride
   in the ground-truth documents. Their headline figures are federate outputs
   (no tags, no FUXA change) that the KPI API carries; the filler's
-  `ProdDefectiveCount` now comes from the fill model.
-  The `genset-exercise` and `cip-panel` events are in the event API, and the
-  SCORCH `plantevent` component posts both.
+  `ProdDefectiveCount` comes from the fill model. The SCORCH `plantevent`
+  component posts the `genset-exercise` and `cip-panel` events.
+- The peer reads of `plc-cellar` by `plc-utilities` are generated by
+  plantgen: tags with `peer:` land at `%IX120.0` up through an FC1 device in
+  plc-utilities' `modbus_master.json` that reads 0 when plc-cellar is
+  unreachable.
 
 **Remaining:** the ot-sim `logic` blocks of
-[§12.3](#123-ot-sim-field-devices), and the 24 h soak. The peer reads of
-`plc-cellar` by `plc-utilities` are in plantgen: tags with `peer:` land at
-`%IX120.0` up through an FC1 device in plc-utilities' `modbus_master.json`
-that reads 0 when plc-cellar is unreachable.
+[§12.3](#123-ot-sim-field-devices), a 24 h HELICS soak, and any run on a VM.
 
 ## 10. Network architecture
 

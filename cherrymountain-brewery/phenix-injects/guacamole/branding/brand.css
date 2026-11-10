@@ -1,0 +1,100 @@
+/*
+ * CherryMountain Brewery branding of Guacamole 1.6.0 (the vendor's sign-in page and the
+ * frame around the connection list). The colors are the custom properties of tokens.css,
+ * which sync.py writes from brand/tokens.json; none is written here. Guacamole loads this
+ * after its own CSS, so these rules override it. The selectors are those of the 1.6.0
+ * templates (login.html) and styles (login/styles/, index/styles/, notification/styles/).
+ */
+
+/* Sign-in: an ink page with a coal card, the mark above the name, an ember stripe on top. */
+div.login-ui {
+    background: var(--cm-page-bg-dark);
+    color: var(--cm-page-fg-dark);
+}
+
+.login-ui .login-dialog {
+    background: var(--cm-menu-bg);
+    color: var(--cm-menu-fg);
+    border: 1px solid var(--cm-ash);
+    border-top: 3px solid var(--cm-stripe);
+    box-shadow: 0 0.5em 1.5em rgba(0, 0, 0, 0.5);
+}
+
+.login-ui .login-dialog .logo {
+    width: 4.5em;
+    height: 4.5em;
+    background-size: 4.5em 4.5em;
+    background-repeat: no-repeat;
+    background-image: url("app/ext/cherrymountain-brand/icon.svg");
+}
+
+.login-ui .login-dialog .version .app-name {
+    text-transform: none;
+    font-size: 1.5em;
+    letter-spacing: 0;
+    color: var(--cm-paper);
+}
+
+/* The version number badge is green in Guacamole; here it is a quiet grey. */
+.login-ui .login-dialog .version .version-number {
+    background: var(--cm-ash);
+    color: var(--cm-paper);
+}
+
+.login-ui .login-dialog th,
+.login-ui .login-dialog label,
+.login-ui .login-dialog .field-header {
+    color: var(--cm-paper);
+    text-shadow: none;
+}
+
+.login-ui .login-dialog .login-fields input {
+    background: var(--cm-ink);
+    color: var(--cm-paper);
+    border: 1px solid var(--cm-ash);
+}
+
+.login-ui .login-dialog .login-fields input:focus {
+    outline: none;
+    border-color: var(--cm-flame);
+}
+
+/* The sign-in button is the primary button, in ember. */
+.login-ui .login-dialog .buttons input[type="submit"] {
+    background-color: var(--cm-primary);
+    color: var(--cm-primary-fg);
+    border: 1px solid var(--cm-primary);
+    text-shadow: none;
+}
+
+.login-ui .login-dialog .buttons input[type="submit"]:hover {
+    background-color: var(--cm-flame);
+    border-color: var(--cm-flame);
+    color: var(--cm-ink);
+}
+
+.login-ui .login-dialog .buttons input[type="submit"]:disabled {
+    background-color: var(--cm-ash);
+    border-color: var(--cm-ash);
+    color: var(--cm-paper);
+}
+
+/* The error banner keeps Guacamole's own colors: it is a message, not a frame. */
+
+/* Signed in: the page is light paper, and every header carries the ember stripe. */
+body {
+    background: var(--cm-paper);
+}
+
+.header {
+    border-bottom: 3px solid var(--cm-stripe);
+}
+
+.header h2 {
+    color: var(--cm-ink);
+}
+
+/* Links on the light page are the ink-dark brand colors, not the browser blue. */
+a {
+    color: var(--cm-coal);
+}

@@ -53,6 +53,10 @@ services:
         condition: service_healthy
     volumes:
       - /var/lib/cm-guacamole/recordings:/var/lib/guacamole/recordings:ro
+      # The brewery's branding extension: the entrypoint links every .jar under
+      # GUACAMOLE_HOME/extensions (/etc/guacamole in this image) into the home it
+      # generates. sync.py builds the jar from phenix-injects/guacamole/branding/ and brand/.
+      - /opt/cherrymountain/guacamole/cherrymountain-brand.jar:/etc/guacamole/extensions/cherrymountain-brand.jar:ro
     environment:
       GUACD_HOSTNAME: guacd
       POSTGRESQL_DATABASE: guacamole_db

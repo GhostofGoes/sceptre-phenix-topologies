@@ -78,6 +78,10 @@ spec:
       dst: /opt/cherrymountain/guacamole/docker-compose.yml
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/guacamole/docker-compose.yml
+    - description: the brewery's branding of the Guacamole sign-in page (an extension; sync.py builds it)
+      dst: /opt/cherrymountain/guacamole/cherrymountain-brand.jar
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/guacamole/cherrymountain-brand.jar
     - description: TLS front end of the Guacamole stack
       dst: /opt/cherrymountain/guacamole/nginx.conf
       permissions: '0644'

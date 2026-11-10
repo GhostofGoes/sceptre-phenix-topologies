@@ -17,6 +17,11 @@ After `ot-sim` and before `helics`. ot-sim annotates the field devices with
 `helics/federate`, this app annotates the sim-* federate nodes, and helics
 counts both ([DESIGN.md 15.2](../../../DESIGN.md#152-apps)).
 
+In the full scenario the `mirror` app comes before this one: phenix runs the
+apps of every stage in the order of the scenario's list, and this app's post-start
+needs the ports that the mirror app records in its own post-start
+([Mirror ports](#mirror-ports)).
+
 plantgen emits the block with `runPeriodically: 5m`, so phenix runs the
 `running` stage every five minutes and the status stays current. The schedule
 belongs to the process that starts the experiment:
@@ -36,7 +41,7 @@ belongs to the process that starts the experiment:
 |---|---|
 | configure | Validates the metadata (strict Pydantic models), loads `plant.yaml` for `variant` through plantgen, and checks it against the topology: every plant host of the variant exists, and each of its interfaces has the plant.yaml name, address, prefix length, and VLAN. Annotates each sim node that runs federates with `helics/federate: [{broker: sim-ctl\|mgmt, fed-count: N}]`. Writes each host's `sohProfile` (processes, listeners, custom tests) into this app's host metadata, where phenix's soh app reads it |
 | pre-start | Validates again, then renders the files below into `<experiment dir>/cherrymountain/<host>/` and injects them. An injection replaces any other injection to the same destination, so a rendered file wins over a static one in the topology. `injections.json` lists what went where |
-| post-start, running | Runs `systemctl is-active` for each host's provisioning units through cc (short timeouts; never blocks on a VM that has not booted) and reads the plant KPIs from the sim-ctl event API. Writes both to `status.apps.cherrymountain`. miniccc runs a command without a shell, so the check is the plain unit list. phenix stops the experiment when a post-start stage fails, so post-start records an error it cannot work around (`error: <type>` in the status) instead of failing; `running` reports it to its caller |
+| post-start, running | Runs `systemctl is-active` for each host's provisioning units through cc (short timeouts; never blocks on a VM that has not booted) and reads the plant KPIs from the sim-ctl event API. Writes both to `status.apps.cherrymountain`. miniccc runs a command without a shell, so the check is the plain unit list. phenix stops the experiment when a post-start stage fails, so post-start records an error it cannot work around (`error: <type>` in the status) instead of failing; `running` reports it to its caller. When the scenario has a `mirror` app, both stages first set `options:df_default=false` on its GRE ports ([Mirror ports](#mirror-ports)) |
 | cleanup | Runs the export scripts on the FUXA hosts and the historian, and copies `fuxa-export.tar.gz` (alarm history from the API, plus FUXA's `_db` with the alarm and SQLite DAQ stores) and `influx-backup.tar.gz` to `<files>/cherrymountain/<host>-<file>`. A failed export is logged and recorded, and does not fail the stage |
 
 ## Inputs it reads
@@ -194,7 +199,9 @@ A fuller plant (excerpt):
 
 Host states: `provisioned`, `pending`, `failed`, `unreachable` (no C2 client
 yet), `not-checked` (no provisioning unit). After cleanup, `exports` maps each
-host to the exported file, or to `failed: <error type>`.
+host to the exported file, or to `failed: <error type>`. With a `mirror` app in
+the scenario the status also has a `mirror` entry
+([Mirror ports](#mirror-ports)).
 
 Read it from the stored experiment:
 
@@ -206,6 +213,57 @@ and look under `status.apps.cherrymountain`. `updated` says when the last
 `running` (or post-start) pass wrote it. Right after a start most hosts are
 `pending` or `unreachable` and `kpis.available` is false with the reason; the
 next `running` pass fills them in.
+
+## Mirror ports
+
+The full variant mirrors the plant's VLANs to Malcolm with phenix's `mirror` app,
+which adds a GRE tunnel port to the Open vSwitch bridge of every cluster host. A
+mirrored frame that fills the path MTU grows past it inside the tunnel, and Open
+vSwitch sets DF on the outer header by default, so full-size frames are lost
+unless the port has `options:df_default=false`. The mirror app does not set it,
+and a person had to run an `ovs-vsctl` loop in the minimega container after every
+start. This app does it:
+
+- **Which ports.** The ones the mirror app recorded in `status.apps.mirror`
+  (`mirrors.<target>.mirrorName`, the tunnel port, which is also the mirror's
+  name), not every GRE port on the host. **Which hosts.** Every cluster host of
+  `status.schedules`, as the mirror app creates a port on each.
+- **How.** `ovs-vsctl --timeout=10 set interface <port> options:df_default=false`
+  through minimega's `shell`, in the experiment's namespace: on the headnode
+  `shell`, on another host `mesh send <host> shell`, which is what the mirror app's
+  own `ovs-vsctl` calls do (`mm.MeshShell`). minimega runs the command in its
+  container, where Open vSwitch is, without a shell.
+- **When.** post-start, and again at every `running` pass. The mirror app has to
+  record its status first, so the full scenario lists it before this app. If its
+  status is not there (the app is listed after this one, or its post-start
+  failed), the step records `dfDefault: waiting` and `running` sets the option as
+  soon as the status appears.
+- **Never fails the stage.** A failed start stops the experiment, so a host that
+  does not answer, a missing port, or a dead minimega socket is logged and
+  recorded, and the next `running` pass tries those again.
+- **Safe to repeat.** Setting an option to the value it has changes nothing in
+  Open vSwitch. A port that the status records as set on a host is not sent
+  again, so a settled experiment gets no commands from the `running` stage; a
+  mirror app that ran again made new ports (new random names), which are set.
+- **Nothing to do** without a `mirror` app (lite and ci), with it disabled, in a
+  dry run, or when the mirror uses ERSPAN instead of GRE (`skipped`).
+
+The record, under `status.apps.cherrymountain.mirror`:
+
+```json
+{
+  "dfDefault": "set",
+  "updated": "2026-11-10T01:00:00+00:00",
+  "ports": {
+    "kQ7xT2mLb9NcR4d": {"target": "malcolm", "bridge": "cherrymtn", "hosts": {"phenix-host": "set", "node2": "set"}}
+  }
+}
+```
+
+`dfDefault` is `set` (every port on every host), `incomplete` (a host shows
+`failed: <reason>`), `waiting`, or `skipped`. To check by hand, in the minimega
+container of a cluster host: `ovs-vsctl get interface <port> options:df_default`
+prints `"false"`.
 
 ## Credentials
 

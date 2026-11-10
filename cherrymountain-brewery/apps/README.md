@@ -80,7 +80,9 @@ python3 -I cherrymountain_apps/cherrymountain/tests/build_fixtures.py
 
 ## Contracts with the rest of the topology
 
-- **Scenario order:** `ot-sim`, `cherrymountain`, `helics`.
+- **Scenario order:** `ot-sim`, `cherrymountain`, `helics`; and, where the scenario
+  has one, `mirror` before `cherrymountain`, so the mirror's GRE ports are recorded
+  when this app's post-start sets `df_default=false` on them.
 - **Event API** (cherrymountain_sim on sim-ctl, guest port 8080):
   `GET /api/v1/health`, `POST /api/v1/events` (`{"event": <kind>, ...}`), and
   `GET /api/v1/kpis` (see `cherrymountain/kpi.py` for the fields).

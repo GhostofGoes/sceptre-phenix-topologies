@@ -26,7 +26,7 @@ from phenix_apps.common.error import AppError
 from phenix_apps.common.logger import logger
 from pydantic import BaseModel
 
-from cherrymountain_apps.cherrymountain import kpi, soh
+from cherrymountain_apps.cherrymountain import kpi, mirror, soh
 from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, resolve
 from cherrymountain_apps.cherrymountain.metadata import (
     AppMetadata,
@@ -59,6 +59,11 @@ from cherrymountain_apps.cherrymountain.validation import (
 
 #: Where the cleanup exports land inside a VM before they are copied out.
 EXPORT_DIR: Final[str] = "/tmp/cm-export"
+
+
+def _plain(value: Any) -> Any:
+    """A Box as the dict it holds."""
+    return value.to_dict() if isinstance(value, Box) else value
 
 
 class HostCheck(BaseModel):
@@ -196,6 +201,22 @@ class CherryMountain(AppBase):
             utils.mm_exec_wait(self.mm, vm, cmd, timeout=timeout, client_grace=grace)
         )
 
+    def _shell(self, host: str, command: str) -> list[dict[str, Any]]:
+        """``command`` through minimega's ``shell`` on cluster ``host``, as the mirror
+        app runs its own ``ovs-vsctl`` calls (the Go ``mm.MeshShell``: ``shell`` on
+        the headnode, ``mesh send <host> shell`` on another host). minimega's errors
+        come back in the replies, not as an exception."""
+        return [
+            dict(reply)
+            for reply in utils.mm_compute_cmd(
+                self.mm,
+                experiment=self.exp_name,
+                computes=host,
+                command=command,
+                ignore_error=True,
+            )
+        ]
+
     # ------------------------------------------------------------ stages
 
     def configure(self) -> None:
@@ -268,6 +289,9 @@ class CherryMountain(AppBase):
         )
 
     def post_start(self) -> None:
+        # The mirror's GRE ports need df_default=false before frames flow; this
+        # never fails the stage (see _mirror_df_default).
+        self._mirror_df_default("post-start")
         # phenix stops the experiment when a post-start stage fails (Start's
         # finishStart and stopFailedStart), and this stage only looks: a look
         # that cannot be taken is recorded and logged, never raised.
@@ -290,7 +314,103 @@ class CherryMountain(AppBase):
         # Safe to repeat (runPeriodically, or `phenix experiment trigger
         # running`): every check has a short timeout, and a VM or an event API
         # that does not answer yet is a state in the status, not a failure.
+        # The mirror ports are tried again only where the status does not show
+        # the option set (a host that did not answer, or a mirror app that ran
+        # after this one in post-start).
+        self._mirror_df_default("running")
         self._observe("running")
+
+    # ------------------------------------------------------------ the mirror
+
+    def _mirror_df_default(self, stage: str) -> None:
+        """Set ``options:df_default=false`` on the GRE ports of this experiment's
+        mirror, on every cluster host (mirror.py), and record it in
+        ``status.apps.cherrymountain.mirror``.
+
+        It does nothing when the scenario has no ``mirror`` app (or it is
+        disabled) and in a dry run. It never raises: phenix stops the experiment
+        when a post-start stage fails, so a failure is logged and recorded, and the
+        running stage tries again. Setting the option to the value it has changes
+        nothing in Open vSwitch, and a port the status records as set on a host is
+        not sent again, so repeating it is safe."""
+        if self.dryrun:
+            return
+        app: Any = self.extract_app("mirror")
+        if not app or app.get("disabled"):
+            return
+        previous: mirror.MirrorRecord | None = self._previous_mirror_record()
+        now: str = utils.utc_now().isoformat()
+        try:
+            record: mirror.MirrorRecord = self._apply_df_default(app, previous, now)
+        except Exception as ex:
+            logger.warning(
+                f"{self.name}: {stage} could not set df_default on the mirror's GRE "
+                f"ports ({type(ex).__name__}); the running stage tries again"
+            )
+            record = mirror.MirrorRecord(
+                df_default="incomplete",
+                reason="the step itself failed",
+                updated=now,
+                ports=previous.ports if previous is not None else {},
+                error=type(ex).__name__,
+            )
+        self._set_status(
+            {"mirror": record.model_dump(by_alias=True, exclude_defaults=True)}
+        )
+        failed: set[str] = {
+            host
+            for port in record.ports.values()
+            for host, result in port.hosts.items()
+            if result != mirror.SET
+        }
+        if failed:
+            logger.warning(
+                f"{self.name}: {stage}: df_default=false is not set on every mirror "
+                f"port of {', '.join(sorted(failed))}; see status.apps.{self.name}.mirror"
+            )
+        else:
+            logger.info(
+                f"{self.name}: {stage}: mirror df_default is {record.df_default}"
+                f"{' (' + record.reason + ')' if record.reason else ''}"
+            )
+
+    def _apply_df_default(
+        self, app: Any, previous: mirror.MirrorRecord | None, now: str
+    ) -> mirror.MirrorRecord:
+        metadata: Any = app.get("metadata") or {}
+        if mirror.uses_erspan(_plain(metadata)):
+            return mirror.MirrorRecord(
+                df_default="skipped",
+                reason="the mirror uses ERSPAN tunnels, not GRE",
+                updated=now,
+            )
+        status: Any = self.experiment.get("status") or {}
+        raw: Any = (status.get("apps") or {}).get("mirror")
+        if not raw:
+            # The mirror app records its status when its own post-start succeeds.
+            return mirror.MirrorRecord(
+                df_default="waiting",
+                reason="status.apps.mirror is not recorded yet",
+                updated=now,
+            )
+        return mirror.apply(
+            self._shell,
+            mirror.MirrorStatus.model_validate(_plain(raw)),
+            mirror.cluster_hosts(_plain(status.get("schedules") or {})),
+            previous,
+            now,
+        )
+
+    def _previous_mirror_record(self) -> mirror.MirrorRecord | None:
+        """The record an earlier pass of this run left, if it holds."""
+        apps: Any = (self.experiment.get("status") or {}).get("apps") or {}
+        raw: Any = (apps.get(self.name) or {}).get("mirror")
+        if not raw:
+            return None
+        try:
+            return mirror.MirrorRecord.model_validate(_plain(raw))
+        except ValueError:
+            return None
 
     def _observe(self, stage: str) -> None:
         config, _ = self._validate()

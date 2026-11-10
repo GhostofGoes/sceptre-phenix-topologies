@@ -492,8 +492,8 @@ about a minute after scada-fuxa is up, so you can write values and press
 buttons there with no login. They renew the sign-in by themselves about every
 8 hours; the view reloads when they do.
 
-- **Is it signed in?** The account icon at the top right is blue when it is,
-  and black when it is not. On the station's console, `cat /run/cm-kiosk/status`
+- **Is it signed in?** The account icon at the top right is orange, with
+  `operator` beside it, when it is, and white with no name when it is not. On the station's console, `cat /run/cm-kiosk/status`
   says `state=operator`, or `state=guest` with the reason.
 - **It only ever is the operator.** If you sign in there as another account,
   the station signs back in as `operator` within seconds. Use your own browser

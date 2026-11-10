@@ -55,6 +55,10 @@ projects at pre-start, so these files are for review and for the `--check`.
   PLC's fermentation profile or take it off), and a generated view per device:
   Brewhouse, Cellar points, Packaging, Utilities, Power, and Cellar CO2 on
   scada-fuxa; Building on bas-fuxa. Each row is a label and a value or lamp.
+  A view is at most three columns across (1,240 px) and thirty rows down, so it
+  fits an HMI station's 1440x900 screen beside the menu; a device with more
+  tags (Cellar points) continues in a second band below, which the page
+  scrolls to.
   A tag the operator may write (`access: read-write` in the plantgen tag
   list) also has an input box: a number in the tag's range, or 1 and 0 for a
   bit. That is how an operator resets the CO2 supply shutoff

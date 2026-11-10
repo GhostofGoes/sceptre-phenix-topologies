@@ -764,12 +764,36 @@ OPCUA_NAMESPACE: int = 2
 FUXA_HOSTS: tuple[str, ...] = ("scada-fuxa", "bas-fuxa")
 VARIANTS: tuple[str, ...] = ("full", "lite")
 #: Gauges per generated device view: columns of label, value, and (for a tag
-#: the operator may write) an input box.
-VIEW_ROWS: int = 24
-VIEW_COLUMN: int = 440
-#: Offsets in a column: the value or lamp, then the input box.
-VIEW_VALUE_X: int = 300
-VIEW_INPUT_X: int = 350
+#: the operator may write) an input box. An HMI station's screen is 1440x900
+#: and the menu takes 200 px of it, so a view is at most three columns across
+#: (1,240 px) and thirty rows down. A device with more tags than that goes on
+#: in a second band of columns below the first, which the page scrolls to. A
+#: wider view was cut off at the screen's edge: the conveyors, the fourth
+#: column of the Packaging view, could not be seen at the packaging station.
+VIEW_ROWS: int = 30
+VIEW_ROW_HEIGHT: int = 25
+VIEW_COLUMNS: int = 3
+VIEW_COLUMN: int = 400
+#: Space between two bands of columns.
+VIEW_BAND_GAP: int = 30
+#: Offsets in a column: where a value ends (it is right-aligned, so a long unit
+#: grows toward the label), a lamp's center, and the input box.
+VIEW_VALUE_X: int = 316
+VIEW_LAMP_X: int = 300
+VIEW_INPUT_X: int = 326
+#: Longest label, in characters, beside a value with no unit or a lamp.
+VIEW_LABEL_CHARS: int = 42
+
+
+def view_label(tag: PlantTag) -> str:
+    """A tag's label, cut to what fits in front of its value: a value with a long
+    unit ("30.0 bottles/min") reaches further left than a bare number. The cut
+    is between words (a word cut short reads as a misspelling)."""
+    room: int = VIEW_LABEL_CHARS
+    if is_analog(tag) and tag.units:
+        # 12 px label text is about 6.2 px a character, 14 px value text about 7.5
+        room = min(room, int((VIEW_VALUE_X - 8 - 7.5 * (7 + len(tag.units))) / 6.2))
+    return textwrap.shorten(tag.label, room, placeholder=" ...")
 
 
 def s7_address(plc_iec: str) -> tuple[str, str]:
@@ -868,22 +892,27 @@ def build_device_view(
     "Cellar points" next to the hand-laid "Cellar" view."""
     shown: list[PlantTag] = [t for t in dev.tags if ".ALM_" not in t.name]
     columns: int = max(1, -(-len(shown) // VIEW_ROWS))
-    width: int = LEFT * 2 + VIEW_COLUMN * columns
-    height: int = 70 + 26 * min(len(shown), VIEW_ROWS)
+    bands: int = -(-columns // VIEW_COLUMNS)
+    band_height: int = VIEW_ROWS * VIEW_ROW_HEIGHT + VIEW_BAND_GAP
+    # the last band is as tall as its first column, the fullest one in it
+    last_rows: int = min(len(shown) - (bands - 1) * VIEW_COLUMNS * VIEW_ROWS, VIEW_ROWS)
+    width: int = LEFT * 2 + VIEW_COLUMN * min(columns, VIEW_COLUMNS)
+    height: int = 70 + (bands - 1) * band_height + VIEW_ROW_HEIGHT * last_rows
     title: str = view_name(dev.name)
     if title in taken:
         title = f"{title} points"
     vb: ViewBuilder = ViewBuilder(tags, width=width, height=height)
     vb.text(LEFT, 28, f"{title}: {dev.name}", size=18, bold=True)
     for i, tag in enumerate(shown):
-        x0: int = LEFT + (i // VIEW_ROWS) * VIEW_COLUMN
-        y: int = 64 + 26 * (i % VIEW_ROWS)
-        vb.text(x0, y, textwrap.shorten(tag.label, 36, placeholder=" ..."), size=12)
+        column: int = i // VIEW_ROWS
+        x0: int = LEFT + (column % VIEW_COLUMNS) * VIEW_COLUMN
+        y: int = 64 + (column // VIEW_COLUMNS) * band_height + VIEW_ROW_HEIGHT * (i % VIEW_ROWS)
+        vb.text(x0, y, view_label(tag), size=12)
         if is_analog(tag):
             digits: int = 0 if not tag.divisor or tag.divisor <= 1 else len(str(tag.divisor)) - 1
-            vb.value(x0 + VIEW_VALUE_X, y, tag.name, digits=digits, unit=tag.units or "")
+            vb.value(x0 + VIEW_VALUE_X, y, tag.name, digits=digits, unit=tag.units or "", anchor="end")
         else:
-            vb.lamp(x0 + VIEW_VALUE_X, y - 5, tag.name, "#1e88e5")
+            vb.lamp(x0 + VIEW_LAMP_X, y - 5, tag.name, "#1e88e5")
         if tag.access == "read-write":
             lo, hi = tag.range if is_analog(tag) and tag.range else (0.0, 1.0)
             vb.setpoint_input(x0 + VIEW_INPUT_X, y - 17, tag.name, lo, hi, scope=f"{dev.name}/")

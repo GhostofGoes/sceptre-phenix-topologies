@@ -10,9 +10,19 @@ a scenario, and writes a JSON file of engineering values by FUXA tag name:
   (profile on) for every fermenter; the stage ``CEL.PROFILE.KSnn.STAGE`` is 0 when the
   fermenter's apparent extract is under 0.5 degP (empty), 1 at 5 degP or more, 3 under
   5 degP with the side temperature under 60 degF, and 2 otherwise; the profile's
-  setpoints are 66, 70, and 34 degF and 180 min (the program's starting values); and
-  each fermenter's ``TT01.SP`` and ``TT02.SP`` are what the PLC writes with the
-  profile on: 66 for stage 0 or 1, 70 for stage 2, 34 for stage 3.
+  setpoints are 66, 70, and 34 degF and 180 min (the program's starting values). Each
+  fermenter's ``TT01.SP`` and ``TT02.SP`` (the PLC writes the same value to both
+  with the profile on) follow ``FermentProfile`` for the beer's side temperature
+  ``TT01.PV``: stage 0 (empty) is the beer plus 1 degF (the block's lead); stages 1
+  and 2 are the lesser of the stage's temperature (66 for 1, 70 for 2) and the beer
+  plus 1 degF; stage 3 (crash) is staged as the greater of the crash setpoint (34)
+  and the beer less 1.5 degF. All are limited to 20 to 90 degF and taken to 0.01
+  degF. The crash value is an approximation: the PLC's crash setpoint is a curve
+  that starts at the beer's temperature when the stage begins and falls toward the
+  28 degF glycol by 25 % of what is left each hour, so what it is at one moment
+  depends on how long the crash has lasted, which one moment cannot show. In
+  the same way, a setpoint in stage 1 or 2 stays where it has risen to when the
+  beer cools (the jackets have no heater), and a fill follows the wort down.
 - **autopilot**: the bright tanks' temperature and carbonation setpoints
   (``CEL.BBTnnn.TT01.SP``, ``CEL.BBTnnn.AT01.SP``) are the targets the offline cellar
   federate's built-in operator holds (``Federate._autopilot``).
@@ -21,15 +31,23 @@ a scenario, and writes a JSON file of engineering values by FUXA tag name:
 - **packaging**: what plc-packaging computes from the machines' own values, with the
   program's rules (``plc/plc-packaging/plc-packaging.st``) taken at one moment: the
   line state and mode are the filler's; ``XS01.RUN`` is 1 unless the line state is 2
-  (Stopped) or 9 (Aborted); the line's processed count is the filler's and its
-  defective count is the sum of the five bottling machines' (the keg line is not
-  in it); the stop reason is the first of rinser, filler, coder, labeler, packer, and
+  (Stopped) or 9 (Aborted). The line's processed and defective counts are the
+  shift's (the PLC adds up, wrap-safe, what the filler has processed and what the
+  five bottling machines have rejected since the shift began; the keg line is not
+  in the defective count). The packaging federate's ``shift_bottles`` is the packer's
+  good bottles since the shift began, which is not the filler's processed count, so
+  it cannot be staged as one. The offline machines' counters start at 0 at 04:30 and
+  the line runs only in its 06:00 shift, so each counter already is a count
+  since the shift began: the staged counts are the filler's processed count and the
+  sum of the five defective counts, and this file stops unless ``shift_bottles``
+  equals the packer's total (it does while no bottle was packed before the shift
+  began). The stop reason is the first of rinser, filler, coder, labeler, packer, and
   keg that is jammed or Held (1 to 6, else 0); the shift OEE is the filler's speed
-  over the line's speed setpoint (at most 1) times the good share of processed
-  bottles (1 while none are processed), in percent to 0.1; a conveyor runs when the
-  machine it feeds is Executing and its jam eye is clear; the filler's product valve
-  is open while the filler Executes; the keg washer's heater is on under 165 degF and
-  off from 175 degF (between the two it depends on the heater's last state, so that
+  over the line's speed setpoint (at most 1) times the good share of the shift's
+  processed bottles (1 while none are processed), in percent to 0.1; a conveyor runs
+  when the machine it feeds is Executing and its jam eye is clear; the filler's product
+  valve is open while the filler Executes; the keg washer's heater is on under 165 degF
+  and off from 175 degF (between the two it depends on the heater's last state, so that
   value stays the simulation's). The line's mode command is 1 (production), the
   program's starting value, and its command register is 0, because a command is
   cleared on the scan after it is taken. The conveyor and valve values replace the
@@ -51,9 +69,13 @@ a scenario, and writes a JSON file of engineering values by FUXA tag name:
   its controller is doing), so they read 0. An alarm with a ``suppress`` bit that
   this file stages (the packaging jam alarms and ``PKG.LINE.XS01.RUN``) is 0 while that
   bit is 0, as in the PLC.
-- every other tag the PLC computes (batch state, CIP step, entry permits, the
-  power PLC's schedule bits, a held-off latch) is not in the file, and the
-  stand-in serves 0 for it.
+- **utilities**: ``UTL.CIP.XA01.PV`` (the CIP held for lost return flow) is 0: no wash
+  is running at these moments.
+- every other tag the PLC computes (batch state, the brewhouse's phase parameter and
+  mash-in level, CIP step, entry permits, the power PLC's schedule bits, a held-off
+  latch) is not in the file, and the stand-in serves 0 for it. (A brew day's phase
+  parameter is the batch engine's own, which it hands to the stand-in's port of the
+  brewhouse PLC; see ``fuxa_plant.mjs``.)
 
     python fuxa_snapshot.py SCENARIO OUT.json [--root DIR]
 
@@ -140,7 +162,9 @@ STATE_STOPPED, STATE_EXECUTE, STATE_ABORTED, STATE_HELD = 2, 6, 9, 11
 KEG_WASH_ON_F, KEG_WASH_OFF_F = 165.0, 175.0
 
 
-def stage_packaging(eng: dict[str, Any], kind: dict[str, str], tags: dict[str, Any]) -> None:
+def stage_packaging(
+    packaging: Any, eng: dict[str, Any], kind: dict[str, str], tags: dict[str, Any]
+) -> None:
     """Stage what plc-packaging computes, from the machines' values (see the header)."""
 
     def get(name: str) -> float:
@@ -157,7 +181,11 @@ def stage_packaging(eng: dict[str, Any], kind: dict[str, str], tags: dict[str, A
     put("PKG.LINE.PACKML.MODE_CMD", 1.0)
     put("PKG.LINE.PACKML.CMD", 0.0)
     put("PKG.LINE.XS01.RUN", int(state not in (STATE_STOPPED, STATE_ABORTED)))
-    processed = get("PKG.FILLER.PACKML.PROCESSED")
+    # The shift's counts. The machines' counters (16 bits in the PLC) start at 0 with
+    # the federation and the line runs only in its shift, so they are the shift's
+    # counts as long as no bottle was packed before the shift began.
+    assert packaging.shift_bottles == packaging.bottles_total, "bottles were packed before the shift"
+    processed = min(get("PKG.FILLER.PACKML.PROCESSED"), 65535.0)
     defective = min(sum(get(f"PKG.{m}.PACKML.DEFECTIVE") for m in PACKAGING_MACHINES[:5]), 65535.0)
     put("PKG.LINE.PACKML.PROCESSED", processed)
     put("PKG.LINE.PACKML.DEFECTIVE", defective)
@@ -178,6 +206,33 @@ def stage_packaging(eng: dict[str, Any], kind: dict[str, str], tags: dict[str, A
     wash = get("PKG.KEG.TT01.PV")
     if wash < KEG_WASH_ON_F or wash >= KEG_WASH_OFF_F:
         put("PKG.KEG.HS01.CMD", int(wash < KEG_WASH_ON_F))
+
+
+PROFILE_FERMENT_F, PROFILE_REST_F, PROFILE_CRASH_F = 66.0, 70.0, 34.0
+PROFILE_LEAD_F, PROFILE_CRASH_BELOW_F = 1.0, 1.5
+PROFILE_LIMITS_F = (20.0, 90.0)
+
+
+def profile_setpoint(stage: int, beer_f: float) -> float:
+    """The fermentation profile's setpoint (degF) for a beer at ``beer_f`` in ``stage``.
+
+    FermentProfile in plc-cellar-plant.st: the setpoint leads the beer by 1 degF and
+    goes no higher than the stage's temperature (stage 0, empty, has no cap). The
+    crash (stage 3) is a curve from the beer's temperature toward the glycol that
+    stops at the crash setpoint; here it is the beer less 1.5 degF, not under that
+    setpoint (an approximation: a moment cannot show how long the crash has lasted).
+    """
+    lead = beer_f + PROFILE_LEAD_F
+    match stage:
+        case 0:
+            sp = lead
+        case 1:
+            sp = min(PROFILE_FERMENT_F, lead)
+        case 2:
+            sp = min(PROFILE_REST_F, lead)
+        case _:
+            sp = max(PROFILE_CRASH_F, beer_f - PROFILE_CRASH_BELOW_F)
+    return round(min(max(sp, PROFILE_LIMITS_F[0]), PROFILE_LIMITS_F[1]), 2)
 
 
 def stage_cellar(eng: dict[str, Any], kind: dict[str, str], tags: dict[str, Any]) -> None:
@@ -244,19 +299,20 @@ def main() -> int:
         extract = eng.get(f"CEL.FV10{n}.DT01.PV", 0.0)
         side = eng.get(f"CEL.FV10{n}.TT01.PV", 0.0)
         stage = 0 if extract < 0.5 else (1 if extract >= 5.0 else (3 if side < 60.0 else 2))
+        setpoint = profile_setpoint(stage, side)
         staged = {
             f"CEL.PROFILE.HS0{n}.AUTO": 1,
             f"CEL.PROFILE.KS0{n}.STAGE": stage,
-            f"CEL.FV10{n}.TT01.SP": (66.0, 66.0, 70.0, 34.0)[stage],
-            f"CEL.FV10{n}.TT02.SP": (66.0, 66.0, 70.0, 34.0)[stage],
+            f"CEL.FV10{n}.TT01.SP": setpoint,
+            f"CEL.FV10{n}.TT02.SP": setpoint,
         }
         for key, value in staged.items():
             eng[key] = value
             kind[key] = "profile"
     for key, value in (
-        ("CEL.PROFILE.TC01.SP", 66.0),
-        ("CEL.PROFILE.TC02.SP", 70.0),
-        ("CEL.PROFILE.TC03.SP", 34.0),
+        ("CEL.PROFILE.TC01.SP", PROFILE_FERMENT_F),
+        ("CEL.PROFILE.TC02.SP", PROFILE_REST_F),
+        ("CEL.PROFILE.TC03.SP", PROFILE_CRASH_F),
         ("CEL.PROFILE.KC01.SP", 180.0),
     ):
         eng[key] = value
@@ -272,8 +328,10 @@ def main() -> int:
         if tname and tname not in eng:
             eng[tname] = raw / divisor.get(tname, 1.0)
             kind[tname] = "program"
-    stage_packaging(eng, kind, tags)
+    stage_packaging(src.fed.feds["packaging"], eng, kind, tags)
     stage_cellar(eng, kind, tags)
+    eng["UTL.CIP.XA01.PV"] = 0  # the CIP's return flow is held only in a wash, and none runs
+    kind["UTL.CIP.XA01.PV"] = "utilities"
     alarms = json.loads((plant / "alarms.json").read_text())["alarms"]
     for a in alarms:
         bit = a["name"]
@@ -306,7 +364,7 @@ def main() -> int:
             sort_keys=True,
         )
     )
-    counts = {k: sum(1 for v in kind.values() if v == k) for k in ("sim", "profile", "autopilot", "program", "packaging", "cellar", "alarm")}
+    counts = {k: sum(1 for v in kind.values() if v == k) for k in ("sim", "profile", "autopilot", "program", "packaging", "cellar", "utilities", "alarm")}
     print(f"{name}: {len(eng)} of {len(tags)} tags, {counts}, at {src.fed.t:.0f} s", file=sys.stderr)
     return 0
 

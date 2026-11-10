@@ -31,25 +31,45 @@ caption in the README says which.
   simulation. The fermentation profile is something the PLC computes, so it is staged
   from the offline cellar's state: the profile is on for all four fermenters; a
   fermenter's stage is 0 when its extract is under 0.5 °P, 1 at 5 °P or more, 3 under
-  5 °P with the side temperature under 60 °F, and 2 otherwise; and its setpoints are
-  66 °F for stage 0 or 1, 70 °F for stage 2, and 34 °F for stage 3, which is what the PLC
-  writes with the profile on. The bright tanks' setpoints are the targets of the
-  offline cellar's built-in operator, and the other setpoints are the numbers the PLC
-  programs start with. A high, high-high, or state alarm bit is 1 when the simulated
-  value is past its limit in `alarms.json` (the PLC's on-delay is not applied; a
-  jam alarm stays 0 while the line is Stopped or Aborted, as in the PLC). Low and
-  deviation alarms, and everything else a PLC program would compute (batch state,
-  the CIP step, entry permits, the power PLC's schedule and load-shed bits), read 0.
+  5 °P with the side temperature under 60 °F, and 2 otherwise. Its side and cone
+  setpoints (the PLC writes one value to both with the profile on) follow the
+  function block `FermentProfile` in `plc-cellar-plant.st` for the beer's side
+  temperature: the beer plus 1 °F for stage 0 (empty); the lesser of the stage's
+  temperature (66 °F for stage 1, 70 °F for stage 2) and the beer plus 1 °F for
+  stages 1 and 2; and the greater of 34 °F and the beer less 1.5 °F for stage 3,
+  limited to 20 to 90 °F. **The crash value is an approximation.** The PLC's crash
+  setpoint is a curve that starts at the beer's temperature when the crash begins and
+  falls toward the 28 °F glycol by 25 % of what is left each hour, never under the
+  34 °F crash setpoint, so its value at one moment depends on how long the crash has
+  lasted, which a still picture cannot show; likewise a setpoint in stage 1 or 2 stays
+  where it rose to when the beer cools, and a fill follows the wort down. The bright
+  tanks' setpoints are the targets of the offline cellar's built-in operator, and the
+  other setpoints are the numbers the PLC programs start with. A high, high-high, or
+  state alarm bit is 1 when the simulated value is past its limit in `alarms.json`
+  (the PLC's on-delay is not applied; a jam alarm stays 0 while the line is Stopped
+  or Aborted, as in the PLC). Low and deviation alarms, and everything else a PLC
+  program would compute (batch state, the CIP step, entry permits, the power PLC's
+  schedule and load-shed bits, the CO₂ supply's latched shutoff), read 0. The CIP's
+  "held: return flow lost" (`UTL.CIP.XA01.PV`) is listed in the snapshot at 0, because
+  no wash runs; it would read 0 without that, and the entry only makes it explicit.
+  (The latched CO₂ shutoff is not staged: in the CO₂ attack the supply valve is shut
+  and the relays are dark, but plc-utilities's latch, "Shut off (latched)", reads 0.)
 - **The bottling line** is also something the PLC computes (`plc-packaging.st`), so
   `fuxa_snapshot.py` applies the program's rules to the machines' values at the one
   moment of the snapshot. The line's state and mode are the filler's. The line's run
-  bit is 1 unless that state is 2 (Stopped) or 9 (Aborted). The bottle count is the
-  filler's, and the reject count is the sum of the rinser's, filler's, coder's,
-  labeler's, and packer's (the keg line is not in it). The stop reason is the number
+  bit is 1 unless that state is 2 (Stopped) or 9 (Aborted). The line's counts are the
+  shift's (the PLC adds up, wrap-safe, the filler's processed bottles and the five
+  machines' rejects since the shift began): the bottle count is the filler's, and the
+  reject count is the sum of the rinser's, filler's, coder's, labeler's, and packer's
+  (the keg line is not in it). The packaging federate's `shift_bottles` is the packer's
+  good bottles, not the filler's processed count, so it is not staged; the machines'
+  counters start at 0 with the offline run and the line runs only in its shift, so
+  they already are the shift's counts (the script stops if `shift_bottles` and the
+  packer's total differ, which would mean bottles were packed before the shift). The stop reason is the number
   of the first machine, in line order, that is jammed or Held (1 rinser, 2 filler,
   3 coder, 4 labeler, 5 packer, 6 keg line), else 0. The shift OEE is the filler's
-  speed over the line's speed setpoint (at most 1) times the share of good bottles
-  (1 while none are counted), in percent to 0.1. A conveyor runs when the machine it
+  speed over the line's speed setpoint (at most 1) times the share of the shift's
+  processed bottles that are good (1 while none are counted), in percent to 0.1. A conveyor runs when the machine it
   feeds is Executing and its jam eye is clear, and the filler's product valve is open
   while the filler Executes; these replace the simulation's own values, which do not
   follow the machines. The keg washer's heater is on under 165 °F and off from 175 °F;
@@ -69,7 +89,12 @@ caption in the README says which.
   plant's values are those of 11:00, and the batch engine takes the tests' port of the
   brewhouse PLC (`fuxa/tests/brewhouse_sim.mjs`) through its phases against them, so
   the phase bar, the batch counters, and the Batch view are live and the vessel
-  values are not a brew's. A phase takes about 18 s.
+  values are not a brew's. A phase takes about 19 s. The batch engine passes the
+  strike liquor in liters as the MASH_IN phase's parameter (`BH.BATCH.XC03.PARAM`,
+  1310 while phase 3 runs, for the default recipe), and plc-brewhouse fills the mash
+  tun to a level computed from it (554, or 55.4 %). Neither is staged: the pictures
+  are taken in the first two phases, before MASH_IN, and the stand-in serves the
+  plant's mash tun level (36.4 %), which no phase moves.
 - Unless a caption says otherwise the plant is at 11:00 on its first Wednesday
   (simulated time) with nothing injected; the packaging pictures are from 08:00, when
   the line has beer to fill. A trend holds only what FUXA stored since it started,

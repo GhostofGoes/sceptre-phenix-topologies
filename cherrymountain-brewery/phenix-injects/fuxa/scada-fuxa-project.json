@@ -614,7 +614,7 @@
                   "max": 0,
                   "text": "",
                   "textId": "",
-                  "fractionDigits": 0
+                  "fractionDigits": 1
                 }
               ],
               "options": {
@@ -642,7 +642,7 @@
                   "max": 0,
                   "text": "",
                   "textId": "",
-                  "fractionDigits": 0
+                  "fractionDigits": 1
                 }
               ],
               "options": {
@@ -1183,7 +1183,7 @@
                   "max": 0,
                   "text": "",
                   "textId": "",
-                  "fractionDigits": 0
+                  "fractionDigits": 1
                 }
               ],
               "options": {
@@ -1211,7 +1211,7 @@
                   "max": 0,
                   "text": "",
                   "textId": "",
-                  "fractionDigits": 0
+                  "fractionDigits": 1
                 }
               ],
               "options": {
@@ -1752,7 +1752,7 @@
                   "max": 0,
                   "text": "",
                   "textId": "",
-                  "fractionDigits": 0
+                  "fractionDigits": 1
                 }
               ],
               "options": {
@@ -1780,7 +1780,7 @@
                   "max": 0,
                   "text": "",
                   "textId": "",
-                  "fractionDigits": 0
+                  "fractionDigits": 1
                 }
               ],
               "options": {
@@ -2321,7 +2321,7 @@
                   "max": 0,
                   "text": "",
                   "textId": "",
-                  "fractionDigits": 0
+                  "fractionDigits": 1
                 }
               ],
               "options": {
@@ -2349,7 +2349,7 @@
                   "max": 0,
                   "text": "",
                   "textId": "",
-                  "fractionDigits": 0
+                  "fractionDigits": 1
                 }
               ],
               "options": {

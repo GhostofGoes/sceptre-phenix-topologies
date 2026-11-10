@@ -390,7 +390,7 @@
         {
           "general": {
             "description": "Internet web and SMTP server (protonuke), plus the public NTP and DNS stand-in",
-            "hostname": "inet-nuke"
+            "hostname": "inet-traffic"
           },
           "hardware": {
             "drives": [
@@ -408,13 +408,13 @@
               "description": "dnsmasq: the internet-side names",
               "dst": "/etc/dnsmasq.d/10-public.conf",
               "permissions": "0644",
-              "src": "/phenix/injects/${BRANCH_NAME}/inet-nuke/dnsmasq-public.conf"
+              "src": "/phenix/injects/${BRANCH_NAME}/inet-traffic/dnsmasq-public.conf"
             },
             {
               "description": "start dnsmasq",
-              "dst": "/etc/phenix/startup/60-inet-nuke.sh",
+              "dst": "/etc/phenix/startup/60-inet-traffic.sh",
               "permissions": "0755",
-              "src": "/phenix/injects/${BRANCH_NAME}/inet-nuke/60-inet-nuke.sh"
+              "src": "/phenix/injects/${BRANCH_NAME}/inet-traffic/60-inet-traffic.sh"
             }
           ],
           "labels": {
@@ -5021,13 +5021,13 @@
               "metadata": {
                 "client": "ntp",
                 "source": {
-                  "hostname": "inet-nuke",
+                  "hostname": "inet-traffic",
                   "interface": "IF0"
                 }
               }
             },
             {
-              "hostname": "inet-nuke",
+              "hostname": "inet-traffic",
               "metadata": {
                 "server": "chronyd"
               }
@@ -5037,7 +5037,7 @@
               "metadata": {
                 "client": "chrony",
                 "source": {
-                  "hostname": "inet-nuke",
+                  "hostname": "inet-traffic",
                   "interface": "IF0"
                 }
               }
@@ -5047,7 +5047,7 @@
               "metadata": {
                 "client": "ntp",
                 "source": {
-                  "hostname": "inet-nuke",
+                  "hostname": "inet-traffic",
                   "interface": "IF0"
                 }
               }
@@ -5057,7 +5057,7 @@
               "metadata": {
                 "client": "chrony",
                 "source": {
-                  "hostname": "inet-nuke",
+                  "hostname": "inet-traffic",
                   "interface": "IF0"
                 }
               }
@@ -5067,7 +5067,7 @@
               "metadata": {
                 "client": "chrony",
                 "source": {
-                  "hostname": "inet-nuke",
+                  "hostname": "inet-traffic",
                   "interface": "IF0"
                 }
               }
@@ -5077,7 +5077,7 @@
               "metadata": {
                 "client": "ntp",
                 "source": {
-                  "hostname": "inet-nuke",
+                  "hostname": "inet-traffic",
                   "interface": "IF0"
                 }
               }
@@ -5477,7 +5477,7 @@
                         {
                           "id": 10,
                           "action": "accept",
-                          "description": "corp-inet: CORP to inet-nuke tcp/80",
+                          "description": "corp-inet: CORP to inet-traffic tcp/80",
                           "protocol": "tcp",
                           "source": {
                             "address": "10.10.10.0/24"
@@ -5490,7 +5490,7 @@
                         {
                           "id": 20,
                           "action": "accept",
-                          "description": "corp-inet: CORP to inet-nuke tcp/443",
+                          "description": "corp-inet: CORP to inet-traffic tcp/443",
                           "protocol": "tcp",
                           "source": {
                             "address": "10.10.10.0/24"
@@ -5503,7 +5503,7 @@
                         {
                           "id": 30,
                           "action": "accept",
-                          "description": "corp-inet: CORP to inet-nuke tcp/25",
+                          "description": "corp-inet: CORP to inet-traffic tcp/25",
                           "protocol": "tcp",
                           "source": {
                             "address": "10.10.10.0/24"
@@ -5516,7 +5516,7 @@
                         {
                           "id": 40,
                           "action": "accept",
-                          "description": "corp-inet: CORP to inet-nuke udp/123",
+                          "description": "corp-inet: CORP to inet-traffic udp/123",
                           "protocol": "udp",
                           "source": {
                             "address": "10.10.10.0/24"
@@ -5529,7 +5529,7 @@
                         {
                           "id": 50,
                           "action": "accept",
-                          "description": "corp-inet: CORP to inet-nuke udp/53",
+                          "description": "corp-inet: CORP to inet-traffic udp/53",
                           "protocol": "udp",
                           "source": {
                             "address": "10.10.10.0/24"
@@ -6646,7 +6646,7 @@
           "name": "protonuke",
           "hosts": [
             {
-              "hostname": "inet-nuke",
+              "hostname": "inet-traffic",
               "metadata": {
                 "args": "-serve -http -https -smtp",
                 "sohProfile": {
@@ -6740,28 +6740,28 @@
             "testCustomReachability": [
               {
                 "src": "corp-ws",
-                "dst": "inet-nuke|IF0",
+                "dst": "inet-traffic|IF0",
                 "proto": "tcp",
                 "port": 80,
                 "wait": "5m"
               },
               {
                 "src": "corp-ws",
-                "dst": "inet-nuke|IF0",
+                "dst": "inet-traffic|IF0",
                 "proto": "tcp",
                 "port": 443,
                 "wait": "5m"
               },
               {
                 "src": "corp-ws",
-                "dst": "inet-nuke|IF0",
+                "dst": "inet-traffic|IF0",
                 "proto": "tcp",
                 "port": 25,
                 "wait": "5m"
               },
               {
                 "src": "corp-ws",
-                "dst": "inet-nuke|IF0",
+                "dst": "inet-traffic|IF0",
                 "proto": "udp",
                 "port": 123,
                 "wait": "5m",
@@ -6769,7 +6769,7 @@
               },
               {
                 "src": "corp-ws",
-                "dst": "inet-nuke|IF0",
+                "dst": "inet-traffic|IF0",
                 "proto": "udp",
                 "port": 53,
                 "wait": "5m",
@@ -7441,7 +7441,7 @@
                 "chrony",
                 "cm-bbmd"
               ],
-              "inet-nuke": [
+              "inet-traffic": [
                 "chrony",
                 "dnsmasq",
                 "protonuke"
@@ -7519,7 +7519,7 @@
               "bas-bbmd": [
                 ":47808"
               ],
-              "inet-nuke": [
+              "inet-traffic": [
                 ":80",
                 ":443",
                 ":25",
@@ -7898,7 +7898,7 @@
               ]
             },
             "hostProcesses": {
-              "inet-nuke": [
+              "inet-traffic": [
                 "protonuke",
                 "chronyd",
                 "dnsmasq"

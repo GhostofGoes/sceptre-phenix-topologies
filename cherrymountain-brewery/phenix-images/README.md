@@ -217,7 +217,7 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
 ## cm-svc
 
 - **Purpose:** the small network services: ot-svc (NTP, DNS, syslog relay, and
-  the OPS BBMD), bas-bbmd (the BAS BBMD), and inet-nuke (the internet-side
+  the OPS BBMD), bas-bbmd (the BAS BBMD), and inet-traffic (the internet-side
   name and time service, and the protonuke server).
 - **Base:** the shared noble `minbase` image plus `dnsmasq`, `rsyslog`,
   `python3`, and `python3-venv`, 8 GB disk.
@@ -227,16 +227,16 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
     injected by the topology (`phenix-injects/bbmd/`), and the startup hook
     enables the unit on ot-svc and bas-bbmd only.
   - `dnsmasq` is installed and disabled. The injected plant zone
-    (`phenix-injects/ot-svc/`, `phenix-injects/inet-nuke/`) and the startup
+    (`phenix-injects/ot-svc/`, `phenix-injects/inet-traffic/`) and the startup
     hooks configure and start it.
   - `/etc/cherrymountain` and `/usr/local/lib/cm-bbmd`.
   - The Wazuh agent, disabled ([Wazuh agent](#wazuh-agent)).
-- **Build:** the commands above, with `<name>` set to `cm-svc`. inet-nuke
+- **Build:** the commands above, with `<name>` set to `cm-svc`. inet-traffic
   uses a copy with protonuke added: copy `cm-svc.qc2` to
   `cm-svc-protonuke.qc2`, then run `phenix image inject-miniexe
   /usr/local/bin/protonuke <dir>/cm-svc-protonuke.qc2`.
 - **Used by:** `ot-svc`, `bas-bbmd`, and (as `cm-svc-protonuke.qc2`)
-  `inet-nuke`.
+  `inet-traffic`.
 - **Pinned versions:** `bacpypes3==0.0.110` (the version of the BBMD spike),
   `pydantic>=2.7` (a floor, not a pin), and the Wazuh agent (see
   [Wazuh agent](#wazuh-agent)).

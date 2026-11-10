@@ -1495,40 +1495,40 @@ spec:
       metadata:
         client: ntp
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
-    - hostname: inet-nuke
+    - hostname: inet-traffic
       metadata:
         server: chronyd
     - hostname: vendor-ws
       metadata:
         client: chrony
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: util-rtr
       metadata:
         client: ntp
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: utility-derms
       metadata:
         client: chrony
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: corp-ws
       metadata:
         client: chrony
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: fw-edge
       metadata:
         client: ntp
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: dmz-vpn
       metadata:
@@ -1759,7 +1759,7 @@ spec:
               stateful: true
             - id: 10
               action: accept
-              description: 'corp-inet: CORP to inet-nuke tcp/80'
+              description: 'corp-inet: CORP to inet-traffic tcp/80'
               protocol: tcp
               source:
                 address: 10.10.10.0/24
@@ -1768,7 +1768,7 @@ spec:
                 port: 80
             - id: 20
               action: accept
-              description: 'corp-inet: CORP to inet-nuke tcp/443'
+              description: 'corp-inet: CORP to inet-traffic tcp/443'
               protocol: tcp
               source:
                 address: 10.10.10.0/24
@@ -1777,7 +1777,7 @@ spec:
                 port: 443
             - id: 30
               action: accept
-              description: 'corp-inet: CORP to inet-nuke tcp/25'
+              description: 'corp-inet: CORP to inet-traffic tcp/25'
               protocol: tcp
               source:
                 address: 10.10.10.0/24
@@ -1786,7 +1786,7 @@ spec:
                 port: 25
             - id: 40
               action: accept
-              description: 'corp-inet: CORP to inet-nuke udp/123'
+              description: 'corp-inet: CORP to inet-traffic udp/123'
               protocol: udp
               source:
                 address: 10.10.10.0/24
@@ -1795,7 +1795,7 @@ spec:
                 port: 123
             - id: 50
               action: accept
-              description: 'corp-inet: CORP to inet-nuke udp/53'
+              description: 'corp-inet: CORP to inet-traffic udp/53'
               protocol: udp
               source:
                 address: 10.10.10.0/24
@@ -2553,7 +2553,7 @@ spec:
                 port: 53
   - name: protonuke
     hosts:
-    - hostname: inet-nuke
+    - hostname: inet-traffic
       metadata:
         args: -serve -http -https -smtp
         sohProfile:
@@ -2614,28 +2614,28 @@ spec:
       - fw-ot
       testCustomReachability:
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: tcp
         port: 80
         wait: 5m
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: tcp
         port: 443
         wait: 5m
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: tcp
         port: 25
         wait: 5m
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: udp
         port: 123
         wait: 5m
         udpPacketBase64: GwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: udp
         port: 53
         wait: 5m
@@ -3123,7 +3123,7 @@ spec:
         bas-bbmd:
         - chrony
         - cm-bbmd
-        inet-nuke:
+        inet-traffic:
         - chrony
         - dnsmasq
         - protonuke
@@ -3186,7 +3186,7 @@ spec:
         - :47808
         bas-bbmd:
         - :47808
-        inet-nuke:
+        inet-traffic:
         - :80
         - :443
         - :25
@@ -3642,7 +3642,7 @@ spec:
             chronyc -n tracking | grep -E 'Leap status'
           testStdout: Leap status
       hostProcesses:
-        inet-nuke:
+        inet-traffic:
         - protonuke
         - chronyd
         - dnsmasq

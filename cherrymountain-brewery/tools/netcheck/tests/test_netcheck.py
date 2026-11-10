@@ -73,7 +73,7 @@ def test_dnp3_crosses_ipsec_and_both_firewalls() -> None:
 
 def test_snat_is_undone_for_the_reply() -> None:
     v: m.Variant = m.load_variant("full")
-    fwd, rev = flow(Net(v.topology), "corp-ws", "inet-nuke", "tcp", 443)
+    fwd, rev = flow(Net(v.topology), "corp-ws", "inet-traffic", "tcp", 443)
     assert fwd.snat == [("fw-edge", "203.0.113.2", "10.10.10.10")]
     assert rev is not None
     assert rev.result == "allowed"

@@ -1,5 +1,5 @@
 # cm-svc: ot-svc (chrony, dnsmasq, rsyslog relay, OPS BBMD), bas-bbmd (BAS BBMD),
-# and inet-nuke (the internet-side services; inet-nuke's copy also gets
+# and inet-traffic (the internet-side services; inet-traffic's copy also gets
 # protonuke, see below). Built from a noble minbase image with phenix image
 # build. This is the stored form of an image config (what
 # `phenix config get image/cm-svc` prints), so the POSTBUILD_* scripts below are
@@ -10,7 +10,7 @@
 #   phenix image build -o <dir> -c -x cm-svc
 #   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-svc.qc2
 # inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
-# inet-nuke runs a copy with protonuke added the same way:
+# inet-traffic runs a copy with protonuke added the same way:
 #   cp <dir>/cm-svc.qc2 <dir>/cm-svc-protonuke.qc2
 #   phenix image inject-miniexe /usr/local/bin/protonuke <dir>/cm-svc-protonuke.qc2
 

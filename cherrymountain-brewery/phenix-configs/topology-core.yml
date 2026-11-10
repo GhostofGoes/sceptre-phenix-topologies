@@ -1,6 +1,6 @@
 # cherrymountain-core: the 37 core nodes of the CherryMountain Brewery topology
 # (DESIGN.md 10.2, 11, and 15.3): the four VyOS routers and firewalls, the
-# services (ot-svc, inet-nuke, bas-bbmd), the simulation plane, field devices,
+# services (ot-svc, inet-traffic, bas-bbmd), the simulation plane, field devices,
 # PLCs, SCADA and BAS servers, HMIs, the corporate workstation, and the utility
 # DERMS. Addresses, VLANs, routes, resources, zone labels, autotunnel entries,
 # and boot order come from DESIGN.md; tools/netcheck checks this file against
@@ -269,7 +269,7 @@ spec:
     type: VirtualMachine
   - general:
       description: Internet web and SMTP server (protonuke), plus the public NTP and DNS stand-in
-      hostname: inet-nuke
+      hostname: inet-traffic
     hardware:
       drives:
       - image: cm-svc-protonuke.qc2
@@ -281,11 +281,11 @@ spec:
     - description: 'dnsmasq: the internet-side names'
       dst: /etc/dnsmasq.d/10-public.conf
       permissions: '0644'
-      src: /phenix/injects/${BRANCH_NAME}/inet-nuke/dnsmasq-public.conf
+      src: /phenix/injects/${BRANCH_NAME}/inet-traffic/dnsmasq-public.conf
     - description: start dnsmasq
-      dst: /etc/phenix/startup/60-inet-nuke.sh
+      dst: /etc/phenix/startup/60-inet-traffic.sh
       permissions: '0755'
-      src: /phenix/injects/${BRANCH_NAME}/inet-nuke/60-inet-nuke.sh
+      src: /phenix/injects/${BRANCH_NAME}/inet-traffic/60-inet-traffic.sh
     labels:
       zone: inet
     network:

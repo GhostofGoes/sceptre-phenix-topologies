@@ -9,34 +9,34 @@ hosts:
   metadata:
     client: ntp
     source:
-      hostname: inet-nuke
+      hostname: inet-traffic
       interface: IF0
-- hostname: inet-nuke
+- hostname: inet-traffic
   metadata:
     server: chronyd
 - hostname: util-rtr
   metadata:
     client: ntp
     source:
-      hostname: inet-nuke
+      hostname: inet-traffic
       interface: IF0
 - hostname: utility-derms
   metadata:
     client: chrony
     source:
-      hostname: inet-nuke
+      hostname: inet-traffic
       interface: IF0
 - hostname: corp-ws
   metadata:
     client: chrony
     source:
-      hostname: inet-nuke
+      hostname: inet-traffic
       interface: IF0
 - hostname: fw-edge
   metadata:
     client: ntp
     source:
-      hostname: inet-nuke
+      hostname: inet-traffic
       interface: IF0
 - hostname: fw-ot
   metadata:

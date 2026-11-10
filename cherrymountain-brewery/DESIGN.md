@@ -1837,7 +1837,7 @@ that reads 0 when plc-cellar is unreachable.
 flowchart TB
   subgraph L5["Internet (ShadeCast Cable)"]
     ISP["isp-rtr"]
-    NUKE["inet-nuke"]
+    TRAFFIC["inet-traffic"]
     subgraph VEN["Ridgeline Process Controls (vendor)"]
       VWS["vendor-ws"]
     end
@@ -1886,7 +1886,7 @@ flowchart TB
     ANA["soc-analyst"]
   end
   ISP --- FWEDGE
-  ISP --- NUKE
+  ISP --- TRAFFIC
   ISP --- VWS
   URTR --- ISP
   URTR --- DERMS
@@ -1907,7 +1907,7 @@ flowchart TB
 ```
 
 **Text alternative to the diagram.** The Internet zone holds `isp-rtr`, which
-joins `fw-edge`, `inet-nuke` (the public NTP and DNS stand-in), the vendor
+joins `fw-edge`, `inet-traffic` (the public NTP and DNS stand-in), the vendor
 (`vendor-ws`), and the utility (`util-rtr`, then `utility-derms`). `util-rtr`
 also reaches `fw-edge` over an IPsec tunnel. `fw-edge` is the only router
 between those external networks and the inside: it connects the enterprise
@@ -1976,7 +1976,7 @@ notional design targets):
   in [§10.3](#103-conduit-matrix-default-deny-stateful-logged) are not
   cross-zone: intra-DMZ (vendor tunnel to dmz-jump through dmz-vpn, which
   enforces its own nftables forward policy, [§13](#13-vendor-remote-access)),
-  intra-SOC (soc-analyst), and fw-edge's own NTP from inet-nuke. There are
+  intra-SOC (soc-analyst), and fw-edge's own NTP from inet-traffic. There are
   two documented deviations:
   - The utility DNP3 conduit ([§7.5](#75-utility-der-link)) reaches an L1
     gateway from L5 through fw-edge and fw-ot with no protocol break. It is
@@ -2038,7 +2038,7 @@ VLAN aliases are pinned in `phenix.yml` (`vlanRange` 100–199).
 
 | VLAN (alias) | ID | Subnet | Gateway | Members |
 |---|---:|---|---|---|
-| INET | 101 | 203.0.113.0/24 | isp-rtr .1 | fw-edge .2 (public; WireGuard DNAT and IPsec endpoint), util-rtr .3, inet-nuke .10 |
+| INET | 101 | 203.0.113.0/24 | isp-rtr .1 | fw-edge .2 (public; WireGuard DNAT and IPsec endpoint), util-rtr .3, inet-traffic .10 |
 | VENDOR | 102 | 198.51.100.0/24 | isp-rtr .1 | vendor-ws .10 |
 | UTIL | 103 | 192.0.2.0/24 | util-rtr .1 | utility-derms .10 |
 | CORP | 104 | 10.10.10.0/24 | fw-edge .1 | corp-ws .10 |
@@ -2078,8 +2078,8 @@ static routes are set in topology `network.routes`:
 
 | Source → destination | Service | Firewall | Purpose |
 |---|---|---|---|
-| CORP → INET | TCP 80/443/25, UDP 123/53 (SNAT) | fw-edge | Office web and email (protonuke noise); public NTP/DNS stand-in on inet-nuke |
-| fw-edge → inet-nuke | UDP 123 | — | Edge firewall time from the public NTP stand-in |
+| CORP → INET | TCP 80/443/25, UDP 123/53 (SNAT) | fw-edge | Office web and email (protonuke noise); public NTP/DNS stand-in on inet-traffic |
+| fw-edge → inet-traffic | UDP 123 | — | Edge firewall time from the public NTP stand-in |
 | INET → dmz-vpn | UDP 51820 (DNAT 203.0.113.2 → 10.10.20.10) | fw-edge | Vendor WireGuard |
 | vendor-ws (tunnel 10.99.0.2) → dmz-jump (10.10.20.11) | TCP 443 | dmz-vpn's own nftables `forward` policy (default drop, [§13](#13-vendor-remote-access)); WireGuard AllowedIPs also restrict the peer to dmz-jump | Guacamole login. Anything else from the tunnel address is dropped and logged (`cm-wg-drop`), and Wazuh rule 100105 alerts on it |
 | DMZ hosts → ot-svc | UDP 123, UDP/TCP 53 | fw-ot | Time (Guacamole TOTP needs it) and DNS |
@@ -2255,7 +2255,7 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 | Hostname | Zone | Role | Image | vCPU / GB |
 |---|---|---|---|---|
 | isp-rtr | INET + VENDOR | ShadeCast Cable edge router (VyOS) | vyos | 1 / 2 |
-| inet-nuke | INET | Internet web/SMTP server (protonuke), plus public NTP and DNS stand-in (chronyd, dnsmasq) | cm-svc + protonuke | 1 / 1 |
+| inet-traffic | INET | Internet web/SMTP server (protonuke), plus public NTP and DNS stand-in (chronyd, dnsmasq) | cm-svc + protonuke | 1 / 1 |
 | vendor-ws | VENDOR | Ridgeline Process Controls technician laptop (WireGuard client, browser) | cm-desktop | 2 / 3 |
 | util-rtr | INET + UTIL | Summit Valley Power router, IPsec peer (VyOS) | vyos | 1 / 2 |
 | utility-derms | UTIL | Utility DERMS, DNP3 master | cm-otsim | 1 / 1 |
@@ -3158,7 +3158,7 @@ cherrymountain-brewery/
 │   ├── scenario-lite.yml
 │   └── scenario-ci.yml
 ├── phenix-injects/                 # -> /phenix/injects/cherrymountain-brewery
-│   ├── bbmd/  desktop/  docker/  ews/  fuxa/  guacamole/  inet-nuke/  malcolm/
+│   ├── bbmd/  desktop/  docker/  ews/  fuxa/  guacamole/  inet-traffic/  malcolm/
 │   └── openplc/  ot-svc/  otsim/  sim/  vrouter/  wazuh/  wireguard/
 ├── phenix-images/                  # Image configs (cm-*.yml) and README; built with phenix image build
 ├── apps/                           # cherrymountain_apps: the cherrymountain phenix app (with its script, systemd, and template files, which include the historian and federate units), the plantevent SCORCH component, simctl.py
@@ -3220,7 +3220,7 @@ topology that borrows from it:
 | App | Type | Use in this topology |
 |---|---|---|
 | `startup` | core | Hostnames, interfaces, routes, DNS (ot-svc) |
-| `ntp` | core | **App mode, no `ntp-server` label.** The label switches the app to a legacy mode that ignores per-host settings. `defaultSource` is ot-svc (IF0), and every host is listed, generated by plantgen. Servers (`server: chronyd`): ot-svc (OT zones and DMZ), sim-ctl (MGMT-only field devices), inet-nuke (internet side, CORP, fw-edge). Linux clients use `client: chrony` with the matching `source`; VyOS uses `client: ntp`, the only client type vrouters accept |
+| `ntp` | core | **App mode, no `ntp-server` label.** The label switches the app to a legacy mode that ignores per-host settings. `defaultSource` is ot-svc (IF0), and every host is listed, generated by plantgen. Servers (`server: chronyd`): ot-svc (OT zones and DMZ), sim-ctl (MGMT-only field devices), inet-traffic (internet side, CORP, fw-edge). Linux clients use `client: chrony` with the matching `source`; VyOS uses `client: ntp`, the only client type vrouters accept |
 | `serial` | core | Stretch goal, **go** after the `serial` spike: RS-485 Modbus RTU between rio-utilities and glycol-chiller over a `type: serial` interface. The app bridges a pty to UDP multicast with `socat`, and the pty and `socat` came up at boot with no manual step. Raw echo worked both ways. **ot-sim's own Modbus RTU master and server run over it** (`<serial>` blocks, no ot-sim change, [§12.3](#123-ot-sim-field-devices)): the master logged 0 errors in about 680 polls at a 1 s period and 9600 baud, 300 loopback reads gave 0 errors, and a write on the master's side reached the server's holding register. The link has no baud-rate pacing and no collisions, so loss and timing say nothing about a real RS-485 bus. Two readers on one pty steal each other's bytes, so guest scripts must own the device. **phenix PR #130** (a `serial` app with QEMU `pci-serial` devices on chardev sockets, bridged by one `socat` on the host) carries the same traffic, but its link does not survive a VM redeploy: after `vm kill` the host `socat` exits and nothing restarts it, and the restarted VM did not register its C2 client within 420 s (not isolated). Its `socat -d -d -d -d` logs 4.4 MB per 5 minutes. The design stays on the current serial app until PR #130 gets a reconnect fix ([§19](#19-risks-and-open-questions)); the spike's patch is `spikes/serial/pr130-serial.patch` |
 | `vrouter` | core | VyOS on fw-edge, fw-ot, isp-rtr, util-rtr: ACL rulesets implementing [§10.3](#103-conduit-matrix-default-deny-stateful-logged) (stateful); SNAT and DNAT on fw-edge; IPsec fw-edge ↔ util-rtr (phenix's rendered config commits at boot; see [§10.3](#103-conduit-matrix-default-deny-stateful-logged) and [§19](#19-risks-and-open-questions)); netem emulators on WAN legs (integer loss percent only). Static routes come from topology `network.routes`, which the vrouter templates render. OSPF is supported by phenix but deliberately not used. The templates cannot log, set a syslog target, write `key-exchange`, or give fw-ot its own NTP source, so `cm-vyos-config.sh` does those after boot, and isp-rtr boots first because the app reuses the first router's NTP address for every router ([§10.3](#103-conduit-matrix-default-deny-stateful-logged), [§16](#16-new-and-extended-software)). Router interfaces are `eth0`, `eth1`, … |
 | `tap` | core optional | Not used in the default scenarios. phenix taps live in a network namespace (with a veth /30 and masquerade for `externalAccess`), so they don't give the host a route to VMs. Host access to white-cell services uses `phenix/startup-autotunnel` instead ([§15.3](#153-topology-modules-and-variants)). A dev-only scenario may add a tap with `externalAccess` on MGMT for package mirrors |
@@ -3230,7 +3230,7 @@ topology that borrows from it:
 | `helics` | user | Root broker on sim-ctl (`broker.root: sim-ctl\|mgmt`). It counts federates only from `helics/federate` annotations, so scenario order is `ot-sim`, then `cherrymountain` (which annotates the sim-* federate nodes), then `helics`. Its broker-wait script pings the broker, so the MGMT nftables policy allows ICMP to sim-ctl |
 | `mirror` | user (Go) | GRE mirror of the monitored VLANs to malcolm (`version: v1`, `mirrorVLAN: MIRROR`, host `interface: mirror`, `setupOVS: true`; sketch in [§14](#14-blue-team-monitoring)) |
 | `wireguard` | user | Renders `wg0.conf` on vendor-ws and dmz-vpn from keys and addresses generated by plantgen; `boot: true` enables `wg-quick@wg0` |
-| `protonuke` | user | inet-nuke `-serve -http -https -smtp`; corp-ws and vendor-ws as clients |
+| `protonuke` | user | inet-traffic `-serve -http -https -smtp`; corp-ws and vendor-ws as clients |
 | `cherrymountain` | **new** user | [§16](#16-new-and-extended-software) |
 | `mgmt_tap` | user | Not used; host access uses autotunnel |
 | `sceptre` (bennu) | user | Not used. The ot-sim BACnet module is built ([§16](#16-new-and-extended-software)), so the bennu `hvac` fallback is not needed |
@@ -3270,10 +3270,10 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
   hosts:
     - {hostname: ot-svc, metadata: {server: chronyd}}
     - {hostname: sim-ctl, metadata: {server: chronyd}}
-    - {hostname: inet-nuke, metadata: {server: chronyd}}
+    - {hostname: inet-traffic, metadata: {server: chronyd}}
     - {hostname: scada-fuxa, metadata: {client: chrony}}
     - {hostname: rio-cellar, metadata: {client: chrony, source: {hostname: sim-ctl, interface: mgmt}}}
-    - {hostname: corp-ws, metadata: {client: chrony, source: {hostname: inet-nuke, interface: IF0}}}
+    - {hostname: corp-ws, metadata: {client: chrony, source: {hostname: inet-traffic, interface: IF0}}}
     - {hostname: fw-ot, metadata: {client: ntp}}
 ```
 
@@ -3522,7 +3522,7 @@ Malcolm indexes `rule.name` as a keyword.
 - **miniccc.** Every Linux image gets miniccc via
   `phenix image inject-miniexe`, which SoH, cc, and SCORCH require. That
   command does not work on VyOS, so the prebuilt VyOS image builds miniccc
-  in instead. inet-nuke also gets protonuke via `inject-miniexe` on
+  in instead. inet-traffic also gets protonuke via `inject-miniexe` on
   `cm-svc`.
 - **Root access.** Range images follow the repo convention of a passwordless
   root console (`POSTBUILD_NO_ROOT_PASSWD`, a phenix default kept verbatim),
@@ -3690,14 +3690,14 @@ SCORCH run that clears the evidence stores without a restart.
   (the same fix as the CO₂ relay's, [§19](#19-risks-and-open-questions)), and
   FUXA tags that show the age of their last update.
 
-**Time synchronization.** One NTP hierarchy: `inet-nuke` is the public stand-in
+**Time synchronization.** One NTP hierarchy: `inet-traffic` is the public stand-in
 for the internet zones; `ot-svc` serves the OT zones and the DMZ; `sim-ctl`
 serves the MGMT-only field devices; the routers take time from those through
 the `ntp` app and `cm-vyos-config.sh` ([§15.2](#152-apps)). All three
 servers run from their VM clocks (no upstream), so the range agrees with
 itself, not with the real world. Guacamole's TOTP needs dmz-jump and the
 vendor's laptop within 30 s of each other: both follow the hierarchy
-(vendor-ws through inet-nuke, dmz-jump through ot-svc), and the VM clocks start
+(vendor-ws through inet-traffic, dmz-jump through ot-svc), and the VM clocks start
 from the host's, so they agree unless a VM is paused for a long time. Wazuh's
 approved-window rules (100204, 100205, 100305 to 100308) use the manager's wall
 clock, not the simulation clock, so a demo that moves `clock.start` does not

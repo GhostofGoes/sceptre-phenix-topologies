@@ -17,7 +17,7 @@
 10.30.10.1 fw-ot-eth5
 10.40.10.1 fw-ot-eth6
 10.20.30.13 ot-svc
-203.0.113.10 inet-nuke
+203.0.113.10 inet-traffic
 10.30.10.5 bas-bbmd
 172.16.10.1 sim-ctl
 172.16.10.2 sim-process

@@ -205,17 +205,17 @@ metadata:
     port: 1881
     wait: 5m
   - src: corp-ws
-    dst: inet-nuke|IF0
+    dst: inet-traffic|IF0
     proto: tcp
     port: 443
     wait: 5m
   - src: corp-ws
-    dst: inet-nuke|IF0
+    dst: inet-traffic|IF0
     proto: tcp
     port: 80
     wait: 5m
   hostProcesses:
-    inet-nuke:
+    inet-traffic:
     - protonuke
     - chronyd
     - dnsmasq
@@ -299,7 +299,7 @@ metadata:
     sim-building:
     - cherrymountain_sim
   hostListeners:
-    inet-nuke:
+    inet-traffic:
     - :80
     - :443
     scada-fuxa:

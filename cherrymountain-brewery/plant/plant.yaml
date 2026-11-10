@@ -634,7 +634,7 @@ hosts:
     interfaces:
       IF0: { vlan: INET, ip: 203.0.113.1/24 }
       IF1: { vlan: VENDOR, ip: 198.51.100.1/24 }
-  inet-nuke:
+  inet-traffic:
     role: service
     interfaces:
       IF0: { vlan: INET, ip: 203.0.113.10/24 }
@@ -2498,7 +2498,7 @@ soh:
   host_profiles:
     sim-ctl: { processes: [helics_broker], listeners: [":8080", ":8090", ":9200", ":3000"] }
     ot-svc: { processes: [chronyd, dnsmasq, rsyslogd, cm-bbmd], listeners: [":53"] }
-    inet-nuke: { processes: [protonuke, chronyd, dnsmasq], listeners: [":80", ":443"] }
+    inet-traffic: { processes: [protonuke, chronyd, dnsmasq], listeners: [":80", ":443"] }
     plc-brewhouse: { listeners: [":4840"] }
     plc-cellar: { listeners: [":502"] }
     plc-packaging: { listeners: [":102"] }
@@ -2528,8 +2528,8 @@ soh:
     - { src: vendor-ws, dst: dmz-jump, port: 443, desc: Guacamole login through the WireGuard tunnel }
     - { src: dmz-jump, dst: ot-svc, port: 53, desc: DNS for DMZ hosts }
     - { src: dmz-vpn, dst: ot-svc, port: 53, desc: DNS for DMZ hosts }
-    - { src: corp-ws, dst: inet-nuke, port: 443, desc: Office web (SNAT) }
-    - { src: corp-ws, dst: inet-nuke, port: 80, desc: Office web (SNAT) }
+    - { src: corp-ws, dst: inet-traffic, port: 443, desc: Office web (SNAT) }
+    - { src: corp-ws, dst: inet-traffic, port: 80, desc: Office web (SNAT) }
     - { src: scada-fuxa, dst: wazuh, port: 1514, desc: Wazuh agent }
     - { src: historian, dst: wazuh, port: 1514, desc: Wazuh agent }
     - { src: ews, dst: wazuh, port: 1514, desc: Wazuh agent }
@@ -2653,7 +2653,7 @@ variants:
     federates: &full-federates [weather, brewhouse, cellar, utilities, packaging, power, building]
     hosts:
       - isp-rtr
-      - inet-nuke
+      - inet-traffic
       - vendor-ws
       - util-rtr
       - utility-derms
@@ -2741,13 +2741,13 @@ variants:
       hosts:
         ot-svc: { server: chronyd }
         sim-ctl: { server: chronyd }
-        inet-nuke: { server: chronyd }
-        corp-ws: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
-        vendor-ws: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
-        utility-derms: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
-        isp-rtr: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
-        util-rtr: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
-        fw-edge: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
+        inet-traffic: { server: chronyd }
+        corp-ws: { client: chrony, source: { hostname: inet-traffic, interface: IF0 } }
+        vendor-ws: { client: chrony, source: { hostname: inet-traffic, interface: IF0 } }
+        utility-derms: { client: chrony, source: { hostname: inet-traffic, interface: IF0 } }
+        isp-rtr: { client: ntp, source: { hostname: inet-traffic, interface: IF0 } }
+        util-rtr: { client: ntp, source: { hostname: inet-traffic, interface: IF0 } }
+        fw-edge: { client: ntp, source: { hostname: inet-traffic, interface: IF0 } }
         fw-ot: { client: ntp }
       roles: &ntp-roles
         # HELICS-backed devices and the federates follow sim-ctl over MGMT.
@@ -2787,7 +2787,7 @@ variants:
     federates: *full-federates
     hosts:
       - isp-rtr
-      - inet-nuke
+      - inet-traffic
       - util-rtr
       - utility-derms
       - corp-ws
@@ -2833,12 +2833,12 @@ variants:
       hosts:
         ot-svc: { server: chronyd }
         sim-ctl: { server: chronyd }
-        inet-nuke: { server: chronyd }
-        corp-ws: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
-        utility-derms: { client: chrony, source: { hostname: inet-nuke, interface: IF0 } }
-        isp-rtr: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
-        util-rtr: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
-        fw-edge: { client: ntp, source: { hostname: inet-nuke, interface: IF0 } }
+        inet-traffic: { server: chronyd }
+        corp-ws: { client: chrony, source: { hostname: inet-traffic, interface: IF0 } }
+        utility-derms: { client: chrony, source: { hostname: inet-traffic, interface: IF0 } }
+        isp-rtr: { client: ntp, source: { hostname: inet-traffic, interface: IF0 } }
+        util-rtr: { client: ntp, source: { hostname: inet-traffic, interface: IF0 } }
+        fw-edge: { client: ntp, source: { hostname: inet-traffic, interface: IF0 } }
         fw-ot: { client: ntp }
       roles: *ntp-roles
     soh: true

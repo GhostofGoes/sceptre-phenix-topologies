@@ -26,9 +26,9 @@ VARIANT_MODULES: dict[str, tuple[Module, ...]] = {
     "lite": ("core",),
 }
 
-#: DNS and time for the plant (ot-svc) and for the "internet" side (inet-nuke).
+#: DNS and time for the plant (ot-svc) and for the "internet" side (inet-traffic).
 OT_SVC_IP: str = "10.20.30.13"
-INET_NUKE_IP: str = "203.0.113.10"
+INET_TRAFFIC_IP: str = "203.0.113.10"
 WAZUH_IP: str = "10.40.10.11"
 FW_OT_DMZ_IP: str = "10.10.20.2"
 FW_EDGE_DMZ_IP: str = "10.10.20.1"
@@ -295,7 +295,7 @@ NODES: tuple[Node, ...] = (
     _rtr("fw-ot", "Firewall", "ot-edge", "OT firewall: every zone conduit of the conduit matrix", [("DMZ", FW_OT_DMZ_IP), ("OPS", "10.20.30.1"), ("HMI", "10.20.20.1"), ("CTRL", "10.20.10.1"), ("DERLINK", "10.20.15.1"), ("BAS", "10.30.10.1"), ("SOC", "10.40.10.1")], (Route(destination="0.0.0.0/0", next=FW_EDGE_DMZ_IP),)),
     # 2. Services.
     _vm("ot-svc", "core", "cm-svc.qc2", 1, 1, "ops", "NTP (chrony), DNS (dnsmasq), syslog relay, OPS BBMD (BACpypes3)", [("OPS", OT_SVC_IP)], gateway="10.20.30.1"),
-    _vm("inet-nuke", "core", "cm-svc-protonuke.qc2", 1, 1, "inet", "Internet web and SMTP server (protonuke), plus the public NTP and DNS stand-in", [("INET", INET_NUKE_IP)], gateway=ISP_RTR_INET_IP, dns=None),
+    _vm("inet-traffic", "core", "cm-svc-protonuke.qc2", 1, 1, "inet", "Internet web and SMTP server (protonuke), plus the public NTP and DNS stand-in", [("INET", INET_TRAFFIC_IP)], gateway=ISP_RTR_INET_IP, dns=None),
     _vm("bas-bbmd", "core", "cm-svc.qc2", 1, 1, "bas", "BAS BBMD (BACpypes3); its BDT lists itself and ot-svc", [("BAS", "10.30.10.5")], gateway="10.30.10.1"),
     # 3. sim-ctl, then the federates.
     _vm("sim-ctl", "core", "cm-sim.qc2", 2, 6, "mgmt", "HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, cm-viz 3D view, chronyd for MGMT", [], mgmt="172.16.10.1", autotunnel=("13001:3000", "18080:8080", "18090:8090", "19200:9200")),
@@ -320,7 +320,7 @@ NODES: tuple[Node, ...] = (
     # 7. HMIs.
     _vm("hmi-brewhouse", "core", "cm-desktop.qc2", 2, 3, "hmi", "Brewhouse and cellar operator kiosk", [("HMI", "10.20.20.10")], gateway="10.20.20.1", delay_c2=("scada-fuxa",)),
     _vm("hmi-packaging", "core", "cm-desktop.qc2", 2, 3, "hmi", "Packaging and utilities operator kiosk", [("HMI", "10.20.20.11")], gateway="10.20.20.1", delay_c2=("scada-fuxa",)),
-    _vm("corp-ws", "core", "cm-desktop.qc2", 2, 3, "corp", "Office workstation (protonuke client)", [("CORP", "10.10.10.10")], gateway="10.10.10.1", dns=INET_NUKE_IP),
+    _vm("corp-ws", "core", "cm-desktop.qc2", 2, 3, "corp", "Office workstation (protonuke client)", [("CORP", "10.10.10.10")], gateway="10.10.10.1", dns=INET_TRAFFIC_IP),
     # SOC module.
     _vm("wazuh", "soc", "cm-wazuh.qc2", 4, 8, "soc", "Wazuh manager, indexer, and dashboard", [("SOC", WAZUH_IP)], gateway="10.40.10.1", autotunnel=("18444:443",)),
     _vm("malcolm", "soc", "cm-malcolm.qc2", 8, 24, "soc", "Malcolm: Zeek and ICSNPP, Suricata, Arkime, OpenSearch (mirror NIC added by the mirror app)", [("SOC", "10.40.10.10")], gateway="10.40.10.1", autotunnel=("18443:443",)),
@@ -328,7 +328,7 @@ NODES: tuple[Node, ...] = (
     # Remote-access module.
     _vm("dmz-vpn", "remote-access", "cm-wireguard.qc2", 1, 1, "dmz", "WireGuard gateway (DNAT target of fw-edge)", [("DMZ", "10.10.20.10")], gateway=FW_EDGE_DMZ_IP, routes=OT_ROUTES),
     _vm("dmz-jump", "remote-access", "cm-guacamole.qc2", 2, 3, "dmz", "Guacamole jump host (TOTP, session recording)", [("DMZ", "10.10.20.11")], gateway=FW_EDGE_DMZ_IP, routes=(*OT_ROUTES, Route(destination=WG_SUBNET, next="10.10.20.10")), delay_c2=("dmz-vpn",)),
-    _vm("vendor-ws", "remote-access", "cm-desktop.qc2", 2, 3, "vendor", "Ridgeline Process Controls technician laptop (WireGuard client, browser)", [("VENDOR", "198.51.100.10")], gateway=ISP_RTR_VENDOR_IP, dns=INET_NUKE_IP, delay_c2=("dmz-vpn",)),
+    _vm("vendor-ws", "remote-access", "cm-desktop.qc2", 2, 3, "vendor", "Ridgeline Process Controls technician laptop (WireGuard client, browser)", [("VENDOR", "198.51.100.10")], gateway=ISP_RTR_VENDOR_IP, dns=INET_TRAFFIC_IP, delay_c2=("dmz-vpn",)),
 )
 # fmt: on
 

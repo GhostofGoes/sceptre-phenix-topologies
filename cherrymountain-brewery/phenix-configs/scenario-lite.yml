@@ -1411,34 +1411,34 @@ spec:
       metadata:
         client: ntp
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
-    - hostname: inet-nuke
+    - hostname: inet-traffic
       metadata:
         server: chronyd
     - hostname: util-rtr
       metadata:
         client: ntp
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: utility-derms
       metadata:
         client: chrony
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: corp-ws
       metadata:
         client: chrony
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: fw-edge
       metadata:
         client: ntp
         source:
-          hostname: inet-nuke
+          hostname: inet-traffic
           interface: IF0
     - hostname: fw-ot
       metadata:
@@ -1583,7 +1583,7 @@ spec:
     fromScenario: cherrymountain-full
   - name: protonuke
     hosts:
-    - hostname: inet-nuke
+    - hostname: inet-traffic
       metadata:
         args: -serve -http -https -smtp
         sohProfile:
@@ -1612,28 +1612,28 @@ spec:
       - fw-ot
       testCustomReachability:
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: tcp
         port: 80
         wait: 5m
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: tcp
         port: 443
         wait: 5m
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: tcp
         port: 25
         wait: 5m
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: udp
         port: 123
         wait: 5m
         udpPacketBase64: GwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
       - src: corp-ws
-        dst: inet-nuke|IF0
+        dst: inet-traffic|IF0
         proto: udp
         port: 53
         wait: 5m
@@ -1976,7 +1976,7 @@ spec:
         bas-bbmd:
         - chrony
         - cm-bbmd
-        inet-nuke:
+        inet-traffic:
         - chrony
         - dnsmasq
         - protonuke
@@ -1988,7 +1988,7 @@ spec:
         - :47808
         bas-bbmd:
         - :47808
-        inet-nuke:
+        inet-traffic:
         - :80
         - :443
         - :25
@@ -2297,7 +2297,7 @@ spec:
             chronyc -n tracking | grep -E 'Leap status'
           testStdout: Leap status
       hostProcesses:
-        inet-nuke:
+        inet-traffic:
         - protonuke
         - chronyd
         - dnsmasq

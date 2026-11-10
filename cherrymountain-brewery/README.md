@@ -9,7 +9,7 @@ flowchart TB
   subgraph EXT["Outside the brewery"]
     direction LR
     VWS["vendor-ws<br/>VENDOR 198.51.100.0/24"]
-    NUKE["inet-nuke<br/>INET 203.0.113.0/24"]
+    TRAFFIC["inet-traffic<br/>INET 203.0.113.0/24"]
     DERMS["utility-derms<br/>UTIL 192.0.2.0/24"]
     ISP{{"isp-rtr"}}
     URTR{{"util-rtr"}}
@@ -53,7 +53,7 @@ flowchart TB
     SIM["sim-ctl, sim-process<br/>sim-power, sim-building"]
   end
   VWS --- ISP
-  NUKE --- ISP
+  TRAFFIC --- ISP
   DERMS --- URTR
   URTR --- ISP
   ISP --- FWEDGE
@@ -798,7 +798,7 @@ the scenario beside them.
 | `recipes/` | `fire-of-the-phenix.json`, the flagship recipe in BeerJSON; the batch engine brews from it |
 | `phenix-ci.yml`, `phenix-configs/{topology,scenario}-ci.yml` | Workflow, topology, and scenario for the ci variant |
 | `phenix.yml`, `phenix-lite.yml`, `phenix-configs/` | Workflows for the full and lite variants; topology modules `topology-{core,soc,remote-access}.yml`, `topology-{full,lite}.yml` (they include the modules), and `scenario-{full,lite}.yml` |
-| `phenix-injects/{ot-svc,bbmd,inet-nuke,vrouter,malcolm}/` | The network phase's injects: ot-svc DNS, syslog relay, and chrony hook; the `cm-bbmd` BACnet BBMD service; inet-nuke DNS; the VyOS settings script; malcolm's capture flow |
+| `phenix-injects/{ot-svc,bbmd,inet-traffic,vrouter,malcolm}/` | The network phase's injects: ot-svc DNS, syslog relay, and chrony hook; the `cm-bbmd` BACnet BBMD service; inet-traffic DNS; the VyOS settings script; malcolm's capture flow |
 | `phenix-injects/otsim/` | `cm_otsim_bacnet.py`, the BACnet/IP server module of the building controllers, which the `cherrymountain` app injects and adds to their ot-sim config ([README](phenix-injects/otsim/README.md)) |
 | `sync.py` | Embeds plantgen's per-variant app blocks into the scenarios and copies generated files into `phenix-injects/`; aware of Git LFS pointers. It also copies the brand to the screens, writes `tokens.css`, and builds the Guacamole branding extension |
 | `tools/netcheck/` | Static check of the topology, scenario, and workflow against the IP plan and conduit matrix: every conduit and every default drop, with tests ([README](tools/netcheck/README.md)) |

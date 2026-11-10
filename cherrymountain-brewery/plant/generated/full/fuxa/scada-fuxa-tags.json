@@ -904,7 +904,7 @@
         {
           "id": "t_049363c1-6864-5b51-9cd7-3dda74026cab",
           "name": "BH.BATCH.XC03.PARAM",
-          "label": "Phase parameter (MILL kg, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)",
+          "label": "Phase parameter (MILL kg, MASH_IN liters, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)",
           "type": "UInt16",
           "address": null,
           "variable": "BH_BATCH_XC03_PARAM",

@@ -1128,7 +1128,7 @@
     },
     {
       "name": "BH.BATCH.XC03.PARAM",
-      "desc": "Phase parameter (MILL kg, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)",
+      "desc": "Phase parameter (MILL kg, MASH_IN liters, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)",
       "type": "analog-read-write",
       "range": [
         0.0,

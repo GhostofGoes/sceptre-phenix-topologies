@@ -68,7 +68,7 @@ VAR
   BH_BATCH_XS01_STATE AT %MW7 : UINT; (* Phase state, None, x1 *)
   BH_BATCH_XS01_STEP AT %MW8 : UINT; (* Phase step number, None, x1 *)
   BH_BATCH_XI01_BATCH AT %MW9 : UINT; (* Batch number (low 16 bits), None, x1 *)
-  BH_BATCH_XC03_PARAM AT %MW10 : UINT; (* Phase parameter (MILL kg, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default), None, x1 *)
+  BH_BATCH_XC03_PARAM AT %MW10 : UINT; (* Phase parameter (MILL kg, MASH_IN liters, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default), None, x1 *)
   BH_BATCH_XI02_REQUESTS AT %IW120 : UINT; (* Brews requested at the brewhouse panel since the start (16-bit counter), None, x1 *)
   BH_BATCH_XC02_ACCEPTED AT %MW11 : UINT; (* Brew requests the batch engine has accepted (16-bit counter; the engine writes it), None, x1 *)
   BH_BATCH_XI03_ACCEPTED AT %QW110 : UINT; (* Accepted-request counter sent to the panel (the program forwards XC02), None, x1 *)

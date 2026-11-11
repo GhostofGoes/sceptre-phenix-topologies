@@ -90,7 +90,8 @@ spec:
       # pydantic 2 for the range's own scripts on this image (they run with the
       # system python3 -I): noble's python3-pydantic is 1.10, which lacks what they
       # import. noble enforces PEP 668, so pip is told to install into the system.
-      pip3 install --no-cache-dir --break-system-packages "pydantic==2.11.7"
+      # --ignore-installed: pip cannot remove a Debian-owned typing_extensions.
+      pip3 install --no-cache-dir --break-system-packages --ignore-installed "pydantic==2.11.7"
       python3 -I -c 'import pydantic; assert pydantic.VERSION.startswith("2."), pydantic.VERSION'
 
       # Chromium. Ubuntu's chromium-browser is a snap, which cannot be installed

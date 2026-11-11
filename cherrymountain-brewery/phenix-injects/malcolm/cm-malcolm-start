@@ -41,7 +41,7 @@ deadline=$((SECONDS + TIMEOUT))
 while [ "$SECONDS" -lt "$deadline" ]; do
   if docker exec malcolm-opensearch-1 sh -c \
     'curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc "https://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"' 2> /dev/null \
-    | grep -q '"status"'; then
+    | grep -Eq '"status" *: *"(yellow|green)"'; then
     ready=true
     break
   fi

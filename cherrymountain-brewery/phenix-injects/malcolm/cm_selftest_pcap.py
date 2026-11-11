@@ -11,7 +11,7 @@ The hosts are inventions in the DMZ and BAS address ranges that no real VM uses
 (10.10.20.250 and 10.30.10.250), so test records never look like plant traffic.
 Standard library plus pydantic (the cm-malcolm image installs it).
 
-Usage: cm_selftest_pcap.py OUTPUT.pcap
+Usage: cm_selftest_pcap.py OUTPUT.pcap [SOURCE_PORT]   (the probe's UDP source port, default 47808)
 """
 
 from __future__ import annotations
@@ -85,16 +85,19 @@ PROBE: str = "10.10.20.250"
 BBMD: str = "10.30.10.5"
 
 
-def datagrams() -> list[Datagram]:
+def datagrams(sport: int = 47808) -> list[Datagram]:
+    """The probe's four BVLC requests from ``sport``, and the Who-Is. The caller picks a
+    source port for each run, which is how it tells this run's records from an
+    earlier run's in OpenSearch (the timestamps in the file are fixed)."""
     return [
-        Datagram(src=PROBE, dst=BBMD, sport=47808, dport=47808, payload=payload)
+        Datagram(src=PROBE, dst=BBMD, sport=sport, dport=47808, payload=payload)
         for payload in (BVLC_READ_BDT, BVLC_WRITE_BDT, BVLC_REGISTER_FD, BVLC_READ_FDT)
     ] + [Datagram(src="10.30.10.250", dst="10.30.10.255", sport=47808, dport=47808, payload=WHO_IS)]
 
 
-def write_pcap(path: Path) -> int:
+def write_pcap(path: Path, sport: int = 47808) -> int:
     out: bytearray = bytearray(PCAP_HEADER)
-    frames: list[bytes] = [d.frame() for d in datagrams()]
+    frames: list[bytes] = [d.frame() for d in datagrams(sport)]
     for index, frame in enumerate(frames):
         out += struct.pack("<IIII", START_TIME + index, 0, len(frame), len(frame)) + frame
     path.write_bytes(bytes(out))
@@ -102,10 +105,10 @@ def write_pcap(path: Path) -> int:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
+    if len(argv) not in (2, 3):
         print(__doc__)
         return 2
-    count: int = write_pcap(Path(argv[1]))
+    count: int = write_pcap(Path(argv[1]), int(argv[2]) if len(argv) == 3 else 47808)
     print(f"wrote {count} BACnet datagrams to {argv[1]}")
     return 0
 

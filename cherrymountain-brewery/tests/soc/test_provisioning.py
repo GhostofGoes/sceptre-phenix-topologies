@@ -57,6 +57,7 @@ MALCOLM_ENV_HOME: dict[str, str] = {
     "NETBOX_AUTO_POPULATE": "netbox-common",
     "NETBOX_DEFAULT_SITE": "netbox-common",
     "PIPELINE_DISABLED": "pipeline",
+    "FREQ_LOOKUP": "lookup-common",
 }
 #: Bind-mount sources of Malcolm 26.10.0's compose file that are not in its checkout
 #: (create_host_path: false, so a missing one fails `compose up`), by service.
@@ -108,6 +109,89 @@ def test_malcolm_scripts_run_with_the_docker_group() -> None:
     assert '--groups="${DOCKER_GROUP}"' in body.group(1)
     # A root shell's login name would make the scripts refuse to run.
     assert "USER=malcolm" in body.group(1) and "LOGNAME=malcolm" in body.group(1)
+
+
+def test_one_zeek_worker_and_no_freq_lookup_without_freq() -> None:
+    """cherrymountain.zeek keeps state between connections in globals, which Zeek's
+    workers do not share, and Malcolm's zeek-live starts two workers unless told (the
+    variable is in no env example, so it is appended to zeek-live.env, which the
+    zeek-live service reads). The slim profile has no freq container to ask."""
+    text = provision()
+    assert re.search(r"^set_env config/zeek-live\.env ZEEK_LB_PROCS_WORKER_DEFAULT 1$", text, re.MULTILINE)
+    slim = text[text.index("NETBOX_MODE disabled") : text.index("# --- Zeek scripts and Suricata rules")]
+    assert "set_env config/lookup-common.env FREQ_LOOKUP false" in slim
+    services = subprocess.run(
+        ["bash", "-c", f'. "{MALCOLM / "profiles.sh"}"; cm_malcolm_services slim; cm_malcolm_services full'],
+        capture_output=True, text=True, check=True,
+    ).stdout.splitlines()
+    assert "freq" not in services[0].split() and "freq" in services[1].split()
+
+
+def test_the_suricata_include_is_installed_and_sets_single_values() -> None:
+    """Malcolm appends every suricata/include-configs/*.yaml to suricata.yaml. A nested
+    block in an included file replaces the whole section, so the file sets dotted keys."""
+    text = provision()
+    assert 'cp "${SRC}/cm-suricata.yaml" suricata/include-configs/cm-suricata.yaml' in text
+    assert "suricata/include-configs" in text[text.index("mkdir -p zeek/custom") :].splitlines()[0]
+    soc = yaml.safe_load((CONFIGS / "topology-soc.yml").read_text(encoding="utf-8"))
+    malcolm = next(n for n in soc["spec"]["nodes"] if n["general"]["hostname"] == "malcolm")
+    assert any(i["dst"] == "/opt/cherrymountain/malcolm/cm-suricata.yaml" for i in malcolm["injections"])
+    settings = yaml.safe_load((MALCOLM / "cm-suricata.yaml").read_text().split("---", 1)[1])
+    assert settings == {"vlan.use-for-tracking": False, "stream.async-oneside": True}
+
+
+def test_expect_skips_signatures_on_the_slim_profile(tmp_path: Path) -> None:
+    """The slim profile runs no Suricata: a signature is skipped there, a notice is not."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "docker").write_text(EXPECT_DOCKER)
+    (bin_dir / "docker").chmod(0o755)
+    (tmp_path / "state").mkdir()
+    for profile, lines in (("slim", ["SKIP", "PASS"]), ("full", ["PASS", "PASS"])):
+        (tmp_path / "state" / "profile").write_text(f"{profile}\n")
+        proc = subprocess.run(
+            ["bash", str(MALCOLM / "cm-malcolm-expect"), "CM WireGuard handshake initiation", "CherryMountain::PLC_REST_From_EWS"],
+            env={
+                **os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "FAKE_QUERY": str(tmp_path / "query.json"),
+                "CM_MALCOLM_STATE": str(tmp_path / "state"),
+            },
+            capture_output=True, text=True, check=False, timeout=30,
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert [line.split(":")[0] for line in proc.stdout.splitlines()] == lines, proc.stdout
+    # The static SoH list has no container that only one profile runs.
+    scenario = (CONFIGS / "scenario-full.yml").read_text(encoding="utf-8")
+    assert not re.search(r"^ *- malcolm-suricata", scenario, re.MULTILINE)
+
+
+def test_the_selftest_asks_for_its_own_run() -> None:
+    """The pcap's timestamps are fixed, so the probe's source port tells one run's
+    records from another's: the generator takes it and both searches ask for it."""
+    import cm_selftest_pcap  # phenix-injects/malcolm is on the path (soc_paths)
+
+    probes = [d for d in cm_selftest_pcap.datagrams(23456) if d.src == cm_selftest_pcap.PROBE]
+    assert probes and {d.sport for d in probes} == {23456} and {d.dport for d in probes} == {47808}
+    script = (MALCOLM / "cm-malcolm-selftest").read_text()
+    assert 'cm_selftest_pcap.py" "$staged" "$sport"' in script
+    for query in ("zeek_query", "suricata_query"):
+        line = next(line for line in script.splitlines() if line.startswith(f"{query}="))
+        assert '{"term":{"source.port":%s}}' in line and line.rstrip().endswith('"$sport")'), query
+
+
+def test_malcolm_start_waits_for_a_usable_cluster() -> None:
+    """An OpenSearch error body has a "status" too (a number): only yellow or green
+    is ready."""
+    script = (MALCOLM / "cm-malcolm-start").read_text()
+    pattern = re.search(r"grep -Eq '([^']+)'", script)
+    assert pattern is not None
+    for body, ready in (
+        ('{"cluster_name":"x","status":"yellow","timed_out":false}', True),
+        ('{"cluster_name":"x","status" : "green"}', True),
+        ('{"cluster_name":"x","status":"red"}', False),
+        ('{"error":{"type":"master_not_discovered_exception"},"status":503}', False),
+    ):
+        got = subprocess.run(["grep", "-Eq", pattern.group(1)], input=body, text=True, check=False).returncode == 0
+        assert got == ready, body
 
 
 def test_malcolm_bind_mount_directories_are_created() -> None:
@@ -171,6 +255,186 @@ def test_wazuh_password_tool_runs_last_and_with_the_api_flag() -> None:
     dashboard = script.index("systemctl enable --now wazuh-dashboard.service")
     assert dashboard < tool.start()
     assert script.index("wazuh-dashboard.service", tool.end()) > tool.end(), "the dashboard is not restarted after the tool"
+
+
+def test_the_provisioning_unit_may_signal_the_manager() -> None:
+    """wazuh-passwords-tool.sh restarts the manager and waits for `wazuh-control
+    status`, which tests each daemon with `kill -0`. The daemons run as the wazuh
+    user and the unit as root, so the unit needs CAP_KILL: without it the tool
+    reads them as stopped and exits after it changed two of the three keystores."""
+    caps = unit_setting((WAZUH / "cm-wazuh-provision.service").read_text(), "CapabilityBoundingSet")
+    assert "CAP_KILL" in caps
+    # runuser in indexer-security-init.sh, and the files of three service users.
+    assert {"CAP_SETUID", "CAP_SETGID", "CAP_CHOWN", "CAP_FOWNER", "CAP_DAC_OVERRIDE"} <= set(caps)
+
+
+def test_a_second_run_keeps_the_certificates() -> None:
+    """The indexer does not reload certificates while it runs, and `systemctl enable
+    --now` does not restart it: a retry that made a new CA would be refused by the
+    indexer the first attempt started."""
+    script = (WAZUH / "cm-wazuh-provision").read_text()
+    make = script.index("wazuh-certs-tool.sh -A")
+    guard = script.rindex("if ", 0, make)
+    condition = script[guard : script.index("\n", guard)]
+    assert "certificates-made" in condition and "passwords_changed" not in condition
+    assert script.index('touch "${STATE}/certificates-made"') > make
+
+
+def test_archives_are_written_and_shipped() -> None:
+    """The retention policy and the sizing count on wazuh-archives-*: the manager
+    writes archives.json only with logall_json, and Filebeat's template ships
+    alerts only."""
+    script = (WAZUH / "cm-wazuh-provision").read_text()
+    assert "<logall_json>yes</logall_json>" in script
+    template = "filebeat.modules:\n  - module: wazuh\n    alerts:\n      enabled: true\n    archives:\n      enabled: false\n"
+    command = re.search(r"^sed -i '(/\^    archives:/[^']*)' /etc/filebeat/filebeat.yml$", script, re.MULTILINE)
+    assert command is not None
+    out = subprocess.run(["sed", command.group(1)], input=template, check=True, capture_output=True, text=True).stdout
+    assert out == template.replace("archives:\n      enabled: false", "archives:\n      enabled: true")
+
+
+MANAGER_SCRIPT: Path = AGENT_SCRIPT.with_name("80-cm-wazuh-manager.sh")
+#: The <auth> block of the packaged manager ossec.conf (wazuh-manager 4.14.10-1).
+STOCK_MANAGER_CONF: str = """<ossec_config>
+  <auth>
+    <disabled>no</disabled>
+    <port>1515</port>
+    <use_source_ip>no</use_source_ip>
+    <purge>yes</purge>
+    <use_password>no</use_password>
+    <ssl_verify_host>no</ssl_verify_host>
+  </auth>
+</ossec_config>
+"""
+
+
+def run_manager_script(tmp_path: Path) -> str:
+    (tmp_path / "etc").mkdir(exist_ok=True)
+    conf = tmp_path / "etc" / "ossec.conf"
+    if not conf.exists():
+        conf.write_text(STOCK_MANAGER_CONF)
+    env_file = tmp_path / "manager.env"
+    env_file.write_text("WAZUH_REGISTRATION_PASSWORD=secret\n")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    for name in ("chgrp", "systemctl"):
+        (bin_dir / name).write_text("#!/bin/sh\nexit 0\n")
+        (bin_dir / name).chmod(0o755)
+    subprocess.run(
+        ["bash", str(MANAGER_SCRIPT)],
+        env={
+            **os.environ,
+            "PATH": f"{bin_dir}:{os.environ['PATH']}",
+            "CM_WAZUH_MANAGER_ENV": str(env_file),
+            "CM_OSSEC_DIR": str(tmp_path),
+        },
+        check=True, capture_output=True, text=True, timeout=30,
+    )
+    return conf.read_text()
+
+
+def test_the_manager_lets_a_restarted_agent_enroll_again(tmp_path: Path) -> None:
+    """A VM that is restarted alone has a new disk and no key. authd's defaults
+    refuse its name for an hour (force: disconnected_time 1h, after_registration_time
+    1h); the manager's script turns both waits off, inside <auth>, once."""
+    text = run_manager_script(tmp_path)
+    auth = ET.fromstring(text).find("auth")
+    assert auth is not None
+    assert auth.findtext("use_password") == "yes"
+    assert auth.findtext("force/enabled") == "yes"
+    disconnected = auth.find("force/disconnected_time")
+    assert disconnected is not None and disconnected.get("enabled") == "no"
+    assert auth.findtext("force/after_registration_time") == "0"
+    assert (tmp_path / "etc" / "authd.pass").read_text() == "secret\n"
+    assert run_manager_script(tmp_path) == text
+    assert text.count("<force>") == 1
+
+
+HEALTH_STUBS: dict[str, str] = {
+    "systemctl": "#!/bin/sh\nexit 0\n",
+    "ss": "#!/bin/sh\nfor p in 'tcp 0.0.0.0:1514' 'tcp 0.0.0.0:1515' 'udp 0.0.0.0:514' 'tcp 0.0.0.0:443' 'tcp 0.0.0.0:55000' 'tcp 10.40.10.11:9200'; do echo \"${p% *} LISTEN 0 128 ${p#* } 0.0.0.0:*\"; done\n",
+    "curl": "#!/bin/sh\n[ -n \"$FAKE_INDEXER\" ] || exit 7\nprintf '{\"cluster_name\":\"wazuh\",\"status\":\"%s\"}' \"$FAKE_INDEXER\"\n",
+    "filebeat": "#!/bin/sh\nexit ${FAKE_FILEBEAT:-0}\n",
+    "sed": "#!/bin/sh\necho 10.40.10.11:9200\n",
+}
+
+
+def run_wazuh_health(tmp_path: Path, **env: str) -> subprocess.CompletedProcess[str]:
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    for name, body in HEALTH_STUBS.items():
+        (bin_dir / name).write_text(body)
+        (bin_dir / name).chmod(0o755)
+    ossec_bin = tmp_path / "ossec" / "bin"
+    ossec_bin.mkdir(parents=True, exist_ok=True)
+    (ossec_bin / "agent_control").write_text("#!/bin/sh\necho 'ID: 001, Name: ews, IP: any, Active'\n")
+    (ossec_bin / "agent_control").chmod(0o755)
+    return subprocess.run(
+        ["bash", str(WAZUH / "cm-wazuh-health")],
+        env={
+            **os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "CM_WAZUH_STATE": str(tmp_path / "state"),
+            "CM_OSSEC_DIR": str(tmp_path / "ossec"), "FAKE_INDEXER": "green", **env,
+        },
+        capture_output=True, text=True, timeout=30, check=False,
+    )
+
+
+def test_wazuh_health_needs_the_whole_pipeline(tmp_path: Path) -> None:
+    """Running services and open ports are not enough: the setup must have
+    finished, the indexer must answer, and Filebeat must be let in."""
+    result = run_wazuh_health(tmp_path)
+    assert result.returncode == 1 and result.stdout.startswith("UNHEALTHY: the first-boot setup has not finished")
+    (tmp_path / "state").mkdir()
+    (tmp_path / "state" / "provisioned").touch()
+    result = run_wazuh_health(tmp_path)
+    assert result.returncode == 0 and result.stdout.startswith("HEALTHY: "), result.stdout + result.stderr
+    for env, reason in (
+        ({"FAKE_INDEXER": ""}, "the indexer does not answer"),
+        ({"FAKE_INDEXER": "red"}, "the indexer is not green or yellow"),
+        ({"FAKE_FILEBEAT": "1"}, "Filebeat cannot reach the indexer"),
+    ):
+        result = run_wazuh_health(tmp_path, **env)
+        assert result.returncode == 1 and result.stdout.startswith(f"UNHEALTHY: {reason}"), result.stdout
+
+
+def test_soh_does_not_pass_an_unhealthy_siem() -> None:
+    """phenix SoH passes a testStdout that is anywhere in the output
+    (strings.Contains), and `UNHEALTHY: ...` contains HEALTHY. The health tests
+    use a validator that anchors the word."""
+    text = (CONFIGS / "scenario-full.yml").read_text(encoding="utf-8")
+    assert not re.search(r"testStdout: *HEALTHY", text)
+    for script in ("cm-malcolm-health", "cm-wazuh-health"):
+        test = re.search(rf"/usr/local/sbin/{script}\n(?: *#[^\n]*\n)* *validateStdout: (.*)", text)
+        assert test is not None, script
+        validator = test.group(1)
+        for output, passes in (("HEALTHY: all up\n", True), ("UNHEALTHY: filebeat is not active\n", False)):
+            ran = subprocess.run(["bash", "-c", validator], input=output, capture_output=True, text=True, check=False)
+            assert (ran.returncode == 0) == passes, (script, output)
+
+
+SELFTEST_LOGTEST: str = """#!/bin/sh
+# Like wazuh_logtest.py: the report is logging.info on stderr, and -q hides it.
+read -r line
+for arg in "$@"; do [ "$arg" = -q ] && exit 0; done
+printf "**Phase 3: Completed filtering (rules).\\n\\tid: '%s'\\n" "$FAKE_RULE" >&2
+"""
+
+
+def test_the_selftest_reads_the_report_of_logtest(tmp_path: Path) -> None:
+    """wazuh-logtest -q prints nothing, so the selftest must not use it."""
+    ossec_bin = tmp_path / "bin"
+    ossec_bin.mkdir()
+    (ossec_bin / "wazuh-logtest").write_text(SELFTEST_LOGTEST)
+    (ossec_bin / "wazuh-logtest").chmod(0o755)
+    samples = tmp_path / "samples.txt"
+    samples.write_text("# a comment\n100101,100102|Nov  9 12:00:00 fw-ot kernel: [  123.456789] x\n")
+    for rule, code, word in (("100102", 0, "PASS"), ("100103", 1, "FAIL")):
+        result = subprocess.run(
+            ["bash", str(WAZUH / "cm-wazuh-selftest")],
+            env={**os.environ, "CM_WAZUH_SAMPLES": str(samples), "CM_OSSEC_DIR": str(tmp_path), "FAKE_RULE": rule},
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+        assert result.returncode == code and result.stdout.startswith(word), result.stdout
 
 
 def run_agent_script(tmp_path: Path, group: str) -> str:

@@ -153,7 +153,9 @@ def test_sid_guard(tmp_path: Path, rules: str, rc: int, message: str) -> None:
     # Another rules file with low sids is not ours and is not checked.
     (tmp_path / "suricata" / "rules" / "other.rules").write_text("alert ip any any -> any any (sid:5; rev:1;)\n")
     script = 'log() { echo "$*"; }\n' + sid_guard() + 'echo checked\n'
-    proc = subprocess.run(["bash", "-c", script], cwd=tmp_path, capture_output=True, text=True, check=False)
+    # With the options of cm-malcolm-provision: under errexit and pipefail a grep that
+    # finds no sid would end the script before it says why.
+    proc = subprocess.run(["bash", "-euo", "pipefail", "-c", script], cwd=tmp_path, capture_output=True, text=True, check=False)
     assert proc.returncode == rc, proc.stdout
     assert message in proc.stdout
     if rc == 0:

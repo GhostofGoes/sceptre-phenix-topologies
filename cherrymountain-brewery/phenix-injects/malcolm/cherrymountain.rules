@@ -134,7 +134,10 @@ alert dnp3 ![192.0.2.10] any -> any any (msg:"CM DNP3 Direct Operate No Ack from
 # no business operating. 9000138 and 9000139 match a CROB on index 0 to 3 in the
 # reassembled application data, for the 1-byte (0x17) and 2-byte (0x28) index
 # qualifiers; Zeek's DNP3_Breaker_Command notice names the point whatever the
-# encoding.
+# encoding. The two rules test the first object of a request only: a request with
+# two CROBs, the allowed BO 4 first and a breaker second, raises 9000137 alone here
+# (checked on Suricata 7.0.3), and Zeek's notice, which reads every object, is the
+# detection for it.
 alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 analog setpoint (g41v1) from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_obj:41,1; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000134; rev:2;)
 alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 analog setpoint (g41v2) from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_obj:41,2; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000135; rev:2;)
 alert dnp3 192.0.2.10 any -> any any (msg:"CM DNP3 analog setpoint (g41v3) from utility-derms (expected DER dispatch)"; flow:established,to_server; dnp3_obj:41,3; threshold:type limit, track by_src, count 1, seconds 300; classtype:misc-activity; priority:4; metadata:cm_usecase dnp3_control_baseline; sid:9000136; rev:2;)

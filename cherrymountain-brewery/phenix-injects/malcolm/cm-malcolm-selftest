@@ -8,6 +8,9 @@
 # (the documented way), and looks for the result in OpenSearch:
 #   - Zeek records of the datagrams (event.provider zeek, source.ip the probe), and
 #   - on the full profile, the Suricata alert "CM BACnet Read-Broadcast-Distribution-Table".
+# The probe sends from a UDP port taken from the clock, and both searches ask for that
+# port: the records of an earlier run (the file's timestamps are fixed, so a time
+# filter cannot tell them apart) do not make this run pass.
 # Prints PASS or FAIL lines and exits 1 if any check fails.
 #
 # Usage: cm-malcolm-selftest [SECONDS]   (how long to wait for the records, default 600)
@@ -47,15 +50,17 @@ cm-malcolm-wait-ready 900 || {
 # Write and chown the pcap outside the watched directory, then move it in (same
 # file system, so the rename is atomic): pcap-monitor never sees a partial or
 # root-owned file.
-pcap="${MALCOLM_DIR}/pcap/upload/cm-selftest-$(date +%s).pcap"
+now=$(date +%s)
+sport=$((20000 + now % 40000))
+pcap="${MALCOLM_DIR}/pcap/upload/cm-selftest-${now}.pcap"
 staged="${MALCOLM_DIR}/pcap/.$(basename "$pcap").tmp"
-python3 "${LIB}/cm_selftest_pcap.py" "$staged"
+python3 "${LIB}/cm_selftest_pcap.py" "$staged" "$sport"
 chown "${MALCOLM_UID}:${MALCOLM_UID}" "$staged"
 mv "$staged" "$pcap"
 echo "dropped ${pcap}"
 
-zeek_query=$(printf '{"query":{"bool":{"filter":[{"term":{"event.provider":"zeek"}},{"term":{"source.ip":"%s"}}]}}}' "$PROBE")
-suricata_query='{"query":{"bool":{"filter":[{"term":{"event.provider":"suricata"}},{"wildcard":{"rule.name":"CM BACnet Read-Broadcast*"}}]}}}'
+zeek_query=$(printf '{"query":{"bool":{"filter":[{"term":{"event.provider":"zeek"}},{"term":{"source.ip":"%s"}},{"term":{"source.port":%s}}]}}}' "$PROBE" "$sport")
+suricata_query=$(printf '{"query":{"bool":{"filter":[{"term":{"event.provider":"suricata"}},{"term":{"source.port":%s}},{"wildcard":{"rule.name":"CM BACnet Read-Broadcast*"}}]}}}' "$sport")
 zeek_ok=false
 suricata_ok=false
 deadline=$((SECONDS + TIMEOUT))
@@ -74,7 +79,7 @@ while [ "$SECONDS" -lt "$deadline" ]; do
   sleep 10
 done
 
-check "Zeek records of the self-test datagrams reach OpenSearch" "$zeek_ok" "event.provider zeek, source.ip ${PROBE}"
+check "Zeek records of the self-test datagrams reach OpenSearch" "$zeek_ok" "event.provider zeek, source.ip ${PROBE}, source.port ${sport}"
 if [ "$suricata_ok" = skip ]; then
   echo "SKIP: Suricata alert (the ${profile} profile does not run Suricata)"
 else

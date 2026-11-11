@@ -9,6 +9,10 @@ Two pcaps that every detection must fire on, built with scapy:
 * ``zeek_pcap``: the same for cherrymountain.zeek, plus Modbus polls in which the ATS and
   the load-shed bit change.
 
+``mirrored`` rewrites a pcap into what Malcolm's capture port really gets from the
+phenix mirror: each frame with the VLAN tag of the host it was delivered to, and no
+frame for a host that is not on a mirrored VLAN.
+
 ``test_detection_traffic.py`` runs them through Suricata and through Zeek's image
 when those are installed (and is skipped otherwise). Run the module to write the files:
 
@@ -20,11 +24,18 @@ protocol level (full TCP sessions, DNP3 link CRCs); it is no model of the plant.
 
 from __future__ import annotations
 
+import ipaddress
 import struct
 import sys
 from pathlib import Path
 
-from scapy.all import IP, TCP, UDP, Ether, Raw, wrpcap  # type: ignore[import-untyped]
+import yaml
+from scapy.all import IP, TCP, UDP, Dot1Q, Ether, Raw, rdpcap, wrpcap  # type: ignore[import-untyped]
+
+CONFIGS: Path = Path(__file__).resolve().parents[2] / "phenix-configs"
+#: The vendor's tunnel address reaches dmz-jump from dmz-vpn, a host on the DMZ: the
+#: answers to it are delivered at dmz-vpn's tap.
+TUNNEL: tuple[str, str] = ("10.99.0.0/24", "DMZ")
 
 #: What the Suricata pcap must raise: every sid of cherrymountain.rules.
 EXPECTED_SIDS: frozenset[int] = frozenset(
@@ -251,9 +262,59 @@ def suricata_pcap(path: Path) -> None:
     wrpcap(str(path), b.packets)
 
 
+def mirror_plan() -> dict[ipaddress.IPv4Network, int]:
+    """Network -> a VLAN number, for the VLANs the mirror app listens on
+    (scenario-full.yml) with the subnets the topologies give them. The numbers are
+    made up (phenix assigns them at start); only that they differ matters."""
+    scenario = yaml.safe_load((CONFIGS / "scenario-full.yml").read_text(encoding="utf-8"))
+    mirror = next(app for app in scenario["spec"]["apps"] if app["name"] == "mirror")
+    vlans: list[str] = mirror["hosts"][0]["metadata"]["vlans"]
+    plan: dict[ipaddress.IPv4Network, int] = {}
+    for name in ("core", "soc", "remote-access"):
+        topology = yaml.safe_load((CONFIGS / f"topology-{name}.yml").read_text(encoding="utf-8"))
+        for node in topology["spec"]["nodes"]:
+            for iface in node["network"]["interfaces"]:
+                if iface.get("vlan") in vlans and iface.get("address"):
+                    network = ipaddress.ip_network(f"{iface['address']}/{iface['mask']}", strict=False)
+                    plan[network] = 100 + vlans.index(iface["vlan"])
+    plan[ipaddress.ip_network(TUNNEL[0])] = 100 + vlans.index(TUNNEL[1])
+    return plan
+
+
+def mirrored(source: Path, path: Path) -> tuple[int, int]:
+    """Write ``source`` as the mirror delivers it (DESIGN.md 14): OVS mirrors a frame at
+    the tap of the host that receives it, with that host's VLAN tag, and the routers'
+    taps are left out. So the two directions of a routed flow carry different tags,
+    and a frame to a host that is on no mirrored VLAN (an answer to utility-derms) is
+    never captured. Broadcasts are kept on the sender's VLAN. Returns (kept, dropped)."""
+    plan = mirror_plan()
+
+    def vlan_of(address: str) -> int | None:
+        ip = ipaddress.ip_address(address)
+        return next((vlan for network, vlan in plan.items() if ip in network), None)
+
+    kept: list = []
+    dropped: int = 0
+    for packet in rdpcap(str(source)):
+        destination: str = packet[IP].dst
+        vlan = vlan_of(packet[IP].src if destination == "255.255.255.255" else destination)
+        if vlan is None:
+            dropped += 1
+            continue
+        frame = Ether(src=packet[Ether].src, dst=packet[Ether].dst) / Dot1Q(vlan=vlan) / packet[IP]
+        frame.time = packet.time
+        kept.append(frame)
+    wrpcap(str(path), kept)
+    return len(kept), dropped
+
+
 def zeek_pcap(path: Path) -> None:
     b: Builder = Builder()
     read_3: bytes = mbap(3, bytes([3]) + struct.pack(">HH", 0, 4))
+    # Normal discovery, which must stay quiet: FUXA's driver, the OPS BBMD, and BAC0 on
+    # the EWS send their Who-Is to the limited broadcast address.
+    for host in ("10.20.30.10", "10.20.30.13", "10.20.30.12"):
+        b.udp(host, "255.255.255.255", WHO_IS)
     b.udp("10.20.30.13", "10.30.10.5", FORWARDED_NPDU)
     b.udp("10.30.10.5", "10.20.30.13", FORWARDED_NPDU)
     b.udp("10.30.10.10", "10.30.10.22", READ_PROPERTY)

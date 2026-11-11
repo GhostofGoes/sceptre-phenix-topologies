@@ -13,7 +13,13 @@
 #   --since  how far back to look (default 30)
 # Prints one PASS or FAIL line per phrase and exits 1 if any fails, 2 on a usage
 # error, and 3 when OpenSearch does not answer (an ERROR, not a missed detection).
+# On the slim profile, which runs no Suricata, a signature (a phrase that starts with
+# "CM ", as every rule of cherrymountain.rules does) prints a SKIP line and does not
+# count. CM_MALCOLM_STATE is for the tests.
 set -uo pipefail
+
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+profile=$(cat "${STATE}/profile" 2> /dev/null || echo full)
 
 since=30
 if [ "${1:-}" = --since ]; then
@@ -31,6 +37,10 @@ fi
 
 status=0
 for phrase in "$@"; do
+  if [ "$profile" != full ] && [[ "$phrase" == "CM "* ]]; then
+    echo "SKIP: \"${phrase}\" (the ${profile} profile does not run Suricata)"
+    continue
+  fi
   escaped=$(printf '%s' "$phrase" | jq -Rs '.')
   # The body is built with jq, because the phrase may hold characters that need
   # escaping; inside the query_string phrase, \ and " are escaped as well. Malcolm

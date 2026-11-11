@@ -220,8 +220,12 @@ event new_connection(c: connection)
     if ( c$id$resp_p == 47808/udp && ! (orig in bacnet_ops_net && resp in bacnet_ops_net)
          && ! (orig in bacnet_bas_net && resp in bacnet_bas_net) )
         {
+        # FUXA's BACnet driver, the OPS BBMD (ot-svc, started with a /0 prefix),
+        # and BAC0 on the EWS send their Who-Is to the limited broadcast address,
+        # which is in neither subnet: that is the range's normal discovery.
         local ok = (orig in bacnet_ops_peers && resp in bacnet_bas_net)
-                   || (orig in bacnet_bas_net && resp in bacnet_ops_peers);
+                   || (orig in bacnet_bas_net && resp in bacnet_ops_peers)
+                   || (resp == 255.255.255.255 && (orig in bacnet_ops_peers || orig in bacnet_bas_net));
         if ( ! ok )
             NOTICE([$note=BACnet_Cross_Zone_Unexpected, $conn=c,
                     $msg=fmt("UDP 47808 from %s to %s is outside the BACnet conduits", orig, resp),

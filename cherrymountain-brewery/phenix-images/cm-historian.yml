@@ -102,11 +102,11 @@ spec:
       # merge two stanzas of one file into a single record.
       cat > /etc/apt/preferences.d/grafana <<EOF
       Package: grafana
-      Pin: version ${GRAFANA_MAJOR}.*
+      Pin: version $GRAFANA_MAJOR.*
       Pin-Priority: 1001
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "influxdb2=${INFLUXDB_VERSION}" "influxdb2-cli=${INFLUXDB_VERSION}" "telegraf=${TELEGRAF_VERSION}" grafana
+      apt-get install -y --no-install-recommends "influxdb2=$INFLUXDB_VERSION" "influxdb2-cli=$INFLUXDB_VERSION" "telegraf=$TELEGRAF_VERSION" grafana
       influx version
       telegraf --version
 
@@ -159,7 +159,7 @@ spec:
       Signed-By: /etc/apt/keyrings/wazuh.asc
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      apt-get install -y --no-install-recommends "wazuh-agent=$WAZUH_VERSION"
       systemctl disable wazuh-agent.service
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------

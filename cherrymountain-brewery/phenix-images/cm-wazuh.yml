@@ -90,7 +90,7 @@ spec:
       apt-get update
       # Wazuh's repository has its own Filebeat (the 7.10.2 build that pairs with the
       # indexer), so it is pinned too.
-      apt-get install -y "wazuh-manager=${WAZUH_VERSION}" "wazuh-indexer=${WAZUH_VERSION}" "wazuh-dashboard=${WAZUH_VERSION}" "filebeat=${FILEBEAT_VERSION}"
+      apt-get install -y "wazuh-manager=$WAZUH_VERSION" "wazuh-indexer=$WAZUH_VERSION" "wazuh-dashboard=$WAZUH_VERSION" "filebeat=$FILEBEAT_VERSION"
       systemctl disable wazuh-manager.service wazuh-indexer.service wazuh-dashboard.service filebeat.service
 
       # Wazuh's helper files, checked against the checksums of the 4.14 release.

@@ -71,8 +71,8 @@ spec:
       apt-get update
       apt-get install -y --no-install-recommends git xz-utils python3 build-essential libsqlite3-dev
 
-      curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz"
-      echo "${NODE_SHA256}  /tmp/node.tar.xz" | sha256sum -c -
+      curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz"
+      echo "$NODE_SHA256  /tmp/node.tar.xz" | sha256sum -c -
       tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1
       rm -f /tmp/node.tar.xz
       node --version
@@ -152,7 +152,7 @@ spec:
       Signed-By: /etc/apt/keyrings/wazuh.asc
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      apt-get install -y --no-install-recommends "wazuh-agent=$WAZUH_VERSION"
       systemctl disable wazuh-agent.service
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------

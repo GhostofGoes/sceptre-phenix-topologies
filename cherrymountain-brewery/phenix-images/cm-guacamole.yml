@@ -100,25 +100,25 @@ spec:
       Signed-By: /etc/apt/keyrings/docker.asc
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "docker-ce=${DOCKER_VERSION}" "docker-ce-cli=${DOCKER_VERSION}" containerd.io "docker-compose-plugin=${COMPOSE_VERSION}"
+      apt-get install -y --no-install-recommends "docker-ce=$DOCKER_VERSION" "docker-ce-cli=$DOCKER_VERSION" containerd.io "docker-compose-plugin=$COMPOSE_VERSION"
 
       # The images stay on disk as compressed copies until the first boot.
       install -d -m 0755 /etc/cherrymountain /var/lib/cm-guacamole/images /usr/local/lib/cm-guacamole
       : > /etc/cherrymountain/images.list
       for ref in guacamole/guacd:1.6.0 guacamole/guacamole:1.6.0 postgres:17.11-alpine nginx:1.30.6-alpine; do
         dir="/var/lib/cm-guacamole/images/$(printf '%s' "$ref" | tr '/:' '__')"
-        skopeo copy --retry-times 3 --override-os linux --override-arch amd64 "docker://docker.io/${ref}" "dir:${dir}"
+        skopeo copy --retry-times 3 --override-os linux --override-arch amd64 "docker://docker.io/$ref" "dir:$dir"
         printf '%s %s\n' "$ref" "$dir" >> /etc/cherrymountain/images.list
       done
 
       # The stock schema only. 002-create-admin-user.sql (guacadmin with a published
       # password) is left out: the app's 50-cherrymountain.sql creates cmadmin.
       install -d -m 0755 /opt/cherrymountain/guacamole/initdb
-      curl -fsSL -o /tmp/guacamole-auth-jdbc.tar.gz "https://archive.apache.org/dist/guacamole/${GUAC_VERSION}/binary/guacamole-auth-jdbc-${GUAC_VERSION}.tar.gz"
-      echo "${GUAC_JDBC_SHA256}  /tmp/guacamole-auth-jdbc.tar.gz" | sha256sum -c -
-      tar -xzf /tmp/guacamole-auth-jdbc.tar.gz -C /tmp "guacamole-auth-jdbc-${GUAC_VERSION}/postgresql/schema/001-create-schema.sql"
-      install -m 0644 "/tmp/guacamole-auth-jdbc-${GUAC_VERSION}/postgresql/schema/001-create-schema.sql" /opt/cherrymountain/guacamole/initdb/001-create-schema.sql
-      rm -rf /tmp/guacamole-auth-jdbc.tar.gz "/tmp/guacamole-auth-jdbc-${GUAC_VERSION}"
+      curl -fsSL -o /tmp/guacamole-auth-jdbc.tar.gz "https://archive.apache.org/dist/guacamole/$GUAC_VERSION/binary/guacamole-auth-jdbc-$GUAC_VERSION.tar.gz"
+      echo "$GUAC_JDBC_SHA256  /tmp/guacamole-auth-jdbc.tar.gz" | sha256sum -c -
+      tar -xzf /tmp/guacamole-auth-jdbc.tar.gz -C /tmp "guacamole-auth-jdbc-$GUAC_VERSION/postgresql/schema/001-create-schema.sql"
+      install -m 0644 "/tmp/guacamole-auth-jdbc-$GUAC_VERSION/postgresql/schema/001-create-schema.sql" /opt/cherrymountain/guacamole/initdb/001-create-schema.sql
+      rm -rf /tmp/guacamole-auth-jdbc.tar.gz "/tmp/guacamole-auth-jdbc-$GUAC_VERSION"
 
       # Recordings are blue-team evidence: guacd (uid 1000) writes them, the web app
       # (gid 1001) lists them, and the Wazuh agent watches the directory.
@@ -154,7 +154,7 @@ spec:
       Signed-By: /etc/apt/keyrings/wazuh.asc
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      apt-get install -y --no-install-recommends "wazuh-agent=$WAZUH_VERSION"
       systemctl disable wazuh-agent.service
     INSTALL_SSHD_HARDENING: |
       # ------------------------------------------------ sshd hardening -------------------------------------------------

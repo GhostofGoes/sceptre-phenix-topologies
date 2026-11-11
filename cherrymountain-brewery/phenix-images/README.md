@@ -50,6 +50,9 @@ How phenix runs the scripts, which every `INSTALL_*` script must allow for:
   variable or a `cd` of one script carries into the next.
 - vmdb2 renders the script with Jinja2 first, so `{{`, `{%`, and `{#` (as in
   `${#name}`) must not appear.
+- `phenix config create` replaces each `${NAME}` and `${NAME:default}` with
+  the value from the phenix host environment, or with an empty string. Write a
+  shell variable as `$NAME`.
 - The chroot has `/proc`, `/sys`, `/dev`, and the build host's `/run`, and the
   host's `resolv.conf`. No systemd runs in it: `systemctl enable` and
   `disable` work, and `start` does nothing.
@@ -57,7 +60,7 @@ How phenix runs the scripts, which every `INSTALL_*` script must allow for:
   installed in `<dir>/<name>.tar` and starts the next build from it. Delete
   that file after a change to `packages`.
 
-The image lint hook checks the first two points and the `mingui` packages.
+The image lint hook checks the first three points and the `mingui` packages.
 Build in the phenix container: `xubuntu-desktop` recommends Ubuntu's `firefox`
 package, which installs a snap through the host's snapd when the build host
 has one (`/run/snapd.socket`), and skips it when it has none.

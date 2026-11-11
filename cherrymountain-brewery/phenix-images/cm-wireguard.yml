@@ -106,7 +106,7 @@ spec:
       Signed-By: /etc/apt/keyrings/wazuh.asc
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      apt-get install -y --no-install-recommends "wazuh-agent=$WAZUH_VERSION"
       systemctl disable wazuh-agent.service
     INSTALL_SSHD_HARDENING: |
       # ------------------------------------------------ sshd hardening -------------------------------------------------

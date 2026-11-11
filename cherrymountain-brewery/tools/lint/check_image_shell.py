@@ -15,6 +15,9 @@ sceptre-phenix sources are ``src/go/types/version/v1/image.go``,
   scripts are checked as dash, not bash.
 * vmdb2 renders that script with Jinja2 first, so ``{{``, ``{%``, and ``{#``
   (as in ``${#name}``) start a template tag and must not appear.
+* ``phenix config create`` replaces each ``${NAME}`` and ``${NAME:default}``
+  with the value from the phenix host environment (``common.ParseEnv``), or
+  with an empty string, so a shell variable must be written ``$NAME``.
 * Every ``script_order`` entry needs its script, and every script its entry.
 * ``phenix config create`` stores the file as it is. Only ``phenix image
   create`` adds the desktop packages of the ``mingui`` variant, so a stored
@@ -44,6 +47,8 @@ SHELLCHECK_ARGS: list[str] = [
 _FINDING: re.Pattern[str] = re.compile(r"^-:(?P<line>\d+):(?P<col>\d+): (?P<rest>.*)$")
 #: The start of a Jinja2 expression, statement, or comment.
 _JINJA: re.Pattern[str] = re.compile(r"\{\{|\{%|\{#")
+#: A placeholder that phenix fills from its environment (common.EnvPlaceholder).
+_ENV_PLACEHOLDER: re.Pattern[str] = re.compile(r"\$\{(\w+)(?::([^}]*))?\}")
 #: What ``phenix image create --variant mingui`` adds to an Ubuntu image
 #: (UbuntuMinGUIPackages in src/go/api/image/constants.go).
 MINGUI_PACKAGES: tuple[str, ...] = ("wmctrl", "xdotool", "xubuntu-desktop")
@@ -88,6 +93,11 @@ def check_config(path: Path, spec: ImageSpec) -> list[str]:
                 findings.append(
                     f"{path}: [{name}] line {number}: '{match.group()}' starts a Jinja2 tag "
                     "(vmdb2 renders the build script as a template)"
+                )
+            for env in _ENV_PLACEHOLDER.finditer(line):
+                findings.append(
+                    f"{path}: [{name}] line {number}: phenix config create replaces "
+                    f"'{env.group()}' from its own environment; write ${env[1]}"
                 )
     if spec.variant == "mingui":
         missing: list[str] = [pkg for pkg in MINGUI_PACKAGES if pkg not in spec.packages]

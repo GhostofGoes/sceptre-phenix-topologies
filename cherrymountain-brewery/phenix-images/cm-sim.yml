@@ -84,14 +84,14 @@ spec:
       # repository's archive at CM_REF, with OpenDSSDirect.py (~=0.8.4, the `power`
       # extra; 0.9 fails with "Invalid terminal index (0)") and SimPy (a dependency).
       python3 -m venv /opt/cherrymountain/venv
-      /opt/cherrymountain/venv/bin/pip install --no-cache-dir "helics==${HELICS_VERSION}"
+      /opt/cherrymountain/venv/bin/pip install --no-cache-dir "helics==$HELICS_VERSION"
       /opt/cherrymountain/venv/bin/pip install --no-cache-dir \
-        "cherrymountain-sim[power] @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/${CM_REF}.tar.gz#subdirectory=cherrymountain-brewery/sim"
+        "cherrymountain-sim[power] @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/$CM_REF.tar.gz#subdirectory=cherrymountain-brewery/sim"
       # cm-viz from the same archive: the bridge and the page with three.js
       # vendored in the package (web/vendor/three, MIT), so nothing is fetched
       # at run time. The app injects its unit on sim-ctl only.
-      /opt/cherrymountain/venv/bin/pip install --no-cache-dir "websockets==${WEBSOCKETS_VERSION}" \
-        "cherrymountain-viz @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/${CM_REF}.tar.gz#subdirectory=cherrymountain-brewery/viz"
+      /opt/cherrymountain/venv/bin/pip install --no-cache-dir "websockets==$WEBSOCKETS_VERSION" \
+        "cherrymountain-viz @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/$CM_REF.tar.gz#subdirectory=cherrymountain-brewery/viz"
       for exe in helics_broker helics_app helics_player helics_recorder; do
         ln -sf "/opt/cherrymountain/venv/bin/$exe" "/usr/local/bin/$exe"
       done
@@ -126,14 +126,14 @@ spec:
       EOF
       cat > /etc/apt/preferences.d/grafana <<EOF
       Package: grafana
-      Pin: version ${GRAFANA_MAJOR}.*
+      Pin: version $GRAFANA_MAJOR.*
       Pin-Priority: 1001
       EOF
       apt-get update
       # No demo security config: the node runs with the security plugin disabled,
       # on the out-of-bounds MGMT plane (DESIGN.md 10.1 and 13, range exposure).
       DISABLE_INSTALL_DEMO_CONFIG=true DISABLE_SECURITY_PLUGIN=true \
-        apt-get install -y --no-install-recommends "opensearch=${OPENSEARCH_VERSION}" grafana
+        apt-get install -y --no-install-recommends "opensearch=$OPENSEARCH_VERSION" grafana
       apt-mark hold opensearch
       cat > /etc/opensearch/opensearch.yml <<'EOF'
       cluster.name: cherrymountain-truth

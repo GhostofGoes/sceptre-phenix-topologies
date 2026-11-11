@@ -99,7 +99,7 @@ spec:
       # noble enforces PEP 668, so the Python modules (including the io module's
       # HELICS federate) live in a venv that the service puts first on PATH.
       python3 -m venv /opt/otsim-venv
-      /opt/otsim-venv/bin/pip install --no-cache-dir "helics==${HELICS_VERSION}"
+      /opt/otsim-venv/bin/pip install --no-cache-dir "helics==$HELICS_VERSION"
       /opt/otsim-venv/bin/pip install --no-cache-dir src/python
       /opt/otsim-venv/bin/pip install --no-cache-dir "bacpypes3==0.0.110" "pydantic==2.11.7"
       # The pyzmq wheel bundles its own libzmq, which collides with the one HELICS
@@ -108,7 +108,7 @@ spec:
       # version from source so it links the system libzmq5.
       PYZMQ_VERSION=$(/opt/otsim-venv/bin/python -c 'import zmq; print(zmq.__version__)')
       /opt/otsim-venv/bin/pip install --no-cache-dir --force-reinstall --no-deps \
-        --no-binary pyzmq "pyzmq==${PYZMQ_VERSION}"
+        --no-binary pyzmq "pyzmq==$PYZMQ_VERSION"
       # (vmdb2 runs these scripts with sh, which is dash: no bash builtins.)
       for bundled in /opt/otsim-venv/lib/python3*/site-packages/pyzmq.libs; do
         if [ -e "$bundled" ]; then

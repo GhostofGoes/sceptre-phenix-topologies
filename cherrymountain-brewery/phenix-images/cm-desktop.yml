@@ -93,7 +93,7 @@ spec:
       # records the version, and phenix-images/README.md the one that was checked.
       XTRADEB_KEY_FINGERPRINT=5301FA4FD93244FBC6F6149982BB6851C64F6880
       install -d -m 0755 /etc/apt/keyrings
-      curl -fsSL -o /etc/apt/keyrings/xtradeb.asc "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x${XTRADEB_KEY_FINGERPRINT}"
+      curl -fsSL -o /etc/apt/keyrings/xtradeb.asc "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$XTRADEB_KEY_FINGERPRINT"
       test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/xtradeb.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$XTRADEB_KEY_FINGERPRINT"
       cat > /etc/apt/sources.list.d/xtradeb.sources <<'EOF'
       Types: deb
@@ -167,7 +167,7 @@ spec:
       Signed-By: /etc/apt/keyrings/wazuh.asc
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      apt-get install -y --no-install-recommends "wazuh-agent=$WAZUH_VERSION"
       systemctl disable wazuh-agent.service
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------

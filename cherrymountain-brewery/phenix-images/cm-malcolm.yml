@@ -105,7 +105,7 @@ spec:
       Signed-By: /etc/apt/keyrings/docker.asc
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "docker-ce=${DOCKER_VERSION}" "docker-ce-cli=${DOCKER_VERSION}" containerd.io "docker-compose-plugin=${COMPOSE_VERSION}"
+      apt-get install -y --no-install-recommends "docker-ce=$DOCKER_VERSION" "docker-ce-cli=$DOCKER_VERSION" containerd.io "docker-compose-plugin=$COMPOSE_VERSION"
 
       # Malcolm's own checkout (compose file, config templates, Zeek and Suricata
       # bind mounts, the auth_setup script). Owned by uid 1000, which the containers
@@ -126,9 +126,9 @@ spec:
       install -d -m 0755 /etc/cherrymountain /var/lib/cm-malcolm/images /opt/cherrymountain/malcolm/zeek /usr/local/lib/cm-malcolm
       : > /etc/cherrymountain/images.list
       for name in api arkime dashboards dashboards-helper file-upload filebeat-oss filescan freq htadmin logstash-oss netbox nginx-proxy opensearch pcap-monitor postgresql strelka-backend strelka-frontend strelka-manager suricata valkey zeek; do
-        ref="ghcr.io/idaholab/malcolm/${name}:${MALCOLM_IMAGE_TAG}"
-        skopeo copy --retry-times 3 --override-os linux --override-arch amd64 "docker://${ref}" "dir:/var/lib/cm-malcolm/images/${name}"
-        printf '%s %s\n' "$ref" "/var/lib/cm-malcolm/images/${name}" >> /etc/cherrymountain/images.list
+        ref="ghcr.io/idaholab/malcolm/$name:$MALCOLM_IMAGE_TAG"
+        skopeo copy --retry-times 3 --override-os linux --override-arch amd64 "docker://$ref" "dir:/var/lib/cm-malcolm/images/$name"
+        printf '%s %s\n' "$ref" "/var/lib/cm-malcolm/images/$name" >> /etc/cherrymountain/images.list
       done
 
       # Host settings Malcolm's installer recommends (OpenSearch needs the map count).
@@ -183,7 +183,7 @@ spec:
       Signed-By: /etc/apt/keyrings/wazuh.asc
       EOF
       apt-get update
-      apt-get install -y --no-install-recommends "wazuh-agent=${WAZUH_VERSION}"
+      apt-get install -y --no-install-recommends "wazuh-agent=$WAZUH_VERSION"
       systemctl disable wazuh-agent.service
     POSTBUILD_APT_CLEANUP: |
       # --------------------------------------------------- Cleanup ----------------------------------------------------

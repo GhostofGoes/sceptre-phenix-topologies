@@ -13,7 +13,7 @@ import json
 import shlex
 from typing import Any, Final
 
-from cherrymountain_apps.cherrymountain.metadata import (
+from .metadata import (
     BbmdHost,
     FuxaHost,
     GuacamoleHost,
@@ -26,7 +26,7 @@ from cherrymountain_apps.cherrymountain.metadata import (
     SimFederateHost,
     WazuhManagerHost,
 )
-from cherrymountain_apps.cherrymountain.render import (
+from .render import (
     BACNET_PROCESSES,
     Context,
     bacnet_endpoint,

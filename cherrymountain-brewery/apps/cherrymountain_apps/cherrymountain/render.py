@@ -26,9 +26,9 @@ from phenix_apps.common import utils
 from phenix_apps.common.logger import logger
 from pydantic import BaseModel, ConfigDict
 
-from cherrymountain_apps.cherrymountain import brand
-from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, host_keys, totp_secret, write_private
-from cherrymountain_apps.cherrymountain.metadata import (
+from . import brand
+from .credentials import RangeSecrets, host_keys, totp_secret, write_private
+from .metadata import (
     AppMetadata,
     FuxaHost,
     GuacamoleHost,
@@ -41,7 +41,7 @@ from cherrymountain_apps.cherrymountain.metadata import (
     SimCtlHost,
     SimFederateHost,
 )
-from cherrymountain_apps.cherrymountain.sources import DebugMap, SourceError, Sources
+from .sources import DebugMap, SourceError, Sources
 
 TEMPLATES: Final[Path] = Path(__file__).parent / "templates"
 STARTUP: Final[str] = "/etc/phenix/startup"

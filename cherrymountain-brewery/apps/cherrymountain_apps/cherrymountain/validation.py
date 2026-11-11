@@ -23,14 +23,14 @@ from phenix_apps.common.error import AppError
 from phenix_apps.common.logger import logger
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from cherrymountain_apps.cherrymountain.metadata import (
+from .metadata import (
     HOST_TYPES,
     AppHosts,
     AppMetadata,
     Block,
     HostBase,
 )
-from cherrymountain_apps.cherrymountain.render import NORTHBOUND_PLUGIN
+from .render import NORTHBOUND_PLUGIN
 
 APP: Final[str] = "cherrymountain"
 

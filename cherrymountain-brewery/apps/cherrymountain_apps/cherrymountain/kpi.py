@@ -35,7 +35,7 @@ from typing import Any, ClassVar, Final
 from phenix_apps.common.utils import utc_now
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from cherrymountain_apps import simctl
+from .. import simctl
 
 #: Ounces per US beer barrel, and per bottle (DESIGN.md 12.2).
 OZ_PER_BBL: Final[float] = 3968.0

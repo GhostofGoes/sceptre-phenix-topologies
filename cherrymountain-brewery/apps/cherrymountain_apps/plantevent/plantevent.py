@@ -17,7 +17,7 @@ from phenix_apps.apps.scorch.app import Hostname, MetadataBlock, Name, Seconds
 from phenix_apps.common.logger import logger
 from pydantic import AnyHttpUrl, Field
 
-from cherrymountain_apps import simctl
+from .. import simctl
 
 Port = Annotated[int, Field(ge=1, le=65535)]
 Vessel = Annotated[str, Field(pattern=r"^(FV|BBT)-\d{3}$")]

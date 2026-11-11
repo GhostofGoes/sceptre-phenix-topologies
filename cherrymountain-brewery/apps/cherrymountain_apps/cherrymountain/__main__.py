@@ -1,6 +1,6 @@
 """Entry point of phenix-app-cherrymountain."""
 
-from cherrymountain_apps.cherrymountain.app import CherryMountain
+from .app import CherryMountain
 
 
 def main() -> None:

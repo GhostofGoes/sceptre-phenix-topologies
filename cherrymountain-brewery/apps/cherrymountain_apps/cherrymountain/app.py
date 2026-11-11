@@ -26,9 +26,9 @@ from phenix_apps.common.error import AppError
 from phenix_apps.common.logger import logger
 from pydantic import BaseModel
 
-from cherrymountain_apps.cherrymountain import kpi, mirror, soh
-from cherrymountain_apps.cherrymountain.credentials import RangeSecrets, resolve
-from cherrymountain_apps.cherrymountain.metadata import (
+from . import kpi, mirror, soh
+from .credentials import RangeSecrets, resolve
+from .metadata import (
     AppMetadata,
     FuxaHost,
     HistorianHost,
@@ -38,7 +38,7 @@ from cherrymountain_apps.cherrymountain.metadata import (
     SimCtlHost,
     SimFederateHost,
 )
-from cherrymountain_apps.cherrymountain.render import (
+from .render import (
     OTSIM_CONFIG,
     Context,
     Injection,
@@ -48,8 +48,8 @@ from cherrymountain_apps.cherrymountain.render import (
     render_all,
     render_otsim,
 )
-from cherrymountain_apps.cherrymountain.sources import SourceError, Sources
-from cherrymountain_apps.cherrymountain.validation import (
+from .sources import SourceError, Sources
+from .validation import (
     Problem,
     check_references,
     check_topology,

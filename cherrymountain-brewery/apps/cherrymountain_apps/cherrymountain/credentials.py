@@ -20,7 +20,7 @@ from typing import Final
 
 from pydantic import BaseModel, SecretStr, field_validator
 
-from cherrymountain_apps.cherrymountain.metadata import (
+from .metadata import (
     WAZUH_PASSWORD_SYMBOLS,
     Secrets,
     malcolm_password_problem,

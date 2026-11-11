@@ -1,0 +1,165 @@
+# cm-openplc: OpenPLC v4 runtime (plc-cellar)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-openplc` prints), so
+# the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-openplc.yml
+#   phenix image build -o <dir> -c -x cm-openplc
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-openplc.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-openplc
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - build-essential
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - python3-pip
+  - python3-venv
+  - rsync
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_OPENPLC
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_OPENPLC: |
+      # --------------------------------------------- OpenPLC runtime v4 -----------------------------------------------
+      # Native (source) install of the pinned runtime. The runtime compiles uploaded
+      # programs on the device, so the toolchain install.sh pulls in stays.
+      # TODO(verify): install.sh --native inside the image-build chroot; the retired
+      # openplc-v4 spike ran the same install in a container.
+      export DEBIAN_FRONTEND=noninteractive
+      OPENPLC_REF=v4.3.2
+      # The commit the tag names: a moved tag fails the build instead of changing it.
+      OPENPLC_COMMIT=9fb5e1a29b574806f5aea3a4e78202c7a5d658ee
+      apt-get update
+      apt-get install -y --no-install-recommends git zip unzip
+
+      git clone --depth 1 --branch "$OPENPLC_REF" https://github.com/Autonomy-Logic/openplc-runtime.git /opt/openplc-runtime
+      cd /opt/openplc-runtime || exit 1
+      test "$(git rev-parse HEAD)" = "$OPENPLC_COMMIT"
+      # install.sh creates this directory only when systemd is running, which it is
+      # not in a chroot. It holds the user database and .env across reboots.
+      mkdir -p /var/lib/openplc-runtime /var/run/runtime
+      ./install.sh --native
+
+      # install.sh also skips the unit in a chroot; this is the unit it writes.
+      cat > /etc/systemd/system/openplc-runtime.service <<EOF
+      [Unit]
+      Description=OpenPLC Runtime v4 Service
+      After=network.target
+      [Service]
+      Type=simple
+      Restart=always
+      RestartSec=5
+      User=root
+      Group=root
+      WorkingDirectory=/opt/openplc-runtime
+      ExecStart=/opt/openplc-runtime/start_openplc.sh
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants /opt/cherrymountain/openplc /var/lib/cm-openplc
+      ln -sf /etc/systemd/system/openplc-runtime.service /etc/systemd/system/multi-user.target.wants/openplc-runtime.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 12G
+  variant: minbase

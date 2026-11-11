@@ -1,0 +1,54 @@
+[Unit]
+Description=CherryMountain Malcolm first-boot configuration
+# The images must be in Docker (the OpenSearch keystore comes from one of them).
+After=docker.service cm-load-images.service
+Requires=docker.service
+Wants=cm-load-images.service
+ConditionPathExists=!/var/lib/cm-malcolm/provisioned
+# Retry forever: Restart=on-failure below is the only retry loop.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cm-malcolm
+# The cherrymountain app's file: the web password, root-only. Only this unit reads it.
+EnvironmentFile=-/etc/default/cm-malcolm-credentials
+ExecStart=/usr/local/sbin/cm-malcolm-provision
+TimeoutStartSec=30min
+Restart=on-failure
+RestartSec=30
+
+# Hardening. The system call filter keeps @privileged calls (chown and setuid are in it), which
+# this unit needs. This is the one root unit of the sensor: it writes the Malcolm
+# checkout, hands it to uid 1000 (CAP_CHOWN, CAP_FOWNER, CAP_DAC_OVERRIDE), runs
+# Malcolm's auth_setup as uid 1000 through setpriv (CAP_SETUID, CAP_SETGID), and
+# talks to Docker through its socket.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/malcolm /var/lib/cm-malcolm
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@resources
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

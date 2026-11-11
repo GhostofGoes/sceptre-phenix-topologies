@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cherrymountain-plantgen"
+version = "0.1.0"
+description = "Generate CherryMountain Brewery phenix artifacts from plant/plant.yaml"
+requires-python = ">=3.12"
+license = "GPL-3.0-only"
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+plantgen = "plantgen.cli:main"
+
+[tool.setuptools]
+packages = ["plantgen"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "PL"]
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "ANN401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["plantgen"]

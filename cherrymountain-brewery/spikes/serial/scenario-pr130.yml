@@ -1,0 +1,15 @@
+# The serial app of phenix PR #130: one connection between two VMs on the same host
+# (a single socat between the two QEMU chardev sockets; TCP only across hosts).
+apiVersion: phenix.sandia.gov/v2
+kind: Scenario
+metadata:
+  name: spike-serial-pr130
+  annotations:
+    topology: spike-serial-pr130
+spec:
+  apps:
+    - name: serial
+      metadata:
+        connections:
+          - src: rio-utilities
+            dst: glycol-chiller

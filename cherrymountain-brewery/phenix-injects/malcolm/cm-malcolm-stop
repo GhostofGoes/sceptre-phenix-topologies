@@ -1,0 +1,8 @@
+#!/bin/bash
+# Stop Malcolm's containers (cm-malcolm.service, ExecStop). Installed as
+# /usr/local/sbin/cm-malcolm-stop. Containers stop gracefully (Malcolm sets a
+# 20 to 30 second grace period), and OpenSearch keeps its data.
+set -euo pipefail
+
+cd "${MALCOLM_DIR:-/opt/malcolm}"
+docker compose --profile malcolm stop --timeout 60

@@ -1,0 +1,49 @@
+[Unit]
+Description=CherryMountain BACnet BBMD (BACpypes3)
+# phenix startup scripts, not systemd, configure the network, so
+# network-online.target would not mean anything here. The BBMD binds its
+# address when it starts, and the startup hook starts it after the network.
+After=network.target
+# Never give up: the peer BBMD may start late.
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+EnvironmentFile=/etc/default/cm-bbmd
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/bacnet/bin/python -I /usr/local/lib/cm-bbmd/cm_bbmd.py
+Restart=always
+RestartSec=5
+# cm_bbmd.py exits 2 on bad settings, which a restart cannot fix.
+RestartPreventExitStatus=2
+
+# Hardening. The BBMD binds UDP 47808 (an unprivileged port) and talks to its
+# peer; it needs no capabilities and writes nothing.
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

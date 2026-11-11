@@ -1,0 +1,8 @@
+{
+  "secureEnabled": true,
+  "secretCode": "cm-ci-fuxa-jwt-secret-range-only",
+  "tokenExpiresIn": "12h",
+  "nodeRedEnabled": false,
+  "swaggerEnabled": false,
+  "uiPort": 1881
+}

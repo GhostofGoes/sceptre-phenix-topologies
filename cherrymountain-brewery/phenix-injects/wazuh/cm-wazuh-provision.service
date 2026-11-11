@@ -1,0 +1,68 @@
+[Unit]
+Description=CherryMountain Wazuh first-boot setup (certificates, passwords, indexer, manager, dashboard)
+After=network.target
+ConditionPathExists=!/var/lib/cm-wazuh/provisioned
+# Restart=on-failure below is the only retry loop, and it gives up after five starts in
+# twelve hours (a start can take up to 45 minutes), so a permanent failure ends in the
+# failed state instead of looping. The script is safe to run again: it keeps the
+# certificates it made (the indexer does not reload new ones while it runs), skips
+# the password steps once /var/lib/cm-wazuh/passwords-changed exists, and each
+# other step replaces what the last attempt left.
+StartLimitIntervalSec=12h
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cm-wazuh
+# The cherrymountain app's file: the dashboard admin password, root-only.
+EnvironmentFile=-/etc/default/cm-wazuh-manager
+ExecStart=/usr/local/sbin/cm-wazuh-provision
+TimeoutStartSec=45min
+Restart=on-failure
+RestartSec=60
+
+# Hardening. The system call filter keeps @privileged calls (chown and setuid are in it), which
+# this unit needs. This is the one root unit of the SIEM: it writes configuration and
+# certificates for three services under their own users (CAP_CHOWN, CAP_FOWNER,
+# CAP_DAC_OVERRIDE), starts them through systemd (D-Bus, an AF_UNIX socket), and
+# talks to the indexer and the API over TCP.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+# systemd creates the state directories before it builds the mount namespace. As
+# ReadWritePaths= they would have to exist already (the unit fails with 226/NAMESPACE
+# otherwise), and no package or image script makes them: /var/lib/cm-wazuh holds
+# the markers and passwords.txt, and /var/lib/filebeat is Filebeat's path.data, where
+# `filebeat keystore` writes filebeat.keystore.
+StateDirectory=cm-wazuh filebeat
+StateDirectoryMode=0750
+ReadWritePaths=/etc /var/ossec /opt/cherrymountain/wazuh /usr/share/wazuh-indexer /usr/share/wazuh-dashboard /var/lib/wazuh-indexer /var/log
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@resources
+# CAP_KILL: wazuh-passwords-tool.sh restarts the manager and then waits for
+# `wazuh-control status`, which tests each daemon with `kill -0`. Most of them run
+# as the wazuh user, and root may only signal another user's process with CAP_KILL:
+# without it the tool sees them as stopped and gives up half way, after it changed
+# the Filebeat and manager keystores and before it changed the indexer's users.
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_KILL CAP_SETUID CAP_SETGID
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

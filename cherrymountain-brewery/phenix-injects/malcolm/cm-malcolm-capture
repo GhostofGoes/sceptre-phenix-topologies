@@ -1,0 +1,35 @@
+#!/bin/bash
+# Capture-VM setup for the mirror feed (DESIGN.md 14, capture requirement 1).
+# Installed as /usr/local/sbin/cm-malcolm-capture and run by
+# cm-malcolm-capture.service.
+#
+# The mirror app's setupOVS script creates the in-guest bridge `phenix` and a GRE
+# port `sniffer`. The stock bridge learns the mirrored MACs on `sniffer` and then
+# drops frames for them, so only the first flooded frames reach the capture port.
+# One OpenFlow flow sends everything that arrives on `sniffer` to the bridge's
+# local port, and the port must be up (and promiscuous) for Zeek, Suricata, and
+# Arkime to read it. (The other half of the fix, df_default=false on the host's GRE
+# port, belongs to the mirror app and cannot be done from inside this VM.)
+#
+# Env (from /etc/default/cm-malcolm, optional): CM_CAPTURE_IFACE (the bridge, default
+# phenix), CM_SNIFFER_PORT (default sniffer), CM_BRIDGE_TIMEOUT (seconds to wait
+# for the bridge, default 180).
+set -euo pipefail
+
+BRIDGE="${CM_CAPTURE_IFACE:-phenix}"
+SNIFFER="${CM_SNIFFER_PORT:-sniffer}"
+TIMEOUT="${CM_BRIDGE_TIMEOUT:-180}"
+
+deadline=$((SECONDS + TIMEOUT))
+until ovs-vsctl br-exists "$BRIDGE" 2> /dev/null && ovs-vsctl port-to-br "$SNIFFER" > /dev/null 2>&1; do
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    echo "cm-malcolm-capture: FAIL: bridge ${BRIDGE} with port ${SNIFFER} did not appear within ${TIMEOUT} s" >&2
+    exit 1
+  fi
+  sleep 2
+done
+
+ovs-ofctl add-flow "$BRIDGE" "priority=1000,in_port=${SNIFFER},actions=output:${BRIDGE}"
+ip link set "$BRIDGE" up promisc on
+echo "cm-malcolm-capture: PASS: ${SNIFFER} feeds ${BRIDGE}, which is up"
+ovs-ofctl dump-flows "$BRIDGE"

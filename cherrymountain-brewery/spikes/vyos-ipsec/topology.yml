@@ -1,0 +1,59 @@
+# Utility IPsec fixture (DESIGN §10.3): rtr-edge <-> rtr-util over a WAN link,
+# DNP3 master behind rtr-util, outstation behind rtr-edge.
+# Images: vyos.qc2 (VyOS 1.5 rolling with miniccc, built from
+# sceptre-phenix-images scripts/vyos; phenix writes its config to partition 3),
+# cm-spike.qc2 for the hosts. The vrouter template renders eth<idx> for the
+# idx-th interface, so the router interfaces are listed in that order; the
+# interface `name` is not used for VyOS.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-ipsec
+spec:
+  nodes:
+    - type: Router
+      general: {hostname: rtr-edge}
+      hardware:
+        os_type: vyos
+        drives: [{image: vyos.qc2, inject_partition: 3}]
+        memory: 2048
+        vcpus: 2
+      network:
+        interfaces:
+          - {name: eth0, vlan: WAN, address: 203.0.113.2, mask: 29, proto: static, type: ethernet}
+          - {name: eth1, vlan: FIELD, address: 10.20.15.1, mask: 24, proto: static, type: ethernet}
+        routes:
+          - {destination: 192.0.2.0/24, next: 203.0.113.3}
+    - type: Router
+      general: {hostname: rtr-util}
+      hardware:
+        os_type: vyos
+        drives: [{image: vyos.qc2, inject_partition: 3}]
+        memory: 2048
+        vcpus: 2
+      network:
+        interfaces:
+          - {name: eth0, vlan: WAN, address: 203.0.113.3, mask: 29, proto: static, type: ethernet}
+          - {name: eth1, vlan: UTIL, address: 192.0.2.1, mask: 24, proto: static, type: ethernet}
+        routes:
+          - {destination: 10.20.15.0/24, next: 203.0.113.2}
+    - type: VirtualMachine
+      general: {hostname: rtu-der}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: eth0, vlan: FIELD, address: 10.20.15.10, mask: 24, gateway: 10.20.15.1, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: utility-derms}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: eth0, vlan: UTIL, address: 192.0.2.10, mask: 24, gateway: 192.0.2.1, proto: static, type: ethernet}

@@ -1,0 +1,57 @@
+[Unit]
+Description=CherryMountain HELICS federate %i
+Documentation=file:///etc/cherrymountain/helics.json
+# phenix startup scripts, not systemd, configure the network, so
+# network-online.target would not mean anything here. The federate retries
+# until the root broker (started by the helics app on sim-ctl) accepts it.
+After=network.target
+# Never give up: the broker may start late or restart.
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+# Rendered by the cherrymountain app: CM_HELICS_CONFIG, HELICS_BROKER_ADDRESS,
+# CM_LOG_LEVEL.
+EnvironmentFile=/etc/default/cm-federate-%i
+Environment=LD_LIBRARY_PATH=/usr/local/lib
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/cherrymountain/venv/bin/python -m cherrymountain_sim --config ${CM_HELICS_CONFIG} --federate %i --broker-address ${HELICS_BROKER_ADDRESS} --log-level ${CM_LOG_LEVEL}
+Restart=always
+RestartSec=5
+
+# Hardening, as cm-cellar.service. MemoryDenyWriteExecute is left off because
+# the HELICS library is loaded through ctypes, which can need executable memory.
+# Two directives are looser than the other units', because HELICS 3.6.1 and
+# its ZeroMQ die without them (reproduced with a seccomp filter):
+#   - AF_NETLINK: HELICS lists the host's interfaces with getifaddrs() to pick
+#     its local address, and segfaults when that fails.
+#   - @resources is not filtered: ZeroMQ sets the scheduling of each I/O thread
+#     (sched_setscheduler), and the power federate's solver calls mbind; a
+#     filtered call kills the process with SIGSYS.
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

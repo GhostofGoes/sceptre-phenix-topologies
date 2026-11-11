@@ -1,0 +1,103 @@
+<!--
+  CherryMountain Brewery decoders for Wazuh (DESIGN.md 14). The topology injects this
+  file as /var/ossec/etc/decoders/cherrymountain_decoders.xml on the manager. (It has
+  the extension .in here because a Wazuh decoder file has several top-level elements,
+  which the repository's well-formedness hook for .xml rejects.) All patterns are PCRE2: the
+  default OS_Regex has no `.*` (a dot is a literal there), and PCRE2 lets
+  tests/soc check the patterns against sample lines with Python's `re`.
+
+  Sources:
+    cm-fw-drop     kernel log lines of the VyOS firewalls (fw-edge, fw-ot) for packets the
+                   default-deny rulesets dropped, sent to the manager over syslog
+    cm-wg-watch    cm_wg_watch.py on dmz-vpn: WireGuard peer events
+    cm-guacamole   the Guacamole web app on dmz-jump (login events)
+    cm-guacd       guacd on dmz-jump (sessions)
+    cm-plc-tool    cm_plc_tool.py on the EWS: OpenPLC REST actions of the engineer
+  Wazuh runs the first child of a parent whose prematch matches, then that child's
+  siblings (the same name, no prematch); a child of a built-in parent (kernel) is
+  reported, and matched by <decoded_as>, under the parent's name. The samples of
+  samples.txt as they were then ran through wazuh-logtest on a Wazuh 4.14.1 manager;
+  the [cm-wg-drop] prefix and the samples with a day of uptime are later, and were
+  checked against the 4.14.10 source and by tests/soc only.
+-->
+
+<!-- ===== VyOS firewall drops ===== -->
+<!-- Wazuh's own `kernel` decoder takes every line from the kernel program first, so
+     these are its children: a second top-level decoder for kernel lines would never
+     run. Its built-in iptables children expect a space before IN=, which VyOS's
+     "[ipv4-FROM-DMZ-default-D]IN=" prefix lacks, so they do not match these lines
+     (and dmz-vpn's "[cm-wg-drop]IN=" is written the same way for that reason: a
+     built-in child that took a line would give it the firewall type, which the
+     range's rules never see).
+     The two siblings share the name: the first matches and takes the addresses and
+     protocol, the second adds the ports when there are any. -->
+<decoder name="cm-fw-drop">
+  <parent>kernel</parent>
+  <prematch type="pcre2">IN=\S* OUT=\S* (?:MAC=\S* )?SRC=</prematch>
+  <regex type="pcre2">SRC=(\S+) DST=(\S+) .*?PROTO=(\w+)</regex>
+  <order>srcip, dstip, protocol</order>
+</decoder>
+
+<decoder name="cm-fw-drop">
+  <parent>kernel</parent>
+  <regex type="pcre2">PROTO=(?:TCP|UDP) SPT=(\d+) DPT=(\d+)</regex>
+  <order>srcport, dstport</order>
+</decoder>
+
+<!-- ===== WireGuard peer events (dmz-vpn) ===== -->
+<!-- Nov  9 12:00:00 dmz-vpn cm-wg-watch: event=peer_up interface=wg0 peer=7bqjO1NU endpoint=198.51.100.10:51820 -->
+<decoder name="cm-wg-watch">
+  <program_name>^cm-wg-watch$</program_name>
+</decoder>
+
+<decoder name="cm-wg-watch-event">
+  <parent>cm-wg-watch</parent>
+  <regex type="pcre2">event=(\w+) interface=(\S+) peer=(\S+) endpoint=(\d+\.\d+\.\d+\.\d+):(\d+)</regex>
+  <order>action, interface, peer, srcip, srcport</order>
+</decoder>
+
+<!-- ===== Guacamole web app (dmz-jump) ===== -->
+<!-- ... INFO o.a.g.event.EventLoggingListener - User "ridgeline-akim" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5]. -->
+<!-- ... WARN o.a.g.event.EventLoggingListener - Authentication attempt from [10.99.0.2, 172.18.0.5] for user "ridgeline-akim" failed: Permission denied. (rejected by "totp") -->
+<decoder name="cm-guacamole">
+  <program_name>^guacamole$</program_name>
+</decoder>
+
+<decoder name="cm-guacamole-login">
+  <parent>cm-guacamole</parent>
+  <prematch type="pcre2">User "[^"]+" \(authenticated by "[^"]+"\) successfully authenticated from</prematch>
+  <regex type="pcre2">User "([^"]+)" \(authenticated by "([^"]+)"\) successfully authenticated from \[?(\d+\.\d+\.\d+\.\d+)</regex>
+  <order>dstuser, extra_data, srcip</order>
+</decoder>
+
+<decoder name="cm-guacamole-failure">
+  <parent>cm-guacamole</parent>
+  <prematch type="pcre2">Authentication attempt from \S+ .*?for user "[^"]*" failed</prematch>
+  <regex type="pcre2">Authentication attempt from \[?(\d+\.\d+\.\d+\.\d+)\D.*?for user "([^"]*)" failed: (.*)</regex>
+  <order>srcip, dstuser, extra_data</order>
+</decoder>
+
+<!-- ===== guacd (dmz-jump) ===== -->
+<!-- guacd[1]: INFO:	Creating new client for protocol "rdp" -->
+<decoder name="cm-guacd">
+  <program_name>^guacd$</program_name>
+</decoder>
+
+<decoder name="cm-guacd-session">
+  <parent>cm-guacd</parent>
+  <prematch type="pcre2">Creating new client for protocol</prematch>
+  <regex type="pcre2">Creating new client for protocol "(\w+)"</regex>
+  <order>protocol</order>
+</decoder>
+
+<!-- ===== OpenPLC REST actions of the engineer (ews) ===== -->
+<!-- Nov  9 12:00:00 ews cm-plc-tool: event=plc_upload plc=plc-cellar host=10.20.10.12 user=ridgeline-akim -->
+<decoder name="cm-plc-tool">
+  <program_name>^cm-plc-tool$</program_name>
+</decoder>
+
+<decoder name="cm-plc-tool-event">
+  <parent>cm-plc-tool</parent>
+  <regex type="pcre2">event=(\w+) plc=(\S+) host=(\d+\.\d+\.\d+\.\d+) user=(\S+)</regex>
+  <order>action, plc, dstip, srcuser</order>
+</decoder>

@@ -1,0 +1,73 @@
+#!/bin/bash
+# Start the Guacamole jump host (DESIGN.md 13). Installed as
+# /usr/local/sbin/cm-guacamole-start and run as root by cm-guacamole.service, after
+# cm-load-images.service has loaded the four container images.
+#
+# 1. The TLS certificate of the front end (self-signed, once).
+# 2. The database password (random, once) in /etc/cherrymountain/guacamole-db.env
+#    (PostgreSQL) and guacamole-web.env (the web application), two files because
+#    the web application's entrypoint treats a POSTGRES_* variable as a deprecated one.
+# 3. PostgreSQL first: on an empty data directory it runs the stock schema and the
+#    cherrymountain app's 50-cherrymountain.sql (cmadmin, the connections).
+# 4. The vendor technicians' named accounts and TOTP keys (cm_vendor_sql.py, idempotent, so
+#    it runs at every start), once the database accepts connections.
+# 5. Everything else.
+#
+# Env (from /etc/default/cm-guacamole, rendered by the cherrymountain app, optional):
+# TOTP_ENABLED (true by default), GUAC_RECORDING (informational here: the connections
+# carry the recording parameters).
+set -euo pipefail
+
+DIR=/opt/cherrymountain/guacamole
+ETC=/etc/cherrymountain
+LIB=/usr/local/lib/cm-guacamole
+TLS="${ETC}/guacamole-tls"
+DB_ENV="${ETC}/guacamole-db.env"
+WEB_ENV="${ETC}/guacamole-web.env"
+RIDGELINE="${ETC}/ridgeline.env"
+
+log() { echo "cm-guacamole-start: $*"; }
+compose() { docker compose --project-directory "$DIR" -f "${DIR}/docker-compose.yml" "$@"; }
+
+umask 077
+if [ ! -s "${TLS}/server.key" ]; then
+  log "creating the TLS certificate"
+  install -d -m 0700 "$TLS"
+  openssl req -x509 -newkey rsa:3072 -nodes -days 3650 \
+    -keyout "${TLS}/server.key" -out "${TLS}/server.crt" \
+    -subj "/CN=dmz-jump.cherrymountain.test/O=CherryMountain Brewery" \
+    -addext "subjectAltName=DNS:dmz-jump.cherrymountain.test,IP:10.10.20.11"
+fi
+if [ ! -s "$DB_ENV" ] || [ ! -s "$WEB_ENV" ]; then
+  log "creating the database password"
+  password=$(openssl rand -hex 24)
+  printf 'POSTGRES_PASSWORD=%s\n' "$password" > "$DB_ENV"
+  printf 'POSTGRESQL_PASSWORD=%s\n' "$password" > "$WEB_ENV"
+fi
+
+log "starting PostgreSQL"
+compose up --detach postgres
+healthy=false
+for _ in $(seq 1 120); do
+  if [ "$(docker inspect --format '{{.State.Health.Status}}' postgres 2> /dev/null)" = healthy ]; then
+    healthy=true
+    break
+  fi
+  sleep 5
+done
+if [ "$healthy" != true ]; then
+  log "FAIL: PostgreSQL is not healthy after 10 minutes"
+  exit 1
+fi
+
+if [ -f "$RIDGELINE" ]; then
+  log "creating the vendor technicians' named accounts"
+  python3 -I "${LIB}/cm_vendor_sql.py" --env "$RIDGELINE" \
+    | docker exec -i postgres psql -v ON_ERROR_STOP=1 --quiet -U guacamole_user -d guacamole_db
+else
+  log "no ${RIDGELINE}: no vendor account (only the app's cmadmin can sign in)"
+fi
+
+log "starting guacd, the web application, and the proxy"
+compose up --detach
+log "PASS: started"

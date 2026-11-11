@@ -1,0 +1,378 @@
+"""Write the values the stand-in plant serves to FUXA for one scenario.
+
+It runs the real federates offline (``LocalSource``, no HELICS) to a moment of
+a scenario, and writes a JSON file of engineering values by FUXA tag name:
+
+- **sim**: every tag whose source is ``io`` takes the value its ``helics_key``
+  has in the federation (the same value rio-* hands the PLC).
+- **profile**: the fermentation profile of plc-cellar, which the PLC computes and
+  this file stages from the offline cellar's state. ``CEL.PROFILE.HSnn.AUTO`` is 1
+  (profile on) for every fermenter; the stage ``CEL.PROFILE.KSnn.STAGE`` is 0 when the
+  fermenter's apparent extract is under 0.5 degP (empty), 1 at 5 degP or more, 3 under
+  5 degP with the side temperature under 60 degF, and 2 otherwise; the profile's
+  setpoints are 66, 70, and 34 degF and 180 min (the program's starting values). Each
+  fermenter's ``TT01.SP`` and ``TT02.SP`` (the PLC writes the same value to both
+  with the profile on) follow ``FermentProfile`` for the beer's side temperature
+  ``TT01.PV``: stage 0 (empty) is the beer plus 1 degF (the block's lead); stages 1
+  and 2 are the lesser of the stage's temperature (66 for 1, 70 for 2) and the beer
+  plus 1 degF; stage 3 (crash) is staged as the greater of the crash setpoint (34)
+  and the beer less 1.5 degF. All are limited to 20 to 90 degF and taken to 0.01
+  degF. The crash value is an approximation: the PLC's crash setpoint is a curve
+  that starts at the beer's temperature when the stage begins and falls toward the
+  28 degF glycol by 25 % of what is left each hour, so what it is at one moment
+  depends on how long the crash has lasted, which one moment cannot show. In
+  the same way, a setpoint in stage 1 or 2 stays where it has risen to when the
+  beer cools (the jackets have no heater), and a fill follows the wort down.
+- **autopilot**: the bright tanks' temperature and carbonation setpoints
+  (``CEL.BBTnnn.TT01.SP``, ``CEL.BBTnnn.AT01.SP``) are the targets the offline cellar
+  federate's built-in operator holds (``Federate._autopilot``).
+- **program**: a setpoint the PLC program initializes (``NAME_SP := n;`` in
+  ``plc/*/*.st``) takes that number divided by the tag's divisor.
+- **packaging**: what plc-packaging computes from the machines' own values, with the
+  program's rules (``plc/plc-packaging/plc-packaging.st``) taken at one moment: the
+  line state and mode are the filler's; ``XS01.RUN`` is 1 unless the line state is 2
+  (Stopped) or 9 (Aborted). The line's processed and defective counts are the
+  shift's (the PLC adds up, wrap-safe, what the filler has processed and what the
+  five bottling machines have rejected since the shift began; the keg line is not
+  in the defective count). The packaging federate's ``shift_bottles`` is the packer's
+  good bottles since the shift began, which is not the filler's processed count, so
+  it cannot be staged as one. The offline machines' counters start at 0 at 04:30 and
+  the line runs only in its 06:00 shift, so each counter already is a count
+  since the shift began: the staged counts are the filler's processed count and the
+  sum of the five defective counts, and this file stops unless ``shift_bottles``
+  equals the packer's total (it does while no bottle was packed before the shift
+  began). The stop reason is the first of rinser, filler, coder, labeler, packer, and
+  keg that is jammed or Held (1 to 6, else 0); the shift OEE is the filler's speed
+  over the line's speed setpoint (at most 1) times the good share of the shift's
+  processed bottles (1 while none are processed), in percent to 0.1; a conveyor runs
+  when the machine it feeds is Executing and its jam eye is clear; the filler's product
+  valve is open while the filler Executes; the keg washer's heater is on under 165 degF
+  and off from 175 degF (between the two it depends on the heater's last state, so that
+  value stays the simulation's). The line's mode command is 1 (production), the
+  program's starting value, and its command register is 0, because a command is
+  cleared on the scan after it is taken. The conveyor and valve values replace the
+  simulation's, which do not follow the machines' states. The speed is one reading
+  (the PLC sees it every scan), and REAL_TO_UINT is taken as rounding, so the OEE can
+  differ from a truncating runtime by 0.1 %.
+- **cellar**: what plc-cellar computes that one moment shows: the transfer is active
+  when the transfer pump runs (``CEL.XFER.YS01.PV``) and the CIP permit is its
+  opposite; no entry permit is set, so every vessel's ``CIP_OK`` is 1; the carbonation
+  inhibit is 1 while the gas relay is open and 0 while it is closed (the PLC holds it
+  for a delay after the relay closes, and the moments captured here are long past
+  that); and plc-utilities's peer copies of these (``UTL.CIP.XS03`` to ``XS10``) take
+  the same values. The entry permits themselves (``HS0n.ENTRY``, ``XS0n.LOCKED``)
+  stay 0.
+- **alarm**: a PLC alarm bit (``source: plc`` in plantgen's tag list) of kind high,
+  highhigh, or state is 1 when its alarm's source value is past the limit in
+  ``alarms.json``. The PLC's on-delay and deadband are not applied, and the low and
+  deviation alarms are not staged (they depend on the PLC's delays and on what
+  its controller is doing), so they read 0. An alarm with a ``suppress`` bit that
+  this file stages (the packaging jam alarms and ``PKG.LINE.XS01.RUN``) is 0 while that
+  bit is 0, as in the PLC.
+- **utilities**: ``UTL.CIP.XA01.PV`` (the CIP held for lost return flow) is 0: no wash
+  is running at these moments.
+  ``UTL.CO2.XS02.SHUTOFF`` (the CO2 supply shut off, latched) is 1 while the
+  shutoff relay input ``UTL.CO2.XS01.CO2_OK`` is 0, as plc-utilities sets it.
+- every other tag the PLC computes (batch state, the brewhouse's phase parameter and
+  mash-in level, CIP step, entry permits, the power PLC's schedule bits, a held-off
+  latch) is not in the file, and the stand-in serves 0 for it. (A brew day's phase
+  parameter is the batch engine's own, which it hands to the stand-in's port of the
+  brewhouse PLC; see ``fuxa_plant.mjs``.)
+
+    python fuxa_snapshot.py SCENARIO OUT.json [--root DIR]
+
+Scenarios are the viz scenarios (none, co2-leak, co2-attack, spunding-attack,
+outage) and the ones below. ``--root`` is the ``cherrymountain-brewery``
+directory (CM_ROOT, else this file's place in the tree). Needs the repo's sim and
+viz packages importable.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+from pathlib import Path
+from typing import Any
+
+ROOT: Path = Path(os.environ.get("CM_ROOT") or Path(__file__).resolve().parents[3])
+sys.path[:0] = [str(ROOT / "viz"), str(ROOT / "sim")]
+
+from cherrymountain_sim.federate import AUTO_BBT_F, AUTO_CARB_VOL  # noqa: E402
+from cherrymountain_viz.scenarios import SCENARIOS, Step  # noqa: E402
+from cherrymountain_viz.sources import LocalSource  # noqa: E402
+
+MIDDAY_S: float = 6.5 * 3600  # 04:30 start + 6.5 h = 11:00
+PACKAGING_S: float = 3.5 * 3600  # 08:00
+
+# name: (run to this federate second, scenario steps)
+EXTRA: dict[str, tuple[float, tuple[Step, ...]]] = {
+    "midday": (MIDDAY_S, ()),
+    # 08:00: the cellar crew has put beer in BBT-202 and the packaging line runs.
+    "packaging-run": (PACKAGING_S, ()),
+    "packaging-jam": (
+        PACKAGING_S,
+        tuple(
+            Step(
+                at_s=PACKAGING_S - 400.0,
+                kind="event",
+                federate="packaging",
+                payload={"type": "jam", "params": {"machine": m, "duration": 1200}},
+                note=f"jam {m} (SCORCH packaging-shift)",
+            )
+            for m in ("labeler", "filler")
+        ),
+    ),
+    "brew-day": (
+        1.5 * 3600,
+        (
+            Step(
+                at_s=30.0,
+                kind="event",
+                federate="brewhouse",
+                payload={"type": "start-batch", "params": {"brews": 1}},
+                note="start-batch brews=1 (SCORCH baseline-brew-day)",
+            ),
+        ),
+    ),
+}
+RUN_TO: dict[str, float] = {
+    "none": 900.0,
+    "co2-leak": 1500.0,
+    "co2-attack": 1500.0,
+    "spunding-attack": 3430.0,
+    "outage": MIDDAY_S,
+}
+
+
+def program_setpoints() -> dict[str, int]:
+    """First ``NAME_SP := n;`` of each PLC program: ST variable -> raw value."""
+    out: dict[str, int] = {}
+    for path in sorted((ROOT / "plc").glob("*/*.st")):
+        if path.name == "plc-cellar.st":  # the ci program; the plant one is the full variant's
+            continue
+        for m in re.finditer(r"^\s*([A-Z0-9_]+_SP)\s*:=\s*(-?\d+)\s*;", path.read_text(), re.M):
+            tag = m.group(1)
+            out.setdefault(tag, int(m.group(2)))
+    return out
+
+
+PACKAGING_MACHINES: tuple[str, ...] = ("RINSER", "FILLER", "CODER", "LABELER", "PACKER", "KEG")
+STATE_STOPPED, STATE_EXECUTE, STATE_ABORTED, STATE_HELD = 2, 6, 9, 11
+KEG_WASH_ON_F, KEG_WASH_OFF_F = 165.0, 175.0
+
+
+def stage_packaging(
+    packaging: Any, eng: dict[str, Any], kind: dict[str, str], tags: dict[str, Any]
+) -> None:
+    """Stage what plc-packaging computes, from the machines' values (see the header)."""
+
+    def get(name: str) -> float:
+        return float(eng.get(name, 0.0))
+
+    def put(name: str, value: float) -> None:
+        assert name in tags, name
+        eng[name] = value
+        kind[name] = "packaging"
+
+    state = get("PKG.FILLER.PACKML.STATE")
+    put("PKG.LINE.PACKML.STATE", state)
+    put("PKG.LINE.PACKML.MODE", get("PKG.FILLER.PACKML.MODE"))
+    put("PKG.LINE.PACKML.MODE_CMD", 1.0)
+    put("PKG.LINE.PACKML.CMD", 0.0)
+    put("PKG.LINE.XS01.RUN", int(state not in (STATE_STOPPED, STATE_ABORTED)))
+    # The shift's counts. The machines' counters (16 bits in the PLC) start at 0 with
+    # the federation and the line runs only in its shift, so they are the shift's
+    # counts as long as no bottle was packed before the shift began.
+    assert packaging.shift_bottles == packaging.bottles_total, "bottles were packed before the shift"
+    processed = min(get("PKG.FILLER.PACKML.PROCESSED"), 65535.0)
+    defective = min(sum(get(f"PKG.{m}.PACKML.DEFECTIVE") for m in PACKAGING_MACHINES[:5]), 65535.0)
+    put("PKG.LINE.PACKML.PROCESSED", processed)
+    put("PKG.LINE.PACKML.DEFECTIVE", defective)
+    reason = 0
+    for i, m in enumerate(PACKAGING_MACHINES, start=1):
+        if get(f"PKG.{m}.YA01.PV") or get(f"PKG.{m}.PACKML.STATE") == STATE_HELD:
+            reason = i
+            break
+    put("PKG.LINE.PACKML.STOP_REASON", reason)
+    speed_sp = get("PKG.LINE.PACKML.SPEED_SP")
+    perf = min(get("PKG.FILLER.PACKML.SPEED") / speed_sp, 1.0) if speed_sp > 0 else 0.0
+    quality = (processed - defective) / processed if processed > 0 and processed >= defective else 1.0
+    put("PKG.LINE.KQ01.OEE", round(perf * quality * 1000.0) / 10.0)
+    for n, machine in ((1, "RINSER"), (2, "CODER"), (3, "PACKER"), (4, "PACKER")):
+        executing = get(f"PKG.{machine}.PACKML.STATE") == STATE_EXECUTE
+        put(f"PKG.CONV.HS0{n}.CMD", int(executing and not get(f"PKG.CONV.YA0{n}.PV")))
+    put("PKG.FILLER.XV01.CMD", int(get("PKG.FILLER.PACKML.STATE") == STATE_EXECUTE))
+    wash = get("PKG.KEG.TT01.PV")
+    if wash < KEG_WASH_ON_F or wash >= KEG_WASH_OFF_F:
+        put("PKG.KEG.HS01.CMD", int(wash < KEG_WASH_ON_F))
+
+
+PROFILE_FERMENT_F, PROFILE_REST_F, PROFILE_CRASH_F = 66.0, 70.0, 34.0
+PROFILE_LEAD_F, PROFILE_CRASH_BELOW_F = 1.0, 1.5
+PROFILE_LIMITS_F = (20.0, 90.0)
+
+
+def profile_setpoint(stage: int, beer_f: float) -> float:
+    """The fermentation profile's setpoint (degF) for a beer at ``beer_f`` in ``stage``.
+
+    FermentProfile in plc-cellar-plant.st: the setpoint leads the beer by 1 degF and
+    goes no higher than the stage's temperature (stage 0, empty, has no cap). The
+    crash (stage 3) is a curve from the beer's temperature toward the glycol that
+    stops at the crash setpoint; here it is the beer less 1.5 degF, not under that
+    setpoint (an approximation: a moment cannot show how long the crash has lasted).
+    """
+    lead = beer_f + PROFILE_LEAD_F
+    match stage:
+        case 0:
+            sp = lead
+        case 1:
+            sp = min(PROFILE_FERMENT_F, lead)
+        case 2:
+            sp = min(PROFILE_REST_F, lead)
+        case _:
+            sp = max(PROFILE_CRASH_F, beer_f - PROFILE_CRASH_BELOW_F)
+    return round(min(max(sp, PROFILE_LIMITS_F[0]), PROFILE_LIMITS_F[1]), 2)
+
+
+def stage_cellar(eng: dict[str, Any], kind: dict[str, str], tags: dict[str, Any]) -> None:
+    """Stage plc-cellar's transfer, entry, and CO2 interlock bits, and the peer copies of them."""
+
+    def put(name: str, value: float) -> None:
+        assert name in tags, name
+        eng[name] = value
+        kind[name] = "cellar"
+
+    transfer = int(bool(eng.get("CEL.XFER.YS01.PV", 0)))  # the panel's own button is never pressed
+    put("CEL.XFER.XS01.ACTIVE", transfer)
+    put("CEL.XFER.XS02.CIP_PERMIT", 1 - transfer)
+    for n in range(11, 17):  # no entry permit is set, so no vessel is locked and every one may be cleaned
+        put(f"CEL.ENTRY.XS{n}.CIP_OK", 1)
+    put("CEL.SYS.XS01.CO2_INHIBIT", 0 if eng.get("CEL.SYS.XS01.CO2_OK", 0) else 1)
+    # plc-utilities reads these from plc-cellar over the network.
+    put("UTL.CIP.XS03.PV", transfer)
+    put("UTL.CIP.XS04.PV", 1 - transfer)
+    for n in range(5, 11):
+        put(f"UTL.CIP.XS{n:02d}.PV", 1)
+
+
+def main() -> int:
+    """Run the scenario and write the values."""
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
+    ap.add_argument("scenario")
+    ap.add_argument("out", type=Path)
+    args = ap.parse_args()
+
+    name = args.scenario
+    if name in EXTRA:
+        run_to, steps = EXTRA[name]
+        SCENARIOS[name] = steps
+    else:
+        run_to = RUN_TO[name]
+    plant = ROOT / "plant" / "generated" / "full"
+    src = LocalSource(
+        plant / "helics.json",
+        scenario=name,
+        fast_forward_s=run_to,
+        scenario_at_s=(MIDDAY_S - 120.0 if name == "outage" else 0.0),
+    )
+    values = src.values()
+    tags = {t["name"]: t for t in json.loads((plant / "tags.json").read_text())["tags"]}
+    divisor: dict[str, float] = {}
+    for dev in json.loads((plant / "fuxa" / "scada-fuxa-tags.json").read_text())["devices"]:
+        for t in dev["tags"]:
+            divisor[t["name"]] = float(t.get("divisor") or 1)
+    for dev in json.loads((plant / "fuxa" / "bas-fuxa-tags.json").read_text())["devices"]:
+        for t in dev["tags"]:
+            divisor.setdefault(t["name"], float(t.get("divisor") or 1))
+
+    eng: dict[str, Any] = {}
+    kind: dict[str, str] = {}
+    for tname, t in tags.items():
+        key = t.get("helics_key")
+        if t["source"] == "io" and key in values:
+            v = values[key]
+            eng[tname] = (1 if v else 0) if isinstance(v, bool) else float(v)
+            kind[tname] = "sim"
+    cellar = src.fed.feds["cellar"]
+    for n in (1, 2, 3, 4):
+        extract = eng.get(f"CEL.FV10{n}.DT01.PV", 0.0)
+        side = eng.get(f"CEL.FV10{n}.TT01.PV", 0.0)
+        stage = 0 if extract < 0.5 else (1 if extract >= 5.0 else (3 if side < 60.0 else 2))
+        setpoint = profile_setpoint(stage, side)
+        staged = {
+            f"CEL.PROFILE.HS0{n}.AUTO": 1,
+            f"CEL.PROFILE.KS0{n}.STAGE": stage,
+            f"CEL.FV10{n}.TT01.SP": setpoint,
+            f"CEL.FV10{n}.TT02.SP": setpoint,
+        }
+        for key, value in staged.items():
+            eng[key] = value
+            kind[key] = "profile"
+    for key, value in (
+        ("CEL.PROFILE.TC01.SP", PROFILE_FERMENT_F),
+        ("CEL.PROFILE.TC02.SP", PROFILE_REST_F),
+        ("CEL.PROFILE.TC03.SP", PROFILE_CRASH_F),
+        ("CEL.PROFILE.KC01.SP", 180.0),
+    ):
+        eng[key] = value
+        kind[key] = "profile"
+    for unit in cellar.cellar.bbts:  # "BBT201"
+        for point, value in (("TT01", AUTO_BBT_F), ("AT01", AUTO_CARB_VOL)):
+            if f"CEL.{unit}.{point}.SP" in tags:
+                eng[f"CEL.{unit}.{point}.SP"] = value
+                kind[f"CEL.{unit}.{point}.SP"] = "autopilot"
+    by_var = {n.replace(".", "_"): n for n in tags}
+    for var, raw in program_setpoints().items():
+        tname = by_var.get(var, "")
+        if tname and tname not in eng:
+            eng[tname] = raw / divisor.get(tname, 1.0)
+            kind[tname] = "program"
+    stage_packaging(src.fed.feds["packaging"], eng, kind, tags)
+    stage_cellar(eng, kind, tags)
+    eng["UTL.CIP.XA01.PV"] = 0  # the CIP's return flow is held only in a wash, and none runs
+    kind["UTL.CIP.XA01.PV"] = "utilities"
+    # plc-utilities latches the CO2 supply shut off while its shutoff relay input is open
+    eng["UTL.CO2.XS02.SHUTOFF"] = 0 if eng.get("UTL.CO2.XS01.CO2_OK", 1) else 1
+    kind["UTL.CO2.XS02.SHUTOFF"] = "utilities"
+    alarms = json.loads((plant / "alarms.json").read_text())["alarms"]
+    for a in alarms:
+        bit = a["name"]
+        if bit in eng or bit not in tags or a["source"] not in eng:
+            continue
+        pv = eng[a["source"]]
+        lim = float(a["limit"])
+        match a["kind"]:
+            case "high" | "highhigh":
+                on = pv > lim
+            case "state":
+                on = pv >= lim
+            case _:
+                continue
+        if on and kind.get(a.get("suppress", "")) == "packaging" and not eng[a["suppress"]]:
+            on = False  # the PLC holds the alarm off while its suppress bit is 0
+        eng[bit] = int(on)
+        kind[bit] = "alarm"
+    args.out.write_text(
+        json.dumps(
+            {
+                "scenario": name,
+                "sim_time": src.fed.feds["weather"].clock.at(src.fed.t).isoformat(),
+                "federate_s": src.fed.t,
+                "notes": src.notes,
+                "values": eng,
+                "kind": kind,
+            },
+            indent=0,
+            sort_keys=True,
+        )
+    )
+    counts = {k: sum(1 for v in kind.values() if v == k) for k in ("sim", "profile", "autopilot", "program", "packaging", "cellar", "utilities", "alarm")}
+    print(f"{name}: {len(eng)} of {len(tags)} tags, {counts}, at {src.fed.t:.0f} s", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

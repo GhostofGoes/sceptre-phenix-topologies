@@ -1,0 +1,307 @@
+#!/bin/bash
+# First-boot setup of the Wazuh all-in-one (DESIGN.md 14). Installed as
+# /usr/local/sbin/cm-wazuh-provision and run as root by cm-wazuh-provision.service.
+#
+# The cm-wazuh image holds the packages with every service disabled. Certificates
+# and passwords depend on the VM's address, so they are made here, following the
+# step-by-step installation of Wazuh's documentation for one node that runs the
+# indexer, the manager, and the dashboard:
+#   1. certificates for the three components (wazuh-certs-tool.sh)
+#   2. the indexer: certificates, address, start, security initialization
+#   3. the manager and Filebeat: certificates, keystores, indexer address, start,
+#      and the cherrymountain additions: agent groups and their shared settings,
+#      the syslog listener, and no vulnerability detection or update check (the VMs
+#      have no internet)
+#   4. the dashboard: certificates, indexer address, start
+#   5. new passwords for the indexer and API users (wazuh-passwords-tool.sh), last,
+#      as in Wazuh's guide: the tool updates the dashboard's keystore and wazuh.yml.
+#      The tool generates every password; the admin user's (the dashboard login) is
+#      the cherrymountain app's when it gave one
+#   6. index retention (ISM) policies: alerts 30 days, archives 7 (DESIGN.md 14)
+# The rules and decoders are injected into /var/ossec/etc/{rules,decoders}/ before
+# the manager first starts, so they load with it.
+#
+# Env (from /etc/default/cm-wazuh and /etc/default/cm-wazuh-manager, which the unit
+# reads; all optional): CM_WAZUH_IP (default: the first global IPv4 address), and
+# WAZUH_ADMIN_PASSWORD, the admin user's password (the app's secrets.json
+# wazuh_password; without it the tool generates one). Re-running is safe. It stops
+# early once /var/lib/cm-wazuh/provisioned exists. Step 4 writes the marker
+# /var/lib/cm-wazuh/passwords-changed as soon as the password tool succeeds, and a
+# run that finds it keeps the certificates and skips the security initialization,
+# the keystore setup, and the password change: each of those would put the default
+# admin credentials back, or overwrite the only record of the new passwords. The
+# passwords, the admin user's included, are in /var/lib/cm-wazuh/passwords.txt
+# (root only).
+#
+# TODO(verify): unverified on a VM. The commands follow Wazuh 4.14's documentation;
+# check each step on the first run, above all the password tool (step 4), which
+# restarts services itself.
+set -euo pipefail
+
+TOOLS=/opt/cherrymountain/wazuh
+CONF="${TOOLS}/agent-conf"
+STATE="${CM_WAZUH_STATE:-/var/lib/cm-wazuh}"
+OSSEC=/var/ossec
+OSSEC_CONF="${OSSEC}/etc/ossec.conf"
+# The dashboard's Wazuh API connection (user wazuh-wui), written at its first start.
+WUI_CONF=/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+
+log() { echo "cm-wazuh-provision: $*"; }
+
+# The admin password from the app. It is kept out of every child's environment and
+# off every command line: the tool reads it from a file.
+admin_password="${WAZUH_ADMIN_PASSWORD:-}"
+unset WAZUH_ADMIN_PASSWORD
+
+# admin_password_ok PASSWORD: the rule of passwords_checkPassword in
+# wazuh-passwords-tool.sh 4.14 (8 to 64 characters with an upper case letter, a lower
+# case letter, a digit, and one of .*+?-), cut to what the tool takes safely: it reads
+# a new password from a file only when it is made of \w.*+?-, and it puts the password
+# unquoted into an eval, so * and ? (globs) and a leading - are refused too. The app
+# generates within the same rule (metadata.wazuh_password_problem).
+admin_password_ok() {
+  local LC_ALL=C pw="$1"
+  [ "${#pw}" -ge 8 ] && [ "${#pw}" -le 64 ] || return 1
+  [[ "$pw" =~ ^[A-Za-z0-9_.+-]+$ && "$pw" != -* ]] || return 1
+  [[ "$pw" =~ [A-Z] && "$pw" =~ [a-z] && "$pw" =~ [0-9] && "$pw" =~ [.+-] ]]
+}
+
+wait_for() {
+  # wait_for SECONDS DESCRIPTION COMMAND...
+  local seconds="$1" what="$2"
+  shift 2
+  local deadline=$((SECONDS + seconds))
+  until "$@" > /dev/null 2>&1; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      log "FAIL: ${what} did not come up within ${seconds} s"
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+if [ -f "${STATE}/provisioned" ]; then
+  log "already provisioned"
+  exit 0
+fi
+
+# The app's 80-cm-wazuh-manager.sh edits ossec.conf and writes the enrollment
+# password when the host boots; let it finish first.
+if [ -f /etc/default/cm-wazuh-manager ]; then
+  wait_for 600 "the enrollment password" test -s "${OSSEC}/etc/authd.pass"
+fi
+
+node_ip="${CM_WAZUH_IP:-}"
+if [ -z "$node_ip" ]; then
+  get_ip() { ip -4 -o addr show scope global | awk '{ split($4, a, "/"); print a[1]; exit }'; }
+  have_ip() { [ -n "$(get_ip)" ]; }
+  wait_for 300 "an IPv4 address" have_ip
+  node_ip=$(get_ip)
+fi
+log "node address ${node_ip}"
+mkdir -p "$STATE"
+PASSWORDS_MARKER="${STATE}/passwords-changed"
+passwords_changed() { [ -f "$PASSWORDS_MARKER" ]; }
+if passwords_changed; then
+  log "passwords were already changed: keeping the certificates and skipping the security initialization, keystores, and password steps"
+elif [ -n "$admin_password" ] && ! admin_password_ok "$admin_password"; then
+  # Before the long steps, not after the indexer already runs. The value is not shown.
+  log "FAIL: WAZUH_ADMIN_PASSWORD does not meet the Wazuh password policy (8 to 64 characters of letters, digits, and _.+-, with an upper case letter, a lower case letter, a digit, and one of .+-)"
+  exit 1
+fi
+
+# --- 1. certificates ----------------------------------------------------------------
+cd "$TOOLS"
+cat > config.yml <<EOF
+nodes:
+  indexer:
+    - name: node-1
+      ip: "${node_ip}"
+  server:
+    - name: wazuh-1
+      ip: "${node_ip}"
+  dashboard:
+    - name: dashboard
+      ip: "${node_ip}"
+EOF
+if [ -f "${STATE}/certificates-made" ] && [ -d wazuh-certificates ]; then
+  # A run before this one made them, and the indexer may still be running with them: it
+  # does not reload certificates, so a new CA here would lock this script's own admin
+  # certificate, Filebeat, and the dashboard out of it.
+  log "keeping the existing certificates"
+else
+  rm -rf wazuh-certificates
+  bash ./wazuh-certs-tool.sh -A
+  touch "${STATE}/certificates-made"
+fi
+certs="${TOOLS}/wazuh-certificates"
+
+# install_certs DIR OWNER:GROUP SRC=DST...: copy certificates into DIR, read-only.
+install_certs() {
+  local dir="$1" owner="$2" pair
+  shift 2
+  install -d -m 0500 -o "${owner%%:*}" -g "${owner##*:}" "$dir"
+  for pair in "$@"; do
+    install -m 0400 -o "${owner%%:*}" -g "${owner##*:}" "${certs}/${pair%%=*}" "${dir}/${pair##*=}"
+  done
+}
+
+# --- 2. the indexer -------------------------------------------------------------------
+install_certs /etc/wazuh-indexer/certs wazuh-indexer:wazuh-indexer \
+  root-ca.pem=root-ca.pem node-1.pem=indexer.pem node-1-key.pem=indexer-key.pem admin.pem=admin.pem admin-key.pem=admin-key.pem
+sed -i -E "s|^network.host:.*|network.host: \"${node_ip}\"|" /etc/wazuh-indexer/opensearch.yml
+systemctl daemon-reload
+systemctl enable --now wazuh-indexer.service
+wait_for 600 "the indexer" bash -c "(echo > /dev/tcp/${node_ip}/9200)"
+if ! passwords_changed; then
+  /usr/share/wazuh-indexer/bin/indexer-security-init.sh
+fi
+
+# --- 3. the manager and Filebeat -----------------------------------------------------
+install -m 0644 "${TOOLS}/filebeat.yml" /etc/filebeat/filebeat.yml
+sed -i -E "s|^(\s*hosts:).*|\1 [\"${node_ip}:9200\"]|" /etc/filebeat/filebeat.yml
+# Archives too (every event the manager received, not only the ones that alerted):
+# the template ships them off. The manager writes them with logall_json, below.
+sed -i '/^    archives:/,/enabled:/s|enabled: false|enabled: true|' /etc/filebeat/filebeat.yml
+install_certs /etc/filebeat/certs root:root root-ca.pem=root-ca.pem wazuh-1.pem=filebeat.pem wazuh-1-key.pem=filebeat-key.pem
+if ! passwords_changed; then
+  filebeat keystore create --force
+  echo admin | filebeat keystore add username --stdin --force
+  echo admin | filebeat keystore add password --stdin --force
+  # The manager reads the same credentials from its own keystore.
+  echo admin | "${OSSEC}/bin/wazuh-keystore" -f indexer -k username
+  echo admin | "${OSSEC}/bin/wazuh-keystore" -f indexer -k password
+fi
+sed -i -E "s|<host>https://[^<]*</host>|<host>https://${node_ip}:9200</host>|" "$OSSEC_CONF"
+
+# cherrymountain additions to ossec.conf (once): the syslog listener, and no
+# vulnerability detection or update check without internet.
+if ! grep -q 'cherrymountain: syslog' "$OSSEC_CONF"; then
+  {
+    echo '<!-- cherrymountain: syslog listener (cm-wazuh-provision) -->'
+    cat "${TOOLS}/ossec-extra.conf"
+  } >> "$OSSEC_CONF"
+fi
+sed -i '/<vulnerability-detection>/,/<\/vulnerability-detection>/s|<enabled>yes</enabled>|<enabled>no</enabled>|' "$OSSEC_CONF"
+sed -i 's|<update_check>yes</update_check>|<update_check>no</update_check>|' "$OSSEC_CONF"
+# archives.json, which Filebeat ships to wazuh-archives-* (the retention of step 6).
+sed -i 's|<logall_json>no</logall_json>|<logall_json>yes</logall_json>|' "$OSSEC_CONF"
+chown root:wazuh "$OSSEC_CONF"
+chmod 0660 "$OSSEC_CONF"
+
+systemctl enable --now wazuh-manager.service
+wait_for 600 "the Wazuh API" bash -c 'curl -sk -o /dev/null https://localhost:55000/'
+systemctl enable --now filebeat.service
+
+# Agent groups, named like the nodes' zone labels (the app enrolls each agent into
+# its zone's group), and the shared settings of the groups that have any.
+for group in default dmz ops hmi bas soc ctrl corp vendor inet util mgmt derlink edge ot-edge field-bh field-cel field-pkg field-utl field-pwr; do
+  "${OSSEC}/bin/agent_groups" -a -g "$group" -q || true
+done
+for file in "${CONF}"/*.conf; do
+  group=$(basename "$file" .conf)
+  # agent_groups failures are tolerated above, so make sure the directory exists.
+  install -d -m 0770 -o wazuh -g wazuh "${OSSEC}/etc/shared/${group}"
+  install -m 0660 -o wazuh -g wazuh "$file" "${OSSEC}/etc/shared/${group}/agent.conf"
+done
+
+# --- 4. the dashboard -------------------------------------------------------------------
+# Before the passwords, as in Wazuh's guide: the password tool restarts the
+# dashboard, and it writes the new wazuh-wui API password into the dashboard's
+# wazuh.yml, which the dashboard creates at its first start.
+install_certs /etc/wazuh-dashboard/certs wazuh-dashboard:wazuh-dashboard \
+  root-ca.pem=root-ca.pem dashboard.pem=dashboard.pem dashboard-key.pem=dashboard-key.pem
+sed -i -E "s|^opensearch.hosts:.*|opensearch.hosts: https://${node_ip}:9200|" /etc/wazuh-dashboard/opensearch_dashboards.yml
+systemctl enable --now wazuh-dashboard.service
+wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:443/'
+wait_for 300 "the dashboard's wazuh.yml" test -f "$WUI_CONF" || log "WARNING: ${WUI_CONF} is missing; the wazuh-wui password is set once it exists"
+
+# --- 5. passwords -----------------------------------------------------------------------
+# admin_login_ok: the indexer accepts the admin user with the app's password (HTTP
+# 200). curl reads the credentials from stdin, so they are on no command line.
+admin_login_ok() {
+  [ "$(printf 'user = "admin:%s"\n' "$admin_password" \
+    | curl -sk -K - -o /dev/null -w '%{http_code}' "https://${node_ip}:9200/" || true)" = 200 ]
+}
+if ! passwords_changed; then
+  # -A (--api) is required with -au and -ap: without it the tool prints its help
+  # and exits 1. -a gives every user a generated password. With the app's admin
+  # password, -f names a file that replaces the admin user's (the tool checks it
+  # against its policy again, and the other users keep the generated ones). The
+  # file is root-only and goes as soon as the tool is done; the password is on no
+  # command line.
+  extra_args=()
+  password_file="${STATE}/admin-password.yml"
+  if [ -n "$admin_password" ]; then
+    trap 'rm -f "$password_file"' EXIT
+    (umask 077 && printf "  indexer_username: 'admin'\n  indexer_password: '%s'\n" "$admin_password" > "$password_file")
+    extra_args=(-f "$password_file")
+  fi
+  (umask 077 && bash "${TOOLS}/wazuh-passwords-tool.sh" -A -a -au wazuh -ap wazuh "${extra_args[@]}" > "${STATE}/passwords.txt" 2>&1)
+  rm -f "$password_file"
+  # Mark it now: from here on the default credentials no longer work.
+  touch "$PASSWORDS_MARKER"
+  log "new passwords are in ${STATE}/passwords.txt"
+  if [ -n "$admin_password" ]; then
+    # Not fatal: the generated passwords in passwords.txt keep the SIEM usable.
+    if wait_for 120 "the indexer accepting the app's admin password" admin_login_ok; then
+      log "the admin user signs in with the app's password"
+    else
+      log "WARNING: the indexer does not accept the app's admin password; read the one the tool set in ${STATE}/passwords.txt"
+    fi
+  fi
+fi
+# The tool waits only 60 s for wazuh.yml. If the file came later, the dashboard
+# still holds the default wazuh-wui password and cannot reach the Wazuh API.
+wui_password=$(sed -n 's/.*The password for Wazuh API user wazuh-wui is //p' "${STATE}/passwords.txt" 2> /dev/null | tail -n 1)
+if [ -n "$wui_password" ] && [ ! -f "$WUI_CONF" ]; then
+  # The dashboard keeps a wazuh.yml that exists, so write it in its default form.
+  wui_dir=$(dirname "$WUI_CONF")
+  install -d -m 0750 -o wazuh-dashboard -g wazuh-dashboard "$(dirname "$wui_dir")" "$wui_dir"
+  printf 'hosts:\n  - default:\n      url: https://localhost\n      port: 55000\n      username: wazuh-wui\n      password: "%s"\n      run_as: false\n' "$wui_password" > "$WUI_CONF"
+  chown wazuh-dashboard:wazuh-dashboard "$WUI_CONF"
+  chmod 0600 "$WUI_CONF"
+  log "wrote ${WUI_CONF} with the wazuh-wui password"
+elif [ -n "$wui_password" ] && ! grep -qF "password: \"${wui_password}\"" "$WUI_CONF"; then
+  sed -i "s|password: .*|password: \"${wui_password}\"|g" "$WUI_CONF"
+  log "set the wazuh-wui password in ${WUI_CONF}"
+fi
+# The dashboard reads wazuh.yml when it starts.
+systemctl restart filebeat.service wazuh-manager.service wazuh-dashboard.service
+wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:443/'
+
+# --- 6. index retention -----------------------------------------------------------------
+# The range's retention target (DESIGN.md 14, Log and NSM retention): alerts, the
+# detections an analyst works, stay CM_WAZUH_ALERTS_DAYS (default 30: a week-long
+# exercise and its after-action review); archives, every event the manager received,
+# stay CM_WAZUH_ARCHIVES_DAYS (default 7: the exercise). CM_WAZUH_RETENTION_DAYS, if
+# set, applies to both (the single policy of earlier versions). The indexer has a
+# 16 GB disk; an ISM policy per pattern, which every new daily index picks up,
+# deletes the older ones. The admin client certificate authenticates. A failure here
+# is logged, not fatal: the SIEM works without it until the disk fills.
+number() { case "$1" in '' | *[!0-9]*) echo "$2" ;; *) echo "$1" ;; esac; }
+alerts_days=$(number "${CM_WAZUH_RETENTION_DAYS:-${CM_WAZUH_ALERTS_DAYS:-}}" 30)
+archives_days=$(number "${CM_WAZUH_RETENTION_DAYS:-${CM_WAZUH_ARCHIVES_DAYS:-}}" 7)
+ism() {
+  curl -sS -o /dev/null -w '%{http_code}' --cacert /etc/wazuh-indexer/certs/root-ca.pem \
+    --cert /etc/wazuh-indexer/certs/admin.pem --key /etc/wazuh-indexer/certs/admin-key.pem "$@"
+}
+retention() {
+  local name="$1" pattern="$2" days="$3" url code
+  url="https://${node_ip}:9200/_plugins/_ism/policies/cm-retention-${name}"
+  if [ "$(ism "$url" || true)" = 200 ]; then
+    log "index retention for ${name} already present"
+    return
+  fi
+  code=$(printf '{"policy":{"description":"CherryMountain: delete Wazuh %s after %s days","default_state":"hot","states":[{"name":"hot","actions":[],"transitions":[{"state_name":"delete","conditions":{"min_index_age":"%sd"}}]},{"name":"delete","actions":[{"delete":{}}],"transitions":[]}],"ism_template":[{"index_patterns":["%s"],"priority":100}]}}' "$name" "$days" "$days" "$pattern" \
+    | ism -X PUT -H 'Content-Type: application/json' --data-binary @- "$url" || true)
+  case "$code" in
+    200 | 201) log "index retention: ${name} deleted after ${days} days" ;;
+    *) log "WARNING: could not create the ${name} retention policy (HTTP ${code}); they are kept until the disk fills" ;;
+  esac
+}
+retention alerts 'wazuh-alerts-*' "$alerts_days"
+retention archives 'wazuh-archives-*' "$archives_days"
+
+touch "${STATE}/provisioned"
+log "PASS: indexer, manager, Filebeat, and dashboard are up"

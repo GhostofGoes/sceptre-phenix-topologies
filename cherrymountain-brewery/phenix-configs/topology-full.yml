@@ -1,0 +1,14 @@
+# cherrymountain-full: the whole plant (43 VMs, 67 vCPUs, 113 GB). It has no
+# nodes of its own: phenix appends the nodes of the included topologies in
+# order (core, soc, remote-access), so the boot order is the core's, then the
+# SOC, then the remote-access nodes. Applied by phenix.yml.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: cherrymountain-full
+spec:
+  includeTopologies:
+  - cherrymountain-core
+  - cherrymountain-soc
+  - cherrymountain-remote-access
+  nodes: []

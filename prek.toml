@@ -3,21 +3,32 @@
 # Run manually: prek run --all-files
 #:schema https://www.schemastore.org/prek.json
 
-auto_update.cooldown_days = 30
-minimum_prek_version = "0.4.3"
+update.cooldown_days = 30
+minimum_prek_version = "0.5.10"
 default_language_version.python = "3.12"
 
-# All hooks at the same priority level run concurrently. Hooks with a lower
-# priority run first so file fixers complete before validation hooks.
-#
 # This repository contains topology YAML, shell/Python injects, documentation,
 # and generated experiment data. Generated data, vendored drivers, and archived
 # wind test harness are excluded from content checks.
+#
+# The cherrymountain-brewery checks (phenix schemas, systemd units, .desktop
+# files, Dockerfiles, compose files, block-style YAML) are scoped to that
+# directory. spikes/ and tests/ are exempt from them.
+#
+# All hooks at the same priority level run concurrently. Hooks with a lower
+# priority run first so file fixers complete before validation hooks. The
+# aliases name the levels, so `priority = "check"` reads better than 4.
+[priorities]
+fix-bom = 0
+fix-whitespace = 1
+fix-eof = 2
+fix-actions = 3
+check = 4
 
 # Lint GitHub Actions workflows for security issues.
 [[repos]]
 repo = "https://github.com/zizmorcore/zizmor-pre-commit"
-rev = "v1.26.1"
+rev = "v1.30.1"
 
 [[repos.hooks]]
 id = "zizmor"
@@ -25,34 +36,35 @@ args = [
     "--no-progress",
     "--fix",
 ]
-priority = 3
+priority = "fix-actions"
 
 # Spell checking.
 [[repos]]
 repo = "https://github.com/codespell-project/codespell"
-rev = "v2.4.2"
+rev = "v2.4.3"
 
 [[repos.hooks]]
 id = "codespell"
 args = [
     "--ignore-words-list",
-    "ue,ot,ues,fo,nd,ist,te,iif,iam,parm,parms,ser,bord,nin,bootup,ans,hda",
+    "ue,ot,ues,fo,nd,ist,te,iif,iam,parm,parms,ser,bord,nin,bootup,ans,hda,simpy",
 ]
 exclude = { glob = [
     "**/*.DSS",
     "**/*.dss",
+    "cherrymountain-brewery/viz/cherrymountain_viz/web/vendor/**",
     "renewables/wind/plant/phenix-images/workstation/drivers/**",
     "renewables/wind/plant/phenix-injects/wind-test-harness/**",
     "renewables/wind/plant/simulation-replay/docs/**",
     "renewables/wind/plant/simulation-replay/grafana/dashboards/**",
     "renewables/wind/plant/simulation-replay/manager/wind_data_final/**",
 ] }
-priority = 4
+priority = "check"
 
 # Check shell scripts for common issues.
 [[repos]]
 repo = "https://github.com/shellcheck-py/shellcheck-py"
-rev = "v0.11.0.1"
+rev = "v0.11.0.1-1"
 
 [[repos.hooks]]
 id = "shellcheck"
@@ -61,12 +73,27 @@ args = [
     "--exclude=SC1090,SC1091",
 ]
 exclude = '^renewables/wind/plant/(?:phenix-injects/wind-test-harness/|simulation-replay/(?:setup|manager/wait-for-elastic)$)'
-priority = 4
+priority = "check"
+
+[[repos.hooks]]
+# cherrymountain-brewery is held to a stricter level: every finding, down to
+# style. The hook above also runs on these files, and `types = ["shell"]`
+# selects them by extension or by shebang, so extensionless scripts count.
+id = "shellcheck"
+alias = "shellcheck-cherrymountain"
+name = "shellcheck (cherrymountain, style level)"
+args = [
+    "--severity=style",
+    "--exclude=SC1090,SC1091",
+]
+files = '^cherrymountain-brewery/'
+exclude = '^cherrymountain-brewery/(spikes|tests)/'
+priority = "check"
 
 # Validate YAML style and structure.
 [[repos]]
 repo = "https://github.com/adrienverge/yamllint.git"
-rev = "v1.29.0"
+rev = "v1.38.0"
 
 [[repos.hooks]]
 id = "yamllint"
@@ -74,7 +101,21 @@ args = [
     "--strict",
     "--config-file=.yamllint.yml",
 ]
-priority = 4
+priority = "check"
+
+[[repos.hooks]]
+# phenix YAML configs use block style; only empty `{}` and `[]` are allowed.
+# This covers the final design files and the plantgen output, not the JSON
+# files that phenix injects verbatim.
+id = "yamllint"
+alias = "yamllint-block-style"
+name = "yamllint (phenix block style)"
+args = [
+    "--strict",
+    "--config-file=cherrymountain-brewery/.yamllint-block-style.yml",
+]
+files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/.+\.ya?ml|phenix-images/.+\.ya?ml|plant/generated/[^/]+/phenix/.+\.ya?ml)$'
+priority = "check"
 
 # Enforce conventional commit messages.
 [[repos]]
@@ -87,13 +128,391 @@ stages = ["commit-msg"]
 args = [
     "feat",
     "fix",
+    "ci",
     "docs",
     "style",
     "refactor",
     "test",
     "chore",
 ]
-priority = 4
+priority = "check"
+
+# Schema-validate every phenix config of cherrymountain-brewery against the
+# JSON Schemas that sceptre-phenix publishes in schemas/. The schemas are
+# fetched from a commit-pinned URL (so check-vcs-permalinks passes and the
+# result never changes underneath us) and cached by check-jsonschema.
+# `--base-uri` makes the `$ref`s to defs.schema.json resolve at the same commit:
+# the schemas' `$id` points at `main`, which would otherwise pull defs from main.
+# To update, change the commit in every URL below, run `prek run --all-files`,
+# and fix what the newer schemas report.
+[[repos]]
+repo = "https://github.com/python-jsonschema/check-jsonschema"
+rev = "0.38.0"
+
+[[repos.hooks]]
+id = "check-jsonschema"
+alias = "phenix-schema-topology"
+name = "phenix schema: Topology"
+args = [
+    "--schemafile",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/topology.schema.json",
+    "--base-uri",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/",
+]
+files = '^cherrymountain-brewery/phenix-configs/topology[^/]*\.ya?ml$'
+priority = "check"
+
+[[repos.hooks]]
+id = "check-jsonschema"
+alias = "phenix-schema-scenario"
+name = "phenix schema: Scenario"
+args = [
+    "--schemafile",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/scenario.schema.json",
+    "--base-uri",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/",
+]
+files = '^cherrymountain-brewery/phenix-configs/scenario[^/]*\.ya?ml$'
+priority = "check"
+
+[[repos.hooks]]
+id = "check-jsonschema"
+alias = "phenix-schema-workflow"
+name = "phenix schema: Workflow"
+args = [
+    "--schemafile",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/workflow.schema.json",
+    "--base-uri",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/",
+]
+files = '^cherrymountain-brewery/\.?phenix[^/]*\.ya?ml$'
+priority = "check"
+
+[[repos.hooks]]
+id = "check-jsonschema"
+alias = "phenix-schema-image"
+name = "phenix schema: Image"
+args = [
+    "--schemafile",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/image.schema.json",
+    "--base-uri",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/",
+]
+files = '^cherrymountain-brewery/phenix-images/[^/]+\.ya?ml$'
+priority = "check"
+
+[[repos.hooks]]
+# Any other kind (Experiment, Role, User, and kinds added later): phenix.schema.json
+# picks the schema from `kind`. Topology and Scenario files have their own
+# strict hooks above.
+id = "check-jsonschema"
+alias = "phenix-schema-other"
+name = "phenix schema: other kinds"
+args = [
+    "--schemafile",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/phenix.schema.json",
+    "--base-uri",
+    "https://raw.githubusercontent.com/sandialabs/sceptre-phenix/6cc94b233e03c7a3979188ffcd0f33316957e0a8/schemas/",
+]
+files = '^cherrymountain-brewery/phenix-configs/.+\.ya?ml$'
+exclude = '^cherrymountain-brewery/phenix-configs/(topology|scenario)[^/]*\.ya?ml$'
+priority = "check"
+
+# Dockerfiles: hadolint's official hook runs the hadolint image, so it needs
+# Docker locally and on the CI runner. The entry pins the image tag; the hook
+# default is the moving `latest`.
+[[repos]]
+repo = "https://github.com/hadolint/hadolint"
+rev = "v2.14.0"
+
+[[repos.hooks]]
+id = "hadolint-docker"
+entry = "ghcr.io/hadolint/hadolint:v2.14.0 hadolint"
+files = '^cherrymountain-brewery/'
+exclude = '^cherrymountain-brewery/spikes/'
+priority = "check"
+
+# Compose files (phenix-injects/guacamole/docker-compose.yml today).
+[[repos]]
+repo = "https://github.com/docker-compose-linter/pre-commit-dclint"
+rev = "v3.1.0"
+
+[[repos.hooks]]
+id = "dclint"
+files = '^cherrymountain-brewery/(.*/)?((docker-)?compose|[^/]+\.compose)[^/]*\.ya?ml$'
+exclude = '^cherrymountain-brewery/(spikes|tests)/'
+priority = "check"
+
+# Hooks that live in this repository.
+[[repos]]
+repo = "local"
+
+[[repos.hooks]]
+# Shell embedded in phenix Image configs (spec.scripts). shellcheck comes from
+# shellcheck-py, so this needs nothing installed on the machine.
+id = "cm-image-shellcheck"
+name = "shellcheck (shell embedded in phenix images)"
+language = "python"
+entry = "python cherrymountain-brewery/tools/lint/check_image_shell.py"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+    "shellcheck-py==0.11.0.1",
+]
+files = '^cherrymountain-brewery/phenix-images/[^/]+\.ya?ml$'
+priority = "check"
+
+[[repos.hooks]]
+# systemd units: `systemd-analyze verify` plus an exposure (hardening) limit.
+# Covers *.service files and the units that image scripts write with a
+# heredoc. systemd-analyze is a system tool (package `systemd`). Without it the
+# hook warns and passes, except in CI; `verbose` shows that warning.
+id = "cm-systemd-units"
+name = "systemd-analyze (units)"
+language = "python"
+entry = "python cherrymountain-brewery/tools/lint/check_units.py"
+verbose = true
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+]
+files = '^cherrymountain-brewery/(.*\.service|phenix-images/[^/]+\.ya?ml)$'
+exclude = '^cherrymountain-brewery/(spikes|tests)/'
+priority = "check"
+
+[[repos.hooks]]
+# Static network checks of the full and lite variants: topology, scenario, and
+# workflow against the DESIGN.md IP plan and conduit matrix (every conduit has
+# its rule and its reply path, every other path is blocked, no route gaps, no
+# overlapping addresses). Reads only the committed files.
+id = "cm-netcheck"
+name = "netcheck (cherrymountain IP plan and conduits)"
+language = "python"
+entry = "python cherrymountain-brewery/tools/netcheck/run_netcheck.py -q"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+]
+files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/|phenix-injects/|tools/netcheck/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# netcheck's own tests (they break the configs on purpose and expect the
+# findings), plus the tests of sync.py, the BBMD service, and the VyOS
+# post-boot script.
+id = "cm-netcheck-tests"
+name = "pytest (netcheck, sync.py, BBMD service, VyOS script)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/netcheck/tests"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(tools/netcheck/|sync\.py$|brand/|phenix-injects/(bbmd|vrouter|guacamole)/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The ot-sim BACnet module of the BAS controllers against a real BACpypes3
+# client and real ZeroMQ sockets on loopback: reads that follow the message bus,
+# commands and relinquishing, refused writes, Who-Is, and a Who-Is that a BBMD
+# forwarded. bacpypes3 is the version the cm-otsim image installs.
+id = "cm-bacnet-tests"
+name = "pytest (ot-sim BACnet module)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/bacnet"
+additional_dependencies = [
+    "bacpypes3==0.0.110",
+    "pydantic==2.14.3",
+    "pytest==9.2.0",
+    "pyzmq==27.3.0",
+]
+files = '^cherrymountain-brewery/(tests/bacnet/|phenix-injects/otsim/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The SOC and remote-access checks: the Wazuh decoders and rules against sample log
+# lines, the Suricata rules and the Zeek script against the topology's addresses (and
+# against Suricata itself where it is installed), and the scripts of the vendor path
+# (WireGuard watcher, Guacamole SQL, scripted session, EWS tool).
+id = "cm-soc-tests"
+name = "pytest (SOC and remote access)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/soc"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The brand on the screens that cannot be booted here: the desktops' wallpaper script
+# against a stand-in xfconf-query, Grafana's image script on a tree laid out like the
+# 12.4.14 package, FUXA's page-title script, the Guacamole extension against the compose
+# pin, and what the topologies inject (see brand/README.md and each product's README).
+id = "cm-brand-tests"
+name = "pytest (brand on the screens)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/brand"
+additional_dependencies = [
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(brand/|tests/brand/|sync\.py$|phenix-injects/(brand|desktop|grafana|fuxa|guacamole)/|phenix-configs/topology-|phenix-images/cm-(desktop|ews)\.yml|viz/cherrymountain_viz/web/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# plantgen's tests: register gaps, the three address conventions, owners,
+# rationalized alarms (and their deadbands), and the generated app blocks.
+id = "cm-plantgen-tests"
+name = "pytest (plantgen)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/plantgen"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(tools/plantgen/|plant/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The simulation models against hand calculations and published values, the
+# federates, the event API, and the offline federation (DESIGN.md 9.6). HELICS
+# itself is not needed: the tests run the federates without a broker. The tests
+# that run a PLC program as built (plc-power, and plc-brewhouse with the FUXA batch
+# engine in the loop) need Node, a built strucpp checkout, and g++ (the ones
+# plc/common/build_zip.sh uses) and skip without them.
+id = "cm-sim-tests"
+name = "pytest (cherrymountain_sim)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/sim"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "simpy==4.1.1",
+    "opendssdirect.py==0.8.4",
+    "scipy==1.16.3",
+    "packmlpy==1.0.0",
+    "ht==1.2.0",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(sim/|plant/generated/|plc/|fuxa/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# cm-viz, the white cell's 3D view: frames from snapshots, the server and its
+# read-only WebSocket, the sim-ctl source against the event API, and the
+# offline harness's scenarios. The headless-browser test is marked `browser`
+# and runs separately (viz/README.md).
+id = "cm-viz-tests"
+name = "pytest (cm-viz)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/viz"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "websockets==15.0.1",
+    "simpy==4.1.1",
+    "opendssdirect.py==0.8.4",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(viz/|sim/|brand/|plant/generated/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The cherrymountain phenix app and the plantevent SCORCH component. They need
+# phenix-apps, which is not on PyPI: it comes from the fork the range runs on
+# (DESIGN.md 16), pinned by commit. The tests read plant.yaml, plantgen, the
+# FUXA builder, and the program ZIPs (Git LFS) from this repository.
+id = "cm-app-tests"
+name = "pytest (cherrymountain app, plantevent)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/apps"
+additional_dependencies = [
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@771e8d87a64770265862468664a1368dcfcbb99d#subdirectory=src/python",
+    "Mako==1.3.10",
+    "pydantic==2.14.3",
+    "python-box==7.2.0",
+    "pyyaml==6.0.3",
+    "requests==2.32.5",
+    "pytest==9.2.0",
+    "pytest-mock==3.15.1",
+]
+files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|recipes/|plc/|brand/|phenix-images/cm-sim\.yml|phenix-injects/(openplc|otsim|fuxa|brand|grafana)/|phenix-configs/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The FUXA projects (ci, and full and lite for scada-fuxa and bas-fuxa) are what
+# fuxa/build_project.py builds from the current plantgen output and the BeerJSON
+# recipe the brewhouse batch engine sequences.
+id = "cm-fuxa-check"
+name = "FUXA projects are current (build_project.py --all --check)"
+language = "python"
+entry = "python cherrymountain-brewery/fuxa/build_project.py --all --check"
+additional_dependencies = [
+    "pydantic==2.14.3",
+]
+files = '^cherrymountain-brewery/(fuxa/|plant/|recipes/|brand/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The brewhouse batch engine (fuxa/batch_engine.js, the script of the scada-fuxa
+# projects), run under Node against a stub of FUXA's script API and a simulator
+# of plc-brewhouse's handshake and the cellar's status, plus the builder's tests
+# for the Batch view, its tags, and its alarms. Node 18 or newer must be on PATH:
+# the CI runners have it, and with CI set a missing Node fails the tests instead of
+# skipping them. The check that the simulator follows the compiled program also
+# needs strucpp and g++, and skips without them.
+id = "cm-fuxa-batch-tests"
+name = "pytest (FUXA batch engine)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/fuxa"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(fuxa/|recipes/|brand/|plant/generated/|plc/plc-brewhouse/|sim/tests/st_engine\.py)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# The generated app blocks embedded in the scenarios, and the generated files
+# copied into phenix-injects/, are current (python sync.py rewrites them).
+# This runs on every CI run (--all-files), so plantgen output that changed
+# without a sync fails there; locally it runs on the files that sync.py owns.
+id = "cm-sync-check"
+name = "sync.py --check (generated blocks and copies)"
+language = "python"
+entry = "python cherrymountain-brewery/sync.py --check"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+]
+files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole)/)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# .desktop files (the analyst console and the kiosk launcher today).
+# desktop-file-validate is a system tool (package `desktop-file-utils`).
+id = "desktop-file-validate"
+name = "desktop-file-validate"
+language = "system"
+entry = "desktop-file-validate"
+files = '\.desktop$'
+exclude = '^cherrymountain-brewery/(spikes|tests)/'
+priority = "check"
 
 # General repository hygiene checks built into prek.
 [[repos]]
@@ -110,21 +529,21 @@ types_or = [
     "shell",
 ]
 exclude = '^renewables/wind/plant/(phenix-injects/wind-test-harness|simulation-replay/manager/wind_data_final)/'
-priority = 1
+priority = "fix-whitespace"
 
 [[repos.hooks]]
 # Only checks files staged for commit and ignores LFS-tracked files.
 id = "check-added-large-files"
 args = ["--maxkb=4096"]
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-case-conflict"
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-illegal-windows-names"
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "end-of-file-fixer"
@@ -135,28 +554,28 @@ types_or = [
     "shell",
 ]
 exclude = '^renewables/wind/plant/(phenix-injects/wind-test-harness|simulation-replay/docs)/'
-priority = 2
+priority = "fix-eof"
 
 [[repos.hooks]]
 id = "fix-byte-order-marker"
-priority = 0
+priority = "fix-bom"
 
 [[repos.hooks]]
 id = "check-yaml"
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-json"
 exclude = '^renewables/wind/plant/simulation-replay/manager/wind_data_final/'
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-json5"
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-merge-conflict"
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-executables-have-shebangs"
@@ -165,35 +584,57 @@ exclude = { glob = [
     "**/*.ps1",
     "**/*.bat",
 ] }
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-shebang-scripts-are-executable"
 exclude = '(?:^renewables/wind/plant/phenix-injects/wind-test-harness/|\.mako$)'
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-symlinks"
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-toml"
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "mixed-line-ending"
 args = ["--fix=no"]
 exclude = '^renewables/wind/plant/phenix-images/workstation/drivers/'
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-vcs-permalinks"
 description = "Ensures that links to VCS websites are permalinks"
-priority = 4
+priority = "check"
 
 [[repos.hooks]]
 id = "check-xml"
-priority = 4
+priority = "check"
+
+[[repos.hooks]]
+# phenix.schema.json lets any file that is not in the phenix.sandia.gov API
+# group through unchecked, so a typo in `apiVersion` would skip validation.
+# This makes sure every phenix config declares its API group.
+id = "require-pattern"
+name = "phenix configs declare apiVersion"
+args = ['^apiVersion: phenix\.sandia\.gov/v\d+$']
+files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/.+\.ya?ml|phenix-images/.+\.ya?ml)$'
+priority = "check"
+
+[[repos.hooks]]
+id = "detect-private-key"
+priority = "check"
+
+[[repos.hooks]]
+id = "destroyed-symlinks"
+priority = "check"
+
+[[repos.hooks]]
+id = "forbid-new-submodules"
+priority = "check"
 
 [[repos.hooks]]
 id = "no-commit-to-branch"
@@ -207,4 +648,4 @@ args = [
     "--pattern",
     '.*[^\w-].*',
 ]
-priority = 4
+priority = "check"

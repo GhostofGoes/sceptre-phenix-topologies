@@ -1,0 +1,241 @@
+# cm-otsim: ot-sim field devices (rio-cellar)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-otsim` prints), so
+# the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-otsim.yml
+#   phenix image build -o <dir> -c -x cm-otsim
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-otsim.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-otsim
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - rsync
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_OTSIM
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_OTSIM: |
+      # ---------------------------------------------------- ot-sim ----------------------------------------------------
+      # patsec/ot-sim built on noble with the recipe the otsim-noble spike verified
+      # (spikes/otsim-noble/build_check.sh, DESIGN.md 12.3): the C message bus, the
+      # C++ DNP3 module and the end-to-end DNP3 master (-DBUILD_E2E=ON; pydnp3 does
+      # not build on noble), the Go modules, and the Python modules with pyzmq rebuilt
+      # from source against the system libzmq. The ci integration image
+      # (tests/integration/Dockerfile.otsim) builds the same commit without DNP3.
+      #
+      # BACnet: ot-sim has no BACnet module, so the bas-* devices run the one in
+      # phenix-injects/otsim/ (DESIGN.md 16). The cherrymountain app injects the
+      # module file and its config; the image only carries what it imports,
+      # BACpypes3 and pydantic, in the venv of ot-sim's Python modules (the same
+      # pins as the BBMD service in cm-svc).
+      export DEBIAN_FRONTEND=noninteractive
+      OTSIM_REF=9dc33047ff9fb474e61c8931c7dac7bf98df38ef
+      HELICS_VERSION=3.6.1
+      apt-get update
+      apt-get install -y --no-install-recommends \
+        build-essential cmake git wget libboost-dev libczmq-dev libxml2-dev libzmq5-dev \
+        pkg-config python3-dev python3-pip python3-venv golang-go libczmq4 libzmq5 libxml2
+
+      git clone https://github.com/patsec/ot-sim.git /usr/local/src/ot-sim
+      cd /usr/local/src/ot-sim || exit 1
+      git checkout "$OTSIM_REF"
+      test "$(git rev-parse HEAD)" = "$OTSIM_REF"
+      git submodule update --init --recursive
+      # The DNP3 build downloads opendnp3 3.1.2 release archives from GitHub.
+      cmake -S . -B build -DBUILD_E2E=ON
+      cmake --build build -j"$(nproc)" --target install
+      ldconfig
+
+      # noble's golang-go is 1.22; a module dependency asks for Go 1.25 or later, so
+      # the go command downloads that toolchain (GOTOOLCHAIN=auto). The build has
+      # network access; an offline build must pre-seed the toolchain and the module
+      # cache in GOMODCACHE. Both caches are scratch and removed below.
+      export GOTOOLCHAIN=auto GOPATH=/var/tmp/otsim-go GOCACHE=/var/tmp/otsim-go/cache GOMODCACHE=/var/tmp/otsim-go/mod
+      make -C src/go install
+
+      # noble enforces PEP 668, so the Python modules (including the io module's
+      # HELICS federate) live in a venv that the service puts first on PATH.
+      python3 -m venv /opt/otsim-venv
+      /opt/otsim-venv/bin/pip install --no-cache-dir "helics==$HELICS_VERSION"
+      /opt/otsim-venv/bin/pip install --no-cache-dir src/python
+      /opt/otsim-venv/bin/pip install --no-cache-dir "bacpypes3==0.0.110" "pydantic==2.11.7"
+      # The pyzmq wheel bundles its own libzmq, which collides with the one HELICS
+      # bundles: the io module segfaults, the CPU module restarts it, and the retry
+      # fails with "duplicate federate name detected". Rebuild the same pyzmq
+      # version from source so it links the system libzmq5.
+      PYZMQ_VERSION=$(/opt/otsim-venv/bin/python -c 'import zmq; print(zmq.__version__)')
+      /opt/otsim-venv/bin/pip install --no-cache-dir --force-reinstall --no-deps \
+        --no-binary pyzmq "pyzmq==$PYZMQ_VERSION"
+      # (vmdb2 runs these scripts with sh, which is dash: no bash builtins.)
+      for bundled in /opt/otsim-venv/lib/python3*/site-packages/pyzmq.libs; do
+        if [ -e "$bundled" ]; then
+          echo "pyzmq still bundles its own libzmq" >&2
+          exit 1
+        fi
+      done
+      /opt/otsim-venv/bin/python -c 'import helics, zmq; print(helics.helicsGetVersion(), zmq.zmq_version())'
+      # The BACnet module's own imports, isolated the way the CPU module runs it.
+      /opt/otsim-venv/bin/python -I -c 'import bacpypes3, pydantic, zmq.asyncio; print(bacpypes3.__version__)'
+      for exe in ot-sim-cpu-module ot-sim-message-bus ot-sim-modbus-module ot-sim-dnp3-module \
+        ot-sim-e2e-dnp3-master ot-sim-logic-module; do
+        command -v "$exe" >/dev/null || { echo "missing $exe" >&2; exit 1; }
+      done
+      test -x /opt/otsim-venv/bin/ot-sim-io-module
+
+      cd /
+      rm -rf /usr/local/src/ot-sim /var/tmp/otsim-go /root/go /root/.cache
+      apt-get purge -y build-essential cmake git golang-go libboost-dev libczmq-dev libxml2-dev libzmq3-dev pkg-config python3-dev
+      apt-get autoremove -y
+      ldconfig
+
+      # The service starts after phenix.service, so the startup scripts (network,
+      # NTP, the helics app's wait-for-broker script) have already run. The ot-sim
+      # app injects /etc/ot-sim/config.xml; the unit stays inactive without it.
+      cat > /etc/systemd/system/ot-sim.service <<EOF
+      [Unit]
+      Description=ot-sim CPU module
+      After=network.target phenix.service
+      Wants=phenix.service
+      ConditionFileNotEmpty=/etc/ot-sim/config.xml
+      [Service]
+      Type=exec
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      Environment=PATH=/opt/otsim-venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      ExecStart=/usr/local/bin/ot-sim-cpu-module /etc/ot-sim/config.xml
+      Restart=always
+      RestartSec=5
+      # Hardening. The modules bind Modbus on port 502, so CAP_NET_BIND_SERVICE
+      # stays (BACnet's UDP 47808 needs none). ProtectSystem=full keeps /usr,
+      # /boot, and /etc read-only but leaves /var and /opt writable for the
+      # Python and Go modules.
+      NoNewPrivileges=yes
+      PrivateTmp=yes
+      ProtectSystem=full
+      ProtectHome=yes
+      ProtectProc=invisible
+      ProcSubset=pid
+      ProtectKernelTunables=yes
+      ProtectKernelModules=yes
+      ProtectKernelLogs=yes
+      ProtectControlGroups=yes
+      ProtectClock=yes
+      ProtectHostname=yes
+      RestrictNamespaces=yes
+      RestrictRealtime=yes
+      RestrictSUIDSGID=yes
+      LockPersonality=yes
+      SystemCallArchitectures=native
+      CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+      UMask=0077
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants /etc/ot-sim /usr/local/lib/cm-otsim
+      ln -sf /etc/systemd/system/ot-sim.service /etc/systemd/system/multi-user.target.wants/ot-sim.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 10G
+  variant: minbase

@@ -1,0 +1,45 @@
+[Unit]
+Description=CherryMountain: load the pre-pulled container images into Docker
+After=docker.service
+Requires=docker.service
+ConditionPathExists=/etc/cherrymountain/images.list
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=HOME=/tmp
+ExecStart=/usr/local/sbin/cm-load-images
+TimeoutStartSec=1h
+Restart=on-failure
+RestartSec=30
+
+# Hardening. The script talks to Docker through its socket (owned by root) and
+# deletes the image copies under /var/lib/cm-*/images.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ReadWritePaths=-/var/lib/cm-malcolm -/var/lib/cm-guacamole /etc/cherrymountain
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

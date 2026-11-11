@@ -1,0 +1,57 @@
+# Serial fixture: two Linux VMs joined by a phenix `serial` interface
+# (DESIGN §15.2). phenix's serial app runs socat in the guest to bridge a pty
+# to UDP multicast on a VLAN; it is not a minimega serial port.
+# Interface keys come from phenix's v1 Interface schema (device, baud_rate,
+# udp_port); the link address is derived from address and mask, so there is no
+# link_address key. Image: cm-spike (socat, python3), built by the workflow. The
+# two serial nodes also get the ot-sim modules as a tarball (injections), so ot-sim's
+# own Modbus RTU runs over the link.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-serial
+spec:
+  nodes:
+    - type: VirtualMachine
+      general: {hostname: rio-utilities}
+      injections:
+        - description: ot-sim Modbus modules and their libraries (built by build_otsim.sh)
+          src: /phenix/injects/otsim-rtu.tgz
+          dst: /opt/otsim-rtu.tgz
+          permissions: "0644"
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.20.10, mask: 16, proto: static, type: ethernet}
+          - {name: S0, vlan: SERIAL, address: 10.99.0.1, mask: 24, proto: static, type: serial, device: /dev/ttyS10, baud_rate: 9600, udp_port: 9000}
+    - type: VirtualMachine
+      general: {hostname: glycol-chiller}
+      injections:
+        - description: ot-sim Modbus modules and their libraries (built by build_otsim.sh)
+          src: /phenix/injects/otsim-rtu.tgz
+          dst: /opt/otsim-rtu.tgz
+          permissions: "0644"
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: MGMT, address: 172.16.20.11, mask: 16, proto: static, type: ethernet}
+          - {name: S0, vlan: SERIAL, address: 10.99.0.2, mask: 24, proto: static, type: serial, device: /dev/ttyS10, baud_rate: 9600, udp_port: 9000}
+    # Third guest on the serial VLAN as a bus monitor (README step 6).
+    - type: VirtualMachine
+      general: {hostname: bus-monitor}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: SERIAL, address: 10.99.0.3, mask: 24, proto: static, type: ethernet}

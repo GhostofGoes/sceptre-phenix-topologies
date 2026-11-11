@@ -1,0 +1,41 @@
+#!/bin/bash
+# The SOC analyst's consoles (DESIGN.md 14): Malcolm and Wazuh in one browser
+# window, one tab each. Installed as /usr/local/bin/cm-analyst-console and started at
+# login by /etc/xdg/autostart/cm-analyst.desktop on soc-analyst. Waits until both
+# consoles answer (they take minutes after a boot), then opens them.
+#
+# Env (from /etc/default/cm-analyst, optional): ANALYST_URLS, a space separated list
+# (default: Malcolm https://10.40.10.10/ and Wazuh https://10.40.10.11/), and
+# ANALYST_BROWSER (default chromium). Both consoles use self-signed certificates, so
+# the first visit shows a warning; Malcolm asks for the user malcolm and its password,
+# and Wazuh for the user admin and its password. Both come from the experiment's
+# secrets.json (malcolm_password and wazuh_password); the VMs also keep them in
+# /var/lib/cm-malcolm/admin-password on malcolm and /var/lib/cm-wazuh/passwords.txt
+# on wazuh.
+set -euo pipefail
+
+if [ -f /etc/default/cm-analyst ]; then
+  # shellcheck source=/dev/null
+  . /etc/default/cm-analyst
+fi
+URLS="${ANALYST_URLS:-https://10.40.10.10/ https://10.40.10.11/}"
+BROWSER="${ANALYST_BROWSER:-chromium}"
+
+read -r -a urls <<< "$URLS"
+# One 10-minute budget for all consoles together (not 10 minutes each): poll every
+# URL that has not answered yet, and open the browser when all have or time is up.
+pending=("${urls[@]}")
+deadline=$((SECONDS + 600))
+while [ "${#pending[@]}" -gt 0 ] && [ "$SECONDS" -lt "$deadline" ]; do
+  waiting=()
+  for url in "${pending[@]}"; do
+    curl -ks -m 5 -o /dev/null "$url" || waiting+=("$url")
+  done
+  pending=("${waiting[@]}")
+  [ "${#pending[@]}" -eq 0 ] || sleep 5
+done
+if [ "${#pending[@]}" -gt 0 ]; then
+  echo "cm-analyst-console: not answering yet, opening anyway: ${pending[*]}" >&2
+fi
+
+exec "$BROWSER" --no-first-run --noerrdialogs --ignore-certificate-errors "${urls[@]}"

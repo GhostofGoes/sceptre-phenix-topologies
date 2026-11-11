@@ -1,0 +1,28 @@
+# Two-VM fixture: DNP3 master (utility-derms role) and outstation (rtu-der role).
+# TODO(verify): image paths; both need the noble ot-sim build from build_check.sh.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-otsim
+spec:
+  nodes:
+    - type: VirtualMachine
+      general: {hostname: rtu-der}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-otsim-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: DERLINK, address: 10.20.15.10, mask: 24, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: utility-derms}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-otsim-noble.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: IF0, vlan: DERLINK, address: 10.20.15.20, mask: 24, proto: static, type: ethernet}

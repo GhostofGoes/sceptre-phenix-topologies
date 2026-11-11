@@ -1,0 +1,9 @@
+# Block style for phenix YAML (phenix-ci.yml, phenix-configs/, phenix-images/,
+# and the plantgen output in plant/generated/*/phenix/). Only empty collections
+# may use flow syntax: `{}` and `[]`. The repository-wide rules are in
+# /.yamllint.yml; prek.toml runs this file as a second yamllint hook.
+rules:
+  braces:
+    forbid: non-empty
+  brackets:
+    forbid: non-empty

@@ -1,0 +1,277 @@
+# cm-sim: HELICS broker, federates, and ground truth (sim-ctl, sim-process, sim-power, sim-building)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-sim` prints), so
+# the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-sim.yml
+#   phenix image build -o <dir> -c -x cm-sim
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-sim.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-sim
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - python3-pip
+  - python3-venv
+  - rsync
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_SIM
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_SIM: |
+      # ------------------------------------------------- cherrymountain_sim --------------------------------------------
+      # The simulation nodes (DESIGN.md 9, 15.7): HELICS, the cherrymountain_sim
+      # federates with OpenDSS (the `power` extra) and SimPy, cm-viz (the white
+      # cell's 3D view, DESIGN.md 15.10), and on sim-ctl the ground-truth
+      # OpenSearch (9200) and the white-cell Grafana (3000).
+      export DEBIAN_FRONTEND=noninteractive
+      # CM_REF names the commit of this repository whose sim/ is installed. Move it
+      # forward in the same change as any sim/ change the image must carry.
+      CM_REF=007ea72781b72825f8621003daa3288772c92696
+      HELICS_VERSION=3.6.1
+      WEBSOCKETS_VERSION=15.0.1
+      OPENSEARCH_VERSION=3.9.0
+      OPENSEARCH_KEY_FINGERPRINT=A8B2D9E04CD51FEF6AA2DB53BA81D99981191457
+      GRAFANA_KEY_FINGERPRINT=B53AE77BADB630A683046005963FA27710458545
+      GRAFANA_MAJOR=12
+      OPENSEARCH_PLUGIN_VERSION=2.34.4
+      apt-get update
+      apt-get install -y --no-install-recommends gnupg jq python3 python3-venv python3-pip
+
+      # HELICS 3.6 ships as the `helics` wheel: pyhelics plus the helics_broker
+      # executable the helics app starts on sim-ctl. The sim package comes from this
+      # repository's archive at CM_REF, with OpenDSSDirect.py (~=0.8.4, the `power`
+      # extra; 0.9 fails with "Invalid terminal index (0)") and SimPy (a dependency).
+      python3 -m venv /opt/cherrymountain/venv
+      /opt/cherrymountain/venv/bin/pip install --no-cache-dir "helics==$HELICS_VERSION"
+      /opt/cherrymountain/venv/bin/pip install --no-cache-dir \
+        "cherrymountain-sim[power] @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/$CM_REF.tar.gz#subdirectory=cherrymountain-brewery/sim"
+      # cm-viz from the same archive: the bridge and the page with three.js
+      # vendored in the package (web/vendor/three, MIT), so nothing is fetched
+      # at run time. The app injects its unit on sim-ctl only.
+      /opt/cherrymountain/venv/bin/pip install --no-cache-dir "websockets==$WEBSOCKETS_VERSION" \
+        "cherrymountain-viz @ https://github.com/GhostofGoes/sceptre-phenix-topologies/archive/$CM_REF.tar.gz#subdirectory=cherrymountain-brewery/viz"
+      for exe in helics_broker helics_app helics_player helics_recorder; do
+        ln -sf "/opt/cherrymountain/venv/bin/$exe" "/usr/local/bin/$exe"
+      done
+      /opt/cherrymountain/venv/bin/python -c "import helics, simpy, opendssdirect, cherrymountain_sim; print(helics.helicsGetVersion(), opendssdirect.__version__)"
+      /opt/cherrymountain/venv/bin/python -c "import cherrymountain_viz.server as s; assert (s.WEB / 'vendor/three/three.module.js').is_file()"
+      install -d -m 0755 /etc/cherrymountain
+
+      # Ground truth (DESIGN.md 9.5): a single-node OpenSearch that the federates
+      # write to over MGMT, and Grafana for the white cell. Both are installed on every sim node but start only where the
+      # cherrymountain app injects /etc/cherrymountain/ground-truth.env (sim-ctl in the
+      # full and lite variants; the ci variant has no ground truth).
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/opensearch.asc https://artifacts.opensearch.org/publickeys/opensearch-release.pgp
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/opensearch.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$OPENSEARCH_KEY_FINGERPRINT"
+      curl -fsSL -o /etc/apt/keyrings/grafana.asc https://apt.grafana.com/gpg.key
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/grafana.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$GRAFANA_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/opensearch.sources <<'EOF'
+      Types: deb
+      URIs: https://artifacts.opensearch.org/releases/bundle/opensearch/3.x/apt
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/opensearch.asc
+      EOF
+      cat > /etc/apt/sources.list.d/grafana.sources <<'EOF'
+      Types: deb
+      URIs: https://apt.grafana.com
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/grafana.asc
+      EOF
+      cat > /etc/apt/preferences.d/grafana <<EOF
+      Package: grafana
+      Pin: version $GRAFANA_MAJOR.*
+      Pin-Priority: 1001
+      EOF
+      apt-get update
+      # No demo security config: the node runs with the security plugin disabled,
+      # on the out-of-bounds MGMT plane (DESIGN.md 10.1 and 13, range exposure).
+      DISABLE_INSTALL_DEMO_CONFIG=true DISABLE_SECURITY_PLUGIN=true \
+        apt-get install -y --no-install-recommends "opensearch=$OPENSEARCH_VERSION" grafana
+      apt-mark hold opensearch
+      cat > /etc/opensearch/opensearch.yml <<'EOF'
+      cluster.name: cherrymountain-truth
+      node.name: sim-ctl
+      path.data: /var/lib/opensearch
+      path.logs: /var/log/opensearch
+      network.host: 0.0.0.0
+      http.port: 9200
+      discovery.type: single-node
+      plugins.security.disabled: true
+      action.auto_create_index: true
+      EOF
+      install -d -m 0755 /etc/opensearch/jvm.options.d
+      cat > /etc/opensearch/jvm.options.d/cm-heap.options <<'EOF'
+      -Xms2g
+      -Xmx2g
+      EOF
+      install -d -m 0755 /etc/systemd/system/opensearch.service.d /etc/systemd/system/grafana-server.service.d
+      cat > /etc/systemd/system/opensearch.service.d/10-cm-ground-truth.conf <<'EOF'
+      [Unit]
+      ConditionPathExists=/etc/cherrymountain/ground-truth.env
+      EOF
+      # The white cell reaches Grafana only through the host's cc tunnel
+      # (DESIGN.md 15.3), so it serves an anonymous read-only view; the admin
+      # password, when the app sets one, comes from the ground-truth file.
+      cat > /etc/systemd/system/grafana-server.service.d/10-cm-ground-truth.conf <<'EOF'
+      [Unit]
+      ConditionPathExists=/etc/cherrymountain/ground-truth.env
+      After=opensearch.service
+      [Service]
+      EnvironmentFile=-/etc/cherrymountain/ground-truth.env
+      Environment=GF_AUTH_ANONYMOUS_ENABLED=true
+      Environment=GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      Environment=GF_PLUGINS_PREINSTALL_DISABLED=true
+      Environment=GF_ANALYTICS_REPORTING_ENABLED=false
+      Environment=GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      Environment=GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
+      Environment=GF_NEWS_NEWS_FEED_ENABLED=false
+      Environment=GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/cherrymountain/cm-ground-truth.json
+      EOF
+      # OpenSearch 3 dropped the Elasticsearch-compatible version override, so
+      # Grafana needs its OpenSearch data source plugin, installed now (no internet
+      # at run time).
+      grafana cli --pluginsDir /var/lib/grafana/plugins plugins install grafana-opensearch-datasource "$OPENSEARCH_PLUGIN_VERSION"
+      chown -R grafana:grafana /var/lib/grafana/plugins
+      install -d -m 0755 /etc/grafana/provisioning/datasources /etc/grafana/provisioning/dashboards
+      install -d -o grafana -g grafana -m 0755 /var/lib/grafana/dashboards/cherrymountain
+      cat > /etc/grafana/provisioning/datasources/cm-ground-truth.yaml <<'EOF'
+      apiVersion: 1
+      datasources:
+        - name: Ground truth
+          uid: cm-ground-truth
+          type: grafana-opensearch-datasource
+          access: proxy
+          url: http://127.0.0.1:9200
+          isDefault: true
+          jsonData:
+            database: cherrymountain-truth-*
+            timeField: "@timestamp"
+            flavor: opensearch
+            version: 3.0.0
+            pplEnabled: false
+      EOF
+      cat > /etc/grafana/provisioning/dashboards/cm-ground-truth.yaml <<'EOF'
+      apiVersion: 1
+      providers:
+        - name: cherrymountain
+          type: file
+          disableDeletion: true
+          options:
+            path: /var/lib/grafana/dashboards/cherrymountain
+      EOF
+      # The dashboard (cm-ground-truth.json) is not in the image: the cherrymountain app renders
+      # and injects it, so its lines can take the brand's series colors (render.py
+      # ground_truth_dashboard). The documents carry the wall clock in @timestamp and the
+      # simulated time in sim_time, so it opens on the last day of the run.
+      systemctl enable opensearch.service grafana-server.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 16G
+  variant: minbase

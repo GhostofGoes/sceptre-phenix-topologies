@@ -1,0 +1,32 @@
+# vrouter app with the IPsec block shape phenix reads (IPSecConfig in
+# src/go/app/vrouter.go): per site `local` and `remote` addresses (remote is
+# the peer's address), `peer` (a name used in the VyOS config), and tunnels.
+# No `secret`: phenix generates one PSK per site pair, shared by both routers.
+apiVersion: phenix.sandia.gov/v2
+kind: Scenario
+metadata:
+  name: spike-ipsec
+  annotations:
+    topology: spike-ipsec
+spec:
+  apps:
+    - name: vrouter
+      hosts:
+        - hostname: rtr-edge
+          metadata:
+            ipsec:
+              - local: 203.0.113.2
+                remote: 203.0.113.3
+                peer: rtr-util
+                tunnels:
+                  - local: 10.20.15.0/24
+                    remote: 192.0.2.0/24
+        - hostname: rtr-util
+          metadata:
+            ipsec:
+              - local: 203.0.113.3
+                remote: 203.0.113.2
+                peer: rtr-edge
+                tunnels:
+                  - local: 192.0.2.0/24
+                    remote: 10.20.15.0/24

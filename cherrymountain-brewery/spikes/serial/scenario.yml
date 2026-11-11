@@ -1,0 +1,10 @@
+# The serial app needs no metadata; listing it enables it for the experiment.
+apiVersion: phenix.sandia.gov/v2
+kind: Scenario
+metadata:
+  name: spike-serial
+  annotations:
+    topology: spike-serial
+spec:
+  apps:
+    - name: serial

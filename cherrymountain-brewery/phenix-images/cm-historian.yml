@@ -1,0 +1,227 @@
+# cm-historian: InfluxDB 2, Telegraf, Grafana, and Mosquitto (historian)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-historian` prints),
+# so the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-historian.yml
+#   phenix image build -o <dir> -c -x cm-historian
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-historian.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-historian
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - gnupg
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - jq
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - mosquitto
+  - mosquitto-clients
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - procps
+  - python3
+  - rsync
+  - rsyslog
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_HISTORIAN
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_HISTORIAN: |
+      # ------------------------------------------------------ Historian ------------------------------------------------------
+      # historian (DESIGN.md 12.4): InfluxDB 2 OSS, Telegraf, Grafana, and Mosquitto.
+      # The cherrymountain app renders their settings at boot (credentials, the
+      # Telegraf and Mosquitto configs, the Grafana data sources and dashboard, and the
+      # InfluxDB provisioning script); the image only installs and enables them.
+      export DEBIAN_FRONTEND=noninteractive
+      INFLUX_KEY_FINGERPRINT=24C975CBA61A024EE1B631787C3D57159FC2F927
+      GRAFANA_KEY_FINGERPRINT=B53AE77BADB630A683046005963FA27710458545
+      INFLUXDB_VERSION=2.9.1-1
+      TELEGRAF_VERSION=1.40.3-1
+      GRAFANA_MAJOR=12
+      apt-get update
+      apt-get install -y --no-install-recommends gnupg jq mosquitto mosquitto-clients python3 rsyslog
+
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/influxdata.asc https://repos.influxdata.com/influxdata-archive.key
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/influxdata.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$INFLUX_KEY_FINGERPRINT"
+      curl -fsSL -o /etc/apt/keyrings/grafana.asc https://apt.grafana.com/gpg.key
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/grafana.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$GRAFANA_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/influxdata.sources <<'EOF'
+      Types: deb
+      URIs: https://repos.influxdata.com/debian
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/influxdata.asc
+      EOF
+      cat > /etc/apt/sources.list.d/grafana.sources <<'EOF'
+      Types: deb
+      URIs: https://apt.grafana.com
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/grafana.asc
+      EOF
+      # One file per pin: phenix drops blank lines from build scripts, which would
+      # merge two stanzas of one file into a single record.
+      cat > /etc/apt/preferences.d/grafana <<EOF
+      Package: grafana
+      Pin: version $GRAFANA_MAJOR.*
+      Pin-Priority: 1001
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "influxdb2=$INFLUXDB_VERSION" "influxdb2-cli=$INFLUXDB_VERSION" "telegraf=$TELEGRAF_VERSION" grafana
+      influx version
+      telegraf --version
+
+      # Grafana serves the HMI kiosks' read-only view without a login (DESIGN.md 10.3:
+      # HMI -> historian TCP 3000, read-only), with the plant dashboard as the home
+      # page. The admin password comes from /etc/default/cm-historian, through the
+      # cherrymountain app's drop-in. The VMs have no internet: no plugin downloads,
+      # update checks, or news feed.
+      install -d -m 0755 /etc/systemd/system/grafana-server.service.d
+      cat > /etc/systemd/system/grafana-server.service.d/10-cm-anonymous.conf <<'EOF'
+      [Service]
+      Environment=GF_AUTH_ANONYMOUS_ENABLED=true
+      Environment=GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      Environment=GF_AUTH_DISABLE_LOGIN_FORM=false
+      Environment=GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/cherrymountain/cm-plant.json
+      Environment=GF_PLUGINS_PREINSTALL_DISABLED=true
+      Environment=GF_ANALYTICS_REPORTING_ENABLED=false
+      Environment=GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      Environment=GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
+      Environment=GF_NEWS_NEWS_FEED_ENABLED=false
+      EOF
+      install -d -o grafana -g grafana -m 0755 /var/lib/grafana/dashboards/cherrymountain
+      # Mosquitto's packaged mosquitto.conf sets the persistence file and directory, and the
+      # cherrymountain app's /etc/mosquitto/conf.d/cherrymountain.conf sets them again; Mosquitto
+      # stops with "Duplicate persistence_location" on a duplicate. The main file keeps only
+      # what the app does not set.
+      cat > /etc/mosquitto/mosquitto.conf <<'EOF'
+      pid_file /run/mosquitto/mosquitto.pid
+      log_dest file /var/log/mosquitto/mosquitto.log
+      include_dir /etc/mosquitto/conf.d
+      EOF
+      install -d -m 0755 /var/lib/cm-historian /etc/cherrymountain
+      systemctl enable influxdb.service telegraf.service grafana-server.service mosquitto.service
+
+      # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,
+      # because an agent must not be newer than its manager. The cherrymountain app's
+      # 80-cm-wazuh-agent.sh points it at the manager and enrolls it at boot, so the
+      # service stays disabled here.
+      WAZUH_VERSION=4.14.10-1
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "wazuh-agent=$WAZUH_VERSION"
+      systemctl disable wazuh-agent.service
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 12G
+  variant: minbase

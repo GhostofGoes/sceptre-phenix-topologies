@@ -1,0 +1,17 @@
+# Adds a TLS-inspecting proxy's CA certificate to a base image. Only for
+# sandboxes whose egress proxy re-signs HTTPS; ci_slice_docker.sh builds it when
+# CM_EXTRA_CA points at the PEM bundle.
+#   docker build -f Dockerfile.ca --build-arg BASE=ubuntu:24.04 -t cm-base-noble <dir containing ca.crt>
+ARG BASE
+FROM ${BASE}
+COPY ca.crt /usr/local/share/ca-certificates/cm-extra-ca.crt
+RUN mkdir -p /etc/ssl/certs && cat /usr/local/share/ca-certificates/cm-extra-ca.crt >> /etc/ssl/certs/ca-certificates.crt \
+    && (command -v update-ca-certificates >/dev/null && update-ca-certificates || true)
+# apt-get install ca-certificates later regenerates the bundle from
+# /usr/local/share/ca-certificates, so the CA survives.
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    CURL_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+    GIT_SSL_CAINFO=/etc/ssl/certs/ca-certificates.crt \
+    NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/cm-extra-ca.crt

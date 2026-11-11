@@ -1,0 +1,199 @@
+# cm-wazuh: Wazuh manager, indexer, and dashboard (wazuh)
+# Built from a noble minbase image with phenix image build. This is the stored
+# form of an image config (what `phenix config get image/cm-wazuh` prints), so
+# the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-wazuh.yml
+#   phenix image build -o <dir> -c -x cm-wazuh
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-wazuh.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-wazuh
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - gnupg
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - jq
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - openssl
+  - procps
+  - python3
+  - rsync
+  - rsyslog
+  - ssh
+  - tcpdump
+  - tmux
+  - vim
+  - wget
+  release: noble
+  script_order:
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_WAZUH
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_WAZUH: |
+      # ---------------------------------------------------- Wazuh all-in-one -----------------------------------------------------
+      # wazuh (DESIGN.md 14): the manager, the indexer, and the dashboard on one VM,
+      # installed from the packages (the step-by-step route of Wazuh's documentation)
+      # so the range needs no internet. Everything that depends on the VM's address,
+      # the certificates, passwords, and the first start, happens at the first boot in
+      # cm-wazuh-provision.service (injected by the topology, phenix-injects/wazuh/),
+      # so the services stay disabled here.
+      export DEBIAN_FRONTEND=noninteractive
+      WAZUH_VERSION=4.14.10-1
+      FILEBEAT_VERSION=7.10.2-2
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      apt-get update
+      apt-get install -y --no-install-recommends gnupg jq openssl python3 rsyslog
+
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      # Wazuh's repository has its own Filebeat (the 7.10.2 build that pairs with the
+      # indexer), so it is pinned too.
+      # In the build chroot, `systemctl is-active` succeeds for every unit, so the
+      # wazuh-indexer preinst takes a fresh install for an upgrade and fails. apt
+      # sets dpkg's PATH (DPkg::Path), so the wrapper's directory goes there.
+      cat > /usr/local/sbin/systemctl <<'EOF'
+      #!/bin/sh
+      [ "$1" = is-active ] && exit 3
+      exec /usr/bin/systemctl "$@"
+      EOF
+      chmod 0755 /usr/local/sbin/systemctl
+      apt-get install -y -o DPkg::Path=/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin "wazuh-manager=$WAZUH_VERSION" "wazuh-indexer=$WAZUH_VERSION" "wazuh-dashboard=$WAZUH_VERSION" "filebeat=$FILEBEAT_VERSION"
+      rm -f /usr/local/sbin/systemctl
+      systemctl disable wazuh-manager.service wazuh-indexer.service wazuh-dashboard.service filebeat.service
+
+      # Wazuh's helper files, checked against the checksums of the 4.14 release.
+      install -d -m 0755 /opt/cherrymountain/wazuh /opt/cherrymountain/wazuh/agent-conf
+      fetch() {
+        curl -fsSL -o "/opt/cherrymountain/wazuh/$1" "$2"
+        echo "$3  /opt/cherrymountain/wazuh/$1" | sha256sum -c -
+      }
+      fetch wazuh-certs-tool.sh https://packages.wazuh.com/4.14/wazuh-certs-tool.sh 5c3135baaef34ca25a9f0fa631e65312871934533fd061442d50d9d70f23b759
+      fetch wazuh-passwords-tool.sh https://packages.wazuh.com/4.14/wazuh-passwords-tool.sh 2d085fe9baf777eeff3cf09199f568a1fcafec7dcdcfefbd414e7a35eb2ee1ad
+      fetch filebeat.yml https://packages.wazuh.com/4.14/tpl/wazuh/filebeat/filebeat.yml 233c82cdbec2a159ac33a8e5faff4adf7517add92d4f927b33ff4fbd3fcbde37
+      fetch wazuh-template.json "https://raw.githubusercontent.com/wazuh/wazuh/v${WAZUH_VERSION%-1}/extensions/elasticsearch/7.x/wazuh-template.json" b2d182f49cc68957849e77fd2d79528fd2273ebaec1106c9661c9e320577a089
+      fetch wazuh-filebeat-0.5.tar.gz https://packages.wazuh.com/4.x/filebeat/wazuh-filebeat-0.5.tar.gz 7a8c67c47b22f89ab271b7e35f108f18b2215b7aa411cdd23c9994393070d38d
+      chmod 0755 /opt/cherrymountain/wazuh/wazuh-certs-tool.sh /opt/cherrymountain/wazuh/wazuh-passwords-tool.sh
+      # Filebeat's Wazuh module, and the templates it needs, at the paths Wazuh's guide uses.
+      tar -xzf /opt/cherrymountain/wazuh/wazuh-filebeat-0.5.tar.gz -C /usr/share/filebeat/module
+      install -m 0644 /opt/cherrymountain/wazuh/wazuh-template.json /etc/filebeat/wazuh-template.json
+      chmod go+r /etc/filebeat/wazuh-template.json
+
+      # The indexer's JVM heap: the VM has 8 GB for the indexer, the manager, and the
+      # dashboard, and the indexer would otherwise take half of it.
+      install -d -m 0750 -o root -g wazuh-indexer /etc/wazuh-indexer/jvm.options.d
+      cat > /etc/wazuh-indexer/jvm.options.d/cm-heap.options <<'EOF'
+      -Xms2g
+      -Xmx2g
+      EOF
+      chown root:wazuh-indexer /etc/wazuh-indexer/jvm.options.d/cm-heap.options
+      chmod 0660 /etc/wazuh-indexer/jvm.options.d/cm-heap.options
+      cat > /etc/sysctl.d/99-cm-wazuh.conf <<'EOF'
+      vm.max_map_count = 262144
+      EOF
+      install -d -m 0755 /etc/cherrymountain
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 16G
+  variant: minbase

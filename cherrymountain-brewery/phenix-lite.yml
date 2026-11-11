@@ -1,0 +1,45 @@
+# Workflow for the lite variant: the core without the SOC and without vendor
+# remote access, 37 VMs, 48 vCPUs, 71 GB (DESIGN.md 11 and 15.3). Apply it with
+# its own branch so it maps to its own experiment (DESIGN.md 15.1):
+#   docker exec phenix phenix workflow apply \
+#     -b cherrymountain-lite -c phenix-lite.yml /phenix/topologies/cherrymountain-brewery
+# The VLAN IDs are the full plant's (DESIGN.md 10.2). SOC stays pinned because
+# fw-ot keeps its SOC interface; MIRROR is not used.
+#
+# Each variant has its own bridge: phenix lets only one stored experiment,
+# running or not, use a bridge other than `phenix`, so with a shared bridge
+# this apply would fail while another variant's experiment exists. The three
+# variants still pin the same VLAN IDs, so only one of them can run at a time:
+# stop the other one first.
+apiVersion: phenix.sandia.gov/v0
+kind: Workflow
+metadata: {}
+spec:
+  auto:
+    create: ${BRANCH_NAME}
+    update: true
+    restart: true
+  topology: cherrymountain-lite
+  scenario: cherrymountain-lite
+  vlans:
+    INET: 101
+    VENDOR: 102
+    UTIL: 103
+    CORP: 104
+    DMZ: 105
+    OPS: 106
+    HMI: 107
+    CTRL: 108
+    FIELD-BH: 109
+    FIELD-CEL: 110
+    FIELD-PKG: 111
+    FIELD-UTL: 112
+    DERLINK: 113
+    FIELD-PWR: 114
+    BAS: 115
+    SOC: 116
+    MGMT: 117
+  vlanRange:
+    min: 100
+    max: 199
+  defaultBridge: cherrymtn-lite

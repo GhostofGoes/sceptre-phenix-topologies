@@ -1,0 +1,127 @@
+# The Guacamole jump host (dmz-jump, DESIGN.md 13): guacd, the web application,
+# PostgreSQL, and an nginx TLS front end. The topology injects this file as
+# /opt/cherrymountain/guacamole/docker-compose.yml, and cm-guacamole.service runs
+# `docker compose up` on it.
+#
+# The container names are the ones SoH checks (guacamole, guacd, postgres,
+# DESIGN.md 15.4). Their logs go to the local syslog under the container's name; an
+# rsyslog rule (30-cm-guacamole.conf) writes them to
+# /var/log/cm-guacamole/containers.log, which the Wazuh agent of the dmz group reads.
+#
+# Settings come from the environment of the unit (EnvironmentFile
+# /etc/default/cm-guacamole, rendered by the cherrymountain app: TOTP_ENABLED and
+# GUAC_RECORDING) and from /etc/cherrymountain/guacamole-db.env and guacamole-web.env
+# (the database password for PostgreSQL and for the web application, generated at the
+# first start; the web application must not see a POSTGRES_* variable, which its
+# entrypoint treats as a deprecated name). The connections and the cmadmin account
+# are in /opt/cherrymountain/guacamole/initdb (the stock schema, then the app's
+# 50-cherrymountain.sql), which PostgreSQL runs once, on an empty data directory.
+name: guacamole
+
+services:
+  guac-proxy:
+    image: nginx:1.30.6-alpine
+    container_name: guac-proxy
+    depends_on:
+      - guacamole
+    volumes:
+      - /opt/cherrymountain/guacamole/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/cherrymountain/guacamole-tls:/etc/nginx/tls:ro
+    ports:
+      - '0.0.0.0:443:443'
+    restart: unless-stopped
+    logging:
+      driver: syslog
+      options:
+        syslog-address: unixgram:///dev/log
+        tag: '{{.Name}}'
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+
+  guacamole:
+    image: guacamole/guacamole:1.6.0
+    container_name: guacamole
+    depends_on:
+      guacd:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    volumes:
+      - /var/lib/cm-guacamole/recordings:/var/lib/guacamole/recordings:ro
+      # The brewery's branding extension: the entrypoint links every .jar under
+      # GUACAMOLE_HOME/extensions (/etc/guacamole in this image) into the home it
+      # generates. sync.py builds the jar from phenix-injects/guacamole/branding/ and brand/.
+      - /opt/cherrymountain/guacamole/cherrymountain-brand.jar:/etc/guacamole/extensions/cherrymountain-brand.jar:ro
+    environment:
+      GUACD_HOSTNAME: guacd
+      POSTGRESQL_DATABASE: guacamole_db
+      POSTGRESQL_HOSTNAME: postgres
+      POSTGRESQL_USERNAME: guacamole_user
+      RECORDING_SEARCH_PATH: /var/lib/guacamole/recordings
+      # The proxy is the only client, so the real client address (the vendor's tunnel
+      # address) is what the login events record. PROXY_ALLOWED_IPS_REGEX is the
+      # image's name for RemoteIpValve's internalProxies (Guacamole manual, "Running
+      # Guacamole behind a proxy"); the compose network is in 172.16/12.
+      REMOTE_IP_VALVE_ENABLED: 'true'
+      PROXY_ALLOWED_IPS_REGEX: '172\.(1[6-9]|2[0-9]|3[01])\..*'
+      TOTP_ENABLED: ${TOTP_ENABLED:-true}
+      TOTP_ISSUER: CherryMountain Brewery
+    env_file:
+      - /etc/cherrymountain/guacamole-web.env
+    restart: unless-stopped
+    logging:
+      driver: syslog
+      options:
+        syslog-address: unixgram:///dev/log
+        tag: '{{.Name}}'
+    security_opt:
+      - no-new-privileges:true
+
+  guacd:
+    image: guacamole/guacd:1.6.0
+    container_name: guacd
+    volumes:
+      - /var/lib/cm-guacamole/recordings:/var/lib/guacamole/recordings
+    restart: unless-stopped
+    logging:
+      driver: syslog
+      options:
+        syslog-address: unixgram:///dev/log
+        tag: '{{.Name}}'
+    security_opt:
+      - no-new-privileges:true
+
+  postgres:
+    image: postgres:17.11-alpine
+    container_name: postgres
+    volumes:
+      - guac-db:/var/lib/postgresql/data
+      - /opt/cherrymountain/guacamole/initdb:/docker-entrypoint-initdb.d:ro
+    environment:
+      POSTGRES_DB: guacamole_db
+      POSTGRES_USER: guacamole_user
+    env_file:
+      - /etc/cherrymountain/guacamole-db.env
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -h 127.0.0.1 -U guacamole_user -d guacamole_db
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    logging:
+      driver: syslog
+      options:
+        syslog-address: unixgram:///dev/log
+        tag: '{{.Name}}'
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  guac-db:

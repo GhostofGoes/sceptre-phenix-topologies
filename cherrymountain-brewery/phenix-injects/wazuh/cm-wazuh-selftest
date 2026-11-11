@@ -1,0 +1,42 @@
+#!/bin/bash
+# Check that the baseline detections fire (DESIGN.md 14, 15.6). Installed as
+# /usr/local/sbin/cm-wazuh-selftest; run it as root on the Wazuh manager, for
+# example through a SCORCH `cc` step. It feeds every sample line of
+# /opt/cherrymountain/wazuh/samples.txt to wazuh-logtest and checks that the
+# rule named on the line (or one of its alternates) is the one that fires.
+# Prints PASS and FAIL lines and exits 1 if any fails.
+#
+# wazuh-logtest prints its report with Python's logging at the INFO level (the rule
+# as `id: '100201'` in the "Phase 3" block, framework/scripts/wazuh_logtest.py), on
+# stderr. Its -q option sets the level to ERROR, which hides the whole report, so it
+# is not used. TODO(verify): unverified on a VM.
+set -uo pipefail
+
+SAMPLES="${CM_WAZUH_SAMPLES:-/opt/cherrymountain/wazuh/samples.txt}"
+# CM_OSSEC_DIR is for the tests.
+LOGTEST="${CM_OSSEC_DIR:-/var/ossec}/bin/wazuh-logtest"
+
+status=0
+count=0
+while IFS='|' read -r rules line; do
+  case "$rules" in '' | '#'*) continue ;; esac
+  count=$((count + 1))
+  output=$(printf '%s\n' "$line" | "$LOGTEST" 2>&1) || true
+  fired=$(grep -o "id: '[0-9]*'" <<< "$output" | tail -n 1 | tr -dc '0-9')
+  ok=false
+  IFS=',' read -r -a wanted <<< "$rules"
+  for rule in "${wanted[@]}"; do
+    if [ "$fired" = "$rule" ]; then
+      ok=true
+    fi
+  done
+  if [ "$ok" = true ]; then
+    echo "PASS: rule ${fired} fired for: ${line:0:90}"
+  else
+    echo "FAIL: wanted ${rules}, got ${fired:-no rule} for: ${line:0:90}"
+    status=1
+  fi
+done < "$SAMPLES"
+
+echo "cm-wazuh-selftest: ${count} samples checked"
+exit "$status"

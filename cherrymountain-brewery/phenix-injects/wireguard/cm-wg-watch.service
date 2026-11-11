@@ -1,0 +1,49 @@
+[Unit]
+Description=CherryMountain WireGuard peer watcher (events for Wazuh)
+# phenix startup scripts, not systemd, configure the network, so network-online.target
+# would not mean anything here. The script waits for wg0 itself: the phenix wireguard
+# app's startup script enables wg-quick@wg0 later in the boot.
+After=network.target
+# Never give up: wg0 may come up late.
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -I /usr/local/lib/cm-wireguard/cm_wg_watch.py --interface wg0 --log /var/log/cm-wireguard/events.log
+Restart=always
+RestartSec=5
+
+# Hardening. `wg show` reads the interface through netlink, which needs
+# CAP_NET_ADMIN; the script writes only its log, in the directory systemd creates
+# for it (LogsDirectory=, owned by the dynamic user and readable by the root agent).
+DynamicUser=yes
+LogsDirectory=cm-wireguard
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

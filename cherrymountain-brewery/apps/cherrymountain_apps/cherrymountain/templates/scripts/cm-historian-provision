@@ -1,0 +1,90 @@
+#!/bin/bash
+# Provision InfluxDB 2 on the historian (cherrymountain app, DESIGN.md 12.4):
+# first-run setup (org, admin, operator token), then one bucket per name in
+# INFLUX_BUCKETS. Installed as /usr/local/bin/cm-historian-provision and run by
+# cm-historian-provision.service. Re-running is safe: setup runs only while
+# InfluxDB still allows it, and existing buckets are kept.
+# Env (from /etc/default/cm-historian): INFLUX_HOST, INFLUX_ORG, INFLUX_TOKEN,
+# INFLUX_PASSWORD, INFLUX_BUCKETS, INFLUX_RETENTION (an influx duration such as 30d
+# or 720h, or 0 for no expiry; the app renders 720h unless historian.retentionHours
+# says otherwise). Retention is set when a bucket is created, so a bucket that
+# already exists keeps the retention it has. INFLUX_RECORDS_BUCKET (empty: none) is
+# the records bucket, created with INFLUX_RECORDS_RETENTION (three years), and the
+# task in /etc/cherrymountain/cm-records.flux copies the TTB record series into it
+# once a day (DESIGN.md 12.4); an existing task is kept.
+# The influx CLI reads INFLUX_HOST, INFLUX_ORG, and INFLUX_TOKEN itself, and the
+# first-run setup posts its JSON body (admin password and operator token) to the
+# setup API on stdin, so neither secret appears on a command line.
+set -euo pipefail
+
+: "${INFLUX_HOST:?set INFLUX_HOST}" "${INFLUX_ORG:?set INFLUX_ORG}"
+: "${INFLUX_TOKEN:?set INFLUX_TOKEN}" "${INFLUX_PASSWORD:?set INFLUX_PASSWORD}"
+: "${INFLUX_BUCKETS:?set INFLUX_BUCKETS}"
+export INFLUX_HOST INFLUX_ORG INFLUX_TOKEN INFLUX_PASSWORD
+RETENTION="${INFLUX_RETENTION:-30d}"
+STATE=/var/lib/cm-historian
+
+log() { echo "cm-historian-provision: $*"; }
+
+log "waiting for InfluxDB on ${INFLUX_HOST}"
+for _ in $(seq 1 120); do
+  if influx ping >/dev/null 2>&1; then break; fi
+  sleep 5
+done
+influx ping || { log "FAIL: InfluxDB did not answer on ${INFLUX_HOST} in 600 s"; exit 1; }
+
+read -r -a buckets <<< "${INFLUX_BUCKETS}"
+
+if curl -sS -m 10 "${INFLUX_HOST}/api/v2/setup" | grep -q '"allowed": *true'; then
+  log "first-run setup (org ${INFLUX_ORG}, bucket ${buckets[0]})"
+  CM_BUCKET="${buckets[0]}" CM_RETENTION="${RETENTION}" python3 -c '
+import json, os, re
+units = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 604800}
+retention = os.environ["CM_RETENTION"]
+seconds = 0
+if retention != "0":
+    parts = re.findall(r"(\d+)([smhdw])", retention)
+    if not parts or "".join(n + u for n, u in parts) != retention:
+        raise SystemExit(f"cm-historian-provision: bad INFLUX_RETENTION {retention!r}")
+    seconds = sum(int(n) * units[u] for n, u in parts)
+print(json.dumps({
+    "username": "admin",
+    "password": os.environ["INFLUX_PASSWORD"],
+    "org": os.environ["INFLUX_ORG"],
+    "bucket": os.environ["CM_BUCKET"],
+    "token": os.environ["INFLUX_TOKEN"],
+    "retentionPeriodSeconds": seconds,
+}))' | curl -fsS -m 30 -o /dev/null -H 'Content-Type: application/json' \
+    --data-binary @- "${INFLUX_HOST}/api/v2/setup"
+fi
+
+for bucket in "${buckets[@]}"; do
+  if influx bucket list --name "${bucket}" >/dev/null 2>&1; then
+    log "bucket ${bucket} exists"
+  else
+    log "creating bucket ${bucket}"
+    influx bucket create --name "${bucket}" --retention "${RETENTION}"
+  fi
+done
+
+RECORDS="${INFLUX_RECORDS_BUCKET:-}"
+TASK=/etc/cherrymountain/cm-records.flux
+if [ -n "$RECORDS" ]; then
+  if influx bucket list --name "${RECORDS}" >/dev/null 2>&1; then
+    log "records bucket ${RECORDS} exists"
+  else
+    log "creating the records bucket ${RECORDS} (retention ${INFLUX_RECORDS_RETENTION:-26280h})"
+    influx bucket create --name "${RECORDS}" --retention "${INFLUX_RECORDS_RETENTION:-26280h}"
+  fi
+  if [ ! -f "$TASK" ]; then
+    log "WARNING: no ${TASK}; the records bucket gets no daily copy"
+  elif influx task list --json 2>/dev/null | grep -q '"name": *"cm-ttb-records"'; then
+    log "records task exists"
+  else
+    log "creating the daily records task"
+    influx task create --file "$TASK" >/dev/null
+  fi
+fi
+
+touch "${STATE}/provisioned"
+log "PASS: InfluxDB is set up"

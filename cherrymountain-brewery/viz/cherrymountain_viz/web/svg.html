@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CherryMountain Brewery 2.5D view</title>
+  <link rel="icon" href="brand/favicon.ico" sizes="any">
+  <link rel="icon" href="brand/icon-small.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="brand/tokens.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="svg.css">
+</head>
+<body class="svgpage">
+  <header class="panel top">
+    <div class="brand">
+      <img class="mark" src="brand/icon-small.svg" alt="" width="32" height="32">
+      <div>
+        <h1>CherryMountain Brewery: ground truth (2.5D)</h1>
+        <p>For browsers without WebGL, VNC, and low-CPU displays. Redrawn only when a frame arrives.</p>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Scene">
+      <button data-scene="cellar">Cellar CO₂</button>
+      <button data-scene="fermenters">Fermenters</button>
+      <button data-scene="power">Plant power</button>
+    </nav>
+    <a class="fallback" href="index.html">3D view</a>
+  </header>
+  <section class="panel clock" aria-label="Clock and data age">
+    <div><span class="k">Sim</span> <span id="simtime">waiting for data</span></div>
+    <div><span class="k">Data</span> <span id="age" class="pill dead">no frame</span> <span id="source" class="muted"></span></div>
+  </section>
+  <main id="drawing" aria-label="2.5D drawing"></main>
+  <section class="panel findings-panel"><ul id="findings" class="findings"></ul></section>
+  <div id="stale" class="alert-banner" role="alert" hidden>NO DATA: the view is stale</div>
+  <script type="module" src="svg.js"></script>
+</body>
+</html>

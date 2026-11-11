@@ -1,0 +1,331 @@
+# cm-ews: the engineering workstation (ews)
+# Built from a noble mingui image (xubuntu) with phenix image build. This is the
+# stored form of an image config (what `phenix config get image/cm-ews` prints),
+# so the POSTBUILD_* scripts below are verbatim copies of the defaults that
+# `phenix image create` adds (src/go/api/image/constants.go); only the INSTALL
+# script is specific to this image.
+#   phenix config create phenix-images/cm-ews.yml
+#   phenix image build -o <dir> -c -x cm-ews
+#   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-ews.qc2
+# inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
+
+apiVersion: phenix.sandia.gov/v1
+kind: Image
+metadata:
+  name: cm-ews
+spec:
+  compress: true
+  components:
+  - main
+  - restricted
+  - universe
+  - multiverse
+  format: qcow2
+  mirror: http://us.archive.ubuntu.com/ubuntu/
+  packages:
+  - ca-certificates
+  - chrony
+  - curl
+  - dbus
+  - ethtool
+  - gnupg
+  - init
+  - initramfs-tools
+  - iproute2
+  - iputils-ping
+  - isc-dhcp-client
+  - jq
+  - less
+  - linux-headers-generic
+  - linux-image-generic
+  - mbpoll
+  - ncat
+  - net-tools
+  - netbase
+  - nftables
+  - openssh-server
+  - polkitd
+  - procps
+  - python3
+  - python3-pip
+  - python3-venv
+  - rsync
+  - rsyslog
+  - ssh
+  - tcpdump
+  - tmux
+  - tshark
+  - unzip
+  - vim
+  - wget
+  - wireshark
+  - wmctrl
+  - xdotool
+  - xorgxrdp
+  - xrdp
+  - xubuntu-desktop
+  - zip
+  release: noble
+  script_order:
+  - POSTBUILD_GUI
+  - POSTBUILD_NO_ROOT_PASSWD
+  - POSTBUILD_PHENIX_HOSTNAME
+  - POSTBUILD_PHENIX_BASE
+  - INSTALL_EWS
+  - INSTALL_SSHD_HARDENING
+  - POSTBUILD_APT_CLEANUP
+  scripts:
+    INSTALL_EWS: |
+      # --------------------------------------------- Engineering workstation ----------------------------------------------
+      # ews (DESIGN.md 12.4): the engineering workstation, and the one choke point from
+      # the DMZ into L1 (DESIGN.md 13). It has the OpenPLC Editor, a browser for the
+      # FUXA editor and the OpenPLC REST UI, Wireshark, mbpoll, BAC0, pymodbus,
+      # asyncua, and xrdp for the vendor's Guacamole session. The topology injects the
+      # vendor account setup (phenix-injects/ews/).
+      export DEBIAN_FRONTEND=noninteractive
+      OPENPLC_EDITOR_VERSION=4.3.4
+      OPENPLC_EDITOR_SHA256=b81863722d65eaa786f53234472601b649ea34a3f2f790f931beedaa7ec75fa0
+      apt-get update
+      apt-get install -y --no-install-recommends gnupg jq mbpoll polkitd python3 python3-pip python3-venv rsyslog tshark unzip wireshark xorgxrdp xrdp zip
+      # pydantic 2 for the range's own scripts on this image (they run with the
+      # system python3 -I): noble's python3-pydantic is 1.10, which lacks what they
+      # import. noble enforces PEP 668, so pip is told to install into the system.
+      # --ignore-installed: pip cannot remove a Debian-owned typing_extensions.
+      pip3 install --no-cache-dir --break-system-packages --ignore-installed "pydantic==2.11.7"
+      python3 -I -c 'import pydantic; assert pydantic.VERSION.startswith("2."), pydantic.VERSION'
+
+      # Chromium. Ubuntu's chromium-browser is a snap, which cannot be installed
+      # offline, and Debian 13's chromium needs newer libraries than noble has
+      # (libharfbuzz0b 10 and libxcomposite1 0.4.6), which apt does not take from a
+      # low-priority source. The xtradeb PPA builds the current Chromium for noble
+      # against noble's own libraries. The PPA sits at a low pin, so that only
+      # chromium comes from it. It carries only its newest build: the build log
+      # records the version, and phenix-images/README.md the one that was checked.
+      XTRADEB_KEY_FINGERPRINT=5301FA4FD93244FBC6F6149982BB6851C64F6880
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/xtradeb.asc "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x$XTRADEB_KEY_FINGERPRINT"
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/xtradeb.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$XTRADEB_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/xtradeb.sources <<'EOF'
+      Types: deb
+      URIs: https://ppa.launchpadcontent.net/xtradeb/apps/ubuntu
+      Suites: noble
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/xtradeb.asc
+      EOF
+      # One file per pin: phenix drops blank lines from build scripts, which would
+      # merge two stanzas of one file into a single record.
+      cat > /etc/apt/preferences.d/xtradeb <<'EOF'
+      Package: *
+      Pin: release o=LP-PPA-xtradeb-apps
+      Pin-Priority: 100
+      EOF
+      cat > /etc/apt/preferences.d/chromium <<'EOF'
+      Package: chromium chromium-common chromium-sandbox
+      Pin: release o=LP-PPA-xtradeb-apps
+      Pin-Priority: 990
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends chromium chromium-sandbox
+      chromium --version
+      # The range desktops log in as root (the phenix GUI convention), and Chromium
+      # refuses to start as root without --no-sandbox. The VMs have no GPU.
+      cat > /etc/chromium.d/cm-range <<'EOF'
+      export CHROMIUM_FLAGS="$CHROMIUM_FLAGS --no-sandbox --disable-gpu --disable-dev-shm-usage --password-store=basic --disable-features=Translate"
+      EOF
+
+      # Engineering tools in one venv. BAC0 brings its own BACpypes3; asyncua has the
+      # OPC UA command line tools (uals, uaread, uawrite, uacall).
+      python3 -m venv /opt/ews-venv
+      /opt/ews-venv/bin/pip install --no-cache-dir "BAC0==2026.7.25" "pymodbus==3.16.2" "asyncua==2.1.0"
+      for tool in mbpoll tshark; do
+        command -v "$tool"
+      done
+      install -d -m 0755 /usr/local/lib/cm-ews /etc/cherrymountain /opt/cherrymountain/ews/programs
+
+      # OpenPLC Editor: the Linux AppImage, unpacked so it needs no FUSE. Electron's
+      # sandbox needs a setuid helper, so the launcher passes --no-sandbox (the range
+      # desktops log in as root).
+      curl -fsSL -o /tmp/openplc-editor.AppImage "https://github.com/Autonomy-Logic/openplc-editor/releases/download/v$OPENPLC_EDITOR_VERSION/OpenPLC.Editor-$OPENPLC_EDITOR_VERSION.AppImage"
+      echo "$OPENPLC_EDITOR_SHA256  /tmp/openplc-editor.AppImage" | sha256sum -c -
+      chmod 0755 /tmp/openplc-editor.AppImage
+      cd /tmp || exit 1
+      /tmp/openplc-editor.AppImage --appimage-extract > /dev/null
+      mv /tmp/squashfs-root /opt/openplc-editor
+      rm -f /tmp/openplc-editor.AppImage
+      cat > /usr/local/bin/openplc-editor <<'EOF'
+      #!/bin/sh
+      exec /opt/openplc-editor/AppRun --no-sandbox "$@"
+      EOF
+      chmod 0755 /usr/local/bin/openplc-editor
+      cat > /usr/share/applications/openplc-editor.desktop <<'EOF'
+      [Desktop Entry]
+      Type=Application
+      Name=OpenPLC Editor
+      Comment=IEC 61131-3 programming for OpenPLC runtimes
+      Exec=/usr/local/bin/openplc-editor
+      Terminal=false
+      Categories=Development;
+      EOF
+
+      # xrdp: the vendor's Guacamole session lands in an Xfce session. Users get the
+      # session from their ~/.xsession (the topology's startup script creates the
+      # vendor account from /etc/skel), and the XFCE color-manager prompt that xrdp
+      # sessions trigger is answered by a polkit rule.
+      usermod -a -G ssl-cert xrdp
+      echo xfce4-session > /etc/skel/.xsession
+      cat > /etc/polkit-1/rules.d/45-cm-xrdp-colord.rules <<'EOF'
+      polkit.addRule(function(action, subject) {
+        if (action.id.indexOf("org.freedesktop.color-manager.") === 0) {
+          return polkit.Result.YES;
+        }
+      });
+      EOF
+      systemctl enable xrdp.service
+
+      # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,
+      # because an agent must not be newer than its manager. The cherrymountain app's
+      # 80-cm-wazuh-agent.sh points it at the manager and enrolls it at boot, so the
+      # service stays disabled here.
+      WAZUH_VERSION=4.14.10-1
+      WAZUH_KEY_FINGERPRINT=0DCFCA5547B19D2A6099506096B3EE5F29111145
+      install -d -m 0755 /etc/apt/keyrings
+      curl -fsSL -o /etc/apt/keyrings/wazuh.asc https://packages.wazuh.com/key/GPG-KEY-WAZUH
+      test "$(gpg --show-keys --fingerprint /etc/apt/keyrings/wazuh.asc | awk 'NR == 2 { gsub(/ /, ""); print }')" = "$WAZUH_KEY_FINGERPRINT"
+      cat > /etc/apt/sources.list.d/wazuh.sources <<'EOF'
+      Types: deb
+      URIs: https://packages.wazuh.com/4.x/apt/
+      Suites: stable
+      Components: main
+      Architectures: amd64
+      Signed-By: /etc/apt/keyrings/wazuh.asc
+      EOF
+      apt-get update
+      apt-get install -y --no-install-recommends "wazuh-agent=$WAZUH_VERSION"
+      systemctl disable wazuh-agent.service
+    INSTALL_SSHD_HARDENING: |
+      # ------------------------------------------------ sshd hardening -------------------------------------------------
+      # DESIGN.md 13 and 15.7. POSTBUILD_NO_ROOT_PASSWD (a phenix default, kept verbatim)
+      # turns on root SSH logins with an empty password. This host is on the vendor
+      # path, so SSH refuses root and empty passwords here. sshd keeps the first value
+      # it reads and noble's sshd_config includes sshd_config.d/ before anything else,
+      # so this drop-in wins over the lines the default edits. The passwordless root
+      # console (VNC and cc) stays for the white cell: an accepted lab-only risk.
+      install -d -m 0755 /etc/ssh/sshd_config.d
+      grep -q '^Include /etc/ssh/sshd_config.d/\*.conf' /etc/ssh/sshd_config
+      # The vendor's Guacamole SSH connection (dmz-jump -> ews TCP 22) logs in with the
+      # vendor account's password, so password logins stay on for other users.
+      cat > /etc/ssh/sshd_config.d/00-cm-hardening.conf <<'EOF'
+      PermitRootLogin no
+      PermitEmptyPasswords no
+      PasswordAuthentication yes
+      KbdInteractiveAuthentication no
+      MaxAuthTries 3
+      LoginGraceTime 30
+      X11Forwarding no
+      AllowAgentForwarding no
+      AllowTcpForwarding no
+      PermitTunnel no
+      EOF
+      # xrdp authenticates through PAM, where the default's nullok would let root in
+      # with an empty password over RDP: refuse root there too.
+      sed -i 's/^AllowRootLogin=.*/AllowRootLogin=false/' /etc/xrdp/sesman.ini
+      grep -q '^AllowRootLogin=false' /etc/xrdp/sesman.ini
+      install -d -m 0755 /run/sshd
+      ssh-keygen -A
+      /usr/sbin/sshd -t
+    POSTBUILD_APT_CLEANUP: |
+      # --------------------------------------------------- Cleanup ----------------------------------------------------
+      apt clean || apt-get clean || echo "unable to clean apt cache"
+    POSTBUILD_GUI: |
+      # ----------------------------------------------------- GUI ------------------------------------------------------
+      # Autologin root and resolution
+      apt-get purge -y gdm3 # messes with no-root-password login
+      mkdir -p /root/.config/xfce4/
+      echo "TerminalEmulator=xfce4-terminal" > /root/.config/xfce4/helpers.rc
+      mkdir -p /root/.config/autostart/
+      cat > /root/.config/autostart/init.desktop <<EOF
+      [Desktop Entry]
+      Name=Init
+      Type=Application
+      Exec=/root/.init.sh
+      Terminal=false
+      EOF
+      cat >> /root/.init.sh <<EOF
+      sleep 10 # wait for desktop session to be available
+      xfconf-query -c xsettings -p /Net/ThemeName -s "Adwaita-dark"
+      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVirtual-1/workspace0/last-image -s "/usr/share/backgrounds/Optical_Fibers_in_Dark_by_Elena_Stravoravdi.jpg"
+      EOF
+      chmod +x /root/.init.sh
+      # Autologin root
+      cat > /etc/lightdm/lightdm.conf <<EOF
+      [Seat:*]
+      autologin-user=root
+      autologin-user-timeout=0
+      display-setup-script=xrandr --output Virtual-1 --mode 1440x900
+      [daemon]
+      AutomaticLoginEnable=true
+      AutomaticLogin=root
+      EOF
+      sed -e '/pam_succeed_if.so/s/^#*/#/' -i /etc/pam.d/lightdm-autologin
+    POSTBUILD_NO_ROOT_PASSWD: |
+      # ---------------------------------------------- No Root Password ------------------------------------------------
+      sed -i 's/nullok_secure/nullok/' /etc/pam.d/common-auth
+      sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/#PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+      sed -i 's/PermitEmptyPasswords no/PermitEmptyPasswords yes/' /etc/ssh/sshd_config
+      passwd -d root
+    POSTBUILD_PHENIX_BASE: |
+      # ----------------------------------------------------- Base -----------------------------------------------------
+      cat > /etc/systemd/system/miniccc.service <<EOF
+      [Unit]
+      Description=miniccc
+      [Service]
+      ExecStart=/opt/minimega/bin/miniccc -v=false -serial /dev/virtio-ports/cc -logfile /var/log/miniccc.log
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      cat > /etc/systemd/system/phenix.service <<EOF
+      [Unit]
+      Description=phenix startup service
+      After=network.target systemd-hostnamed.service
+      [Service]
+      Environment=LD_LIBRARY_PATH=/usr/local/lib
+      ExecStart=/usr/local/bin/phenix-start.sh
+      RemainAfterExit=true
+      StandardOutput=journal
+      Type=oneshot
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      mkdir -p /etc/systemd/system/multi-user.target.wants
+      ln -s /etc/systemd/system/miniccc.service /etc/systemd/system/multi-user.target.wants/miniccc.service
+      ln -s /etc/systemd/system/phenix.service /etc/systemd/system/multi-user.target.wants/phenix.service
+      mkdir -p /usr/local/bin
+      cat > /usr/local/bin/phenix-start.sh <<EOF
+      #!/bin/bash
+      for file in /etc/phenix/startup/*; do
+      	echo \$file
+      	bash \$file
+      done
+      EOF
+      chmod +x /usr/local/bin/phenix-start.sh
+      mkdir -p /etc/phenix/startup
+    POSTBUILD_PHENIX_HOSTNAME: |
+      # -------------------------------------------------- Hostname ----------------------------------------------------
+      echo "phenix" > /etc/hostname
+      sed -i 's/127.0.1.1 .*/127.0.1.1 phenix/' /etc/hosts
+      cat > /etc/motd <<EOF
+
+      ██████╗ ██╗  ██╗███████╗███╗  ██╗██╗██╗  ██╗
+      ██╔══██╗██║  ██║██╔════╝████╗ ██║██║╚██╗██╔╝
+      ██████╔╝███████║█████╗  ██╔██╗██║██║ ╚███╔╝
+      ██╔═══╝ ██╔══██║██╔══╝  ██║╚████║██║ ██╔██╗
+      ██║     ██║  ██║███████╗██║ ╚███║██║██╔╝╚██╗
+      ╚═╝     ╚═╝  ╚═╝╚══════╝╚═╝  ╚══╝╚═╝╚═╝  ╚═╝
+
+      EOF
+      echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
+  size: 28G
+  variant: mingui

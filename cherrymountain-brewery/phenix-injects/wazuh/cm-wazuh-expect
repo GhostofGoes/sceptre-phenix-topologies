@@ -1,0 +1,75 @@
+#!/bin/bash
+# Check that expected Wazuh alerts fired in a time window (DESIGN.md 15.6: the
+# `vendor-maintenance` run, Roadmap Phase 5's exit criterion). Installed as
+# /usr/local/sbin/cm-wazuh-expect; run it as root on the manager, for example through
+# a SCORCH `cc` step after the run's actions.
+#
+# Usage: cm-wazuh-expect [--since MINUTES] [--export FILE] RULES...
+#   RULES    a rule id, or several ids joined by commas when any of them will do (a
+#            rule with a <time> or <weekday> option replaces its parent outside the
+#            approved window), for example 100201,100204,100205
+#   --since  how far back to look (default 30)
+#   --export write the matching alerts, one JSON object per line, to FILE
+# Prints one PASS or FAIL line per argument and exits 1 if any fails, 2 on a usage
+# error, and 3 when the alerts file cannot be read. The alerts come
+# from /var/ossec/logs/alerts/alerts.json (today's file: a window that crosses
+# midnight sees only the part after it).
+set -uo pipefail
+
+ALERTS="${CM_WAZUH_ALERTS:-/var/ossec/logs/alerts/alerts.json}"
+since=30
+export_file=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --since)
+      since="${2:?--since needs a number of minutes}"
+      shift 2
+      ;;
+    --export)
+      export_file="${2:?--export needs a file name}"
+      shift 2
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "cm-wazuh-expect: unknown option $1" >&2
+      exit 2
+      ;;
+    *) break ;;
+  esac
+done
+[ $# -gt 0 ] || {
+  echo "usage: cm-wazuh-expect [--since MINUTES] [--export FILE] RULES..." >&2
+  exit 2
+}
+
+[[ "$since" =~ ^[0-9]+$ ]] || {
+  echo "cm-wazuh-expect: --since needs a whole number of minutes, not ${since}" >&2
+  exit 2
+}
+[ -r "$ALERTS" ] || {
+  echo "cm-wazuh-expect: ERROR: cannot read ${ALERTS}" >&2
+  exit 3
+}
+# The manager stamps alerts in its local time (with a +hhmm suffix), so the cutoff
+# is local time too; a UTC cutoff would be wrong on a VM not set to UTC.
+cutoff=$(date -d "${since} minutes ago" +%Y-%m-%dT%H:%M:%S)
+[ -z "$export_file" ] || : > "$export_file"
+status=0
+for spec in "$@"; do
+  ids=$(printf '%s' "$spec" | jq -R 'split(",")')
+  matches=$(jq -c --arg cutoff "$cutoff" --argjson ids "$ids" \
+    'select(.timestamp >= $cutoff and ((.rule.id | tostring) as $id | $ids | index($id)))' "$ALERTS")
+  count=$(printf '%s' "$matches" | grep -c . || true)
+  if [ "${count:-0}" -gt 0 ]; then
+    last=$(printf '%s\n' "$matches" | tail -n 1 | jq -r '"rule \(.rule.id): \(.rule.description)"')
+    echo "PASS: ${spec} fired ${count} time(s) in the last ${since} minutes (${last})"
+    [ -z "$export_file" ] || printf '%s\n' "$matches" >> "$export_file"
+  else
+    echo "FAIL: ${spec} did not fire in the last ${since} minutes"
+    status=1
+  fi
+done
+exit "$status"

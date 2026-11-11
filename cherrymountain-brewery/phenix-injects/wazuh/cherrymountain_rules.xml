@@ -61,14 +61,20 @@
     <group>cm_firewall,</group>
   </rule>
 
-  <rule id="100104" level="10" frequency="10" timeframe="60">
-    <if_matched_sid>100100</if_matched_sid>
+  <!-- Counts every firewall drop, whichever rule above it ended at: if_matched_sid
+       100100 would count only the drops that end at 100100 itself, and a drop at
+       fw-edge (100103) or on a control-system port (100101) never does. With no if_sid,
+       Wazuh makes this rule a child of every rule of the group that is defined above
+       it, so it must stay below them. ignore: one alert a minute; the packets in
+       between alert as their own rule. -->
+  <rule id="100104" level="10" frequency="10" timeframe="60" ignore="60">
+    <if_matched_group>cm_firewall</if_matched_group>
     <same_source_ip />
     <description>CherryMountain firewall: ten denied packets from $(srcip) in a minute (a scan or lateral movement).</description>
     <group>cm_firewall,cm_scan,</group>
   </rule>
 
-  <!-- dmz-vpn logs what its forward policy refuses (nftables-wireguard.nft, prefix cm-wg-drop). -->
+  <!-- dmz-vpn logs what its forward policy refuses (nftables-wireguard.nft, prefix [cm-wg-drop]). -->
   <rule id="100105" level="12">
     <if_sid>100100</if_sid>
     <hostname>^dmz-vpn$</hostname>

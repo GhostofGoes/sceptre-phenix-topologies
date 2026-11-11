@@ -5,8 +5,9 @@ ConditionPathExists=!/var/lib/cm-wazuh/provisioned
 # Restart=on-failure below is the only retry loop, and it gives up after five starts in
 # twelve hours (a start can take up to 45 minutes), so a permanent failure ends in the
 # failed state instead of looping. The script is safe to run again: it keeps the
-# certificates and skips the password steps once /var/lib/cm-wazuh/passwords-changed
-# exists, and each other step replaces what the last attempt left.
+# certificates it made (the indexer does not reload new ones while it runs), skips
+# the password steps once /var/lib/cm-wazuh/passwords-changed exists, and each
+# other step replaces what the last attempt left.
 StartLimitIntervalSec=12h
 StartLimitBurst=5
 
@@ -55,7 +56,12 @@ LockPersonality=yes
 SystemCallArchitectures=native
 SystemCallFilter=@system-service
 SystemCallFilter=~@resources
-CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID
+# CAP_KILL: wazuh-passwords-tool.sh restarts the manager and then waits for
+# `wazuh-control status`, which tests each daemon with `kill -0`. Most of them run
+# as the wazuh user, and root may only signal another user's process with CAP_KILL:
+# without it the tool sees them as stopped and gives up half way, after it changed
+# the Filebeat and manager keystores and before it changed the indexer's users.
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_KILL CAP_SETUID CAP_SETGID
 UMask=0077
 
 [Install]

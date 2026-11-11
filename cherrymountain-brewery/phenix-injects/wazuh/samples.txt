@@ -7,7 +7,11 @@
 100101|Nov  9 12:00:00 fw-ot kernel: [  123.456789] [ipv4-FROM-DMZ-default-D]IN=eth2 OUT=eth4 MAC=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:08:00 SRC=10.10.20.11 DST=10.20.10.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4242 DF PROTO=TCP SPT=40000 DPT=502 WINDOW=64240 RES=0x00 SYN URGP=0
 100102|Nov  9 12:00:01 fw-ot kernel: [  124.000000] [ipv4-FROM-OPS-default-D]IN=eth1 OUT=eth5 MAC=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:08:00 SRC=10.20.30.13 DST=10.30.10.5 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4243 PROTO=UDP SPT=47808 DPT=47808 LEN=40
 100103|Nov  9 12:00:02 fw-edge kernel: [  125.000000] [ipv4-FROM-INET-default-D]IN=eth0 OUT=eth1 MAC=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:08:00 SRC=203.0.113.10 DST=10.10.10.10 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4244 DF PROTO=TCP SPT=40001 DPT=22 WINDOW=64240 RES=0x00 SYN URGP=0
-100105|Nov  9 12:00:02 dmz-vpn kernel: [   55.100000] cm-wg-drop IN=wg0 OUT=eth0 MAC= SRC=10.99.0.2 DST=10.20.30.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4245 DF PROTO=TCP SPT=40002 DPT=3389 WINDOW=64240 RES=0x00 SYN URGP=0
+100105|Nov  9 12:00:02 dmz-vpn kernel: [   55.100000] [cm-wg-drop]IN=wg0 OUT=eth0 MAC= SRC=10.99.0.2 DST=10.20.30.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4245 DF PROTO=TCP SPT=40002 DPT=3389 WINDOW=64240 RES=0x00 SYN URGP=0
+# The same lines after a day of uptime: the kernel's timestamp has no leading blank then,
+# which is when Wazuh's own iptables decoder would take a prefix that ends in a space.
+100105|Nov  9 12:00:03 dmz-vpn kernel: [86455.100000] [cm-wg-drop]IN=wg0 OUT=eth0 MAC= SRC=10.99.0.2 DST=10.20.30.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4245 DF PROTO=TCP SPT=40002 DPT=3389 WINDOW=64240 RES=0x00 SYN URGP=0
+100101|Nov  9 12:00:00 fw-ot kernel: [90123.456789] [ipv4-FROM-DMZ-default-D]IN=eth2 OUT=eth4 MAC=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:08:00 SRC=10.10.20.11 DST=10.20.10.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4242 DF PROTO=TCP SPT=40000 DPT=502 WINDOW=64240 RES=0x00 SYN URGP=0
 100201,100204,100205|Nov  9 12:00:03 dmz-vpn cm-wg-watch: event=peer_up interface=wg0 peer=7bqjO1NU endpoint=198.51.100.10:51820
 100202|Nov  9 12:00:04 dmz-vpn cm-wg-watch: event=peer_down interface=wg0 peer=7bqjO1NU endpoint=198.51.100.10:51820
 100203|Nov  9 12:00:05 dmz-vpn cm-wg-watch: event=peer_roam interface=wg0 peer=7bqjO1NU endpoint=198.51.100.99:51820

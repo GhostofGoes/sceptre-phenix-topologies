@@ -3,20 +3,31 @@
 # 15.4 and 15.6). Installed as /usr/local/sbin/cm-wazuh-health; run it as root on
 # the manager. Prints one line, `HEALTHY: ...` or `UNHEALTHY: <reason>`, and exits
 # 0 or 1:
+#   - the first-boot setup finished (cm-wazuh-provision wrote its marker),
 #   - the manager, the indexer, Filebeat, and the dashboard are active,
 #   - the manager takes agents (1514 and 1515) and syslog (UDP 514), and the
 #     dashboard answers on 443,
+#   - the indexer answers its admin certificate and is not red, and Filebeat can
+#     reach it with the credentials in its keystore (alerts get into the indexer),
 #   - and the number of agents that report as Active.
-# CM_WAZUH_MIN_AGENTS (default 1) is the number of active agents that counts as healthy.
+# A SIEM whose services run and whose ports are open can still be useless: after a
+# failed password step Filebeat is refused by the indexer, and nothing above the
+# last two checks would show it.
+# CM_WAZUH_MIN_AGENTS (default 1) is the number of active agents that counts as
+# healthy. CM_WAZUH_STATE and CM_OSSEC_DIR are for the tests.
 set -uo pipefail
 
 MIN_AGENTS="${CM_WAZUH_MIN_AGENTS:-1}"
+STATE="${CM_WAZUH_STATE:-/var/lib/cm-wazuh}"
+OSSEC="${CM_OSSEC_DIR:-/var/ossec}"
+CERTS=/etc/wazuh-indexer/certs
 
 fail() {
   echo "UNHEALTHY: $*"
   exit 1
 }
 
+[ -f "${STATE}/provisioned" ] || fail "the first-boot setup has not finished (journalctl -u cm-wazuh-provision)"
 for unit in wazuh-manager wazuh-indexer filebeat wazuh-dashboard; do
   systemctl is-active --quiet "${unit}.service" || fail "${unit} is not active"
 done
@@ -25,9 +36,20 @@ for port in tcp:1514 tcp:1515 udp:514 tcp:443 tcp:55000 tcp:9200; do
   grep -Eq "^${port%%:*} .*[:.]${port##*:} " <<< "$listening" || fail "nothing listens on ${port%%:*} ${port##*:}"
 done
 
+# The indexer listens on the node's address, the one in Filebeat's output.
+indexer=$(sed -n 's|^ *hosts: *\["\([^"]*\)"\].*|\1|p' /etc/filebeat/filebeat.yml 2> /dev/null | head -n 1)
+[ -n "$indexer" ] || fail "no indexer address in /etc/filebeat/filebeat.yml"
+health=$(curl -sS -m 20 --cacert "${CERTS}/root-ca.pem" --cert "${CERTS}/admin.pem" --key "${CERTS}/admin-key.pem" \
+  "https://${indexer}/_cluster/health" 2> /dev/null) || fail "the indexer does not answer its admin certificate"
+case "$health" in
+  *'"status":"green"'* | *'"status":"yellow"'*) ;;
+  *) fail "the indexer is not green or yellow" ;;
+esac
+timeout 30 filebeat test output > /dev/null 2>&1 || fail "Filebeat cannot reach the indexer with its credentials (filebeat test output)"
+
 # agent_control -l prints one line per agent: "ID: 001, Name: ews, IP: any, Active".
-active=$(/var/ossec/bin/agent_control -l 2> /dev/null | grep -c ', Active$' || true)
+active=$("${OSSEC}/bin/agent_control" -l 2> /dev/null | grep -c ', Active$' || true)
 if [ "${active:-0}" -lt "$MIN_AGENTS" ]; then
   fail "${active:-0} active agents, ${MIN_AGENTS} required"
 fi
-echo "HEALTHY: manager, indexer, Filebeat, and dashboard are up; ${active} agents active"
+echo "HEALTHY: manager, indexer, Filebeat, and dashboard are up, and Filebeat reaches the indexer; ${active} agents active"

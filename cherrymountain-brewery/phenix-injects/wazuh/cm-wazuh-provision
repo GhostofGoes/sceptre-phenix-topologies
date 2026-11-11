@@ -124,12 +124,15 @@ nodes:
     - name: dashboard
       ip: "${node_ip}"
 EOF
-if passwords_changed && [ -d wazuh-certificates ]; then
-  # New certificates would not match the running services, which have not reloaded them.
+if [ -f "${STATE}/certificates-made" ] && [ -d wazuh-certificates ]; then
+  # A run before this one made them, and the indexer may still be running with them: it
+  # does not reload certificates, so a new CA here would lock this script's own admin
+  # certificate, Filebeat, and the dashboard out of it.
   log "keeping the existing certificates"
 else
   rm -rf wazuh-certificates
   bash ./wazuh-certs-tool.sh -A
+  touch "${STATE}/certificates-made"
 fi
 certs="${TOOLS}/wazuh-certificates"
 
@@ -157,6 +160,9 @@ fi
 # --- 3. the manager and Filebeat -----------------------------------------------------
 install -m 0644 "${TOOLS}/filebeat.yml" /etc/filebeat/filebeat.yml
 sed -i -E "s|^(\s*hosts:).*|\1 [\"${node_ip}:9200\"]|" /etc/filebeat/filebeat.yml
+# Archives too (every event the manager received, not only the ones that alerted):
+# the template ships them off. The manager writes them with logall_json, below.
+sed -i '/^    archives:/,/enabled:/s|enabled: false|enabled: true|' /etc/filebeat/filebeat.yml
 install_certs /etc/filebeat/certs root:root root-ca.pem=root-ca.pem wazuh-1.pem=filebeat.pem wazuh-1-key.pem=filebeat-key.pem
 if ! passwords_changed; then
   filebeat keystore create --force
@@ -178,6 +184,8 @@ if ! grep -q 'cherrymountain: syslog' "$OSSEC_CONF"; then
 fi
 sed -i '/<vulnerability-detection>/,/<\/vulnerability-detection>/s|<enabled>yes</enabled>|<enabled>no</enabled>|' "$OSSEC_CONF"
 sed -i 's|<update_check>yes</update_check>|<update_check>no</update_check>|' "$OSSEC_CONF"
+# archives.json, which Filebeat ships to wazuh-archives-* (the retention of step 6).
+sed -i 's|<logall_json>no</logall_json>|<logall_json>yes</logall_json>|' "$OSSEC_CONF"
 chown root:wazuh "$OSSEC_CONF"
 chmod 0660 "$OSSEC_CONF"
 

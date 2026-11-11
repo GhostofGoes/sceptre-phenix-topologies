@@ -15,15 +15,20 @@
     cm-plc-tool    cm_plc_tool.py on the EWS: OpenPLC REST actions of the engineer
   Wazuh runs the first child of a parent whose prematch matches, then that child's
   siblings (the same name, no prematch); a child of a built-in parent (kernel) is
-  reported, and matched by <decoded_as>, under the parent's name. Every sample of
-  samples.txt was run through wazuh-logtest on a Wazuh 4.14.1 manager.
+  reported, and matched by <decoded_as>, under the parent's name. The samples of
+  samples.txt as they were then ran through wazuh-logtest on a Wazuh 4.14.1 manager;
+  the [cm-wg-drop] prefix and the samples with a day of uptime are later, and were
+  checked against the 4.14.10 source and by tests/soc only.
 -->
 
 <!-- ===== VyOS firewall drops ===== -->
 <!-- Wazuh's own `kernel` decoder takes every line from the kernel program first, so
      these are its children: a second top-level decoder for kernel lines would never
      run. Its built-in iptables children expect a space before IN=, which VyOS's
-     "[ipv4-FROM-DMZ-default-D]IN=" prefix lacks, so they do not match these lines.
+     "[ipv4-FROM-DMZ-default-D]IN=" prefix lacks, so they do not match these lines
+     (and dmz-vpn's "[cm-wg-drop]IN=" is written the same way for that reason: a
+     built-in child that took a line would give it the firewall type, which the
+     range's rules never see).
      The two siblings share the name: the first matches and takes the addresses and
      protocol, the second adds the ports when there are any. -->
 <decoder name="cm-fw-drop">

@@ -50,6 +50,15 @@ THRESHOLDS: dict[str, float] = {
 #: Units that mirror an unmodified upstream unit file. They are verified only.
 UPSTREAM_UNITS: frozenset[str] = frozenset({"openplc-runtime.service"})
 
+#: Units that the units here need and that the VMs provide, but a lint host may
+#: not have. ``check_unit`` writes a stub of each next to the unit, because
+#: ``systemd-analyze verify`` also loads units from the unit file's directory.
+EXTERNAL_UNITS: frozenset[str] = frozenset({"docker.service"})
+_STUB_UNIT: str = (
+    "[Unit]\nDescription=Stub for systemd-analyze verify\n"
+    "[Service]\nType=oneshot\nExecStart=/bin/true\n"
+)
+
 _MISSING_BINARY: re.Pattern[str] = re.compile(
     r"Command \S+ is not executable: No such file or directory"
 )
@@ -127,6 +136,8 @@ def check_unit(
     with tempfile.TemporaryDirectory() as tmp:
         unit: Path = Path(tmp) / name
         unit.write_text(text, encoding="utf-8")
+        for stub in EXTERNAL_UNITS - {name}:
+            (Path(tmp) / stub).write_text(_STUB_UNIT, encoding="utf-8")
         findings.extend(f"{origin}: {line}" for line in verify(analyze, unit))
         if can_score and name not in UPSTREAM_UNITS:
             limit: float = THRESHOLDS.get(name, DEFAULT_THRESHOLD)

@@ -18,11 +18,15 @@ For each unit this runs:
   listed in ``UPSTREAM_UNITS`` and are only verified.
 
 ``systemd-analyze`` is part of systemd (the ``systemd`` package on Debian and
-Ubuntu); the hook cannot install it.
+Ubuntu); the hook cannot install it. When it is missing, the hook prints a
+warning and passes, so a commit on macOS or Windows is not blocked. When the
+``CI`` environment variable is set, a missing ``systemd-analyze`` fails the
+hook. The dev container (``.devcontainer/``) has it.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -133,11 +137,18 @@ def check_unit(
 def main(argv: list[str]) -> int:
     analyze: str | None = shutil.which("systemd-analyze")
     if analyze is None:
+        if os.environ.get("CI"):
+            print(
+                "systemd-analyze not found. Install systemd, for example:\n"
+                "  sudo apt-get install systemd"
+            )
+            return 2
         print(
-            "systemd-analyze not found. Install systemd, for example:\n"
-            "  sudo apt-get install systemd"
+            "warning: systemd-analyze not found, so the units are not checked "
+            "(CI checks them). To check them here, run:\n"
+            "  make container-run CMD='prek run cm-systemd-units --all-files'"
         )
-        return 2
+        return 0
     can_score: bool = systemd_version(analyze) >= _MIN_SECURITY_VERSION
     if not can_score:
         print("warning: systemd is older than 250; skipping the exposure check")

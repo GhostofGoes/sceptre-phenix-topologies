@@ -265,11 +265,13 @@ priority = "check"
 [[repos.hooks]]
 # systemd units: `systemd-analyze verify` plus an exposure (hardening) limit.
 # Covers *.service files and the units that image scripts write with a
-# heredoc. systemd-analyze is a system tool (package `systemd`).
+# heredoc. systemd-analyze is a system tool (package `systemd`). Without it the
+# hook warns and passes, except in CI; `verbose` shows that warning.
 id = "cm-systemd-units"
 name = "systemd-analyze (units)"
 language = "python"
 entry = "python cherrymountain-brewery/tools/lint/check_units.py"
+verbose = true
 additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",

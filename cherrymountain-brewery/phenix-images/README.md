@@ -358,7 +358,10 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     creates `zeek/custom/__load__.zeek` (the bind mount hides the image's),
     sets `PCAP_PIPELINE_VERBOSITY` in `config/upload-common.env`, and refuses
     custom Suricata rules with a sid below 9000101; `cm-malcolm-wait-ready` waits
-    for the processors' ZeroMQ subscriptions before the first pcap. The capture
+    for the processors' ZeroMQ subscriptions before the first pcap. It also
+    installs `cm-suricata.yaml` in `suricata/include-configs/` (no VLAN in
+    Suricata's flow key and one-sided streams, which mirrored traffic needs) and
+    sets one Zeek worker (DESIGN.md 14). The capture
     unit adds the OpenFlow flow (`in_port=sniffer,actions=output:phenix`) and
     brings the `phenix` port up (DESIGN.md 14). The web password of the user
     `malcolm` comes from the cherrymountain app (`malcolm_password` in the

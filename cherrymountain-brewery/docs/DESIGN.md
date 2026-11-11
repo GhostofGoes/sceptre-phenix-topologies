@@ -32,7 +32,7 @@ phenix host.
 | 2: Simulation | **Built, run offline.** `plant.yaml`, plantgen, the seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). A simulated brewer, cellar crew, and line operator do the hand work, so beer moves from the brewhouse to the filler over days. The whole plant ran offline for 54 simulated hours | The ot-sim `logic` blocks, and a 24 h soak under HELICS |
 | 3: Control | **Built, run offline.** All five PLC programs and their full and lite ZIPs, with the alarm logic generated from `alarms.json`, the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)), the peer reads, the fermentation profile, and the packaging line's operator panel. All five run in the tests as compiled programs: four against the federates, and plc-utilities (its CIP sequence) with its inputs set by hand. The scada-fuxa and bas-fuxa projects are generated, with a process graphic for each area, each run in a real FUXA server against a stand-in plant ([fuxa/README.md](../fuxa/README.md#the-process-graphics)); the batch engine brews a double-brew day unattended in the offline federation and ran in a real FUXA server against a stand-in PLC, with the operator sign-in and the kiosk's automatic sign-in. The `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks | The full and lite programs in an OpenPLC runtime, plc-utilities against the federates, and FUXA writing to plc-brewhouse over OPC UA |
 | 4: Power and BAS | **Built, run offline.** The power and building federates. `plc-power` does load shed, staged restoration, and BESS dispatch, and schedules the on-peak shift, the recharge, the monthly demand reset, and the weekly genset exercise from the ATS controller's clock ([§12.1](#121-openplc-v4-runtime-v3-fallback)). The BAS controllers serve BACnet through the ot-sim BACnet module in this repository ([§16](#16-new-and-extended-software)), tested against BACpypes3 and BAC0 clients | The outage and CO₂ scenarios on a VM, and FUXA reading the controllers through the BBMDs |
-| 5: SOC and remote access | **Built, not run.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; the Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), the Zeek script (checked in Malcolm's Zeek image), and the Wazuh rules (checked in Wazuh 4.14.1 logtest), each with tests; per-experiment vendor and WireGuard secrets | Everything on a VM: live capture into Malcolm, the agents and syslog into Wazuh, and the vendor's path end to end |
+| 5: SOC and remote access | **Built, not run.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; the Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), the Zeek script (checked in Malcolm's Zeek image), and the Wazuh rules (checked in Wazuh 4.14.1 logtest), each with tests; per-experiment vendor and WireGuard secrets. A later review of both configurations against the source of Malcolm 26.10.0 and Wazuh 4.14.10 changed them ([§14](#14-blue-team-monitoring)); those changes ran on Suricata 7.0.3 and through the offline Wazuh evaluator, not on Suricata 8 or in logtest | Everything on a VM: live capture into Malcolm, the agents and syslog into Wazuh, and the vendor's path end to end |
 | 6: Polish | **Started.** `cm-viz`, the white cell's 3D view, built and tested offline ([§15.10](#1510-white-cell-3d-view-cm-viz)); `plantevent` and the four plant-driving SCORCH runs ([§15.6](#156-scorch-pipelines)); the operations runbook ([§15.9](#159-operations)); the brand on every screen ([§15.11](#1511-brand)); nine test suites in prek and CI | The Builder package, an e2e run on a VM, cm-viz in the range with its operator-view relay, and the upstream pull requests (the ot-sim BACnet module and the `ot-sim` app's support for it are on fork branches) |
 
 [§18](#18-implementation-roadmap) has each phase's scope and exit criteria and
@@ -2838,7 +2838,7 @@ detected from session metadata and the EWS's logs, not from request contents
   - the vendor tunnel address (`10.99.0.2`, arriving on `wg0`) to dmz-jump
     (`10.10.20.11`) on TCP 443.
 
-  Every other forwarded packet is logged with the prefix `cm-wg-drop` (rate
+  Every other forwarded packet is logged with the prefix `[cm-wg-drop]` (rate
   limited to 5 per second with a burst of 10) and dropped. The Wazuh agent on
   dmz-vpn reads the line from `/var/log/kern.log`, and rule 100105 (level 12, in
   `phenix-injects/wazuh/cherrymountain_rules.xml`) alerts that the vendor peer
@@ -2964,6 +2964,28 @@ point for future adversary-emulation scenarios.
   3. **Mirrored frames carry an 802.1Q tag.** Zeek and Malcolm handle it, but
      a pcap filter such as `icmp` or `tcp port 5201` does not match tagged
      frames without `vlan and`.
+  4. **Suricata must not key a flow on its VLAN, and must take a one-sided
+     stream.** A frame is mirrored at the tap of the host that receives it, with
+     that host's tag, so the two directions of a routed flow (scada-fuxa to a PLC
+     through fw-ot) carry different tags, and a flow whose other end is on no
+     mirrored VLAN (utility-derms to rtu-der) has one direction only. Malcolm's
+     Suricata keeps the VLAN in the flow key (`vlan.use-for-tracking`) and wants
+     both directions before a TCP session is established, so every rule with
+     `flow:established` or a Modbus or DNP3 keyword was silent on such a flow: on
+     the test traffic re-tagged that way, 19 of the 40 rules fired.
+     `phenix-injects/malcolm/cm-suricata.yaml`, which `cm-malcolm-provision`
+     puts in Malcolm's `suricata/include-configs/`, sets
+     `vlan.use-for-tracking: false` and `stream.async-oneside: true`, and all 40
+     fire (`tests/soc/test_detection_traffic.py`, Suricata 7.0.3). The file uses
+     dotted keys, because a nested `stream:` block in an included file replaces
+     the whole section Malcolm wrote. Zeek keys a connection on addresses and
+     ports alone and needs neither. Not yet seen on a VM: the tags themselves
+     (`tcpdump -e -nn -i phenix vlan` on a routed flow), and the file on
+     Malcolm's Suricata 8.0.7.
+  5. **One Zeek worker.** Malcolm's live Zeek starts two workers, which share no
+     script state, and `cherrymountain.zeek` ties a PLC change to a vendor
+     session on another connection through a global. The provisioning sets
+     `ZEEK_LB_PROCS_WORKER_DEFAULT=1`.
 
   Item 2 belongs in the mirror app, and item 1 in `setupOVS`
   ([§16](#16-new-and-extended-software)). Until the mirror app does
@@ -3015,11 +3037,35 @@ point for future adversary-emulation scenarios.
   nobody. bas-bbmd has no conduit and runs no agent (its BBMD traffic is
   visible to Malcolm and its drops to the fw-ot logs), and a netcheck test keeps
   the list equal to the conduit matrix.
-- Syslog comes from the VyOS firewalls and from the ot-svc relay.
+- Every agent sends its authentication log (`/var/log/auth.log`: sshd, PAM,
+  sudo), which the packaged agent configuration does not collect; the EWS also
+  sends its syslog (the engineer's `cm-plc-tool` events), dmz-vpn its kernel log
+  and WireGuard events, and dmz-jump its Guacamole log and recordings
+  (`phenix-injects/wazuh/agent-conf/`).
+- Syslog comes from the VyOS firewalls and from the ot-svc relay. The relay
+  carries ot-svc's own messages: no other host forwards to it yet
+  ([future work](FUTURE_WORK.md#network-and-the-ranges-own-security)).
+- The manager archives every event it receives (`logall_json`), and Filebeat
+  ships the archives beside the alerts, so an analyst can search what raised no
+  alert.
 - PLCs and ot-sim devices have no agents, which is realistic.
-- **Rules checked on a real manager.** Every line of
-  `phenix-injects/wazuh/samples.txt` was run through `wazuh-logtest` on a Wazuh
-  4.14.1 manager container and fires its rule. The offline evaluator in
+- **Rules checked on a real manager, then changed.** Every line that
+  `phenix-injects/wazuh/samples.txt` held at the time was run through
+  `wazuh-logtest` on a Wazuh 4.14.1 manager container and fired its rule. A
+  later review against the 4.14.10 source found two things that run could not
+  show, and neither fix has been through logtest:
+  - Wazuh's own `iptables` decoder takes a kernel line of the form
+    `[uptime] word IN=` once the uptime has five digits (after 2 h 47 min), gives
+    it the firewall type, and the range's rules, which are syslog rules, never
+    see it. dmz-vpn's nftables prefix was `cm-wg-drop` and a space; it is
+    `[cm-wg-drop]` with no space now, like a VyOS prefix, and the samples have
+    lines with a day of uptime.
+  - Rule 100104 counted with `if_matched_sid 100100`, which counts only the
+    drops whose last rule is 100100: a drop at fw-edge (100103) or on a
+    control-system port (100101) was never counted. It counts the group
+    `cm_firewall` now, once a minute.
+
+  The offline evaluator in
   `tests/soc/test_wazuh.py` models the four manager behaviors the rules depend
   on: Wazuh's own `kernel` decoder takes every kernel line first, so the
   firewall drop decoders are its children and rule 100100 matches
@@ -3776,8 +3822,9 @@ silence but has no timed shelve; the design is a FUXA server script that
 disables an alarm and re-enables it at expiry, logging both to the historian.
 
 **Log volume.** VyOS `default-log` has no rate limit, so a scan produces one
-syslog line per dropped packet. Mitigations in place: rule 100104 aggregates
-ten drops a minute from one source into one alert, and the retention policies
+syslog line per dropped packet. Mitigations in place: rule 100104 raises one
+alert a minute for ten drops from one source (each drop still has its own
+low-level alert), and the retention policies
 of [§14](#14-blue-team-monitoring) keep the Wazuh and Malcolm disks from
 filling. **TODO:** Wazuh's analysisd EPS limit on the manager.
 

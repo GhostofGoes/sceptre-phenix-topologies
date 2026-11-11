@@ -615,8 +615,13 @@ shows a QR code to enroll a one-time-code app.
   are ids 100100 to 100413. In Threat Hunting, filter on
   `rule.groups: cm_vendor`, `cm_wireguard`, or `cm_firewall`. Agents appear in
   the groups `ops`, `hmi`, `bas`, `dmz`, and `soc`.
-  - On the wazuh console, `cm-wazuh-health` checks services and agents, and
+  - On the wazuh console, `cm-wazuh-health` checks that the setup finished, the
+    services, that Filebeat reaches the indexer, and the agents, and
     `cm-wazuh-selftest` feeds sample log lines through the rules.
+  - Expect firewall alerts (`cm_firewall`, rules 100100 to 100104) about ten
+    minutes after a start, and again in the vendor-maintenance run: the state of
+    health check tries every blocked path on purpose, and the firewalls log
+    each attempt.
 - **soc-analyst** is the analyst's desktop. It opens Malcolm and Wazuh in a
   browser by itself, once both are up.
 

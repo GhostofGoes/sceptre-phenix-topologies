@@ -540,7 +540,7 @@ flow that is not listed is dropped.
 The SOC sees the plant two ways. Malcolm captures a mirror of the OT, building,
 and DMZ networks and runs Zeek with ICS protocol parsers, Suricata, and Arkime
 over it. Wazuh collects logs from agents on the servers and workstations and, by
-syslog, from the firewalls and from the plant's relay on `ot-svc`. Both carry rules written
+syslog, from the firewalls and from the relay on `ot-svc`. Both carry rules written
 for this plant: a write to a life-safety point, a breaker command from an
 unexpected host, a vessel-entry violation, each step of the vendor's path.
 `soc-analyst` is the analyst's desktop, with both consoles a click away.
@@ -555,7 +555,7 @@ flowchart LR
   end
   AG["agents on servers<br/>and workstations"] --> WAZ["wazuh"]
   FW["fw-edge, fw-ot"] -- "syslog" --> WAZ
-  PH["plant hosts"] -- "syslog" --> SVC["ot-svc relay"] --> WAZ
+  SVC["ot-svc<br/>syslog relay"] -- "syslog" --> WAZ
   ZEEK --> ANA["soc-analyst"]
   SURI --> ANA
   ARK --> ANA

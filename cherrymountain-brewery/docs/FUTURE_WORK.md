@@ -88,6 +88,16 @@ start.
   measured ([§11](DESIGN.md#11-node-inventory-and-resources)).
 - The Suricata, Zeek, and Wazuh rules on live traffic, and the Suricata
   `modbus: address` rules on Malcolm's Suricata 8.0.7.
+- What the mirror delivers: one VLAN tag per direction of a routed flow
+  (`tcpdump -e -nn -i phenix vlan`), and `cm-suricata.yaml` (no VLAN in the flow
+  key, one-sided streams) as Malcolm's Suricata 8.0.7 loads it. Both were
+  checked on Suricata 7.0.3 with re-tagged test traffic only.
+- The Wazuh fixes that came from reading the 4.14.10 source, in `wazuh-logtest`
+  and on the manager: the `[cm-wg-drop]` prefix after a day of uptime, rule
+  100104 counting by group, `cm-wazuh-selftest` without `-q`, the password tool
+  under the unit's capabilities, and `filebeat test output` in `cm-wazuh-health`.
+- Whether a recording that grows during a session raises Wazuh's own rule 550
+  (level 7) on dmz-jump for every change.
 - The agents and syslog into Wazuh, `cm-wazuh-provision`'s second run, and the
   admin password that `wazuh-passwords-tool.sh` sets.
 - The retention settings: Malcolm's prune limits on 26.10.0, the Wazuh archive
@@ -200,6 +210,10 @@ start.
   the feeder commands, and the site's own setpoints to the utility master.
   Restrict it in plantgen's `dnp3/rtu-der.json` and the ot-sim FEP config
   ([§7.5](DESIGN.md#75-utility-der-link)).
+- **Syslog from the hosts that have no Wazuh agent.** The relay on ot-svc and
+  its conduit are there, and nothing forwards to it: the PLC and ot-sim images
+  have no rsyslog, and the others send through their agent
+  ([§14](DESIGN.md#14-blue-team-monitoring)).
 - **Fixed HELICS ports,** so the MGMT policy can name exact ports instead of
   23407 to 23999: `--localport` in `cherrymountain_sim` and in the ot-sim `io`
   module's config ([§19](DESIGN.md#19-risks-and-open-questions)).

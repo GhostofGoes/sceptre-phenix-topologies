@@ -91,14 +91,15 @@ spec:
       # Wazuh's repository has its own Filebeat (the 7.10.2 build that pairs with the
       # indexer), so it is pinned too.
       # In the build chroot, `systemctl is-active` succeeds for every unit, so the
-      # wazuh-indexer preinst takes a fresh install for an upgrade and fails.
+      # wazuh-indexer preinst takes a fresh install for an upgrade and fails. apt
+      # sets dpkg's PATH (DPkg::Path), so the wrapper's directory goes there.
       cat > /usr/local/sbin/systemctl <<'EOF'
       #!/bin/sh
       [ "$1" = is-active ] && exit 3
       exec /usr/bin/systemctl "$@"
       EOF
       chmod 0755 /usr/local/sbin/systemctl
-      PATH="/usr/local/sbin:$PATH" apt-get install -y "wazuh-manager=$WAZUH_VERSION" "wazuh-indexer=$WAZUH_VERSION" "wazuh-dashboard=$WAZUH_VERSION" "filebeat=$FILEBEAT_VERSION"
+      apt-get install -y -o DPkg::Path=/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin "wazuh-manager=$WAZUH_VERSION" "wazuh-indexer=$WAZUH_VERSION" "wazuh-dashboard=$WAZUH_VERSION" "filebeat=$FILEBEAT_VERSION"
       rm -f /usr/local/sbin/systemctl
       systemctl disable wazuh-manager.service wazuh-indexer.service wazuh-dashboard.service filebeat.service
 

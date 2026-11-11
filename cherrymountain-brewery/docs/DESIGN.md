@@ -4170,8 +4170,8 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
   scenario runs on a VM is injected there by the topology or rendered by the
   app.
 - **What CI runs.** The Lint workflow runs `prek run --all-files`: every hook
-  above, so the nine pytest suites (1,340 tests: sim 401, apps 302, fuxa 175,
-  tests/soc 141, plantgen 113, netcheck 97, viz 45 without the browser test,
+  above, so the nine pytest suites (1,363 tests: sim 401, apps 302, fuxa 180,
+  tests/soc 159, plantgen 113, netcheck 97, viz 45 without the browser test,
   tests/brand 37, tests/bacnet 29) and the sync checks run on each pull
   request. The CherryMountain spikes workflow runs the VM spikes on
   GitHub-hosted runners with KVM, on a push that changes `spikes/` or by hand

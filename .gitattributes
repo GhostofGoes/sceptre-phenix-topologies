@@ -8,3 +8,5 @@
 weather.csv filter=lfs diff=lfs merge=lfs -text
 
 cherrymountain-brewery/**/*.zip filter=lfs diff=lfs merge=lfs -text
+
+.devcontainer/** text eol=lf

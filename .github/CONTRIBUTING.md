@@ -13,6 +13,7 @@ Thank you for your interest in contributing to SCEPTRE Phenix Topologies! We wel
   - [Suggesting Enhancements](#suggesting-enhancements)
   - [Submitting Code](#submitting-code)
 - [Code Quality](#code-quality)
+  - [Dev container](#dev-container)
 - [Updating Actions](#updating-actions)
 - [License](#license)
 
@@ -154,7 +155,7 @@ make lint
 prek run --all-files
 ```
 
-prek installs the hook tools itself (Python, Node). Three hooks need something on the machine; CI installs the same:
+prek installs the hook tools itself (Python, Node). Three hooks need something on the machine; the dev container has the same:
 
 | Hook | Needs | Install |
 |---|---|---|
@@ -165,6 +166,21 @@ prek installs the hook tools itself (Python, Node). Three hooks need something o
 The cherrymountain-brewery hooks that check phenix configs fetch the pinned
 sceptre-phenix JSON Schemas over HTTPS on first use and cache them. See the
 comments in `prek.toml`.
+
+### Dev container
+
+CI runs the hooks in the Linux dev container in [`.devcontainer/`](../.devcontainer/).
+Use the same container when a hook needs a tool that your machine does not have.
+Docker must be installed.
+
+```bash
+make container-lint                                  # all hooks, as CI runs them
+make container-run CMD='prek run --files <file>'     # hooks on some files
+make container-shell                                 # a shell in the container
+```
+
+The image comes from GHCR, so you do not have to build it. For Windows, VS Code,
+and the Dev Containers CLI, see [AGENTS.md](../AGENTS.md).
 
 ## Updating Actions
 

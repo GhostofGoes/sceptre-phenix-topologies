@@ -2301,6 +2301,12 @@
               "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cherrymountain.rules"
             },
             {
+              "description": "Suricata flow settings for mirrored traffic (no VLAN in the flow key, one-sided streams)",
+              "dst": "/opt/cherrymountain/malcolm/cm-suricata.yaml",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-suricata.yaml"
+            },
+            {
               "description": "Zeek notices of the baseline detections",
               "dst": "/opt/cherrymountain/malcolm/zeek/cherrymountain.zeek",
               "permissions": "0644",
@@ -4759,7 +4765,7 @@
                       "name": "malcolm-health",
                       "executor": "bash",
                       "testScript": "/usr/local/sbin/cm-malcolm-health\n",
-                      "testStdout": "HEALTHY"
+                      "validateStdout": "grep -q '^HEALTHY'"
                     }
                   ]
                 }
@@ -7879,7 +7885,7 @@
                   "name": "wazuh-health",
                   "executor": "bash",
                   "testScript": "/usr/local/sbin/cm-wazuh-health\n",
-                  "testStdout": "HEALTHY"
+                  "validateStdout": "grep -q '^HEALTHY'"
                 }
               ],
               "ot-svc": [
@@ -8021,8 +8027,7 @@
                 "malcolm-nginx-proxy-1",
                 "malcolm-pcap-monitor-1",
                 "malcolm-zeek-live-1",
-                "malcolm-arkime-live-1",
-                "malcolm-suricata-live-1"
+                "malcolm-arkime-live-1"
               ]
             }
           }

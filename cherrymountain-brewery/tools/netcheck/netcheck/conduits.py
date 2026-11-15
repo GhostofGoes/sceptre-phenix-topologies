@@ -467,6 +467,19 @@ CONDUITS: tuple[Conduit, ...] = (
         ),
         note="Same VLAN; no firewall.",
     ),
+    Conduit(
+        id="soc-purple",
+        text="soc-purple -> malcolm, wazuh: intra-zone",
+        srcs=("soc-purple",),
+        dsts=("malcolm", "wazuh"),
+        services=tcp(443),
+        enforced=False,
+        probes=(
+            *_t("soc-purple", "malcolm", 443),
+            *_t("soc-purple", "wazuh", 443),
+        ),
+        note="Same VLAN; no firewall. Like every SOC host it has no conduit into the plant's zones: parseus and PEAT have no device to poll until one is added.",
+    ),
 )
 
 

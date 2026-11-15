@@ -67,15 +67,16 @@ def test_every_tag_has_an_owner_and_alarms_are_rationalized(variant: str) -> Non
 
 
 def test_variant_sizes_match_the_design(full: Plant) -> None:
-    """§11: full is 43 VMs, lite 37 (no SOC, no vendor access), ci 5."""
+    """§11: full is 44 VMs, lite 37 (no SOC, no vendor access), ci 5."""
     sizes = {v: len(load(DEFAULT_PLANT, v).hosts) for v in VARIANTS}
-    assert sizes == {"ci": 5, "full": 43, "lite": 37}
+    assert sizes == {"ci": 5, "full": 44, "lite": 37}
     lite = load(DEFAULT_PLANT, "lite")
     gone = set(full.hosts) - set(lite.hosts)
     assert gone == {
         "malcolm",
         "wazuh",
         "soc-analyst",
+        "soc-purple",
         "vendor-ws",
         "dmz-vpn",
         "dmz-jump",

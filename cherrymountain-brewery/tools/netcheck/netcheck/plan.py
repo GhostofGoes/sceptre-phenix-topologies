@@ -325,6 +325,8 @@ NODES: tuple[Node, ...] = (
     _vm("wazuh", "soc", "cm-wazuh.qc2", 4, 8, "soc", "Wazuh manager, indexer, and dashboard", [("SOC", WAZUH_IP)], gateway="10.40.10.1", autotunnel=("18444:443",)),
     _vm("malcolm", "soc", "cm-malcolm.qc2", 8, 24, "soc", "Malcolm: Zeek and ICSNPP, Suricata, Arkime, OpenSearch (mirror NIC added by the mirror app)", [("SOC", "10.40.10.10")], gateway="10.40.10.1", autotunnel=("18443:443",)),
     _vm("soc-analyst", "soc", "cm-desktop.qc2", 2, 3, "soc", "Analyst workstation", [("SOC", "10.40.10.12")], gateway="10.40.10.1", delay_c2=("wazuh", "malcolm")),
+    # Not a cm-* image: kali-purple.qc2 is built from sandialabs/sceptre-phenix-images (`make kali-purple`).
+    _vm("soc-purple", "soc", "kali-purple.qc2", 4, 16, "soc", "Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark", [("SOC", "10.40.10.13")], gateway="10.40.10.1"),
     # Remote-access module.
     _vm("dmz-vpn", "remote-access", "cm-wireguard.qc2", 1, 1, "dmz", "WireGuard gateway (DNAT target of fw-edge)", [("DMZ", "10.10.20.10")], gateway=FW_EDGE_DMZ_IP, routes=OT_ROUTES),
     _vm("dmz-jump", "remote-access", "cm-guacamole.qc2", 2, 3, "dmz", "Guacamole jump host (TOTP, session recording)", [("DMZ", "10.10.20.11")], gateway=FW_EDGE_DMZ_IP, routes=(*OT_ROUTES, Route(destination=WG_SUBNET, next="10.10.20.10")), delay_c2=("dmz-vpn",)),

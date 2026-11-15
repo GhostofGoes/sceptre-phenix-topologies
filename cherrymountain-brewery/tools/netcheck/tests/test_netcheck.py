@@ -44,7 +44,7 @@ def test_committed_ci_is_clean() -> None:
 def test_design_totals() -> None:
     assert len(plan.nodes_for("lite")) == 37
     assert plan.totals("lite") == (37, 48, 71)
-    assert plan.totals("full") == (43, 67, 113)
+    assert plan.totals("full") == (44, 71, 129)
 
 
 def test_every_design_flow_is_traced_both_ways() -> None:
@@ -300,8 +300,9 @@ def test_a_capture_that_never_stops_is_caught(tree: Path) -> None:
 def test_wazuh_agents_are_the_hosts_with_a_conduit_to_the_manager(repo: Path) -> None:
     """plant.yaml's Wazuh agent allowlist (which alone gets the enrollment
     password) is exactly the hosts that reach wazuh on TCP 1514 through a
-    conduit, plus the hosts that share its SOC VLAN. bas-bbmd has no conduit
-    and is not an agent."""
+    conduit, plus the hosts that share its SOC VLAN and have an agent in their
+    image (the range's own cm-* images; soc-purple's upstream Kali image has
+    none). bas-bbmd has no conduit and is not an agent."""
     import yaml
 
     doc: dict[str, Any] = yaml.safe_load((repo / "plant" / "plant.yaml").read_text())
@@ -312,6 +313,9 @@ def test_wazuh_agents_are_the_hosts_with_a_conduit_to_the_manager(repo: Path) ->
         for src, dst, proto, port in conduits.expand(c, "full")
         if dst == "wazuh" and proto == "tcp" and port == 1514
     }
-    soc: set[str] = {n.name for n in plan.hosts_in("SOC", "full") if not n.is_router} - {"wazuh"}
+    soc: set[str] = {
+        n.name for n in plan.hosts_in("SOC", "full") if not n.is_router and n.image.startswith("cm-")
+    } - {"wazuh"}
+    assert "soc-purple" not in soc and plan.NODE_BY_NAME["soc-purple"].image == "kali-purple.qc2"
     assert agents == (reach | soc) - {"wazuh"}
     assert "bas-bbmd" not in agents

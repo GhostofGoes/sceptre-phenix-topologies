@@ -1,5 +1,5 @@
 # cherrymountain-soc: the SOC module (DESIGN.md 14 and 15.3): malcolm, wazuh,
-# and soc-analyst. The mirror NIC of malcolm is added by the mirror app.
+# soc-analyst, and soc-purple. The mirror NIC of malcolm is added by the mirror app.
 # Included by cherrymountain-full; the lite variant leaves it out.
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
@@ -257,6 +257,35 @@ spec:
     network:
       interfaces:
       - address: 10.40.10.12
+        dns:
+        - 10.20.30.13
+        gateway: 10.40.10.1
+        mask: 24
+        name: IF0
+        proto: static
+        type: ethernet
+        vlan: SOC
+    type: VirtualMachine
+  # Not a cm-* image: kali-purple.qc2 comes from sandialabs/sceptre-phenix-images
+  # (make kali-purple-bundle && make kali-purple PARSEUS_OFFLINE=1; the range has no
+  # internet, and without the bundle parseus's first-boot install retries for ever).
+  # It has the SOC's reach and no more: Malcolm and Wazuh on its VLAN, time and names
+  # from ot-svc, and no conduit into the plant's zones (DESIGN.md 14).
+  - general:
+      description: 'Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark'
+      hostname: soc-purple
+    hardware:
+      drives:
+      - image: kali-purple.qc2
+        inject_partition: 1
+      memory: 16384
+      os_type: linux
+      vcpus: 4
+    labels:
+      zone: soc
+    network:
+      interfaces:
+      - address: 10.40.10.13
         dns:
         - 10.20.30.13
         gateway: 10.40.10.1

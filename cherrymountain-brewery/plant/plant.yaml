@@ -846,6 +846,12 @@ hosts:
     role: workstation
     interfaces:
       IF0: { vlan: SOC, ip: 10.40.10.12/24 }
+  # Kali Purple with parseus and PEAT (the kali-purple image of
+  # sandialabs/sceptre-phenix-images, not one of this range's cm-* images).
+  soc-purple:
+    role: workstation
+    interfaces:
+      IF0: { vlan: SOC, ip: 10.40.10.13/24 }
 
 # Alarm rationalization library (ISA-18.2, DESIGN.md §6.5). An alarm can
 # reference an entry with `rationale:` and override any field inline.
@@ -2518,6 +2524,9 @@ soh:
     plc-utilities: { listeners: [":502"] }
     plc-power: { listeners: [":502"] }
     wazuh: { listeners: [":443", ":1514", ":1515"] }
+    # parseus runs under Docker. Its containers are not listed: they exist only once
+    # the first-boot install has finished, and how long that takes is not known.
+    soc-purple: { processes: [dockerd] }
     malcolm: { listeners: [":443"] }
   conduits:
     - { src: hmi-brewhouse, dst: scada-fuxa, port: 1881, desc: Operator HMI }
@@ -2552,6 +2561,8 @@ soh:
     - { src: dmz-vpn, dst: wazuh, port: 1515, desc: Wazuh agent enrollment }
     - { src: soc-analyst, dst: malcolm, port: 443, desc: Malcolm UI }
     - { src: soc-analyst, dst: wazuh, port: 443, desc: Wazuh UI }
+    - { src: soc-purple, dst: malcolm, port: 443, desc: Malcolm UI }
+    - { src: soc-purple, dst: wazuh, port: 443, desc: Wazuh UI }
 
 # Vendor WireGuard tunnel (DESIGN.md §13). The keys are derived from the seed
 # (tools/plantgen/plantgen/wgkeys.py), so they are public, range-only
@@ -2660,7 +2671,7 @@ variants:
 
   full:
     description: >-
-      The whole plant (DESIGN.md §11): 43 VMs with the SOC and vendor remote
+      The whole plant (DESIGN.md §11): 44 VMs with the SOC and vendor remote
       access. Every area, federate, and field device.
     areas: [BH, CEL, PKG, UTL, PWR, FAC]
     federates: &full-federates [weather, brewhouse, cellar, utilities, packaging, power, building]
@@ -2708,6 +2719,7 @@ variants:
       - malcolm
       - wazuh
       - soc-analyst
+      - soc-purple
     helics: &full-helics
       broker: { hostname: sim-ctl, interface: mgmt }
       app_block: true
@@ -2762,6 +2774,8 @@ variants:
         util-rtr: { client: ntp, source: { hostname: inet-traffic, interface: IF0 } }
         fw-edge: { client: ntp, source: { hostname: inet-traffic, interface: IF0 } }
         fw-ot: { client: ntp }
+        # Kali runs ntpsec, whose configuration the image links to /etc/ntp.conf.
+        soc-purple: { client: ntp }
       roles: &ntp-roles
         # HELICS-backed devices and the federates follow sim-ctl over MGMT.
         sim: { client: chrony, source: { hostname: sim-ctl, interface: mgmt } }
@@ -2794,7 +2808,7 @@ variants:
 
   lite:
     description: >-
-      The full plant without the SOC (malcolm, wazuh, soc-analyst) and vendor
+      The full plant without the SOC (malcolm, wazuh, soc-analyst, soc-purple) and vendor
       remote access (vendor-ws, dmz-vpn, dmz-jump): 37 VMs (DESIGN.md §11).
     areas: [BH, CEL, PKG, UTL, PWR, FAC]
     federates: *full-federates

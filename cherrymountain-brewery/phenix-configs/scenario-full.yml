@@ -1344,8 +1344,15 @@ spec:
           customTests:
           - name: malcolm-health
             executor: bash
+            # SoH runs a custom test once: a test that fails is not tried again, and
+            # c2Timeout is only how long SoH waits for the answer. Malcolm needs 10 to 15
+            # minutes after its boot, so the test itself waits, for up to 10 minutes.
             testScript: |
-              /usr/local/sbin/cm-malcolm-health
+              for _ in $(seq 1 30); do
+                out=$(/usr/local/sbin/cm-malcolm-health) && break
+                sleep 15
+              done
+              echo "$out"
             # Not testStdout: SoH looks for a substring, and UNHEALTHY contains HEALTHY.
             validateStdout: grep -q '^HEALTHY'
   # sync:begin cherrymountain
@@ -3642,7 +3649,11 @@ spec:
         - name: wazuh-health
           executor: bash
           testScript: |
-            /usr/local/sbin/cm-wazuh-health
+            for _ in $(seq 1 30); do
+              out=$(/usr/local/sbin/cm-wazuh-health) && break
+              sleep 15
+            done
+            echo "$out"
           validateStdout: grep -q '^HEALTHY'
         ot-svc:
         - name: plant-dns-zone

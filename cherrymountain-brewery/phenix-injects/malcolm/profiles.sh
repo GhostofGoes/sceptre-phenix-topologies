@@ -16,11 +16,27 @@
 
 # The profile for this VM: CM_MALCOLM_PROFILE is full, slim, or auto (full on a
 # VM with 22 GB of memory or more, slim below that).
+#
+# The memory comes from getconf (the sysinfo system call), not from /proc/meminfo:
+# cm-malcolm-provision.service runs with ProcSubset=pid, which leaves only the
+# process directories in /proc. Reading /proc/meminfo there failed without ending
+# the script (a command substitution does not inherit errexit), the comparison
+# below failed on the empty value, and every VM was given the slim profile: no
+# Suricata, no NetBox, no file scanning, on a 24 GB VM. A memory size that cannot
+# be read is an error now, not a small VM.
 cm_malcolm_profile() {
   local profile="${CM_MALCOLM_PROFILE:-auto}"
-  local mem_kb
+  local pages page_size mem_kb
   if [ "$profile" = auto ]; then
-    mem_kb=$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)
+    pages=$(getconf _PHYS_PAGES 2> /dev/null) || pages=
+    page_size=$(getconf PAGE_SIZE 2> /dev/null) || page_size=
+    case "${pages}:${page_size}" in
+      *[!0-9:]* | :* | *:)
+        echo "cm_malcolm_profile: cannot read the memory size (getconf _PHYS_PAGES, PAGE_SIZE); set CM_MALCOLM_PROFILE to full or slim" >&2
+        return 1
+        ;;
+    esac
+    mem_kb=$((pages * (page_size / 1024)))
     if [ "$mem_kb" -ge 22000000 ]; then
       profile=full
     else

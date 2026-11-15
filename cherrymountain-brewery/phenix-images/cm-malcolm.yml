@@ -8,7 +8,7 @@
 #   phenix image build -o <dir> -c -x cm-malcolm
 #   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-malcolm.qc2
 # inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
-# The build downloads about 10 GB of container images (the full profile's set).
+# The build downloads 7.3 GB of container images (the 21 of the full profile, compressed).
 
 apiVersion: phenix.sandia.gov/v1
 kind: Image

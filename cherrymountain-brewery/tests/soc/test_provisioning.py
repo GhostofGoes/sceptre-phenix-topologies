@@ -58,6 +58,8 @@ MALCOLM_ENV_HOME: dict[str, str] = {
     "NETBOX_DEFAULT_SITE": "netbox-common",
     "PIPELINE_DISABLED": "pipeline",
     "FREQ_LOOKUP": "lookup-common",
+    "ZEEK_EXTRACTOR_MODE": "zeek",
+    "FILESCAN_PRUNE_THRESHOLD_MAX_SIZE": "filescan",
 }
 #: Bind-mount sources of Malcolm 26.10.0's compose file that are not in its checkout
 #: (create_host_path: false, so a missing one fails `compose up`), by service.
@@ -404,12 +406,114 @@ def test_soh_does_not_pass_an_unhealthy_siem() -> None:
     text = (CONFIGS / "scenario-full.yml").read_text(encoding="utf-8")
     assert not re.search(r"testStdout: *HEALTHY", text)
     for script in ("cm-malcolm-health", "cm-wazuh-health"):
-        test = re.search(rf"/usr/local/sbin/{script}\n(?: *#[^\n]*\n)* *validateStdout: (.*)", text)
-        assert test is not None, script
-        validator = test.group(1)
+        validator = soh_health_test(script)["validateStdout"]
         for output, passes in (("HEALTHY: all up\n", True), ("UNHEALTHY: filebeat is not active\n", False)):
             ran = subprocess.run(["bash", "-c", validator], input=output, capture_output=True, text=True, check=False)
             assert (ran.returncode == 0) == passes, (script, output)
+
+
+def soh_health_test(script: str) -> dict[str, str]:
+    """The SoH custom test of the full scenario that runs ``script``."""
+    scenario = yaml.safe_load((CONFIGS / "scenario-full.yml").read_text(encoding="utf-8"))
+    found: list[dict[str, str]] = []
+
+    def walk(node: object) -> None:
+        if isinstance(node, dict):
+            if script in str(node.get("testScript", "")):
+                found.append(node)
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(scenario)
+    assert len(found) == 1, script
+    return found[0]
+
+
+@pytest.mark.parametrize("script", ["cm-malcolm-health", "cm-wazuh-health"])
+def test_the_soh_health_test_waits_for_a_slow_start(tmp_path: Path, script: str) -> None:
+    """phenix SoH runs a custom test once (only a C2RetryError is retried, and a failed
+    expectation is not one), and c2Timeout is how long it waits for the answer. So
+    the test waits itself: it asks again until the SIEM is healthy, for less than
+    c2Timeout, and prints the last answer either way."""
+    test = soh_health_test(script)
+    body = test["testScript"].replace(f"/usr/local/sbin/{script}", str(tmp_path / "health"))
+    body = body.replace("sleep 15", "sleep 0")
+    counter = tmp_path / "count"
+    (tmp_path / "health").write_text(
+        f'#!/bin/sh\nn=$(cat {counter} 2>/dev/null || echo 0); n=$((n + 1)); echo $n > {counter}\n'
+        'if [ "$n" -ge "$HEALTHY_AT" ]; then echo "HEALTHY: up"; else echo "UNHEALTHY: try $n"; exit 1; fi\n'
+    )
+    (tmp_path / "health").chmod(0o755)
+    for healthy_at, tries, passes in ((3, 3, True), (99, 30, False)):
+        counter.unlink(missing_ok=True)
+        ran = subprocess.run(["bash", "-c", body], env={**os.environ, "HEALTHY_AT": str(healthy_at)}, capture_output=True, text=True, check=False, timeout=60)
+        assert int(counter.read_text()) == tries
+        ok = subprocess.run(["bash", "-c", test["validateStdout"]], input=ran.stdout, capture_output=True, text=True, check=False)
+        assert (ok.returncode == 0) == passes, ran.stdout
+    # 30 tries 15 s apart stay inside the 15 minutes SoH waits for the answer.
+    scenario = yaml.safe_load((CONFIGS / "scenario-full.yml").read_text(encoding="utf-8"))
+    soh = next(app for app in scenario["spec"]["apps"] if app["name"] == "soh")
+    assert soh["metadata"]["c2Timeout"] == "15m" and "seq 1 30" in test["testScript"] and "sleep 15" in test["testScript"]
+
+
+def profile_for(tmp_path: Path, pages: str, page_size: str = "4096", profile: str = "auto") -> subprocess.CompletedProcess[str]:
+    """cm_malcolm_profile with a stand-in getconf (the memory of the VM)."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    (bin_dir / "getconf").write_text(
+        f'#!/bin/sh\ncase "$1" in _PHYS_PAGES) echo "{pages}" ;; PAGE_SIZE) echo "{page_size}" ;; *) exit 1 ;; esac\n'
+        if pages != "missing" else "#!/bin/sh\nexit 1\n"
+    )
+    (bin_dir / "getconf").chmod(0o755)
+    return subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", f'. "{MALCOLM / "profiles.sh"}"; profile=$(cm_malcolm_profile); echo "$profile"'],
+        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "CM_MALCOLM_PROFILE": profile},
+        capture_output=True, text=True, check=False,
+    )
+
+
+def test_the_malcolm_vm_of_the_topology_gets_the_full_profile(tmp_path: Path) -> None:
+    """The profile follows the VM's memory, read without /proc/meminfo: the
+    provisioning unit hides it (ProcSubset=pid), and the read that failed there
+    made every VM slim."""
+    soc = yaml.safe_load((CONFIGS / "topology-soc.yml").read_text(encoding="utf-8"))
+    malcolm = next(n for n in soc["spec"]["nodes"] if n["general"]["hostname"] == "malcolm")
+    # What Linux reports of the VM's memory: all of it less the kernel's own, about 2 %.
+    pages = int(malcolm["hardware"]["memory"] * 1024 * 1024 * 0.98) // 4096
+    assert profile_for(tmp_path, str(pages)).stdout == "full\n"
+    assert profile_for(tmp_path, str(12 * 1024 * 1024 * 1024 // 4096)).stdout == "slim\n"
+    assert profile_for(tmp_path, "100", profile="full").stdout == "full\n"
+    for unreadable in ("missing", "", "many"):
+        failed = profile_for(tmp_path, unreadable)
+        assert failed.returncode != 0 and failed.stdout == "" and "cannot read the memory size" in failed.stderr, unreadable
+    assert "/proc/meminfo)" not in (MALCOLM / "profiles.sh").read_text().split("cm_malcolm_profile() {")[1]
+
+
+def test_no_sandboxed_script_reads_the_parts_of_proc_its_unit_hides() -> None:
+    """ProcSubset=pid leaves only the process directories in /proc: no meminfo,
+    cpuinfo, loadavg, uptime, or sys. The range's own scripts must not read them
+    (free reads /proc/meminfo too); 14 of its units are sandboxed that way."""
+    units = [p for p in INJECTS.rglob("*.service") if "ProcSubset=pid" in p.read_text()]
+    assert len(units) >= 10
+    hidden = re.compile(r"/proc/(?!self\b|thread-self\b|\$|[0-9])[a-z]|\bfree +-|\buptime\b|\bnproc\b")
+    for path in INJECTS.rglob("*"):
+        if not path.is_file() or path.suffix in (".png", ".zip", ".pyc", ".xml", ".in", ".txt", ".rules", ".zeek", ".md"):
+            continue
+        for number, line in enumerate(path.read_text(errors="replace").splitlines(), 1):
+            code = line.split("#", 1)[0]
+            assert not hidden.search(code), f"{path.relative_to(INJECTS)}:{number}: {line.strip()}"
+
+
+def test_the_full_profile_extracts_files_for_the_scanners() -> None:
+    """Malcolm's ZEEK_EXTRACTOR_MODE is none: with it, Strelka and the scanner of the
+    full profile never get a file."""
+    text = provision()
+    full = text[text.index('if [ "$profile" = full ]; then\n  set_env config/netbox-common.env') : text.index("NETBOX_MODE disabled")]
+    assert "set_env config/zeek.env ZEEK_EXTRACTOR_MODE interesting" in full
+    assert "set_env config/filescan.env FILESCAN_PRUNE_THRESHOLD_MAX_SIZE 2G" in full
 
 
 SELFTEST_LOGTEST: str = """#!/bin/sh

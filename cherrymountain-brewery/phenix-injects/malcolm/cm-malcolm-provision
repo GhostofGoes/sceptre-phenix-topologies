@@ -137,6 +137,13 @@ if [ "$profile" = full ]; then
   set_env config/netbox-common.env NETBOX_ENRICHMENT true
   set_env config/netbox-common.env NETBOX_AUTO_POPULATE true
   set_env config/netbox-common.env NETBOX_DEFAULT_SITE CherryMountain
+  # File scanning scans what Zeek extracts, and Malcolm's default is to extract
+  # nothing: without this the full profile's Strelka and scanner containers run and
+  # never see a file. `interesting` is the mode Malcolm recommends (the file types
+  # attacks arrive as). The scanner keeps what it flags (quarantined, the default);
+  # the limit keeps those from growing into the pcap's share of the disk.
+  set_env config/zeek.env ZEEK_EXTRACTOR_MODE interesting
+  set_env config/filescan.env FILESCAN_PRUNE_THRESHOLD_MAX_SIZE 2G
 else
   set_env config/netbox-common.env NETBOX_MODE disabled
   set_env config/pipeline.env PIPELINE_DISABLED true

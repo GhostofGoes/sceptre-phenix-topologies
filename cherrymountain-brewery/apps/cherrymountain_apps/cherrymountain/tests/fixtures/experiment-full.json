@@ -4801,7 +4801,7 @@
                     {
                       "name": "malcolm-health",
                       "executor": "bash",
-                      "testScript": "/usr/local/sbin/cm-malcolm-health\n",
+                      "testScript": "for _ in $(seq 1 30); do\n  out=$(/usr/local/sbin/cm-malcolm-health) && break\n  sleep 15\ndone\necho \"$out\"\n",
                       "validateStdout": "grep -q '^HEALTHY'"
                     }
                   ]
@@ -7941,7 +7941,7 @@
                 {
                   "name": "wazuh-health",
                   "executor": "bash",
-                  "testScript": "/usr/local/sbin/cm-wazuh-health\n",
+                  "testScript": "for _ in $(seq 1 30); do\n  out=$(/usr/local/sbin/cm-wazuh-health) && break\n  sleep 15\ndone\necho \"$out\"\n",
                   "validateStdout": "grep -q '^HEALTHY'"
                 }
               ],

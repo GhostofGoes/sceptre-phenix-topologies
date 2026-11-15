@@ -345,7 +345,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     checked, without `.git`), owned by uid 1000 (the user `malcolm`), and a venv
     `/opt/malcolm-venv` with the Python modules Malcolm's `auth_setup` needs.
   - The 21 Malcolm images of the full profile as compressed on-disk copies under
-    `/var/lib/cm-malcolm/images`, about 10 GB, loaded into Docker at the first
+    `/var/lib/cm-malcolm/images`, 7.3 GB, loaded into Docker at the first
     boot by `cm-load-images.service`. One image serves both sizing profiles: the
     full profile (8 vCPU / 24 GB) and the slim profile (4 vCPU / 12 GB) differ only
     in the services that start and the heap sizes (`phenix-injects/malcolm/profiles.sh`;
@@ -370,7 +370,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     reads); without the app the first boot generates one. Either way it is in
     `/var/lib/cm-malcolm/admin-password` on the VM.
 - **Build:** the commands above, with `<name>` set to `cm-malcolm`. The build
-  downloads about 10 GB from `ghcr.io` and needs the 64 GB disk.
+  downloads 7.3 GB from `ghcr.io` and needs the 64 GB disk.
 - **Used by:** `malcolm`.
 - **Pinned versions:** Malcolm `v26.10.0` (commit
   `36bb3a61217b8555bb9fe8918acd3b45927a5458`), its images at `26.10.0`, Docker

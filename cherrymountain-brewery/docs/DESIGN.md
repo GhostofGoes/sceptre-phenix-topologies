@@ -2339,7 +2339,14 @@ The 24 GB default stays until a VM run measures the full stack. The slim profile
 is the trimmed pipeline above (OpenSearch 3 GB and Logstash 2 GB heaps) without
 Suricata, NetBox, and Strelka, at about 4 vCPU / 12 GB: the measured 8.4 GiB
 peak, which included Suricata, plus headroom. `profiles.sh` picks it on a VM
-with less than 22 GB of memory unless `CM_MALCOLM_PROFILE` says otherwise.
+with less than 22 GB of memory unless `CM_MALCOLM_PROFILE` says otherwise. It
+reads the memory with `getconf`, because the provisioning unit hides
+`/proc/meminfo` (`ProcSubset=pid`). The earlier read of that file failed there
+without stopping the script, and every VM got the slim profile: on the 24 GB
+node that meant no Suricata, so none of the range's Suricata rules, no NetBox,
+and no file scanning. The full profile has therefore never been selected by a
+build before this fix, and its memory in 24 GB is the least known number of the
+range.
 
 **Variants** ([§15.3](#153-topology-modules-and-variants)):
 
@@ -2987,7 +2994,14 @@ point for future adversary-emulation scenarios.
      ports alone and needs neither. Not yet seen on a VM: the tags themselves
      (`tcpdump -e -nn -i phenix vlan` on a routed flow), and the file on
      Malcolm's Suricata 8.0.7.
-  5. **One Zeek worker.** Malcolm's live Zeek starts two workers, which share no
+  5. **Zeek extracts files, or the scanners see none.** Malcolm's
+     `ZEEK_EXTRACTOR_MODE` is `none` by default, and file scanning (Strelka, YARA,
+     ClamAV) scans only what Zeek extracts. The full profile sets `interesting`,
+     the mode Malcolm recommends, and limits what the scanner keeps to 2 GB.
+     Little in the plant's own traffic is a file in clear text (FUXA's pages over
+     HTTP); the use is a tool or a document that an exercise moves over HTTP,
+     FTP, or SMB.
+  6. **One Zeek worker.** Malcolm's live Zeek starts two workers, which share no
      script state, and `cherrymountain.zeek` ties a PLC change to a vendor
      session on another connection through a global. The provisioning sets
      `ZEEK_LB_PROCS_WORKER_DEFAULT=1`.
@@ -3708,9 +3722,13 @@ routers first, then sim-ctl, the federates, the field devices, the PLCs, and
 FUXA, each waiting on C2 of the previous layer. Budget, per layer on a loaded
 host: routers 2 to 3 min (VyOS commit), sim nodes 2 min, field devices 1 to
 2 min, PLCs 3 to 8 min (the first compile of a program), FUXA 2 min, Wazuh 5
-to 8 min, Malcolm 10 to 15 min (its containers). The PLC compile and Malcolm
-can exceed `startupDelay`, so their SoH checks retry within `c2Timeout`; a
-failed first SoH pass on those two alone is expected, not a fault.
+to 8 min, Malcolm 10 to 15 min (its containers). SoH runs a custom test once:
+phenix retries a C2 command only while the VM's address or gateway is not set, a
+failed expectation is not tried again, and `c2Timeout` is how long it waits for
+the answer. So the Malcolm and Wazuh health tests wait themselves: each asks its
+health script again every 15 s, for up to 10 minutes, and prints the last
+answer. A PLC that is still compiling when its test runs fails that pass; run
+SoH again.
 
 **Reset between exercises.** `phenix experiment stop` then `start` gives a
 fresh range. phenix runs every node as a snapshot (`snapshot` defaults to
@@ -4209,8 +4227,8 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
   scenario runs on a VM is injected there by the topology or rendered by the
   app.
 - **What CI runs.** The Lint workflow runs `prek run --all-files`: every hook
-  above, so the nine pytest suites (1,363 tests: sim 401, apps 302, fuxa 180,
-  tests/soc 159, plantgen 113, netcheck 97, viz 45 without the browser test,
+  above, so the nine pytest suites (1,368 tests: sim 401, apps 302, fuxa 180,
+  tests/soc 164, plantgen 113, netcheck 97, viz 45 without the browser test,
   tests/brand 37, tests/bacnet 29) and the sync checks run on each pull
   request. The CherryMountain spikes workflow runs the VM spikes on
   GitHub-hosted runners with KVM, on a push that changes `spikes/` or by hand

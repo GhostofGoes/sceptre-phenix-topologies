@@ -100,6 +100,10 @@ start.
   (level 7) on dmz-jump for every change.
 - The agents and syslog into Wazuh, `cm-wazuh-provision`'s second run, and the
   admin password that `wazuh-passwords-tool.sh` sets.
+- Malcolm's full profile in 24 GB, with every container up and live capture on:
+  it was never selected before (the automatic choice fell to slim), so nothing
+  about its memory is measured. If it does not fit, set `CM_MALCOLM_PROFILE=slim`
+  in `phenix-injects/malcolm/cm-malcolm.env` or give the node more memory.
 - The retention settings: Malcolm's prune limits on 26.10.0, the Wazuh archive
   volume under a scan, and ground truth's growth over a week.
 - Guacamole: `cmadmin` and the `ews-rdp` and `ews-ssh` connections exist after
@@ -214,6 +218,11 @@ start.
   its conduit are there, and nothing forwards to it: the PLC and ot-sim images
   have no rsyslog, and the others send through their agent
   ([§14](DESIGN.md#14-blue-team-monitoring)).
+- **A restart policy for Malcolm's containers.** Malcolm's compose file starts
+  every container with `restart: "no"`, so one that dies during a week-long run
+  (an out-of-memory kill of Logstash, say) stays down; `cm-malcolm-health` then
+  reports it, and nothing brings it back. Malcolm's installer offers
+  `unless-stopped`; the range does not set it yet.
 - **Fixed HELICS ports,** so the MGMT policy can name exact ports instead of
   23407 to 23999: `--localport` in `cherrymountain_sim` and in the ot-sim `io`
   module's config ([§19](DESIGN.md#19-risks-and-open-questions)).

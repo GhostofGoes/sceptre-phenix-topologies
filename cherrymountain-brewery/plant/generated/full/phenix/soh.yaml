@@ -284,6 +284,16 @@ metadata:
     proto: tcp
     port: 443
     wait: 5m
+  - src: soc-purple
+    dst: malcolm|IF0
+    proto: tcp
+    port: 443
+    wait: 5m
+  - src: soc-purple
+    dst: wazuh|IF0
+    proto: tcp
+    port: 443
+    wait: 5m
   hostProcesses:
     inet-traffic:
     - protonuke
@@ -368,6 +378,8 @@ metadata:
     - cherrymountain_sim
     sim-building:
     - cherrymountain_sim
+    soc-purple:
+    - dockerd
   hostListeners:
     inet-traffic:
     - :80

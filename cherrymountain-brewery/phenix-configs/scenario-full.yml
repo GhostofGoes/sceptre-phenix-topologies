@@ -1684,6 +1684,9 @@ spec:
     - hostname: soc-analyst
       metadata:
         client: chrony
+    - hostname: soc-purple
+      metadata:
+        client: ntp
   # sync:end ntp
   - name: vrouter
     hosts:
@@ -3114,6 +3117,16 @@ spec:
         proto: tcp
         port: 502
         wait: 5m
+      - src: soc-purple
+        dst: malcolm|IF0
+        proto: tcp
+        port: 443
+        wait: 5m
+      - src: soc-purple
+        dst: wazuh|IF0
+        proto: tcp
+        port: 443
+        wait: 5m
       hostServices:
         ot-svc:
         - chrony
@@ -3531,7 +3544,7 @@ spec:
           executor: bash
           testScript: |
             getent passwd | cut -d: -f1 | grep -c '^ridgeline-'
-          testStdout: "2"
+          testStdout: '2'
         plc-cellar:
         - name: blocked-scada-fuxa-1881
           executor: bash
@@ -3630,7 +3643,6 @@ spec:
           executor: bash
           testScript: |
             /usr/local/sbin/cm-wazuh-health
-          # Not testStdout: SoH looks for a substring, and UNHEALTHY contains HEALTHY.
           validateStdout: grep -q '^HEALTHY'
         ot-svc:
         - name: plant-dns-zone
@@ -3727,6 +3739,8 @@ spec:
         - cherrymountain_sim
         sim-building:
         - cherrymountain_sim
+        soc-purple:
+        - dockerd
       dockerContainers:
         dmz-jump:
         - guacamole
@@ -3741,8 +3755,6 @@ spec:
         - malcolm-pcap-monitor-1
         - malcolm-zeek-live-1
         - malcolm-arkime-live-1
-        # Not malcolm-suricata-live-1: the slim profile does not run it. cm-malcolm-health
-        # (the malcolm-health test) checks every container of the profile in use.
   # sync:end soh
   # SCORCH (DESIGN.md 15.6): the vendor-maintenance run. The vendor's technician brings up
   # the WireGuard tunnel, signs in to Guacamole with TOTP and works in a recorded session on

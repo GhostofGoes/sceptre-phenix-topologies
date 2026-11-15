@@ -197,3 +197,6 @@ hosts:
 - hostname: soc-analyst
   metadata:
     client: chrony
+- hostname: soc-purple
+  metadata:
+    client: ntp

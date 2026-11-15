@@ -2519,6 +2519,43 @@
         },
         {
           "general": {
+            "description": "Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark",
+            "hostname": "soc-purple"
+          },
+          "hardware": {
+            "drives": [
+              {
+                "image": "kali-purple.qc2",
+                "inject_partition": 1
+              }
+            ],
+            "memory": 16384,
+            "os_type": "linux",
+            "vcpus": 4
+          },
+          "labels": {
+            "zone": "soc"
+          },
+          "network": {
+            "interfaces": [
+              {
+                "address": "10.40.10.13",
+                "dns": [
+                  "10.20.30.13"
+                ],
+                "gateway": "10.40.10.1",
+                "mask": 24,
+                "name": "IF0",
+                "proto": "static",
+                "type": "ethernet",
+                "vlan": "SOC"
+              }
+            ]
+          },
+          "type": "VirtualMachine"
+        },
+        {
+          "general": {
             "description": "WireGuard gateway (DNAT target of fw-edge)",
             "hostname": "dmz-vpn"
           },
@@ -5363,6 +5400,12 @@
               "metadata": {
                 "client": "chrony"
               }
+            },
+            {
+              "hostname": "soc-purple",
+              "metadata": {
+                "client": "ntp"
+              }
             }
           ]
         },
@@ -7433,6 +7476,20 @@
                 "proto": "tcp",
                 "port": 502,
                 "wait": "5m"
+              },
+              {
+                "src": "soc-purple",
+                "dst": "malcolm|IF0",
+                "proto": "tcp",
+                "port": 443,
+                "wait": "5m"
+              },
+              {
+                "src": "soc-purple",
+                "dst": "wazuh|IF0",
+                "proto": "tcp",
+                "port": 443,
+                "wait": "5m"
               }
             ],
             "hostServices": {
@@ -8011,6 +8068,9 @@
               ],
               "sim-building": [
                 "cherrymountain_sim"
+              ],
+              "soc-purple": [
+                "dockerd"
               ]
             },
             "dockerContainers": {

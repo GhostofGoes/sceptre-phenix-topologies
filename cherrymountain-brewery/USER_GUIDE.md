@@ -38,7 +38,7 @@ simulation of the physics behind them.
 |---|---|---:|---:|---:|---|
 | `ci` | The cellar only: one simulation node pair, one remote I/O, one PLC, one FUXA | 5 | 7 | 8 GB | A first boot, and a laptop |
 | `lite` | The whole plant and its network, without the SOC and the vendor path | 37 | 48 | 71 GB | Process and network work |
-| `full` | Everything, with Malcolm, Wazuh, WireGuard, and Guacamole | 43 | 67 | 113 GB | Exercises with a blue team |
+| `full` | Everything, with Malcolm, Wazuh, a Kali Purple workstation, WireGuard, and Guacamole | 44 | 71 | 129 GB | Exercises with a blue team |
 
 Run **one variant at a time**. They use the same VLAN numbers, and minimega
 refuses the second one. A stopped experiment of another variant may stay.
@@ -50,8 +50,10 @@ You need one machine with:
 - **Ubuntu 24.04 on x86-64 with `/dev/kvm`.** Check with `kvm-ok` (package
   `cpu-checker`). On a cloud VM, turn on nested virtualization.
 - **CPU and memory for the variant.** 4 cores and 16 GB run `ci`. `full` is
-  sized for 32 or more cores and 128 GB: most VMs idle, so its 67 vCPUs are
-  overcommitted, but its 113 GB of VM memory is not.
+  sized for 32 or more cores and 144 GB: most VMs idle, so its 71 vCPUs are
+  overcommitted, but its 129 GB of VM memory should not be. On a 128 GB host,
+  lower the `memory` of soc-purple (16 GB) in
+  `phenix-configs/topology-soc.yml`, or delete that node: the rest is 113 GB.
 - **Disk.** About 150 GB free under `/phenix` for all images and the running
   VMs. The four `ci` images need about 20 GB.
 - **Software.** Docker with the Compose plugin, Git, [Git LFS](https://git-lfs.com/),
@@ -163,7 +165,7 @@ build_image() {
 |---|---|
 | `ci` | `cm-sim` `cm-otsim` `cm-openplc` `cm-fuxa` |
 | `lite` | `cm-svc` `cm-otsim` `cm-sim` `cm-openplc` `cm-fuxa` `cm-historian` `cm-desktop` `cm-ews`, plus VyOS and the two protonuke steps below |
-| `full` | Everything for `lite`, then `cm-guacamole` `cm-wireguard` `cm-wazuh` `cm-malcolm` |
+| `full` | Everything for `lite`, then `cm-guacamole` `cm-wireguard` `cm-wazuh` `cm-malcolm`, plus Kali Purple below |
 
 ```shell
 for image in cm-sim cm-otsim cm-openplc cm-fuxa; do build_image "$image"; done    # ci
@@ -179,6 +181,19 @@ docker exec phenix phenix image inject-miniexe /phenix/protonuke /phenix/images/
 
 # the VyOS router image, from the images repository (it finds /phenix/miniccc by itself)
 cd sceptre-phenix-images && sudo make vyos && sudo mv vyos.qc2 /phenix/images/
+```
+
+`full` also needs the Kali Purple image of soc-purple, which is not one of this
+range's configs. It is in `sandialabs/sceptre-phenix-images` since 2026-11-15:
+use a checkout that has `scripts/kali-purple.sh` (the fork's branch above may
+be older). The first command stages about 2 GB of container images and needs
+Docker and internet; with them in the image, parseus installs at first boot
+without a network, which the range does not have.
+
+```shell
+cd sceptre-phenix-images
+make kali-purple-bundle
+make kali-purple PARSEUS_OFFLINE=1 && mv kali-purple.qc2 /phenix/images/
 ```
 
 Things to know about image builds:
@@ -624,6 +639,12 @@ shows a QR code to enroll a one-time-code app.
     each attempt.
 - **soc-analyst** is the analyst's desktop. It opens Malcolm and Wazuh in a
   browser by itself, once both are up.
+- **soc-purple** is a Kali Purple desktop: open its console in the phenix UI.
+  It has Wireshark, Suricata, `peat`, and parseus, which installs itself during
+  the first minutes (`systemctl status parseus-install`, then
+  `https://127.0.0.1/` in its own browser). It reaches Malcolm
+  (`https://malcolm`) and Wazuh (`https://wazuh`) and nothing in the plant, so
+  bring it data: a pcap from Arkime, or files.
 
 ### The white cell: see and drive the truth
 

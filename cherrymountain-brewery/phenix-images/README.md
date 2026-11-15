@@ -515,6 +515,28 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   `1.40.3-1`, Grafana `12.*` (the vendor's major version), the Wazuh agent
   `4.14.10-1`. Mosquitto follows noble (2.0.x).
 
+## kali-purple (upstream)
+
+- **Purpose:** the SOC's analysis workstation, `soc-purple` (DESIGN.md 14): Kali
+  Purple with Suricata, Wireshark, Docker, PEAT, and parseus.
+- **Base and contents:** not a config in this directory and not Ubuntu. It is
+  the `kali-purple` target of
+  [`sandialabs/sceptre-phenix-images`](https://github.com/sandialabs/sceptre-phenix-images)
+  (kali-rolling, `mingui`, 80 GB), added there on 2026-11-15; its
+  `scripts/kali-purple.sh` is the install script. It has no Wazuh agent, no
+  chrony (ntpsec reads the `/etc/ntp.conf` the phenix `ntp` app writes), and
+  nothing of this range in it: the topology injects nothing.
+- **Build:** in a checkout of that repository, on a host with Docker and
+  internet: `make kali-purple-bundle`, then `make kali-purple PARSEUS_OFFLINE=1`,
+  and move `kali-purple.qc2` to the image directory. The Makefile injects
+  miniccc. The bundle (about 2 GB of container images) is what lets parseus
+  install at first boot without a network; an image built without it tries to
+  pull images from the internet at every start and never finishes in the range.
+- **Used by:** `soc-purple` in the full variant.
+- **Pinned versions:** upstream's: PEAT `v2026.9.2` by sha256, parseus `main`
+  (not pinned), Elasticsearch, Kibana, and Logstash `8.19.5` in parseus's
+  bundle. Kali is a rolling release, so two builds differ.
+
 ## Apps
 
 The `cherrymountain` phenix app is in [`apps/`](../apps/README.md), with its

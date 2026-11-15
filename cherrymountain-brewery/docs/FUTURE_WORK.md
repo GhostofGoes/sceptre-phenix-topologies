@@ -344,6 +344,28 @@ Not all of it should be done on this range. Some weaknesses are its attack
 surface by decision (the anonymous OPC UA operator role, a PLC image that any
 client on its port may write); the review's section 3 lists them.
 
+### A conduit for soc-purple's active tools
+
+soc-purple ([§14](DESIGN.md#14-blue-team-monitoring)) has PEAT, which pulls
+configuration and logic from OT devices, and parseus, which analyzes Modbus
+registers that PEAT or its own ingestors collect. Both need to reach a device,
+and the SOC has no conduit into OPS, CTRL, or the field: it watches a mirror
+and reads logs. Giving soc-purple Modbus TCP to the PLCs would make them useful
+against the live plant, and it would also put a host in the SOC that can write
+to every PLC, because a port filter cannot tell a Modbus read from a write. The
+choices, none taken: leave it as it is (analysis of what Malcolm captured); add
+the conduit and a Suricata rule for a write from soc-purple; or move the
+polling to a host that already has the conduit (the EWS runs `peat pull` and
+the results are carried to soc-purple). Open with it: whether PEAT has a module
+that the range's OpenPLC and ot-sim devices answer, parseus's memory on less
+than its stated 16 GB, and the first build and boot of the image, none of which
+has run.
+
+Its parseus brings Elastic's Elasticsearch, Kibana, and Logstash images, which
+are under the Elastic License 2.0 and not an OSI license
+([§20](DESIGN.md#20-licensing)). If the range must stay OSI-only, the node goes,
+or parseus is pointed at an OpenSearch.
+
 ### SOC case management with DFIR-IRIS
 
 The SOC can triage alerts in Wazuh

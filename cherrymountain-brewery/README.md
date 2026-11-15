@@ -47,7 +47,7 @@ flowchart TB
     BASD["bas-rtu-taproom<br/>bas-coldroom, bas-vent"]
   end
   subgraph SOC["SOC 10.40.10.0/24"]
-    SOCH["malcolm, wazuh<br/>soc-analyst"]
+    SOCH["malcolm, wazuh<br/>soc-analyst, soc-purple"]
   end
   subgraph MGMT["MGMT 172.16.0.0/16: the simulation, out of band"]
     SIM["sim-ctl, sim-process<br/>sim-power, sim-building"]
@@ -74,7 +74,7 @@ flowchart TB
   SIM -. "HELICS" .- BASD
 ```
 
-The network of the full variant: 43 VMs on 16 networks, plus the simulation's
+The network of the full variant: 44 VMs on 16 networks, plus the simulation's
 and the capture mirror's.
 Hexagons are routers and firewalls, and dotted lines are the simulation's own
 network, which is not part of the brewery. [DESIGN.md](docs/DESIGN.md) section 10 has
@@ -543,7 +543,10 @@ over it. Wazuh collects logs from agents on the servers and workstations and, by
 syslog, from the firewalls and from the relay on `ot-svc`. Both carry rules written
 for this plant: a write to a life-safety point, a breaker command from an
 unexpected host, a vessel-entry violation, each step of the vendor's path.
-`soc-analyst` is the analyst's desktop, with both consoles a click away.
+`soc-analyst` is the analyst's desktop, with both consoles a click away, and
+`soc-purple` is a Kali Purple workstation with Wireshark, Suricata,
+[PEAT](https://github.com/sandialabs/PEAT), and
+[parseus](https://github.com/sandialabs/parseus) for work on what the two collect.
 
 ```mermaid
 flowchart LR
@@ -1007,7 +1010,7 @@ the scenario beside them.
 
 | Path | Contents |
 |---|---|
-| `plant/` | `plant.yaml` tag database for the whole plant (every area, 43 hosts, 516 tags, 98 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
+| `plant/` | `plant.yaml` tag database for the whole plant (every area, 44 hosts, 516 tags, 98 alarms) and the plantgen output under `plant/generated/{ci,full,lite}/` |
 | `tools/plantgen/` | Generator: tags, addresses, the ot-sim, ntp, soh, wireguard, helics, and cherrymountain app blocks, HELICS lists, OpenPLC, FUXA, BACnet, DNP3, and SCORCH inputs ([README](tools/plantgen/README.md) documents every output) |
 | `sim/` | `cherrymountain_sim`: the weather, brewhouse, cellar, utilities, packaging, power (OpenDSS), and building federates, the sim-ctl event API, and an offline harness, with tests ([README](sim/README.md)) |
 | `recipes/` | `fire-of-the-phenix.json`, the flagship recipe in BeerJSON; the batch engine brews from it |
@@ -1148,12 +1151,12 @@ that some hooks need are listed in
 
 The full and lite variants carry the whole network of DESIGN.md section 10:
 
-- **Topology.** `topology-core.yml` has the 37 core nodes (the 43 of the
+- **Topology.** `topology-core.yml` has the 37 core nodes (the 44 of the
   design minus the SOC and remote-access modules) with their interfaces, VLANs, addresses, static
   routes, zone labels, boot-order `delay`s, autotunnel entries, and resources.
-  `topology-soc.yml` adds malcolm, wazuh, and soc-analyst;
+  `topology-soc.yml` adds malcolm, wazuh, soc-analyst, and soc-purple;
   `topology-remote-access.yml` adds dmz-vpn, dmz-jump, and vendor-ws.
-  `topology-full.yml` includes all three (43 VMs, 67 vCPUs, 113 GB) and
+  `topology-full.yml` includes all three (44 VMs, 71 vCPUs, 129 GB) and
   `topology-lite.yml` only the core (37 VMs, 48 vCPUs, 71 GB). phenix appends
   the included nodes in order, so the boot order is the core's, then the SOC,
   then the remote-access nodes. Router interfaces are named `eth0`, `eth1`, ...

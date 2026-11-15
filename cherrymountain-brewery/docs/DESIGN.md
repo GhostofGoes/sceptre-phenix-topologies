@@ -6,7 +6,7 @@
 > programs, and simulation code of the range. [USER_GUIDE.md](../USER_GUIDE.md) is
 > the step-by-step guide to building, starting, reaching, and using it.
 >
-> **tl;dr:** a 43-VM, all open-source OT cyber range of a Colorado
+> **tl;dr:** a 44-VM, all open-source OT cyber range of a Colorado
 > microbrewery. It covers brewhouse, cellar, bottling, utilities, plant power,
 > and building automation. FUXA is the SCADA/HMI, OpenPLC runs the PLCs, and
 > ot-sim provides the field devices. The physics run in a HELICS co-simulation.
@@ -107,7 +107,9 @@ topology uses phenix's workflow layout, core and user apps, state of health
 - A realistic, internally consistent brewery OT environment. Engineers and
   operators can run it, defenders can baseline it, and researchers can extend
   it.
-- Use only open-source software, with permissive or copyleft OSI licenses.
+- Use only open-source software, with permissive or copyleft OSI licenses. One
+  node is an exception, by its upstream image: soc-purple's parseus runs Elastic's
+  own Elasticsearch, Kibana, and Logstash containers ([§20](#20-licensing)).
 - Run fully unattended: every VM is configured at boot from injected files,
   with no manual GUI setup.
 - Use as much of phenix as applies: apps, SoH, packet capture, images,
@@ -174,7 +176,8 @@ lists the hooks.
 
 **Non-goals (attach points are noted for later)**
 
-- **Adversary emulation.** Kali, Caldera, and caldera-ot are not deployed.
+- **Adversary emulation.** Offensive Kali, Caldera, and caldera-ot are not
+  deployed (soc-purple is Kali Purple, the defensive edition, in the SOC).
   The `caldera` app and SCORCH `caldera`/`art` components can attach to the
   DMZ, the CORP zone, or the vendor network later.
 - **Business IT.** ERP/MES, LIMS, Active Directory, and email are not
@@ -1957,7 +1960,7 @@ notional design targets):
 | CTRL | 1 | 2 | PLCs |
 | FIELD-* | 0 | 2 | Unrouted I/O islands |
 | DERLINK | 1 (utility-facing gateway) | 2 | rtu-der upstream side |
-| SOC | 3 (security) | 2 | Malcolm, Wazuh, analyst |
+| SOC | 3 (security) | 2 | Malcolm, Wazuh, analyst, analysis workstation |
 | MGMT | n/a (simulation plane) | n/a | Out of bounds for exercises |
 
 **Design rules**
@@ -2059,7 +2062,7 @@ VLAN aliases are pinned in `phenix.yml` (`vlanRange` 100–199).
 | DERLINK | 113 | 10.20.15.0/24 | fw-ot .1 | rtu-der .10 |
 | FIELD-PWR | 114 | 10.20.16.0/24 | none | plc-power .1, rtu-der .2, relay-main .20, pv-inverter .21, bess-pcs .22, gen-ats .23 |
 | BAS | 115 | 10.30.10.0/24 | fw-ot .1 | bas-bbmd .5, bas-fuxa .10, bas-rtu-taproom .20, bas-coldroom .21, bas-vent .22 |
-| SOC | 116 | 10.40.10.0/24 | fw-ot .1 | malcolm .10, wazuh .11, soc-analyst .12 |
+| SOC | 116 | 10.40.10.0/24 | fw-ot .1 | malcolm .10, wazuh .11, soc-analyst .12, soc-purple .13 |
 | MGMT | 117 | 172.16.0.0/16 | none (no default route) | sim-ctl .10.1, sim-process .10.2, sim-power .10.3, sim-building .10.4; rio-brewhouse .20.11, rio-cellar .20.12, rio-packaging .20.13, rio-utilities .20.14, glycol-chiller .20.15; relay-main .20.21, pv-inverter .20.22, bess-pcs .20.23, gen-ats .20.24; bas-rtu-taproom .20.31, bas-coldroom .20.32, bas-vent .20.33; 172.16.30.0/24 reserved for the SoH capture scenario |
 | MIRROR | 118 | 172.30.0.0/16 (mirror app `mirrorNet`) | — | malcolm `mirror` NIC (address assigned by the mirror app) |
 
@@ -2294,9 +2297,11 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 | malcolm | SOC + MIRROR | Malcolm: Zeek + ICSNPP, Suricata, Arkime, OpenSearch | cm-malcolm | 8 / 24 |
 | wazuh | SOC | Wazuh manager, indexer, and dashboard | cm-wazuh | 4 / 8 |
 | soc-analyst | SOC | Analyst workstation | cm-desktop | 2 / 3 |
+| soc-purple | SOC | Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark ([§14](#14-blue-team-monitoring)) | kali-purple (upstream, [§15.7](#157-images)) | 4 / 16 |
 
-**Totals:** 43 VMs, **67 vCPUs** (overcommitted on 32 cores; most nodes are
-idle) and **113 GB RAM**.
+**Totals:** 44 VMs, **71 vCPUs** (overcommitted on 32 cores; most nodes are
+idle) and **129 GB RAM**, 16 GB of it soc-purple's (parseus asks for 16 GB and
+8 cores; it gets the memory and 4 vCPUs).
 
 **Where the BBMDs run.** The OPS BBMD shares `ot-svc`, so it adds no VM. The
 BAS side needs its own small node, `bas-bbmd`, because every other BAS host
@@ -2304,7 +2309,7 @@ already owns UDP 47808: `bas-fuxa` runs node-bacnet, and each device runs an
 ot-sim BACnet module. The `bbmd` spike only tested BBMDs as separate processes
 on their own addresses, never inside a device, so the design uses a standalone
 service (`cm-bbmd.service` in `cm-svc`, enabled on these two nodes only). The
-`bas-bbmd` VM stays (43 VMs), although the `broadcastAddress` alternative
+`bas-bbmd` VM stays, although the `broadcastAddress` alternative
 needs no BBMD ([§8.1](#81-spaces-equipment-and-bacnet-devices)). Hosting the
 BAS BBMD in `bas-vent`'s BACnet module would drop the VM but is untested
 ([§19](#19-risks-and-open-questions)).
@@ -2756,7 +2761,7 @@ exposed ranges and read 0.
 ### 12.6 Plant tag database
 
 `plant/plant.yaml` is the single source of truth. It covers every area:
-43 hosts, 516 tags (`plant/generated/full/tags.json`), and 98 rationalized alarms
+44 hosts, 516 tags (`plant/generated/full/tags.json`), and 98 rationalized alarms
 ([§6.5](#65-alarm-philosophy-isa-182)). The sketch:
 
 ```yaml
@@ -3026,6 +3031,34 @@ point for future adversary-emulation scenarios.
      (`tests/soc/test_malcolm.py`).
 - **Not yet verified:** a real `cm-malcolm` VM image with live capture, and
   NetBox and Strelka ([FUTURE_WORK.md](FUTURE_WORK.md#the-first-run-on-a-phenix-host)).
+
+**soc-purple** (Kali Purple; parseus and PEAT, GPL-3.0)
+
+- A second SOC workstation, from the `kali-purple` image of
+  `sandialabs/sceptre-phenix-images` ([§15.7](#157-images)): the Kali Purple desktop
+  with Suricata, Wireshark, and tcpdump; [PEAT](https://github.com/sandialabs/PEAT)
+  (`/usr/local/bin/peat`), which pulls configuration and logic from OT devices and
+  parses what was pulled; and [parseus](https://github.com/sandialabs/parseus), a web
+  application for Modbus register and function-code analytics, which the image
+  installs under Docker at first boot and serves on `https://127.0.0.1/` (its
+  own browser only; there is no autotunnel).
+- **It has the SOC's reach and no more.** It is on the SOC VLAN at 10.40.10.13:
+  Malcolm and Wazuh are neighbors, time and names come from ot-svc, and fw-ot gives
+  the SOC no way into OPS, CTRL, or the field. So PEAT and parseus have no device
+  to poll here: an analyst works on what Malcolm holds (a pcap exported from
+  Arkime, Zeek's Modbus logs) and on files. Letting soc-purple read the PLCs
+  would be a new conduit from the SOC into Level 1, on a protocol whose reads and
+  writes a firewall cannot tell apart. That is a decision for the range's owner
+  and is not taken here ([FUTURE_WORK.md](FUTURE_WORK.md#evaluated-not-scheduled)).
+- It does not receive the mirror, runs no Wazuh agent (the image has none), and
+  gets no brand: nothing is injected into it. Its clock is ntpsec, which the image
+  points at the `/etc/ntp.conf` that the phenix `ntp` app writes
+  (`client: ntp` in `plant.yaml`).
+- Every start is a first boot, so parseus installs again at every start, from the
+  bundle baked into the image. An image built without the bundle tries to reach
+  the internet, which the range does not have, and retries for ever.
+- Nothing about this node has run: not the image build, not parseus's install on
+  4 vCPUs, and not Kali under phenix's start-up scripts in this range.
 
 **Wazuh** (GPL-2.0)
 
@@ -3343,10 +3376,11 @@ Modbus and DNP3; the `cherrymountain` app adds its I/O and BACnet modules
 
 ### 15.3 Topology modules and variants
 
-- **Modules.** `topology-core.yml` holds 37 nodes (the 43 of the inventory
-  minus the SOC and remote-access modules). `topology-soc.yml` adds malcolm, wazuh, and soc-analyst.
+- **Modules.** `topology-core.yml` holds 37 nodes (the 44 of the inventory
+  minus the SOC and remote-access modules). `topology-soc.yml` adds malcolm, wazuh,
+  soc-analyst, and soc-purple.
   `topology-remote-access.yml` adds vendor-ws, dmz-vpn, and dmz-jump.
-  `topology-full.yml` merges all three with `includeTopologies` (43 VMs), and
+  `topology-full.yml` merges all three with `includeTopologies` (44 VMs), and
   `topology-lite.yml` includes only the core (37 VMs). phenix appends the
   included nodes in order, so the boot order is the core's, then the SOC, then
   the remote-access nodes.
@@ -3579,6 +3613,7 @@ exists, and it never assumes a fixed `localhost` port.
 | `cm-malcolm` | noble minbase, 64G | Docker + pinned Malcolm images saved in the image (loaded at first boot), openvswitch, boot and provisioning script that adds the capture flow and does the four upload-pipeline setup steps ([§14](#14-blue-team-monitoring)) | Largest image |
 | `cm-wazuh` | noble minbase | Wazuh all-in-one (manager, indexer, dashboard), offline install | |
 | `cm-wireguard` | noble minbase | Derived from the repo's `renewables/wind/plant/phenix-images/wireguard.yml` (focal), rebased on noble, plus chrony and a Wazuh agent. IP forwarding enabled | dmz-vpn |
+| `kali-purple` | upstream (`sandialabs/sceptre-phenix-images`), kali-rolling mingui, 80G | Kali Purple (XFCE with the purple theme and menu), Suricata, Wireshark, Docker, PEAT, and parseus with its offline bundle of container images | soc-purple. Not built from a config in this repository: `make kali-purple-bundle && make kali-purple PARSEUS_OFFLINE=1` in the images repository (the Makefile injects miniccc). Without `PARSEUS_OFFLINE` parseus's first-boot install needs the internet |
 | `vyos` | prebuilt (sceptre-phenix-images) | VyOS rolling with miniccc built in (`-m` build flag). It reports `999.<timestamp>`, not 1.5, since vyos-build T9547 changed rolling versioning on 2026-10-31 | `oras pull`, or build with the images repo's `scripts/vyos/build-vyos.sh`; topology uses `os_type: vyos`, `inject_partition: 3`, ≥2 GB. `rolling` moves daily, so record the build used |
 
 - **miniccc.** Every Linux image gets miniccc via
@@ -3641,10 +3676,14 @@ The full variant needs about 128 GB RAM and 32 cores (71 GB for lite;
 autotunnel loop ([§15.3](#153-topology-modules-and-variants)). Image storage:
 twelve qcow2 images of 8 to 64 GB virtual size; compressed they take roughly
 40 GB, and each running VM adds a copy-on-write overlay that grows with its
-writes (Malcolm and Wazuh the most), so keep about 150 GB free. **Host fit:** the full variant asks 67 vCPUs (2.1×
-overcommit on 32 cores; most nodes idle) and 113 GB of 128 GB, leaving about
-15 GB for the host, phenix, and the page cache. When memory runs short,
-in order: use the slim Malcolm profile (−12 GB), run lite (no SOC, no vendor
+writes (Malcolm and Wazuh the most), so keep about 150 GB free; the `kali-purple`
+image is one more, 80 GB virtual. **Host fit:** the full variant asks 71 vCPUs (2.2×
+overcommit on 32 cores; most nodes idle) and 129 GB, which a 128 GB host no
+longer holds without overcommitting memory: 113 GB is the range, and 16 GB is
+soc-purple, which was added later. On a 128 GB host, lower soc-purple's `memory`
+in `topology-soc.yml` (parseus is then under its stated minimum) or delete the
+node. When memory runs short,
+in order: do that, use the slim Malcolm profile (−12 GB), run lite (no SOC, no vendor
 path), drop the ground-truth Grafana (sim-ctl to 4 GB), and stop the
 packaging and BAS sides for exercises that do not need them.
 
@@ -4504,6 +4543,9 @@ lists everything that is left to do.
 | Malcolm, Guacamole, Zeek ICSNPP | Apache-2.0 / Apache-2.0 / BSD-3-Clause |
 | Zeek | BSD-3-Clause |
 | Suricata, Wazuh | GPL-2.0 |
+| Kali Linux (soc-purple) | A distribution: mostly GPL and other free licenses, with `non-free` firmware and tools in its archive |
+| parseus, PEAT (soc-purple) | GPL-3.0 each |
+| Elasticsearch, Kibana, Logstash 8.19 (the containers parseus runs on soc-purple) | **Not OSI.** Elastic's images are under the Elastic License 2.0 (the source also has AGPL-3.0 and SSPL options, but Elastic ships no AGPL build). This is the license Security Onion was left out for ([§14](#14-blue-team-monitoring)); it comes with the upstream image, and removing soc-purple removes it |
 | OpenSearch (bundled in Malcolm; also the ground-truth node on sim-ctl) | Apache-2.0 |
 | NetBox, Arkime, Strelka (bundled in Malcolm) | Apache-2.0 each |
 | PostgreSQL (Malcolm's NetBox database; Guacamole's database on dmz-jump) | PostgreSQL License |

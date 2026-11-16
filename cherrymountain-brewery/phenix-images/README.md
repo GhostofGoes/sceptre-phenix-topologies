@@ -92,8 +92,8 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
 - **Purpose:** the simulation nodes: the HELICS root broker, the
   cherrymountain_sim federates, and on sim-ctl the ground truth (DESIGN.md
   9.5).
-- **Base:** the shared noble `minbase` image plus `gnupg`, `jq`, `python3`,
-  `python3-venv`, and `python3-pip`, 16 GB disk (the OpenSearch package alone
+- **Base:** the shared noble `minbase` image plus `gnupg`, `jq`, `logrotate`,
+  `python3`, `python3-venv`, and `python3-pip`, 16 GB disk (the OpenSearch package alone
   is about 1 GB).
 - **Contents:**
   - A venv at `/opt/cherrymountain/venv` with the `helics` wheel (which also
@@ -103,6 +103,9 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
     directory at `CM_REF`, which brings `pydantic`, SimPy, and
     OpenDSSDirect.py. SciPy, PackMLpy, and `ht` are test-only and not
     installed.
+  - cm-viz (`cherrymountain-viz` from this repository's `viz/` at `CM_REF`, with
+    three.js vendored in the package) and `websockets`, in the same venv. The
+    `cherrymountain` app injects its unit on sim-ctl only.
   - OpenSearch (single node, `0.0.0.0:9200`, security plugin disabled, 2 GB
     heap) for the ground-truth indexes `cherrymountain-truth-*`.
   - Grafana with the `grafana-opensearch-datasource` plugin and a provisioned
@@ -124,15 +127,16 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
 - **Used by:** `sim-ctl`, `sim-process`, `sim-power`, and `sim-building` (ci:
   `sim-ctl` and `sim-process`).
 - **Pinned versions:** `helics==3.6.1`; `CM_REF` (a commit of this repository)
-  with `CM_SIM_TREE` and `CM_VIZ_TREE`, the git tree ids of `sim/` and `viz/` at
-  that commit. After a change to `sim/` or `viz/`, a second commit moves all three
-  (`git rev-parse <commit>:cherrymountain-brewery/sim`); a test fails until it
+  with `CM_SIM_TREE` and `CM_VIZ_TREE`, the git tree ids of the two packages
+  (`sim/cherrymountain_sim`, `viz/cherrymountain_viz`) at that commit. After a
+  change to either package, a second commit moves all three
+  (`git rev-parse <commit>:cherrymountain-brewery/sim/cherrymountain_sim`); a test fails until it
   does, because federates of an older `sim/` stop on the names of a newer
   `helics.json`;
   `opensearch=3.9.0` (apt, held; repository key
   `A8B2D9E04CD51FEF6AA2DB53BA81D99981191457`); Grafana `12.4.14` (repository key
   `B53AE77BADB630A683046005963FA27710458545`); `grafana-opensearch-datasource`
-  `2.34.4`. OpenDSSDirect.py follows the package's `~=0.8.4`.
+  `2.34.4`; `websockets==15.0.1`. OpenDSSDirect.py follows the package's `~=0.8.4`.
 - **Ground-truth timestamps** (`@timestamp`) are the wall clock, the same clock
   Malcolm and Wazuh stamp their records with; the simulated date and time is in
   `sim_time`. The dashboard opens on a two-day window around now.
@@ -193,12 +197,16 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
     `install.sh --native`.
   - `openplc-runtime.service`, the unit that `install.sh` writes when systemd
     is running (it does not in the image-build chroot).
-  - `git`, `zip`, and `unzip` for the provisioning script.
+  - `cmake` from noble (3.28, the least `install.sh` takes; without it
+    `install.sh` downloads one from GitHub without a checksum), and `git`, `zip`,
+    and `unzip` for the provisioning script. The build fails if `install.sh` did
+    not produce the runtime, the S7comm plugin, or one of the four venvs.
   - `/var/lib/cm-openplc`, `/opt/cherrymountain/openplc`, and
     `/var/lib/openplc-runtime`. The program ZIP, the plugin configs, and
     `cm-openplc-provision` are injected by the topology.
 - **Build:** the commands above, with `<name>` set to `cm-openplc`. The
-  program ZIP is built separately (`plc/plc-cellar/build_zip.sh`).
+  program ZIPs are built separately (`plc/common/build_zip.sh --all` for full
+  and lite, `plc/plc-cellar/build_zip.sh` for ci).
 - **Used by:** the five PLCs (`plc-brewhouse`, `plc-cellar`, `plc-packaging`,
   `plc-utilities`, `plc-power`) in lite and full; `plc-cellar` in ci.
 - **Pinned versions:** `OPENPLC_REF=v4.3.2` (a tag of
@@ -354,8 +362,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   feed (DESIGN.md 14): Zeek and Suricata read the port live, and Arkime indexes
   the rotating pcap files of Malcolm's capture container. The largest image.
 - **Base:** the shared noble `minbase` image plus Docker, Open vSwitch, `git`,
-  `skopeo`, `jq`, `openssl`, `apache2-utils`, `python3-pip` and pydantic 2.11.7 (pip), and
-  `python3-venv`, 64 GB disk.
+  `gnupg`, `skopeo`, `jq`, `openssl`, `apache2-utils`, `python3-pip` and pydantic
+  2.11.7 (pip), `python3-venv`, and `rsyslog`, 64 GB disk.
 - **Contents:**
   - Docker Engine and the Compose plugin from Docker's APT repository.
   - Malcolm's own checkout at `/opt/malcolm` (the commit of the `v26.10.0` tag,
@@ -456,9 +464,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     `--disable-gpu`.
   - What the HMI kiosk needs from the image, and nothing more: `chromium` (above),
     and `python3` (3.12) for the app's `cm-kiosk` script, which uses the standard
-    library only, because noble's `python3-pip` and pydantic 2.11.7 (pip) is 1.10, not the 2.x the
-    app uses (a script that imports `StringConstraints` from pydantic, or calls
-    `model_validate`, does not run on it). The script starts
+    library only (it does not depend on the pydantic 2.11.7 that the image
+    installs with pip for the range's other scripts). The script starts
     Chromium with `--remote-debugging-pipe` (no port) and signs in to FUXA as
     `operator` for it ([HMI kiosk](../apps/cherrymountain_apps/cherrymountain/README.md#hmi-kiosk)).
     Checked with the packaged `/usr/bin/chromium`: its `exec` keeps the pipe's
@@ -468,7 +475,10 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   - `wireguard-tools`, for `vendor-ws` (the phenix `wireguard` app injects
     `wg0.conf` and enables the tunnel).
   - Xfce settings that turn off the screen saver, the lock screen, and display
-    power management, because the root session has no password to unlock.
+    power management, because the root session has no password to unlock. They
+    are also written to `/etc/xdg/xdg-xubuntu`, over Xubuntu's own power settings
+    (display off after 15 minutes), which come first in the session's search
+    path.
   - The Wazuh agent, disabled.
   - The roles differ only in what is injected: the app's kiosk script, desktop
     entry, and URL (HMIs); protonuke (`corp-ws` and `vendor-ws`); the scripted
@@ -491,8 +501,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - **Purpose:** the engineering workstation (`ews`), and the one choke point from
   the DMZ into L1 (DESIGN.md 12.4 and 13).
 - **Base:** the phenix `mingui` variant on noble, plus `xrdp`, `xorgxrdp`,
-  `wireshark`, `tshark`, `mbpoll`, `polkitd`, `python3-venv`, `zip`, `unzip`, and
-  `gnupg`, 28 GB disk.
+  `wireshark`, `tshark`, `mbpoll`, `polkitd`, `jq`, `python3-pip` and pydantic
+  2.11.7 (pip), `python3-venv`, `zip`, `unzip`, `gnupg`, and `rsyslog`, 28 GB disk.
 - **Contents:**
   - OpenPLC Editor 4.3.4, the Linux AppImage unpacked to `/opt/openplc-editor`
     (no FUSE) with a launcher that passes `--no-sandbox`.
@@ -510,6 +520,11 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     as the technician.
   - `INSTALL_SSHD_HARDENING`: [SSH hardening](#ssh-hardening-on-the-vendor-path),
     with password logins kept for the vendor account, and xrdp refusing root.
+  - Root's password locked (`passwd -l root`): the technicians have ordinary
+    accounts, and the empty root password of the phenix default would let them
+    `su` to root. The console's autologin and cc do not use a password. Xfce's
+    screen saver, lock, and display power management are off, as on
+    `cm-desktop`.
 - **Build:** the commands above, with `<name>` set to `cm-ews`.
 - **Used by:** `ews`.
 - **Pinned versions:** OpenPLC Editor `4.3.4` (SHA-256 `b8186372...ec75fa0`),
@@ -535,7 +550,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     it again, which makes Mosquitto stop with "Duplicate persistence_location".
   - The Wazuh agent, disabled.
   - The cherrymountain app renders the rest at boot: credentials, `telegraf.conf`,
-    the Mosquitto listeners, the Grafana data sources and dashboard, and the
+    the Mosquitto listener (one, on every address), the Grafana data sources and dashboard, and the
     InfluxDB provisioning script (organization, buckets, token).
 - **Build:** the commands above, with `<name>` set to `cm-historian`.
 - **Used by:** `historian`.
@@ -587,9 +602,11 @@ directory first:
 - `PasswordAuthentication no` on the DMZ hosts (nobody logs in over SSH);
   `yes` on `cm-ews` for the vendor account's Guacamole SSH session. `cm-ews`
   also sets xrdp's `AllowRootLogin=false`, because PAM's `nullok` would let
-  root in with an empty password over RDP.
+  root in with an empty password over RDP, and locks root's password, so no
+  password path (su, polkit, xrdp, SSH) reaches root.
 - The script runs `ssh-keygen -A` and `sshd -t`, so a bad drop-in fails the
   build.
 
 The passwordless root console (VNC and cc) stays on every image for the white
-cell: an accepted lab-only risk, reachable only from the phenix host.
+cell (on `cm-ews` through autologin, with root's password locked): an accepted
+lab-only risk, reachable only from the phenix host.

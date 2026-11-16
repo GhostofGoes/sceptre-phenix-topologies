@@ -380,7 +380,8 @@ flowchart LR
 ```
 
 A device has one of the three servers: Modbus on the racks and power devices,
-BACnet on the building controllers, DNP3 on `rtu-der`.
+BACnet on the building controllers, DNP3 on `rtu-der`. `relay-main` also has a
+Telnet admin shell (port 23), reachable only from FIELD-PWR.
 
 ### Control
 
@@ -1021,8 +1022,9 @@ the scenario beside them.
 | `sync.py` | Embeds plantgen's per-variant app blocks into the scenarios and copies generated files into `phenix-injects/`; aware of Git LFS pointers. It also copies the brand to the screens, writes `tokens.css`, and builds the Guacamole branding extension |
 | `tools/netcheck/` | Static check of the topology, scenario, and workflow against the IP plan and conduit matrix: every conduit and every default drop, with tests ([README](tools/netcheck/README.md)) |
 | `phenix-injects/` | Files the ci scenario injects: federate units, OpenPLC and FUXA provisioning, generated copies |
-| `phenix-images/` | Image configs for every role (noble): `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa`, `cm-svc`, `cm-desktop`, `cm-ews`, `cm-historian`, `cm-guacamole`, `cm-wireguard`, `cm-malcolm`, `cm-wazuh`, with [one README](phenix-images/README.md) that has a section per image |
+| `phenix-images/` | Image configs for every role but the routers and soc-purple (noble): `cm-sim`, `cm-otsim`, `cm-openplc`, `cm-fuxa`, `cm-svc`, `cm-desktop`, `cm-ews`, `cm-historian`, `cm-guacamole`, `cm-wireguard`, `cm-malcolm`, `cm-wazuh`, with [one README](phenix-images/README.md) that has a section per image (and one for the upstream `kali-purple`) |
 | `plc/plc-cellar/` | The cellar PLC programs in Structured Text (`plc-cellar.st` for ci, `plc-cellar-plant.st` for full and lite), and the ci `build_zip.sh` |
+| `plc/plc-{brewhouse,packaging,utilities,power}/` | The other four PLC programs in Structured Text, built for full and lite by `plc/common/build_zip.sh` |
 | `plc/common/` | The per-variant PLC builder: alarm logic generated from `alarms.json`, strucpp, and the ZIPs under `phenix-injects/openplc/<variant>/` ([README](plc/common/README.md)) |
 | `tests/integration/` | `ci_slice_docker.sh`: the cellar slice (ot-sim, OpenPLC v4.3.2, FUXA) in Docker, no KVM |
 | `tests/soc/` | Tests of the Wazuh rules, the Suricata rules and Zeek script, the vendor-path scripts, and that every script a scenario step runs is on its VM |
@@ -1192,7 +1194,7 @@ it matters):
   `phenix-injects/vrouter/cm-vyos-config.sh` does them after boot, delivered by a
   topology `commands` entry (a `cc exec`): rule logging (`default-log` on every
   ruleset, and the syslog target for Wazuh), `ike-group IKE-1W key-exchange
-  ikev2`, a per-router NTP server, and an IPsec match on fw-edge's utility
+  ikev2`, fw-ot's NTP server (ot-svc), and an IPsec match on fw-edge's utility
   rule. The script is unverified on VyOS: it has run only against a stand-in
   that defines VyOS's commands as shell aliases, as VyOS does. It is injected into the
   image's persistence path, where the boot hook runs `*.script` files, and it
@@ -1205,15 +1207,18 @@ it matters):
   is an integer percent (the design and files use 1 percent); and
   the template has no `key-exchange`.
 - **Malcolm upload pipeline.** A pcap in `pcap/upload` reaches OpenSearch only
-  with four setup steps that the cm-malcolm boot script must do (DESIGN 14).
+  with the four fixes of the malcolm spike; `cm-malcolm-provision` applies them
+  at the first boot (DESIGN 14), which has not run in a VM.
 - **Mirror.** The `cherrymountain` app sets `df_default=false` on the mirror's
   GRE ports after each start, until the mirror app does it itself (its status
-  says `dfDefault: set`). The OpenFlow capture flow is injected
-  into malcolm (`phenix-injects/malcolm/99-zz-capture-flow.sh`) until the app or
-  the cm-malcolm image does it (DESIGN.md 14).
+  says `dfDefault: set`). The OpenFlow capture flow is added by
+  `cm-malcolm-capture.service`, which the injected startup hook
+  `phenix-injects/malcolm/99-zz-capture-flow.sh` starts, until the mirror app
+  does it (DESIGN.md 14).
 - **Images.** Every image the full topology names has a config in
-  `phenix-images/` except the prebuilt `vyos`, which comes from
-  sceptre-phenix-images. None has been built on a phenix host yet.
+  `phenix-images/` except two prebuilt ones from sceptre-phenix-images: `vyos`
+  and soc-purple's `kali-purple` (inet-traffic's `cm-svc-protonuke` is a copy of
+  `cm-svc`). None has been built on a phenix host yet.
 - **Generated blocks.** `ot-sim`, `cherrymountain`, `helics`, `ntp`, and
   `wireguard` come from plantgen through `sync.py`; the soh checks of plantgen
   are merged into the hand-written ones.

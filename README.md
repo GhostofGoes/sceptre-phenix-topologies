@@ -31,6 +31,7 @@ phenix experiment start hello-world
 ## Topologies
 
 - Wind Architecture. Four [topologies](renewables/wind/plant) are included for a representative wind plant architecture, and also a [turbine](renewables/wind/turbine) topology.
+- [cherrymountain-brewery](./cherrymountain-brewery) - An all open-source OT cyber range for a notional Colorado microbrewery: process, PLCs, SCADA, plant power, building automation, a SOC, and a vendor remote-access path.
 - [helloworld](./helloworld) - A basic example topology.
 - [soap](./soap) - Complete example topology demonstrating the Hardware-In-the-Loop (HIL) capabilities of SCEPTRE.
 - [soap-legacy](./soap-legacy) - The SOAP topology models a notional SCADA system for a 300 bus microgrid system.

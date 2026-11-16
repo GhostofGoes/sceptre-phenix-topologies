@@ -3799,9 +3799,9 @@ exists, and it never assumes a fixed `localhost` port.
   `POSTBUILD_*` scripts are phenix defaults and are skipped.
 - **Pins.** `OTSIM_REF` in `cm-otsim` is ot-sim commit `9dc33047`, the one the
   spike and the integration test built. `CM_REF` in `cm-sim` names a commit of
-  this repository, and `CM_SIM_TREE` and `CM_VIZ_TREE` the git tree ids of `sim/`
-  and `viz/` at it. The pin trails a commit that changes either directory by
-  one: a second commit moves all three, and `tests/soc/test_image_python.py`
+  this repository, and `CM_SIM_TREE` and `CM_VIZ_TREE` the git tree ids of the
+  two packages (`sim/cherrymountain_sim`, `viz/cherrymountain_viz`) at it. The
+  pin trails a commit that changes either package by one: a second commit moves all three, and `tests/soc/test_image_python.py`
   fails until it does.
 
 ### 15.8 Builder package
@@ -3842,7 +3842,7 @@ packaging and BAS sides for exercises that do not need them.
 **Image builds** (order and commands in
 [USER_GUIDE.md §5](../USER_GUIDE.md#5-build-the-vm-images)). `cm-malcolm`
 (64 GB) is the slowest, and `vyos` comes from sceptre-phenix-images. Rebuild
-`cm-sim` after a `sim/` or `viz/` change (move `CM_REF` and the two tree ids first) and the PLC ZIPs after a
+`cm-sim` after a change to the `sim/` or `viz/` package (move `CM_REF` and the two tree ids first) and the PLC ZIPs after a
 `plant.yaml` change (`plc/common/build_zip.sh --all`).
 
 **Mirror option on the host.** The `cherrymountain` app sets
@@ -4651,7 +4651,7 @@ lists everything that is left to do.
 | Serial: the socat link has no baud pacing, so loss and timing say nothing about a real RS-485 bus. phenix PR #130's QEMU-socket serial app fails when a VM is redeployed ([§15.2](#152-apps)) | Stay on the current serial app, which carries ot-sim's own Modbus RTU. PR #130 needs the fixes of its row in [§16](#16-new-and-extended-software) first; the spike's patch is `spikes/serial/pr130-serial.patch`. Modbus TCP remains the fallback |
 | The phenix `vrouter` app cannot log, set a syslog target, write IKEv2 `key-exchange`, or give each router its own NTP source; it filters only the `forward` chain; it takes only integer netem loss | `cm-vyos-config.sh` does the first four after boot, isp-rtr boots first, the 1 % loss replaces 0.1 %, and `netcheck` reports router-local traffic as unfiltered. Upstream follow-ups in §16. The script is unverified on VyOS until a VM run |
 | Hardened systemd units are verified offline only | A seccomp emulation of the unit sandboxes checks them; it found that every HELICS federate died under `cm-federate@.service` (no `AF_NETLINK` for `getifaddrs`; `sched_setscheduler` and `mbind` are in the filtered `@resources`) and that `cm-bbmd.service` killed the BBMD at import (readline calls `setfsuid`), both fixed. A later review found four more of the kind, also fixed: `cm-wazuh-provision.service` filtered `setpriority`, which PAM calls in every `runuser`, and lacked the `@pkey` calls of the dashboard's Node 18 tool; `cm-guacamole.service` had no `HOME`, without which the Docker CLI under `ProtectHome` does not find its compose plugin; `fuxa.service` hid the directory where FUXA's OPC UA client keeps its certificates; and `cm-malcolm-provision` read `/proc/meminfo`, which `ProcSubset=pid` hides. The first VM run checks `DynamicUser` with `StateDirectory`, read-only paths, `MemoryDenyWriteExecute`, and `ProcSubset=pid` on `fuxa.service`, the federate units, and the Wazuh provisioning unit's Java tools at runtime, because `systemd-analyze` cannot |
-| `CM_REF` in `cm-sim` trails `sim/` changes (`OTSIM_REF` is pinned to the tested ot-sim `9dc33047`) | It did trail once: with that image the cellar and packaging federates stopped at their first step. `cm-sim` now records the tree ids of `sim/` and `viz/` at `CM_REF`, and a test fails from the commit after a change to either until the pin and the ids move (`tests/soc/test_image_python.py`) |
+| `CM_REF` in `cm-sim` trails `sim/` changes (`OTSIM_REF` is pinned to the tested ot-sim `9dc33047`) | It did trail once: with that image the cellar and packaging federates stopped at their first step. `cm-sim` now records the tree ids of the two packages (`sim/cherrymountain_sim`, `viz/cherrymountain_viz`) at `CM_REF`, and a test fails from the commit after a change to either until the pin and the ids move (`tests/soc/test_image_python.py`) |
 | OpenDSS islanding needs a source in each island | Genset modeled as a switched Vsource; pandapower fallback |
 | Checks that need a VM and have not run | Open, to run on the first VM: `cm-wazuh-provision`'s re-run path (the marker and StartLimit of `f4e4ceb`); whether `compilation-status` reports a stale `SUCCESS` right after an upload (the guard in §12.1 is in place either way); `cm-load-images` under `PrivateTmp`, `ProtectSystem=strict`, and `MemoryDenyWriteExecute`; whether `ovs-vsctl`/`ovs-ofctl` can write their logs under `cm-malcolm-capture.service`'s hardening; BACpypes3 with several `--bbmd` arguments; the OpenPLC upload accepting `debug_map.json` in the ZIP; the OPC UA namespace index 2 and the S7 tag types the full FUXA projects assume, against the range's own PLCs; the new SCORCH runs; and the five PLC programs in a runtime |
 | Script tests still missing | Open: `cm-load-images` and the ot-svc chrony and dnsmasq hooks have no tests (`cm-vyos-config.sh`, `cm_selftest_pcap.py`, and `cm-malcolm-provision`'s sid guard do) |

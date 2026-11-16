@@ -17,6 +17,7 @@ purpose) stays in DESIGN.md, in the section it belongs to and in
 - [Exercise support](#exercise-support)
 - [The white cell's 3D view](#the-white-cells-3d-view)
 - [Upstream](#upstream)
+- [Images and builds](#images-and-builds)
 - [Sources still to read](#sources-still-to-read)
 - [Evaluated, not scheduled](#evaluated-not-scheduled)
 - [Decided against](#decided-against)
@@ -138,10 +139,10 @@ start.
 - Every image built on a phenix host. Watch the first build and the first boot
   for services that start in the build chroot and for a wait on
   `systemd-networkd-wait-online`.
-- The hardened systemd units: `DynamicUser` with `StateDirectory`, read-only
-  paths, and `MemoryDenyWriteExecute` on `fuxa.service`, the federate units,
-  `cm-load-images`, `cm-malcolm-capture.service`, and the Wazuh provisioning
-  unit.
+- The hardened systemd units: `DynamicUser` with `StateDirectory` (the federate
+  units), `ProtectSystem=strict` with `ReadWritePaths` (`fuxa.service`,
+  `cm-load-images`, `cm-malcolm-capture.service`, the Wazuh provisioning unit),
+  and `MemoryDenyWriteExecute` (`cm-load-images`, `cm-malcolm-capture.service`).
 - The `df_default` command's path through minimega on a cluster
   ([§15.9](DESIGN.md#159-operations)).
 - The outage and CO₂ scenarios, the four SCORCH runs, and an e2e run.

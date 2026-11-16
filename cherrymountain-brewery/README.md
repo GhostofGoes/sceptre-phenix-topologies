@@ -1192,8 +1192,9 @@ it matters):
   `phenix-injects/vrouter/cm-vyos-config.sh` does them after boot, delivered by a
   topology `commands` entry (a `cc exec`): rule logging (`default-log` on every
   ruleset, and the syslog target for Wazuh), `ike-group IKE-1W key-exchange
-  ikev2`, and a per-router NTP server. The script is unverified on VyOS (the
-  syslog syntax is tried as `remote`, then `host`). It is injected into the
+  ikev2`, a per-router NTP server, and an IPsec match on fw-edge's utility
+  rule. The script is unverified on VyOS: it has run only against a stand-in
+  that defines VyOS's commands as shell aliases, as VyOS does. It is injected into the
   image's persistence path, where the boot hook runs `*.script` files, and it
   waits for the boot commit.
 - **phenix issues to report upstream.** The vrouter app keeps the NTP address

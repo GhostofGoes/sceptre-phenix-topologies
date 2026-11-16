@@ -418,8 +418,9 @@ def test_agent_conf_files_are_well_formed() -> None:
 
 
 def test_every_agent_sends_its_authentication_log() -> None:
-    """The packaged agent configuration reads neither auth.log nor the journal, so
-    without this no sign-in on a host reaches the manager."""
+    """Sign-ins reach the manager from auth.log: the enrollment hook removes the
+    journald reader the agent package configures (the same lines twice otherwise),
+    so without this entry no sign-in on a host would arrive at all."""
     for group, agents in AGENT_GROUPS.items():
         for agent in agents:
             assert "/var/log/auth.log" in agent_localfiles(group, agent), agent

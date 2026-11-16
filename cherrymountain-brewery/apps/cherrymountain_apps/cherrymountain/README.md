@@ -192,7 +192,7 @@ A fuller plant (excerpt):
 {
   "stage": "running",
   "updated": "2026-11-09T01:00:00+00:00",
-  "provisioned": "5/5",
+  "provisioned": "4/5",
   "provisioning": {"plc-cellar": {"state": "provisioned"}, "scada-fuxa": {"state": "pending", "detail": "cm-fuxa-provision.service=activating"}},
   "kpis": {"available": true, "batches": 2, "bottles": 3968, "packaged_bbl": 13.0, "energy_kwh": 120.0, "kwh_per_bbl": 9.23, "demand_kw": 88.5}
 }
@@ -497,10 +497,13 @@ cd cherrymountain-brewery/apps
 python -m pytest
 ```
 
-The tests run every stage on `tests/fixtures/experiment-ci.json`, which
-`tests/build_fixtures.py` records from `phenix-configs/topology-ci.yml`,
-`scenario-ci.yml`, `phenix-ci.yml`, and `tests/fixtures/app-ci.yml` (a copy of
-the scenario's own block; `test_fixtures.py` fails when the two differ). They read
+The tests run every stage on two recorded experiments,
+`tests/fixtures/experiment-ci.json` and `experiment-full.json`.
+`tests/build_fixtures.py` records each from its variant's topology (with the
+included modules), scenario, and workflow (`phenix-ci.yml`, `phenix.yml`) and
+from `tests/fixtures/app-ci.yml` or `app-full.yml` (copies of the scenarios' own
+blocks; `test_fixtures.py` fails when one differs, or when a recorded experiment
+is not current). They read
 the real plantgen output, program ZIP, and FUXA builder from this repository.
 `test_chain.py` runs the real phenix user apps of each variant's scenario
 (`ot-sim`, this app, `helics`, `protonuke`, `wireguard`) in scenario order, as
@@ -519,13 +522,13 @@ in [HMI kiosk](#hmi-kiosk).
 ## Limitations
 
 - **Not run on a VM.** Every image the app renders for exists
-  (`phenix-images/`), but none of it has booted: the historian, Guacamole,
-  and Wazuh render and pass their tests only. The HMI kiosk's script ran against
+  (`phenix-images/`), but none of it has booted: the historian and Wazuh render
+  and pass their tests only, and the Guacamole stack ran once in containers
+  outside a VM, with files rendered like the app's. The HMI kiosk's script ran against
   a real FUXA and the image's Chromium on a virtual display, not on its VM
   ([HMI kiosk](#hmi-kiosk) lists what a first boot must still show). TODO(verify) notes
-  in `render.py` mark guesses: FUXA's InfluxDB DAQ store keys, the Grafana query
-  fields, the s7comm mapping types beyond `int_output`/`int_input`, and the
-  Guacamole schema version.
+  in `render.py` mark guesses: FUXA's InfluxDB DAQ store keys, the s7comm mapping
+  types beyond `int_output`/`int_input`, and the Guacamole schema version.
 - The KPIs need `GET /api/v1/kpis` from the sim-ctl event API (the weather
   federate serves it in full and lite); until it answers, the status says
   `available: false` and why. Its compliance figures (TTB barrels, fill, CIP,

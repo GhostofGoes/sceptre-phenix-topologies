@@ -2,7 +2,7 @@
 # SOC and without vendor remote access. vrouter comes from the full scenario
 # (fromScenario copies its metadata and hosts, which are identical here: the
 # DMZ and SOC interfaces stay, with nothing attached). protonuke and soh list
-# only the hosts the variant has; mirror and wireguard are absent. The
+# only the hosts the variant has; mirror, wireguard, and scorch are absent. The
 # generated blocks (ot-sim, cherrymountain, helics, ntp) are embedded by
 # sync.py between the sync:begin and sync:end markers; do not edit them.
 apiVersion: phenix.sandia.gov/v2

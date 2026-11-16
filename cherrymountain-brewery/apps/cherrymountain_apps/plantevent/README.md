@@ -71,7 +71,7 @@ Events (`event` selects the kind):
 | `genset-exercise` | `action`: `start` (default) or `stop`, `load_bank_kw` (0-100, default 0), `duration` (default 1800 s, the NFPA 110 monthly minimum) | Exercise the standby genset under load; the run goes into the genset test log and the 40 CFR 60.4211(f) test hours |
 | `chiller-fault` | `compressor` (1 or 2, default 1), `action`: `fail` (default) or `clear` | Glycol chiller compressor fault |
 | `co2-release` | `fv` (`FV-102`, `BBT-201`; required), `rate`: `low`, `medium`, `high` (default), `duration` (default 600 s) | CO2 release into the cellar |
-| `jam` | `machine` (`depalletizer`, `rinser`, `filler`, `capper`, `labeler` (default), `packer`), `duration` (default 300 s) | Packaging jam |
+| `jam` | `machine` (`rinser`, `filler`, `labeler` (default), `packer`; `depalletizer` and `capper` are accepted and jam the rinser and the filler; the simulation's `coder` and `kegger` cannot be named here), `duration` (default 300 s) | Packaging jam |
 | `weather-step` | `delta_f` (-60 to 60, required), `duration` (default 0: hold) | Step the outside temperature |
 | `cip-panel` | `circuit`: `bh`, `fv101` .. `fv104`, `bbt201`, `bbt202`, or `none` (required) | Swing the CIP panel onto a circuit, as a cellar worker would before a CIP run |
 | `co2-leak` | `zone`: `tank`, `filler`, or `draft` (required), `rate`: `low`, `medium`, `high` (default), `duration` (default 600 s) | CO2 leak on the supply piping at the bulk tank, the filler, or the cold room and draft system; at 30,000 ppm the supply shutoff closes the bulk valve and the leak stops |
@@ -181,7 +181,7 @@ runs).
 | `no cc tunnel to sim-ctl:8080; is the VM's C2 client active, and does sim-ctl carry a phenix/startup-autotunnel entry for port 8080?` | `create_tunnel: false` and no tunnel exists. Wait for sim-ctl's C2 client, add the autotunnel entry, or allow the component to create the tunnel. |
 | `sim-ctl has no active C2 client, so no cc tunnel can reach it` | sim-ctl has not booted or miniccc is not running. Check `cc clients`. |
 | `GET /api/v1/health: ConnectionError` | The tunnel exists but nothing listens on port 8080 in sim-ctl. Check the event API service there. |
-| `POST /api/v1/events: HTTP 400` | The API refused the event. Its reply is in the SCORCH status file's logs. |
+| `POST /api/v1/events: HTTP 400` | The API refused the event: an unknown kind, or a parameter it cannot use. The component keeps the status code only, not the API's `{"error": ...}` reply. Check the event's fields against the table above, or post the body by hand to read the reason. |
 | `events.0: Input tag 'outage' found using 'event' does not match any of the expected tags` | Unknown event kind. Use one from the table above. |
 | warning `metadata warning for component '<name>': events.0.fvv: unknown key, ignored` | A misspelled field; it is not sent. Fix the key. |
 

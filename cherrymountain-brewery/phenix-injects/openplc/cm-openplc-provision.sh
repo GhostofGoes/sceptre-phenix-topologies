@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provision the OpenPLC v4 runtime on plc-cellar (DESIGN.md 12.1, steps 3-5):
+# Provision the OpenPLC v4 runtime on a PLC (DESIGN.md 12.1, steps 3-5):
 #   repack ZIP with plugin configs -> create-user -> login -> upload-file ->
 #   poll compilation-status -> start-plc -> confirm STATUS:RUNNING.
 # Follows tests/integration/openplc_provision.sh (from the retired openplc-v4

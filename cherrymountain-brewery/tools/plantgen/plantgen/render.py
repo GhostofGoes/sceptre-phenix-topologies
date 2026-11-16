@@ -628,7 +628,7 @@ def otsim_app(plant: Plant) -> dict[str, Any]:
         "cpu-module": {"api-endpoint": "127.0.0.1:9101"},
     }
     # No ground-truth-module: ot-sim's writes one document per point per
-    # second from every device (about 27 million a day in the full plant) into
+    # second from every device (about 28 million a day in the full plant) into
     # sim-ctl's 16 GB disk, and nothing reads them. The federates record the
     # same values every step (cherrymountain_sim.groundtruth).
 

@@ -32,7 +32,7 @@ phenix host.
 | 2: Simulation | **Built, run offline.** `plant.yaml`, plantgen, the seven federates, ground truth, and the offline harness ([§9.6](#96-implementation-status-and-validation)). A simulated brewer, cellar crew, and line operator do the hand work, so beer moves from the brewhouse to the filler over days. The whole plant ran offline for 54 simulated hours | The ot-sim `logic` blocks, and a 24 h soak under HELICS |
 | 3: Control | **Built, run offline.** All five PLC programs and their full and lite ZIPs, with the alarm logic generated from `alarms.json`, the hardwired CO₂ interlock ([§6.7](#67-cellar-co2-life-safety-interlock)), the peer reads, the fermentation profile, and the packaging line's operator panel. All five run in the tests as compiled programs: four against the federates, and plc-utilities (its CIP sequence) with its inputs set by hand. The scada-fuxa and bas-fuxa projects are generated, with a process graphic for each area, each run in a real FUXA server against a stand-in plant ([fuxa/README.md](../fuxa/README.md#the-process-graphics)); the batch engine brews a double-brew day unattended in the offline federation and ran in a real FUXA server against a stand-in PLC, with the operator sign-in and the kiosk's automatic sign-in. The `cherrymountain` app provisions the PLCs, FUXA, the historian, and the kiosks | The full and lite programs in an OpenPLC runtime, plc-utilities against the federates, and FUXA writing to plc-brewhouse over OPC UA |
 | 4: Power and BAS | **Built, run offline.** The power and building federates. `plc-power` does load shed, staged restoration, and BESS dispatch, and schedules the on-peak shift, the recharge, the monthly demand reset, and the weekly genset exercise from the ATS controller's clock ([§12.1](#121-openplc-v4-runtime-v3-fallback)). The BAS controllers serve BACnet through the ot-sim BACnet module in this repository ([§16](#16-new-and-extended-software)), tested against BACpypes3 and BAC0 clients | The outage and CO₂ scenarios on a VM, and FUXA reading the controllers through the BBMDs |
-| 5: SOC and remote access | **Built, not run.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; the Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), the Zeek script (checked in Malcolm's Zeek image), and the Wazuh rules (checked in Wazuh 4.14.1 logtest), each with tests; per-experiment vendor and WireGuard secrets. Later reviews of both configurations against the source and documentation of Malcolm 26.10.0 and Wazuh 4.14.10 changed them ([§14](#14-blue-team-monitoring)). Malcolm's provisioning and its capture containers then ran for real outside a VM (all 40 Suricata rules on 8.0.7, all 16 Zeek notices, and Arkime's sessions from the rotated pcap, on a stand-in for the mirror port), and so did the Guacamole stack; the Wazuh changes ran through the offline evaluator and an emulation of the unit's sandbox, not in logtest | Everything on a VM and under systemd: the mirror's feed into Malcolm, with Logstash, NetBox, and Strelka, which no run started; the Wazuh first-boot setup, the agents, and syslog; and the vendor's path end to end |
+| 5: SOC and remote access | **Built, run in part outside a VM.** Images and boot provisioning for Malcolm, Wazuh, WireGuard, Guacamole, and the desktops; the Suricata rules (checked on Suricata 7.0.3, 8.0.2, and Malcolm's 8.0.7), the Zeek script (checked in Malcolm's Zeek image), and the Wazuh rules (checked in Wazuh 4.14.1 logtest), each with tests; per-experiment vendor and WireGuard secrets. Later reviews of both configurations against the source and documentation of Malcolm 26.10.0 and Wazuh 4.14.10 changed them ([§14](#14-blue-team-monitoring)). Malcolm's provisioning and its capture containers then ran for real outside a VM (all 40 Suricata rules on 8.0.7, all 16 Zeek notices, and Arkime's sessions from the rotated pcap, on a stand-in for the mirror port), and so did the Guacamole stack; the Wazuh changes ran through the offline evaluator and an emulation of the unit's sandbox, not in logtest | Everything on a VM and under systemd: the mirror's feed into Malcolm, with Logstash, NetBox, and Strelka, which no run started; the Wazuh first-boot setup, the agents, and syslog; and the vendor's path end to end |
 | 6: Polish | **Started.** `cm-viz`, the white cell's 3D view, built and tested offline ([§15.10](#1510-white-cell-3d-view-cm-viz)); `plantevent` and the four plant-driving SCORCH runs ([§15.6](#156-scorch-pipelines)); the operations runbook ([§15.9](#159-operations)); the brand on every screen ([§15.11](#1511-brand)); nine test suites in prek and CI | The Builder package, an e2e run on a VM, cm-viz in the range with its operator-view relay, and the upstream pull requests (the ot-sim BACnet module and the `ot-sim` app's support for it are on fork branches) |
 
 [§18](#18-implementation-roadmap) has each phase's scope and exit criteria and
@@ -116,8 +116,9 @@ topology uses phenix's workflow layout, core and user apps, state of health
   SCORCH, Builder, and the workflow directory layout.
 - Show how brewery subsystems interact: process ↔ utilities ↔ building ↔
   power ↔ utility grid.
-- Fit one host with about 128 GB RAM and 32 or more cores. A lite variant
-  and a CI variant scale it down.
+- Fit one host with 32 or more cores and about 144 GB RAM; a 128 GB host
+  runs the full variant with Malcolm at its 24 GB minimum
+  ([§15.9](#159-operations)). A lite variant and a CI variant scale it down.
 
 **Language requirement**
 
@@ -406,8 +407,9 @@ finding to a design choice.
     data, which raises the stakes for data integrity. The historian's raw
     buckets keep 30 days, an operational window; its `records` bucket keeps a
     daily copy of the series a TTB or excise audit draws on for three years
-    ([§12.4](#124-historian-and-engineering-workstation)). FUXA's daily
-    production report and batch records remain the record of record.
+    ([§12.4](#124-historian-and-engineering-workstation)). FUXA's batch
+    records, and its daily production report once that is built
+    ([§12.2](#122-fuxa-two-instances)), remain the record of record.
 - **Altitude-aware control.** Boil detection uses the local wort boiling
   point, not 212 °F. All pressure setpoints are stored as absolute pressure
   and shown as gauge pressure using the site ambient pressure
@@ -525,9 +527,11 @@ flowchart LR
   inline O₂ (mass flow controller with DO probe); hop doser for whirlpool
   additions.
 - **Control:**
-  - HLT temperature PID on steam.
-  - Mash step-temperature PID on jacket steam, with ramp/soak segments
-    taken from the recipe.
+  - HLT temperature control on steam (proportional as built; PID is
+    [future work](FUTURE_WORK.md#control-and-safety),
+    [§12.1](#121-openplc-v4-runtime-v3-fallback)).
+  - Mash step-temperature control on jacket steam (proportional as built),
+    with ramp/soak segments taken from the recipe.
   - Lauter: runoff flow controlled against bed differential pressure;
     sparge flow balanced to runoff; rake lowered when differential pressure
     is high.
@@ -947,7 +951,7 @@ flowchart TB
   UTIL["Summit Valley Power<br/>12.47 kV feeder"] --> XFMR["T-1 500 kVA pad-mount<br/>12.47 kV : 480Y/277 V"]
   XFMR --> MAIN["52-M main breaker<br/>(relay-main)"]
   MAIN --> MSB["MSB 800 A 480 V switchboard"]
-  MSB --> MCC1["MCC-1: mill, MLT rake, wort/glycol/CIP pumps, exhaust and MUA fans"]
+  MSB --> MCC1["MCC-1: mill, MLT rake, wort/CIP pumps, exhaust and MUA fans"]
   MSB --> BLR["Electric steam boiler 200 kW"]
   MSB --> PKGP["PP-PKG: bottling line, keg washer heater 12 kW"]
   MSB --> AIR["Air compressor 15 hp"]
@@ -1045,7 +1049,9 @@ flowchart TB
      peak at all hours, so the BESS holds 15-minute demand under a
      configurable target (default 250 kW). It keeps at least 50% state of
      charge (100 kWh) before 05:00 on brew days, recharging overnight from
-     the grid at off-peak rates.
+     the grid at off-peak rates (as built, only while `PWR.DMD.XS03.BREWDAY`
+     is set, and nothing sets it yet:
+     [§19](#19-risks-and-open-questions)).
   2. *Priority 2: on-peak energy shift.* Any remaining energy discharges
      during the 17:00–21:00 weekday window, typically about 50 kW across the
      window when state of charge allows.
@@ -1611,8 +1617,10 @@ names CoolProp, it is the reference value.
   real time. A double-brew day takes about 11 h of wall time, with an
   optional speed-up for demos. Fermentation kinetics run with a
   configurable compression factor (default 48×, so 1 simulated day takes
-  30 minutes). A full primary fermentation shows in about 2.5–3 hours, and
-  fermentation through crash in about 3.5–4 hours.
+  30 minutes). A full primary fermentation shows in about 2.5–3 hours. The
+  crash starts about 5 hours in (kinetic day 10), and because tank cooling
+  runs in real time it takes about 8 more hours to reach 34 °F
+  ([§6.3](#63-areas-equipment-and-control-strategies)).
 - **Time-base rules (compression must not distort coupled physics):**
   - *Kinetic state is compressed.* Sugar, ethanol, biomass, and diacetyl
     advance 48× faster.
@@ -1627,12 +1635,16 @@ names CoolProp, it is the reference value.
   - *Tank thermal and fluid dynamics run in real time.* PLC temperature
     control, valve behavior, and alarm delays (for example the 15-minute
     deviation alarm) stay in wall time.
-  - *Recipe-time logic runs in sim time.* Profile steps (free-rise,
-    diacetyl rest, dry-hop day, crash start) are keyed to fermentation
-    progress (gravity) or to `cellar/clock.sim_hours`. The FUXA batch
-    engine and `plc-cellar` profile timers read that clock.
+  - *Recipe-time logic follows the fermentation.* plc-cellar's profile
+    stages are keyed to gravity (the density meter), and its diacetyl rest
+    is a plant-time timer sized by hand for the compression (`KC01.SP`,
+    180 minutes for 144 h at 48×,
+    [§6.3](#63-areas-equipment-and-control-strategies)); the cellar
+    autopilot stages on kinetic hours since pitch. `cellar/clock.sim_hours`
+    (`CEL.CLK.KI01.PV`) is published for the HMI only: neither plc-cellar
+    nor the FUXA batch engine reads it.
 - **Staggered initial state.** The plant starts mid-production, so every
-  phase is visible within minutes of `experiment start`:
+  phase is visible within the first two hours of `experiment start`:
 
 | Vessel | Initial state |
 |---|---|
@@ -1641,7 +1653,7 @@ names CoolProp, it is the reference value.
 | FV-103 | Day 5, dry hop in progress (hop creep) |
 | FV-104 | Cold crash ramping to 34 °F |
 | BBT-201 | Carbonating to 2.6 vol |
-| BBT-202 | Feeding the bottling line (packaging shift running) |
+| BBT-202 | On line to the filler, 70 % full (the packaging shift starts at 06:00, 90 minutes after the default start) |
 
 - **Clock.** The default simulation clock starts on a summer weekday at
   04:30 local time, ahead of the 05:00 brew start.
@@ -1695,7 +1707,7 @@ names CoolProp, it is the reference value.
   white-cell view. Users reach both, and the event API, through
   `phenix/startup-autotunnel` port forwards ([§15.3](#153-topology-modules-and-variants)).
   ot-sim's own `ground-truth-module` is **not** used: it posts one document
-  per point per second from every device (about 27 million a day in the full
+  per point per second from every device (about 28 million a day in the full
   plant) into sim-ctl's 16 GB disk, and nothing reads them.
 - **Truth no device measures.** The cellar federate publishes, per vessel,
   `cellar/<unit>.level_pct` (FVs: the fill, which has no transmitter),
@@ -1802,7 +1814,9 @@ run.
   writes reaching the federate continuously, which both halves do according to
   their source: OpenPLC v4.3.2's `modbus_master` plugin writes every write point
   (FC 15/16) every cycle it is due, with no change detection
-  (`modbus_master_plugin.py`; plantgen sets a 250 ms cycle), and ot-sim
+  (`modbus_master_plugin.py`; `plant.yaml` `poll_ms` sets the cycle: 100 ms
+  on plc-brewhouse, plc-cellar, and plc-packaging, 250 ms on plc-utilities
+  and plc-power), and ot-sim
   `9dc33047` pushes an update for every Modbus write request, changed or not,
   which its io module sends to the federate's endpoint at the next step. So no
   PLC heartbeat tag is needed; a VM run must still confirm it. The power and
@@ -1892,6 +1906,7 @@ flowchart TB
     MAL["malcolm"]
     WAZ["wazuh"]
     ANA["soc-analyst"]
+    PUR["soc-purple"]
   end
   ISP --- FWEDGE
   ISP --- TRAFFIC
@@ -1924,7 +1939,8 @@ WireGuard tunnel, and `dmz-jump`, the Guacamole jump host). The DMZ connects to
 `fw-ot`, and `fw-ot` is the only router into the OT zones: OPS (`scada-fuxa`,
 `historian`, `ews`, and `ot-svc`, which also hosts the OPS BBMD), HMI (the two
 kiosks), CTRL (the five PLCs), DERLINK (`rtu-der`), BAS (`bas-fuxa`, `bas-bbmd`,
-and the three BAS devices), and SOC (`malcolm`, `wazuh`, `soc-analyst`). The
+and the three BAS devices), and SOC (`malcolm`, `wazuh`, `soc-analyst`,
+`soc-purple`). The
 field networks are not routed: each PLC reaches its I/O devices (`rio-*`,
 `glycol-chiller`, and the FIELD-PWR power devices) only over its own FIELD
 VLAN, and `rtu-der` is a second Modbus client of the power devices. The BBMD on
@@ -1980,11 +1996,13 @@ notional design targets):
   statefully; there is no data diode. Control conduits necessarily start
   downward: SCADA and the EWS to the PLCs, dmz-jump to the EWS, and the
   utility DERMS to rtu-der.
-- **Cross-zone conduits cross at least one firewall.** The rows marked "—"
-  in [§10.3](#103-conduit-matrix-default-deny-stateful-logged) are not
+- **Cross-zone conduits cross at least one firewall.** The rows that no rule
+  of fw-edge or fw-ot carries in
+  [§10.3](#103-conduit-matrix-default-deny-stateful-logged) are not
   cross-zone: intra-DMZ (vendor tunnel to dmz-jump through dmz-vpn, which
   enforces its own nftables forward policy, [§13](#13-vendor-remote-access)),
-  intra-SOC (soc-analyst), and fw-edge's own NTP from inet-traffic. There are
+  intra-SOC (soc-analyst and soc-purple), and fw-edge's own NTP from
+  inet-traffic. There are
   two documented deviations:
   - The utility DNP3 conduit ([§7.5](#75-utility-der-link)) reaches an L1
     gateway from L5 through fw-edge and fw-ot with no protocol break. It is
@@ -2089,7 +2107,7 @@ static routes are set in topology `network.routes`:
 | CORP → INET | TCP 80/443/25, UDP 123/53 (SNAT) | fw-edge | Office web and email (protonuke noise); public NTP/DNS stand-in on inet-traffic |
 | fw-edge → inet-traffic | UDP 123 | — | Edge firewall time from the public NTP stand-in |
 | INET → dmz-vpn | UDP 51820 (DNAT 203.0.113.2 → 10.10.20.10) | fw-edge | Vendor WireGuard |
-| vendor-ws (tunnel 10.99.0.2) → dmz-jump (10.10.20.11) | TCP 443 | dmz-vpn's own nftables `forward` policy (default drop, [§13](#13-vendor-remote-access)); WireGuard AllowedIPs also restrict the peer to dmz-jump | Guacamole login. Anything else from the tunnel address is dropped and logged (`cm-wg-drop`), and Wazuh rule 100105 alerts on it |
+| vendor-ws (tunnel 10.99.0.2) → dmz-jump (10.10.20.11) | TCP 443 | dmz-vpn's own nftables `forward` policy (default drop, [§13](#13-vendor-remote-access)); WireGuard AllowedIPs also restrict the peer to dmz-jump | Guacamole login. Anything else from the tunnel address is dropped and logged (prefix `[cm-wg-drop]`), and Wazuh rule 100105 alerts on it |
 | DMZ hosts → ot-svc | UDP 123, UDP/TCP 53 | fw-ot | Time (Guacamole TOTP needs it) and DNS |
 | util-rtr (203.0.113.3) ↔ fw-edge (203.0.113.2) | IKE UDP 500/4500, ESP | fw-edge | Utility IPsec |
 | utility-derms (192.0.2.10) → rtu-der (10.20.15.10) | TCP 20000 (DNP3) | fw-edge, fw-ot | DER telemetry and control |
@@ -2112,9 +2130,10 @@ static routes are set in topology `network.routes`:
 | DMZ hosts → wazuh | TCP 1514/1515 | fw-ot | Wazuh agents (initiated upward; replies stateful) |
 | OPS/HMI/BAS Linux hosts → wazuh | TCP 1514/1515 | fw-ot | Wazuh agents |
 | soc-analyst → malcolm, wazuh | intra-zone | — | Analyst consoles |
+| soc-purple → malcolm, wazuh | intra-zone | — | Analysis workstation consoles (TCP 443). Like every SOC host it has no conduit into the plant's zones ([future work](FUTURE_WORK.md#a-conduit-for-soc-purples-active-tools)) |
 
 Intra-zone traffic is not filtered by the firewalls. That covers scada-fuxa ↔
-historian (InfluxDB 8086, MQTT 1883) in OPS and the peer Modbus between
+historian (InfluxDB 8086; MQTT 1883 once the PackTags publisher is built) in OPS and the peer Modbus between
 plc-utilities and plc-cellar in CTRL. Malcolm sees this traffic through the
 mirror.
 
@@ -2196,13 +2215,13 @@ default drop through the static routes, NAT, IPsec, and these rulesets
 | PLCs → RIO and power devices | Modbus TCP (502) | OpenPLC v4 `modbus_master` ↔ ot-sim Modbus server |
 | plc-utilities → plc-cellar | Modbus TCP (502) | Peer interlock reads (east–west) |
 | bas-fuxa → BAS devices | BACnet/IP (UDP 47808) | FUXA BACnet client ↔ new ot-sim BACnet module. Same VLAN; the Who-Is goes to the directed broadcast `10.30.10.255`, so no BBMD is involved (untested, [§8.1](#81-spaces-equipment-and-bacnet-devices)) |
-| scada-fuxa → BAS devices | BACnet/IP (UDP 47808) through fw-ot | Same client and module. Who-Is discovery goes through the BBMDs below; the I-Am returns by unicast; reads and writes are unicast |
+| scada-fuxa → BAS devices | BACnet/IP (UDP 47808) through fw-ot | Same client and module. Who-Is discovery goes through the BBMDs below; the I-Am returns by unicast; reads are unicast, and scada-fuxa never writes ([§6.7](#67-cellar-co2-life-safety-interlock)) |
 | ot-svc ↔ bas-bbmd | BACnet/IP BBMD (UDP 47808) | BACpypes3 BBMDs; each BDT lists both |
 | utility-derms → rtu-der | DNP3 (TCP 20000) over IPsec | ot-sim DNP3 master ↔ ot-sim FEP outstation |
 | rtu-der → power devices | Modbus TCP (502) | ot-sim FEP Modbus client |
 | relay-main | Telnet (23) | ot-sim `telnet` module (an ot-sim admin shell with its default banner). Reachable only from the FIELD-PWR segment (plc-power, rtu-der), so it is a lateral-movement artifact, not a sanctioned path. The `cherrymountain` app adds it to the config ([§12.3](#123-ot-sim-field-devices)) |
 | ews → CTRL PLCs | OpenPLC v4 runtime REST API (TCP 8443) | HTTPS with a self-signed certificate (`phenix-injects/openplc/cm-openplc-provision.sh` uses `curl -k`, and the EWS tool does not verify the certificate). Mirrored capture holds only TLS sessions: Zeek and Suricata cannot read the program upload or start/stop calls, only the session ([§14](#14-blue-team-monitoring)) |
-| FUXA → historian | InfluxDB HTTP (8086); MQTT (1883) PackTags/OEE | FUXA DAQ; FUXA server script publishing to Mosquitto; Telegraf → InfluxDB |
+| FUXA → historian | InfluxDB HTTP (8086); MQTT (1883) PackTags/OEE, once the publisher is built | FUXA DAQ. Mosquitto and Telegraf's `mqtt_consumer` are there; the FUXA server script that publishes to them is not built ([§12.2](#122-fuxa-two-instances)) |
 | HMIs → FUXA | HTTP/WebSocket (1881) | Chromium kiosk |
 | vendor-ws → dmz-vpn → dmz-jump → ews | WireGuard (UDP 51820) → HTTPS (443) → RDP (3389)/SSH (22) | phenix `wireguard` app; Guacamole; xrdp |
 | Field and sim nodes | HELICS (MGMT only) | ot-sim `io` module, Python federates |
@@ -2396,8 +2415,8 @@ none of the range's Suricata rules, no NetBox, and no file scanning.
 - **`lite`** (no SOC, no vendor remote access): 37 VMs, 45 vCPUs, 60 GB.
 - **`ci`** (the cellar slice: sim-ctl, sim-process, rio-cellar,
   plc-cellar, scada-fuxa): 5 VMs, 7 vCPUs, about 8 GB.
-  - It uses CI memory overrides: sim-ctl 1/2 with no ground-truth
-    OpenSearch, sim-process 2/2, scada-fuxa 2/2.
+  - Its sizes are its own: sim-ctl 1/2 with no ground-truth OpenSearch (2/6
+    in full), sim-process 2/2 (1/1 in full), and scada-fuxa 2/2 as in full.
   - scada-fuxa and plc-cellar share one flat CTRL VLAN, with no firewall.
   - FUXA DAQ goes to its built-in SQLite, since there is no historian.
   - It needs `/dev/kvm` on the runner, with 1.75× vCPU overcommit on a
@@ -3804,7 +3823,7 @@ steps: the host and repositories, the builds, the first start of each variant,
 what to check, and how to run an exercise.
 
 **Host prerequisites** ([USER_GUIDE.md §2](../USER_GUIDE.md#2-prepare-the-host)).
-The full variant needs about 128 GB RAM and 32 cores (60 GB for lite;
+The full variant is sized for 32 cores and about 144 GB RAM: its VMs take 127 GB (60 GB for lite;
 [§11](#11-node-inventory-and-resources)) and the phenix fork with the
 autotunnel loop ([§15.3](#153-topology-modules-and-variants)). Image storage:
 twelve qcow2 images of 8 to 64 GB virtual size; compressed they take roughly

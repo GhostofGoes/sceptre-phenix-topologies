@@ -28,11 +28,17 @@ on the demand cap, the on-peak shift, the overnight and brew-day recharge, the
 monthly demand reset, and the weekly genset exercise, all from the ATS
 controller's clock, which the program distrusts when it stops or jumps). Each
 was compiled by strucpp and its C++ checked with `g++ -fsyntax-only` against the
-strucpp runtime headers; none has run in an OpenPLC runtime yet. plc-power's C++
-is also built and run scan by scan against the federates' power model by
-`sim/tests/test_plc_power.py` and `test_plant.py`, and plc-brewhouse's against the
-brewhouse federate and the FUXA batch engine by
-`sim/tests/test_brewhouse_control_path.py` (`sim/README.md`, `fuxa/README.md`).
+strucpp runtime headers. In an OpenPLC runtime, three (plc-brewhouse,
+plc-packaging, plc-cellar) have been uploaded, compiled, and started by the
+provisioning script, against a v4.3.2 runtime built from source and with no field
+devices behind them; none has run in a range. All five are also built and run scan
+by scan in the sim tests: plc-power against the federates' power model
+(`sim/tests/test_plc_power.py`, `test_plant.py`), plc-brewhouse against the
+brewhouse federate and the FUXA batch engine
+(`test_brewhouse_control_path.py`), plc-cellar and plc-packaging against their
+federates (`test_plc_cellar.py`, `test_plc_packaging.py`), and plc-utilities' CIP
+sequence with its inputs set by hand (`test_plc_utilities.py`)
+(`sim/README.md`, `fuxa/README.md`).
 
 ```shell
 plc/common/build_zip.sh plc-utilities --variant full    # writes phenix-injects/openplc/full/plc-utilities.zip

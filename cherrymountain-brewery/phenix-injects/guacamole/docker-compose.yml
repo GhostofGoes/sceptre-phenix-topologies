@@ -15,7 +15,8 @@
 # first start; the web application must not see a POSTGRES_* variable, which its
 # entrypoint treats as a deprecated name). The connections and the cmadmin account
 # are in /opt/cherrymountain/guacamole/initdb (the stock schema, then the app's
-# 50-cherrymountain.sql), which PostgreSQL runs once, on an empty data directory.
+# 50-cherrymountain.sql), which PostgreSQL runs once, on an empty data directory;
+# cm-guacamole-start applies the app's file again at every start.
 name: guacamole
 
 services:

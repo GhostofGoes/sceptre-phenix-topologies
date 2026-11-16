@@ -68,7 +68,7 @@ The module reads the `bacnet` element of `/etc/ot-sim/config.xml` and the
   <object type="analog-input" instance="1" name="FAC.VENT.AT01.PV"
           tag="bas-vent.co2_1_ppm" units="partsPerMillion"
           description="Cellar CO2 sensor 1 (low-mounted)"/>
-  <object type="analog-output" instance="1" name="FAC.VENT.EF01.CMD"
+  <object type="analog-output" instance="1" name="FAC.VENT.SC01.CMD"
           tag="bas-vent.exhaust_pct" units="percent" commandable="true"
           min="0" max="100"/>
   <object type="multi-state-value" instance="1" name="FAC.RTU1.HS01.MODE"

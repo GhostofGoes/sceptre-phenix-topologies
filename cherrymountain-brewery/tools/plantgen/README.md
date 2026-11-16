@@ -21,8 +21,8 @@ python -m pytest                      # unit and consistency tests
 | Variant | Hosts | What it contains |
 |---|---:|---|
 | `ci` | 5 | The cellar fermentation cell (`CEL` units CLK and FV101..FV104), the cellar federate only. Its outputs must stay byte-identical unless a fix needs a change, because the PLC program ZIP, the FUXA project, and the integration test are built from them |
-| `full` | 43 | Every area, federate, and field device; SoH, WireGuard, and SCORCH lists |
-| `lite` | 37 | `full` without the SOC (malcolm, wazuh, soc-analyst) and vendor remote access (vendor-ws, dmz-vpn, dmz-jump); no WireGuard |
+| `full` | 44 | Every area, federate, and field device; SoH, WireGuard, and SCORCH lists |
+| `lite` | 37 | `full` without the SOC (malcolm, wazuh, soc-analyst, soc-purple) and vendor remote access (vendor-ws, dmz-vpn, dmz-jump); no WireGuard |
 
 A variant lists its areas, an optional per-area unit allow-list (`units`), its
 federates and hosts, and switches for the `soh`, `wireguard`, and `scorch`
@@ -124,11 +124,11 @@ The app's own schema, plus three things:
   (relay-main, pv-inverter, bess-pcs), `downstream: dnp3`, and
   `dnp3.interface`. `utility-derms` is `type: fd-client` with
   `connected_rtus: [rtu-der]`.
-- **BACnet controllers (proposed shape).** The phenix ot-sim app and the ot-sim
-  BACnet module do not exist upstream yet
-  ([DESIGN.md §16](../../docs/DESIGN.md#16-new-and-extended-software)). plantgen
-  emits the shape this design proposes, so the app extension and the module
-  can be written against it:
+- **BACnet controllers.** The phenix `ot-sim` app does not know BACnet, and
+  ot-sim has no BACnet module upstream
+  ([DESIGN.md §16](../../docs/DESIGN.md#16-new-and-extended-software)). The
+  module is in this repository (`phenix-injects/otsim/`), and plantgen emits
+  this shape for it and for the app extension proposed upstream:
 
   ```yaml
   # host metadata
@@ -266,14 +266,14 @@ and plant KPIs in `status.apps.cherrymountain` current (`APP_RUN_PERIOD` in
 `plantgen/apps.py`; `phenix ui` schedules it for an experiment it starts,
 which `phenix workflow apply` is). `metadata` is `{variant: <name>, ...}` plus
 the variant's `app` block in plant.yaml (ci: `verify.timeout`; full:
-`wazuh.manager`), and `hosts` lists every host the app provisions or checks
+`wazuh.manager` and `wazuh.agents`), and `hosts` lists every host the app provisions or checks
 with its `metadata.type`, grouped in the order sim-ctl, sim-federate, rio,
-openplc, fuxa, historian, hmi, guacamole, wazuh-manager, bbmd. A host's
+openplc, fuxa, historian, hmi, guacamole, wazuh-manager, bbmd, ews. A host's
 metadata is `hosts.<name>.app` in plant.yaml when set (bas-fuxa, the HMIs,
 dmz-jump, wazuh, the BBMD hosts), else derived from its role: `sim` →
 `sim-federate` (the HELICS broker host is `sim-ctl`), `rio`/`field`/`bas`/
 `fep`/`dnp3-master` → `rio`, `plc` → `openplc`, `scada` → `fuxa`, `historian`
-→ `historian`. The shapes are the app's metadata models
+→ `historian`, `ews` → `ews`. The shapes are the app's metadata models
 (`apps/cherrymountain_apps/cherrymountain/metadata.py`); the tests compare the
 block with the app's `app-<variant>.yml` fixtures.
 

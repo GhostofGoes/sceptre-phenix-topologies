@@ -26,7 +26,7 @@
 # reads; all optional): CM_WAZUH_IP (default: the first global IPv4 address), and
 # WAZUH_ADMIN_PASSWORD, the admin user's password (the app's secrets.json
 # wazuh_password; without it the tool generates one). Re-running is safe. It stops
-# early once /var/lib/cm-wazuh/provisioned exists. Step 4 writes the marker
+# early once /var/lib/cm-wazuh/provisioned exists. Step 5 writes the marker
 # /var/lib/cm-wazuh/passwords-changed as soon as the password tool succeeds, and a
 # run that finds it keeps the certificates and skips the security initialization,
 # the keystore setup, and the password change: each of those would put the default
@@ -35,7 +35,7 @@
 # (root only).
 #
 # TODO(verify): unverified on a VM. The commands follow Wazuh 4.14's documentation;
-# check each step on the first run, above all the password tool (step 4), which
+# check each step on the first run, above all the password tool (step 5), which
 # restarts services itself.
 set -euo pipefail
 

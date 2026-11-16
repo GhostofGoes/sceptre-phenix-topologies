@@ -69,11 +69,11 @@ python -m pytest
 ruff check . && ruff format --check . && mypy
 ```
 
-The tests read plant.yaml, the plantgen output, the plc-cellar program ZIP
-(Git LFS), and the FUXA builder from this repository, and run each app stage
-on `cherrymountain_apps/cherrymountain/tests/fixtures/experiment-ci.json`. After
-a change to `phenix-configs/topology-ci.yml`, `scenario-ci.yml`, or
-`phenix-ci.yml`, re-record it:
+The tests read plant.yaml, the plantgen output, the program ZIPs (Git LFS), and
+the FUXA builder from this repository, and run the app's stages on two recorded
+experiments, `cherrymountain_apps/cherrymountain/tests/fixtures/experiment-ci.json`
+and `experiment-full.json`. After a change to a ci or full topology or scenario
+file in `phenix-configs/`, to `phenix-ci.yml`, or to `phenix.yml`, re-record both:
 
 ```shell
 python3 -I cherrymountain_apps/cherrymountain/tests/build_fixtures.py

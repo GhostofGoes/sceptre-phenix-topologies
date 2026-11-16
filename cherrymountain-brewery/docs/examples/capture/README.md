@@ -89,7 +89,7 @@ caption in the README says which.
   plant's values are those of 11:00, and the batch engine takes the tests' port of the
   brewhouse PLC (`fuxa/tests/brewhouse_sim.mjs`) through its phases against them, so
   the phase bar, the batch counters, and the Batch view are live and the vessel
-  values are not a brew's. A phase takes about 19 s. The batch engine passes the
+  values are not a brew's. A phase takes about 18 s. The batch engine passes the
   strike liquor in liters as the MASH_IN phase's parameter (`BH.BATCH.XC03.PARAM`,
   1310 while phase 3 runs, for the default recipe), and plc-brewhouse fills the mash
   tun to a level computed from it (554, or 55.4 %). Neither is staged: the pictures

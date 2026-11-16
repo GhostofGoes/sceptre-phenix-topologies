@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # Malcolm sizing profiles (DESIGN.md 11), sourced by cm-malcolm-provision,
-# cm-malcolm-start, cm-malcolm-wait-ready, and cm-malcolm-health.
+# cm-malcolm-start, and cm-malcolm-health.
 #
 #   full  8 vCPU and 22 GB or more: every part of Malcolm that the range uses: local
 #         OpenSearch and Logstash, live Zeek and Suricata, Arkime on rotated pcap,

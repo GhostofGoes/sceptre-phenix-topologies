@@ -1,4 +1,4 @@
-# cm-fuxa: FUXA SCADA (scada-fuxa)
+# cm-fuxa: FUXA (scada-fuxa, bas-fuxa)
 # Built from a noble minbase image with phenix image build. This is the stored
 # form of an image config (what `phenix config get image/cm-fuxa` prints), so
 # the POSTBUILD_* scripts below are verbatim copies of the defaults that

@@ -28,7 +28,8 @@ still works.
 | `power` | sim-power | 1 s | `power.py`, `tariff.py` | OpenDSS 480 V feeder, breakers, ATS and genset island, PV and BESS (IEEE 1547 trip and return), SV-SGT meter and bill |
 | `building` | sim-building | 10 s | `building.py` | Taproom 3R2C with RTU-1 and CO₂, cold room 1R1C, cellar CO₂ mass balance, hood exhaust and MUA |
 
-**Control authority.** The PLC programs come in Phase 3. Until a PLC writes, the
+**Control authority.** Until a PLC writes (the offline harness without a PLC, or a
+range whose PLC has not started), the
 brewhouse, utilities, and packaging federates run a built-in operator (sim
 setting `autopilot: auto`): a double-brew day at 05:00 on brew days, the
 utilities held at their setpoints, and the packaging shift 06:00-14:30 on
@@ -161,11 +162,11 @@ than 0 and at most 86,400):
 | `bess-thermal` | `action`: `start` (default) or `clear` | power |
 | `chiller-fault` | `action`: `fail` (default) or `clear`; `compressor` 1 (default) or 2 | utilities |
 | `refrigerant-leak` | `action`: `leak` (default), `repair`, or `recharge`; `rate`: `low`, `medium` (default), `high` | utilities |
-| `cip-panel` | `circuit`: `bh`, `fv101` to `fv104`, `bbt201`, `bbt202`, or `none` (default) | utilities |
+| `cip-panel` | `circuit`: `bh`, `fv101` to `fv104`, `bbt201`, `bbt202`, or `none` (default for a direct POST; the `plantevent` component requires it) | utilities |
 | `co2-release` | `fv` (required, for example `FV-102`); `rate`: `low`, `medium`, `high` (default; 2, 10, 40 g/s); `duration` (default 600) | cellar |
 | `co2-leak` | `zone`: `tank`, `filler`, or `draft` (required); `rate` as above; `duration` (default 600) | building |
 | `gas-detection` | `action`: `fail` (default) or `restore` | building |
-| `jam` | `machine`: `rinser`, `filler`, `coder`, `labeler` (default), `packer`, `kegger`; `duration` (default 300) | packaging |
+| `jam` | `machine`: `rinser`, `filler`, `coder`, `labeler` (default), `packer`, `kegger` (`capper` and `depalletizer` are accepted as names for the filler and the rinser; the `plantevent` component offers those two, `rinser`, `filler`, `labeler`, and `packer`); `duration` (default 300) | packaging |
 | `weather-step` | `delta_f` -60 to 60 (required); `duration` (default 0: hold until the next step) | weather |
 
 The weather federate forwards each event to `<target>/updates` as
@@ -187,8 +188,10 @@ thread (`groundtruth.py`).
 - **Mapping.** Before its first write each writer puts the index template
   `cherrymountain-truth-cm` for `cherrymountain-truth-*`: dates, keywords for
   `federate`, `source`, and `field`, and doubles for every number. It also
-  covers the ot-sim module's documents (`cherrymountain-truth-YYYY.MM.DD`,
-  one per point per second), whose own template OpenSearch refuses.
+  covers the documents ot-sim's own ground-truth module would write
+  (`cherrymountain-truth-YYYY.MM.DD`, one per point per second), whose own
+  template OpenSearch refuses; the range does not turn that module on
+  (DESIGN.md §9.5).
 - **Outages.** Documents taken while OpenSearch is down or still starting are
   kept (up to 10,000 per federate) and sent when it answers. Documents it
   rejects are logged with its reason.

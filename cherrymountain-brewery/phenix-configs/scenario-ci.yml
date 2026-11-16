@@ -1,10 +1,11 @@
 # cherrymountain-ci scenario (DESIGN.md 15.2 to 15.4), the cellar slice.
-# App order matters: ot-sim annotates rio-cellar with helics/federate, and the
-# helics app counts federates from those annotations (sim-process carries its
-# own annotation in the topology), so ot-sim runs first and helics second.
-# The ot-sim and ntp blocks are plantgen output (plant/generated/ci/phenix/)
-# embedded verbatim between the sync:begin and sync:end markers; sync.py --check
-# fails if they drift. The soh block is
+# App order matters: ot-sim annotates rio-cellar with helics/federate, the
+# cherrymountain app annotates the sim nodes (sim-process also carries the
+# annotation in the topology), and the helics app counts federates from those
+# annotations, so the order is ot-sim, cherrymountain, helics.
+# The ot-sim, cherrymountain, and ntp blocks are plantgen output
+# (plant/generated/ci/phenix/) embedded verbatim between the sync:begin and
+# sync:end markers; sync.py --check fails if they drift. The soh block is
 # the DESIGN.md 15.4 sketch trimmed to the five ci hosts.
 apiVersion: phenix.sandia.gov/v2
 kind: Scenario

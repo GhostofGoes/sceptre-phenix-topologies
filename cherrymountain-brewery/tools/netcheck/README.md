@@ -2,7 +2,8 @@
 
 A static check of the CherryMountain Brewery network. It reads the topology
 (with `includeTopologies`), the scenario (with `fromScenario`), and the
-workflow of the full and lite variants, and checks them against the DESIGN.md
+workflow of the full and lite variants (and, for the address, workflow,
+boot-order, and inject checks, of the ci slice), and checks them against the DESIGN.md
 IP plan (section 10.2), conduit matrix (section 10.3), and node inventory
 (section 11). It needs no VM: it traces packets through the static routes, NAT,
 IPsec, and the vrouter rulesets the way phenix renders them.
@@ -22,14 +23,14 @@ fail; `-q` hides them.
 
 | Check | What fails it |
 |---|---|
-| `plan` | A node, image, resource, zone label, interface, address, mask, gateway, DNS server, route, autotunnel entry, or `delay.c2` that differs from `netcheck/plan.py`, which holds sections 10.2 and 11 as data; wrong totals (43 VMs, 67 vCPUs, 113 GB full; 37, 48, 71 lite); an `ntp-server` label |
+| `plan` | A node, image, resource, zone label, interface, address, mask, gateway, DNS server, route, autotunnel entry, or `delay.c2` that differs from `netcheck/plan.py`, which holds sections 10.2 and 11 as data; wrong totals (44 VMs, 68 vCPUs, 127 GB full; 37, 45, 60 lite); an `ntp-server` label |
 | `addresses` | A duplicate address, an address outside its VLAN, a gateway that is not a router on the VLAN, overlapping VLAN subnets |
 | `workflow` | VLAN IDs that differ from the plan, an unpinned VLAN, a scenario annotation that omits a topology that borrows from it, a `defaultBridge` that is not the variant's own (phenix lets only one stored experiment use a bridge other than `phenix`, so a shared bridge stops the second variant from being created), a `mirrorBridge` that is not the workflow's bridge |
 | `boot-order` | A `delay.c2` on a node that boots later, or on an unknown node |
 | `injects` | An injection whose source is not under `phenix-injects/` |
 | `router-commands` | A script injected into a VyOS router that no `commands` entry runs, or that one runs from `/config/scripts/custom/` instead of `/usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/` (VyOS bind-mounts `/opt/vyatta/etc/config` over `/config`, which hides the injected file), or that is not injected `0755` |
 | `rulesets` | A firewall interface without a ruleset, a ruleset that is not default drop, does not start with the stateful accept, or has a rule that is not a TCP or UDP accept with a destination address and port |
-| `flows` | Each of the ~150 conduit flows must be delivered, its reply must come back through the same firewalls, it must cross exactly the firewalls its row names, and each of those must accept it with an explicit rule. Every other host pair and service (about 80,000) must be dropped or have no route |
+| `flows` | Each of the ~150 conduit flows must be delivered, its reply must come back through the same firewalls, it must cross exactly the firewalls its row names, and each of those must accept it with an explicit rule. Every other host pair and service (tens of thousands of combinations) must be dropped or have no route |
 | `rule-coverage` | An explicit rule that no conduit flow uses |
 | `nat-ipsec` | The SNAT, DNAT, IPsec sites and tunnels, and netem interfaces that differ from the plan |
 | `soh` | A conduit probe missing from `testCustomReachability`, a TCP conduit without a probe, a probe the rules block, a blocked-path test that is missing, does not connect to its target, does not expect `DROPPED`, or tests a path that is open |
@@ -53,8 +54,9 @@ The conduit matrix is in `netcheck/conduits.py`. Edit it together with the
 - It does not run VyOS, minimega, or any service. Flows that send no reply
   (syslog, IKE and ESP) are checked statically only, and the WireGuard tunnel
   is checked only through its configuration.
-- The router settings that `cm-vyos-config.sh` applies after boot (logging,
-  IKEv2, NTP) are not modeled.
+- The router settings that `cm-vyos-config.sh` applies after boot (drop logging
+  and the syslog target, IKEv2, fw-ot's NTP source, and the IPsec match on the
+  utility DNP3 rule) are not modeled.
 
 ## Layout
 

@@ -1,4 +1,5 @@
-# cm-openplc: OpenPLC v4 runtime (plc-cellar)
+# cm-openplc: OpenPLC v4 runtime (the five PLCs: plc-brewhouse, plc-cellar,
+# plc-packaging, plc-utilities, plc-power)
 # Built from a noble minbase image with phenix image build. This is the stored
 # form of an image config (what `phenix config get image/cm-openplc` prints), so
 # the POSTBUILD_* scripts below are verbatim copies of the defaults that

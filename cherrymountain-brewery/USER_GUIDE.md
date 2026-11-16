@@ -20,7 +20,7 @@ the first time. [README.md](README.md) says what is in this directory, and
 | [2](#2-prepare-the-host) | Install Docker, Git LFS, and Go; check KVM | 15 min |
 | [3](#3-get-the-code) | Clone four repositories | 5 min |
 | [4](#4-build-and-start-phenix) | Build the phenix container and start it | 30 min |
-| [5](#5-build-the-vm-images) | Build the VM images (4 for `ci`, 13 for `full`) | 1 h to several hours |
+| [5](#5-build-the-vm-images) | Build the VM images (4 for `ci`, 14 for `full`) | 1 h to several hours |
 | [6](#6-start-the-range) | Apply the workflow: it creates and starts the experiment | 5 min |
 | [7](#7-wait-then-check-health) | Wait for first boot, then check health | 15 to 30 min |
 | [8](#8-connect-from-your-own-computer) | Run `phenix-tunneler` on your computer and open the web pages | 5 min |
@@ -370,8 +370,12 @@ Useful to know:
   The tunneler picks it up at once. This is how to use a real RDP client on
   the engineering workstation (`ews`, port 3389).
 - **A VM's screen and keyboard:** click the VM's screenshot in the phenix page.
-  Every Linux VM logs in as `root` with no password on its console. That is how
-  you reach the desktops, the HMI kiosks, and a shell on any VM.
+  Every Linux VM built from the range's own images logs in as `root` with no
+  password on its console. That is how you reach the desktops, the HMI kiosks,
+  and a shell on any VM. Two differ: on `ews` root's password is locked (its
+  desktop still logs in as `root` by itself, and a text console does not), and
+  soc-purple is upstream's Kali Purple image, whose console login the range
+  does not set.
 
 **Without the tunneler**, on the phenix host itself: each forward also listens
 on a random host port. Look it up, every time, and use the row whose `dst port`
@@ -587,10 +591,12 @@ point is exactly what the SOC's detections watch for, so expect an alert.
 
 ### The historian
 
-Open `http://localhost:13000` (Grafana, no login needed to look). It graphs
-what FUXA records to InfluxDB: process values, alarms, and the production
-records a brewery keeps. InfluxDB itself is on the historian's port 8086 and
-MQTT on 1883; create a port forward if you want them on your computer.
+Open `http://localhost:13000` (Grafana, no login needed to look). The starter
+dashboard graphs the fermenters' temperatures and extract from what FUXA records
+to InfluxDB; its PackTags panel stays empty until FUXA's MQTT publisher is built.
+A daily task copies the production figures a brewery must keep into a bucket of
+their own, `records`. InfluxDB itself is on the historian's port 8086 and MQTT on
+1883; create a port forward if you want them on your computer.
 
 ### Vendor remote access
 
@@ -767,9 +773,13 @@ the full list.
   test of its provisioning scripts. Parts were run for real outside a VM: the
   batch engine, its view, and the operator sign-in in a FUXA server; the
   BACnet controllers against BACnet clients; every PLC program through the
-  compiler. The first things to check on a real range are that FUXA may write
-  to the brewhouse PLC over OPC UA, and that Wazuh takes the `admin` password
-  from `secrets.json`.
+  compiler; Malcolm's first-boot setup and its capture containers on a stand-in
+  for the mirror; and the Guacamole stack. The first things to check on a real
+  range are that FUXA may write to the brewhouse PLC over OPC UA, that Wazuh
+  takes the `admin` password from `secrets.json`, and that the firewalls'
+  drops reach Wazuh: the script that turns the routers' logging on has never
+  run on VyOS (`cat /tmp/cm-vyos-config.done` on a router shows an empty file
+  when every step was taken).
 - **The bottling line waits for beer.** The filler holds when BBT-202 runs dry
   and starts again when the crew has refilled it. The line empties a tank in
   about 3.5 hours and two brew days make two tanks a week, so expect it to

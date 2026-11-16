@@ -43,8 +43,8 @@ def test_committed_ci_is_clean() -> None:
 
 def test_design_totals() -> None:
     assert len(plan.nodes_for("lite")) == 37
-    assert plan.totals("lite") == (37, 48, 71)
-    assert plan.totals("full") == (44, 71, 129)
+    assert plan.totals("lite") == (37, 45, 60)
+    assert plan.totals("full") == (44, 68, 127)
 
 
 def test_every_design_flow_is_traced_both_ways() -> None:

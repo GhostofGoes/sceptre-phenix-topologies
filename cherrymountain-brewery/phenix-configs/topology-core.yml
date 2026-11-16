@@ -377,9 +377,9 @@ spec:
       drives:
       - image: cm-sim.qc2
         inject_partition: 1
-      memory: 3072
+      memory: 1024
       os_type: linux
-      vcpus: 2
+      vcpus: 1
     labels:
       zone: mgmt
     network:
@@ -402,9 +402,9 @@ spec:
       drives:
       - image: cm-sim.qc2
         inject_partition: 1
-      memory: 3072
+      memory: 1024
       os_type: linux
-      vcpus: 2
+      vcpus: 1
     labels:
       zone: mgmt
     network:
@@ -427,9 +427,9 @@ spec:
       drives:
       - image: cm-sim.qc2
         inject_partition: 1
-      memory: 3072
+      memory: 1024
       os_type: linux
-      vcpus: 2
+      vcpus: 1
     labels:
       zone: mgmt
     network:
@@ -867,7 +867,7 @@ spec:
       drives:
       - image: cm-openplc.qc2
         inject_partition: 1
-      memory: 2048
+      memory: 1024
       os_type: linux
       vcpus: 1
     labels:
@@ -1082,7 +1082,7 @@ spec:
       drives:
       - image: cm-fuxa.qc2
         inject_partition: 1
-      memory: 4096
+      memory: 2048
       os_type: linux
       vcpus: 2
     labels:
@@ -1109,7 +1109,7 @@ spec:
       drives:
       - image: cm-historian.qc2
         inject_partition: 1
-      memory: 6144
+      memory: 4096
       os_type: linux
       vcpus: 2
     labels:
@@ -1133,7 +1133,7 @@ spec:
       drives:
       - image: cm-ews.qc2
         inject_partition: 1
-      memory: 3072
+      memory: 4096
       os_type: linux
       vcpus: 2
     injections:
@@ -1217,7 +1217,7 @@ spec:
       drives:
       - image: cm-fuxa.qc2
         inject_partition: 1
-      memory: 3072
+      memory: 2048
       os_type: linux
       vcpus: 2
     labels:

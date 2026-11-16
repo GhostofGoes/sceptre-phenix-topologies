@@ -1992,7 +1992,7 @@ notional design targets):
     The vrouter template's rule matches the source address `192.0.2.10` only
     (it has no IPsec policy match), so a plaintext packet spoofing that address
     from the INET segment would pass the ACL. `cm-vyos-config.sh` therefore adds
-    `ipsec match-ipsec-in` (or `match-ipsec` on older builds) after boot to
+    `ipsec match-ipsec-in` after boot to
     every fw-edge rule whose source is utility-derms
     ([§10.3](#103-conduit-matrix-default-deny-stateful-logged)). `netcheck` does
     not model it.
@@ -2161,6 +2161,17 @@ default drop through the static routes, NAT, IPsec, and these rulesets
   `compare`, and discards them. `tools/netcheck/tests/test_vyos_config.py` runs
   the script against a stand-in VyOS shell (the commands per router, the
   run-once marker, the dry run, and the failure paths).
+  - **How it talks to VyOS.** In a VyOS script `set`, `delete`, and `commit` are
+    shell aliases, and `exit` is an alias that closes the session without ending
+    the script. Bash expands an alias only at the start of a command as written,
+    so the script's first form, which passed each change through a wrapper
+    function, ran bash's own `set`: it changed nothing on any router and ended
+    with status 0, and the test stand-in, which defined the commands as
+    functions, could not show it. Changes now go to the programs behind the
+    aliases (`my_set`, `my_delete`), whose exit status tells whether VyOS took
+    them; a session with nothing to commit (isp-rtr, and every router after a
+    reboot) counts as done; and the stand-in defines aliases. Still not run on a
+    VyOS VM.
 - **Boot order.** isp-rtr boots first, because the vrouter app reuses the NTP
   address of the first router that has one for every router. The script then
   fixes fw-ot's source.
@@ -2264,13 +2275,13 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 | dmz-vpn | DMZ | WireGuard gateway | cm-wireguard | 1 / 1 |
 | dmz-jump | DMZ | Guacamole jump host (TOTP, session recording) | cm-guacamole | 2 / 3 |
 | fw-ot | OT edge | OT firewall, all zone conduits (VyOS) | vyos | 1 / 2 |
-| scada-fuxa | OPS | Process SCADA: FUXA, batch engine, alarms | cm-fuxa | 2 / 4 |
-| historian | OPS | InfluxDB 2, Telegraf, Grafana, Mosquitto | cm-historian | 2 / 6 |
-| ews | OPS | Engineering workstation: OpenPLC Editor, Wireshark, BAC0, mbpoll, xrdp | cm-ews | 2 / 3 |
+| scada-fuxa | OPS | Process SCADA: FUXA, batch engine, alarms | cm-fuxa | 2 / 2 |
+| historian | OPS | InfluxDB 2, Telegraf, Grafana, Mosquitto | cm-historian | 2 / 4 |
+| ews | OPS | Engineering workstation: OpenPLC Editor, Wireshark, BAC0, mbpoll, xrdp | cm-ews | 2 / 4 |
 | ot-svc | OPS | NTP (chrony), DNS (dnsmasq), syslog relay, OPS BBMD (BACpypes3) | cm-svc | 1 / 1 |
 | hmi-brewhouse | HMI | Brewhouse and cellar operator kiosk | cm-desktop | 2 / 3 |
 | hmi-packaging | HMI | Packaging and utilities operator kiosk | cm-desktop | 2 / 3 |
-| plc-brewhouse | CTRL + FIELD-BH | OpenPLC v4 (OPC UA plugin) | cm-openplc | 1 / 2 |
+| plc-brewhouse | CTRL + FIELD-BH | OpenPLC v4 (OPC UA plugin) | cm-openplc | 1 / 1 |
 | plc-cellar | CTRL + FIELD-CEL | OpenPLC v4 | cm-openplc | 1 / 1 |
 | plc-packaging | CTRL + FIELD-PKG | OpenPLC v4 (PackML) | cm-openplc | 1 / 1 |
 | plc-utilities | CTRL + FIELD-UTL | OpenPLC v4 | cm-openplc | 1 / 1 |
@@ -2286,22 +2297,45 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 | gen-ats | FIELD-PWR + MGMT | Genset controller and ATS (ot-sim) | cm-otsim | 1 / 1 |
 | rtu-der | DERLINK + FIELD-PWR | DER gateway (ot-sim FEP) | cm-otsim | 1 / 1 |
 | bas-bbmd | BAS | BAS BBMD (BACpypes3); its BDT lists itself and ot-svc | cm-svc | 1 / 1 |
-| bas-fuxa | BAS | BAS front end (FUXA instance 2) | cm-fuxa | 2 / 3 |
+| bas-fuxa | BAS | BAS front end (FUXA instance 2) | cm-fuxa | 2 / 2 |
 | bas-rtu-taproom | BAS + MGMT | RTU-1 controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
 | bas-coldroom | BAS + MGMT | Cold room controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
 | bas-vent | BAS + MGMT | Ventilation and CO₂ controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
 | sim-ctl | MGMT | HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, cm-viz 3D view, chronyd for MGMT | cm-sim | 2 / 6 |
-| sim-process | MGMT | Process federates | cm-sim | 2 / 3 |
-| sim-power | MGMT | OpenDSS federate | cm-sim | 2 / 3 |
-| sim-building | MGMT | Building federate | cm-sim | 2 / 3 |
-| malcolm | SOC + MIRROR | Malcolm: Zeek + ICSNPP, Suricata, Arkime, OpenSearch | cm-malcolm | 8 / 24 |
+| sim-process | MGMT | Process federates | cm-sim | 1 / 1 |
+| sim-power | MGMT | OpenDSS federate | cm-sim | 1 / 1 |
+| sim-building | MGMT | Building federate | cm-sim | 1 / 1 |
+| malcolm | SOC + MIRROR | Malcolm: Zeek + ICSNPP, Suricata, Arkime, OpenSearch | cm-malcolm | 8 / 32 |
 | wazuh | SOC | Wazuh manager, indexer, and dashboard | cm-wazuh | 4 / 8 |
-| soc-analyst | SOC | Analyst workstation | cm-desktop | 2 / 3 |
+| soc-analyst | SOC | Analyst workstation | cm-desktop | 2 / 4 |
 | soc-purple | SOC | Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark ([§14](#14-blue-team-monitoring)) | kali-purple (upstream, [§15.7](#157-images)) | 4 / 16 |
 
-**Totals:** 44 VMs, **71 vCPUs** (overcommitted on 32 cores; most nodes are
-idle) and **129 GB RAM**, 16 GB of it soc-purple's (parseus asks for 16 GB and
+**Totals:** 44 VMs, **68 vCPUs** (overcommitted on 32 cores; most nodes are
+idle) and **127 GB RAM**, 16 GB of it soc-purple's (parseus asks for 16 GB and
 8 cores; it gets the memory and 4 vCPUs).
+
+**Where the sizes come from.** A review of every VM set them by what runs on it:
+
+- **Measured small, so reduced.** FUXA with the full project is 152 MB (189 MB at
+  its peak), so both FUXA servers have 2 GB. `influxd` idles at 135 MB and the
+  historian's other services are small, so it has 4 GB. The OpenPLC runtime with
+  OPC UA up is 203 MB, so plc-brewhouse has 1 GB like the other PLCs. A federate
+  is 52 MB (80 MB with OpenDSS) at next to no CPU, so sim-process, sim-power, and
+  sim-building have 1 vCPU and 1 GB.
+- **Short, so raised.** The EWS runs root's console desktop and a technician's
+  xrdp desktop, with the OpenPLC Editor, Chromium, and Wireshark in it: 4 GB. The
+  analyst desktop holds several OpenSearch Dashboards and Arkime tabs: 4 GB.
+  Malcolm has 32 GB (below).
+- **Left alone.** The kiosks and office desktops (a desktop and a browser in
+  3 GB), wazuh (Wazuh's all-in-one figure for up to 25 agents is 4 vCPU and 8 GB),
+  sim-ctl (OpenSearch with a 2 GB heap, Grafana, the broker, and cm-viz in 6 GB),
+  dmz-jump (the Guacamole stack idles at about 285 MiB), and the 1 vCPU / 1 GB
+  devices and services. The routers have 1 vCPU and 2 GB: the repository's own
+  spike ran VyOS in that memory (with 2 vCPUs), and VyOS's documentation asks for
+  more; whether fw-ot's first commit fits the script's 10 minute wait on 1 vCPU is
+  not measured.
+
+None of the figures is measured on a deployed range.
 
 **Where the BBMDs run.** The OPS BBMD shares `ot-svc`, so it adds no VM. The
 BAS side needs its own small node, `bas-bbmd`, because every other BAS host
@@ -2314,43 +2348,51 @@ needs no BBMD ([§8.1](#81-spaces-equipment-and-bacnet-devices)). Hosting the
 BAS BBMD in `bas-vent`'s BACnet module would drop the VM but is untested
 ([§19](#19-risks-and-open-questions)).
 
-**Malcolm sizing.** Both profiles stay in the design. The default `malcolm`
-node is 8 vCPU / 24 GB, which is Malcolm's documented minimum for the full stack
-(the full stack means local OpenSearch, Suricata, NetBox, and file scanning). An
-optional slim profile is for smaller hosts. The evidence is from the `malcolm`
-spike:
+**Malcolm sizing.** Both profiles stay in the design. The `malcolm` node is
+8 vCPU / 32 GB. Malcolm's documentation states 8 cores and 24 GB as the minimum for
+the full stack on a dedicated host and recommends 16 or more cores and 32 GB or
+more; it also says that smaller Java heaps do not make an undersized host a
+supported one. The full profile runs everything Malcolm has that the range uses
+(local OpenSearch, Logstash, live Zeek and Suricata, Arkime, NetBox with
+PostgreSQL, and Strelka file scanning). What is known of its memory:
 
-- Zeek with the ICSNPP parsers is small. On a 52 MB pcap it peaked at 281 MiB
-  and 118% of one core.
-- The cost is the pipeline. The trimmed pipeline (OpenSearch with a 3 GB heap
-  and Logstash with 2 GB, plus Dashboards, Arkime, Zeek, Suricata, Filebeat,
-  pcap-monitor, and dashboards-helper) ran the whole upload path in 142 s on a
-  4 vCPU / 16 GB runner. The containers peaked at 8.4 GiB summed, and the host
-  used 9.2 GiB of 16 GB (run 42547389340).
-- Suricata added 917 MiB at its peak and about one core to that stack. Without
-  it, an earlier run of the same pipeline peaked at 7.6 GiB.
-- The full stack adds NetBox with Postgres and Strelka file scanning. The
-  24 GB profile sets OpenSearch to a 6 GB heap and Logstash to 3 GB
-  (`phenix-injects/malcolm/profiles.sh`), below Malcolm's 10 GB OpenSearch
-  default. None of that was measured, and no live capture ran in a real
-  `cm-malcolm` VM.
+- Zeek with the ICSNPP parsers is small on a pcap file (281 MiB and 118 % of one
+  core on a 52 MB pcap, the `malcolm` spike), and large live: the `zeek-live`
+  container (manager, logger, proxy, one worker) used 2.5 GiB on the range's
+  detection traffic, `suricata-live` 0.55 GiB, the OpenSearch container 3.8 GiB with
+  a 3 GB heap, and `arkime` 0.2 GiB (a run of those containers at 26.10.0 on a
+  stand-in for the mirror port; see [§14](#14-blue-team-monitoring)).
+- The trimmed pipeline of the spike (OpenSearch with a 3 GB heap and Logstash
+  with 2 GB, plus Dashboards, Arkime, Zeek, Suricata, Filebeat, pcap-monitor, and
+  dashboards-helper) ran the whole upload path in 142 s on a 4 vCPU / 16 GB
+  runner. The containers peaked at 8.4 GiB summed (run 42547389340); Suricata was
+  917 MiB of that.
+- NetBox, PostgreSQL, Strelka, Logstash at a 3 GB heap, and Dashboards are not
+  measured. Added up from the figures above and estimates for those, the full
+  profile is about 20 GB with a 6 GB OpenSearch heap and about 24 GB with 10 GB.
 
-The 24 GB default stays until a VM run measures the full stack. The slim profile
-is the trimmed pipeline above (OpenSearch 3 GB and Logstash 2 GB heaps) without
-Suricata, NetBox, and Strelka, at about 4 vCPU / 12 GB: the measured 8.4 GiB
-peak, which included Suricata, plus headroom. `profiles.sh` picks it on a VM
-with less than 22 GB of memory unless `CM_MALCOLM_PROFILE` says otherwise. It
+So in 24 GB the full profile fits only with the smaller heap and nothing left for
+the page cache that OpenSearch works from, and a container the kernel kills for
+memory takes its part of the sensor down. In 32 GB it runs with Malcolm's own
+example heap and room to spare. `profiles.sh` sets the heaps from the VM's memory:
+OpenSearch 10 GB on a VM of 30 GB or more and 6 GB below that, Logstash 3 GB.
+(Malcolm's configurator would give OpenSearch half the memory, a rule for a host
+that runs little else.) To give the memory back on a small host, set the node's
+`memory` to 24576: the profile still runs, with the smaller heap.
+
+The slim profile is the trimmed pipeline above (OpenSearch 3 GB and Logstash 2 GB
+heaps) without Suricata, NetBox, and Strelka, at about 4 vCPU / 12 GB: the measured
+8.4 GiB peak, which included Suricata, plus headroom. It is below what Malcolm
+supports and is for a lab host that cannot give more. `profiles.sh` picks it on a
+VM with less than 22 GB of memory unless `CM_MALCOLM_PROFILE` says otherwise. It
 reads the memory with `getconf`, because the provisioning unit hides
-`/proc/meminfo` (`ProcSubset=pid`). The earlier read of that file failed there
-without stopping the script, and every VM got the slim profile: on the 24 GB
-node that meant no Suricata, so none of the range's Suricata rules, no NetBox,
-and no file scanning. The full profile has therefore never been selected by a
-build before this fix, and its memory in 24 GB is the least known number of the
-range.
+`/proc/meminfo` (`ProcSubset=pid`). An earlier read of that file failed there
+without stopping the script, and every VM got the slim profile: no Suricata, so
+none of the range's Suricata rules, no NetBox, and no file scanning.
 
 **Variants** ([§15.3](#153-topology-modules-and-variants)):
 
-- **`lite`** (no SOC, no vendor remote access): 37 VMs, 48 vCPUs, 71 GB.
+- **`lite`** (no SOC, no vendor remote access): 37 VMs, 45 vCPUs, 60 GB.
 - **`ci`** (the cellar slice: sim-ctl, sim-process, rio-cellar,
   plc-cellar, scada-fuxa): 5 VMs, 7 vCPUs, about 8 GB.
   - It uses CI memory overrides: sim-ctl 1/2 with no ground-truth
@@ -2728,17 +2770,24 @@ routed but ignored, and the start view opens instead.
   every raw sample on a 12 GB disk; the daily copy is a few thousand points a
   year. FUXA's daily production report and batch records stay the record of
   record (the report is not built yet, [§12.2](#122-fuxa-two-instances)); the
-  bucket is the retrievable copy 27 CFR 25.300 allows. Not verified on a VM:
-  FUXA's DAQ field layout, which the task assumes as the dashboard does.
-- Telegraf runs `mqtt_consumer` for PackTags, plus host metrics.
+  bucket is the retrievable copy 27 CFR 25.300 allows. The task and the
+  dashboard select series by `name`, the tag key under which FUXA's InfluxDB 2
+  store writes a tag's name (the measurement is the tag's id and the field is
+  `value`). They first filtered on `tag`, which FUXA does not write, and returned
+  nothing: checked against FUXA's source and an InfluxDB 2.9.1 holding points
+  written by FUXA's own module; not run in Grafana.
+- Telegraf runs `mqtt_consumer` for PackTags, plus host metrics. It retries a
+  broker that is not up yet instead of exiting, which would stop the host metrics
+  too.
 - Grafana is provisioned with dashboards for fermentation curves, OEE,
   energy (kWh/bbl against the BA benchmark), monthly demand cost, and
   glycol plant health. As built, the app renders one starter dashboard
   (`cm-plant`: fermentation temperatures, apparent extract, and PackTags);
   the energy, demand-cost, and glycol panels are not built
-  ([future work](FUTURE_WORK.md#operator-tools)), and its queries
-  assume FUXA's DAQ field layout (TODO(verify) in `render.py`).
-- Mosquitto is the MQTT broker.
+  ([future work](FUTURE_WORK.md#operator-tools)).
+- Mosquitto is the MQTT broker, with one listener on every address. A listener
+  bound to the node's own address made it exit when it started before phenix had
+  set the address, and after five such starts systemd gave up on the unit.
 
 **ews**
 
@@ -2902,8 +2951,20 @@ detected from session metadata and the EWS's logs, not from request contents
   root and empty-password SSH logins (and `ews`'s xrdp refuses root), so the
   only way in from the tunnel is the vendor account through Guacamole
   ([§15.7](#157-images)). **Accepted risk:** every image keeps the phenix
-  passwordless root console (VNC and cc), which the white cell needs; it is
-  reachable only from the phenix host, never over the range network.
+  root console (VNC and cc), which the white cell needs; it is
+  reachable only from the phenix host, never over the range network. On `ews`
+  root's password is locked: the technicians have ordinary accounts there, and
+  with the phenix default (an empty root password that PAM accepts) any of them
+  became root with `su` or a polkit prompt. The console's autologin and cc do not
+  use the password.
+- **Failed logins are Wazuh's to count.** Guacamole 1.6.0 bans an address for
+  5 minutes after 5 failed logins. Every vendor connection comes from the tunnel's
+  one address (10.99.0.2), so the ban would lock out every technician and the
+  scripted session when anyone guesses; it is off (`BAN_ENABLED: 'false'`), and
+  rule 100304 reports the failures.
+- **The gateway fails closed.** dmz-vpn turns IP forwarding on only after its
+  nftables forward policy has loaded, on every boot, so a policy that does not
+  load leaves a tunnel that reaches nothing.
 - **Choke point.** The only conduit from the DMZ into L3 for vendor sessions
   is `dmz-jump → ews`. Logging conduits to the SOC are separate, so the EWS
   is the single choke point into L1.
@@ -2935,8 +2996,9 @@ point for future adversary-emulation scenarios.
 - **Capture:** the `mirror` app mirrors OPS, HMI, CTRL, all FIELD VLANs,
   DERLINK, BAS, and DMZ over GRE to malcolm's `mirror` NIC
   (`setupOVS: true`, so the image includes openvswitch). Malcolm captures on
-  the in-guest OVS port. The mirror capture spike passed only with the two
-  fixes below, which are requirements.
+  the in-guest OVS port: Zeek and Suricata read it live, and the `pcap-capture`
+  container writes it to rotating pcap files, which Arkime indexes (requirement
+  7). The mirror capture spike passed only with the first two fixes below.
 
 ```yaml
 - name: mirror
@@ -2991,9 +3053,13 @@ point for future adversary-emulation scenarios.
      fire (`tests/soc/test_detection_traffic.py`, Suricata 7.0.3). The file uses
      dotted keys, because a nested `stream:` block in an included file replaces
      the whole section Malcolm wrote. Zeek keys a connection on addresses and
-     ports alone and needs neither. Not yet seen on a VM: the tags themselves
-     (`tcpdump -e -nn -i phenix vlan` on a routed flow), and the file on
-     Malcolm's Suricata 8.0.7.
+     ports alone and needs neither. Malcolm's own containers confirm it: with
+     the same traffic replayed into a stand-in for the mirror port (a veth pair,
+     on which the kernel hands the 802.1Q tag to a capture socket as Open vSwitch
+     does), `suricata-live` at 26.10.0 (Suricata 8.0.7) loaded the file and fired
+     all 40 rules, and `zeek-live` raised all 16 notices. Not yet seen on a VM:
+     the tags as the mirror app delivers them
+     (`tcpdump -e -nn -i phenix vlan` on a routed flow).
   5. **Zeek extracts files, or the scanners see none.** Malcolm's
      `ZEEK_EXTRACTOR_MODE` is `none` by default, and file scanning (Strelka, YARA,
      ClamAV) scans only what Zeek extracts. The full profile sets `interesting`,
@@ -3005,6 +3071,46 @@ point for future adversary-emulation scenarios.
      script state, and `cherrymountain.zeek` ties a PLC change to a vendor
      session on another connection through a global. The provisioning sets
      `ZEEK_LB_PROCS_WORKER_DEFAULT=1`.
+  7. **Arkime gets its pcap from rotating files, not from its own live capture.**
+     With a local OpenSearch, Malcolm captures with the `pcap-capture` container
+     (netsniff-ng or tcpdump) and the `arkime` container indexes each file once it
+     is closed; its configurator offers Arkime's own live capture (`arkime-live`)
+     only to a sensor that forwards to another host. The reason is in the compose
+     file: `arkime-live` runs on the host network, where the name `opensearch`
+     does not resolve, so it waits for OpenSearch for ever, and its health check
+     only asks whether that waiting script is running. The range's first
+     configuration turned `ARKIME_LIVE_CAPTURE` on by hand and would have had Zeek
+     logs and Suricata alerts and not one Arkime session or pcap.
+     - The sensor uses tcpdump, because the tag must survive: Open vSwitch hands
+       a mirrored frame's 802.1Q tag to the capture socket beside the frame,
+       libpcap puts it back, and netsniff-ng writes the frame without it.
+     - A file is closed every 2 minutes (`PCAP_ROTATE_MINUTES`; Malcolm's default
+       is 10), so a session is in Arkime a few minutes after it happened. Zeek
+       and Suricata are not delayed.
+     - Run for real with the 26.10.0 containers and the stand-in port: the files
+       carry the tags, `pcap-monitor` hands each closed file to Arkime, and the
+       sessions are in OpenSearch with their VLAN ids. A file closed while Malcolm
+       is still starting may be handed over before Arkime is ready and is then
+       not indexed.
+     - `cm-malcolm-health` asks for Arkime sessions of the last 15 minutes as
+       well as Zeek records.
+  8. **Malcolm's settings come from its own configurator.** `cm-malcolm-provision`
+     runs `scripts/configure --non-interactive --import-malcolm-config-file` with
+     the profile's settings file (`malcolm-config-full.yaml` or `-slim.yaml`), the
+     unattended installation Malcolm documents, and then sets the few things the
+     range adds (heap sizes, the capture port, the rotation, one Zeek worker, the
+     local networks). The configurator derives what depends on a setting: with
+     live Zeek and Suricata their processing of the rotated files is off, an
+     unexposed service loses its port, ICS best-guess and capture statistics are
+     on, and every container gets the `unless-stopped` restart policy, so one
+     that dies comes back. The provisioning script, the configurator, and
+     Malcolm's `auth_setup` ran end to end against 26.10.0 for both profiles,
+     outside systemd; the configurator also ran as uid 1000 with `/proc`
+     restricted as the unit restricts it.
+  9. **The host settings of Malcolm's installer are in the image**
+     (`/etc/sysctl.d/99-cm-malcolm.conf`): all eleven, among them
+     `vm.max_map_count=524288` and `vm.overcommit_memory=1`, which valkey needs
+     for its background saves.
 
   Item 2 belongs in the mirror app, and item 1 in `setupOVS`
   ([§16](#16-new-and-extended-software)). Until the mirror app does
@@ -3043,8 +3149,10 @@ point for future adversary-emulation scenarios.
      custom rule as a `Duplicate signature`. `cm-malcolm-provision` fails when
      `cherrymountain.rules` has a sid below 9000101 or no sid at all
      (`tests/soc/test_malcolm.py`).
-- **Not yet verified:** a real `cm-malcolm` VM image with live capture, and
-  NetBox and Strelka ([FUTURE_WORK.md](FUTURE_WORK.md#the-first-run-on-a-phenix-host)).
+- **Not yet verified:** a real `cm-malcolm` VM image with the mirror app's
+  feed, the units under systemd, and Logstash, NetBox, and Strelka, which the runs
+  above did not start
+  ([FUTURE_WORK.md](FUTURE_WORK.md#the-first-run-on-a-phenix-host)).
 
 **soc-purple** (Kali Purple; parseus and PEAT, GPL-3.0)
 
@@ -3085,10 +3193,13 @@ point for future adversary-emulation scenarios.
   visible to Malcolm and its drops to the fw-ot logs), and a netcheck test keeps
   the list equal to the conduit matrix.
 - Every agent sends its authentication log (`/var/log/auth.log`: sshd, PAM,
-  sudo), which the packaged agent configuration does not collect; the EWS also
-  sends its syslog (the engineer's `cm-plc-tool` events), dmz-vpn its kernel log
-  and WireGuard events, and dmz-jump its Guacamole log and recordings
-  (`phenix-injects/wazuh/agent-conf/`).
+  sudo); the EWS also sends its syslog (the engineer's `cm-plc-tool` events),
+  dmz-vpn its kernel log and WireGuard events, and dmz-jump its Guacamole log and
+  recordings (`phenix-injects/wazuh/agent-conf/`). The agent reads these files and
+  not the journal: the agent package gives itself a journald reader at install
+  time, noble's journald forwards the same lines to rsyslog's files, and with both
+  every event arrived twice (a rule that counts five failed logins fired at the
+  third). The enrollment hook removes the journald reader.
 - Syslog comes from the VyOS firewalls and from the ot-svc relay. The relay
   carries ot-svc's own messages: no other host forwards to it yet
   ([future work](FUTURE_WORK.md#network-and-the-ranges-own-security)).
@@ -3205,17 +3316,18 @@ site would need:
 
 | Store | Range target | Mechanism | Disk and fit | A real site (M-21-31 model) |
 |---|---|---|---|---|
-| Wazuh alerts (`wazuh-alerts-*`) | 30 days | ISM policy `cm-retention-alerts` (`CM_WAZUH_ALERTS_DAYS`) | Indexer 16 GB; alerts are a small share | 12 months hot, 18 cold: about 30 months, snapshots to object storage |
-| Wazuh archives (`wazuh-archives-*`) | 7 days, the exercise | ISM policy `cm-retention-archives` (`CM_WAZUH_ARCHIVES_DAYS`) | The bulk of the 16 GB; a firewall-drop flood is the risk (rule 100104 aggregates the alerts, not the archives) | as above |
+| Wazuh alerts (`wazuh-alerts-*`) | 30 days | ISM policy `cm-retention-alerts` (`CM_WAZUH_ALERTS_DAYS`) | Indexer 32 GB disk; alerts are a small share | 12 months hot, 18 cold: about 30 months, snapshots to object storage |
+| Wazuh archives (`wazuh-archives-*`) | 7 days, the exercise | ISM policy `cm-retention-archives` (`CM_WAZUH_ARCHIVES_DAYS`) | The bulk of the disk; a firewall-drop flood is the risk (rule 100104 aggregates the alerts, not the archives): each logged drop is stored five times on its first day, about 5.5 KB, so a port scan of ten hosts through fw-ot is several GB | as above |
 | Malcolm OpenSearch (Zeek logs, Suricata alerts, Arkime sessions) | The exercise (7 days) | `OPENSEARCH_INDEX_SIZE_PRUNE_LIMIT=24G`: the oldest network-metadata indexes go first | 64 GB disk shared with the pcap | 12 + 18 months of the metadata, on its own storage tier |
 | Arkime full pcap | As much as fits, about a day of mirrored traffic | `MANAGE_PCAP_FILES=true`, `ARKIME_FREESPACEG=10%`: oldest pcap deleted when free space runs low | **Shortfall:** 72 h of the mirror (an estimated 1–3 Mbit/s of OT and BAS polling, so 30–100 GB) does not fit beside the indexes; SCORCH's `pcap` captures are the archive for a run | 72 hours, sized from measured mirror throughput |
 | Historian (`scada`, `bas`, `oee`) | 30 days | Bucket retention (`historian.retentionHours`) | 12 GB | per site policy |
 | Historian `records` | 3 years | Bucket retention, daily copy task ([§12.4](#124-historian-and-engineering-workstation)) | negligible | 3 years (27 CFR 25.300) |
 | Ground truth (OpenSearch on sim-ctl) | The experiment | none (the white cell's) | 16 GB; not measured over a full week | n/a (range only) |
 
-The two Wazuh policies keep the 16 GB disk from filling: archives, the large
+The two Wazuh policies keep the 32 GB disk from filling: archives, the large
 and raw stream, go after 7 days, and alerts, which an after-action review
-reads, stay 30. `CM_WAZUH_RETENTION_DAYS`, if set, applies one value to both.
+reads, stay 30. They are created before Filebeat makes the first index, because
+a policy only takes the indices made after it. `CM_WAZUH_RETENTION_DAYS`, if set, applies one value to both.
 The volumes are estimates; nothing has run on a VM, and the Malcolm settings
 are unverified on 26.10.0 ([§19](#19-risks-and-open-questions)).
 
@@ -3645,8 +3757,11 @@ exists, and it never assumes a fixed `localhost` port.
   `PermitEmptyPasswords no`, no forwarding, and three tries. On the DMZ hosts
   password logins are off entirely; on `ews` they stay on for the vendor
   account's Guacamole SSH session, and xrdp refuses root (`AllowRootLogin=false`).
-  The passwordless root console stays on every image, for the white cell's VNC
-  and cc access: an accepted lab-only risk ([§13](#13-vendor-remote-access)).
+  The passwordless root console stays on every image but `cm-ews`, for the white
+  cell's VNC and cc access: an accepted lab-only risk
+  ([§13](#13-vendor-remote-access)). `cm-ews` locks root's password (`passwd -l`),
+  because ordinary accounts log in there; its console desktop logs in by itself
+  and neither locks nor blanks.
   The other images keep the default root SSH; they sit behind `fw-ot`, which
   passes TCP 22 only from `dmz-jump` to `ews`.
 - **Upstreaming.** Generic images (`cm-otsim`, `cm-openplc`, `cm-fuxa`) are
@@ -3685,19 +3800,19 @@ steps: the host and repositories, the builds, the first start of each variant,
 what to check, and how to run an exercise.
 
 **Host prerequisites** ([USER_GUIDE.md §2](../USER_GUIDE.md#2-prepare-the-host)).
-The full variant needs about 128 GB RAM and 32 cores (71 GB for lite;
+The full variant needs about 128 GB RAM and 32 cores (60 GB for lite;
 [§11](#11-node-inventory-and-resources)) and the phenix fork with the
 autotunnel loop ([§15.3](#153-topology-modules-and-variants)). Image storage:
 twelve qcow2 images of 8 to 64 GB virtual size; compressed they take roughly
 40 GB, and each running VM adds a copy-on-write overlay that grows with its
 writes (Malcolm and Wazuh the most), so keep about 150 GB free; the `kali-purple`
-image is one more, 80 GB virtual. **Host fit:** the full variant asks 71 vCPUs (2.2×
-overcommit on 32 cores; most nodes idle) and 129 GB, which a 128 GB host no
-longer holds without overcommitting memory: 113 GB is the range, and 16 GB is
-soc-purple, which was added later. On a 128 GB host, lower soc-purple's `memory`
-in `topology-soc.yml` (parseus is then under its stated minimum) or delete the
-node. When memory runs short,
-in order: do that, use the slim Malcolm profile (−12 GB), run lite (no SOC, no vendor
+image is one more, 80 GB virtual. **Host fit:** the full variant asks 68 vCPUs (2.1×
+overcommit on 32 cores; most nodes idle) and 127 GB, which leaves a 128 GB host
+no memory of its own: there, lower Malcolm's `memory` to 24576 (its stated
+minimum; the profile then uses a smaller OpenSearch heap,
+[§11](#11-node-inventory-and-resources)), lower soc-purple's (parseus is then
+under its stated minimum), or delete soc-purple. When memory runs short, in order:
+do that, use the slim Malcolm profile (a 12 GB node), run lite (no SOC, no vendor
 path), drop the ground-truth Grafana (sim-ctl to 4 GB), and stop the
 packaging and BAS sides for exercises that do not need them.
 
@@ -4227,8 +4342,8 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
   scenario runs on a VM is injected there by the topology or rendered by the
   app.
 - **What CI runs.** The Lint workflow runs `prek run --all-files`: every hook
-  above, so the nine pytest suites (1,368 tests: sim 401, apps 302, fuxa 180,
-  tests/soc 164, plantgen 113, netcheck 97, viz 45 without the browser test,
+  above, so the nine pytest suites (1,387 tests: sim 401, apps 302, fuxa 180,
+  tests/soc 182, plantgen 113, netcheck 98, viz 45 without the browser test,
   tests/brand 37, tests/bacnet 29) and the sync checks run on each pull
   request. The CherryMountain spikes workflow runs the VM spikes on
   GitHub-hosted runners with KVM, on a push that changes `spikes/` or by hand
@@ -4494,7 +4609,7 @@ lists everything that is left to do.
 | de Andrés-Toro parameters are lager-fitted (μ_e0 typo resolved in §9.3) | Tune ale behavior to target attenuation; unit test on μ_e0 |
 | Fermentation time compression could distort coupled physics | Time-base rules in §9.4: compressed kinetics, real-time-equivalent fluxes |
 | Hop creep rate is tuned; altitude derating uses literature activation energies | Labeled as tuned or derived in the model docs; compare with brewer data if available |
-| Malcolm RAM (24 GB) on a 128 GB host | `lite` variant; Malcolm profile tuning. Both profiles stay (§11): the default 8 vCPU / 24 GB full stack, and an optional slim profile of about 4 vCPU / 12 GB. Evidence: Zeek alone 281 MiB; the trimmed pipeline with Suricata 8.4 GiB of containers and 9.2 GiB of 16 GB on the host (Suricata 917 MiB, one core); NetBox, Strelka, and the default heaps unmeasured |
+| Malcolm RAM (32 GB) on a 128 GB host | The node can go back to 24 GB, Malcolm's stated minimum, where the full profile uses a 6 GB OpenSearch heap; `lite` variant; the slim profile of about 4 vCPU / 12 GB (§11). Evidence: live Zeek 2.5 GiB, live Suricata 0.55 GiB, OpenSearch 3.8 GiB at a 3 GB heap; the trimmed upload pipeline with Suricata 8.4 GiB of containers; Logstash at 3 GB, NetBox, and Strelka unmeasured |
 | Malcolm's pcap upload pipeline fails silently when its setup is wrong, and no real `cm-malcolm` VM has run with live capture | The `cm-malcolm` boot and provisioning script creates `zeek/custom/__load__.zeek`, sets `PCAP_PIPELINE_VERBOSITY` in `upload-common.env`, waits for every processor's subscription before the first pcap, and custom Suricata rules use sids of 9000101 and up (§14). Capture live with `zeek-live` in the real VM before relying on it |
 | Mirror capture loses frames without two fixes (the capture-VM flow, `df_default=false` on the GRE port) | Requirements in §14. The cm-malcolm boot script adds the flow and the `cherrymountain` app sets the option after every start; the mirror app follow-up (§16) would take both over |
 | `fromScenario` copies hosts wholesale; workflow maps one experiment per branch | Per-variant app blocks from plantgen; variants applied with `-b`; fixed config names (§15.1, §15.3) |
@@ -4511,8 +4626,8 @@ lists everything that is left to do.
 | Requires the phenix fork's autotunnel fixes (branch `ci-e2e-minimega`). Upstream `main` checks the C2 client once, drops the tunnel silently, creates none for CLI-started experiments, and never re-creates one | Run on the fork, or start experiments from `phenix ui` and re-create tunnels manually (the forwards API call works). A CLI-started experiment on the fork gets all its tunnels, and they survive a `phenix ui` restart. Host ports are random and phenix's forwards API does not report them, so tools look them up with `cc tunnel list` (§15.3) |
 | Serial: the socat link has no baud pacing, so loss and timing say nothing about a real RS-485 bus. phenix PR #130's QEMU-socket serial app fails when a VM is redeployed ([§15.2](#152-apps)) | Stay on the current serial app, which carries ot-sim's own Modbus RTU. PR #130 needs the fixes of its row in [§16](#16-new-and-extended-software) first; the spike's patch is `spikes/serial/pr130-serial.patch`. Modbus TCP remains the fallback |
 | The phenix `vrouter` app cannot log, set a syslog target, write IKEv2 `key-exchange`, or give each router its own NTP source; it filters only the `forward` chain; it takes only integer netem loss | `cm-vyos-config.sh` does the first four after boot, isp-rtr boots first, the 1 % loss replaces 0.1 %, and `netcheck` reports router-local traffic as unfiltered. Upstream follow-ups in §16. The script is unverified on VyOS until a VM run |
-| Hardened systemd units are verified offline only | A seccomp emulation of the unit sandboxes checks them; it found that every HELICS federate died under `cm-federate@.service` (no `AF_NETLINK` for `getifaddrs`; `sched_setscheduler` and `mbind` are in the filtered `@resources`) and that `cm-bbmd.service` killed the BBMD at import (readline calls `setfsuid`), both fixed. The first VM run checks `DynamicUser` with `StateDirectory`, read-only paths, `MemoryDenyWriteExecute`, and `ProcSubset=pid` on `fuxa.service`, the federate units, and the Wazuh provisioning unit's Java tools at runtime, because `systemd-analyze` cannot |
-| `CM_REF` in `cm-sim` trails `sim/` changes (`OTSIM_REF` is pinned to the tested ot-sim `9dc33047`) | Move `CM_REF` forward with every `sim/` change the image must carry |
+| Hardened systemd units are verified offline only | A seccomp emulation of the unit sandboxes checks them; it found that every HELICS federate died under `cm-federate@.service` (no `AF_NETLINK` for `getifaddrs`; `sched_setscheduler` and `mbind` are in the filtered `@resources`) and that `cm-bbmd.service` killed the BBMD at import (readline calls `setfsuid`), both fixed. A later review found four more of the kind, also fixed: `cm-wazuh-provision.service` filtered `setpriority`, which PAM calls in every `runuser`, and lacked the `@pkey` calls of the dashboard's Node 18 tool; `cm-guacamole.service` had no `HOME`, without which the Docker CLI under `ProtectHome` does not find its compose plugin; `fuxa.service` hid the directory where FUXA's OPC UA client keeps its certificates; and `cm-malcolm-provision` read `/proc/meminfo`, which `ProcSubset=pid` hides. The first VM run checks `DynamicUser` with `StateDirectory`, read-only paths, `MemoryDenyWriteExecute`, and `ProcSubset=pid` on `fuxa.service`, the federate units, and the Wazuh provisioning unit's Java tools at runtime, because `systemd-analyze` cannot |
+| `CM_REF` in `cm-sim` trails `sim/` changes (`OTSIM_REF` is pinned to the tested ot-sim `9dc33047`) | It did trail once: with that image the cellar and packaging federates stopped at their first step. `cm-sim` now records the tree ids of `sim/` and `viz/` at `CM_REF`, and a test fails from the commit after a change to either until the pin and the ids move (`tests/soc/test_image_python.py`) |
 | OpenDSS islanding needs a source in each island | Genset modeled as a switched Vsource; pandapower fallback |
 | Checks that need a VM and have not run | Open, to run on the first VM: `cm-wazuh-provision`'s re-run path (the marker and StartLimit of `f4e4ceb`); whether `compilation-status` reports a stale `SUCCESS` right after an upload (the guard in §12.1 is in place either way); `cm-load-images` under `PrivateTmp`, `ProtectSystem=strict`, and `MemoryDenyWriteExecute`; whether `ovs-vsctl`/`ovs-ofctl` can write their logs under `cm-malcolm-capture.service`'s hardening; BACpypes3 with several `--bbmd` arguments; the OpenPLC upload accepting `debug_map.json` in the ZIP; the OPC UA namespace index 2 and the S7 tag types the full FUXA projects assume, against the range's own PLCs; the new SCORCH runs; and the five PLC programs in a runtime |
 | Script tests still missing | Open: `cm_selftest_pcap.py`, `cm-load-images`, and the ot-svc chrony and dnsmasq hooks have no tests (`cm-vyos-config.sh` and `cm-malcolm-provision`'s sid guard do) |

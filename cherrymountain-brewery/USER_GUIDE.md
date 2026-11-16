@@ -37,8 +37,8 @@ simulation of the physics behind them.
 | Variant | What it runs | VMs | vCPUs | RAM | Use it for |
 |---|---|---:|---:|---:|---|
 | `ci` | The cellar only: one simulation node pair, one remote I/O, one PLC, one FUXA | 5 | 7 | 8 GB | A first boot, and a laptop |
-| `lite` | The whole plant and its network, without the SOC and the vendor path | 37 | 48 | 71 GB | Process and network work |
-| `full` | Everything, with Malcolm, Wazuh, a Kali Purple workstation, WireGuard, and Guacamole | 44 | 71 | 129 GB | Exercises with a blue team |
+| `lite` | The whole plant and its network, without the SOC and the vendor path | 37 | 45 | 60 GB | Process and network work |
+| `full` | Everything, with Malcolm, Wazuh, a Kali Purple workstation, WireGuard, and Guacamole | 44 | 68 | 127 GB | Exercises with a blue team |
 
 Run **one variant at a time**. They use the same VLAN numbers, and minimega
 refuses the second one. A stopped experiment of another variant may stay.
@@ -50,10 +50,12 @@ You need one machine with:
 - **Ubuntu 24.04 on x86-64 with `/dev/kvm`.** Check with `kvm-ok` (package
   `cpu-checker`). On a cloud VM, turn on nested virtualization.
 - **CPU and memory for the variant.** 4 cores and 16 GB run `ci`. `full` is
-  sized for 32 or more cores and 144 GB: most VMs idle, so its 71 vCPUs are
-  overcommitted, but its 129 GB of VM memory should not be. On a 128 GB host,
-  lower the `memory` of soc-purple (16 GB) in
-  `phenix-configs/topology-soc.yml`, or delete that node: the rest is 113 GB.
+  sized for 32 or more cores and 144 GB: most VMs idle, so its 68 vCPUs are
+  overcommitted, but its 127 GB of VM memory should not be. On a 128 GB host,
+  make room for the host itself in `phenix-configs/topology-soc.yml`: set
+  malcolm's `memory` back to 24576 (24 GB is the least Malcolm supports; the
+  sensor then runs a smaller OpenSearch heap), lower soc-purple's 16 GB, or
+  delete soc-purple.
 - **Disk.** About 150 GB free under `/phenix` for all images and the running
   VMs. The four `ci` images need about 20 GB.
 - **Software.** Docker with the Compose plugin, Git, [Git LFS](https://git-lfs.com/),
@@ -623,7 +625,10 @@ shows a QR code to enroll a one-time-code app.
   OPC UA) and `/arkime/` for sessions and packets. Mirrored packets carry
   their VLAN tag, so packet filters need `vlan and ...`.
   - Is capture live? On the malcolm console run `cm-malcolm-health`. It should
-    print `HEALTHY` with a packet count and a count of Zeek records.
+    print `HEALTHY` with a packet count, a count of Zeek records, and a count of
+    Arkime sessions. Zeek and Suricata show traffic within seconds; Arkime
+    indexes the capture in 2-minute files, so a session appears there a few
+    minutes after it happened.
   - `cm-malcolm-selftest` plays a test capture through Zeek and Suricata.
 - **Wazuh**, `https://localhost:18444`, user `admin` with `wazuh_password`.
   The range's own rules

@@ -33,9 +33,13 @@ start.
 - VyOS accepts the rendered rulesets, and every conduit passes and every
   blocked path fails under SoH. `netcheck` checks the rules phenix renders, not
   what VyOS does with them.
-- The post-boot script `cm-vyos-config.sh` on VyOS: the syslog target (it tries
-  `remote`, then `host`), the IKEv2 setting, and the IPsec match on the
-  utility's DNP3 rule.
+- The post-boot script `cm-vyos-config.sh` on VyOS. It was rewritten after a
+  review showed that its first form never reached VyOS (the commands are shell
+  aliases), and the new form has only run against a stand-in: that
+  `/opt/vyatta/sbin/my_set` and `my_delete` (or `vy_set` and `vy_delete` with the
+  vyconf backend) take the paths, the syslog target, `default-log`, the IKEv2
+  setting, the IPsec match on the utility's DNP3 rule, and whether fw-ot's first
+  commit finishes inside the 10 minute wait on 1 vCPU.
 - ot-sim DNP3 across the IPsec tunnel (the spike used a link-status stub).
 - The MGMT nftables hook finds the guest's device on every MGMT member, and
   noble's `nft` takes `-D`.
@@ -71,8 +75,14 @@ start.
 - The trends with FUXA's InfluxDB store: the first hour of a trend
   ([fuxa/README.md](../fuxa/README.md#the-process-graphics)).
 - The kiosk script on a kiosk VM.
-- FUXA's DAQ field layout in InfluxDB, which the historian's records task and
-  dashboard assume ([§12.4](DESIGN.md#124-historian-and-engineering-workstation)).
+- The historian's panels and records task with FUXA writing: the queries now
+  filter on `name`, the tag key FUXA's store writes (checked against FUXA's
+  source and an InfluxDB 2.9.1 with points written by FUXA's own module), and
+  have not run in Grafana
+  ([§12.4](DESIGN.md#124-historian-and-engineering-workstation)).
+- `fuxa.service` with `XDG_CONFIG_HOME` under systemd: FUXA's OPC UA client then
+  keeps its certificates in FUXA's data directory (checked in an emulation of the
+  unit's sandbox).
 
 **ot-sim** ([§12.3](DESIGN.md#123-ot-sim-field-devices))
 
@@ -83,31 +93,45 @@ start.
 **SOC and remote access** ([§13](DESIGN.md#13-vendor-remote-access),
 [§14](DESIGN.md#14-blue-team-monitoring))
 
-- A real `cm-malcolm` VM with live capture (`zeek-live`), NetBox, and Strelka,
-  and its memory with the full stack: the 24 GB default stays until it is
-  measured ([§11](DESIGN.md#11-node-inventory-and-resources)).
-- The Suricata, Zeek, and Wazuh rules on live traffic, and the Suricata
-  `modbus: address` rules on Malcolm's Suricata 8.0.7.
+- A real `cm-malcolm` VM with the mirror app's feed, its units under systemd, and
+  Logstash, NetBox, and Strelka, which no run has started. Its memory with the
+  full stack in 32 GB: live Zeek, live Suricata, OpenSearch, and Arkime are
+  measured, the rest is estimated
+  ([§11](DESIGN.md#11-node-inventory-and-resources)).
+- The Wazuh rules on live traffic. The Suricata rules (all 40) and the Zeek
+  notices (all 16) fired in Malcolm's own 26.10.0 containers, Suricata 8.0.7
+  with `cm-suricata.yaml`, on re-tagged test traffic replayed into a stand-in
+  for the mirror port.
 - What the mirror delivers: one VLAN tag per direction of a routed flow
-  (`tcpdump -e -nn -i phenix vlan`), and `cm-suricata.yaml` (no VLAN in the flow
-  key, one-sided streams) as Malcolm's Suricata 8.0.7 loads it. Both were
-  checked on Suricata 7.0.3 with re-tagged test traffic only.
+  (`tcpdump -e -nn -i phenix vlan`). The stand-in was a veth pair, not Open
+  vSwitch's port.
+- Arkime's first files after a start: a pcap file that is closed while Malcolm is
+  still starting can be handed over before Arkime is ready, and is then not
+  indexed (seen in the container run, where Arkime's start was slow).
+- Whether the mirror NIC coalesces segments (GRO) before Open vSwitch hands them
+  to the capture port. Malcolm's interface tweak turns offloading off on the
+  capture port only; if large merged segments show up in the pcap, turn GRO off on
+  the mirror NIC in `cm-malcolm-capture`.
 - The Wazuh fixes that came from reading the 4.14.10 source, in `wazuh-logtest`
   and on the manager: the `[cm-wg-drop]` prefix after a day of uptime, rule
   100104 counting by group, `cm-wazuh-selftest` without `-q`, the password tool
   under the unit's capabilities, and `filebeat test output` in `cm-wazuh-health`.
+- The Wazuh first-boot setup under systemd with the corrected system-call filter
+  (`runuser` and the dashboard's Node tool ran under an emulation of it), the
+  dashboard's sign-in after the password tool, and the agents with their journald
+  reader removed: each event once, from the files.
 - Whether a recording that grows during a session raises Wazuh's own rule 550
   (level 7) on dmz-jump for every change.
 - The agents and syslog into Wazuh, `cm-wazuh-provision`'s second run, and the
   admin password that `wazuh-passwords-tool.sh` sets.
-- Malcolm's full profile in 24 GB, with every container up and live capture on:
-  it was never selected before (the automatic choice fell to slim), so nothing
-  about its memory is measured. If it does not fit, set `CM_MALCOLM_PROFILE=slim`
-  in `phenix-injects/malcolm/cm-malcolm.env` or give the node more memory.
 - The retention settings: Malcolm's prune limits on 26.10.0, the Wazuh archive
-  volume under a scan, and ground truth's growth over a week.
-- Guacamole: `cmadmin` and the `ews-rdp` and `ews-ssh` connections exist after
-  the first boot of dmz-jump. The vendor's path end to end.
+  volume under a scan (the disk is 32 GB now), and ground truth's growth over a
+  week.
+- Guacamole under systemd, and the vendor's path end to end with a real tunnel
+  and a recorded RDP session. The stack itself ran on the four pinned images with
+  the unmodified start script: first boot, the schema and both SQL files,
+  password and TOTP sign-in through nginx, the websocket, the branding, and a
+  second boot that changed nothing.
 
 **phenix, images, and operations** ([§15](DESIGN.md#15-phenix-integration))
 
@@ -218,11 +242,21 @@ start.
   its conduit are there, and nothing forwards to it: the PLC and ot-sim images
   have no rsyslog, and the others send through their agent
   ([§14](DESIGN.md#14-blue-team-monitoring)).
-- **A restart policy for Malcolm's containers.** Malcolm's compose file starts
-  every container with `restart: "no"`, so one that dies during a week-long run
-  (an out-of-memory kill of Logstash, say) stays down; `cm-malcolm-health` then
-  reports it, and nothing brings it back. Malcolm's installer offers
-  `unless-stopped`; the range does not set it yet.
+- **Scoped InfluxDB tokens.** One all-access operator token serves both FUXA
+  servers, Telegraf, and Grafana, and Grafana's anonymous viewer can send any
+  Flux, writes included: the "read-only Grafana" conduit from the HMI zone is not
+  read-only, and bas-fuxa holds full control of the historian. Have
+  `cm-historian-provision` create a read token for Grafana and write tokens per
+  bucket, or accept it as a weakness of the range and say so in
+  [§13](DESIGN.md#13-vendor-remote-access).
+- **Agent enrollment that cannot displace a connected agent.** Any host that holds
+  the enrollment password (all 11 agent hosts) can enroll under another agent's
+  name and replace it at once, which the manager's `<force>` block allows so that
+  a redeployed VM enrolls without a wait. `disconnected_time enabled="yes"` would
+  close it, at the price of about 15 minutes before a redeployed agent is taken.
+- **Early syslog over TCP.** The relay on ot-svc forwards over UDP, so what it
+  relays before Wazuh listens is lost. TCP 514 on the conduit, the relay, and
+  Wazuh's listener would hold it in the relay's queue.
 - **Fixed HELICS ports,** so the MGMT policy can name exact ports instead of
   23407 to 23999: `--localport` in `cherrymountain_sim` and in the ot-sim `io`
   module's config ([§19](DESIGN.md#19-risks-and-open-questions)).
@@ -295,7 +329,30 @@ Until these land, the derived phenix container installs the forked
   `ci-e2e-minimega`.
 - **Images:** `cm-otsim`, `cm-openplc`, and `cm-fuxa` are candidates for
   sceptre-phenix-images ([§15.7](DESIGN.md#157-images)).
-- Move `CM_REF` forward with every `sim/` change an image must carry.
+
+## Images and builds
+
+- **The Ubuntu update pockets.** Every image is built from noble's release
+  pocket alone, so its base packages are those of April 2024: on the EWS, which
+  the vendor reaches on SSH and RDP, `openssh-server` 1:9.6p1-3ubuntu13
+  (CVE-2024-6387 is fixed in 13.3), `xrdp` 0.9.24-4, and kernel 6.8.0-31. That is
+  not one of the range's intended weaknesses. Either add `noble-updates` and
+  `noble-security` and upgrade at the start of each `INSTALL_*` script (a kernel
+  upgrade inside the build chroot needs a build to show that the image still
+  boots), or list it as accepted.
+- **Pinned Python and npm dependencies.** ot-sim's Python dependencies (numpy,
+  pandas, pyzmq), cm-sim's (pydantic, SimPy, OpenDSSDirect's own), OpenPLC's
+  `requirements.txt`, and FUXA's npm tree past its lockfile (`npm ci` fails at
+  the pin, so the build uses `npm install`) float: two builds on different days
+  differ. A pip constraints file per image, taken from a build that works, and a
+  lockfile for FUXA would fix them.
+- **The ot-sim Go build.** `make install` builds all eight modules, and the
+  sunspec module's rule runs `go install github.com/atombender/go-jsonschema@latest`
+  and regenerates a source file, which is what pulls a newer Go toolchain. The
+  range uses four of the binaries; building only those needs neither.
+- **A check that FUXA's runtime runs.** `cm-fuxa-provision` reports a project POST
+  that got no answer, but a later run finds the stored project and has no way to
+  see a dead runtime: FUXA exposes device status only over its socket.
 
 ## Sources still to read
 

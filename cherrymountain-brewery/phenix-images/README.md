@@ -20,8 +20,12 @@ themselves. They share this package set: `ca-certificates chrony curl dbus
 ethtool init initramfs-tools iproute2 iputils-ping isc-dhcp-client less
 linux-headers-generic linux-image-generic ncat net-tools netbase nftables
 openssh-server procps rsync ssh tcpdump tmux vim wget`. The sections list only
-what each image adds. The base is not pinned beyond the release name: apt
-versions move with noble's updates.
+what each image adds. The base is not pinned beyond the release name, and it is
+the release pocket only: debootstrap gets one suite, and no script adds
+`noble-updates` or `noble-security`, so the base packages are those of April 2024
+(for example `openssh-server` 1:9.6p1-3ubuntu13 and kernel 6.8.0-31). Whether to
+build from the update pockets is an open decision
+([FUTURE_WORK.md](../docs/FUTURE_WORK.md#images-and-builds)).
 
 Build any image from the repository root, in the phenix container (it has
 vmdb2 and debootstrap; the build itself needs internet access and no
@@ -119,15 +123,22 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
   and `grafana.com`.
 - **Used by:** `sim-ctl`, `sim-process`, `sim-power`, and `sim-building` (ci:
   `sim-ctl` and `sim-process`).
-- **Pinned versions:** `helics==3.6.1`; `CM_REF` (a commit of this repository;
-  move it forward with any `sim/` change the image must carry);
+- **Pinned versions:** `helics==3.6.1`; `CM_REF` (a commit of this repository)
+  with `CM_SIM_TREE` and `CM_VIZ_TREE`, the git tree ids of `sim/` and `viz/` at
+  that commit. After a change to `sim/` or `viz/`, a second commit moves all three
+  (`git rev-parse <commit>:cherrymountain-brewery/sim`); a test fails until it
+  does, because federates of an older `sim/` stop on the names of a newer
+  `helics.json`;
   `opensearch=3.9.0` (apt, held; repository key
-  `A8B2D9E04CD51FEF6AA2DB53BA81D99981191457`); Grafana `12.*` (repository key
+  `A8B2D9E04CD51FEF6AA2DB53BA81D99981191457`); Grafana `12.4.14` (repository key
   `B53AE77BADB630A683046005963FA27710458545`); `grafana-opensearch-datasource`
   `2.34.4`. OpenDSSDirect.py follows the package's `~=0.8.4`.
-- **Ground-truth timestamps** are the federate clock (sim time, which starts on
-  a summer weekday at 04:30 by default), not wall time. The dashboard opens on
-  a two-day window around now; pick the sim date when the clock was moved.
+- **Ground-truth timestamps** (`@timestamp`) are the wall clock, the same clock
+  Malcolm and Wazuh stamp their records with; the simulated date and time is in
+  `sim_time`. The dashboard opens on a two-day window around now.
+- **Also in the image:** a start timeout of 300 s and a restart for OpenSearch
+  (the package gives it 75 s and none), and a logrotate rule for the HELICS logs
+  in `/var/log`.
 
 ## cm-otsim
 
@@ -171,7 +182,9 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
 
 ## cm-openplc
 
-- **Purpose:** the OpenPLC v4 runtime that runs the cellar PLC program.
+- **Purpose:** the OpenPLC v4 runtime of the five PLCs (in ci, plc-cellar alone).
+  Its unit starts after the phenix startup scripts, so that a program stored from
+  an earlier boot does not start before the node has its addresses.
 - **Base:** the shared noble `minbase` image plus `build-essential`, `python3`,
   `python3-pip`, and `python3-venv`, 12 GB disk. The runtime compiles uploaded
   programs on the VM, so the toolchain stays.
@@ -216,7 +229,9 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
   `69b09dba...e80437ec`, from nodejs.org's `SHASUMS256.txt`); FUXA commit
   `b2972583b3d59525131c44e8b3214f55b74750fe` (server 1.3.6); plugins
   `modbus-serial@8.0.19`, `node-opcua@2.149.0`, `node-snap7@1.0.9`, and
-  `node-bacnet@0.2.4`. Other npm dependencies follow FUXA's lockfile.
+  `node-bacnet@0.2.4`. The other npm dependencies are installed with
+  `npm install`, so they follow FUXA's lockfile only where it holds them, and the
+  plugins' own dependencies are not pinned.
 
 ## cm-svc
 
@@ -242,7 +257,7 @@ tools), the OpenPLC runtime's web interface (a PLC's own), and InfluxDB's.
 - **Used by:** `ot-svc`, `bas-bbmd`, and (as `cm-svc-protonuke.qc2`)
   `inet-traffic`.
 - **Pinned versions:** `bacpypes3==0.0.110` (the version of the BBMD spike),
-  `pydantic>=2.7` (a floor, not a pin), and the Wazuh agent (see
+  `pydantic==2.11.7`, and the Wazuh agent (see
   [Wazuh agent](#wazuh-agent)).
 
 ## Wazuh agent
@@ -275,8 +290,9 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   - `logrotate`, for the WireGuard peer event log (`/etc/logrotate.d/cm-wireguard`
     is injected by the topology).
   - `wireguard-tools` (the kernel has WireGuard).
-  - `net.ipv4.ip_forward=1` in `/etc/sysctl.d`, because dmz-vpn forwards the
-    decapsulated tunnel traffic onto the DMZ without NAT.
+  - No forwarding setting: dmz-vpn forwards the decapsulated tunnel traffic onto
+    the DMZ without NAT, and its startup hook turns `net.ipv4.ip_forward` on only
+    after the nftables forward policy has loaded.
   - `/etc/wireguard` (mode 0700) and `/usr/local/lib/cm-wireguard`.
   - The Wazuh agent, disabled.
   - The topology injects the rest from `phenix-injects/wireguard/`: the nftables
@@ -334,8 +350,9 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 ## cm-malcolm
 
 - **Purpose:** the Malcolm network sensor (`malcolm`): Zeek with the ICSNPP
-  parsers, Suricata, Arkime, and OpenSearch, capturing live from the mirror app's
-  feed (DESIGN.md 14). The largest image.
+  parsers, Suricata, Arkime, and OpenSearch, capturing from the mirror app's
+  feed (DESIGN.md 14): Zeek and Suricata read the port live, and Arkime indexes
+  the rotating pcap files of Malcolm's capture container. The largest image.
 - **Base:** the shared noble `minbase` image plus Docker, Open vSwitch, `git`,
   `skopeo`, `jq`, `openssl`, `apache2-utils`, `python3-pip` and pydantic 2.11.7 (pip), and
   `python3-venv`, 64 GB disk.
@@ -343,18 +360,26 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   - Docker Engine and the Compose plugin from Docker's APT repository.
   - Malcolm's own checkout at `/opt/malcolm` (the commit of the `v26.10.0` tag,
     checked, without `.git`), owned by uid 1000 (the user `malcolm`), and a venv
-    `/opt/malcolm-venv` with the Python modules Malcolm's `auth_setup` needs.
-  - The 21 Malcolm images of the full profile as compressed on-disk copies under
-    `/var/lib/cm-malcolm/images`, 7.3 GB, loaded into Docker at the first
+    `/opt/malcolm-venv` with the Python modules Malcolm's configurator and
+    `auth_setup` need.
+  - The 22 Malcolm images of the full profile as compressed on-disk copies under
+    `/var/lib/cm-malcolm/images`, 7.4 GB, loaded into Docker at the first
     boot by `cm-load-images.service`. One image serves both sizing profiles: the
-    full profile (8 vCPU / 24 GB) and the slim profile (4 vCPU / 12 GB) differ only
-    in the services that start and the heap sizes (`phenix-injects/malcolm/profiles.sh`;
-    `CM_MALCOLM_PROFILE=auto` picks by memory).
+    full profile (8 vCPU, 32 GB in the topology, 24 GB at the least) and the slim
+    profile (4 vCPU / 12 GB) differ in their settings file
+    (`phenix-injects/malcolm/malcolm-config-<profile>.yaml`), the services that
+    start, and the heap sizes (`profiles.sh`; `CM_MALCOLM_PROFILE=auto` picks by
+    memory, and the full profile's OpenSearch heap follows the memory too).
   - Open vSwitch, enabled, for the mirror app's `setupOVS`.
-  - Sysctl and limits for OpenSearch (`vm.max_map_count` and others).
+  - The host settings of Malcolm's installer (all of its sysctl values, among
+    them `vm.max_map_count` and `vm.overcommit_memory`, and its limits).
   - The Wazuh agent, disabled.
   - The topology injects the sensor from `phenix-injects/malcolm/`. The first boot
-    (`cm-malcolm-provision`) bakes in the four fixes of the malcolm spike: it
+    (`cm-malcolm-provision`) runs Malcolm's own configurator on the profile's
+    settings file (`scripts/configure --non-interactive
+    --import-malcolm-config-file`), which writes `config/*.env` and the compose
+    file, restart policy included. It then bakes in the four fixes of the malcolm
+    spike: it
     creates `zeek/custom/__load__.zeek` (the bind mount hides the image's),
     sets `PCAP_PIPELINE_VERBOSITY` in `config/upload-common.env`, and refuses
     custom Suricata rules with a sid below 9000101; `cm-malcolm-wait-ready` waits
@@ -370,7 +395,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     reads); without the app the first boot generates one. Either way it is in
     `/var/lib/cm-malcolm/admin-password` on the VM.
 - **Build:** the commands above, with `<name>` set to `cm-malcolm`. The build
-  downloads 7.3 GB from `ghcr.io` and needs the 64 GB disk.
+  downloads 7.4 GB from `ghcr.io` and needs the 64 GB disk.
 - **Used by:** `malcolm`.
 - **Pinned versions:** Malcolm `v26.10.0` (commit
   `36bb3a61217b8555bb9fe8918acd3b45927a5458`), its images at `26.10.0`, Docker
@@ -383,7 +408,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - **Purpose:** the SIEM (`wazuh`): the Wazuh manager, indexer, and dashboard on
   one VM (DESIGN.md 14).
 - **Base:** the shared noble `minbase` image plus `gnupg`, `jq`, `openssl`,
-  `python3`, and `rsyslog`, 16 GB disk.
+  `python3`, and `rsyslog`, 32 GB disk (the indexer keeps 30 days of alerts and
+  7 days of archives, DESIGN.md 14).
 - **Contents:**
   - `wazuh-manager`, `wazuh-indexer`, `wazuh-dashboard`, and Wazuh's Filebeat
     (7.10.2, the build that pairs with the indexer), installed from the packages
@@ -391,8 +417,10 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     the certificates, and the passwords happens at the first boot, in
     `cm-wazuh-provision.service` (`phenix-injects/wazuh/`), so the range needs no
     internet.
-  - Wazuh's certificate tool, password tool, Filebeat template, and Filebeat
-    module in `/opt/cherrymountain/wazuh`, checked against SHA-256 values.
+  - Wazuh's certificate tool and password tool (copied from the pinned
+    `wazuh-indexer` package, which ships them), Filebeat template, and Filebeat
+    module in `/opt/cherrymountain/wazuh`, checked against SHA-256 values. The
+    template gives a daily index one primary shard, as Wazuh advises for one node.
   - An indexer heap of 2 GB (`/etc/wazuh-indexer/jvm.options.d/cm-heap.options`)
     and `vm.max_map_count`.
   - The topology injects the rules, decoders, agent group settings, the syslog
@@ -512,7 +540,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - **Build:** the commands above, with `<name>` set to `cm-historian`.
 - **Used by:** `historian`.
 - **Pinned versions:** `influxdb2` and `influxdb2-cli` `2.9.1-1`, Telegraf
-  `1.40.3-1`, Grafana `12.*` (the vendor's major version), the Wazuh agent
+  `1.40.3-1`, Grafana `12.4.14` (the version the brand script was checked
+  against), the Wazuh agent
   `4.14.10-1`. Mosquitto follows noble (2.0.x).
 
 ## kali-purple (upstream)

@@ -79,9 +79,9 @@ spec:
       /opt/bacnet/bin/pip install --no-cache-dir "bacpypes3==0.0.110" "pydantic==2.11.7"
       /opt/bacnet/bin/python -c "import bacpypes3, pydantic; print(bacpypes3.__file__)"
 
-      # The startup hooks enable dnsmasq once its zone is injected; with the stock
-      # config it would also fight systemd-resolved for port 53 at boot. rsyslog
-      # keeps its default (enabled) and gets its relay config injected.
+      # The startup hooks enable dnsmasq once its zone is injected; until then it has
+      # no configuration of the range's. rsyslog keeps its default (enabled) and gets
+      # its relay config injected.
       systemctl disable dnsmasq.service
       mkdir -p /etc/cherrymountain /usr/local/lib/cm-bbmd
       # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,

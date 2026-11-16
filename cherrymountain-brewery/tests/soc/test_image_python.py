@@ -76,16 +76,18 @@ def test_the_sim_image_installs_the_committed_sim_and_viz() -> None:
     the app renders helics.json from the working tree. With CM_REF behind, the
     federates of the image do not know the names in it: cellar and packaging stopped
     at their first step (KeyError), and a federate cannot rejoin a running federation.
-    The image config records the tree ids of both directories at CM_REF; they must be
-    those of the last commit. So a change to sim/ or viz/ passes in its own commit,
-    and every later commit fails until one moves CM_REF and the two ids."""
+    The image config records the tree ids of both packages (sim/cherrymountain_sim,
+    viz/cherrymountain_viz) at CM_REF; they must be those of the last commit. So a
+    change to either package passes in its own commit, and every later commit fails
+    until one moves CM_REF and the two ids. Their READMEs and tests are outside the
+    two trees and need no move."""
     build = (IMAGES / "cm-sim.yml").read_text(encoding="utf-8")
     pins = dict(re.findall(r"^\s*(CM_REF|CM_SIM_TREE|CM_VIZ_TREE)=([0-9a-f]{40})$", build, re.MULTILINE))
     assert set(pins) == {"CM_REF", "CM_SIM_TREE", "CM_VIZ_TREE"}
     if shutil.which("git") is None or _git("rev-parse", "--git-dir").returncode != 0:
         pytest.skip("not a git checkout")
     prefix = _git("rev-parse", "--show-prefix").stdout.strip()
-    for name, directory in (("CM_SIM_TREE", "sim"), ("CM_VIZ_TREE", "viz")):
+    for name, directory in (("CM_SIM_TREE", "sim/cherrymountain_sim"), ("CM_VIZ_TREE", "viz/cherrymountain_viz")):
         head = _git("rev-parse", f"HEAD:{prefix}{directory}").stdout.strip()
         assert pins[name] == head, f"{directory}/ changed since CM_REF: set CM_REF to the commit that changed it and {name} to {head}"
         # Where the pinned commit is at hand (not in a shallow CI checkout), it must hold these trees.

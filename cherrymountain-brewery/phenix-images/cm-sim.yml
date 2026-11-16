@@ -67,15 +67,17 @@ spec:
       # OpenSearch (9200) and the white-cell Grafana (3000).
       export DEBIAN_FRONTEND=noninteractive
       # CM_REF names the commit of this repository whose sim/ and viz/ are installed,
-      # and CM_SIM_TREE and CM_VIZ_TREE are the git tree ids of the two directories at
-      # that commit (`git rev-parse CM_REF:cherrymountain-brewery/sim`). A change to
-      # sim/ or viz/ needs a second commit that moves all three, and a test fails until
-      # it exists (tests/soc/test_image_python.py): the app renders helics.json from
-      # the working tree, and federates of an older sim/ stop at their first step on
-      # names they do not know (cellar and packaging did, with the commit before this).
+      # and CM_SIM_TREE and CM_VIZ_TREE are the git tree ids of the two packages at that
+      # commit (`git rev-parse CM_REF:cherrymountain-brewery/sim/cherrymountain_sim`,
+      # and viz/cherrymountain_viz). A change to either package needs a second commit
+      # that moves all three, and a test fails until it exists
+      # (tests/soc/test_image_python.py): the app renders helics.json from the working
+      # tree, and federates of an older sim/ stop at their first step on names they do
+      # not know (cellar and packaging did, with the commit before this). Move CM_REF
+      # after a change to a pyproject.toml too; the READMEs and tests need no move.
       CM_REF=fc1295a7569e504eed8e2fa831f3b414422d9a53
-      CM_SIM_TREE=e3d7faffa19b0e43fed67be254b9238ed252e0e0
-      CM_VIZ_TREE=da54f96dcb6420e0b624ed15b891bcd6eaa1c1e4
+      CM_SIM_TREE=bbb82bd3a8d1952bdea6982d1b3428bb40ac1965
+      CM_VIZ_TREE=73ff5b5f28906d27d4cfaf7a04b9385158b8c4aa
       HELICS_VERSION=3.6.1
       WEBSOCKETS_VERSION=15.0.1
       OPENSEARCH_VERSION=3.9.0

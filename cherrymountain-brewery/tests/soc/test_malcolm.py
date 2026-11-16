@@ -18,11 +18,17 @@ from soc_paths import INJECTS
 
 MALCOLM: Path = INJECTS / "malcolm"
 
-#: docker ps/exec: the container list from $FAKE_PS, the Zeek count from $FAKE_COUNT.
+#: docker ps/exec: the container list from $FAKE_PS, the Zeek count from $FAKE_COUNT,
+#: and the Arkime count (the query names the provider) from $FAKE_ARKIME.
 DOCKER: str = """#!/bin/sh
 case "$1" in
   ps) cat "$FAKE_PS" ;;
-  exec) printf '{"count": %s}\\n' "$FAKE_COUNT" ;;
+  exec)
+    case "$*" in
+      *'"event.provider":"arkime"'*) printf '{"count": %s}\\n' "${FAKE_ARKIME:-7}" ;;
+      *) printf '{"count": %s}\\n' "$FAKE_COUNT" ;;
+    esac
+    ;;
   *) exit 1 ;;
 esac
 """
@@ -98,7 +104,7 @@ def test_healthy(sensor: Sensor) -> None:
     sensor.port(0x1103, 1000)
     rc, out = sensor.run()
     assert rc == 0, out
-    assert out.startswith("HEALTHY: profile slim") and "42 Zeek records" in out
+    assert out.startswith("HEALTHY: profile slim") and "42 Zeek records and 7 Arkime sessions" in out
 
 
 def test_a_missing_container_is_unhealthy(sensor: Sensor) -> None:
@@ -129,6 +135,16 @@ def test_no_zeek_records_is_unhealthy(sensor: Sensor) -> None:
     sensor.port(0x1103, 1000)
     rc, out = sensor.run(FAKE_COUNT="0")
     assert rc == 1 and "no Zeek records" in out
+
+
+def test_zeek_logs_without_arkime_sessions_is_unhealthy(sensor: Sensor) -> None:
+    """Zeek reads the mirror port itself; Arkime indexes the pcap files that
+    pcap-capture writes. A sensor can have every Zeek log and no pcap: with Arkime on
+    its own live capture, which cannot reach a local OpenSearch, that is what it had."""
+    sensor.port(0x1103, 1000)
+    rc, out = sensor.run(FAKE_ARKIME="0")
+    assert rc == 1 and "no Arkime sessions" in out
+    assert "pcap-capture" in sensor.services() and "arkime-live" not in sensor.services()
 
 
 def sid_guard() -> str:

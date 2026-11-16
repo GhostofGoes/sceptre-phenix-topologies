@@ -117,10 +117,18 @@ spec:
       dst: /etc/default/cm-malcolm
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm.env
-    - description: Malcolm sizing profiles (full 8 vCPU / 24 GB, slim 4 vCPU / 12 GB)
+    - description: Malcolm sizing profiles (full 8 vCPU / 32 GB, slim 4 vCPU / 12 GB)
       dst: /opt/cherrymountain/malcolm/profiles.sh
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/malcolm/profiles.sh
+    - description: settings of the full profile for Malcolm's configurator
+      dst: /opt/cherrymountain/malcolm/malcolm-config-full.yaml
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/malcolm-config-full.yaml
+    - description: settings of the slim profile for Malcolm's configurator
+      dst: /opt/cherrymountain/malcolm/malcolm-config-slim.yaml
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/malcolm-config-slim.yaml
     - description: Suricata rules of the baseline detections (sids 9000110 to 9000199)
       dst: /opt/cherrymountain/malcolm/cherrymountain.rules
       permissions: '0644'

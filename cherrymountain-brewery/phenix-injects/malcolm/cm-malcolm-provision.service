@@ -12,6 +12,9 @@ StartLimitIntervalSec=0
 Type=oneshot
 RemainAfterExit=yes
 EnvironmentFile=-/etc/default/cm-malcolm
+# The Docker CLI must not look in /root, which ProtectHome= hides (see
+# cm-guacamole.service); /tmp is this unit's private one.
+Environment=HOME=/tmp
 # The cherrymountain app's file: the web password, root-only. Only this unit reads it.
 EnvironmentFile=-/etc/default/cm-malcolm-credentials
 ExecStart=/usr/local/sbin/cm-malcolm-provision

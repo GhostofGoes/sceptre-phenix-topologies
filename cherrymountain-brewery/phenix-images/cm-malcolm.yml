@@ -8,7 +8,7 @@
 #   phenix image build -o <dir> -c -x cm-malcolm
 #   phenix image inject-miniexe /usr/local/bin/miniccc <dir>/cm-malcolm.qc2
 # inject-miniexe adds miniccc, which SoH, cc, and SCORCH need (DESIGN.md 15.7).
-# The build downloads 7.3 GB of container images (the 21 of the full profile, compressed).
+# The build downloads 7.4 GB of container images (the 22 of the full profile, compressed).
 
 apiVersion: phenix.sandia.gov/v1
 kind: Image
@@ -76,7 +76,7 @@ spec:
       # capture-flow script, cm-malcolm.service and its scripts, the Zeek scripts, and
       # the Suricata rules. The first boot configures Malcolm from the injected
       # settings and loads the images into Docker (cm-load-images.service), so the same
-      # image serves both sizing profiles (full 8 vCPU / 24 GB, slim 4 vCPU / 12 GB).
+      # image serves both sizing profiles (full 8 vCPU / 32 GB, slim 4 vCPU / 12 GB).
       export DEBIAN_FRONTEND=noninteractive
       MALCOLM_TAG=v26.10.0
       MALCOLM_SHA=36bb3a61217b8555bb9fe8918acd3b45927a5458
@@ -126,27 +126,37 @@ spec:
       # slim profile uses a subset.
       install -d -m 0755 /etc/cherrymountain /var/lib/cm-malcolm/images /opt/cherrymountain/malcolm/zeek /usr/local/lib/cm-malcolm
       : > /etc/cherrymountain/images.list
-      for name in api arkime dashboards dashboards-helper file-upload filebeat-oss filescan freq htadmin logstash-oss netbox nginx-proxy opensearch pcap-monitor postgresql strelka-backend strelka-frontend strelka-manager suricata valkey zeek; do
+      for name in api arkime dashboards dashboards-helper file-upload filebeat-oss filescan freq htadmin logstash-oss netbox nginx-proxy opensearch pcap-capture pcap-monitor postgresql strelka-backend strelka-frontend strelka-manager suricata valkey zeek; do
         ref="ghcr.io/idaholab/malcolm/$name:$MALCOLM_IMAGE_TAG"
         skopeo copy --retry-times 3 --override-os linux --override-arch amd64 "docker://$ref" "dir:/var/lib/cm-malcolm/images/$name"
         printf '%s %s\n' "$ref" "/var/lib/cm-malcolm/images/$name" >> /etc/cherrymountain/images.list
       done
 
-      # Host settings Malcolm's installer recommends (OpenSearch needs the map count).
+      # The host settings of Malcolm's installer (its "system tweaks",
+      # scripts/installer/platforms/utils/linux_tweaks.py in 26.10.0), all of them.
+      # OpenSearch needs the map count, and valkey the overcommit setting: without
+      # it a background save can fail when memory is short. The limits apply to
+      # login sessions; the containers get theirs from the compose file.
       cat > /etc/sysctl.d/99-cm-malcolm.conf <<'EOF'
       fs.file-max = 2097152
+      fs.inotify.max_user_watches = 131072
       fs.inotify.max_queued_events = 131072
       fs.inotify.max_user_instances = 512
-      fs.inotify.max_user_watches = 131072
-      vm.max_map_count = 262144
+      vm.max_map_count = 524288
       vm.swappiness = 1
+      vm.dirty_background_ratio = 5
+      vm.dirty_ratio = 10
+      vm.overcommit_memory = 1
       net.core.somaxconn = 65535
+      net.ipv4.tcp_retries2 = 5
       EOF
       cat > /etc/security/limits.d/99-cm-malcolm.conf <<'EOF'
       * soft nofile 65535
       * hard nofile 65535
       * soft memlock unlimited
       * hard memlock unlimited
+      * soft nproc 262144
+      * hard nproc 524288
       EOF
 
       # Docker's log rotation for the daemon (Malcolm's compose file sets its own

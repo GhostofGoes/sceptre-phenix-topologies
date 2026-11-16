@@ -20,6 +20,7 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
@@ -32,41 +33,70 @@ IMAGES: Path = ROOT / "phenix-images"
 AGENT_SCRIPT: Path = ROOT / "apps/cherrymountain_apps/cherrymountain/templates/scripts/80-cm-wazuh-agent.sh"
 
 #: The env file of Malcolm 26.10.0 that defines each variable cm-malcolm-provision
-#: sets (config/<file>.env.example). Compose reads a service's env files in order and
-#: the last one wins, so a variable set in any other file is overridden by the blank
-#: or default value here. A variable Malcolm does not define is absent.
+#: sets on top of the configurator's output (config/<file>.env.example). Compose reads
+#: a service's env files in order and the last one wins, so a variable set in any
+#: other file is overridden by the blank or default value here. A variable Malcolm
+#: does not define (ZEEK_LB_PROCS_WORKER_DEFAULT, PYTHONUNBUFFERED) is absent.
 MALCOLM_ENV_HOME: dict[str, str] = {
-    "PUID": "process",
-    "PGID": "process",
     "PCAP_PIPELINE_VERBOSITY": "upload-common",
-    "PCAP_NODE_NAME": "upload-common",
     "ZEEK_LOCAL_NETS": "zeek",
     "PCAP_IFACE": "pcap-capture",
-    "PCAP_IFACE_TWEAK": "pcap-capture",
-    "ZEEK_LIVE_CAPTURE": "zeek-live",
-    "ARKIME_LIVE_CAPTURE": "arkime-live",
-    "SURICATA_LIVE_CAPTURE": "suricata-live",
-    "SURICATA_UPDATE_RULES": "suricata",
+    "PCAP_ROTATE_MINUTES": "pcap-capture",
     "SURICATA_UPDATE_SOURCES": "suricata",
-    "OPENSEARCH_INDEX_SIZE_PRUNE_LIMIT": "dashboards-helper",
-    "MANAGE_PCAP_FILES": "arkime",
-    "ARKIME_FREESPACEG": "arkime",
-    "NGINX_AUTH_MODE": "auth-common",
-    "NETBOX_MODE": "netbox-common",
-    "NETBOX_ENRICHMENT": "netbox-common",
-    "NETBOX_AUTO_POPULATE": "netbox-common",
-    "NETBOX_DEFAULT_SITE": "netbox-common",
-    "PIPELINE_DISABLED": "pipeline",
-    "FREQ_LOOKUP": "lookup-common",
-    "ZEEK_EXTRACTOR_MODE": "zeek",
-    "FILESCAN_PRUNE_THRESHOLD_MAX_SIZE": "filescan",
+}
+#: Every setting Malcolm 26.10.0's configurator knows: the keys of
+#: `scripts/configure --non-interactive --configure --defaults --dry-run
+#: --export-malcolm-config-file`. It takes a settings file with an unknown key
+#: without complaint and ignores the key, so a misspelt setting would go unnoticed.
+MALCOLM_SETTINGS: frozenset[str] = frozenset(
+    """
+    arkimeAllowWiseConfig arkimeExposeWise arkimeFreeSpaceG arkimeManagePCAP arkimeWiseUrl autoArkime
+    autoFreq autoOui autoSuricata autoZeek autoZeekCommunityID auxFwAide auxFwAuditlog auxFwCPU auxFwDf
+    auxFwDisk auxFwKmsg auxFwMem auxFwNetwork auxFwSystemd auxFwThermal captureLiveNetworkTraffic
+    captureStats cleanUpOldArtifacts cleanUpOldIndices containerNetworkName dashboardsDarkMode
+    dashboardsUrl dockerOrchestrationMode exposeFilebeatTcp exposeLogstash exposeOpenSearch exposeSFTP
+    extraTags extractedFileMaxPercentThreshold extractedFileMaxSizeThreshold
+    fileCarveHttpServeEncryptKey fileCarveHttpServer fileCarveHttpServerZip fileCarveMode
+    filePreserveMode fileScanRuleUpdate filebeatTcpDefaults filebeatTcpLogFormat
+    filebeatTcpParseDropField filebeatTcpParseSourceField filebeatTcpParseTargetField filebeatTcpTag
+    filescanLogDir imageArch indexDir indexManagementHistoryInWeeks indexManagementHotWarm
+    indexManagementOptimizationTimePeriod indexManagementOptimizeSessionSegments indexManagementPolicy
+    indexManagementReplicas indexManagementSpiDataRetention indexPruneNameSort indexPruneThreshold
+    indexSnapshotDir liveArkime liveArkimeCompressionLevel liveArkimeCompressionType liveArkimeNodeHost
+    liveSuricata liveZeek logstashHost logstashNetBoxEnrichedDatasets lsMemory lsWorkers malSysPruneLogs
+    malSysPrunePcap malcolmIcs malcolmProfile malcolmRestartPolicy netboxAutoPopulate
+    netboxAutoPopulateSubnetFilter netboxLogstashAutoCreatePrefix netboxLogstashEnrich netboxMode
+    netboxSiteName netboxUrl nginxResolverIpv4 nginxResolverIpv6 nginxSSL openPortsSelection
+    opensearchPrimaryMode opensearchPrimarySslVerify opensearchPrimaryUrl opensearchSecondaryMode
+    opensearchSecondarySslVerify opensearchSecondaryUrl osMemory pcapDir pcapFilter pcapIface
+    pcapNetSniff pcapNodeName pcapTcpDump pipelineEnabled pipelineScanners pipelineWorkers
+    processGroupId processUserId reachbackRequestAcl remoteMalcolmHost reverseDns runtimeBin
+    secondaryDocumentStore suricataDisableSids suricataLogDir suricataRuleUpdate syslogTcpPort
+    syslogUdpPort traefikEntrypoint traefikHost traefikLabels traefikOpenSearchHost traefikResolver
+    tweakIface useDefaultStorageLocations zeekICSBestGuess zeekIntelCronExpression zeekIntelFeedSince
+    zeekIntelItemExpiration zeekIntelLive zeekIntelOffline zeekIntelOnStartup zeekLogDir
+    zeekPullIntelligenceFeeds
+    """.split()
+)
+#: The image of each compose service of Malcolm 26.10.0 that a profile starts
+#: (ghcr.io/idaholab/malcolm/<image>).
+MALCOLM_SERVICE_IMAGE: dict[str, str] = {
+    "opensearch": "opensearch", "dashboards-helper": "dashboards-helper", "dashboards": "dashboards",
+    "logstash": "logstash-oss", "filebeat": "filebeat-oss", "arkime": "arkime", "pcap-capture": "pcap-capture",
+    "zeek": "zeek", "zeek-live": "zeek", "filescan": "filescan", "pcap-monitor": "pcap-monitor",
+    "upload": "file-upload", "htadmin": "htadmin", "valkey": "valkey", "valkey-cache": "valkey", "api": "api",
+    "nginx-proxy": "nginx-proxy", "suricata": "suricata", "suricata-live": "suricata",
+    "strelka-backend": "strelka-backend", "strelka-frontend": "strelka-frontend",
+    "strelka-manager": "strelka-manager", "freq": "freq", "netbox": "netbox", "postgres": "postgresql",
 }
 #: Bind-mount sources of Malcolm 26.10.0's compose file that are not in its checkout
 #: (create_host_path: false, so a missing one fails `compose up`), by service.
 MALCOLM_BIND_SOURCES: dict[str, str] = {"valkey": "valkey", "postgres": "postgres", "netbox": "netbox/media"}
 
-#: The <client> block of the wazuh-agent 4.14.10 package's ossec.conf, and the line of
-#: its inventory settings that a grep for <groups> finds.
+#: The <client> block of the ossec.conf that the wazuh-agent 4.14.10 package writes at
+#: install time, the line of its inventory settings that a grep for <groups> finds,
+#: and its log readers: where journalctl exists, the package's add_localfiles.sh adds
+#: a journald reader (and leaves out auth.log, syslog, and kern.log).
 STOCK_AGENT_CONF: str = """<ossec_config>
   <client>
     <server>
@@ -123,20 +153,146 @@ def test_malcolm_scripts_run_with_the_docker_group() -> None:
     assert "USER=malcolm" in body.group(1) and "LOGNAME=malcolm" in body.group(1)
 
 
-def test_one_zeek_worker_and_no_freq_lookup_without_freq() -> None:
+def malcolm_settings(profile: str) -> dict[str, Any]:
+    """The profile's settings file for Malcolm's configurator."""
+    data = yaml.safe_load((MALCOLM / f"malcolm-config-{profile}.yaml").read_text(encoding="utf-8"))
+    assert set(data) == {"configuration"}
+    return data["configuration"]
+
+
+def malcolm_services(profile: str) -> list[str]:
+    """The compose services cm-malcolm-start brings up for a profile."""
+    out = subprocess.run(
+        ["bash", "-c", f'. "{MALCOLM / "profiles.sh"}"; cm_malcolm_services {profile}'],
+        capture_output=True, text=True, check=True,
+    ).stdout
+    return ["opensearch", *out.split()]
+
+
+@pytest.mark.parametrize("profile", ["full", "slim"])
+def test_malcolm_settings_are_ones_the_configurator_knows(profile: str) -> None:
+    settings = malcolm_settings(profile)
+    assert not set(settings) - MALCOLM_SETTINGS, "the configurator ignores an unknown key without a word"
+    # The provisioning script hands the configurator this file, and the topology injects it.
+    assert 'settings="${SRC}/malcolm-config-${profile}.yaml"' in provision()
+    assert "./scripts/configure \\\n  --non-interactive --configure --skip-splash --import-malcolm-config-file" in provision()
+    soc = yaml.safe_load((CONFIGS / "topology-soc.yml").read_text(encoding="utf-8"))
+    malcolm = next(n for n in soc["spec"]["nodes"] if n["general"]["hostname"] == "malcolm")
+    assert f"/opt/cherrymountain/malcolm/malcolm-config-{profile}.yaml" in {i["dst"] for i in malcolm["injections"]}
+
+
+@pytest.mark.parametrize("profile", ["full", "slim"])
+def test_arkime_gets_its_pcap_from_the_capture_container(profile: str) -> None:
+    """Arkime's own live capture (arkime-live) runs on the host network and looks up
+    `opensearch`, a name only Malcolm's container network has: with a local OpenSearch
+    it waits for it for ever, still reports healthy, and Arkime has no session and no
+    pcap of the mirrored traffic. Malcolm's configurator offers that mode only to a
+    sensor that forwards elsewhere. Here pcap-capture writes rotating pcap files and
+    the arkime container indexes them; Zeek and Suricata read the port themselves."""
+    settings = malcolm_settings(profile)
+    assert settings["captureLiveNetworkTraffic"] is True and settings["pcapIface"] == ["phenix"]
+    assert "liveArkime" not in settings and "opensearchPrimaryMode" not in settings
+    assert (settings["pcapTcpDump"], settings["pcapNetSniff"]) == (True, False)
+    assert settings["liveZeek"] is True
+    services = malcolm_services(profile)
+    assert "pcap-capture" in services and "arkime" in services and "pcap-monitor" in services
+    assert "arkime-live" not in services
+    assert "ARKIME_LIVE_CAPTURE" not in provision()
+    assert "set_env config/pcap-capture.env PCAP_ROTATE_MINUTES 2" in provision()
+
+
+@pytest.mark.parametrize("profile", ["full", "slim"])
+def test_the_services_of_a_profile_match_its_settings(profile: str) -> None:
+    """A profile starts a subset of Malcolm's services. A setting that needs a service
+    the profile leaves out (or the reverse) gives a pipeline that waits for it."""
+    settings = malcolm_settings(profile)
+    services = set(malcolm_services(profile))
+    live_suricata = settings["liveSuricata"]
+    assert ("suricata-live" in services) == live_suricata
+    assert ("suricata" in services) == settings.get("autoSuricata", True) == live_suricata
+    netbox = settings["netboxMode"] == "local"
+    assert ({"netbox", "postgres"} <= services) == netbox and bool({"netbox", "postgres"} & services) == netbox
+    assert settings["netboxLogstashEnrich"] == netbox
+    scanning = settings.get("pipelineEnabled", True)
+    strelka = {"strelka-backend", "strelka-frontend", "strelka-manager"}
+    assert (strelka <= services) == scanning and bool(strelka & services) == scanning
+    # Zeek extracts files only where something scans them.
+    assert (settings["fileCarveMode"] != "none") == scanning
+    assert ("freq" in services) == settings.get("autoFreq", True)
+    # nginx will not start without its fixed upstreams.
+    assert {"filescan", "dashboards", "arkime", "api", "htadmin", "upload"} <= services
+    # No single sign-on, so no keycloak.
+    assert "keycloak" not in services
+
+
+def test_the_image_holds_every_service_of_the_full_profile() -> None:
+    """The range has no registry to pull from: a service whose image is not in the VM
+    image fails `compose up` for the whole profile."""
+    build = (IMAGES / "cm-malcolm.yml").read_text(encoding="utf-8")
+    names = re.search(r"^\s*for name in ([\w -]+); do$", build, re.MULTILINE)
+    assert names is not None
+    in_image = set(names.group(1).split())
+    needed = {MALCOLM_SERVICE_IMAGE[s] for s in malcolm_services("full")}
+    assert needed == in_image, f"missing {needed - in_image}, unused {in_image - needed}"
+    assert {MALCOLM_SERVICE_IMAGE[s] for s in malcolm_services("slim")} <= in_image
+    assert f"({len(in_image)} of the full profile" in build.replace("the ", "", 1) or f"the {len(in_image)} of the full profile" in build
+
+
+def test_malcolm_containers_come_back_by_themselves() -> None:
+    """Malcolm's compose file has restart "no": a container that dies during an
+    exercise stays down. The configurator sets the policy its installation examples
+    use for every service."""
+    for profile in ("full", "slim"):
+        assert malcolm_settings(profile)["malcolmRestartPolicy"] == "unless-stopped"
+
+
+def test_one_zeek_worker() -> None:
     """cherrymountain.zeek keeps state between connections in globals, which Zeek's
     workers do not share, and Malcolm's zeek-live starts two workers unless told (the
     variable is in no env example, so it is appended to zeek-live.env, which the
-    zeek-live service reads). The slim profile has no freq container to ask."""
-    text = provision()
-    assert re.search(r"^set_env config/zeek-live\.env ZEEK_LB_PROCS_WORKER_DEFAULT 1$", text, re.MULTILINE)
-    slim = text[text.index("NETBOX_MODE disabled") : text.index("# --- Zeek scripts and Suricata rules")]
-    assert "set_env config/lookup-common.env FREQ_LOOKUP false" in slim
-    services = subprocess.run(
-        ["bash", "-c", f'. "{MALCOLM / "profiles.sh"}"; cm_malcolm_services slim; cm_malcolm_services full'],
-        capture_output=True, text=True, check=True,
-    ).stdout.splitlines()
-    assert "freq" not in services[0].split() and "freq" in services[1].split()
+    zeek-live service reads)."""
+    assert re.search(r"^set_env config/zeek-live\.env ZEEK_LB_PROCS_WORKER_DEFAULT 1$", provision(), re.MULTILINE)
+
+
+def heaps_for(tmp_path: Path, gigabytes: int, profile: str) -> str:
+    """cm_malcolm_heaps on a VM of that size (what Linux reports: about 2 % less)."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    pages = int(gigabytes * 1024 * 1024 * 1024 * 0.98) // 4096
+    (bin_dir / "getconf").write_text(f'#!/bin/sh\ncase "$1" in _PHYS_PAGES) echo {pages} ;; PAGE_SIZE) echo 4096 ;; esac\n')
+    (bin_dir / "getconf").chmod(0o755)
+    return subprocess.run(
+        ["bash", "-euo", "pipefail", "-c", f'. "{MALCOLM / "profiles.sh"}"; cm_malcolm_heaps {profile}'],
+        env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}, capture_output=True, text=True, check=True,
+    ).stdout.strip()
+
+
+def test_the_heaps_follow_the_memory_of_the_vm(tmp_path: Path) -> None:
+    """OpenSearch gets the heap of Malcolm's example configuration (10 GB) on the 32 GB
+    sensor of the topology, and less on Malcolm's 24 GB minimum, where 10 GB would
+    leave too little for the other containers."""
+    soc = yaml.safe_load((CONFIGS / "topology-soc.yml").read_text(encoding="utf-8"))
+    malcolm = next(n for n in soc["spec"]["nodes"] if n["general"]["hostname"] == "malcolm")
+    assert malcolm["hardware"]["memory"] == 32 * 1024 and malcolm["hardware"]["vcpus"] == 8
+    assert heaps_for(tmp_path, 32, "full") == "10g 3g"
+    assert heaps_for(tmp_path, 24, "full") == "6g 3g"
+    assert heaps_for(tmp_path, 12, "slim") == "3g 2g"
+    # The script must notice a size it cannot read: a here-string would hide the failure.
+    assert 'heaps=$(cm_malcolm_heaps "$profile")' in provision()
+
+
+def test_the_image_has_the_host_settings_of_malcolms_installer() -> None:
+    """The sysctl values of Malcolm 26.10.0's installer
+    (scripts/installer/platforms/utils/linux_tweaks.py)."""
+    build = (IMAGES / "cm-malcolm.yml").read_text(encoding="utf-8")
+    block = build[build.index("/etc/sysctl.d/99-cm-malcolm.conf") : build.index("/etc/security/limits.d/99-cm-malcolm.conf")]
+    values = dict(re.findall(r"^\s*([\w.-]+) = (\d+)$", block, re.MULTILINE))
+    assert values == {
+        "fs.file-max": "2097152", "fs.inotify.max_user_watches": "131072", "fs.inotify.max_queued_events": "131072",
+        "fs.inotify.max_user_instances": "512", "vm.max_map_count": "524288", "vm.swappiness": "1",
+        "vm.dirty_background_ratio": "5", "vm.dirty_ratio": "10", "vm.overcommit_memory": "1",
+        "net.core.somaxconn": "65535", "net.ipv4.tcp_retries2": "5",
+    }
 
 
 def test_the_suricata_include_is_installed_and_sets_single_values() -> None:
@@ -521,12 +677,12 @@ def test_no_sandboxed_script_reads_the_parts_of_proc_its_unit_hides() -> None:
 
 
 def test_the_full_profile_extracts_files_for_the_scanners() -> None:
-    """Malcolm's ZEEK_EXTRACTOR_MODE is none: with it, Strelka and the scanner of the
-    full profile never get a file."""
-    text = provision()
-    full = text[text.index('if [ "$profile" = full ]; then\n  set_env config/netbox-common.env') : text.index("NETBOX_MODE disabled")]
-    assert "set_env config/zeek.env ZEEK_EXTRACTOR_MODE interesting" in full
-    assert "set_env config/filescan.env FILESCAN_PRUNE_THRESHOLD_MAX_SIZE 2G" in full
+    """Malcolm extracts no file unless told: without it, Strelka and the scanner of the
+    full profile never get one. Analysts fetch what is kept as password-protected ZIPs."""
+    full = malcolm_settings("full")
+    assert (full["fileCarveMode"], full["filePreserveMode"], full["extractedFileMaxSizeThreshold"]) == ("interesting", "quarantined", "2G")
+    assert (full["fileCarveHttpServer"], full["fileCarveHttpServerZip"], full["fileCarveHttpServeEncryptKey"]) == (True, True, "infected")
+    assert malcolm_settings("slim")["fileCarveMode"] == "none"
 
 
 SELFTEST_LOGTEST: str = """#!/bin/sh

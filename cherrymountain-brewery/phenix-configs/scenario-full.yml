@@ -3765,7 +3765,8 @@ spec:
         - malcolm-nginx-proxy-1
         - malcolm-pcap-monitor-1
         - malcolm-zeek-live-1
-        - malcolm-arkime-live-1
+        - malcolm-arkime-1
+        - malcolm-pcap-capture-1
   # sync:end soh
   # SCORCH (DESIGN.md 15.6): the vendor-maintenance run. The vendor's technician brings up
   # the WireGuard tunnel, signs in to Guacamole with TOTP and works in a recorded session on

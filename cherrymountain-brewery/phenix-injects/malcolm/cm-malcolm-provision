@@ -3,8 +3,9 @@
 # /usr/local/sbin/cm-malcolm-provision and run as root by
 # cm-malcolm-provision.service after cm-load-images.service has loaded the images.
 # It turns the stock Malcolm checkout in /opt/malcolm into the range's sensor:
-# live capture on the in-guest OVS port, the pinned sizing profile, range
-# credentials, our Zeek scripts, and our Suricata rules.
+# Malcolm's own configurator applies the profile's settings file (live capture on
+# the in-guest OVS port among them), then this script adds the heap sizes, the
+# range's credentials, our Zeek scripts, and our Suricata rules.
 #
 # It applies the four fixes of the malcolm spike that a plain checkout needs:
 #   1. zeek/custom/__load__.zeek exists. The compose file bind-mounts the
@@ -30,6 +31,8 @@ set -euo pipefail
 MALCOLM_DIR="${MALCOLM_DIR:-/opt/malcolm}"
 SRC="${CM_MALCOLM_SRC:-/opt/cherrymountain/malcolm}"
 STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+# The Python that Malcolm's scripts run with (the image's virtual environment).
+VENV="${CM_MALCOLM_VENV:-/opt/malcolm-venv}"
 CAPTURE_IFACE="${CM_CAPTURE_IFACE:-phenix}"
 ZEEK_LOCAL_NETS="${CM_ZEEK_LOCAL_NETS:-10.0.0.0/8,172.16.0.0/12,192.0.2.0/24,198.51.100.0/24,203.0.113.0/24}"
 IMAGE_TAG=26.10.0
@@ -74,7 +77,9 @@ fi
 [ -d "${MALCOLM_DIR}" ] || { log "FAIL: ${MALCOLM_DIR} is missing; this is not a cm-malcolm image"; exit 1; }
 
 profile=$(cm_malcolm_profile)
-read -r os_heap ls_heap <<< "$(cm_malcolm_heaps "$profile")"
+# (An assignment, so that a failure ends the script; a here-string would hide it.)
+heaps=$(cm_malcolm_heaps "$profile")
+read -r os_heap ls_heap <<< "$heaps"
 log "profile ${profile} (OpenSearch heap ${os_heap}, Logstash heap ${ls_heap})"
 # The profile file is read by cm-malcolm-start, which runs as the user malcolm; the unit's
 # umask would make it root-only.
@@ -83,74 +88,51 @@ chmod 0644 "${STATE}/profile"
 
 cd "${MALCOLM_DIR}"
 
-# --- config files -----------------------------------------------------------------
-for example in config/*.env.example; do
-  target="${example%.example}"
-  [ -f "$target" ] || cp "$example" "$target"
+# --- Malcolm's settings -------------------------------------------------------------
+# Malcolm's own configurator writes config/*.env and the compose file from the
+# profile's settings file (malcolm-config-full.yaml or -slim.yaml): the unattended
+# installation Malcolm documents. It derives what depends on the settings (with
+# live Zeek and Suricata, their copies of the rotated pcap are skipped; an unexposed
+# service loses its port), which hand-set variables in copies of the examples did
+# not: they left Arkime on a live capture that cannot reach a local OpenSearch.
+# It runs as the user malcolm, like every Malcolm script, and needs no network.
+settings="${SRC}/malcolm-config-${profile}.yaml"
+[ -r "$settings" ] || { log "FAIL: ${settings} is missing"; exit 1; }
+chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
+as_malcolm env "PATH=${VENV}/bin:${PATH}" ./scripts/configure \
+  --non-interactive --configure --skip-splash --import-malcolm-config-file "$settings"
+# The configurator must have written the files the rest of this script edits.
+for file in config/process.env config/opensearch.env config/logstash.env config/pcap-capture.env config/zeek.env; do
+  [ -f "$file" ] || { log "FAIL: Malcolm's configurator did not write ${file}"; exit 1; }
 done
-set_env config/process.env PUID "${MALCOLM_UID}"
-set_env config/process.env PGID "${MALCOLM_UID}"
-set_env config/process.env PYTHONUNBUFFERED 1
+
+# --- what the range sets on top -----------------------------------------------------
+# The configurator sizes the heaps from the memory it sees (half of it for
+# OpenSearch); the profile's figures leave room for the other containers.
 sed -i -E "s/-Xmx[0-9]+[gm] -Xms[0-9]+[gm]/-Xmx${os_heap} -Xms${os_heap}/" config/opensearch.env
 sed -i -E "s/-Xmx[0-9]+[gm] -Xms[0-9]+[gm]/-Xmx${ls_heap} -Xms${ls_heap}/" config/logstash.env
-
+grep -q -- "-Xmx${os_heap} -Xms${os_heap}" config/opensearch.env || { log "FAIL: could not set the OpenSearch heap"; exit 1; }
+grep -q -- "-Xmx${ls_heap} -Xms${ls_heap}" config/logstash.env || { log "FAIL: could not set the Logstash heap"; exit 1; }
+set_env config/process.env PYTHONUNBUFFERED 1
+# The capture port (the settings files name the default, `phenix`).
+set_env config/pcap-capture.env PCAP_IFACE "${CAPTURE_IFACE}"
+# A pcap file is closed, and Arkime indexes it, every 2 minutes (Malcolm's default
+# is 10): an analyst sees a session in Arkime a few minutes after it happened.
+set_env config/pcap-capture.env PCAP_ROTATE_MINUTES 2
 # Fix 2: the pcap processors log nothing at their default level.
 set_env config/upload-common.env PCAP_PIPELINE_VERBOSITY -vv
-set_env config/upload-common.env PCAP_NODE_NAME malcolm
 # Malcolm sets ZEEK_LOCAL_NETS (blank) in zeek.env, which compose reads after
 # upload-common.env for zeek and zeek-live: set anywhere earlier, it is overridden.
 set_env config/zeek.env ZEEK_LOCAL_NETS "${ZEEK_LOCAL_NETS}"
-
-suricata=false
-if [ "$profile" = full ]; then
-  suricata=true
-fi
-# Live capture on the in-guest OVS port, where the mirror app delivers the
-# monitored VLANs. The port is the bridge's own interface, which the capture-flow
-# unit brings up. Frames arrive 802.1Q tagged; Zeek, Suricata, and Arkime handle it.
-set_env config/pcap-capture.env PCAP_IFACE "${CAPTURE_IFACE}"
-set_env config/pcap-capture.env PCAP_IFACE_TWEAK false
-set_env config/zeek-live.env ZEEK_LIVE_CAPTURE true
 # One Zeek worker. Malcolm's zeek-live starts two by default (zeekdeploy.sh), which
 # share no script state: cherrymountain.zeek ties a PLC change to a vendor session on
 # another connection through a global, and with two workers the two connections land
 # on different ones about half the time. One worker is enough for the mirror's few
 # Mbit/s.
 set_env config/zeek-live.env ZEEK_LB_PROCS_WORKER_DEFAULT 1
-set_env config/arkime-live.env ARKIME_LIVE_CAPTURE true
-set_env config/suricata-live.env SURICATA_LIVE_CAPTURE "$suricata"
-# No internet: the rules in the image are all there is, so no update job.
-set_env config/suricata.env SURICATA_UPDATE_RULES false
+# No internet: no rule sources to refresh either (the settings file turns the rule
+# update itself off).
 set_env config/suricata.env SURICATA_UPDATE_SOURCES false
-# Basic authentication (htpasswd), no Keycloak or LDAP.
-# Retention (DESIGN.md 14, Log and NSM retention): the 64 GB disk holds the indexes
-# and the pcap together. OpenSearch prunes the oldest network-metadata indexes past
-# 24 GB, and Arkime deletes its oldest pcap once free space falls under 10 %, so
-# full pcap rotates in about a day of mirrored traffic and the metadata of the
-# whole exercise stays. TODO(verify): both settings on a running 26.10.0 VM.
-set_env config/dashboards-helper.env OPENSEARCH_INDEX_SIZE_PRUNE_LIMIT 24G
-set_env config/arkime.env MANAGE_PCAP_FILES true
-set_env config/arkime.env ARKIME_FREESPACEG 10%
-set_env config/auth-common.env NGINX_AUTH_MODE basic
-if [ "$profile" = full ]; then
-  set_env config/netbox-common.env NETBOX_MODE local
-  set_env config/netbox-common.env NETBOX_ENRICHMENT true
-  set_env config/netbox-common.env NETBOX_AUTO_POPULATE true
-  set_env config/netbox-common.env NETBOX_DEFAULT_SITE CherryMountain
-  # File scanning scans what Zeek extracts, and Malcolm's default is to extract
-  # nothing: without this the full profile's Strelka and scanner containers run and
-  # never see a file. `interesting` is the mode Malcolm recommends (the file types
-  # attacks arrive as). The scanner keeps what it flags (quarantined, the default);
-  # the limit keeps those from growing into the pcap's share of the disk.
-  set_env config/zeek.env ZEEK_EXTRACTOR_MODE interesting
-  set_env config/filescan.env FILESCAN_PRUNE_THRESHOLD_MAX_SIZE 2G
-else
-  set_env config/netbox-common.env NETBOX_MODE disabled
-  set_env config/pipeline.env PIPELINE_DISABLED true
-  # The slim profile does not start the freq container, which Logstash would ask
-  # about every DNS and TLS name.
-  set_env config/lookup-common.env FREQ_LOOKUP false
-fi
 
 # --- Zeek scripts and Suricata rules -----------------------------------------------
 mkdir -p zeek/custom suricata/rules suricata/include-configs suricata-logs
@@ -201,12 +183,12 @@ htpasswd_hash=$(printf '%s' "$password" | htpasswd -niB malcolm | cut -d: -f2)
 # and the compose file binds them with create_host_path: false: without ./valkey
 # (both profiles) or ./postgres and ./netbox/media (full), Docker refuses to create
 # the container and `compose up` fails.
-mkdir -p opensearch/nodes opensearch-backup pcap/arkime-live pcap/processed pcap/upload/tmp/spool pcap/upload/variants \
+mkdir -p opensearch/nodes opensearch-backup pcap/processed pcap/upload/tmp/spool pcap/upload/variants \
   zeek-logs/upload zeek-logs/processed zeek-logs/current zeek-logs/extract_files/filescan zeek-logs/live/spool \
   suricata-logs/live filescan-logs nginx/ca-trust netbox/media postgres valkey
 chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
 # Malcolm's scripts refuse to run as root.
-as_malcolm env "PATH=/opt/malcolm-venv/bin:${PATH}" ./scripts/auth_setup \
+as_malcolm env "PATH=${VENV}/bin:${PATH}" ./scripts/auth_setup \
   --auth-noninteractive --auth-method basic \
   --auth-admin-username malcolm --auth-admin-password-openssl "$password_hash" --auth-admin-password-htpasswd "$htpasswd_hash" \
   --auth-arkime-password="$password" \

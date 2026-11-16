@@ -559,9 +559,9 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 3072,
+            "memory": 1024,
             "os_type": "linux",
-            "vcpus": 2
+            "vcpus": 1
           },
           "labels": {
             "zone": "mgmt"
@@ -600,9 +600,9 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 3072,
+            "memory": 1024,
             "os_type": "linux",
-            "vcpus": 2
+            "vcpus": 1
           },
           "labels": {
             "zone": "mgmt"
@@ -641,9 +641,9 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 3072,
+            "memory": 1024,
             "os_type": "linux",
-            "vcpus": 2
+            "vcpus": 1
           },
           "labels": {
             "zone": "mgmt"
@@ -1335,7 +1335,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 2048,
+            "memory": 1024,
             "os_type": "linux",
             "vcpus": 1
           },
@@ -1679,7 +1679,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 4096,
+            "memory": 2048,
             "os_type": "linux",
             "vcpus": 2
           },
@@ -1721,7 +1721,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 6144,
+            "memory": 4096,
             "os_type": "linux",
             "vcpus": 2
           },
@@ -1758,7 +1758,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 3072,
+            "memory": 4096,
             "os_type": "linux",
             "vcpus": 2
           },
@@ -1890,7 +1890,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 3072,
+            "memory": 2048,
             "os_type": "linux",
             "vcpus": 2
           },
@@ -2271,7 +2271,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 24576,
+            "memory": 32768,
             "os_type": "linux",
             "vcpus": 8
           },
@@ -2289,10 +2289,22 @@
               "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm.env"
             },
             {
-              "description": "Malcolm sizing profiles (full 8 vCPU / 24 GB, slim 4 vCPU / 12 GB)",
+              "description": "Malcolm sizing profiles (full 8 vCPU / 32 GB, slim 4 vCPU / 12 GB)",
               "dst": "/opt/cherrymountain/malcolm/profiles.sh",
               "permissions": "0644",
               "src": "/phenix/injects/${BRANCH_NAME}/malcolm/profiles.sh"
+            },
+            {
+              "description": "settings of the full profile for Malcolm's configurator",
+              "dst": "/opt/cherrymountain/malcolm/malcolm-config-full.yaml",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/malcolm-config-full.yaml"
+            },
+            {
+              "description": "settings of the slim profile for Malcolm's configurator",
+              "dst": "/opt/cherrymountain/malcolm/malcolm-config-slim.yaml",
+              "permissions": "0644",
+              "src": "/phenix/injects/${BRANCH_NAME}/malcolm/malcolm-config-slim.yaml"
             },
             {
               "description": "Suricata rules of the baseline detections (sids 9000110 to 9000199)",
@@ -2454,7 +2466,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 3072,
+            "memory": 4096,
             "os_type": "linux",
             "vcpus": 2
           },
@@ -8087,7 +8099,8 @@
                 "malcolm-nginx-proxy-1",
                 "malcolm-pcap-monitor-1",
                 "malcolm-zeek-live-1",
-                "malcolm-arkime-live-1"
+                "malcolm-arkime-1",
+                "malcolm-pcap-capture-1"
               ]
             }
           }

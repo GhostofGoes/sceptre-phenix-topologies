@@ -9,7 +9,11 @@ would notice. Every image that carries such a script must install pydantic 2 its
 from __future__ import annotations
 
 import re
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 import yaml
 
@@ -61,3 +65,30 @@ def test_every_image_with_a_pydantic_script_installs_pydantic_2(topology_nodes: 
         if not PIP_PYDANTIC_2.search((IMAGES / f"{image}.yml").read_text(encoding="utf-8"))
     ]
     assert not missing, "images whose scripts import pydantic but that do not pip install pydantic 2: " + ", ".join(missing)
+
+
+def _git(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=False)
+
+
+def test_the_sim_image_installs_the_committed_sim_and_viz() -> None:
+    """cm-sim installs sim/ and viz/ from this repository's archive at CM_REF, while
+    the app renders helics.json from the working tree. With CM_REF behind, the
+    federates of the image do not know the names in it: cellar and packaging stopped
+    at their first step (KeyError), and a federate cannot rejoin a running federation.
+    The image config records the tree ids of both directories at CM_REF; they must be
+    those of the last commit. So a change to sim/ or viz/ passes in its own commit,
+    and every later commit fails until one moves CM_REF and the two ids."""
+    build = (IMAGES / "cm-sim.yml").read_text(encoding="utf-8")
+    pins = dict(re.findall(r"^\s*(CM_REF|CM_SIM_TREE|CM_VIZ_TREE)=([0-9a-f]{40})$", build, re.MULTILINE))
+    assert set(pins) == {"CM_REF", "CM_SIM_TREE", "CM_VIZ_TREE"}
+    if shutil.which("git") is None or _git("rev-parse", "--git-dir").returncode != 0:
+        pytest.skip("not a git checkout")
+    prefix = _git("rev-parse", "--show-prefix").stdout.strip()
+    for name, directory in (("CM_SIM_TREE", "sim"), ("CM_VIZ_TREE", "viz")):
+        head = _git("rev-parse", f"HEAD:{prefix}{directory}").stdout.strip()
+        assert pins[name] == head, f"{directory}/ changed since CM_REF: set CM_REF to the commit that changed it and {name} to {head}"
+        # Where the pinned commit is at hand (not in a shallow CI checkout), it must hold these trees.
+        at_ref = _git("rev-parse", "--verify", "--quiet", f"{pins['CM_REF']}:{prefix}{directory}")
+        if at_ref.returncode == 0:
+            assert at_ref.stdout.strip() == pins[name], f"CM_REF does not hold the recorded {directory}/ tree"

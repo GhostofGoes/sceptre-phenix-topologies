@@ -73,7 +73,9 @@ spec:
       GRAFANA_KEY_FINGERPRINT=B53AE77BADB630A683046005963FA27710458545
       INFLUXDB_VERSION=2.9.1-1
       TELEGRAF_VERSION=1.40.3-1
-      GRAFANA_MAJOR=12
+      # The version cm-grafana-brand was checked against (it replaces image files by
+      # name). Grafana's repository keeps its older versions.
+      GRAFANA_VERSION=12.4.14
       apt-get update
       apt-get install -y --no-install-recommends gnupg jq mosquitto mosquitto-clients python3 rsyslog
 
@@ -102,7 +104,7 @@ spec:
       # merge two stanzas of one file into a single record.
       cat > /etc/apt/preferences.d/grafana <<EOF
       Package: grafana
-      Pin: version $GRAFANA_MAJOR.*
+      Pin: version $GRAFANA_VERSION
       Pin-Priority: 1001
       EOF
       apt-get update

@@ -120,7 +120,7 @@ spec:
       # The BACnet module's own imports, isolated the way the CPU module runs it.
       /opt/otsim-venv/bin/python -I -c 'import bacpypes3, pydantic, zmq.asyncio; print(bacpypes3.__version__)'
       for exe in ot-sim-cpu-module ot-sim-message-bus ot-sim-modbus-module ot-sim-dnp3-module \
-        ot-sim-e2e-dnp3-master ot-sim-logic-module; do
+        ot-sim-e2e-dnp3-master ot-sim-logic-module ot-sim-telnet-module; do
         command -v "$exe" >/dev/null || { echo "missing $exe" >&2; exit 1; }
       done
       test -x /opt/otsim-venv/bin/ot-sim-io-module

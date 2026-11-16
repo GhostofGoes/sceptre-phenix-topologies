@@ -86,7 +86,11 @@ log "repacking ${ZIP} with the plugin configs in ${CONF}"
 # Verified at v4.3.2: configs live in conf/ inside the ZIP, named after the
 # plugin (modbus_master.json, modbus_slave.json). A plugin with no file is
 # disabled, and a ZIP with no conf/ directory disables all plugins.
+# The injected configs take the place of the ZIP's own conf/: the runtime turns a
+# plugin on for every conf/<name>.json it finds, so a file left over from the ZIP
+# would keep a plugin on that this PLC is not meant to run.
 unzip -q "${ZIP}" -d "${WORK}/unpacked"
+rm -rf "${WORK}/unpacked/conf"
 mkdir -p "${WORK}/unpacked/conf"
 cp -v "${CONF}"/*.json "${WORK}/unpacked/conf/"
 (cd "${WORK}/unpacked" && zip -qr "${WORK}/program.zip" .)
@@ -109,7 +113,16 @@ AUTH="Authorization: Bearer ${token}"
 log "upload-file"
 up=$(api -H "${AUTH}" -F "file=@${WORK}/program.zip" "${BASE}/upload-file?clean=0")
 echo "${up}"
-case "${up}" in *'"UploadFileFail":""'*) ;; *) log "FAIL: upload rejected"; exit 1 ;; esac
+# Accepted when the reply is a JSON object whose UploadFileFail is empty (read as
+# JSON: the spacing of the reply is the web framework's to choose).
+printf '%s' "${up}" | python3 -c '
+import json, sys
+try:
+    doc = json.load(sys.stdin)
+except ValueError:
+    sys.exit(1)
+sys.exit(0 if isinstance(doc, dict) and doc.get("UploadFileFail", "missing") == "" else 1)
+' || { log "FAIL: upload rejected"; exit 1; }
 
 log "polling compilation-status (timeout ${TIMEOUT}s)"
 # Right after an upload the status may still be the previous build's SUCCESS or

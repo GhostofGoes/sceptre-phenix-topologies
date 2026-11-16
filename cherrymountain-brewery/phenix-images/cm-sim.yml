@@ -66,18 +66,41 @@ spec:
       # cell's 3D view, DESIGN.md 15.10), and on sim-ctl the ground-truth
       # OpenSearch (9200) and the white-cell Grafana (3000).
       export DEBIAN_FRONTEND=noninteractive
-      # CM_REF names the commit of this repository whose sim/ is installed. Move it
-      # forward in the same change as any sim/ change the image must carry.
-      CM_REF=007ea72781b72825f8621003daa3288772c92696
+      # CM_REF names the commit of this repository whose sim/ and viz/ are installed,
+      # and CM_SIM_TREE and CM_VIZ_TREE are the git tree ids of the two directories at
+      # that commit (`git rev-parse CM_REF:cherrymountain-brewery/sim`). A change to
+      # sim/ or viz/ needs a second commit that moves all three, and a test fails until
+      # it exists (tests/soc/test_image_python.py): the app renders helics.json from
+      # the working tree, and federates of an older sim/ stop at their first step on
+      # names they do not know (cellar and packaging did, with the commit before this).
+      CM_REF=fc1295a7569e504eed8e2fa831f3b414422d9a53
+      CM_SIM_TREE=e3d7faffa19b0e43fed67be254b9238ed252e0e0
+      CM_VIZ_TREE=da54f96dcb6420e0b624ed15b891bcd6eaa1c1e4
       HELICS_VERSION=3.6.1
       WEBSOCKETS_VERSION=15.0.1
       OPENSEARCH_VERSION=3.9.0
       OPENSEARCH_KEY_FINGERPRINT=A8B2D9E04CD51FEF6AA2DB53BA81D99981191457
       GRAFANA_KEY_FINGERPRINT=B53AE77BADB630A683046005963FA27710458545
-      GRAFANA_MAJOR=12
+      # The version cm-grafana-brand was checked against (it replaces image files by
+      # name). Grafana's repository keeps its older versions.
+      GRAFANA_VERSION=12.4.14
       OPENSEARCH_PLUGIN_VERSION=2.34.4
       apt-get update
-      apt-get install -y --no-install-recommends gnupg jq python3 python3-venv python3-pip
+      apt-get install -y --no-install-recommends gnupg jq logrotate python3 python3-venv python3-pip
+      # The HELICS broker and federate logs (/var/log/helics-*.log, the helics app's
+      # log-dir). Once a federate is lost the root broker writes a warning for every
+      # message it can no longer route, without end, on the disk that also holds the
+      # ground-truth OpenSearch.
+      cat > /etc/logrotate.d/cm-helics <<'EOF'
+      /var/log/helics-*.log {
+        size 50M
+        rotate 3
+        compress
+        missingok
+        notifempty
+        copytruncate
+      }
+      EOF
 
       # HELICS 3.6 ships as the `helics` wheel: pyhelics plus the helics_broker
       # executable the helics app starts on sim-ctl. The sim package comes from this
@@ -98,6 +121,8 @@ spec:
       /opt/cherrymountain/venv/bin/python -c "import helics, simpy, opendssdirect, cherrymountain_sim; print(helics.helicsGetVersion(), opendssdirect.__version__)"
       /opt/cherrymountain/venv/bin/python -c "import cherrymountain_viz.server as s; assert (s.WEB / 'vendor/three/three.module.js').is_file()"
       install -d -m 0755 /etc/cherrymountain
+      # What this image carries, for a look from the console.
+      printf 'ref %s\nsim %s\nviz %s\n' "$CM_REF" "$CM_SIM_TREE" "$CM_VIZ_TREE" > /etc/cherrymountain/sim-source
 
       # Ground truth (DESIGN.md 9.5): a single-node OpenSearch that the federates
       # write to over MGMT, and Grafana for the white cell. Both are installed on every sim node but start only where the
@@ -126,7 +151,7 @@ spec:
       EOF
       cat > /etc/apt/preferences.d/grafana <<EOF
       Package: grafana
-      Pin: version $GRAFANA_MAJOR.*
+      Pin: version $GRAFANA_VERSION
       Pin-Priority: 1001
       EOF
       apt-get update
@@ -152,9 +177,16 @@ spec:
       -Xmx2g
       EOF
       install -d -m 0755 /etc/systemd/system/opensearch.service.d /etc/systemd/system/grafana-server.service.d
+      # The packaged unit gives OpenSearch 75 s to start and does not restart it. On
+      # a 2 vCPU guest that boots with twenty others it may need longer, and a start
+      # that timed out would leave the run without ground truth.
       cat > /etc/systemd/system/opensearch.service.d/10-cm-ground-truth.conf <<'EOF'
       [Unit]
       ConditionPathExists=/etc/cherrymountain/ground-truth.env
+      [Service]
+      TimeoutStartSec=300
+      Restart=on-failure
+      RestartSec=15
       EOF
       # The white cell reaches Grafana only through the host's cc tunnel
       # (DESIGN.md 15.3), so it serves an anonymous read-only view; the admin

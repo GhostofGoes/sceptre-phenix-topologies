@@ -934,7 +934,8 @@ def records_task(ctx: Context) -> str:
     """The InfluxDB task that copies, once a day, the last value of each TTB
     record series from the scada bucket into the records bucket (DESIGN.md
     12.4). The raw data ages out after 30 days; the daily values stay three
-    years. TODO(verify): FUXA's DAQ field layout, as for the dashboard."""
+    years. FUXA's InfluxDB 2 store writes each value as a point with the tags id,
+    name (the tag's name), type, and device (runtime/storage/influxdb/index.js)."""
     h = ctx.app.historian
     scada: str = "scada" if "scada" in h.buckets else h.buckets[0]
     return (
@@ -942,26 +943,27 @@ def records_task(ctx: Context) -> str:
         'option task = {name: "cm-ttb-records", every: 1d, offset: 10m}\n\n'
         f'from(bucket: "{scada}")\n'
         "  |> range(start: -task.every)\n"
-        f"  |> filter(fn: (r) => r.tag =~ /{h.records_tags}/)\n"
+        f"  |> filter(fn: (r) => r.name =~ /{h.records_tags}/)\n"
         "  |> aggregateWindow(every: 1d, fn: last, createEmpty: false)\n"
         f'  |> to(bucket: "{h.records_bucket or scada}", org: "{h.org}")\n'
     )
 
 
 def grafana_dashboard(ctx: Context) -> dict[str, Any]:
-    """A starter plant dashboard. TODO(verify): the measurement and field
-    names FUXA's InfluxDB DAQ store writes; the queries filter on the tag
-    name, which FUXA stores with each value."""
+    """A starter plant dashboard. The FUXA queries filter on `name`, the tag key
+    under which FUXA's InfluxDB 2 store writes the tag's name (the measurement is the
+    tag's id, the field is `value`). A filter on `tag`, which FUXA does not write,
+    left the panels and the records bucket empty."""
     h = ctx.app.historian
     scada: str = "scada" if "scada" in h.buckets else h.buckets[0]
     oee: str = "oee" if "oee" in h.buckets else h.buckets[0]
     ferm: str = (
         f'from(bucket: "{scada}") |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'
-        '  |> filter(fn: (r) => r._value != "" and r.tag =~ /^CEL\\.FV10[0-9]\\.TT0[12]\\.PV$/)'
+        "  |> filter(fn: (r) => r.name =~ /^CEL\\.FV10[0-9]\\.TT0[12]\\.PV$/)"
     )
     gravity: str = (
         f'from(bucket: "{scada}") |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'
-        "  |> filter(fn: (r) => r.tag =~ /^CEL\\.FV10[0-9]\\.DT01\\.PV$/)"
+        "  |> filter(fn: (r) => r.name =~ /^CEL\\.FV10[0-9]\\.DT01\\.PV$/)"
     )
     packtags: str = (
         f'from(bucket: "{oee}") |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n'

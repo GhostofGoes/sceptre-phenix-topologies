@@ -17,6 +17,9 @@
 # ${topic_root}/packaging/bottling-line/packtags/<tag>.
 [[inputs.mqtt_consumer]]
   servers = ["tcp://127.0.0.1:${mqtt_port}"]
+  # Without this Telegraf exits when the broker is not up yet, and with it the host
+  # metrics stop too.
+  startup_error_behavior = "retry"
   topics = ["${topic_root}/+/+/packtags/#"]
   qos = 0
   client_id = "cm-telegraf"

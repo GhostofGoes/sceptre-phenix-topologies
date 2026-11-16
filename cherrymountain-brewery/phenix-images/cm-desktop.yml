@@ -148,6 +148,12 @@ spec:
         </property>
       </channel>
       EOF
+      # Xubuntu ships its own power-manager defaults in /etc/xdg/xdg-xubuntu (display
+      # off after 15 minutes), and that directory comes before /etc/xdg in the session's
+      # search path: for each property xfconf takes the first file that has it. So the
+      # two files go there as well, over Xubuntu's.
+      install -d -m 0755 /etc/xdg/xdg-xubuntu/xfce4/xfconf/xfce-perchannel-xml
+      cp /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml /etc/xdg/xdg-xubuntu/xfce4/xfconf/xfce-perchannel-xml/
       install -d -m 0755 /etc/cherrymountain /usr/local/lib/cm-desktop
 
       # Wazuh agent (DESIGN.md 14). It is pinned to the version of the cm-wazuh manager,

@@ -197,7 +197,11 @@ def test_historian_files(ctx: Context) -> None:
     mosquitto = Path(
         injects["/etc/mosquitto/conf.d/cherrymountain.conf"].src
     ).read_text()
-    assert "listener 1883 10.20.30.11" in mosquitto
+    # One listener on every address: one bound to the node's own address makes
+    # Mosquitto exit when it starts before phenix has set the address.
+    assert "\nlistener 1883\n" in mosquitto and "listener 1883 1" not in mosquitto
+    # Telegraf must outlive a broker that is not up yet.
+    assert 'startup_error_behavior = "retry"' in telegraf
     env = injects["/etc/default/cm-historian"]
     assert env.permissions == "0600"
     assert 'INFLUX_BUCKETS="scada bas oee"' in Path(env.src).read_text()
@@ -210,6 +214,12 @@ def test_historian_files(ctx: Context) -> None:
     assert 'option task = {name: "cm-ttb-records", every: 1d' in task
     assert 'from(bucket: "scada")' in task and 'to(bucket: "records"' in task
     assert r"PKG\.(LINE|FILLER|KEG)\.PACKML\.(PROCESSED|DEFECTIVE)" in task
+    # FUXA's InfluxDB 2 store writes the tag's name under the tag key `name`
+    # (runtime/storage/influxdb/index.js); nothing it writes is called `tag`.
+    assert "r.name =~" in task and "r.tag" not in task
+    queries = [t["query"] for panel in render.grafana_dashboard(ctx)["panels"] for t in panel.get("targets", [])]
+    fuxa = [q for q in queries if 'bucket: "scada"' in q]
+    assert fuxa and all("r.name =~" in q and "r.tag" not in q and "r._value" not in q for q in fuxa)
     sources = yaml.safe_load(
         Path(
             injects["/etc/grafana/provisioning/datasources/cherrymountain.yaml"].src

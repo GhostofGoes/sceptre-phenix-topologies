@@ -195,10 +195,17 @@ if get_project "${WORK}/before.json" \
 fi
 
 log "POST /api/project (the runtime restarts)"
+# FUXA answers once its runtime has restarted with the new project. No answer means
+# the restart failed (the journal of fuxa.service says why), and the project is then
+# stored but nothing polls a device: say so, because the next run finds the stored
+# project and has no way to see that the runtime is dead.
 code=$(printf 'x-access-token: %s\n' "${TOKEN}" \
   | curl -sS -m 120 -o "${WORK}/post.out" -w '%{http_code}' \
     -H 'Content-Type: application/json' -H @- \
-    --data-binary "@${PROJECT}" "${FUXA}/api/project")
+    --data-binary "@${PROJECT}" "${FUXA}/api/project") || {
+  log "FAIL: FUXA did not answer the project POST: its runtime did not restart (journalctl -u fuxa); restart fuxa.service before the next try"
+  exit 1
+}
 [ "${code}" = 200 ] || { log "FAIL: project POST HTTP ${code}: $(cat "${WORK}/post.out")"; exit 1; }
 
 log "reading the project back (expecting: ${EXPECT})"

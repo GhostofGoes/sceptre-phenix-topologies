@@ -231,6 +231,44 @@ spec:
       # with an empty password over RDP: refuse root there too.
       sed -i 's/^AllowRootLogin=.*/AllowRootLogin=false/' /etc/xrdp/sesman.ini
       grep -q '^AllowRootLogin=false' /etc/xrdp/sesman.ini
+      # Root's password. The phenix default leaves it empty with nullok in PAM, which
+      # is for the console. Here the vendor's technicians have ordinary accounts (xrdp
+      # and SSH), and an empty root password lets any of them become root with `su`
+      # or a polkit prompt, read the Wazuh enrollment password, and edit the audit
+      # trail. A locked password closes every password path; the console's autologin
+      # and miniccc (cc) do not use one.
+      passwd -l root
+      passwd -S root | grep -q '^root L'
+      # The console desktop (root, autologin) must not lock or blank: nobody is there
+      # to wake it, and with root's password locked a lock screen could never
+      # be passed.
+      install -d -m 0755 /etc/xdg/xfce4/xfconf/xfce-perchannel-xml
+      cat > /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml <<'EOF'
+      <?xml version="1.0" encoding="UTF-8"?>
+      <channel name="xfce4-screensaver" version="1.0">
+        <property name="saver" type="empty">
+          <property name="enabled" type="bool" value="false"/>
+        </property>
+        <property name="lock" type="empty">
+          <property name="enabled" type="bool" value="false"/>
+        </property>
+      </channel>
+      EOF
+      cat > /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml <<'EOF'
+      <?xml version="1.0" encoding="UTF-8"?>
+      <channel name="xfce4-power-manager" version="1.0">
+        <property name="xfce4-power-manager" type="empty">
+          <property name="dpms-enabled" type="bool" value="false"/>
+          <property name="blank-on-ac" type="int" value="0"/>
+        </property>
+      </channel>
+      EOF
+      # Xubuntu ships its own power-manager defaults in /etc/xdg/xdg-xubuntu (display
+      # off after 15 minutes), and that directory comes before /etc/xdg in the session's
+      # search path: for each property xfconf takes the first file that has it. So the
+      # two files go there as well, over Xubuntu's.
+      install -d -m 0755 /etc/xdg/xdg-xubuntu/xfce4/xfconf/xfce-perchannel-xml
+      cp /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-screensaver.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml /etc/xdg/xdg-xubuntu/xfce4/xfconf/xfce-perchannel-xml/
       install -d -m 0755 /run/sshd
       ssh-keygen -A
       /usr/sbin/sshd -t

@@ -101,6 +101,12 @@ spec:
       Type=exec
       WorkingDirectory=/opt/fuxa/server
       ExecStart=/usr/local/bin/node /opt/fuxa/server/main.js
+      # node-opcua keeps its client certificates under the user's configuration
+      # directory and creates it when FUXA makes an OPC UA device (plc-brewhouse on
+      # scada-fuxa). systemd sets no HOME for a root service and /root is hidden
+      # below, so without this the runtime dies on the project import and FUXA does
+      # not serve HTTP after its next restart.
+      Environment=XDG_CONFIG_HOME=/opt/fuxa/server/_appdata
       Restart=always
       RestartSec=5
       # Hardening. FUXA writes only under /opt/fuxa (_appdata, _logs, _images).

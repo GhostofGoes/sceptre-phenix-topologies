@@ -5,8 +5,9 @@ per_listener_settings true
 persistence true
 persistence_location /var/lib/mosquitto/
 
-listener ${port} 127.0.0.1
-allow_anonymous true
-
-listener ${port} ${bind}
+# One listener on every address. A listener bound to the node's own address
+# (${bind}) makes Mosquitto exit when it starts before phenix has set that address,
+# and after five such starts systemd gives up on the unit: no broker, and no
+# Telegraf, for the rest of the run.
+listener ${port}
 allow_anonymous true

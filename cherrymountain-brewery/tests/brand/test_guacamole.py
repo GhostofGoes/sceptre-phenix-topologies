@@ -1,5 +1,5 @@
 """The Guacamole branding extension: the jar sync.py builds, the compose file's pin and mount, and
-the topology's injection. Guacamole was not run; its CSS was rendered on the markup of the
+the topology's injection. These tests do not run Guacamole; its CSS was rendered on the markup of the
 1.6.0 templates (phenix-images/README.md)."""
 
 from __future__ import annotations

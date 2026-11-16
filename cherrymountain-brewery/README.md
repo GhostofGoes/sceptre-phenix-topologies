@@ -1000,7 +1000,7 @@ the scenario beside them.
 | Malcolm | not captured yet: needs a booted range | Dashboards (Zeek Modbus, BACnet, OPC UA; Suricata alerts) and Arkime sessions, during `baseline-brew-day`, `cellar-co2-leak`, and `vendor-maintenance` |
 | Wazuh | not captured yet: needs a booted range | Threat Hunting with the `cm_vendor`, `cm_wireguard`, and `cm_firewall` groups; the alerts of rules 100100 to 100413 during `vendor-maintenance` |
 | Grafana (historian) and the "CherryMountain ground truth" dashboard | not captured yet: needs a booted range | The historian's process and production panels, and the ground-truth panels with the injected events listed |
-| Guacamole (sign-in, one-time code, an RDP session to the EWS) | not captured yet: needs a booted range | The sign-in page with the branding extension, and the vendor's session on `ews-rdp-ridgeline-akim` (the Guacamole web app was not run here either) |
+| Guacamole (sign-in, one-time code, an RDP session to the EWS) | not captured yet: needs a booted range | The sign-in page with the branding extension, and the vendor's session on `ews-rdp-ridgeline-akim` (the web app ran once in containers for a sign-in test, without a picture) |
 | VM desktops: ews (xrdp sign-in, tools), vendor-ws, soc-analyst, corp-ws, and the two HMI VMs under XFCE | not captured yet: needs a booted range | Each console as phenix shows it, with the wallpaper and the panel |
 | phenix's own pages (experiment view, VM screenshots, Files tab) | not captured yet: needs a booted range | The experiment running, and the SCORCH run's files |
 | scada-fuxa and bas-fuxa with the real PLCs (OpenPLC) and ot-sim behind them | not captured yet: needs a booted range | The views above with live values, and a real brew from the Batch view |

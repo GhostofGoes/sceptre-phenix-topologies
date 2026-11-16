@@ -99,7 +99,7 @@ start.
   measured, the rest is estimated
   ([§11](DESIGN.md#11-node-inventory-and-resources)).
 - The Wazuh rules on live traffic. The Suricata rules (all 40) and the Zeek
-  notices (all 16) fired in Malcolm's own 26.10.0 containers, Suricata 8.0.7
+  notices (all 16 that need no TLS session) fired in Malcolm's own 26.10.0 containers, Suricata 8.0.7
   with `cm-suricata.yaml`, on re-tagged test traffic replayed into a stand-in
   for the mirror port.
 - What the mirror delivers: one VLAN tag per direction of a routed flow
@@ -146,8 +146,10 @@ start.
   ([§15.9](DESIGN.md#159-operations)).
 - The outage and CO₂ scenarios, the four SCORCH runs, and an e2e run.
 - The boot times of each layer, which are estimates.
-- The brand on Guacamole, Grafana, the desktops, and xrdp, which were checked
-  offline ([§15.11](DESIGN.md#1511-brand)).
+- The brand on Guacamole, Grafana, the desktops, and xrdp as it looks on the
+  screen. It was checked offline; Guacamole's extension also loaded in a run of
+  the stack, where nobody looked at the page
+  ([§15.11](DESIGN.md#1511-brand)).
 - Once the `cherrymountain` app has run on a VM, drop the static simulation,
   OpenPLC, and FUXA injects from `topology-ci.yml`.
 
@@ -156,8 +158,8 @@ start.
 - **A 24 h soak under HELICS.** The plant ran offline through the harness; the
   federation itself has not run for a day ([§9.6](DESIGN.md#96-implementation-status-and-validation)).
 - **A 10-minute memory soak of FUXA** ([§12.2](DESIGN.md#122-fuxa-two-instances)).
-- **Tests that are missing:** `cm_selftest_pcap.py`, `cm-load-images`, and the
-  ot-svc chrony and dnsmasq hooks.
+- **Tests that are missing:** `cm-load-images` and the ot-svc chrony and dnsmasq
+  hooks.
 - **Tests that CI does not run:** the Docker integration test of the ci slice,
   `build_zip.sh --check`, the pcap replays through Suricata and Zeek, the
   compiled-program tests (they need Node, strucpp, and g++), and cm-viz's
@@ -296,7 +298,7 @@ start.
 From [§15.10](DESIGN.md#1510-white-cell-3d-view-cm-viz):
 
 - **The run in the range:** the view through a real cc tunnel, the frame age,
-  and what its 188 subscriptions do to the federation's timing over an hour.
+  and what its 191 subscriptions do to the federation's timing over an hour.
 - **The operator-view relay:** a relay on the phenix host that reads the
   historian's `scada` bucket and fills the operator layer.
 - **Replay** from the ground-truth OpenSearch, and **a brewhouse scene.**

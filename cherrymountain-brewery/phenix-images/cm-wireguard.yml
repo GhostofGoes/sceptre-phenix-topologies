@@ -83,9 +83,9 @@ spec:
 
       # dmz-vpn forwards decapsulated tunnel traffic onto the DMZ. No NAT: dmz-jump
       # routes 10.99.0.0/24 back through this host and sees the real tunnel address.
-      cat > /etc/sysctl.d/99-cm-forward.conf <<'EOF'
-      net.ipv4.ip_forward = 1
-      EOF
+      # Forwarding is not turned on here: the startup hook (70-wireguard.sh) does it
+      # once the nftables forward policy has loaded, so the gateway never forwards
+      # without it.
       install -d -m 0700 /etc/wireguard
       install -d -m 0755 /etc/cherrymountain /usr/local/lib/cm-wireguard
 

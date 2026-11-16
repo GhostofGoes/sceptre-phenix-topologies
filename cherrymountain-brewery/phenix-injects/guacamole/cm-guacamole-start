@@ -60,6 +60,16 @@ if [ "$healthy" != true ]; then
   exit 1
 fi
 
+# The app's accounts and connections (cmadmin, the EWS connections). PostgreSQL runs
+# initdb/ only on an empty data directory: after an init that failed or was cut
+# off half way, the container comes back healthy without them, and nothing would
+# apply them again. The file is written to be applied any number of times.
+APP_SQL="${DIR}/initdb/50-cherrymountain.sql"
+if [ -f "$APP_SQL" ]; then
+  log "applying the app's accounts and connections"
+  docker exec -i postgres psql -v ON_ERROR_STOP=1 --quiet -U guacamole_user -d guacamole_db < "$APP_SQL"
+fi
+
 if [ -f "$RIDGELINE" ]; then
   log "creating the vendor technicians' named accounts"
   python3 -I "${LIB}/cm_vendor_sql.py" --env "$RIDGELINE" \

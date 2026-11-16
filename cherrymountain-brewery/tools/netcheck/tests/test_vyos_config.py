@@ -18,20 +18,45 @@ import pytest
 
 SCRIPT: Path = Path(__file__).resolve().parents[3] / "phenix-injects" / "vrouter" / "cm-vyos-config.sh"
 
-#: The VyOS configuration functions the script calls; each records its call.
+#: The VyOS script template. The session commands are ALIASES of vyatta_cfg_run, as
+#: vyatta-cfg makes them (functions/interpreter/vyatta-cfg-run), and `exit` is the
+#: alias of functions/wrapper/script-template that closes the session without ending
+#: the script. A stand-in with shell functions hid that the script's wrappers never
+#: reached VyOS: bash expands an alias only at command position. `set` through the
+#: alias reports success whatever happened, and `commit` returns 1 when nothing changed.
 TEMPLATE: str = """
 record() { printf '%s\\n' "$*" >> "$FAKE_LOG"; }
-configure() { record configure; }
-set() {
-  record "set $*"
-  case " $* " in *" $FAKE_REJECT "*) return 1 ;; esac
-  return 0
+vyatta_cfg_run() {
+  case "$1" in
+    set | delete) record "alias-$*" ;;
+    commit)
+      if [ ! -e "$FAKE_CHANGED" ]; then
+        echo "No configuration changes to commit"
+        return 1
+      fi
+      record commit
+      return "${FAKE_COMMIT_RC:-0}"
+      ;;
+    *) record "$*" ;;
+  esac
 }
-delete() { record "delete $*"; }
-commit() { record commit; return "${FAKE_COMMIT_RC:-0}"; }
-save() { record save; }
-compare() { record compare; }
-discard() { record discard; }
+for cmd in commit compare delete discard save set; do
+  eval alias $cmd=\\'vyatta_cfg_run $cmd\\'
+done
+shopt -s expand_aliases
+vyatta_configure() { record configure >&2; echo true; }
+vyatta_exit_configure() { record teardown; echo -n 'export -n VYATTA_EDIT_LEVEL; '; }
+alias configure='eval $(vyatta_configure)'
+alias exit='eval $(vyatta_exit_configure)'
+"""
+
+#: my_set and my_delete, the programs behind the aliases: they exit 1 on a path
+#: VyOS does not take, and a change makes the session differ from the running config.
+BACKEND: str = """#!/bin/sh
+cmd=${0##*/my_}
+printf '%s\\n' "$cmd $*" >> "$FAKE_LOG"
+case " $* " in *" $FAKE_REJECT "*) echo "Set failed" ; exit 1 ;; esac
+: > "$FAKE_CHANGED"
 """
 
 #: cli-shell-api: listEffectiveNodes and returnEffectiveValue from $FAKE_TREE.
@@ -82,6 +107,9 @@ class Router:
         hostname: Path = bin_dir / "hostname"
         hostname.write_text(f"#!/bin/sh\necho {host}\n")
         hostname.chmod(0o755)
+        for name in ("my_set", "my_delete"):
+            (bin_dir / name).write_text(BACKEND)
+            (bin_dir / name).chmod(0o755)
         # The two boot markers the script waits for: VyOS's boot config status
         # and the flag of the image's boot hook. A booted router has both.
         self.boot_status: Path = tmp / "vyos-config-status"
@@ -93,6 +121,7 @@ class Router:
             **os.environ,
             "PATH": f"{bin_dir}:{os.environ['PATH']}",
             "CM_VYOS_TEMPLATE": str(tmp / "template.sh"),
+            "CM_VYOS_BACKEND": str(bin_dir / "my_"),
             "CM_VYOS_RUN_DIR": str(tmp),
             "CM_VYOS_BOOT_STATUS": str(self.boot_status),
             "CM_VYOS_BOOT_FLAG": str(self.boot_flag),
@@ -101,10 +130,12 @@ class Router:
             "FAKE_LOG": str(self.log),
             "FAKE_TREE": str(tmp / "tree.json"),
             "FAKE_REJECT": "__nothing__",
+            "FAKE_CHANGED": str(tmp / "session-changed"),
         }
 
     def run(self, *args: str, script: Path = SCRIPT, **env: str) -> tuple[int, list[str]]:
         self.log.unlink(missing_ok=True)
+        (self.tmp / "session-changed").unlink(missing_ok=True)
         proc = subprocess.run(
             ["bash", str(script), *args],
             env={**self.env, **env},
@@ -130,18 +161,33 @@ def test_fw_edge_logs_ikev2_and_ipsec_match(tmp_path: Path) -> None:
     assert "set firewall ipv4 name FROM-INET rule 20 ipsec match-ipsec-in" in cmds
     assert not any("rule 10 ipsec" in c for c in cmds)
     assert not any(c.startswith("set service ntp") for c in cmds)
-    assert cmds[-2:] == ["commit", "save"]
+    assert cmds[-3:] == ["commit", "save", "teardown"]
+    # No change went to bash's own `set` or to the alias, which hides a refusal.
+    assert not any(c.startswith("alias-") for c in cmds)
     assert (tmp_path / "cm-vyos-config.done").read_text() == ""
     # The marker makes the next miniccc connect a no-op.
     rc, cmds = router.run()
     assert (rc, cmds) == (0, [])
 
 
-def test_older_builds_get_match_ipsec(tmp_path: Path) -> None:
+def test_a_router_with_nothing_to_change_is_done(tmp_path: Path) -> None:
+    """`commit` returns 1 when the session holds no change: on isp-rtr, where the
+    script sets nothing, and on every router after a reboot (the first boot saved
+    the changes). That is not a failed commit, and the marker is written."""
+    router = Router(tmp_path, "isp-rtr", {})
+    rc, cmds = router.run()
+    assert rc == 0, router.stderr
+    assert "commit" not in cmds and "save" not in cmds and cmds[-1] == "teardown"
+    assert (tmp_path / "cm-vyos-config.done").read_text() == ""
+
+
+def test_the_script_ends_with_its_status_after_the_template(tmp_path: Path) -> None:
+    """After the template, `exit` is an alias that does not end the script and takes
+    no argument: `exit 1` printed "1: command not found" and the run ended with 0."""
     router = Router(tmp_path, "fw-edge", FW_EDGE_TREE)
-    rc, cmds = router.run(FAKE_REJECT="match-ipsec-in")
-    assert rc == 0
-    assert "set firewall ipv4 name FROM-INET rule 20 ipsec match-ipsec" in cmds
+    rc, cmds = router.run(FAKE_COMMIT_RC="1")
+    assert rc == 1 and "command not found" not in router.stderr
+    assert cmds[-1] == "teardown" and "save" not in cmds
 
 
 def test_fw_ot_takes_time_from_ot_svc(tmp_path: Path) -> None:
@@ -164,7 +210,7 @@ def test_dry_run_compares_and_discards(tmp_path: Path) -> None:
     router = Router(tmp_path, "fw-edge", FW_EDGE_TREE)
     rc, cmds = router.run("--dry-run")
     assert rc == 0
-    assert cmds[-2:] == ["compare", "discard"]
+    assert cmds[-3:] == ["compare", "discard", "teardown"]
     assert "commit" not in cmds
     assert not (tmp_path / "cm-vyos-config.done").exists()
 
@@ -200,7 +246,7 @@ def test_waits_for_both_boot_markers(tmp_path: Path, marker: str) -> None:
     missing.write_text("")
     rc, cmds = router.run()
     assert rc == 0
-    assert cmds[-2:] == ["commit", "save"]
+    assert cmds[-3:] == ["commit", "save", "teardown"]
 
 
 def test_boot_flag_defaults_to_the_script_directory(tmp_path: Path) -> None:

@@ -15,8 +15,9 @@
 #                   192.0.2.10 from INET is dropped (DESIGN.md 10.1)
 #
 # --dry-run makes the same changes, prints `compare`, and discards them: no
-# commit, no marker. CM_VYOS_TEMPLATE and CM_VYOS_RUN_DIR override the VyOS
-# script template and the marker directory, and CM_VYOS_BOOT_STATUS,
+# commit, no marker. CM_VYOS_TEMPLATE, CM_VYOS_BACKEND, and CM_VYOS_RUN_DIR override
+# the VyOS script template, the prefix of the programs that make a change, and the
+# marker directory, and CM_VYOS_BOOT_STATUS,
 # CM_VYOS_BOOT_FLAG, CM_VYOS_WAIT_TRIES, and CM_VYOS_WAIT_SLEEP the two boot
 # markers and the wait for them (the tests use all of them).
 #
@@ -44,8 +45,8 @@
 # committed, the marker lists the failed steps (so the next connect does not
 # loop on them), and the script exits 1 so `cc` shows it.
 #
-# TODO(verify): unverified on a VyOS VM. Check that the syslog syntax of the
-# build is `remote` or `host` (both are tried), and that `default-log` takes.
+# TODO(verify): unverified on a VyOS VM. The keywords (`system syslog remote`,
+# `default-log`, `ipsec match-ipsec-in`) are those of the vyos-1x the image builds.
 #
 # VyOS's script-template is not safe under -e or -u.
 
@@ -103,16 +104,38 @@ fi
 source "$TEMPLATE"
 configure
 
+# How this script talks to VyOS. After the template is sourced, `set`, `delete`,
+# `commit`, `save`, `compare`, and `discard` are shell ALIASES (of vyatta_cfg_run;
+# vyatta-cfg, functions/interpreter/vyatta-cfg-run), and `exit` is an alias that
+# closes the configuration session and does not end the script. Bash expands an
+# alias only where it is the first word of a command as written: a wrapper that
+# runs "$@" gets bash's own `set` (which changes nothing and returns 0) and no
+# `delete` at all. The alias also hides whether VyOS took a change (it prints the
+# error and returns 0). So a change goes to the program behind the alias, whose
+# exit status tells, and the session commands below are written at command position.
+if [ -f /var/run/vyconf_backend ]; then
+  backend=${vyconf_bin_dir:-/usr/libexec/vyos/vyconf}/vy_
+else
+  backend=/opt/vyatta/sbin/my_
+fi
+backend=${CM_VYOS_BACKEND:-$backend}
+
 failed=()
+# try set|delete PATH...: make one change; a refused one is recorded, not fatal.
 try() {
-  if ! "$@"; then
-    echo "cm-vyos-config: failed: $*" >&2
-    failed+=("$*")
+  local cmd=$1
+  shift
+  if ! "${backend}${cmd}" "$@"; then
+    echo "cm-vyos-config: failed: $cmd $*" >&2
+    failed+=("$cmd $*")
   fi
 }
 
-quiet() {
-  "$@" 2> /dev/null
+# leave STATUS: close the configuration session and end the script. (A bare `exit N`
+# here is the template's alias with an argument it does not take.)
+leave() {
+  eval "$(vyatta_exit_configure)"
+  builtin exit "$1"
 }
 
 case "$host" in
@@ -120,9 +143,7 @@ case "$host" in
     for ruleset in $(cli-shell-api listEffectiveNodes firewall ipv4 name | tr -d "'"); do
       try set firewall ipv4 name "$ruleset" default-log
     done
-    if ! quiet set system syslog remote "$WAZUH" facility all level warning; then
-      try set system syslog host "$WAZUH" facility all level warning
-    fi
+    try set system syslog remote "$WAZUH" facility all level warning
     ;;
 esac
 
@@ -141,16 +162,13 @@ esac
 
 # The vrouter template has no IPsec match, so the utility DNP3 rule (source
 # utility-derms) would also pass a plaintext packet that spoofs that address on
-# INET. Require that it arrived through the IPsec tunnel. The keyword is
-# match-ipsec-in on current builds and match-ipsec on older ones.
+# INET. Require that it arrived through the IPsec tunnel.
 if [ "$host" = fw-edge ]; then
   for ruleset in $(cli-shell-api listEffectiveNodes firewall ipv4 name | tr -d "'"); do
     for rule in $(cli-shell-api listEffectiveNodes firewall ipv4 name "$ruleset" rule | tr -d "'"); do
       src=$(cli-shell-api returnEffectiveValue firewall ipv4 name "$ruleset" rule "$rule" source address)
       [ "$src" = "$UTILITY_DERMS" ] || continue
-      if ! quiet set firewall ipv4 name "$ruleset" rule "$rule" ipsec match-ipsec-in; then
-        try set firewall ipv4 name "$ruleset" rule "$rule" ipsec match-ipsec
-      fi
+      try set firewall ipv4 name "$ruleset" rule "$rule" ipsec match-ipsec-in
     done
   done
 fi
@@ -160,22 +178,30 @@ if [ "$dry_run" = 1 ]; then
   discard
   if [ "${#failed[@]}" -gt 0 ]; then
     printf 'cm-vyos-config: dry run: failed: %s\n' "${failed[@]}" >&2
-    exit 1
+    leave 1
   fi
-  exit 0
+  leave 0
 fi
 
-if commit; then
-  save
-  if [ "${#failed[@]}" -eq 0 ]; then
-    touch "$DONE"
-  else
-    printf 'failed: %s\n' "${failed[@]}" > "$DONE"
-    echo "cm-vyos-config: committed on $host with ${#failed[@]} failed step(s); see $DONE" >&2
-    exit 1
-  fi
-else
+# `commit` returns 1 with this message when the session holds no change: on
+# isp-rtr, where nothing is set, and on every router after a reboot, because the
+# first boot saved the changes. That is success, with nothing to save.
+commit_log=$RUN_DIR/cm-vyos-config.commit
+commit > "$commit_log" 2>&1
+commit_rc=$?
+cat "$commit_log"
+if [ "$commit_rc" -ne 0 ] && grep -q 'No configuration changes to commit' "$commit_log"; then
+  echo "cm-vyos-config: nothing to change on $host"
+elif [ "$commit_rc" -ne 0 ]; then
   echo "cm-vyos-config: commit failed on $host" >&2
-  exit 1
+  leave 1
+else
+  save
 fi
-exit
+if [ "${#failed[@]}" -gt 0 ]; then
+  printf 'failed: %s\n' "${failed[@]}" > "$DONE"
+  echo "cm-vyos-config: committed on $host with ${#failed[@]} failed step(s); see $DONE" >&2
+  leave 1
+fi
+touch "$DONE"
+leave 0

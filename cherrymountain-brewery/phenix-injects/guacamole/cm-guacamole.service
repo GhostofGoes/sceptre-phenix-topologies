@@ -10,6 +10,11 @@ StartLimitIntervalSec=0
 Type=oneshot
 RemainAfterExit=yes
 EnvironmentFile=-/etc/default/cm-guacamole
+# systemd sets no HOME for a root service, so the Docker CLI looks in /root, which
+# ProtectHome= makes unreadable (EACCES, not "no such file"): it then gives up on its
+# plugins before it reaches the packaged ones, and `docker compose` is an unknown
+# command. /tmp is this unit's private one.
+Environment=HOME=/tmp
 ExecStart=/usr/local/sbin/cm-guacamole-start
 ExecStop=/usr/bin/docker compose --project-directory /opt/cherrymountain/guacamole -f /opt/cherrymountain/guacamole/docker-compose.yml stop
 TimeoutStartSec=20min

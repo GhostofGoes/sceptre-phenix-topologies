@@ -86,6 +86,16 @@ STOCK_AGENT_CONF: str = """<ossec_config>
     <users>yes</users>
     <groups>yes</groups>
   </wodle>
+
+  <localfile>
+    <log_format>journald</log_format>
+    <location>journald</location>
+  </localfile>
+
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>/var/ossec/logs/active-responses.log</location>
+  </localfile>
 </ossec_config>
 """
 
@@ -355,7 +365,8 @@ def test_the_manager_lets_a_restarted_agent_enroll_again(tmp_path: Path) -> None
 HEALTH_STUBS: dict[str, str] = {
     "systemctl": "#!/bin/sh\nexit 0\n",
     "ss": "#!/bin/sh\nfor p in 'tcp 0.0.0.0:1514' 'tcp 0.0.0.0:1515' 'udp 0.0.0.0:514' 'tcp 0.0.0.0:443' 'tcp 0.0.0.0:55000' 'tcp 10.40.10.11:9200'; do echo \"${p% *} LISTEN 0 128 ${p#* } 0.0.0.0:*\"; done\n",
-    "curl": "#!/bin/sh\n[ -n \"$FAKE_INDEXER\" ] || exit 7\nprintf '{\"cluster_name\":\"wazuh\",\"status\":\"%s\"}' \"$FAKE_INDEXER\"\n",
+    # The dashboard probe asks for the HTTP status only; the other call is the indexer's health.
+    "curl": "#!/bin/sh\ncase \"$*\" in *http_code*) printf '%s' \"${FAKE_DASHBOARD:-302}\"; exit 0 ;; esac\n[ -n \"$FAKE_INDEXER\" ] || exit 7\nprintf '{\"cluster_name\":\"wazuh\",\"status\":\"%s\"}' \"$FAKE_INDEXER\"\n",
     "filebeat": "#!/bin/sh\nexit ${FAKE_FILEBEAT:-0}\n",
     "sed": "#!/bin/sh\necho 10.40.10.11:9200\n",
 }
@@ -394,6 +405,8 @@ def test_wazuh_health_needs_the_whole_pipeline(tmp_path: Path) -> None:
         ({"FAKE_INDEXER": ""}, "the indexer does not answer"),
         ({"FAKE_INDEXER": "red"}, "the indexer is not green or yellow"),
         ({"FAKE_FILEBEAT": "1"}, "Filebeat cannot reach the indexer"),
+        # A dashboard that cannot sign in to the indexer runs, listens, and answers 503.
+        ({"FAKE_DASHBOARD": "503"}, "the dashboard answers HTTP 503"),
     ):
         result = run_wazuh_health(tmp_path, **env)
         assert result.returncode == 1 and result.stdout.startswith(f"UNHEALTHY: {reason}"), result.stdout
@@ -583,6 +596,35 @@ def test_the_agent_enrolls_into_its_zone_group(tmp_path: Path) -> None:
     # A second boot changes nothing.
     assert run_agent_script(tmp_path, "dmz") == text
     assert text.count("<enrollment>") == 1
+
+
+def test_the_agent_reads_each_log_once(tmp_path: Path) -> None:
+    """The installed agent reads the journal, and noble's journald forwards the same
+    lines to the files the groups' agent.conf reads: every sign-in and firewall drop
+    would reach the manager twice, and a rule that counts would fire at half the
+    count. The hook removes the journald reader and nothing else."""
+    assert "<log_format>journald</log_format>" in STOCK_AGENT_CONF
+    root = ET.fromstring(run_agent_script(tmp_path, "ops"))
+    assert [lf.findtext("location") for lf in root.findall("localfile")] == ["/var/ossec/logs/active-responses.log"]
+    for group in ("ops", "dmz", "hmi", "bas", "soc"):
+        shared = (WAZUH / "agent-conf" / f"{group}.conf").read_text()
+        assert "journald" not in shared.split("-->")[-1] and "/var/log/auth.log" in shared
+
+
+def test_the_wazuh_setup_may_make_the_system_calls_its_tools_need() -> None:
+    """`~@resources` takes setpriority out of the filter. PAM's pam_limits calls it in
+    every runuser, which Wazuh's indexer-security-init.sh uses, and the kernel kills
+    the caller: the first-boot setup stopped at step 2. @pkey is for the dashboard's
+    keystore tool (Node 18): killed there, the password tool goes on and leaves the
+    dashboard with a password the indexer no longer takes."""
+    filters = unit_setting((WAZUH / "cm-wazuh-provision.service").read_text(), "SystemCallFilter")
+    assert filters == ["@system-service", "@pkey"]
+    script = (WAZUH / "cm-wazuh-provision").read_text()
+    # The waits see a dashboard that is up and cannot sign in (503).
+    assert "curl -sk -o /dev/null https://localhost:443/" not in script
+    assert script.count('wait_for 600 "the dashboard" dashboard_answers') == 2
+    # The retention policies exist before Filebeat makes the first index.
+    assert script.index("retention alerts 'wazuh-alerts-*'") < script.index("systemctl enable --now filebeat.service")
 
 
 # --- the vendor-maintenance run's expectations ------------------------------------------

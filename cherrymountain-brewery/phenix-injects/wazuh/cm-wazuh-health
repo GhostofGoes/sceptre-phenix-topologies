@@ -36,6 +36,14 @@ for port in tcp:1514 tcp:1515 udp:514 tcp:443 tcp:55000 tcp:9200; do
   grep -Eq "^${port%%:*} .*[:.]${port##*:} " <<< "$listening" || fail "nothing listens on ${port%%:*} ${port##*:}"
 done
 
+# The dashboard serves its login. With a wrong kibanaserver password it runs and
+# listens, and answers 503 "not ready yet" for ever.
+code=$(curl -sk -m 20 -o /dev/null -w '%{http_code}' https://localhost:443/ 2> /dev/null) || code=000
+case "$code" in
+  200 | 302) ;;
+  *) fail "the dashboard answers HTTP ${code} (still starting, or it cannot sign in to the indexer)" ;;
+esac
+
 # The indexer listens on the node's address, the one in Filebeat's output.
 indexer=$(sed -n 's|^ *hosts: *\["\([^"]*\)"\].*|\1|p' /etc/filebeat/filebeat.yml 2> /dev/null | head -n 1)
 [ -n "$indexer" ] || fail "no indexer address in /etc/filebeat/filebeat.yml"

@@ -109,19 +109,30 @@ spec:
         curl -fsSL -o "/opt/cherrymountain/wazuh/$1" "$2"
         echo "$3  /opt/cherrymountain/wazuh/$1" | sha256sum -c -
       }
-      fetch wazuh-certs-tool.sh https://packages.wazuh.com/4.14/wazuh-certs-tool.sh 5c3135baaef34ca25a9f0fa631e65312871934533fd061442d50d9d70f23b759
-      fetch wazuh-passwords-tool.sh https://packages.wazuh.com/4.14/wazuh-passwords-tool.sh 2d085fe9baf777eeff3cf09199f568a1fcafec7dcdcfefbd414e7a35eb2ee1ad
+      # The two tools come from the pinned wazuh-indexer package. The copies under
+      # packages.wazuh.com/4.14/ are replaced at every 4.14 release, after which the
+      # checksum would stop the build and the old files could not be fetched again.
+      from_package() {
+        install -m 0755 "/usr/share/wazuh-indexer/plugins/opensearch-security/tools/$1" "/opt/cherrymountain/wazuh/$1"
+        echo "$2  /opt/cherrymountain/wazuh/$1" | sha256sum -c -
+      }
+      from_package wazuh-certs-tool.sh 5c3135baaef34ca25a9f0fa631e65312871934533fd061442d50d9d70f23b759
+      from_package wazuh-passwords-tool.sh 2d085fe9baf777eeff3cf09199f568a1fcafec7dcdcfefbd414e7a35eb2ee1ad
       fetch filebeat.yml https://packages.wazuh.com/4.14/tpl/wazuh/filebeat/filebeat.yml 233c82cdbec2a159ac33a8e5faff4adf7517add92d4f927b33ff4fbd3fcbde37
       fetch wazuh-template.json "https://raw.githubusercontent.com/wazuh/wazuh/v${WAZUH_VERSION%-1}/extensions/elasticsearch/7.x/wazuh-template.json" b2d182f49cc68957849e77fd2d79528fd2273ebaec1106c9661c9e320577a089
       fetch wazuh-filebeat-0.5.tar.gz https://packages.wazuh.com/4.x/filebeat/wazuh-filebeat-0.5.tar.gz 7a8c67c47b22f89ab271b7e35f108f18b2215b7aa411cdd23c9994393070d38d
-      chmod 0755 /opt/cherrymountain/wazuh/wazuh-certs-tool.sh /opt/cherrymountain/wazuh/wazuh-passwords-tool.sh
       # Filebeat's Wazuh module, and the templates it needs, at the paths Wazuh's guide uses.
       tar -xzf /opt/cherrymountain/wazuh/wazuh-filebeat-0.5.tar.gz -C /usr/share/filebeat/module
       install -m 0644 /opt/cherrymountain/wazuh/wazuh-template.json /etc/filebeat/wazuh-template.json
       chmod go+r /etc/filebeat/wazuh-template.json
+      # One primary shard for each daily index, as Wazuh's tuning guide says for a
+      # single node (the template has three): 30 days of alerts and 7 of archives are
+      # then about 40 small shards on the 2 GB heap, not 110.
+      sed -i -E 's/("index\.number_of_shards": *)"3"/\1"1"/' /etc/filebeat/wazuh-template.json
+      grep -Eq '"index\.number_of_shards": *"1"' /etc/filebeat/wazuh-template.json
 
-      # The indexer's JVM heap: the VM has 8 GB for the indexer, the manager, and the
-      # dashboard, and the indexer would otherwise take half of it.
+      # The indexer's JVM heap: 2 GB of the VM's 8 GB, which the manager and the
+      # dashboard share (the package's own default is 1 GB).
       install -d -m 0750 -o root -g wazuh-indexer /etc/wazuh-indexer/jvm.options.d
       cat > /etc/wazuh-indexer/jvm.options.d/cm-heap.options <<'EOF'
       -Xms2g
@@ -195,5 +206,5 @@ spec:
 
       EOF
       echo "\nBuilt with phenix image on $(date)\n\n" >> /etc/motd
-  size: 16G
+  size: 32G
   variant: minbase

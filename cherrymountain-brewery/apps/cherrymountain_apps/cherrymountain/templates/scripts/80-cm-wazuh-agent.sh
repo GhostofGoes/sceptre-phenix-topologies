@@ -36,6 +36,34 @@ grep -q '<enrollment>' "${conf}" || {
   echo "cm-wazuh-agent: FAIL: could not add the enrollment block to ${conf}" >&2
   exit 1
 }
+# One source for each log. The agent's package writes its ossec.conf at install
+# time and, where journalctl exists, gives it a journald reader. noble's journald
+# also forwards to rsyslog, which writes the same lines to /var/log/auth.log, syslog,
+# and kern.log, the files the groups' shared agent.conf reads (DESIGN.md 14). With
+# both, every sign-in, PLC-tool, and firewall-drop event reaches the manager twice,
+# and a rule that counts (five failed logins) fires at half the count. The files
+# stay, because the decoders and their samples are written for them.
+if grep -q '<log_format>journald</log_format>' "${conf}"; then
+  awk '
+    /<localfile>/ { block = $0 ORS; inside = 1; next }
+    inside {
+      block = block $0 ORS
+      if ($0 ~ /<\/localfile>/) {
+        if (block !~ /<log_format>journald<\/log_format>/) printf "%s", block
+        inside = 0
+      }
+      next
+    }
+    { print }
+  ' "${conf}" > "${conf}.cm"
+  cat "${conf}.cm" > "${conf}"
+  rm -f "${conf}.cm"
+fi
+if grep -q '<log_format>journald</log_format>' "${conf}"; then
+  echo "cm-wazuh-agent: FAIL: could not remove the journald reader from ${conf}" >&2
+  exit 1
+fi
+
 umask 077
 printf '%s\n' "${WAZUH_REGISTRATION_PASSWORD}" > "${ossec}/etc/authd.pass"
 chgrp wazuh "${ossec}/etc/authd.pass"

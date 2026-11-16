@@ -7,7 +7,9 @@
 # step-by-step installation of Wazuh's documentation for one node that runs the
 # indexer, the manager, and the dashboard:
 #   1. certificates for the three components (wazuh-certs-tool.sh)
-#   2. the indexer: certificates, address, start, security initialization
+#   2. the indexer: certificates, address, start, security initialization, and the
+#      index retention (ISM) policies: alerts 30 days, archives 7 (DESIGN.md 14),
+#      before Filebeat makes the first index, which a later policy would not cover
 #   3. the manager and Filebeat: certificates, keystores, indexer address, start,
 #      and the cherrymountain additions: agent groups and their shared settings,
 #      the syslog listener, and no vulnerability detection or update check (the VMs
@@ -17,7 +19,6 @@
 #      as in Wazuh's guide: the tool updates the dashboard's keystore and wazuh.yml.
 #      The tool generates every password; the admin user's (the dashboard login) is
 #      the cherrymountain app's when it gave one
-#   6. index retention (ISM) policies: alerts 30 days, archives 7 (DESIGN.md 14)
 # The rules and decoders are injected into /var/ossec/etc/{rules,decoders}/ before
 # the manager first starts, so they load with it.
 #
@@ -78,6 +79,16 @@ wait_for() {
     fi
     sleep 5
   done
+}
+
+# dashboard_answers: the dashboard serves its login (200, or 302 to it). While it
+# starts, and for good when it cannot sign in to the indexer, it answers 503
+# ("Wazuh dashboard server is not ready yet"), which a plain curl takes for success.
+dashboard_answers() {
+  case "$(curl -sk -m 20 -o /dev/null -w '%{http_code}' https://localhost:443/ || true)" in
+    200 | 302) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 if [ -f "${STATE}/provisioned" ]; then
@@ -157,6 +168,44 @@ if ! passwords_changed; then
   /usr/share/wazuh-indexer/bin/indexer-security-init.sh
 fi
 
+# Index retention, before Filebeat creates the first indices: a policy's
+# ism_template applies only to indices made after it, so policies created at the
+# end left the first day's alerts and archives without one, never to be deleted.
+# The range's retention target (DESIGN.md 14, Log and NSM retention): alerts, the
+# detections an analyst works, stay CM_WAZUH_ALERTS_DAYS (default 30: a week-long
+# exercise and its after-action review); archives, every event the manager received,
+# stay CM_WAZUH_ARCHIVES_DAYS (default 7: the exercise). CM_WAZUH_RETENTION_DAYS, if
+# set, applies to both (the single policy of earlier versions). The indexer has a
+# 32 GB disk; an ISM policy per pattern, which every new daily index picks up,
+# deletes the older ones. The admin client certificate authenticates. A failure here
+# is logged, not fatal: the SIEM works without it until the disk fills.
+number() { case "$1" in '' | *[!0-9]*) echo "$2" ;; *) echo "$1" ;; esac; }
+alerts_days=$(number "${CM_WAZUH_RETENTION_DAYS:-${CM_WAZUH_ALERTS_DAYS:-}}" 30)
+archives_days=$(number "${CM_WAZUH_RETENTION_DAYS:-${CM_WAZUH_ARCHIVES_DAYS:-}}" 7)
+ism() {
+  curl -sS -o /dev/null -w '%{http_code}' --cacert /etc/wazuh-indexer/certs/root-ca.pem \
+    --cert /etc/wazuh-indexer/certs/admin.pem --key /etc/wazuh-indexer/certs/admin-key.pem "$@"
+}
+retention() {
+  local name="$1" pattern="$2" days="$3" url code
+  url="https://${node_ip}:9200/_plugins/_ism/policies/cm-retention-${name}"
+  if [ "$(ism "$url" || true)" = 200 ]; then
+    log "index retention for ${name} already present"
+    return
+  fi
+  code=$(printf '{"policy":{"description":"CherryMountain: delete Wazuh %s after %s days","default_state":"hot","states":[{"name":"hot","actions":[],"transitions":[{"state_name":"delete","conditions":{"min_index_age":"%sd"}}]},{"name":"delete","actions":[{"delete":{}}],"transitions":[]}],"ism_template":[{"index_patterns":["%s"],"priority":100}]}}' "$name" "$days" "$days" "$pattern" \
+    | ism -X PUT -H 'Content-Type: application/json' --data-binary @- "$url" || true)
+  case "$code" in
+    200 | 201) log "index retention: ${name} deleted after ${days} days" ;;
+    *) log "WARNING: could not create the ${name} retention policy (HTTP ${code}); they are kept until the disk fills" ;;
+  esac
+}
+# The security plugin answers a few seconds after indexer-security-init.sh returns.
+security_ready() { [ "$(ism "https://${node_ip}:9200/_cluster/health" || true)" = 200 ]; }
+wait_for 300 "the indexer's security index" security_ready || true
+retention alerts 'wazuh-alerts-*' "$alerts_days"
+retention archives 'wazuh-archives-*' "$archives_days"
+
 # --- 3. the manager and Filebeat -----------------------------------------------------
 install -m 0644 "${TOOLS}/filebeat.yml" /etc/filebeat/filebeat.yml
 sed -i -E "s|^(\s*hosts:).*|\1 [\"${node_ip}:9200\"]|" /etc/filebeat/filebeat.yml
@@ -184,7 +233,7 @@ if ! grep -q 'cherrymountain: syslog' "$OSSEC_CONF"; then
 fi
 sed -i '/<vulnerability-detection>/,/<\/vulnerability-detection>/s|<enabled>yes</enabled>|<enabled>no</enabled>|' "$OSSEC_CONF"
 sed -i 's|<update_check>yes</update_check>|<update_check>no</update_check>|' "$OSSEC_CONF"
-# archives.json, which Filebeat ships to wazuh-archives-* (the retention of step 6).
+# archives.json, which Filebeat ships to wazuh-archives-* (the retention set in step 2).
 sed -i 's|<logall_json>no</logall_json>|<logall_json>yes</logall_json>|' "$OSSEC_CONF"
 chown root:wazuh "$OSSEC_CONF"
 chmod 0660 "$OSSEC_CONF"
@@ -213,7 +262,7 @@ install_certs /etc/wazuh-dashboard/certs wazuh-dashboard:wazuh-dashboard \
   root-ca.pem=root-ca.pem dashboard.pem=dashboard.pem dashboard-key.pem=dashboard-key.pem
 sed -i -E "s|^opensearch.hosts:.*|opensearch.hosts: https://${node_ip}:9200|" /etc/wazuh-dashboard/opensearch_dashboards.yml
 systemctl enable --now wazuh-dashboard.service
-wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:443/'
+wait_for 600 "the dashboard" dashboard_answers
 wait_for 300 "the dashboard's wazuh.yml" test -f "$WUI_CONF" || log "WARNING: ${WUI_CONF} is missing; the wazuh-wui password is set once it exists"
 
 # --- 5. passwords -----------------------------------------------------------------------
@@ -268,40 +317,7 @@ elif [ -n "$wui_password" ] && ! grep -qF "password: \"${wui_password}\"" "$WUI_
 fi
 # The dashboard reads wazuh.yml when it starts.
 systemctl restart filebeat.service wazuh-manager.service wazuh-dashboard.service
-wait_for 600 "the dashboard" bash -c 'curl -sk -o /dev/null https://localhost:443/'
-
-# --- 6. index retention -----------------------------------------------------------------
-# The range's retention target (DESIGN.md 14, Log and NSM retention): alerts, the
-# detections an analyst works, stay CM_WAZUH_ALERTS_DAYS (default 30: a week-long
-# exercise and its after-action review); archives, every event the manager received,
-# stay CM_WAZUH_ARCHIVES_DAYS (default 7: the exercise). CM_WAZUH_RETENTION_DAYS, if
-# set, applies to both (the single policy of earlier versions). The indexer has a
-# 16 GB disk; an ISM policy per pattern, which every new daily index picks up,
-# deletes the older ones. The admin client certificate authenticates. A failure here
-# is logged, not fatal: the SIEM works without it until the disk fills.
-number() { case "$1" in '' | *[!0-9]*) echo "$2" ;; *) echo "$1" ;; esac; }
-alerts_days=$(number "${CM_WAZUH_RETENTION_DAYS:-${CM_WAZUH_ALERTS_DAYS:-}}" 30)
-archives_days=$(number "${CM_WAZUH_RETENTION_DAYS:-${CM_WAZUH_ARCHIVES_DAYS:-}}" 7)
-ism() {
-  curl -sS -o /dev/null -w '%{http_code}' --cacert /etc/wazuh-indexer/certs/root-ca.pem \
-    --cert /etc/wazuh-indexer/certs/admin.pem --key /etc/wazuh-indexer/certs/admin-key.pem "$@"
-}
-retention() {
-  local name="$1" pattern="$2" days="$3" url code
-  url="https://${node_ip}:9200/_plugins/_ism/policies/cm-retention-${name}"
-  if [ "$(ism "$url" || true)" = 200 ]; then
-    log "index retention for ${name} already present"
-    return
-  fi
-  code=$(printf '{"policy":{"description":"CherryMountain: delete Wazuh %s after %s days","default_state":"hot","states":[{"name":"hot","actions":[],"transitions":[{"state_name":"delete","conditions":{"min_index_age":"%sd"}}]},{"name":"delete","actions":[{"delete":{}}],"transitions":[]}],"ism_template":[{"index_patterns":["%s"],"priority":100}]}}' "$name" "$days" "$days" "$pattern" \
-    | ism -X PUT -H 'Content-Type: application/json' --data-binary @- "$url" || true)
-  case "$code" in
-    200 | 201) log "index retention: ${name} deleted after ${days} days" ;;
-    *) log "WARNING: could not create the ${name} retention policy (HTTP ${code}); they are kept until the disk fills" ;;
-  esac
-}
-retention alerts 'wazuh-alerts-*' "$alerts_days"
-retention archives 'wazuh-archives-*' "$archives_days"
+wait_for 600 "the dashboard" dashboard_answers
 
 touch "${STATE}/provisioned"
 log "PASS: indexer, manager, Filebeat, and dashboard are up"

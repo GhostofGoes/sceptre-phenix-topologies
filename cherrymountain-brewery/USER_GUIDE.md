@@ -37,8 +37,8 @@ simulation of the physics behind them.
 | Variant | What it runs | VMs | vCPUs | RAM | Use it for |
 |---|---|---:|---:|---:|---|
 | `ci` | The cellar only: one simulation node pair, one remote I/O, one PLC, one FUXA | 5 | 7 | 8 GB | A first boot, and a laptop |
-| `lite` | The whole plant and its network, without the SOC and the vendor path | 37 | 45 | 60 GB | Process and network work |
-| `full` | Everything, with Malcolm, Wazuh, a Kali Purple workstation, WireGuard, and Guacamole | 44 | 68 | 127 GB | Exercises with a blue team |
+| `lite` | The whole plant and its network, without the SOC and the vendor path | 37 | 45 | 69 GB | Process and network work |
+| `full` | Everything, with Malcolm, Wazuh, a Kali Purple workstation, WireGuard, and Guacamole | 44 | 68 | 160 GB | Exercises with a blue team |
 
 Run **one variant at a time**. They use the same VLAN numbers, and minimega
 refuses the second one. A stopped experiment of another variant may stay.
@@ -50,12 +50,14 @@ You need one machine with:
 - **Ubuntu 24.04 on x86-64 with `/dev/kvm`.** Check with `kvm-ok` (package
   `cpu-checker`). On a cloud VM, turn on nested virtualization.
 - **CPU and memory for the variant.** 4 cores and 16 GB run `ci`. `full` is
-  sized for 32 or more cores and 144 GB: most VMs idle, so its 68 vCPUs are
-  overcommitted, but its 127 GB of VM memory should not be. On a 128 GB host,
-  make room for the host itself in `phenix-configs/topology-soc.yml`: set
-  malcolm's `memory` back to 24576 (24 GB is the least Malcolm supports; the
-  sensor then runs a smaller OpenSearch heap), lower soc-purple's 16 GB, or
-  delete soc-purple.
+  sized for a host with 32 or more cores and 512 GB: most VMs idle, so its
+  68 vCPUs are overcommitted, but its 160 GB of VM memory is not, and the rest
+  is the host's. On a smaller host, lower the two large nodes in
+  `phenix-configs/topology-soc.yml` (and in `tools/netcheck/netcheck/plan.py`,
+  which is checked against it): malcolm's `memory` from 49152 to 32768, or to
+  24576, the least Malcolm supports, where the sensor runs a smaller OpenSearch
+  heap; and soc-purple's from 24576 to 16384, or delete soc-purple. `lite`
+  needs about 80 GB.
 - **Disk.** About 150 GB free under `/phenix` for all images and the running
   VMs. The four `ci` images need about 20 GB.
 - **Software.** Docker with the Compose plugin, Git, [Git LFS](https://git-lfs.com/),

@@ -96,7 +96,7 @@ start.
 
 - A real `cm-malcolm` VM with the mirror app's feed, its units under systemd, and
   Logstash, NetBox, and Strelka, which no run has started. Its memory with the
-  full stack in 32 GB: live Zeek, live Suricata, OpenSearch, and Arkime are
+  full stack in 48 GB: live Zeek, live Suricata, OpenSearch, and Arkime are
   measured, the rest is estimated
   ([§11](DESIGN.md#11-node-inventory-and-resources)).
 - The Wazuh rules on live traffic. The Suricata rules (all 40) and the Zeek

@@ -23,7 +23,7 @@ fail; `-q` hides them.
 
 | Check | What fails it |
 |---|---|
-| `plan` | A node, image, resource, zone label, interface, address, mask, gateway, DNS server, route, autotunnel entry, or `delay.c2` that differs from `netcheck/plan.py`, which holds sections 10.2 and 11 as data; wrong totals (44 VMs, 68 vCPUs, 127 GB full; 37, 45, 60 lite); an `ntp-server` label |
+| `plan` | A node, image, resource, zone label, interface, address, mask, gateway, DNS server, route, autotunnel entry, or `delay.c2` that differs from `netcheck/plan.py`, which holds sections 10.2 and 11 as data; wrong totals (44 VMs, 68 vCPUs, 160 GB full; 37, 45, 69 lite); an `ntp-server` label |
 | `addresses` | A duplicate address, an address outside its VLAN, a gateway that is not a router on the VLAN, overlapping VLAN subnets |
 | `workflow` | VLAN IDs that differ from the plan, an unpinned VLAN, a scenario annotation that omits a topology that borrows from it, a `defaultBridge` that is not the variant's own (phenix lets only one stored experiment use a bridge other than `phenix`, so a shared bridge stops the second variant from being created), a `mirrorBridge` that is not the workflow's bridge |
 | `boot-order` | A `delay.c2` on a node that boots later, or on an unknown node |

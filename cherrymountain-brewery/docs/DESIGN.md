@@ -116,9 +116,9 @@ topology uses phenix's workflow layout, core and user apps, state of health
   SCORCH, Builder, and the workflow directory layout.
 - Show how brewery subsystems interact: process ↔ utilities ↔ building ↔
   power ↔ utility grid.
-- Fit one host with 32 or more cores and about 144 GB RAM; a 128 GB host
-  runs the full variant with Malcolm at its 24 GB minimum
-  ([§15.9](#159-operations)). A lite variant and a CI variant scale it down.
+- Fit one host. The full variant is sized for 32 or more cores and 512 GB
+  RAM, of which its VMs take 160 GB ([§15.9](#159-operations)). A lite variant
+  and a CI variant scale it down.
 
 **Language requirement**
 
@@ -2295,13 +2295,13 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 | dmz-vpn | DMZ | WireGuard gateway | cm-wireguard | 1 / 1 |
 | dmz-jump | DMZ | Guacamole jump host (TOTP, session recording) | cm-guacamole | 2 / 3 |
 | fw-ot | OT edge | OT firewall, all zone conduits (VyOS) | vyos | 1 / 2 |
-| scada-fuxa | OPS | Process SCADA: FUXA, batch engine, alarms | cm-fuxa | 2 / 2 |
-| historian | OPS | InfluxDB 2, Telegraf, Grafana, Mosquitto | cm-historian | 2 / 4 |
+| scada-fuxa | OPS | Process SCADA: FUXA, batch engine, alarms | cm-fuxa | 2 / 4 |
+| historian | OPS | InfluxDB 2, Telegraf, Grafana, Mosquitto | cm-historian | 2 / 6 |
 | ews | OPS | Engineering workstation: OpenPLC Editor, Wireshark, BAC0, mbpoll, xrdp | cm-ews | 2 / 4 |
 | ot-svc | OPS | NTP (chrony), DNS (dnsmasq), syslog relay, OPS BBMD (BACpypes3) | cm-svc | 1 / 1 |
 | hmi-brewhouse | HMI | Brewhouse and cellar operator kiosk | cm-desktop | 2 / 3 |
 | hmi-packaging | HMI | Packaging and utilities operator kiosk | cm-desktop | 2 / 3 |
-| plc-brewhouse | CTRL + FIELD-BH | OpenPLC v4 (OPC UA plugin) | cm-openplc | 1 / 1 |
+| plc-brewhouse | CTRL + FIELD-BH | OpenPLC v4 (OPC UA plugin) | cm-openplc | 1 / 2 |
 | plc-cellar | CTRL + FIELD-CEL | OpenPLC v4 | cm-openplc | 1 / 1 |
 | plc-packaging | CTRL + FIELD-PKG | OpenPLC v4 (PackML) | cm-openplc | 1 / 1 |
 | plc-utilities | CTRL + FIELD-UTL | OpenPLC v4 | cm-openplc | 1 / 1 |
@@ -2317,45 +2317,61 @@ BACpypes3 BBMDs, device 3003, and a stateful default-drop ACL.
 | gen-ats | FIELD-PWR + MGMT | Genset controller and ATS (ot-sim) | cm-otsim | 1 / 1 |
 | rtu-der | DERLINK + FIELD-PWR | DER gateway (ot-sim FEP) | cm-otsim | 1 / 1 |
 | bas-bbmd | BAS | BAS BBMD (BACpypes3); its BDT lists itself and ot-svc | cm-svc | 1 / 1 |
-| bas-fuxa | BAS | BAS front end (FUXA instance 2) | cm-fuxa | 2 / 2 |
+| bas-fuxa | BAS | BAS front end (FUXA instance 2) | cm-fuxa | 2 / 3 |
 | bas-rtu-taproom | BAS + MGMT | RTU-1 controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
 | bas-coldroom | BAS + MGMT | Cold room controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
 | bas-vent | BAS + MGMT | Ventilation and CO₂ controller (ot-sim + BACnet) | cm-otsim | 1 / 1 |
 | sim-ctl | MGMT | HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, cm-viz 3D view, chronyd for MGMT | cm-sim | 2 / 6 |
-| sim-process | MGMT | Process federates | cm-sim | 1 / 1 |
-| sim-power | MGMT | OpenDSS federate | cm-sim | 1 / 1 |
-| sim-building | MGMT | Building federate | cm-sim | 1 / 1 |
-| malcolm | SOC + MIRROR | Malcolm: Zeek + ICSNPP, Suricata, Arkime, OpenSearch | cm-malcolm | 8 / 32 |
+| sim-process | MGMT | Process federates | cm-sim | 1 / 2 |
+| sim-power | MGMT | OpenDSS federate | cm-sim | 1 / 2 |
+| sim-building | MGMT | Building federate | cm-sim | 1 / 2 |
+| malcolm | SOC + MIRROR | Malcolm: Zeek + ICSNPP, Suricata, Arkime, OpenSearch | cm-malcolm | 8 / 48 |
 | wazuh | SOC | Wazuh manager, indexer, and dashboard | cm-wazuh | 4 / 8 |
 | soc-analyst | SOC | Analyst workstation | cm-desktop | 2 / 4 |
-| soc-purple | SOC | Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark ([§14](#14-blue-team-monitoring)) | kali-purple (upstream, [§15.7](#157-images)) | 4 / 16 |
+| soc-purple | SOC | Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark ([§14](#14-blue-team-monitoring)) | kali-purple (upstream, [§15.7](#157-images)) | 4 / 24 |
 
 **Totals:** 44 VMs, **68 vCPUs** (overcommitted on 32 cores; most nodes are
-idle) and **127 GB RAM**, 16 GB of it soc-purple's (parseus asks for 16 GB and
-8 cores; it gets the memory and 4 vCPUs).
+idle) and **160 GB RAM**.
 
-**Where the sizes come from.** A review of every VM set them by what runs on it:
+**Where the sizes come from.** The full variant is sized for a host with 512 GB
+of memory, so memory does not limit it: a VM gets what its software's vendor
+recommends, or what was measured with room for what was not. Nothing is trimmed
+to fit a host.
 
-- **Measured small, so reduced.** FUXA with the full project is 152 MB (189 MB at
-  its peak), so both FUXA servers have 2 GB. `influxd` idles at 135 MB and the
-  historian's other services are small, so it has 4 GB. The OpenPLC runtime with
-  OPC UA up is 203 MB, so plc-brewhouse has 1 GB like the other PLCs. A federate
-  is 52 MB (80 MB with OpenDSS) at next to no CPU, so sim-process, sim-power, and
-  sim-building have 1 vCPU and 1 GB.
-- **Short, so raised.** The EWS runs root's console desktop and a technician's
-  xrdp desktop, with the OpenPLC Editor, Chromium, and Wireshark in it: 4 GB. The
-  analyst desktop holds several OpenSearch Dashboards and Arkime tabs: 4 GB.
-  Malcolm has 32 GB (below).
-- **Left alone.** The kiosks and office desktops (a desktop and a browser in
-  3 GB), wazuh (Wazuh's all-in-one figure for up to 25 agents is 4 vCPU and 8 GB),
-  sim-ctl (OpenSearch with a 2 GB heap, Grafana, the broker, and cm-viz in 6 GB),
-  dmz-jump (the Guacamole stack idles at about 285 MiB), and the 1 vCPU / 1 GB
-  devices and services. The routers have 1 vCPU and 2 GB: the repository's own
-  spike ran VyOS in that memory (with 2 vCPUs), and VyOS's documentation asks for
-  more; whether fw-ot's first commit fits the script's 10 minute wait on 1 vCPU is
-  not measured.
+- **Malcolm has 48 GB** (below).
+- **soc-purple has 24 GB.** parseus asks for 16 GB and 8 cores for its Elastic
+  containers alone, and the node also runs the Kali desktop, a browser, and
+  Wireshark. It has 4 vCPUs, half of what parseus asks for.
+- **The EWS and the analyst desktop have 4 GB.** The EWS runs root's console
+  desktop and a technician's xrdp desktop, with the OpenPLC Editor, Chromium,
+  and Wireshark in it; the analyst desktop holds several OpenSearch Dashboards
+  and Arkime tabs.
+- **Measured small, with room kept for what the measurement did not cover.**
+  FUXA with the full project is 152 MB (189 MB at its peak) with no device
+  connected and no soak over hours, so scada-fuxa has 4 GB and bas-fuxa 3 GB.
+  `influxd` idles at 135 MB, without a week of ingest and queries, so the
+  historian has 6 GB. The OpenPLC runtime with OPC UA up is 203 MB, and
+  plc-brewhouse, which carries the largest program and compiles it on the VM,
+  has 2 GB. A federate is 52 MB (80 MB with OpenDSS) at next to no CPU, so
+  sim-process, sim-power, and sim-building have 1 vCPU and 2 GB.
+- **At the vendor's figure.** wazuh has 4 vCPU and 8 GB, Wazuh's all-in-one
+  figure for up to 25 agents (the range has 11).
+- **Unchanged.** The kiosks and office desktops (a desktop and a browser in
+  3 GB), sim-ctl (OpenSearch with a 2 GB heap, Grafana, the broker, and cm-viz in
+  6 GB), dmz-jump (the Guacamole stack idles at about 285 MiB), and the
+  1 vCPU / 1 GB devices and services. The routers have 1 vCPU and 2 GB: the
+  repository's own spike ran VyOS in that memory (with 2 vCPUs), and VyOS's
+  documentation asks for more; whether fw-ot's first commit fits the script's
+  10 minute wait on 1 vCPU is not measured.
 
-None of the figures is measured on a deployed range.
+vCPUs are a separate question, because they depend on the host's cores, which
+this sizing does not assume: Malcolm recommends 16 or more cores and has 8
+vCPUs, and soc-purple has 4 of the 8 parseus asks for. On a host with 64 or
+more cores, raise both in `phenix-configs/topology-soc.yml` (and in
+`tools/netcheck/netcheck/plan.py`, which the network check compares it with).
+
+None of the figures is measured on a deployed range. The core's sizes are also
+lite's, which shares that module (69 GB).
 
 **Where the BBMDs run.** The OPS BBMD shares `ot-svc`, so it adds no VM. The
 BAS side needs its own small node, `bas-bbmd`, because every other BAS host
@@ -2369,7 +2385,7 @@ BAS BBMD in `bas-vent`'s BACnet module would drop the VM but is untested
 ([§19](#19-risks-and-open-questions)).
 
 **Malcolm sizing.** Both profiles stay in the design. The `malcolm` node is
-8 vCPU / 32 GB. Malcolm's documentation states 8 cores and 24 GB as the minimum for
+8 vCPU / 48 GB. Malcolm's documentation states 8 cores and 24 GB as the minimum for
 the full stack on a dedicated host and recommends 16 or more cores and 32 GB or
 more; it also says that smaller Java heaps do not make an undersized host a
 supported one. The full profile runs everything Malcolm has that the range uses
@@ -2393,12 +2409,16 @@ PostgreSQL, and Strelka file scanning). What is known of its memory:
 
 So in 24 GB the full profile fits only with the smaller heap and nothing left for
 the page cache that OpenSearch works from, and a container the kernel kills for
-memory takes its part of the sensor down. In 32 GB it runs with Malcolm's own
-example heap and room to spare. `profiles.sh` sets the heaps from the VM's memory:
-OpenSearch 10 GB on a VM of 30 GB or more and 6 GB below that, Logstash 3 GB.
-(Malcolm's configurator would give OpenSearch half the memory, a rule for a host
-that runs little else.) To give the memory back on a small host, set the node's
-`memory` to 24576: the profile still runs, with the smaller heap.
+memory takes its part of the sensor down. 32 GB is what Malcolm recommends as a
+floor, and there the profile runs with Malcolm's own example heap and about 8 GB
+to spare. The node has 48 GB: the parts that were never measured (Logstash, NetBox,
+Strelka) have room, and what is left is page cache, enough to hold the whole
+24 GB of indexes that the retention setting allows. `profiles.sh` sets the heaps
+from the VM's memory: OpenSearch 10 GB on a VM of 30 GB or more and 6 GB below
+that, Logstash 3 GB. (Malcolm's configurator would give OpenSearch half the
+memory, a rule for a host that runs little else; a larger heap would not help
+the few Mbit/s the mirror carries.) On a smaller host the node can go down to
+24576 MB: the profile still runs, with the smaller heap.
 
 The slim profile is the trimmed pipeline above (OpenSearch 3 GB and Logstash 2 GB
 heaps) without Suricata, NetBox, and Strelka, at about 4 vCPU / 12 GB: the measured
@@ -2412,7 +2432,7 @@ none of the range's Suricata rules, no NetBox, and no file scanning.
 
 **Variants** ([§15.3](#153-topology-modules-and-variants)):
 
-- **`lite`** (no SOC, no vendor remote access): 37 VMs, 45 vCPUs, 60 GB.
+- **`lite`** (no SOC, no vendor remote access): 37 VMs, 45 vCPUs, 69 GB.
 - **`ci`** (the cellar slice: sim-ctl, sim-process, rio-cellar,
   plc-cellar, scada-fuxa): 5 VMs, 7 vCPUs, about 8 GB.
   - Its sizes are its own: sim-ctl 1/2 with no ground-truth OpenSearch (2/6
@@ -3823,21 +3843,23 @@ steps: the host and repositories, the builds, the first start of each variant,
 what to check, and how to run an exercise.
 
 **Host prerequisites** ([USER_GUIDE.md §2](../USER_GUIDE.md#2-prepare-the-host)).
-The full variant is sized for 32 cores and about 144 GB RAM: its VMs take 127 GB (60 GB for lite;
+The full variant is sized for a host with 32 or more cores and 512 GB RAM: its VMs take 160 GB (69 GB for lite;
 [§11](#11-node-inventory-and-resources)) and the phenix fork with the
 autotunnel loop ([§15.3](#153-topology-modules-and-variants)). Image storage:
 twelve qcow2 images of 8 to 64 GB virtual size; compressed they take roughly
 40 GB, and each running VM adds a copy-on-write overlay that grows with its
 writes (Malcolm and Wazuh the most), so keep about 150 GB free; the `kali-purple`
 image is one more, 80 GB virtual. **Host fit:** the full variant asks 68 vCPUs (2.1×
-overcommit on 32 cores; most nodes idle) and 127 GB, which leaves a 128 GB host
-no memory of its own: there, lower Malcolm's `memory` to 24576 (its stated
-minimum; the profile then uses a smaller OpenSearch heap,
-[§11](#11-node-inventory-and-resources)), lower soc-purple's (parseus is then
-under its stated minimum), or delete soc-purple. When memory runs short, in order:
-do that, use the slim Malcolm profile (a 12 GB node), run lite (no SOC, no vendor
-path), drop the ground-truth Grafana (sim-ctl to 4 GB), and stop the
-packaging and BAS sides for exercises that do not need them.
+overcommit on 32 cores; most nodes idle) and 160 GB, under a third of the
+host's memory, so nothing is overcommitted and the host keeps its page cache
+for the VM disks. **On a smaller host,** in order: set Malcolm's `memory` to
+32768 or to 24576 (its stated minimum; the profile then uses a smaller
+OpenSearch heap, [§11](#11-node-inventory-and-resources)), set soc-purple's to
+16384 or delete the node, use the slim Malcolm profile (a 12 GB node), run lite
+(no SOC, no vendor path), drop the ground-truth Grafana (sim-ctl to 4 GB), and
+stop the packaging and BAS sides for exercises that do not need them. On a
+128 GB host the full variant needs Malcolm at 24576 and no soc-purple (112 GB
+of VM memory).
 
 **Image builds** (order and commands in
 [USER_GUIDE.md §5](../USER_GUIDE.md#5-build-the-vm-images)). `cm-malcolm`
@@ -4633,7 +4655,7 @@ lists everything that is left to do.
 | de Andrés-Toro parameters are lager-fitted (μ_e0 typo resolved in §9.3) | Tune ale behavior to target attenuation; unit test on μ_e0 |
 | Fermentation time compression could distort coupled physics | Time-base rules in §9.4: compressed kinetics, real-time-equivalent fluxes |
 | Hop creep rate is tuned; altitude derating uses literature activation energies | Labeled as tuned or derived in the model docs; compare with brewer data if available |
-| Malcolm RAM (32 GB) on a 128 GB host | The node can go back to 24 GB, Malcolm's stated minimum, where the full profile uses a 6 GB OpenSearch heap; `lite` variant; the slim profile of about 4 vCPU / 12 GB (§11). Evidence: live Zeek 2.5 GiB, live Suricata 0.55 GiB, OpenSearch 3.8 GiB at a 3 GB heap; the trimmed upload pipeline with Suricata 8.4 GiB of containers; Logstash at 3 GB, NetBox, and Strelka unmeasured |
+| Malcolm RAM (48 GB) on a smaller host than the 512 GB the full variant is sized for | The node can go down to 32 GB, the floor Malcolm recommends, or to 24 GB, its stated minimum, where the full profile uses a 6 GB OpenSearch heap; `lite` variant; the slim profile of about 4 vCPU / 12 GB (§11). Evidence: live Zeek 2.5 GiB, live Suricata 0.55 GiB, OpenSearch 3.8 GiB at a 3 GB heap; the trimmed upload pipeline with Suricata 8.4 GiB of containers; Logstash at 3 GB, NetBox, and Strelka unmeasured |
 | Malcolm's pcap upload pipeline fails silently when its setup is wrong, and no real `cm-malcolm` VM has run with the mirror's feed | The `cm-malcolm` boot and provisioning script creates `zeek/custom/__load__.zeek`, sets `PCAP_PIPELINE_VERBOSITY` in `upload-common.env`, waits for every processor's subscription before the first pcap, and custom Suricata rules use sids of 9000101 and up (§14). The capture containers ran on a stand-in for the mirror port; run `cm-malcolm-health` in the real VM, which asks for Zeek records and Arkime sessions, before relying on it |
 | Mirror capture loses frames without two fixes (the capture-VM flow, `df_default=false` on the GRE port) | Requirements in §14. The cm-malcolm boot script adds the flow and the `cherrymountain` app sets the option after every start; the mirror app follow-up (§16) would take both over |
 | `fromScenario` copies hosts wholesale; workflow maps one experiment per branch | Per-variant app blocks from plantgen; variants applied with `-b`; fixed config names (§15.1, §15.3) |

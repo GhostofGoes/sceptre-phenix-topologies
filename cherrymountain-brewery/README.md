@@ -1158,8 +1158,8 @@ The full and lite variants carry the whole network of DESIGN.md section 10:
   routes, zone labels, boot-order `delay`s, autotunnel entries, and resources.
   `topology-soc.yml` adds malcolm, wazuh, soc-analyst, and soc-purple;
   `topology-remote-access.yml` adds dmz-vpn, dmz-jump, and vendor-ws.
-  `topology-full.yml` includes all three (44 VMs, 68 vCPUs, 127 GB) and
-  `topology-lite.yml` only the core (37 VMs, 45 vCPUs, 60 GB). phenix appends
+  `topology-full.yml` includes all three (44 VMs, 68 vCPUs, 160 GB) and
+  `topology-lite.yml` only the core (37 VMs, 45 vCPUs, 69 GB). phenix appends
   the included nodes in order, so the boot order is the core's, then the SOC,
   then the remote-access nodes. Router interfaces are named `eth0`, `eth1`, ...
   (the VyOS NIC names, because the vrouter app writes netem policies with the

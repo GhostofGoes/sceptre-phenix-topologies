@@ -373,7 +373,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   - The 22 Malcolm images of the full profile as compressed on-disk copies under
     `/var/lib/cm-malcolm/images`, 7.4 GB, loaded into Docker at the first
     boot by `cm-load-images.service`. One image serves both sizing profiles: the
-    full profile (8 vCPU, 32 GB in the topology, 24 GB at the least) and the slim
+    full profile (8 vCPU, 48 GB in the topology, 24 GB at the least) and the slim
     profile (4 vCPU / 12 GB) differ in their settings file
     (`phenix-injects/malcolm/malcolm-config-<profile>.yaml`), the services that
     start, and the heap sizes (`profiles.sh`; `CM_MALCOLM_PROFILE=auto` picks by

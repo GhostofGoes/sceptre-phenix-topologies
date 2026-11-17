@@ -105,7 +105,7 @@ spec:
       drives:
       - image: cm-malcolm.qc2
         inject_partition: 1
-      memory: 32768
+      memory: 49152
       os_type: linux
       vcpus: 8
     injections:
@@ -117,7 +117,7 @@ spec:
       dst: /etc/default/cm-malcolm
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm.env
-    - description: Malcolm sizing profiles (full 8 vCPU / 32 GB, slim 4 vCPU / 12 GB)
+    - description: Malcolm sizing profiles (full 8 vCPU / 48 GB, slim 4 vCPU / 12 GB)
       dst: /opt/cherrymountain/malcolm/profiles.sh
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/malcolm/profiles.sh
@@ -286,7 +286,7 @@ spec:
       drives:
       - image: kali-purple.qc2
         inject_partition: 1
-      memory: 16384
+      memory: 24576
       os_type: linux
       vcpus: 4
     labels:

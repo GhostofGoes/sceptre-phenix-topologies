@@ -299,13 +299,13 @@ NODES: tuple[Node, ...] = (
     _vm("bas-bbmd", "core", "cm-svc.qc2", 1, 1, "bas", "BAS BBMD (BACpypes3); its BDT lists itself and ot-svc", [("BAS", "10.30.10.5")], gateway="10.30.10.1"),
     # 3. sim-ctl, then the federates.
     _vm("sim-ctl", "core", "cm-sim.qc2", 2, 6, "mgmt", "HELICS root broker, weather, event API, ground-truth OpenSearch and Grafana, cm-viz 3D view, chronyd for MGMT", [], mgmt="172.16.10.1", autotunnel=("13001:3000", "18080:8080", "18090:8090", "19200:9200")),
-    _vm("sim-process", "core", "cm-sim.qc2", 1, 1, "mgmt", "Process federates (HELICS)", [], mgmt="172.16.10.2", delay_c2=("sim-ctl",)),
-    _vm("sim-power", "core", "cm-sim.qc2", 1, 1, "mgmt", "OpenDSS power federate (HELICS)", [], mgmt="172.16.10.3", delay_c2=("sim-ctl",)),
-    _vm("sim-building", "core", "cm-sim.qc2", 1, 1, "mgmt", "Building federate (HELICS)", [], mgmt="172.16.10.4", delay_c2=("sim-ctl",)),
+    _vm("sim-process", "core", "cm-sim.qc2", 1, 2, "mgmt", "Process federates (HELICS)", [], mgmt="172.16.10.2", delay_c2=("sim-ctl",)),
+    _vm("sim-power", "core", "cm-sim.qc2", 1, 2, "mgmt", "OpenDSS power federate (HELICS)", [], mgmt="172.16.10.3", delay_c2=("sim-ctl",)),
+    _vm("sim-building", "core", "cm-sim.qc2", 1, 2, "mgmt", "Building federate (HELICS)", [], mgmt="172.16.10.4", delay_c2=("sim-ctl",)),
     # 4. Field devices (delay on sim-ctl).
     *_FIELD_NODES,
     # 5. PLCs (delay on their I/O devices).
-    _vm("plc-brewhouse", "core", "cm-openplc.qc2", 1, 1, "ctrl", "OpenPLC v4 (OPC UA plugin)", [("CTRL", "10.20.10.11"), ("FIELD-BH", "10.20.11.1")], gateway="10.20.10.1", delay_c2=("rio-brewhouse",)),
+    _vm("plc-brewhouse", "core", "cm-openplc.qc2", 1, 2, "ctrl", "OpenPLC v4 (OPC UA plugin)", [("CTRL", "10.20.10.11"), ("FIELD-BH", "10.20.11.1")], gateway="10.20.10.1", delay_c2=("rio-brewhouse",)),
     _vm("plc-cellar", "core", "cm-openplc.qc2", 1, 1, "ctrl", "OpenPLC v4", [("CTRL", "10.20.10.12"), ("FIELD-CEL", "10.20.12.1")], gateway="10.20.10.1", delay_c2=("rio-cellar",)),
     _vm("plc-packaging", "core", "cm-openplc.qc2", 1, 1, "ctrl", "OpenPLC v4 (PackML, S7comm plugin)", [("CTRL", "10.20.10.13"), ("FIELD-PKG", "10.20.13.1")], gateway="10.20.10.1", delay_c2=("rio-packaging",)),
     _vm("plc-utilities", "core", "cm-openplc.qc2", 1, 1, "ctrl", "OpenPLC v4", [("CTRL", "10.20.10.14"), ("FIELD-UTL", "10.20.14.1")], gateway="10.20.10.1", delay_c2=("rio-utilities", "glycol-chiller")),
@@ -313,20 +313,20 @@ NODES: tuple[Node, ...] = (
     # DNP3 master on the utility side (after the outstation).
     _vm("utility-derms", "core", "cm-otsim.qc2", 1, 1, "util", "Utility DERMS (ot-sim DNP3 master)", [("UTIL", "192.0.2.10")], gateway="192.0.2.1", dns=None, delay_c2=("rtu-der",)),
     # 6. FUXA and the other OPS and BAS servers.
-    _vm("scada-fuxa", "core", "cm-fuxa.qc2", 2, 2, "ops", "Process SCADA: FUXA, batch engine, alarms", [("OPS", "10.20.30.10")], gateway="10.20.30.1", autotunnel=("11881:1881",), delay_c2=PLCS),
-    _vm("historian", "core", "cm-historian.qc2", 2, 4, "ops", "InfluxDB 2, Telegraf, Grafana, Mosquitto", [("OPS", "10.20.30.11")], gateway="10.20.30.1", autotunnel=("13000:3000",)),
+    _vm("scada-fuxa", "core", "cm-fuxa.qc2", 2, 4, "ops", "Process SCADA: FUXA, batch engine, alarms", [("OPS", "10.20.30.10")], gateway="10.20.30.1", autotunnel=("11881:1881",), delay_c2=PLCS),
+    _vm("historian", "core", "cm-historian.qc2", 2, 6, "ops", "InfluxDB 2, Telegraf, Grafana, Mosquitto", [("OPS", "10.20.30.11")], gateway="10.20.30.1", autotunnel=("13000:3000",)),
     _vm("ews", "core", "cm-ews.qc2", 2, 4, "ops", "Engineering workstation: OpenPLC Editor, Wireshark, BAC0, mbpoll, xrdp", [("OPS", "10.20.30.12")], gateway="10.20.30.1"),
-    _vm("bas-fuxa", "core", "cm-fuxa.qc2", 2, 2, "bas", "BAS front end (FUXA instance 2)", [("BAS", "10.30.10.10")], gateway="10.30.10.1", autotunnel=("11882:1881",), delay_c2=BAS_DEVICES),
+    _vm("bas-fuxa", "core", "cm-fuxa.qc2", 2, 3, "bas", "BAS front end (FUXA instance 2)", [("BAS", "10.30.10.10")], gateway="10.30.10.1", autotunnel=("11882:1881",), delay_c2=BAS_DEVICES),
     # 7. HMIs.
     _vm("hmi-brewhouse", "core", "cm-desktop.qc2", 2, 3, "hmi", "Brewhouse and cellar operator kiosk", [("HMI", "10.20.20.10")], gateway="10.20.20.1", delay_c2=("scada-fuxa",)),
     _vm("hmi-packaging", "core", "cm-desktop.qc2", 2, 3, "hmi", "Packaging and utilities operator kiosk", [("HMI", "10.20.20.11")], gateway="10.20.20.1", delay_c2=("scada-fuxa",)),
     _vm("corp-ws", "core", "cm-desktop.qc2", 2, 3, "corp", "Office workstation (protonuke client)", [("CORP", "10.10.10.10")], gateway="10.10.10.1", dns=INET_TRAFFIC_IP),
     # SOC module.
     _vm("wazuh", "soc", "cm-wazuh.qc2", 4, 8, "soc", "Wazuh manager, indexer, and dashboard", [("SOC", WAZUH_IP)], gateway="10.40.10.1", autotunnel=("18444:443",)),
-    _vm("malcolm", "soc", "cm-malcolm.qc2", 8, 32, "soc", "Malcolm: Zeek and ICSNPP, Suricata, Arkime, OpenSearch (mirror NIC added by the mirror app)", [("SOC", "10.40.10.10")], gateway="10.40.10.1", autotunnel=("18443:443",)),
+    _vm("malcolm", "soc", "cm-malcolm.qc2", 8, 48, "soc", "Malcolm: Zeek and ICSNPP, Suricata, Arkime, OpenSearch (mirror NIC added by the mirror app)", [("SOC", "10.40.10.10")], gateway="10.40.10.1", autotunnel=("18443:443",)),
     _vm("soc-analyst", "soc", "cm-desktop.qc2", 2, 4, "soc", "Analyst workstation", [("SOC", "10.40.10.12")], gateway="10.40.10.1", delay_c2=("wazuh", "malcolm")),
     # Not a cm-* image: kali-purple.qc2 is built from sandialabs/sceptre-phenix-images (`make kali-purple`).
-    _vm("soc-purple", "soc", "kali-purple.qc2", 4, 16, "soc", "Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark", [("SOC", "10.40.10.13")], gateway="10.40.10.1"),
+    _vm("soc-purple", "soc", "kali-purple.qc2", 4, 24, "soc", "Analysis workstation: Kali Purple with parseus, PEAT, Suricata, and Wireshark", [("SOC", "10.40.10.13")], gateway="10.40.10.1"),
     # Remote-access module.
     _vm("dmz-vpn", "remote-access", "cm-wireguard.qc2", 1, 1, "dmz", "WireGuard gateway (DNAT target of fw-edge)", [("DMZ", "10.10.20.10")], gateway=FW_EDGE_DMZ_IP, routes=OT_ROUTES),
     _vm("dmz-jump", "remote-access", "cm-guacamole.qc2", 2, 3, "dmz", "Guacamole jump host (TOTP, session recording)", [("DMZ", "10.10.20.11")], gateway=FW_EDGE_DMZ_IP, routes=(*OT_ROUTES, Route(destination=WG_SUBNET, next="10.10.20.10")), delay_c2=("dmz-vpn",)),

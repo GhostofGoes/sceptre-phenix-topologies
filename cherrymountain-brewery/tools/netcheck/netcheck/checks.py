@@ -22,7 +22,7 @@ from netcheck import model as m
 from netcheck.sim import Net, Verdict, flow, trace
 
 #: DESIGN.md section 11 totals: (VMs, vCPUs, GB).
-DESIGN_TOTALS: dict[str, tuple[int, int, int]] = {"full": (44, 68, 127), "lite": (37, 45, 60)}
+DESIGN_TOTALS: dict[str, tuple[int, int, int]] = {"full": (44, 68, 160), "lite": (37, 45, 69)}
 
 #: Ports swept for flows that no conduit allows, beyond the conduit ports.
 EXTRA_SERVICES: tuple[conduits.Service, ...] = (

@@ -1,4 +1,4 @@
-# cherrymountain-full: the whole plant (44 VMs, 68 vCPUs, 127 GB). It has no
+# cherrymountain-full: the whole plant (44 VMs, 68 vCPUs, 160 GB). It has no
 # nodes of its own: phenix appends the nodes of the included topologies in
 # order (core, soc, remote-access), so the boot order is the core's, then the
 # SOC, then the remote-access nodes. Applied by phenix.yml.

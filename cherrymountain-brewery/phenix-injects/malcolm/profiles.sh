@@ -5,7 +5,7 @@
 #   full  8 vCPU and 22 GB or more: every part of Malcolm that the range uses: local
 #         OpenSearch and Logstash, live Zeek and Suricata, Arkime on rotated pcap,
 #         NetBox with PostgreSQL, and file scanning with Strelka. The topology gives
-#         the sensor 32 GB, the size Malcolm's documentation recommends; 24 GB is the
+#         the sensor 48 GB (Malcolm's documentation recommends 32 GB or more); 24 GB is the
 #         minimum it states, and the profile still runs there with a smaller
 #         OpenSearch heap (see cm_malcolm_heaps).
 #   slim  4 vCPU / 12 GB: the trimmed pipeline of the malcolm spike, which peaked

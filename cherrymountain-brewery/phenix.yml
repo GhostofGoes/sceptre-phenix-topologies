@@ -1,4 +1,4 @@
-# Workflow for the full variant: the whole plant, 44 VMs, 68 vCPUs, 127 GB
+# Workflow for the full variant: the whole plant, 44 VMs, 68 vCPUs, 160 GB
 # (DESIGN.md 11, 15.1, and 15.3). The workflow branch defaults to the
 # directory's name, so run it with the default branch:
 #   docker exec phenix phenix workflow apply /phenix/topologies/cherrymountain-brewery

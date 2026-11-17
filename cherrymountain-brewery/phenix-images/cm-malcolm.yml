@@ -76,7 +76,7 @@ spec:
       # capture-flow script, cm-malcolm.service and its scripts, the Zeek scripts, and
       # the Suricata rules. The first boot configures Malcolm from the injected
       # settings and loads the images into Docker (cm-load-images.service), so the same
-      # image serves both sizing profiles (full 8 vCPU / 32 GB, slim 4 vCPU / 12 GB).
+      # image serves both sizing profiles (full 8 vCPU / 48 GB, slim 4 vCPU / 12 GB).
       export DEBIAN_FRONTEND=noninteractive
       MALCOLM_TAG=v26.10.0
       MALCOLM_SHA=36bb3a61217b8555bb9fe8918acd3b45927a5458

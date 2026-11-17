@@ -1,4 +1,4 @@
-# cherrymountain-lite: the core only (37 VMs, 45 vCPUs, 60 GB): no SOC and no
+# cherrymountain-lite: the core only (37 VMs, 45 vCPUs, 69 GB): no SOC and no
 # vendor remote access. fw-ot keeps its SOC interface and fw-edge its DMZ
 # interface (nothing is attached to them), so the firewall rules are the same
 # as in the full variant. Applied by phenix-lite.yml.

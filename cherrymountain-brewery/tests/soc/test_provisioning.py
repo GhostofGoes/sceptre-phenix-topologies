@@ -268,12 +268,13 @@ def heaps_for(tmp_path: Path, gigabytes: int, profile: str) -> str:
 
 
 def test_the_heaps_follow_the_memory_of_the_vm(tmp_path: Path) -> None:
-    """OpenSearch gets the heap of Malcolm's example configuration (10 GB) on the 32 GB
+    """OpenSearch gets the heap of Malcolm's example configuration (10 GB) on the 48 GB
     sensor of the topology, and less on Malcolm's 24 GB minimum, where 10 GB would
     leave too little for the other containers."""
     soc = yaml.safe_load((CONFIGS / "topology-soc.yml").read_text(encoding="utf-8"))
     malcolm = next(n for n in soc["spec"]["nodes"] if n["general"]["hostname"] == "malcolm")
-    assert malcolm["hardware"]["memory"] == 32 * 1024 and malcolm["hardware"]["vcpus"] == 8
+    assert malcolm["hardware"]["memory"] == 48 * 1024 and malcolm["hardware"]["vcpus"] == 8
+    assert heaps_for(tmp_path, 48, "full") == "10g 3g"
     assert heaps_for(tmp_path, 32, "full") == "10g 3g"
     assert heaps_for(tmp_path, 24, "full") == "6g 3g"
     assert heaps_for(tmp_path, 12, "slim") == "3g 2g"

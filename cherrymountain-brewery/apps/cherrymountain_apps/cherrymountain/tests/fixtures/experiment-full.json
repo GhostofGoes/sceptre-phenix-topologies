@@ -559,7 +559,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 1024,
+            "memory": 2048,
             "os_type": "linux",
             "vcpus": 1
           },
@@ -600,7 +600,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 1024,
+            "memory": 2048,
             "os_type": "linux",
             "vcpus": 1
           },
@@ -641,7 +641,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 1024,
+            "memory": 2048,
             "os_type": "linux",
             "vcpus": 1
           },
@@ -1335,7 +1335,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 1024,
+            "memory": 2048,
             "os_type": "linux",
             "vcpus": 1
           },
@@ -1679,7 +1679,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 2048,
+            "memory": 4096,
             "os_type": "linux",
             "vcpus": 2
           },
@@ -1721,7 +1721,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 4096,
+            "memory": 6144,
             "os_type": "linux",
             "vcpus": 2
           },
@@ -1890,7 +1890,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 2048,
+            "memory": 3072,
             "os_type": "linux",
             "vcpus": 2
           },
@@ -2271,7 +2271,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 32768,
+            "memory": 49152,
             "os_type": "linux",
             "vcpus": 8
           },
@@ -2289,7 +2289,7 @@
               "src": "/phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm.env"
             },
             {
-              "description": "Malcolm sizing profiles (full 8 vCPU / 32 GB, slim 4 vCPU / 12 GB)",
+              "description": "Malcolm sizing profiles (full 8 vCPU / 48 GB, slim 4 vCPU / 12 GB)",
               "dst": "/opt/cherrymountain/malcolm/profiles.sh",
               "permissions": "0644",
               "src": "/phenix/injects/${BRANCH_NAME}/malcolm/profiles.sh"
@@ -2541,7 +2541,7 @@
                 "inject_partition": 1
               }
             ],
-            "memory": 16384,
+            "memory": 24576,
             "os_type": "linux",
             "vcpus": 4
           },

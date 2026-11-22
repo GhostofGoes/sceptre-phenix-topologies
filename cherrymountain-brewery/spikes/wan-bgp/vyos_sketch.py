@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
-"""Write the lab's site edges as VyOS configuration commands.
+"""Write the lab's routers as VyOS configuration commands.
 
   python vyos_sketch.py            # writes vyos-sketch/<router>.set
 
-The output is what `netns_lab.py` configures on each site edge with FRR,
+The output is what `netns_lab.py` configures on each router with FRR,
 `ip rule`, and `wg`, said in VyOS's own commands: one file per router, one
 `set` command per line, in the form the `config` list of the patched `vrouter`
-app takes (patches/vrouter-config-passthrough.patch).
+app takes (patches/). `vyos_ci.py` gives these commands to real VyOS routers.
 
-**No VyOS router has taken these files.** Every command path was read in the
-vyos-1x source (branch `rolling`, commit `f1789c0d`, 2026-11-21) and its smoke
-tests; none was run. README.md lists what the spike on VyOS VMs has to show.
-Interface numbers (`eth0`, `eth1`) follow the order of the lab's links, and the
-keys are placeholders.
+Every command path was read in the vyos-1x source (branch `rolling`, commit
+`f1789c0d`, 2026-11-21) and its smoke tests. README.md says which of them a
+VyOS router has taken. Interface numbers (`eth0`, `eth1`) follow the order of
+the lab's links, and the committed files hold placeholders for the keys.
 """
 
 from __future__ import annotations
 
 import ipaddress
+from collections.abc import Callable
 from pathlib import Path
 
 import netns_lab as lab
@@ -26,17 +26,40 @@ OUT: Path = Path(__file__).resolve().parent / "vyos-sketch"
 # A VM that waits for a CPU must not look like a dead link: one second, three
 # missed. The lab's namespaces use 300 ms.
 BFD_INTERVAL_MS: int = 1000
-PRIVATE_KEY: str = "'PRIVATE-KEY-OF-THIS-ROUTER'"
-PUBLIC_KEY: str = "'PUBLIC-KEY-OF-THE-PEER'"
+
+# (tunnel, "hub" or "site") -> (this side's private key, the other side's public key)
+Keys = Callable[[lab.Tunnel, str], tuple[str, str]]
+
+
+def placeholder_keys(_tunnel: lab.Tunnel, _side: str) -> tuple[str, str]:
+    return "PRIVATE-KEY-OF-THIS-ROUTER", "PUBLIC-KEY-OF-THE-PEER"
+
+
+def reduce_lab() -> None:
+    """Shrink the lab's model to what a GitHub runner boots as VMs.
+
+    Two ISPs that peer, the head office on both, and the High Country site on
+    both. Tumbleweed stands in for Marmot as the site's second ISP, so there is
+    no transit carrier and no third ISP.
+    """
+    keep = ("shadecast", "tumbleweed", "fr-fw-edge", "hc-fw-edge")
+    lab.ROUTERS[:] = [router for router in lab.ROUTERS if router.name in keep]
+    lab.BY_NAME.clear()
+    lab.BY_NAME.update({router.name: router for router in lab.ROUTERS})
+    lab.LINKS[:] = [link for link in lab.LINKS if link.a in keep and link.b in keep]
+    lab.LINKS.append(lab.Link(a="tumbleweed", b="hc-fw-edge", net="198.18.101.8/30", relation="static"))
+    tunnels = {tunnel.name: tunnel for tunnel in lab.TUNNELS}
+    lab.TUNNELS[:] = [tunnels["hc-a"], tunnels["hc-b"].model_copy(update={"via": "tumbleweed"})]
+    lab.LANS[:] = [lan for lan in lab.LANS if lan.router in keep]
 
 
 def uplinks(router: lab.Router) -> list[tuple[str, lab.Link, str, str, str]]:
-    """(ethN, link, ISP, the ISP's address, this router's address) for each uplink."""
+    """(ethN, link, neighbor, the neighbor's address, this router's address) for each link."""
     found = []
     for link in lab.LINKS:
         if router.name in (link.a, link.b):
-            isp, gateway, own = lab.peer_of(link, router.name)
-            found.append((f"eth{len(found)}", link, isp, gateway, own))
+            other, gateway, own = lab.peer_of(link, router.name)
+            found.append((f"eth{len(found)}", link, other, gateway, own))
     return found
 
 
@@ -48,30 +71,50 @@ def site_blocks(router: lab.Router) -> list[str]:
     return [f"10.{block + number}.0.0/16" for block in (10, 20, 30, 40)]
 
 
-def prefix_list(name: str, prefix: str, ge: int = 0, le: int = 0) -> list[str]:
+def prefix_list(name: str, prefix: str, ge: int = 0, le: int = 0, rule: int = 10, action: str = "permit") -> list[str]:
     lines = [
-        f"set policy prefix-list {name} rule 10 action permit",
-        f"set policy prefix-list {name} rule 10 prefix {prefix}",
+        f"set policy prefix-list {name} rule {rule} action {action}",
+        f"set policy prefix-list {name} rule {rule} prefix {prefix}",
     ]
     if ge:
-        lines.append(f"set policy prefix-list {name} rule 10 ge {ge}")
+        lines.append(f"set policy prefix-list {name} rule {rule} ge {ge}")
     if le:
-        lines.append(f"set policy prefix-list {name} rule 10 le {le}")
+        lines.append(f"set policy prefix-list {name} rule {rule} le {le}")
     return lines
 
 
-def route_map(name: str, prefix_list_name: str = "", local_preference: int = 0, source: str = "") -> list[str]:
-    lines = [f"set policy route-map {name} rule 10 action permit"]
+def route_map(
+    name: str,
+    prefix_list_name: str = "",
+    local_preference: int = 0,
+    source: str = "",
+    community: str = "",
+    rule: int = 10,
+) -> list[str]:
+    base = f"set policy route-map {name} rule {rule}"
+    lines = [f"{base} action permit"]
     if prefix_list_name:
-        lines.append(f"set policy route-map {name} rule 10 match ip address prefix-list {prefix_list_name}")
+        lines.append(f"{base} match ip address prefix-list {prefix_list_name}")
     if local_preference:
-        lines.append(f"set policy route-map {name} rule 10 set local-preference {local_preference}")
+        lines.append(f"{base} set local-preference {local_preference}")
+    if community:
+        lines.append(f"{base} set community replace {community}")
     if source:
-        lines.append(f"set policy route-map {name} rule 10 set src {source}")
+        lines.append(f"{base} set src {source}")
     return lines
 
 
-def neighbor(address: str, remote_as: int, description: str, route_in: str, route_out: str) -> list[str]:
+def bfd_profile() -> list[str]:
+    return [
+        f"set protocols bfd profile WAN interval transmit {BFD_INTERVAL_MS}",
+        f"set protocols bfd profile WAN interval receive {BFD_INTERVAL_MS}",
+        f"set protocols bfd profile WAN interval multiplier {lab.BFD_MULTIPLIER}",
+    ]
+
+
+def neighbor(
+    address: str, remote_as: int, description: str, route_in: str, route_out: str, bfd: bool = True
+) -> list[str]:
     base = f"set protocols bgp neighbor {address}"
     return [
         f"{base} remote-as {remote_as}",
@@ -79,18 +122,86 @@ def neighbor(address: str, remote_as: int, description: str, route_in: str, rout
         # VyOS ignores one timer without the other.
         f"{base} timers keepalive {lab.CORE_KEEPALIVE_S}",
         f"{base} timers holdtime {lab.CORE_HOLD_S}",
-        f"{base} bfd profile WAN",
+        *([f"{base} bfd profile WAN"] if bfd else []),
         f"{base} address-family ipv4-unicast route-map import {route_in}",
         f"{base} address-family ipv4-unicast route-map export {route_out}",
     ]
 
 
-def sketch(router: lab.Router) -> list[str]:
+def isp_sketch(router: lab.Router) -> list[str]:
+    """An ISP or transit router: the customer, peer, and provider rules of the lab."""
+    asn = router.asn
+    lines: list[str] = [
+        *bfd_profile(),
+        *prefix_list("PUBLIC", "10.0.0.0/8", le=32, rule=5, action="deny"),
+        *prefix_list("PUBLIC", "0.0.0.0/0", rule=10, action="deny"),
+        *prefix_list("PUBLIC", "0.0.0.0/0", le=24, rule=15),
+        "set policy community-list FROM-CUSTOMERS rule 10 action permit",
+        f"set policy community-list FROM-CUSTOMERS rule 10 regex '{asn}:{lab.RELATION_TAG['customer']}'",
+        # A peer or a provider hears this network's own prefixes and its
+        # customers' prefixes, never a route learned from another peer or provider.
+        "set policy route-map TO-UPSTREAM rule 10 action permit",
+        "set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS",
+        *route_map("TO-UPSTREAM", "OWN", rule=20),
+        *route_map("TO-CUSTOMER"),
+        f"set protocols bgp system-as {asn}",
+        f"set protocols bgp parameters router-id {router.router_id}",
+    ]
+    for index, prefix in enumerate(router.originates or ["0.0.0.0/32"], start=1):
+        lines += prefix_list("OWN", prefix, rule=index * 10, action="permit" if router.originates else "deny")
+    for relation in ("customer", "peer", "provider"):
+        lines += route_map(
+            f"FROM-{relation.upper()}",
+            "PUBLIC",
+            local_preference=lab.RELATION_LOCAL_PREF[relation],
+            community=f"{asn}:{lab.RELATION_TAG[relation]}",
+        )
+    for prefix in router.originates:
+        lines += [
+            f"set protocols bgp address-family ipv4-unicast network {prefix}",
+            # An originated aggregate needs a route to stand on.
+            f"set protocols static route {prefix} blackhole distance 250",
+        ]
+    for _eth, link, other, address, _own in uplinks(router):
+        relation = lab.relation_seen_by(link, router.name)
+        if relation == "static":
+            continue
+        remote_as = lab.BY_NAME[other].asn
+        title = lab.BY_NAME[other].title
+        if relation == "ibgp":
+            base = f"set protocols bgp neighbor {address}"
+            lines += [
+                f"{base} remote-as {remote_as}",
+                f"{base} description '{title}'",
+                f"{base} timers keepalive {lab.CORE_KEEPALIVE_S}",
+                f"{base} timers holdtime {lab.CORE_HOLD_S}",
+                f"{base} address-family ipv4-unicast nexthop-self",
+            ]
+            continue
+        inbound = f"FROM-{relation.upper()}"
+        if relation == "customer" and link.customer_prefixes:
+            # A customer with its own prefix: accept that prefix only, and give it a default route.
+            name = other.upper()
+            for index, prefix in enumerate(link.customer_prefixes, start=1):
+                lines += prefix_list(f"CUST-{name}", prefix, rule=index * 10)
+            inbound = f"FROM-CUST-{name}"
+            lines += route_map(
+                inbound,
+                f"CUST-{name}",
+                local_preference=lab.RELATION_LOCAL_PREF["customer"],
+                community=f"{asn}:{lab.RELATION_TAG['customer']}",
+            )
+            lines.append(f"set protocols bgp neighbor {address} address-family ipv4-unicast default-originate")
+        outbound = "TO-CUSTOMER" if relation == "customer" else "TO-UPSTREAM"
+        lines += neighbor(address, remote_as, title, inbound, outbound, bfd=link.bfd)
+    return lines
+
+
+def sketch(router: lab.Router, keys: Keys = placeholder_keys) -> list[str]:
+    """A site edge: the head office, or a site with ISP-assigned addresses."""
     hub = router.multipath
     lines: list[str] = [
-        f"set protocols bfd profile WAN interval transmit {BFD_INTERVAL_MS}",
-        f"set protocols bfd profile WAN interval receive {BFD_INTERVAL_MS}",
-        f"set protocols bfd profile WAN interval multiplier {lab.BFD_MULTIPLIER}",
+        *bfd_profile(),
         *prefix_list("SITE-NETS", "10.0.0.0/8", ge=16, le=24),
         *route_map("OVERLAY-PRIMARY", "SITE-NETS", local_preference=200),
         *route_map("OVERLAY-BACKUP", "SITE-NETS", local_preference=100),
@@ -141,11 +252,12 @@ def sketch(router: lab.Router) -> list[str]:
         peer = tunnel.site_address() if at_hub else tunnel.hub_address()
         peer_as = lab.BY_NAME[tunnel.site if at_hub else tunnel.hub].asn
         prefix = ipaddress.ip_network(tunnel.net).prefixlen
+        private_key, public_key = keys(tunnel, "hub" if at_hub else "site")
         lines += [
             f"set interfaces wireguard {wg} description '{tunnel.name} over {lab.BY_NAME[tunnel.via].title}'",
             f"set interfaces wireguard {wg} address {own}/{prefix}",
-            f"set interfaces wireguard {wg} private-key {PRIVATE_KEY}",
-            f"set interfaces wireguard {wg} peer {tunnel.name} public-key {PUBLIC_KEY}",
+            f"set interfaces wireguard {wg} private-key '{private_key}'",
+            f"set interfaces wireguard {wg} peer {tunnel.name} public-key '{public_key}'",
             # BGP runs inside the tunnel, so WireGuard lets every address through.
             # VyOS installs no route for allowed-ips.
             f"set interfaces wireguard {wg} peer {tunnel.name} allowed-ips 0.0.0.0/0",
@@ -173,6 +285,19 @@ def sketch(router: lab.Router) -> list[str]:
     return lines
 
 
+def is_site_edge(router: lab.Router) -> bool:
+    return any(router.name in (tunnel.hub, tunnel.site) for tunnel in lab.TUNNELS)
+
+
+def commands(router: lab.Router, keys: Keys = placeholder_keys) -> list[str]:
+    """The `config` list of one router, checked against the patch's rule for a line."""
+    lines = sketch(router, keys) if is_site_edge(router) else isp_sketch(router)
+    for line in lines:
+        if why := refused(line):
+            raise ValueError(f"{router.name}: `{line}` {why}")
+    return lines
+
+
 def refused(line: str) -> str:
     """Why the patched `vrouter` app would refuse a `config` line, or "" if it would not.
 
@@ -196,14 +321,9 @@ def main() -> int:
     lab.PIN = lab.PIN_MARK
     OUT.mkdir(exist_ok=True)
     for router in lab.ROUTERS:
-        if not any(router.name in (t.hub, t.site) for t in lab.TUNNELS):
-            continue
-        for line in sketch(router):
-            if why := refused(line):
-                raise ValueError(f"{router.name}: `{line}` {why}")
-        text = "\n".join(sketch(router)) + "\n"
-        (OUT / f"{router.name}.set").write_text(text)
-        print(f"{router.name}: {len(text.splitlines())} commands")
+        lines = commands(router)
+        (OUT / f"{router.name}.set").write_text("\n".join(lines) + "\n")
+        print(f"{router.name}: {len(lines)} commands")
     return 0
 
 

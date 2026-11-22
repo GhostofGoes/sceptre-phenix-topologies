@@ -216,15 +216,20 @@ def isp_sketch(router: lab.Router) -> list[str]:
     return lines
 
 
-def ipsec_groups() -> list[str]:
-    """The IKE and ESP groups of the VTI tunnels."""
+def ipsec_groups(at_hub: bool) -> list[str]:
+    """The IKE and ESP groups of the VTI tunnels.
+
+    A site opens its tunnels and opens them again when they end. The head
+    office only answers: when both ends open tunnels, a tunnel can come back
+    from a long silence with two IKE SAs.
+    """
     return [
         # strongSwan would otherwise install a route for each tunnel's selectors.
         "set vpn ipsec options disable-route-autoinstall",
         "set vpn ipsec ike-group WAN key-exchange ikev2",
         "set vpn ipsec ike-group WAN lifetime 28800",
-        "set vpn ipsec ike-group WAN close-action start",
-        "set vpn ipsec ike-group WAN dead-peer-detection action restart",
+        f"set vpn ipsec ike-group WAN close-action {'none' if at_hub else 'start'}",
+        f"set vpn ipsec ike-group WAN dead-peer-detection action {'clear' if at_hub else 'restart'}",
         "set vpn ipsec ike-group WAN dead-peer-detection interval 10",
         "set vpn ipsec ike-group WAN dead-peer-detection timeout 30",
         # MOBIKE would let a tunnel move to another address pair, as a WireGuard endpoint roams.
@@ -336,7 +341,7 @@ def sketch(
             lines.append(f"set protocols static route 0.0.0.0/0 next-hop {gateway} distance {10 * (index + 1)}")
 
     if kind == VTI:
-        lines += ipsec_groups()
+        lines += ipsec_groups(hub)
     for tunnel in lab.TUNNELS:
         if router.name not in (tunnel.hub, tunnel.site):
             continue
@@ -401,7 +406,7 @@ def commands(
 def refused(line: str) -> str:
     """Why the patched `vrouter` app would refuse a `config` line, or "" if it would not.
 
-    The same rule as `vyosConfigLines` in the patch: `set` or `delete`, no
+    The same rule as `checkVyosConfigLine` in the patch: `set` or `delete`, no
     control character, and nothing the shell acts on outside single quotes.
     """
     if not line.startswith(("set ", "delete ")):
@@ -412,7 +417,7 @@ def refused(line: str) -> str:
             return "has a control character"
         if char == "'":
             quoted = not quoted
-        elif not quoted and char in '"`$;|&<>(){}\\#!*?~':
+        elif not quoted and char in '"`$;|&<>(){}[]\\#!*?~':
             return f"has {char!r} outside single quotes"
     return "has an unclosed single quote" if quoted else ""
 

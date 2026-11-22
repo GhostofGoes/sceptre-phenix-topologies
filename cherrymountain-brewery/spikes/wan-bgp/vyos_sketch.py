@@ -163,6 +163,7 @@ def isp_sketch(router: lab.Router) -> list[str]:
         *route_map("TO-CUSTOMER"),
         f"set protocols bgp system-as {asn}",
         f"set protocols bgp parameters router-id {router.router_id}",
+        "set protocols bgp parameters log-neighbor-changes",
     ]
     for index, prefix in enumerate(router.originates or ["0.0.0.0/32"], start=1):
         lines += prefix_list("OWN", prefix, rule=index * 10, action="permit" if router.originates else "deny")
@@ -291,6 +292,7 @@ def sketch(
         *route_map("OVERLAY-OUT", "SITE-NETS"),
         f"set protocols bgp system-as {router.asn}",
         f"set protocols bgp parameters router-id {router.router_id}",
+        "set protocols bgp parameters log-neighbor-changes",
     ]
     for block in site_blocks(router):
         # The lab announces the one /24 it has behind each edge. A site of the

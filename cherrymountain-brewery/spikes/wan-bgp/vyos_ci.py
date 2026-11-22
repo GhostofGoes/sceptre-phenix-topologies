@@ -224,6 +224,84 @@ def expected_sessions(router: model.Router) -> int:
 
 PING_INTERVAL_S: float = 0.2
 
+HQ: str = "fr-fw-edge"
+JOURNAL: str = (
+    "journalctl -b --no-pager -o short-precise 2>/dev/null "
+    "| grep -E 'bgpd|bfdd|zebra|staticd|mgmtd|commit\\[|vyos-router|vyos-configd' | tail -200"
+)
+FRR_DEBUG_LOG: str = "/tmp/frr-debug.log"
+
+
+def hq_defaults(lab: Lab) -> tuple[str, list[tuple[str, str, str]]]:
+    """(the head office's default route, the (ISP, its address, the head office's address) without a next hop in it)."""
+    route = lab.shell(HQ, "ip route show default 2>&1")
+    missing = [
+        (isp, gateway, own)
+        for _eth, _link, isp, gateway, own in vyos_sketch.uplinks(model.BY_NAME[HQ])
+        if f"via {gateway} " not in route
+    ]
+    return route, missing
+
+
+def vtysh(lab: Lab, vm: str, *commands: str) -> str:
+    return lab.shell(vm, "vtysh " + " ".join(f"-c '{command}'" for command in commands) + " 2>&1", wait_s=120)
+
+
+def explain_missing_default(lab: Lab, missing: list[tuple[str, str, str]]) -> bool:
+    """The head office lacks a default route from an ISP: record both sides, then try to get it back.
+
+    Three steps, each less gentle than the one before, and the first that works
+    is recorded: the head office asks the ISP again (a route refresh), the ISP
+    sends again, the session restarts. Returns whether both routes are there.
+    """
+    debug = ("configure terminal", f"log file {FRR_DEBUG_LOG} debugging")
+    for vm in {HQ, *(isp for isp, _gateway, _own in missing)}:
+        vtysh(lab, vm, *debug)
+        vtysh(lab, vm, "debug bgp updates", "debug bgp neighbor-events")
+    for isp, gateway, own in missing:
+        lab.save(
+            f"default-{isp}-side.txt",
+            vtysh(lab, isp, f"show bgp ipv4 unicast neighbors {own} advertised-routes", f"show bgp neighbors {own}"),
+        )
+        lab.save(
+            f"default-{HQ}-side-{isp}.txt",
+            vtysh(
+                lab, HQ, f"show bgp ipv4 unicast neighbors {gateway} received-routes", f"show bgp neighbors {gateway}"
+            ),
+        )
+        lab.save(f"default-{isp}-journal.txt", lab.shell(isp, JOURNAL, wait_s=120))
+    lab.save(f"default-{HQ}-journal.txt", lab.shell(HQ, JOURNAL, wait_s=120))
+
+    def both() -> tuple[bool, str]:
+        route, still = hq_defaults(lab)
+        return not still, " ".join(route.split())
+
+    fixed_by = ""
+    steps = (
+        ("a route refresh asked by the head office", HQ, "clear bgp ipv4 unicast {gateway} soft in"),
+        ("the ISP sending its routes again", "{isp}", "clear bgp ipv4 unicast {own} soft out"),
+        ("a restart of the session", HQ, "clear bgp {gateway}"),
+    )
+    for title, where, command in steps:
+        for isp, gateway, own in missing:
+            vtysh(lab, where.format(isp=isp), command.format(gateway=gateway, own=own))
+        try:
+            detail = wait_for(f"two default routes after {title}", 45, 5, both)
+        except TimeoutError as exc:
+            lab.fact(f"default routes after {title}", str(exc)[-300:])
+            continue
+        lab.fact(f"default routes after {title}", detail)
+        fixed_by = title
+        break
+    for vm in {HQ, *(isp for isp, _gateway, _own in missing)}:
+        lab.save(
+            f"default-{vm}-debug.log",
+            lab.shell(vm, f"grep -E '0\\.0\\.0\\.0/0|DENIED|Established|refresh|default' {FRR_DEBUG_LOG} | tail -150"),
+        )
+        vtysh(lab, vm, "no debug bgp updates", "no debug bgp neighbor-events")
+    lab.fact("what brought the missing default route back", fixed_by or "nothing: it is still missing")
+    return bool(fixed_by)
+
 
 def blackhole(lab: Lab, vm: str, ifname: str) -> None:
     """Silently drop what a router forwards, sends, or receives on one interface. The link stays up."""
@@ -361,16 +439,29 @@ def faults(lab: Lab) -> None:
     )
 
     # A loud fault: the link of the site's ShadeCast uplink goes down.
-    uplink = next(
-        name for name, _l, other, _g, _o in vyos_sketch.uplinks(model.BY_NAME["hc-fw-edge"]) if other == "shadecast"
+    first = tunnel_named("hc-a")
+    uplink, own = site_uplink(first)
+    other = next(name for name, *_rest in vyos_sketch.uplinks(model.BY_NAME["hc-fw-edge"]) if name != uplink)
+    # Count what the first tunnel sends through the other uplink: WireGuard to
+    # its port, IPsec from its address. Either would be the tunnel moving.
+    lab.shell(
+        "hc-fw-edge",
+        "nft add table inet cmleak; "
+        "nft add chain inet cmleak cm_out '{ type filter hook output priority -290; }'; "
+        f"nft add rule inet cmleak cm_out oifname {other} udp dport {first.port} counter; "
+        f"nft add rule inet cmleak cm_out oifname {other} ip saddr {own} counter; echo counting",
     )
     lab.shell("hc-fw-edge", f"ip link set {uplink} down; echo down")
     moved, detail = wait_tunnel(lab, backup, 40)
-    lookup = lab.shell("hc-fw-edge", pin_lookup(tunnel_named("hc-a")))
+    lookup = lab.shell("hc-fw-edge", pin_lookup(first))
+    # Long enough for WireGuard's keepalive and handshake retries, and for IKE's.
+    leak = lab.shell("hc-fw-edge", "sleep 20; nft list table inet cmleak 2>&1; nft delete table inet cmleak", wait_s=120)
+    leaked = sum(int(count) for count in re.findall(r"counter packets (\d+)", leak))
     lab.check(
         "with its uplink's link down, a tunnel does not move to the other uplink",
-        moved and " dev eth" not in lookup.replace(f" dev {uplink} ", " "),
-        f"lookup for the first tunnel: {' '.join(lookup.split())}; traffic on {detail}",
+        moved and "counter packets" in leak and leaked == 0 and " dev eth" not in lookup,
+        f"{leaked} of the first tunnel's packets left through {other} in 20 s; its route lookup now answers "
+        f"`{' '.join(lookup.split())}` (a blackhole route answers Invalid argument); traffic on {detail}",
     )
     lab.shell("hc-fw-edge", f"ip link set {uplink} up; echo up")
     back, detail = wait_tunnel(lab, primary, 90)
@@ -482,12 +573,14 @@ def run() -> int:
                 detail, ok = str(exc), False
             lab.check(f"all {want} BGP sessions of {router.name} are Established", ok, detail[:900])
 
-        default = lab.shell("fr-fw-edge", "ip route show default 2>&1")
-        lab.check(
+        default, missing = hq_defaults(lab)
+        both_defaults = lab.check(
             "the head office installs a default route through each ISP, with its endpoint as the source",
-            default.count("nexthop via") == 2 and f"src {model.HUB_ENDPOINT}" in default,
+            not missing and default.count("nexthop via") == 2 and f"src {model.HUB_ENDPOINT}" in default,
             " ".join(default.split()),
         )
+        # Without both routes the faults below measure something else, so try to get the route back.
+        recovered = bool(missing) and explain_missing_default(lab, missing)
         paths = lab.shell(
             "shadecast",
             f"vtysh -c 'show bgp ipv4 unicast {model.HQ_PREFIX}' 2>&1 | head -20; "
@@ -544,8 +637,9 @@ def run() -> int:
         ping = lab.shell("hc-historian", "ping -c 10 -i 0.2 -W 2 10.20.30.11 2>&1 | tail -3")
         lab.check("a host at the site reaches a host at the head office", " 0% packet loss" in ping, ping.strip())
 
-        # 6. Faults, when the baseline works.
-        if lab.evidence.passed:
+        # 6. Faults, when the baseline works (a default route that had to be asked for again counts).
+        failed = [check.name for check in lab.evidence.checks if not check.passed]
+        if not failed or (recovered and not both_defaults and len(failed) == 1):
             faults(lab)
         else:
             lab.check("the faults ran", False, "skipped: a check before them failed")
@@ -560,7 +654,8 @@ def run() -> int:
                     "echo '== ip rule'; ip rule; echo '== ip route show table all'; "
                     "ip route show table all | grep -v ' table local' | head -60; echo '== wg show'; "
                     "wg show 2>&1 | grep -v 'private key'; echo '== swanctl --list-sas'; "
-                    "swanctl --list-sas 2>&1 | head -60; ip -br link show type xfrm 2>&1",
+                    "swanctl --list-sas 2>&1 | head -60; ip -br link show type xfrm 2>&1; "
+                    f"echo '== journal'; {JOURNAL}",
                     wait_s=180,
                 ),
             )

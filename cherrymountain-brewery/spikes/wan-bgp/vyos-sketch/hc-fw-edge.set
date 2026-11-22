@@ -15,6 +15,7 @@ set policy route-map OVERLAY-OUT rule 10 action permit
 set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
 set protocols bgp system-as 65020
 set protocols bgp parameters router-id 10.255.2.1
+set protocols bgp parameters log-neighbor-changes
 set protocols bgp address-family ipv4-unicast network 10.11.0.0/16
 set protocols bgp address-family ipv4-unicast network 10.21.0.0/16
 set protocols bgp address-family ipv4-unicast network 10.31.0.0/16

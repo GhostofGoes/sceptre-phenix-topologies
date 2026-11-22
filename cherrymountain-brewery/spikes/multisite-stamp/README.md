@@ -114,14 +114,15 @@ The first site keeps the address plan of DESIGN.md §10.2 unchanged.
 
 Sizes are those of `topology-core.yml`, `topology-soc.yml`, and
 `topology-remote-access.yml`. The brewpub and the cellar slice are subsets of
-the core's nodes. The mock internet, the head-office additions, and the
+the core's nodes. Each keeps a `historian` and an `ews`, because the head
+office's conduits end there. The mock internet, the head-office additions, and the
 sensor are estimates.
 
 | Block | VMs | vCPUs | Memory (GB) |
 |---|---:|---:|---:|
 | Site, full plant (the core without the shared internet nodes) | 33 | 41 | 63 |
-| Site, brewpub (brewhouse, cellar, BAS; no packaging line, no utilities PLC, no generation, no DER link) | 20 | 26 | 44 |
-| Site, cellar slice (the `ci` variant behind the two firewalls) | 8 | 10 | 19 |
+| Site, brewpub (brewhouse, cellar, the utilities that serve them, BAS; no packaging line, no generation, no DER link) | 23 | 30 | 50 |
+| Site, cellar slice (the `ci` variant behind the two firewalls, with a `historian` and an `ews`) | 10 | 14 | 29 |
 | SOC module | 4 | 18 | 84 |
 | Remote-access module | 3 | 5 | 7 |
 | Mock internet, VyOS routers (6 routers at 2 GB, 6 small hosts) | 12 | 12 | 18 |
@@ -139,14 +140,13 @@ additions. The single-site design runs 68 vCPUs on 32 or more cores: at most
 |---|---:|---:|---:|---:|---:|
 | M1: four full plants, central SOC | 154 | 205 | 364 | 2.1 | 4.3 |
 | M2: M1 and a network sensor at each of the other three sites | 157 | 217 | 412 | 2.3 | 4.5 |
-| M3: two full plants and two brewpubs, central SOC | 128 | 175 | 326 | 1.8 | 3.6 |
-| M4: one full plant and three cellar slices, central SOC | 79 | 112 | 232 | 1.2 | 2.3 |
+| M3: two full plants and two brewpubs, central SOC | 134 | 183 | 338 | 1.9 | 3.8 |
+| M4: one full plant and three cellar slices, central SOC | 85 | 124 | 262 | 1.3 | 2.6 |
 | M5: four full plants, no SOC and no vendor access | 147 | 182 | 273 | 1.9 | 3.8 |
 
-M4 is the only mix near the single-site design's overcommit (1.2 vCPUs per
-thread against about 1.1). M1 doubles it. Every mix needs more than 192 GB of
-memory, and every mix but M4 more than 256 GB. DESIGN.md §11 sizes the full
-variant for a 512 GB host.
+M4 is the only mix near the single-site design's overcommit (1.3 vCPUs per
+thread against about 1.1). M1 doubles it. Every mix needs more than 256 GB of
+memory as sized. DESIGN.md §11 sizes the full variant for a 512 GB host.
 
 ## What the kit did not test
 

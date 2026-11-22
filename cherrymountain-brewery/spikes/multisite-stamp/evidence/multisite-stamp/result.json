@@ -92,15 +92,15 @@
       "vcpus": 5,
       "memory_mb": 7168
     },
-    "site, brewpub (brewhouse, cellar, BAS)": {
-      "vms": 20,
-      "vcpus": 26,
-      "memory_mb": 45056
+    "site, brewpub (brewhouse, cellar, utilities, BAS)": {
+      "vms": 23,
+      "vcpus": 30,
+      "memory_mb": 51200
     },
-    "site, cellar slice (the ci variant behind a firewall)": {
-      "vms": 8,
-      "vcpus": 10,
-      "memory_mb": 19456
+    "site, cellar slice (the ci variant behind the firewalls, with a historian and an EWS)": {
+      "vms": 10,
+      "vcpus": 14,
+      "memory_mb": 29696
     },
     "mock internet, VyOS routers (6 routers, 6 small hosts)": {
       "vms": 12,
@@ -135,14 +135,14 @@
       "memory_mb": 421888
     },
     "M3: two full plants and two brewpubs, central SOC": {
-      "vms": 128,
-      "vcpus": 175,
-      "memory_mb": 333824
+      "vms": 134,
+      "vcpus": 183,
+      "memory_mb": 346112
     },
     "M4: one full plant and three cellar slices, central SOC": {
-      "vms": 79,
-      "vcpus": 112,
-      "memory_mb": 237568
+      "vms": 85,
+      "vcpus": 124,
+      "memory_mb": 268288
     },
     "M5: four full plants, no SOC and no vendor access": {
       "vms": 147,

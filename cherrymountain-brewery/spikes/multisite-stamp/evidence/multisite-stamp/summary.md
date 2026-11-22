@@ -40,8 +40,8 @@
 | shared internet nodes of the single-site core | 4 | 4 | 6 |
 | SOC module (malcolm, wazuh, soc-analyst, soc-purple) | 4 | 18 | 84 |
 | remote-access module (vendor-ws, dmz-vpn, dmz-jump) | 3 | 5 | 7 |
-| site, brewpub (brewhouse, cellar, BAS) | 20 | 26 | 44 |
-| site, cellar slice (the ci variant behind a firewall) | 8 | 10 | 19 |
+| site, brewpub (brewhouse, cellar, utilities, BAS) | 23 | 30 | 50 |
+| site, cellar slice (the ci variant behind the firewalls, with a historian and an EWS) | 10 | 14 | 29 |
 | mock internet, VyOS routers (6 routers, 6 small hosts) | 12 | 12 | 18 |
 | mock internet, FRR routers (6 routers, 6 small hosts) | 12 | 12 | 9 |
 | head office additions (fleet historian, corporate server, second office desktop) | 3 | 6 | 12 |
@@ -53,6 +53,6 @@
 |---|---:|---:|---:|---:|---:|
 | M1: four full plants, central SOC | 154 | 205 | 364 | 2.1 | 4.3 |
 | M2: four full plants, central SOC, a network sensor at each of the other three sites | 157 | 217 | 412 | 2.3 | 4.5 |
-| M3: two full plants and two brewpubs, central SOC | 128 | 175 | 326 | 1.8 | 3.6 |
-| M4: one full plant and three cellar slices, central SOC | 79 | 112 | 232 | 1.2 | 2.3 |
+| M3: two full plants and two brewpubs, central SOC | 134 | 183 | 338 | 1.9 | 3.8 |
+| M4: one full plant and three cellar slices, central SOC | 85 | 124 | 262 | 1.3 | 2.6 |
 | M5: four full plants, no SOC and no vendor access | 147 | 182 | 273 | 1.9 | 3.8 |

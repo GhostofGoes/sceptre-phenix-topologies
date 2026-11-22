@@ -403,9 +403,10 @@ def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> None
         "shared internet nodes of the single-site core": node_budget(shared_nodes),
         "SOC module (malcolm, wazuh, soc-analyst, soc-purple)": node_budget(soc["spec"]["nodes"]),
         "remote-access module (vendor-ws, dmz-vpn, dmz-jump)": node_budget(remote["spec"]["nodes"]),
-        # A brewpub: the brewhouse, the cellar, and the building; no packaging
-        # line, no utilities PLC of its own, no on-site generation, no DER link.
-        "site, brewpub (brewhouse, cellar, BAS)": node_budget(
+        # A brewpub: the brewhouse, the cellar, the utilities that serve them
+        # (glycol, steam, CIP), and the building; no packaging line, no
+        # on-site generation, no DER link.
+        "site, brewpub (brewhouse, cellar, utilities, BAS)": node_budget(
             pick(
                 "fw-edge",
                 "fw-ot",
@@ -413,11 +414,14 @@ def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> None
                 "corp-ws",
                 "scada-fuxa",
                 "historian",
+                "ews",
                 "hmi-brewhouse",
                 "plc-brewhouse",
                 "plc-cellar",
+                "plc-utilities",
                 "rio-brewhouse",
                 "rio-cellar",
+                "rio-utilities",
                 "glycol-chiller",
                 "bas-bbmd",
                 "bas-fuxa",
@@ -429,14 +433,27 @@ def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> None
                 "sim-building",
             )  # fmt: skip
         ),
-        # The CI variant's slice behind a site firewall: one fermentation cell.
-        "site, cellar slice (the ci variant behind a firewall)": node_budget(
-            pick("fw-edge", "fw-ot", "ot-svc", "scada-fuxa", "plc-cellar", "rio-cellar", "sim-ctl", "sim-process")
+        # The CI variant's slice behind the two site firewalls, with the two
+        # hosts the head office talks to: one fermentation cell, a historian,
+        # and an engineering workstation.
+        "site, cellar slice (the ci variant behind the firewalls, with a historian and an EWS)": node_budget(
+            pick(
+                "fw-edge",
+                "fw-ot",
+                "ot-svc",
+                "scada-fuxa",
+                "historian",
+                "ews",
+                "plc-cellar",
+                "rio-cellar",
+                "sim-ctl",
+                "sim-process",
+            )  # fmt: skip
         ),
     }
     full = result.budgets["site, full plant (core without the shared internet nodes)"]
-    pub = result.budgets["site, brewpub (brewhouse, cellar, BAS)"]
-    cell = result.budgets["site, cellar slice (the ci variant behind a firewall)"]
+    pub = result.budgets["site, brewpub (brewhouse, cellar, utilities, BAS)"]
+    cell = result.budgets["site, cellar slice (the ci variant behind the firewalls, with a historian and an EWS)"]
     soc_b = result.budgets["SOC module (malcolm, wazuh, soc-analyst, soc-purple)"]
     remote_b = result.budgets["remote-access module (vendor-ws, dmz-vpn, dmz-jump)"]
     # The mock internet and the head office's own additions, as the plans size

@@ -15,7 +15,10 @@ set policy route-map OVERLAY-OUT rule 10 action permit
 set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
 set protocols bgp system-as 65030
 set protocols bgp parameters router-id 10.255.3.1
-set protocols bgp address-family ipv4-unicast network 10.22.30.0/24
+set protocols bgp address-family ipv4-unicast network 10.12.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.22.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.32.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.42.0.0/16
 set protocols static route 0.0.0.0/0 next-hop 198.18.101.9 distance 10
 set protocols static route 0.0.0.0/0 next-hop 203.0.113.17 distance 20
 set interfaces wireguard wg103 description 'ws-a over Tumbleweed Fiber'
@@ -30,6 +33,7 @@ set interfaces wireguard wg103 fwmark 103
 set policy local-route rule 103 fwmark 103
 set policy local-route rule 103 set table 103
 set protocols static table 103 route 0.0.0.0/0 next-hop 198.18.101.9
+set protocols static table 103 route 0.0.0.0/0 blackhole distance 250
 set protocols bgp neighbor 10.255.0.4 remote-as 64505
 set protocols bgp neighbor 10.255.0.4 description 'overlay ws-a'
 set protocols bgp neighbor 10.255.0.4 timers keepalive 3
@@ -49,6 +53,7 @@ set interfaces wireguard wg104 fwmark 104
 set policy local-route rule 104 fwmark 104
 set policy local-route rule 104 set table 104
 set protocols static table 104 route 0.0.0.0/0 next-hop 203.0.113.17
+set protocols static table 104 route 0.0.0.0/0 blackhole distance 250
 set protocols bgp neighbor 10.255.0.6 remote-as 64505
 set protocols bgp neighbor 10.255.0.6 description 'overlay ws-b'
 set protocols bgp neighbor 10.255.0.6 timers keepalive 3

@@ -15,7 +15,10 @@ set policy route-map OVERLAY-OUT rule 10 action permit
 set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
 set protocols bgp system-as 65040
 set protocols bgp parameters router-id 10.255.4.1
-set protocols bgp address-family ipv4-unicast network 10.23.30.0/24
+set protocols bgp address-family ipv4-unicast network 10.13.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.23.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.33.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.43.0.0/16
 set protocols static route 0.0.0.0/0 next-hop 198.18.103.1 distance 10
 set interfaces wireguard wg105 description 'gc-a over Pelican Coast Broadband'
 set interfaces wireguard wg105 address 10.255.0.9/31
@@ -29,6 +32,7 @@ set interfaces wireguard wg105 fwmark 105
 set policy local-route rule 105 fwmark 105
 set policy local-route rule 105 set table 105
 set protocols static table 105 route 0.0.0.0/0 next-hop 198.18.103.1
+set protocols static table 105 route 0.0.0.0/0 blackhole distance 250
 set protocols bgp neighbor 10.255.0.8 remote-as 64505
 set protocols bgp neighbor 10.255.0.8 description 'overlay gc-a'
 set protocols bgp neighbor 10.255.0.8 timers keepalive 3

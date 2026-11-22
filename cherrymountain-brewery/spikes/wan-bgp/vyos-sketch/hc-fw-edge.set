@@ -15,7 +15,10 @@ set policy route-map OVERLAY-OUT rule 10 action permit
 set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
 set protocols bgp system-as 65020
 set protocols bgp parameters router-id 10.255.2.1
-set protocols bgp address-family ipv4-unicast network 10.21.30.0/24
+set protocols bgp address-family ipv4-unicast network 10.11.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.21.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.31.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.41.0.0/16
 set protocols static route 0.0.0.0/0 next-hop 203.0.113.9 distance 10
 set protocols static route 0.0.0.0/0 next-hop 198.18.102.1 distance 20
 set interfaces wireguard wg101 description 'hc-a over ShadeCast Cable'
@@ -30,6 +33,7 @@ set interfaces wireguard wg101 fwmark 101
 set policy local-route rule 101 fwmark 101
 set policy local-route rule 101 set table 101
 set protocols static table 101 route 0.0.0.0/0 next-hop 203.0.113.9
+set protocols static table 101 route 0.0.0.0/0 blackhole distance 250
 set protocols bgp neighbor 10.255.0.0 remote-as 64505
 set protocols bgp neighbor 10.255.0.0 description 'overlay hc-a'
 set protocols bgp neighbor 10.255.0.0 timers keepalive 3
@@ -49,6 +53,7 @@ set interfaces wireguard wg102 fwmark 102
 set policy local-route rule 102 fwmark 102
 set policy local-route rule 102 set table 102
 set protocols static table 102 route 0.0.0.0/0 next-hop 198.18.102.1
+set protocols static table 102 route 0.0.0.0/0 blackhole distance 250
 set protocols bgp neighbor 10.255.0.2 remote-as 64505
 set protocols bgp neighbor 10.255.0.2 description 'overlay hc-b'
 set protocols bgp neighbor 10.255.0.2 timers keepalive 3

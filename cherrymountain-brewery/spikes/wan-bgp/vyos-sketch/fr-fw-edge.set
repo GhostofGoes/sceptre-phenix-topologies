@@ -15,7 +15,10 @@ set policy route-map OVERLAY-OUT rule 10 action permit
 set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
 set protocols bgp system-as 64505
 set protocols bgp parameters router-id 198.18.105.1
-set protocols bgp address-family ipv4-unicast network 10.20.30.0/24
+set protocols bgp address-family ipv4-unicast network 10.10.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.20.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.30.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.40.0.0/16
 set interfaces dummy dum0 address 198.18.105.1/32
 set policy prefix-list DEFAULT rule 10 action permit
 set policy prefix-list DEFAULT rule 10 prefix 0.0.0.0/0
@@ -26,7 +29,9 @@ set policy route-map DEFAULT-ONLY rule 10 match ip address prefix-list DEFAULT
 set policy route-map OWN-ONLY rule 10 action permit
 set policy route-map OWN-ONLY rule 10 match ip address prefix-list OWN
 set policy route-map SET-SOURCE rule 10 action permit
+set policy route-map SET-SOURCE rule 10 match ip address prefix-list DEFAULT
 set policy route-map SET-SOURCE rule 10 set src 198.18.105.1
+set policy route-map SET-SOURCE rule 20 action permit
 set system ip protocol bgp route-map SET-SOURCE
 set protocols bgp parameters bestpath as-path multipath-relax
 set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2

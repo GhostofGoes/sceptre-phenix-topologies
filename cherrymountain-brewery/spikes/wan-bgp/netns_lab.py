@@ -84,8 +84,8 @@ class Router(BaseModel):
     # False for a site edge that has ISP-assigned addresses and no BGP session
     # with its ISPs.
     public_bgp: bool = True
-    # Install the default route of every ISP, not only the best one. A reply
-    # then leaves through the ISP that the request came in through.
+    # Install the default route of every ISP, not only the best one, so that a
+    # route exists through each uplink.
     multipath: bool = False
 
 
@@ -530,6 +530,16 @@ def frr_config(router: Router) -> str:
             f"  neighbor {address} route-map OVERLAY-OUT out",
         ]
         bfd_peers.append(address)
+        if router.name == tunnel.site and PIN == PIN_MARK:
+            # The tunnel's own routing table: its uplink, and behind it a
+            # blackhole. When the uplink's link is down its route is gone, and
+            # without the blackhole the lookup would fall through to the main
+            # table and take the tunnel out of the other uplink.
+            _other, gateway, _own = peer_of(link_of(router.name, tunnel.via), router.name)
+            static_routes += [
+                f"ip route 0.0.0.0/0 {gateway} table {tunnel.mark()}",
+                f"ip route 0.0.0.0/0 blackhole 250 table {tunnel.mark()}",
+            ]
         if router.name == tunnel.site and PIN == PIN_DESTINATION:
             # Pin each head-office endpoint to the uplink that carries its
             # tunnel, so the two tunnels of a site never share a path.
@@ -548,11 +558,15 @@ def frr_config(router: Router) -> str:
                 distance += 10
 
     if router.multipath and PIN == PIN_MARK:
-        # Whatever the head office sends on a route learned from an ISP leaves
-        # with its own endpoint address, not with the address of the uplink.
+        # Whatever the head office sends on a default route leaves with its
+        # own endpoint address, not with the address of the uplink. The match
+        # keeps the routes learned through the tunnels out of it: a packet the
+        # head office sends to a site must carry a tunnel address.
         lines += [
             "route-map SET-SOURCE permit 10",
+            " match ip address prefix-list DEFAULT",
             f" set src {HUB_ENDPOINT}",
+            "route-map SET-SOURCE permit 20",
             "!",
             "ip protocol bgp route-map SET-SOURCE",
             "!",
@@ -729,11 +743,10 @@ def up() -> str:
             "endpoint", f"{tunnel.endpoint()}:{tunnel.port}", "persistent-keepalive", "5",
         )  # fmt: skip
         if PIN == PIN_MARK:
-            _isp, gateway, _own = peer_of(link_of(tunnel.site, tunnel.via), tunnel.site)
+            # FRR installs the routes of the mark's table (frr_config).
             mark = str(tunnel.mark())
             ns(tunnel.site, "wg", "set", tunnel.site_if(), "fwmark", mark)
             ns(tunnel.site, "ip", "rule", "add", "fwmark", mark, "lookup", mark)
-            ns(tunnel.site, "ip", "route", "add", "default", "via", gateway, "table", mark)
         for name, ifname, address in (
             (tunnel.hub, tunnel.hub_if(), tunnel.hub_address()),
             (tunnel.site, tunnel.site_if(), tunnel.site_address()),
@@ -1186,6 +1199,67 @@ def run_checks(mode: str) -> Evidence:
     )
     outages += recover("ShadeCast outage, restored", "shadecast", seconds=35.0)
     time.sleep(5)
+
+    # Fault 4: the same outage, with the transit carrier's route to the head
+    # office going through ShadeCast. Until now it went through Tumbleweed (the
+    # two customer routes tie), so the Gulf Coast site was never on the path.
+    wait_converged(60)
+    _name, shadecast_address, _own = peer_of(link_of("cb-west", "shadecast"), "cb-west")
+    ns("cb-west", "vtysh", "-N", "cb-west", "-c", "configure terminal",
+       "-c", "route-map FROM-CUSTOMER-PREFERRED permit 10",
+       "-c", "match ip address prefix-list PUBLIC",
+       "-c", "set local-preference 210",
+       "-c", f"set community 64496:{RELATION_TAG['customer']}",
+       "-c", "exit",
+       "-c", "router bgp 64496", "-c", "address-family ipv4 unicast",
+       "-c", f"neighbor {shadecast_address} route-map FROM-CUSTOMER-PREFERRED in")  # fmt: skip
+    time.sleep(8)
+    through = bgp_path("cb-west", HQ_PREFIX)
+    result = fault("ShadeCast outage, the transit carrier routing through it", "shadecast", None, seconds=45.0)
+    outages += result
+    gc = next(o for o in result if o.stream.startswith("gc-historian"))
+    check(
+        "a site whose path crosses the dead ISP in the core waits for the BGP hold timer",
+        through == "64500 64505" and BFD_INTERVAL_MS * BFD_MULTIPLIER / 1000 < gc.longest_gap_s <= CORE_HOLD_S + 3,
+        f"cb-west reached the head office over {through!r}; Gulf Coast lost {gc.longest_gap_s} s "
+        f"against a {CORE_HOLD_S} s hold time; underlay {gc.underlay_before} -> {gc.underlay_after}",
+    )
+    outages += recover("ShadeCast outage, restored again", "shadecast", seconds=35.0)
+    ns("cb-west", "vtysh", "-N", "cb-west", "-c", "configure terminal",
+       "-c", "router bgp 64496", "-c", "address-family ipv4 unicast",
+       "-c", f"neighbor {shadecast_address} route-map FROM-CUSTOMER in",
+       "-c", "exit", "-c", "exit",
+       "-c", "no route-map FROM-CUSTOMER-PREFERRED")  # fmt: skip
+    time.sleep(8)
+
+    if PIN == PIN_MARK:
+        # A loud fault: the link of High Country's ShadeCast uplink goes down,
+        # and the route of the tunnel's table goes with it.
+        wait_converged(60)
+        uplink = link_of("hc-fw-edge", "shadecast").ifname("hc-fw-edge")
+        tunnel = next(t for t in TUNNELS if t.name == "hc-a")
+        ns("hc-fw-edge", "ip", "link", "set", uplink, "down")
+        time.sleep(6)
+        lookup = ns("hc-fw-edge", "ip", "route", "get", HUB_ENDPOINT, "mark", str(tunnel.mark()), check=False)
+        stayed = "dev" not in lookup or f"dev {uplink}" in lookup
+        check(
+            "with its uplink's link down, a tunnel does not move to the other uplink",
+            stayed
+            and next_hop_if("hc-fw-edge", "10.20.30.0/24") == "wgs-hc-b"
+            and reachable("hc-historian", HQ_HOST_ADDRESS),
+            f"lookup for hc-a: {' '.join(lookup.split()) or 'no route (blackhole)'}; "
+            f"traffic via {next_hop_if('hc-fw-edge', '10.20.30.0/24')}",
+        )
+        ns("hc-fw-edge", "ip", "link", "set", uplink, "up")
+        started = time.monotonic()
+        while time.monotonic() - started < 60 and next_hop_if("hc-fw-edge", "10.20.30.0/24") != "wgs-hc-a":
+            time.sleep(1)
+        check(
+            "the tunnel returns when the link does",
+            next_hop_if("hc-fw-edge", "10.20.30.0/24") == "wgs-hc-a",
+            f"after {time.monotonic() - started:.0f} s",
+        )
+
     facts["tunnel endpoints after the faults and repairs"] = json.dumps(endpoints())
     moved = drifted()
     check(

@@ -40,6 +40,14 @@ def uplinks(router: lab.Router) -> list[tuple[str, lab.Link, str, str, str]]:
     return found
 
 
+def site_blocks(router: lab.Router) -> list[str]:
+    """The four address blocks of the site behind `router` (IT, OT, BAS, SOC)."""
+    lan = next(lan for lan in lab.LANS if lan.router == router.name)
+    # The lab's host sits in the site's OPS network, 10.2n.30.0/24.
+    number = int(lan.net.split(".")[1]) - 20
+    return [f"10.{block + number}.0.0/16" for block in (10, 20, 30, 40)]
+
+
 def prefix_list(name: str, prefix: str, ge: int = 0, le: int = 0) -> list[str]:
     lines = [
         f"set policy prefix-list {name} rule 10 action permit",
@@ -90,9 +98,11 @@ def sketch(router: lab.Router) -> list[str]:
         f"set protocols bgp system-as {router.asn}",
         f"set protocols bgp parameters router-id {router.router_id}",
     ]
-    for lan in lab.LANS:
-        if lan.router == router.name:
-            lines.append(f"set protocols bgp address-family ipv4-unicast network {lan.net}")
+    for block in site_blocks(router):
+        # The lab announces the one /24 it has behind each edge. A site of the
+        # range announces its four blocks (PLANS.md section 3). VyOS announces
+        # a `network` whether or not a route for it is installed.
+        lines.append(f"set protocols bgp address-family ipv4-unicast network {block}")
 
     if hub:
         # The head office: its own prefix to two ISPs, a default route from each.
@@ -102,9 +112,12 @@ def sketch(router: lab.Router) -> list[str]:
             *prefix_list("OWN", lab.HQ_PREFIX),
             *route_map("DEFAULT-ONLY", "DEFAULT"),
             *route_map("OWN-ONLY", "OWN"),
-            # A route learned from an ISP sends with the endpoint address as its
-            # source, so a tunnel's endpoint never looks like it moved.
-            *route_map("SET-SOURCE", source=lab.HUB_ENDPOINT),
+            # What the head office sends on a default route carries the endpoint
+            # address as its source, so a tunnel's endpoint never looks like it
+            # moved. Rule 20 leaves every other route, the sites' among them,
+            # as it is.
+            *route_map("SET-SOURCE", "DEFAULT", source=lab.HUB_ENDPOINT),
+            "set policy route-map SET-SOURCE rule 20 action permit",
             "set system ip protocol bgp route-map SET-SOURCE",
             "set protocols bgp parameters bestpath as-path multipath-relax",
             "set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2",
@@ -147,11 +160,13 @@ def sketch(router: lab.Router) -> list[str]:
                 f"set interfaces wireguard {wg} peer {tunnel.name} port {tunnel.port}",
                 f"set interfaces wireguard {wg} peer {tunnel.name} persistent-keepalive 5",
                 # The pin: this tunnel's packets carry a mark, the mark has its
-                # own table, and the table's only route is this uplink.
+                # own table, and the table holds this uplink and, behind it, a
+                # blackhole, so that the tunnel never leaves by the other uplink.
                 f"set interfaces wireguard {wg} fwmark {mark}",
                 f"set policy local-route rule {mark} fwmark {mark}",
                 f"set policy local-route rule {mark} set table {mark}",
                 f"set protocols static table {mark} route 0.0.0.0/0 next-hop {gateway}",
+                f"set protocols static table {mark} route 0.0.0.0/0 blackhole distance 250",
             ]
         policy = "OVERLAY-PRIMARY" if tunnel.primary else "OVERLAY-BACKUP"
         lines += neighbor(peer, peer_as, f"overlay {tunnel.name}", policy, "OVERLAY-OUT")

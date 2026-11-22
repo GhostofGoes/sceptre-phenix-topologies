@@ -149,5 +149,142 @@
       "vcpus": 182,
       "memory_mb": 279552
     }
+  },
+  "placements": [
+    {
+      "title": "one node",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access; site fr; site hc; site ws; site gc"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 157,
+          "vcpus": 217,
+          "memory_mb": 421888
+        }
+      }
+    },
+    {
+      "title": "two nodes",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access; site fr; site hc",
+        "node 2": "site ws; site gc"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 89,
+          "vcpus": 127,
+          "memory_mb": 260096
+        },
+        "node 2": {
+          "vms": 68,
+          "vcpus": 90,
+          "memory_mb": 161792
+        }
+      }
+    },
+    {
+      "title": "three nodes",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access; site fr",
+        "node 2": "site hc; site gc",
+        "node 3": "site ws"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 55,
+          "vcpus": 82,
+          "memory_mb": 179200
+        },
+        "node 2": {
+          "vms": 68,
+          "vcpus": 90,
+          "memory_mb": 161792
+        },
+        "node 3": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        }
+      }
+    },
+    {
+      "title": "four nodes, one for each site",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access; site fr",
+        "node 2": "site hc",
+        "node 3": "site ws",
+        "node 4": "site gc"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 55,
+          "vcpus": 82,
+          "memory_mb": 179200
+        },
+        "node 2": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 3": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 4": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        }
+      }
+    },
+    {
+      "title": "five nodes, one for each site and one for what the range has once",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access",
+        "node 2": "site fr",
+        "node 3": "site hc",
+        "node 4": "site ws",
+        "node 5": "site gc"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 22,
+          "vcpus": 41,
+          "memory_mb": 114688
+        },
+        "node 2": {
+          "vms": 33,
+          "vcpus": 41,
+          "memory_mb": 64512
+        },
+        "node 3": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 4": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 5": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        }
+      }
+    }
+  ],
+  "cluster": {
+    "VMs with a node in `schedules`": "132 of 132 (the four sites; the shared nodes are not stamped)",
+    "VMs for each node": "{\"compute1\": 33, \"compute2\": 33, \"compute3\": 33, \"compute4\": 33}",
+    "VLAN aliases with an ID": 60,
+    "VLAN IDs given twice": [],
+    "aliases of the site topologies without an ID": [],
+    "VLAN range": "100 to 599",
+    "default bridge": "cherrymtn-fleet (15 characters; OVS allows 15)",
+    "phenix Workflow schema": "ok"
   }
 }

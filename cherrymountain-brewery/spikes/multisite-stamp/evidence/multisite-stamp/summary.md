@@ -56,3 +56,36 @@
 | M3: two full plants and two brewpubs, central SOC | 134 | 183 | 338 | 1.9 | 3.8 |
 | M4: one full plant and three cellar slices, central SOC | 85 | 124 | 262 | 1.3 | 2.6 |
 | M5: four full plants, no SOC and no vendor access | 147 | 182 | 273 | 1.9 | 3.8 |
+
+## Mix M2 on a cluster of nodes with 48 cores, 96 threads, and 512 GB
+
+| Cluster | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
+|---|---|---|---:|---:|---:|---:|---:|
+| one node | node 1 | internet, head office, SOC, vendor access; site fr; site hc; site ws; site gc | 157 | 217 | 412 | 2.26 | 80% |
+| two nodes | node 1 | internet, head office, SOC, vendor access; site fr; site hc | 89 | 127 | 254 | 1.32 | 50% |
+| two nodes | node 2 | site ws; site gc | 68 | 90 | 158 | 0.94 | 31% |
+| three nodes | node 1 | internet, head office, SOC, vendor access; site fr | 55 | 82 | 175 | 0.85 | 34% |
+| three nodes | node 2 | site hc; site gc | 68 | 90 | 158 | 0.94 | 31% |
+| three nodes | node 3 | site ws | 34 | 45 | 79 | 0.47 | 15% |
+| four nodes, one for each site | node 1 | internet, head office, SOC, vendor access; site fr | 55 | 82 | 175 | 0.85 | 34% |
+| four nodes, one for each site | node 2 | site hc | 34 | 45 | 79 | 0.47 | 15% |
+| four nodes, one for each site | node 3 | site ws | 34 | 45 | 79 | 0.47 | 15% |
+| four nodes, one for each site | node 4 | site gc | 34 | 45 | 79 | 0.47 | 15% |
+| five nodes, one for each site and one for what the range has once | node 1 | internet, head office, SOC, vendor access | 22 | 41 | 112 | 0.43 | 22% |
+| five nodes, one for each site and one for what the range has once | node 2 | site fr | 33 | 41 | 63 | 0.43 | 12% |
+| five nodes, one for each site and one for what the range has once | node 3 | site hc | 34 | 45 | 79 | 0.47 | 15% |
+| five nodes, one for each site and one for what the range has once | node 4 | site ws | 34 | 45 | 79 | 0.47 | 15% |
+| five nodes, one for each site and one for what the range has once | node 5 | site gc | 34 | 45 | 79 | 0.47 | 15% |
+
+## A workflow that pins each site to a node
+
+| Item | Value |
+|---|---|
+| VMs with a node in `schedules` | 132 of 132 (the four sites; the shared nodes are not stamped) |
+| VMs for each node | {"compute1": 33, "compute2": 33, "compute3": 33, "compute4": 33} |
+| VLAN aliases with an ID | 60 |
+| VLAN IDs given twice | [] |
+| aliases of the site topologies without an ID | [] |
+| VLAN range | 100 to 599 |
+| default bridge | cherrymtn-fleet (15 characters; OVS allows 15) |
+| phenix Workflow schema | ok |

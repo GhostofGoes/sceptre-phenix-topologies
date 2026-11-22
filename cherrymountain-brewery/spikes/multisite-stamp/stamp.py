@@ -14,6 +14,9 @@ Three questions, one per step (README.md has the result):
    experiment under phenix's rules (unique hostnames, unique addresses, one
    VLAN ID per alias) and still validate against its Topology schema?
 3. Budget: what do the candidate site mixes cost in VMs, vCPUs, and memory?
+4. Cluster: how does the largest mix sit on one to five minimega nodes of 48
+   cores and 512 GB, and does a workflow that pins each site to a node and
+   turns on the GRE mesh validate against phenix's Workflow schema?
 
 Nothing here is a generator for the range. It rewrites strings, which is how
 the probe finds every place that still assumes one plant.
@@ -55,6 +58,13 @@ SHARED_VLANS: frozenset[str] = frozenset({"INET", "VENDOR", "UTIL", "MIRROR"})
 PRIVATE_BLOCKS: tuple[int, ...] = (10, 20, 30, 40)
 MGMT_SECOND_OCTET: int = 16
 
+
+# A cluster node: 48 cores, two threads each, 512 GB.
+NODE_THREADS: int = 96
+NODE_MEMORY_GB: int = 512
+# The single-site workflow, whose VLAN IDs a site keeps, plus 100 for each site after the first.
+WORKFLOW: Path = RANGE / "phenix.yml"
+VLAN_STEP: int = 100
 
 # Keys whose value names a kind of host, and maps whose keys do.
 KIND_KEYS: frozenset[str] = frozenset({"role", "type", "model", "profile", "federate", "desc", "description"})
@@ -159,11 +169,21 @@ class Budget(BaseModel):
         return f"{self.vms} | {self.vcpus} | {self.memory_mb / 1024:.0f}"
 
 
+class Placement(BaseModel):
+    """One way to spread a mix over cluster nodes: what each node runs, and what that costs it."""
+
+    title: str
+    nodes: dict[str, str] = Field(default_factory=dict)
+    cost: dict[str, Budget] = Field(default_factory=dict)
+
+
 class Result(BaseModel):
     probes: list[Probe] = Field(default_factory=list)
     merge: dict[str, Any] = Field(default_factory=dict)
     budgets: dict[str, Budget] = Field(default_factory=dict)
     plans: dict[str, Budget] = Field(default_factory=dict)
+    placements: list[Placement] = Field(default_factory=list)
+    cluster: dict[str, Any] = Field(default_factory=dict)
 
 
 # ------------------------------ 1. plantgen ------------------------------
@@ -315,7 +335,7 @@ def node_budget(nodes: list[dict[str, Any]]) -> Budget:
     )
 
 
-def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> None:
+def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> list[dict[str, Any]]:
     core, soc, remote = load_topology("core"), load_topology("soc"), load_topology("remote-access")
     hosts = {n["general"]["hostname"] for topo in (core, soc, remote) for n in topo["spec"]["nodes"]}
     vlans = {
@@ -482,6 +502,96 @@ def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> None
         .add(full, 4),
     }  # fmt: skip
 
+    # 4. The largest mix (M2) on a cluster. The first site's node also runs
+    # what the range has once: the mock internet, the head office's additions,
+    # the SOC, and the vendor's remote access.
+    once = shared.add(soc_b).add(remote_b)
+    site = {"fr": full, "hc": full.add(sensor), "ws": full.add(sensor), "gc": full.add(sensor)}
+    layouts: dict[str, list[tuple[str, ...]]] = {
+        "one node": [("once", "fr", "hc", "ws", "gc")],
+        "two nodes": [("once", "fr", "hc"), ("ws", "gc")],
+        "three nodes": [("once", "fr"), ("hc", "gc"), ("ws",)],
+        "four nodes, one for each site": [("once", "fr"), ("hc",), ("ws",), ("gc",)],
+        "five nodes, one for each site and one for what the range has once": [("once",), ("fr",), ("hc",), ("ws",), ("gc",)],
+    }  # fmt: skip
+    label = {"once": "internet, head office, SOC, vendor access"}
+    for title, groups in layouts.items():
+        placement = Placement(title=title)
+        for number, group in enumerate(groups, start=1):
+            cost = Budget()
+            for part in group:
+                cost = cost.add(once if part == "once" else site[part])
+            placement.nodes[f"node {number}"] = "; ".join(label.get(part, f"site {part}") for part in group)
+            placement.cost[f"node {number}"] = cost
+        result.placements.append(placement)
+    return merged
+
+
+# ------------------------------- 4. Cluster -------------------------------
+
+
+def cluster_workflow(result: Result, merged: list[dict[str, Any]], out: Path, schema_dir: Path | None) -> None:
+    """Write a workflow that pins each site's VMs to a node, and check it against phenix's schema."""
+    single = yaml.safe_load(WORKFLOW.read_text())["spec"]
+    vlans: dict[str, int] = {}
+    for site in SITES:
+        for alias, number in single["vlans"].items():
+            if alias in SHARED_VLANS:
+                vlans.setdefault(alias, number)
+            else:
+                vlans[site.vlan(alias)] = number + VLAN_STEP * site.index
+    node_of = {site.code: f"compute{site.index + 1}" for site in SITES}
+    schedules = {n["general"]["hostname"]: node_of[n["general"]["hostname"].split("-", 1)[0]] for n in merged}
+    workflow = {
+        "apiVersion": "phenix.sandia.gov/v0",
+        "kind": "Workflow",
+        "metadata": {},
+        "spec": {
+            "auto": {"create": "cherrymountain-fleet", "update": True, "restart": True},
+            "topology": "cherrymountain-fleet",
+            "scenario": "cherrymountain-fleet",
+            "vlans": dict(sorted(vlans.items(), key=lambda item: item[1])),
+            # The sites use 100 to 499, and the internet's links 500 to 539 (PLANS.md section 3).
+            "vlanRange": {"min": 100, "max": 599},
+            "defaultBridge": "cherrymtn-fleet",
+            # VLANs cross the nodes inside GRE tunnels, so the switch between them needs no trunk.
+            "useGREMesh": True,
+            # The node that runs phenix runs VMs too.
+            "deployMode": "all",
+            "schedules": schedules,
+        },
+    }
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / "phenix-fleet.yml"
+    path.write_text(yaml.safe_dump(workflow, sort_keys=False))
+    ids = Counter(vlans.values())
+    used = {i.get("vlan") for n in merged for i in n.get("network", {}).get("interfaces", [])} - {None, ""}
+    result.cluster = {
+        "VMs with a node in `schedules`": f"{len(schedules)} of {len(merged)} (the four sites; the shared nodes are not stamped)",
+        "VMs for each node": json.dumps(dict(sorted(Counter(schedules.values()).items()))),
+        "VLAN aliases with an ID": len(vlans),
+        "VLAN IDs given twice": sorted(number for number, count in ids.items() if count > 1),
+        "aliases of the site topologies without an ID": sorted(used - set(vlans)),
+        "VLAN range": f"{workflow['spec']['vlanRange']['min']} to {workflow['spec']['vlanRange']['max']}",
+        "default bridge": f"{workflow['spec']['defaultBridge']} ({len(workflow['spec']['defaultBridge'])} characters; OVS allows 15)",
+    }  # fmt: skip
+    if not schema_dir:
+        return
+    schema = schema_dir / "workflow.schema.json"
+    checker = shutil.which("check-jsonschema")
+    if checker and schema.exists():
+        proc = subprocess.run(
+            [checker, "--schemafile", str(schema), "--base-uri", schema_dir.as_uri() + "/", str(path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        result.cluster["phenix Workflow schema"] = (
+            "ok" if proc.returncode == 0 else (proc.stdout + proc.stderr).strip()[-600:]
+        )
+    else:
+        result.cluster["phenix Workflow schema"] = "not checked (no check-jsonschema or no schema)"
+
 
 # --------------------------------- Report ---------------------------------
 
@@ -516,6 +626,24 @@ def write(result: Result) -> None:
     ]
     for key, budget in result.plans.items():
         lines.append(f"| {key} | {budget.row()} | {budget.vcpus / 96:.1f} | {budget.vcpus / 48:.1f} |")
+    lines += [
+        "",
+        f"## Mix M2 on a cluster of nodes with {NODE_THREADS // 2} cores, {NODE_THREADS} threads, and {NODE_MEMORY_GB} GB",
+        "",
+        "| Cluster | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |",
+        "|---|---|---|---:|---:|---:|---:|---:|",
+    ]
+    for placement in result.placements:
+        for node, runs in placement.nodes.items():
+            cost = placement.cost[node]
+            lines.append(
+                f"| {placement.title} | {node} | {runs} | {cost.row()} | {cost.vcpus / NODE_THREADS:.2f} "
+                f"| {cost.memory_mb / 1024 / NODE_MEMORY_GB:.0%} |"
+            )
+    lines += ["", "## A workflow that pins each site to a node", "", "| Item | Value |", "|---|---|"]
+    for key, value in result.cluster.items():
+        shown = json.dumps(value) if isinstance(value, list) else str(value)
+        lines.append(f"| {key} | {shown} |")
     (EVIDENCE / "summary.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 
@@ -528,7 +656,9 @@ def main() -> int:
     result = Result()
     with tempfile.TemporaryDirectory(prefix="cm-stamp-") as tmp:
         probe_plantgen(result, Path(tmp) / "plantgen")
-        stamp_topologies(result, args.out or Path(tmp) / "topologies", args.schema)
+        out = args.out or Path(tmp) / "topologies"
+        merged = stamp_topologies(result, out, args.schema)
+        cluster_workflow(result, merged, out, args.schema)
     write(result)
     return 0
 

@@ -1,9 +1,10 @@
 # Spike: four sites from one plant
 
 **Question.** Can the single-site plant be stamped out as four sites in one
-phenix experiment, and what does each site mix cost? **Decides:** how the
-multi-site variant is generated, and which site mixes fit the host
-([PLANS.md](../../docs/multisite/PLANS.md) sections 4 and 6).
+phenix experiment, what does each site mix cost, and how does the largest mix
+sit on a cluster? **Decides:** how the multi-site variant is generated, which
+site mixes fit one host, and where each site runs on a cluster of minimega
+nodes ([PLANS.md](../../docs/multisite/PLANS.md) sections 4 and 6).
 
 The kit rewrites strings. It is a probe, not a generator: it finds every place
 that still assumes one plant by changing the names and addresses under it.
@@ -22,7 +23,7 @@ cd cherrymountain-brewery/spikes/multisite-stamp
 python stamp.py --schema ~/sceptre-phenix/schemas
 ```
 
-`stamp.py` does three things and writes `summary.md` and `result.json` under
+`stamp.py` does four things and writes `summary.md` and `result.json` under
 `$CM_EVIDENCE_DIR/multisite-stamp` (default `evidence/`):
 
 1. **plantgen.** It writes a `plant.yaml` for a second site (`hc`): every
@@ -36,8 +37,12 @@ python stamp.py --schema ~/sceptre-phenix/schemas
    Topology schema.
 3. **Budget.** It adds up VMs, vCPUs, and memory for the building blocks and
    for five site mixes.
+4. **Cluster.** It spreads the largest mix (M2) over one to five nodes of 48
+   cores and 512 GB, one site to a node where there are enough, and writes a
+   workflow that names a node for each site VM. With `--schema` it validates
+   that file against phenix's Workflow schema.
 
-`--out DIR` keeps the four stamped topology files.
+`--out DIR` keeps the four stamped topology files and the workflow.
 
 ## The stamping rule
 
@@ -60,6 +65,9 @@ The first site keeps the address plan of DESIGN.md §10.2 unchanged.
       against the Topology schema.
 - [x] At least one site mix stays near the single-site design's overcommit
       on 96 threads.
+- [x] With one cluster node for each site, no node carries more than one vCPU
+      for each thread, and a workflow that names a node for every site VM
+      validates against the Workflow schema.
 
 ## Result
 
@@ -148,7 +156,47 @@ M4 is the only mix near the single-site design's overcommit (1.3 vCPUs per
 thread against about 1.1). M1 doubles it. Every mix needs more than 256 GB of
 memory as sized. DESIGN.md §11 sizes the full variant for a 512 GB host.
 
+### Mix M2 on a cluster
+
+A node has 48 cores, 96 threads, and 512 GB. The node of the first site also
+runs what the range has once: the mock internet, the head office's additions,
+the SOC, and the vendor's remote access (22 VMs, 41 vCPUs, 112 GB).
+
+| Cluster | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
+|---|---|---|---:|---:|---:|---:|---:|
+| One node | 1 | Everything | 157 | 217 | 412 | 2.26 | 80% |
+| Two nodes | 1 | The shared part, `fr`, `hc` | 89 | 127 | 254 | 1.32 | 50% |
+| | 2 | `ws`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
+| Three nodes | 1 | The shared part, `fr` | 55 | 82 | 175 | 0.85 | 34% |
+| | 2 | `hc`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
+| | 3 | `ws` | 34 | 45 | 79 | 0.47 | 15% |
+| Four nodes | 1 | The shared part, `fr` | 55 | 82 | 175 | 0.85 | 34% |
+| | 2, 3, 4 | `hc`, `ws`, `gc`: one each | 34 | 45 | 79 | 0.47 | 15% |
+| Five nodes | 1 | The shared part | 22 | 41 | 112 | 0.43 | 22% |
+| | 2 | `fr` | 33 | 41 | 63 | 0.43 | 12% |
+| | 3, 4, 5 | `hc`, `ws`, `gc`: one each | 34 | 45 | 79 | 0.47 | 15% |
+
+From three nodes on, no node carries more than one vCPU for each thread, and
+memory is never the limit: the whole mix is 80% of one node.
+
+### A workflow that pins each site to a node
+
+The kit writes `phenix-fleet.yml` next to the stamped topologies: the VLAN
+IDs (a site keeps the single-site IDs plus 100 for each site after the first),
+`schedules` with a node for each of the 132 site VMs (`compute1` to
+`compute4`, 33 each), `useGREMesh: true`, and `deployMode: all`.
+
+- No VLAN ID is given twice, and every alias of the site topologies has an ID
+  (60 aliases: 14 for each site and 4 shared).
+- The file validates against phenix's Workflow schema.
+- The bridge name `cherrymtn-fleet` has 15 characters, which is as many as
+  Open vSwitch allows.
+
 ## What the kit did not test
+
+- **No cluster.** The node names are made up, phenix did not read the
+  workflow, and no VLAN crossed a GRE tunnel. The placement table counts
+  vCPUs; it does not measure a node.
 
 - **No VM ran.** The vCPU figures are counts, not load. No part of the range
   has run on a phenix host (DESIGN.md, Status), so the load of one site is not

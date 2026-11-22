@@ -42,6 +42,23 @@ proof of its answer or the spike workflow still runs it; the others are under
 The workflow's `serial-pr130` job (spike name `serial-pr130`) applies
 `serial/pr130-serial.patch` to the fork's phenix; it is part of the default set.
 
+## Multi-site spikes
+
+These two kits are not Phase 0 spikes. They back the plan options for a
+variant with four breweries and a head office
+([docs/multisite/PLANS.md](../docs/multisite/PLANS.md)). Both ran in a
+container with no VM and are not jobs of the spike workflow. Each keeps the
+summary of its last run in its own `evidence/` directory.
+
+| Spike | Question | Unblocks | Status |
+|---|---|---|---|
+| [wan-bgp](wan-bgp/README.md) | Can four sites keep a VPN to their head office over a mock internet of BGP networks when an uplink or a whole ISP fails? | The WAN of the multi-site variant, and how a site ties a tunnel to an uplink | pass (namespaces with FRR and wireguard-go; nothing on VyOS) |
+| [multisite-stamp](multisite-stamp/README.md) | Can the plant be stamped out as four sites in one experiment, and what does each site mix cost? | How the multi-site variant is generated and sized | pass (plantgen needs one line changed; no VM ran) |
+
+`wan-bgp/patches/vrouter-config-passthrough.patch` adds a `config` list of
+VyOS commands to phenix's `vrouter` app. It applies to sceptre-phenix `main`
+at `86fd732`, not to the fork's `ci-e2e-minimega`.
+
 ## Retired kits
 
 These kits were removed once the range's own code and tests replaced them. Their

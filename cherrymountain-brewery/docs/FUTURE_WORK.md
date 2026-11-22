@@ -462,6 +462,19 @@ spike also lists SOC gaps that apply with or without a case tool. Examples
 are that Malcolm's detections don't reach Wazuh and that FUXA process alarms
 have no Wazuh rules.
 
+### A fleet of four breweries and a head office
+
+A `fleet` variant would put four breweries in one experiment, joined to a
+head office by a site-to-site VPN over a mock internet of five BGP networks.
+[multisite/PLANS.md](multisite/PLANS.md) has three plans for it, the choices
+behind them, and twelve decisions to take. Two spikes back it: a
+[lab of the WAN](../spikes/wan-bgp/README.md) in network namespaces, where a
+site lost about one second of traffic when an uplink or a whole ISP went
+silent, and a [stamp of the plant](../spikes/multisite-stamp/README.md) as
+four sites, which plantgen generates after one line changes. Nothing of it
+has run on VyOS or in a VM, and it depends on
+[the first run of the single site](#the-first-run-on-a-phenix-host).
+
 ## Decided against
 
 These were considered and are not planned. They are here so that nobody plans

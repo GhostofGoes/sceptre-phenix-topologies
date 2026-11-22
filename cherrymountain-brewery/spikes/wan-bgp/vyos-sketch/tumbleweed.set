@@ -38,18 +38,21 @@ set protocols bgp neighbor 198.18.0.9 remote-as 64496
 set protocols bgp neighbor 198.18.0.9 description 'Continental Backbone, Denver'
 set protocols bgp neighbor 198.18.0.9 timers keepalive 3
 set protocols bgp neighbor 198.18.0.9 timers holdtime 9
+set protocols bgp neighbor 198.18.0.9 timers connect 5
 set protocols bgp neighbor 198.18.0.9 address-family ipv4-unicast route-map import FROM-PROVIDER
 set protocols bgp neighbor 198.18.0.9 address-family ipv4-unicast route-map export TO-UPSTREAM
 set protocols bgp neighbor 198.18.0.17 remote-as 64500
 set protocols bgp neighbor 198.18.0.17 description 'ShadeCast Cable'
 set protocols bgp neighbor 198.18.0.17 timers keepalive 3
 set protocols bgp neighbor 198.18.0.17 timers holdtime 9
+set protocols bgp neighbor 198.18.0.17 timers connect 5
 set protocols bgp neighbor 198.18.0.17 address-family ipv4-unicast route-map import FROM-PEER
 set protocols bgp neighbor 198.18.0.17 address-family ipv4-unicast route-map export TO-UPSTREAM
 set protocols bgp neighbor 198.18.0.22 remote-as 64502
 set protocols bgp neighbor 198.18.0.22 description 'Marmot Wireless'
 set protocols bgp neighbor 198.18.0.22 timers keepalive 3
 set protocols bgp neighbor 198.18.0.22 timers holdtime 9
+set protocols bgp neighbor 198.18.0.22 timers connect 5
 set protocols bgp neighbor 198.18.0.22 address-family ipv4-unicast route-map import FROM-CUSTOMER
 set protocols bgp neighbor 198.18.0.22 address-family ipv4-unicast route-map export TO-CUSTOMER
 set policy prefix-list CUST-FR-FW-EDGE rule 10 action permit
@@ -63,6 +66,7 @@ set protocols bgp neighbor 198.18.101.2 remote-as 64505
 set protocols bgp neighbor 198.18.101.2 description 'Head office and Front Range brewery edge'
 set protocols bgp neighbor 198.18.101.2 timers keepalive 3
 set protocols bgp neighbor 198.18.101.2 timers holdtime 9
+set protocols bgp neighbor 198.18.101.2 timers connect 5
 set protocols bgp neighbor 198.18.101.2 bfd profile WAN
 set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast route-map import FROM-CUST-FR-FW-EDGE
 set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast route-map export TO-CUSTOMER

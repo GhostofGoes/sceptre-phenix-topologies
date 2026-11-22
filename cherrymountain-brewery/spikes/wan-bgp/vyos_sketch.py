@@ -137,6 +137,8 @@ def neighbor(
         # VyOS ignores one timer without the other.
         f"{base} timers keepalive {lab.CORE_KEEPALIVE_S}",
         f"{base} timers holdtime {lab.CORE_HOLD_S}",
+        # FRR waits 120 s before it tries a lost neighbor again; a repaired link should not.
+        f"{base} timers connect 5",
         *([f"{base} bfd profile WAN"] if bfd else []),
         f"{base} address-family ipv4-unicast route-map import {route_in}",
         f"{base} address-family ipv4-unicast route-map export {route_out}",
@@ -190,6 +192,7 @@ def isp_sketch(router: lab.Router) -> list[str]:
                 f"{base} description '{title}'",
                 f"{base} timers keepalive {lab.CORE_KEEPALIVE_S}",
                 f"{base} timers holdtime {lab.CORE_HOLD_S}",
+                f"{base} timers connect 5",
                 f"{base} address-family ipv4-unicast nexthop-self",
             ]
             continue

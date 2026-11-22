@@ -55,9 +55,10 @@ summary of its last run in its own `evidence/` directory.
 | [wan-bgp](wan-bgp/README.md) | Can four sites keep a VPN to their head office over a mock internet of BGP networks when an uplink or a whole ISP fails? | The WAN of the multi-site variant, and how a site ties a tunnel to an uplink | pass (namespaces with FRR and wireguard-go; nothing on VyOS) |
 | [multisite-stamp](multisite-stamp/README.md) | Can the plant be stamped out as four sites in one experiment, and what does each site mix cost? | How the multi-site variant is generated and sized | pass (plantgen needs one line changed; no VM ran) |
 
-`wan-bgp/patches/vrouter-config-passthrough.patch` adds a `config` list of
-VyOS commands to phenix's `vrouter` app. It applies to sceptre-phenix `main`
-at `86fd732`, not to the fork's `ci-e2e-minimega`.
+`wan-bgp/patches/` has a change to phenix that adds a `config` list of VyOS
+commands to the `vrouter` app, as two patches: one for sceptre-phenix `main`
+at `86fd732`, and one for the fork's `ci-e2e-minimega` at `afbcba7`. Each
+passes `go test ./app ./tmpl` on its branch.
 
 ## Retired kits
 

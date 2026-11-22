@@ -9,8 +9,9 @@
 > joined to a head office by a site-to-site VPN over a mock internet of five
 > BGP networks. Three plans follow. The recommended one (Plan B) gives the head
 > office its own AS on two ISPs and gives each site one tunnel per uplink, with
-> BGP and BFD inside the tunnels. In the lab a site lost about one second of
-> traffic when an uplink or a whole ISP went silent.
+> BGP and BFD inside the tunnels. In the lab the site on a failed ISP lost about
+> one second of traffic, and a site whose path crossed that ISP inside the
+> internet lost nine.
 
 ## Contents
 
@@ -39,7 +40,7 @@
 
 **Assumed, because it was not said:** the host has the 512 GB of memory that
 [DESIGN.md §11](../DESIGN.md#11-node-inventory-and-resources) sizes the full
-variant for. Every site mix in this document needs more than 192 GB
+variant for. Every site mix in this document needs more than 256 GB as sized
 ([4.1](#41-how-big-each-site-is)).
 
 **Fixed by phenix, minimega, and the range as it is.** Each row was read from
@@ -51,7 +52,7 @@ source or shown by a spike.
 | C2 | `includeTopologies` appends nodes and fails on a duplicate hostname. It cannot include one file four times with a prefix | **One topology file per site**, generated | `src/go/types/topology.go` lines 42 to 99 |
 | C3 | SoH keeps one host per IP address | **No site may reuse another site's addresses**, even behind NAT | `api/soh/app.go` (`addrHosts[ip]=host`) |
 | C4 | A VLAN alias is one L2 segment for the whole experiment | **Every site has its own VLAN aliases and IDs**, and `vlanRange` must grow past 100 to 199 | The stamp spike counted 57 aliases for four sites |
-| C5 | phenix's `vrouter` app cannot render BGP, a tunnel interface, WireGuard, or BFD for VyOS. Its template has an empty `bgp` block marked TODO | The routers get that configuration **another way** ([4.3](#43-who-runs-bgp-and-how-the-routers-get-their-configuration)) | `src/go/tmpl/templates/vyatta.tmpl` line 531 |
+| C5 | phenix's `vrouter` app cannot render BGP, a tunnel interface, WireGuard, or BFD for VyOS. Its template has an empty `bgp` block marked TODO for Vyatta, and nothing for VyOS | The routers get that configuration **another way** ([4.3](#43-who-runs-bgp-and-how-the-routers-get-their-configuration)) | `src/go/tmpl/templates/vyatta.tmpl` line 531 |
 | C6 | phenix renders IPsec for VyOS as policy-based tunnels with a pre-shared key, one fixed proposal, and any number of peers | A static hub-and-spoke VPN works **with phenix as it is** | `src/go/app/vrouter.go` (`processIPSec`); the `vyos-ipsec` spike |
 | C7 | The `helics` app starts one root broker for an experiment | Four separate plant simulations need **their brokers started another way** ([4.7](#47-simulation)) | sceptre-phenix-apps `helics/app.py` lines 18 to 37 |
 | C8 | **No part of the range has run on a phenix host** | A fleet multiplies what is unverified. The stages in [section 8](#8-stages) boot the WAN and one site before four | [DESIGN.md, Status](../DESIGN.md#status) |
@@ -113,8 +114,10 @@ These follow from the constraints, so they do not change between plans.
 `-hc.yml`, `-ws.yml`, `-gc.yml`, and `topology-internet.yml`. The site files
 are generated and committed, like plantgen's output today.
 
-**Names and addresses.** The stamp spike generated all of this without a clash
-([7.2](#72-multisite-stamp-four-sites-from-one-plant)).
+**Names and addresses.** The stamp spike generated the hostnames, the VLAN
+aliases, the subnets, and the MGMT networks without a clash
+([7.2](#72-multisite-stamp-four-sites-from-one-plant)). The VLAN IDs and the
+route blocks are the proposal: nothing has generated them yet.
 
 | Item | Rule | Example |
 |---|---|---|
@@ -125,10 +128,25 @@ are generated and committed, like plantgen's output today.
 | MGMT | Its own VLAN and /16 at each site | `172.16.0.0/16` at `fr`, `172.17.0.0/16` at `hc` |
 | A site as routes | Four blocks | `hc` is `10.11.0.0/16` (IT), `10.21.0.0/16` (OT), `10.31.0.0/16` (BAS), `10.41.0.0/16` (SOC) |
 
-The Front Range site keeps every address of
-[DESIGN.md §10.2](../DESIGN.md#102-vlan-and-ip-plan). Its detection content
-(44 addresses in the Suricata rules, 28 in the Zeek script) stays valid. The
-single-site variants `full`, `lite`, and `ci` do not change.
+| Site | Added to the second octet | VLAN IDs | AS inside the VPN |
+|---|---:|---|---:|
+| `fr` | 0 | 104 to 117 | 64505 |
+| `hc` | 1 | 204 to 217 | 65020 |
+| `ws` | 2 | 304 to 317 | 65030 |
+| `gc` | 3 | 404 to 417 | 65040 |
+
+The second octet counts from 0 so that `fr` keeps today's addresses. The VLAN
+hundreds and the AS numbers count from 1.
+
+The Front Range site keeps every private address of
+[DESIGN.md §10.2](../DESIGN.md#102-vlan-and-ip-plan), and `fr-fw-edge` keeps
+`203.0.113.2`. Its detection content (the addresses in its Suricata rules and
+its Zeek script) stays valid. Two things on its public side move: the INET
+segment shrinks from a /24 to a /29, which still holds `isp-rtr` (.1),
+`fw-edge` (.2), and `util-rtr` (.3) and leaves the rest of `203.0.113.0/24`
+for ShadeCast's other customers, and `inet-traffic` moves from `203.0.113.10`
+to the transit carrier's hosted network. The single-site variants `full`,
+`lite`, and `ci` do not change.
 
 **Internet numbering.** Every public address and AS number comes from a range
 reserved for documentation or testing, as the single-site plan's do.
@@ -150,10 +168,14 @@ keep their prefixes and become customers of an ISP.
 
 **The ISPs follow the rules real ISPs follow.** A route from a customer is
 preferred over one from a peer, and a peer's over a provider's. A network
-tells its peers and providers only its own and its customers' prefixes. A
-customer may announce only its registered prefix, and nothing longer than a
-/24 or private is accepted. The lab checks each of these
-([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it)).
+tells its peers and providers only its own and its customers' prefixes. An ISP
+accepts from the head office, which is a customer with one prefix, only that
+prefix. From another network it accepts any public prefix up to a /24, as much
+of the real internet does, and that is what lets the hijack in
+[4.2](#42-the-mock-internet) work. Nothing in `10.0.0.0/8` is accepted. The
+lab checks the first two rules and that no ISP carries a private route
+([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it)). It does not offer an
+ISP a prefix it should refuse.
 
 **Build the WAN before the sites.** A `wan` variant holds the internet, the
 four site edges, and one small host at each site: about 20 VMs. It boots
@@ -171,21 +193,28 @@ already cut a plant down by area and host, as `ci` does.
 | Site profile | VMs | vCPUs | Memory (GB) | What runs |
 |---|---:|---:|---:|---|
 | Full plant | 33 | 41 | 63 | Everything a site has in `lite` |
-| Brewpub | 20 | 26 | 44 | Brewhouse, cellar, glycol chiller, building automation; no packaging line, no on-site generation, no DER link |
-| Cellar slice | 8 | 10 | 19 | The `ci` variant behind the two site firewalls: one fermentation cell |
+| Brewpub | 23 | 30 | 50 | Brewhouse, cellar, the utilities that serve them (glycol, steam, CIP), building automation; no packaging line, no on-site generation, no DER link |
+| Cellar slice | 10 | 14 | 29 | The `ci` variant behind the two site firewalls, with a `historian` and an `ews`: one fermentation cell |
 
 | Mix | VMs | vCPUs | Memory (GB) | vCPUs per thread |
 |---|---:|---:|---:|---:|
 | M1: four full plants, central SOC | 154 | 205 | 364 | 2.1 |
 | M2: M1, and a network sensor at each of the other three sites | 157 | 217 | 412 | 2.3 |
-| M3: two full plants (`fr`, `ws`) and two brewpubs (`hc`, `gc`), central SOC | 128 | 175 | 326 | 1.8 |
-| M4: one full plant (`fr`) and three cellar slices, central SOC | 79 | 112 | 232 | 1.2 |
+| M3: two full plants (`fr`, `ws`) and two brewpubs (`hc`, `gc`), central SOC | 134 | 183 | 338 | 1.9 |
+| M4: one full plant (`fr`) and three cellar slices, central SOC | 85 | 124 | 262 | 1.3 |
 | M5: four full plants, no SOC and no vendor access | 147 | 182 | 273 | 1.9 |
 
 Each mix includes a 12-VM internet (FRR routers, I1 in [4.2](#42-the-mock-internet))
-and three head-office VMs. The single-site design is about 1.1 vCPUs per
-thread.
+and three head-office VMs.
 
+- **What the ratio compares with.** The single-site design assumes its 68
+  vCPUs on a host of 32 cores, which is about 1.1 for each thread. It has not
+  run. On this host one full site alone would be 0.7.
+- **Memory.** Every mix needs more than 256 GB as sized. M4's 262 GB includes
+  84 GB for the SOC, of which Malcolm has 48 and can run in 24
+  ([DESIGN.md §11](../DESIGN.md#11-node-inventory-and-resources)).
+- **Every profile keeps a `historian` and an `ews`**, because the head
+  office's conduits end there ([4.6](#46-what-the-head-office-does)).
 - **These are counts, not load.** Most VMs idle, but the PLCs scan every
   100 ms, the kiosks render in software, and every PLC compiles its program on
   first boot. Nobody has measured a site.
@@ -255,6 +284,14 @@ somewhere to reroute.
 minimega's own router image (minirouter, which runs BIRD) is not an option:
 minimega can configure BGP on it, but phenix does not pass BGP to it.
 
+**The ISPs' timers are part of the design.** A site that is not next to a
+failure waits for a BGP hold timer inside the internet
+([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it)). The lab's ISPs use 3 s
+keepalives and a 9 s hold time, and the Gulf Coast site lost 9 s. With the
+60 s and 180 s that routers ship with, it would lose three minutes. The
+range's ISP routers should keep the short timers or run BFD between
+themselves, and an exercise can lengthen them on purpose.
+
 **What BGP adds to an exercise.** In the lab, Pelican announced the head
 office's prefix. The transit carrier believed the shorter path and the Gulf
 Coast site lost the head office. ShadeCast and Tumbleweed kept their customer
@@ -317,7 +354,7 @@ today, with CORP, the DMZ, and `fw-ot` behind it.
 | Needs | R1 or R2, and VyOS syntax checked on a VM | A `cm-frr` image and generated files |
 | Firewall rules for VPN traffic | On tunnel interfaces, which phenix's ACLs cannot name: through R1 or R2 | On `fw-edge`'s WAN interface, by source and destination, with phenix's ACLs as they are |
 | Monitoring | VyOS logs to Wazuh, as the firewalls do today | The box can run a Wazuh agent |
-| Evidence | The commands are written ([spikes/wan-bgp/vyos-sketch](../../spikes/wan-bgp/vyos-sketch), 267 for the four edges) and each path was read in VyOS's source. None has run | The lab is this, in namespaces |
+| Evidence | The commands are written ([spikes/wan-bgp/vyos-sketch](../../spikes/wan-bgp/vyos-sketch), 286 for the four edges) and each path was read in VyOS's source. None has run | The lab is this, in namespaces |
 
 **Recommendation:** E1 with R1 is the target, because it adds no VMs and puts
 the VPN where a company this size has it. It depends on a spike on VyOS VMs
@@ -351,8 +388,8 @@ announces its four address blocks.
 | Option | Tunnels | Routing | Failover | Needs |
 |---|---|---|---|---|
 | **V1: static hub and spoke** | One policy-based IPsec tunnel from each site to the head office | None. The tunnel's selectors are the routes | None. A site with a dead ISP is cut off | Nothing new: phenix renders it (C6) |
-| **V2: a tunnel per uplink, BGP inside** (recommended) | One route-based tunnel for each uplink of each site, to the head office: five in all | eBGP in every tunnel, each site its own private AS. The primary tunnel wins by local preference at both ends. BFD finds a dead tunnel | About 1 s in the lab; about 3 s with the BFD timers a VM should use | R1, R2, or E2 |
-| V3: V2 with a second hub | V2, and tunnels from every site to a second hub at `ws`: eleven in all | The same, with a preference between hubs | Survives the loss of the head office's whole site | The same, and more policy to get wrong |
+| **V2: a tunnel per uplink, BGP inside** (recommended) | One route-based tunnel for each uplink of each site, to the head office: five in all | eBGP in every tunnel, each site its own private AS. The primary tunnel wins by local preference at both ends. BFD finds a dead tunnel | About 1 s in the lab for a site next to the fault, and about 3 s with the BFD timers a VM should use. A site with one uplink waits for the ISPs: 9 s in the lab | R1, R2, or E2 |
+| V3: V2 with a second hub | V2, and a tunnel for each uplink of `hc` and `gc` to a second hub at `ws`: eight in all. `ws` would need its own prefix, or an endpoint on each uplink | The same, with a preference between hubs | Survives the loss of the head office's whole site | The same, and more policy to get wrong |
 | V4: full mesh | A tunnel between every two sites, for each uplink pair | The same | Sites reach each other directly | The most tunnels and the least reason: brewery sites talk to the head office, not to each other |
 
 **How V2 behaves** (all shown in the lab):
@@ -362,8 +399,9 @@ announces its four address blocks.
   the tunnels and no tunnel has to move.
 - **A site pins each tunnel to one uplink by a mark.** The tunnel's packets
   carry a firewall mark, a rule sends that mark to its own routing table, and
-  the table's only route is the uplink. The two tunnels of a site never share
-  an uplink, whatever address the endpoint has. The first design pinned by the
+  the table holds the uplink and, behind it, a blackhole. The two tunnels of a
+  site never share an uplink, whatever address the endpoint has and whether
+  the uplink's link is up or down. The first design pinned by the
   endpoint's address, and it did not hold
   ([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it), finding 2).
 - **The head office sends from its endpoint address.** Its default routes
@@ -374,10 +412,11 @@ announces its four address blocks.
   send the tunnel into itself.
 - **Site to site goes through the head office**, where `fr-fw-edge` decides
   whether it may. In the lab a packet from `hc` reached `gc` in four hops.
-- **The head office must install the default route of both ISPs**, not only
-  the best one. With one default route, a tunnel that arrived through the
-  other ISP never came up ([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it),
-  finding 1).
+- **The head office installs the default route of both ISPs**, not only the
+  best one. With one default route, a tunnel that arrived through the other
+  ISP never came up ([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it),
+  finding 1). That was wireguard-go. The kernel's WireGuard, which VyOS uses,
+  chooses its route differently and may not need it.
 
 **IPsec or WireGuard.** The routing does not care: both give a routed
 point-to-point interface.
@@ -448,13 +487,14 @@ PLCs.
 | Network monitoring | One `malcolm` at `fr`. The mirror app feeds it every site's VLANs out of band, which costs nothing and is not how a real fleet works | A sensor at each site that forwards over the VPN (M2): real, 4 vCPUs and 16 GB a site. Or `fr` only, which leaves the blue team blind at the other sites on purpose |
 | Process data | Each site keeps its `historian`. It also writes to a fleet historian at `fr`, where a Grafana board shows all four breweries | `fr`'s own historian doubles as the fleet's |
 | Engineering | Each site keeps its `ews`. Head-office engineers and the vendor go through `fr`'s `dmz-jump` to a site's `ews` | One `ews` at `fr` that programs every site's PLCs. Fewer VMs, and it gives one desktop every PLC in the company |
-| Vendor access | One WireGuard gateway and one jump host, at `fr` | The remote-access module at each site: 9 more VMs |
+| Vendor access | One WireGuard gateway and one jump host, at `fr` | A gateway and a jump host at each site: 6 more VMs |
 | Time and names | Each site's `ot-svc` serves its site and asks `fr`'s for the rest | — |
 | Utility link | `fr` keeps Summit Valley Power. `ws` gets the same utility on its own tunnel, and `gc` a second utility. The `hc` brewpub has no generation and no link | Only `fr` has a DER link |
 
-**No conduit reaches a site's PLCs from outside the site.** The table above
-adds six rows to the conduit matrix; all cross a site's `fw-edge` and
-`fw-ot` and `fr`'s, default deny. Site to site is denied at `fr-fw-edge`.
+**No conduit reaches a site's PLCs from outside the site.** The five flows of
+the diagram are the only new rows of the conduit matrix. Each crosses a site's
+`fw-edge` and `fw-ot` and `fr`'s, default deny. Site to site is denied at
+`fr-fw-edge`.
 
 ### 4.7 Simulation
 
@@ -471,7 +511,7 @@ time zone.
 - **What a site sets.** The elevation and pressure, the weather file, the time
   zone, and the tariff. Today the federates hold some of them as constants
   (the pressure in `recipe.py`, the latitude and longitude in `weather.py`, the
-  CO₂ density in `building.py`, and the default tariff in `power.py`).
+  CO₂ density in `building.py`, and the default tariff in `tariff.py`).
 
 ## 5. Three plans
 
@@ -482,7 +522,7 @@ time zone.
 | BGP at a brewery | None | Every site edge, inside the tunnels; the head office also with its ISPs | The same |
 | VPN | V1: policy-based IPsec to the head office | V2: a tunnel per uplink, BGP and BFD | V3: V2 with a second hub at `ws` |
 | Tunnel end | `fw-edge`, as phenix renders it | E1 (`fw-edge`, with R1), or E2 | The same |
-| Failover | None | About 3 s | The same, and the head office's site can fail |
+| Failover | None | About 3 s next to the fault; the ISPs' hold time for a site with one uplink | The same, and the head office's site can fail |
 | Monitoring | Central | Central | A sensor at each site (M2) |
 | Changes to phenix | None | R1 (or none, with E2) | The same |
 | New images | `cm-frr` | `cm-frr` | `cm-frr`, an internet image, a sensor image |
@@ -512,9 +552,10 @@ connection to the mock internet, where the ISPs run BGP between themselves.
 `hc-fw-edge`, `ws-fw-edge`, and `gc-fw-edge` each have one static IPsec tunnel
 to `fr-fw-edge`, which has three IPsec peers.
 
-- **For.** It needs nothing from phenix that the `vyos-ipsec` spike has not
-  already run. The VyOS routers stay as they are, with three peers added at
-  `fr` and one at each site.
+- **For.** It uses only what phenix renders today. The VyOS routers stay as
+  they are, with three peers added at `fr` and one at each site. The
+  `vyos-ipsec` spike ran that feature with one peer and one selector; three
+  peers on one router have not run.
 - **Against.** No brewery router speaks BGP, so the BGP is scenery. A second
   uplink cannot help: the tunnel is tied to one pair of addresses. Each pair of
   subnets that may talk is a tunnel selector, so the list at `fr` grows with
@@ -562,9 +603,9 @@ Read from the code, apart from the plantgen row, which the stamp spike ran.
 | FUXA builder | Keys on hostnames (`scada-fuxa`, `removeprefix("plc-")`) | Keys on roles | Small |
 | PLC programs | Hold no addresses; the app replaces the plugin configuration at boot | One ZIP for each profile serves every site | None |
 | Federates | 50 topic strings and four site constants are literals | The constants come from the site; the topics stay if each site has its own federation | Small |
-| Static injects | About 20 of 79 hold plant addresses or hostnames (`dnsmasq`, BBMD, Wazuh, the Suricata rules, the Zeek script) | Rendered for each site | Medium |
-| `scenario-*.yml` | The firewall rulesets and the SoH overlay are written by hand (213 addresses) | Rendered for each site, with the cross-site conduits | Medium |
-| `tools/netcheck` | The address plan, 44 nodes, and 30 conduits are Python literals. It models static routes, NAT, and policy IPsec, and no routing protocol | The plan generated for each site; the overlay's routes supplied as what BGP is expected to install | Large |
+| Static injects | About 26 of 79 hold plant addresses or hostnames (`dnsmasq`, BBMD, Wazuh, the Suricata rules, the Zeek script) | Rendered for each site | Medium |
+| `scenario-*.yml` | The firewall rulesets and the SoH overlay are written by hand (more than 200 addresses) | Rendered for each site, with the cross-site conduits | Medium |
+| `tools/netcheck` | The address plan, 44 nodes, and 29 conduits are Python literals. It models static routes, NAT, and policy IPsec, and no routing protocol | The plan generated for each site; the overlay's routes supplied as what BGP is expected to install | Large |
 | WAN | — | A `wan.yaml` (networks, links, relations, tunnels) and a generator for `topology-internet.yml`, each `frr.conf`, and the site edges' WAN configuration. The lab's model is the start | Medium |
 | phenix | — | R1, if chosen | Small (written) |
 
@@ -601,29 +642,44 @@ reads the fleet topology and scenario.
 
 Kit: [spikes/wan-bgp](../../spikes/wan-bgp/README.md). Ten routers as network
 namespaces, each with its own FRR 8.4.4, built as the diagrams in
-[4.2](#42-the-mock-internet) and [4.5](#45-the-vpn) show. The tunnels are
-WireGuard (wireguard-go). It is Plan B with E2.
+[4.2](#42-the-mock-internet) and [4.5](#45-the-vpn) show, with two
+differences: a site announces one /24, not four blocks, and the head office's
+ShadeCast link is a /30 with no utility on it. The tunnels are WireGuard
+(wireguard-go). It is Plan B with E2.
 
-| Event (silent: packets dropped, links left up) | High Country | Western Slope | Gulf Coast |
+Every fault is on ShadeCast and silent: packets are dropped and the links stay
+up. Each site pinged the head office's host ten times a second through each
+event, and the figures are the longest run of lost pings over the runs of the
+final design.
+
+| Event | High Country (primary uplink on ShadeCast) | Western Slope (backup uplink on ShadeCast) | Gulf Coast (behind Pelican) |
 |---|---|---|---|
-| High Country's ShadeCast uplink fails | 0.8 to 0.9 s, then its tunnel over Marmot | no loss | no loss |
-| The head office's ShadeCast uplink fails | 0.6 to 1.0 s | no loss | no loss |
-| All of ShadeCast fails | 0.8 to 0.9 s | no loss | no loss |
+| ShadeCast drops High Country's uplink | 0.8 to 0.9 s, then its tunnel over Marmot | not on the path | not on the path |
+| ShadeCast drops the head office's uplink | 0.6 to 1.0 s | not on the path | not on the path |
+| All of ShadeCast fails | 0.8 to 0.9 s | not on the path | not on the path |
+| All of ShadeCast fails, with the transit carrier routing to the head office through it | 0.8 s | not on the path | **8.8 to 9.0 s** |
 | Each repair | no loss | no loss | no loss |
 
-Each site pinged the head office's host ten times a second through each event.
-The figures are the longest run of lost pings in the four runs of the final
-design. They are about three BFD intervals of 300 ms.
-
-- **All checks pass:** the 13 BGP sessions come up in 8 to 9 s; paths follow
-  the customer, peer, and provider rules; no ISP carries a private route; a
-  site learns only site prefixes through a tunnel; every site reaches the head
-  office and every other site.
-- **Finding 1: a head office on two ISPs must install both default routes.**
-  With only the better one installed, the three tunnels that arrived through
-  the other ISP never came up. The reply to a tunnel packet has to leave
-  through the ISP the packet came in through, and there was no route that way.
-  With both installed (BGP multipath), all five came up.
+- **Two kinds of outage.** A site next to the fault has a BFD session that
+  finds it: three intervals of 300 ms, about one second. A site that is not
+  next to it waits for a BGP hold timer somewhere in the internet. Gulf Coast
+  has one uplink and no part in the fault, and it lost the head office for as
+  long as the transit carrier kept sending toward a dead ISP. The lab's ISPs
+  use 3 s keepalives and a 9 s hold time; real routers ship with 60 s and
+  180 s. The range's ISP routers should keep short timers, or run BFD between
+  themselves.
+- **The checks.** The last two runs passed all 26: the 13 BGP sessions come up
+  in 8 to 9 s; paths follow the customer, peer, and provider rules; no ISP
+  carries a private route; a site learns only site prefixes through a tunnel;
+  every site reaches the head office and every other site. Four earlier runs
+  of the same design had 23 checks. In two of them one check failed for a
+  fault of the kit, since fixed.
+- **Finding 1: with wireguard-go, a head office on two ISPs must install both
+  default routes.** With only the better one installed, the three tunnels that
+  arrived through the other ISP never came up: each handshake came in, and no
+  answer left. With both installed (BGP multipath), all five came up. The
+  kernel's WireGuard does not tie its answer to the interface a packet came in
+  on (read in its source), so VyOS may behave differently.
 - **Finding 2: a WireGuard endpoint roams, so a tunnel cannot be tied to an
   uplink by its endpoint's address.** The first design gave the head office
   two endpoint addresses and gave each site a host route for each. After one
@@ -634,20 +690,27 @@ design. They are about three BFD intervals of 300 ms.
   fails with it. It also hid a fault: in two of three runs a site lost nothing
   when the head office lost an ISP, because its tunnel had already moved to a
   path around the fault. The final design ties a tunnel to its uplink by a
-  firewall mark and gives the head office one endpoint, which it also uses as
-  its source address. No endpoint moved in those runs, and every tunnel still
-  left through its own uplink after all the faults.
-- **Finding 3: an origin hijack is partial.** Pelican announced the head
+  firewall mark and gives the head office one endpoint, which its default
+  routes also carry as the source address. No endpoint moved in those runs,
+  and every tunnel still left through its own uplink after all the faults. The
+  kernel's WireGuard lets the route choose the source address whenever a reply
+  leaves through another interface than the request came in on, so on VyOS the
+  preferred source matters even with no fault.
+- **Finding 3: the mark's routing table must end in a blackhole.** When an
+  uplink's link goes down, its route leaves the table, and without the
+  blackhole the tunnel would leave through the other uplink. With it, the
+  tunnel stayed down until the link came back.
+- **Finding 4: an origin hijack is partial.** Pelican announced the head
   office's prefix. The transit carrier took the shorter path, and the Gulf
   Coast site lost the head office. ShadeCast and Tumbleweed kept their
   customer route, and their sites stayed up.
-- **Finding 4: ten FRR routers took 0.5 GB of memory**, tunnels included. An
+- **Finding 5: ten FRR routers took 0.5 GB of memory**, tunnels included. An
   internet in one VM (I3) is practical.
 - **Not tested:** VyOS; IPsec (the lab's kernel has no ESP); WireGuard in the
-  kernel (the lab used wireguard-go); link delay and loss; a failure inside
-  the transit carrier, which only a BGP hold timer would find; firewall rules
-  on tunnel traffic; a site's internet access when its first uplink dies
-  (its static default route has no health check).
+  kernel (the lab used wireguard-go); link delay and loss; the ISPs' filters
+  against a prefix they should refuse; firewall rules on tunnel traffic; a
+  site's internet access when its first uplink dies (its static default route
+  has no health check).
 
 ### 7.2 `multisite-stamp`: four sites from one plant
 
@@ -666,7 +729,7 @@ Kit: [spikes/multisite-stamp](../../spikes/multisite-stamp/README.md).
 ### 7.3 A `config` list for the `vrouter` app
 
 Patch: [spikes/wan-bgp/patches/vrouter-config-passthrough.patch](../../spikes/wan-bgp/patches/vrouter-config-passthrough.patch),
-against sceptre-phenix `main` at `86fd732`.
+against sceptre-phenix at `86fd732` (the head of `main` on 2026-11-22).
 
 ```yaml
 - name: vrouter
@@ -685,10 +748,14 @@ against sceptre-phenix `main` at `86fd732`.
   script. On a router that is not VyOS, `config` is an error.
 - **Tested.** 167 lines with three unit tests (one rendering, one without the
   option, ten refused inputs). `go test ./app ./tmpl` passes.
+- **For the fork too.** The range pins the fork branch `ci-e2e-minimega`,
+  whose `vrouter.go` is older, so the patch does not apply there.
+  [vrouter-config-passthrough.ci-e2e-minimega.patch](../../spikes/wan-bgp/patches/vrouter-config-passthrough.ci-e2e-minimega.patch)
+  is the same change for that branch at `afbcba7` (159 lines, two tests), and
+  `go test ./app ./tmpl` passes there as well.
 - **Not tested.** No VyOS router has taken a rendered file. The lint that
-  phenix's CI runs (`golangci-lint`) did not run. The patch does not apply to
-  the fork branch `ci-e2e-minimega` that the range pins, whose `vrouter.go`
-  is older.
+  phenix's CI runs (`golangci-lint`) did not run. The patches are files in
+  this repository, not a branch of phenix.
 
 ## 8. Stages
 
@@ -717,12 +784,14 @@ lead to stage 4 (the fleet at mix M4). Stage 1 (the VyOS spike) leads to stage
 | 0 | The single site's first run on a phenix host. It is [FUTURE_WORK.md](../FUTURE_WORK.md#the-first-run-on-a-phenix-host) already, and the fleet depends on it | One site passes SoH, and its host load is recorded |
 | 1 | A spike on VyOS VMs in CI, as `vyos-ipsec` ran: two VyOS routers and an FRR router, with R1's `config` list carrying the commands of [spikes/wan-bgp/vyos-sketch](../../spikes/wan-bgp/vyos-sketch) (BGP, BFD, a WireGuard tunnel with a mark pin), then the same with a VTI | The commit succeeds at first boot; BGP comes up in the tunnel; a blocked link fails over and comes back. This settles D2 and D3 |
 | 2 | The `wan` variant: `wan.yaml`, its generator, the `cm-frr` image, the four site edges, a host at each site | The lab's checks pass on VMs, as SoH tests and a SCORCH run for each fault |
-| 3 | Sites in plantgen, `sync.py`, the app, and the FUXA builder | The `lite` variant generates as a prefixed site and boots alone |
+| 3 | Sites in plantgen, `sync.py`, the app, and the FUXA builder | The `lite` variant generates as a prefixed site and passes the offline checks; after stage 0, it boots alone |
 | 4 | The `fleet` variant at mix M4: the site files, the head-office services, the cross-site conduits, `netcheck` for the fleet | Every conduit and every blocked path passes SoH across the VPN |
 | 5 | Measure the host with M4 running, then promote sites | The host's load and steal time are recorded for each mix |
 
-Stages 1, 2, and 3 do not need a phenix host with 512 GB, and they do not
-depend on each other or on stage 0.
+Stage 1 runs on a GitHub runner, as the Phase 0 VM spikes did. Stage 2 follows
+it and is about 20 small VMs. Stage 3 is generator work with offline checks,
+and does not wait for anything; booting its one site is stage 0's risk again,
+so that part follows stage 0.
 
 ## 9. Decisions needed
 
@@ -737,8 +806,8 @@ depend on each other or on stage 0.
 | D7 | Monitoring of the other sites | Central with the out-of-band mirror, a sensor at each site, or none ([4.6](#46-what-the-head-office-does)) | **Central** to start |
 | D8 | The simulation | A federation for each site, or one for all ([4.7](#47-simulation)) | **One for each site** |
 | D9 | The sites | The four places, their codes, and the ISP names ([section 2](#2-the-company)) | As written; the names need a check |
-| D10 | The host's memory | 512 GB, as assumed? | — |
-| D11 | The phenix patch | Open it as a branch and pull request on the fork, or keep it as a patch | **A branch**, after stage 1 |
+| D10 | The host's memory | 512 GB, as assumed? Every mix needs more than 256 GB as sized | — |
+| D11 | The phenix patch | Open it as a branch and pull request on the fork, or keep it as a patch file | **A patch file for stage 1**, which applies it in CI as the `serial-pr130` job applies its patch; a branch and pull request when the spike passes |
 | D12 | The VyOS spike | It adds a job to `cherrymountain-spikes.yml` and runs on GitHub's runners | **Run it** |
 
 ## 10. References

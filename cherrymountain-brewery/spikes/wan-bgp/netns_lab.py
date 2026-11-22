@@ -486,6 +486,11 @@ def frr_config(router: Router) -> str:
             activate += [
                 f"  neighbor {address} route-map DEFAULT-ONLY in",
                 f"  neighbor {address} route-map OWN-ONLY out",
+                # Keep what the ISP sent, so that a change of policy is applied to
+                # the stored routes and asks the ISP for nothing. FRR leaves the
+                # default route out of its answer to a refresh that arrives just
+                # after a session comes up (README.md, finding 7).
+                f"  neighbor {address} soft-reconfiguration inbound",
             ]
             continue
         inbound = f"FROM-{relation.upper()}"
@@ -1095,6 +1100,15 @@ def run_checks(mode: str) -> Evidence:
         "the head office installs a default route through each of its two ISPs",
         hq_default == ["fr-sc", "fr-tw"],
         f"default via {', '.join(hq_default)}",
+    )
+    # A route that an ISP did not send again in a route refresh stays marked
+    # stale, and a newer FRR removes it when the refresh ends.
+    paths = vtysh_json("fr-fw-edge", "show bgp ipv4 unicast 0.0.0.0/0 json").get("paths", [])
+    stale = [path.get("peer", {}).get("peerId", "?") for path in paths if path.get("stale")]
+    check(
+        "neither default route of the head office is marked stale",
+        len(paths) == 2 and not stale,
+        f"{len(paths)} paths; stale from {', '.join(stale) or 'no ISP'}",
     )
     site_routes = {
         name: sorted(p for p, entries in routes(name).items() if entries[0].get("protocol") == "bgp")

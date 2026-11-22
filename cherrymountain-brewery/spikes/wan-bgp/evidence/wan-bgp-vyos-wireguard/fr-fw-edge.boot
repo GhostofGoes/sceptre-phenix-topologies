@@ -1,0 +1,111 @@
+#!/bin/vbash
+source /opt/vyatta/etc/functions/script-template
+configure
+# ------------------------------ Interfaces -------------------------------
+set interface ethernet eth0 address 203.0.113.2/30
+set interface ethernet eth1 address 198.18.101.2/30
+set interface ethernet eth2 address 10.20.30.1/24
+# ---------------------------------- SNAT ---------------------------------
+# ---------------------------------- DNAT ---------------------------------
+# ----------------------------- Traffic-Policy ----------------------------
+# -------------------------------- Firewall -------------------------------
+# --------------------------------- Routes --------------------------------
+# ---------------------------------- OSPF ---------------------------------
+# --------------------------------- IPsec ---------------------------------
+# -------------------------------- Services -------------------------------
+# SSH
+# NTP
+delete service ntp
+# SNMP
+# --------------------------------- System --------------------------------
+set system host-name fr-fw-edge
+# ------------------------------ Extra config -----------------------------
+set protocols bfd profile WAN interval transmit 1000
+set protocols bfd profile WAN interval receive 1000
+set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list SITE-NETS rule 10 action permit
+set policy prefix-list SITE-NETS rule 10 prefix 10.0.0.0/8
+set policy prefix-list SITE-NETS rule 10 ge 16
+set policy prefix-list SITE-NETS rule 10 le 24
+set policy route-map OVERLAY-PRIMARY rule 10 action permit
+set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP rule 10 action permit
+set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
+set policy route-map OVERLAY-OUT rule 10 action permit
+set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
+set protocols bgp system-as 64505
+set protocols bgp parameters router-id 198.18.105.1
+set protocols bgp parameters log-neighbor-changes
+set protocols bgp address-family ipv4-unicast network 10.10.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.20.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.30.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.40.0.0/16
+set interfaces dummy dum0 address 198.18.105.1/32
+set policy prefix-list DEFAULT rule 10 action permit
+set policy prefix-list DEFAULT rule 10 prefix 0.0.0.0/0
+set policy prefix-list OWN rule 10 action permit
+set policy prefix-list OWN rule 10 prefix 198.18.105.0/24
+set policy route-map DEFAULT-ONLY rule 10 action permit
+set policy route-map DEFAULT-ONLY rule 10 match ip address prefix-list DEFAULT
+set policy route-map OWN-ONLY rule 10 action permit
+set policy route-map OWN-ONLY rule 10 match ip address prefix-list OWN
+set policy route-map SET-SOURCE rule 10 action permit
+set policy route-map SET-SOURCE rule 10 match ip address prefix-list DEFAULT
+set policy route-map SET-SOURCE rule 10 set src 198.18.105.1
+set policy route-map SET-SOURCE rule 20 action permit
+set system ip protocol bgp route-map SET-SOURCE
+set protocols bgp parameters bestpath as-path multipath-relax
+set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2
+set protocols bgp address-family ipv4-unicast network 198.18.105.0/24
+set protocols static route 198.18.105.0/24 blackhole distance 250
+set protocols bgp neighbor 203.0.113.1 remote-as 64500
+set protocols bgp neighbor 203.0.113.1 description 'ShadeCast Cable'
+set protocols bgp neighbor 203.0.113.1 timers keepalive 3
+set protocols bgp neighbor 203.0.113.1 timers holdtime 9
+set protocols bgp neighbor 203.0.113.1 timers connect 5
+set protocols bgp neighbor 203.0.113.1 bfd profile WAN
+set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map import DEFAULT-ONLY
+set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map export OWN-ONLY
+set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast soft-reconfiguration inbound
+set protocols bgp neighbor 198.18.101.1 remote-as 64501
+set protocols bgp neighbor 198.18.101.1 description 'Tumbleweed Fiber'
+set protocols bgp neighbor 198.18.101.1 timers keepalive 3
+set protocols bgp neighbor 198.18.101.1 timers holdtime 9
+set protocols bgp neighbor 198.18.101.1 timers connect 5
+set protocols bgp neighbor 198.18.101.1 bfd profile WAN
+set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map import DEFAULT-ONLY
+set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map export OWN-ONLY
+set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast soft-reconfiguration inbound
+set interfaces wireguard wg101 description 'hc-a over ShadeCast Cable'
+set interfaces wireguard wg101 address 10.255.0.0/31
+set interfaces wireguard wg101 private-key 'REDACTED'
+set interfaces wireguard wg101 peer hc-a public-key 'REDACTED'
+set interfaces wireguard wg101 peer hc-a allowed-ips 0.0.0.0/0
+set interfaces wireguard wg101 port 51821
+set protocols bgp neighbor 10.255.0.1 remote-as 65020
+set protocols bgp neighbor 10.255.0.1 description 'overlay hc-a'
+set protocols bgp neighbor 10.255.0.1 timers keepalive 3
+set protocols bgp neighbor 10.255.0.1 timers holdtime 9
+set protocols bgp neighbor 10.255.0.1 timers connect 5
+set protocols bgp neighbor 10.255.0.1 bfd profile WAN
+set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
+set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map export OVERLAY-OUT
+set interfaces wireguard wg102 description 'hc-b over Tumbleweed Fiber'
+set interfaces wireguard wg102 address 10.255.0.2/31
+set interfaces wireguard wg102 private-key 'REDACTED'
+set interfaces wireguard wg102 peer hc-b public-key 'REDACTED'
+set interfaces wireguard wg102 peer hc-b allowed-ips 0.0.0.0/0
+set interfaces wireguard wg102 port 51822
+set protocols bgp neighbor 10.255.0.3 remote-as 65020
+set protocols bgp neighbor 10.255.0.3 description 'overlay hc-b'
+set protocols bgp neighbor 10.255.0.3 timers keepalive 3
+set protocols bgp neighbor 10.255.0.3 timers holdtime 9
+set protocols bgp neighbor 10.255.0.3 timers connect 5
+set protocols bgp neighbor 10.255.0.3 bfd profile WAN
+set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map import OVERLAY-BACKUP
+set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map export OVERLAY-OUT
+commit
+save
+exit

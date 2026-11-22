@@ -10,7 +10,7 @@ name: CherryMountain spikes
 
 on:
   push:
-    branches: ['feat-secret-topo']
+    branches: ['feat-secret-topo', 'test-wan-bgp-vyos']
     paths:
       - 'cherrymountain-brewery/spikes/**'
       - '.github/actions/cm-lab/**'
@@ -94,10 +94,12 @@ jobs:
         id: select
         env:
           SPIKES: ${{ inputs.spikes }}
+          # A push to the test branch of the wan-bgp spike runs that spike only.
+          BRANCH_SPIKES: ${{ github.ref_name == 'test-wan-bgp-vyos' && 'wan-bgp-vyos' || '' }}
         run: |
           set -euo pipefail
           all='vyos-ipsec bbmd-netns bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror wan-bgp-vyos'
-          read -r -a want <<<"${SPIKES:-$all}"
+          read -r -a want <<<"${SPIKES:-${BRANCH_SPIKES:-$all}}"
           for n in "${want[@]}"; do
             [[ " $all " == *" $n "* ]] || { echo "::error::unknown spike '$n'"; exit 1; }
           done

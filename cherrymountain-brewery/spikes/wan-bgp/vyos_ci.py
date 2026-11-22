@@ -20,9 +20,10 @@ Checked, in order:
   4. the two WireGuard tunnels, the mark that ties each to an uplink, and BGP
      with BFD inside them;
   5. a host at the site reaches a host at the head office through the tunnel;
-  6. silent faults on ShadeCast (the site's uplink, then the head office's) and
-     the site's uplink set down: where the traffic goes, how long it takes, and
-     whether a tunnel endpoint moves.
+  6. silent faults on ShadeCast (the site's uplink, then the head office's),
+     the site's uplink set down, and a silence of 200 s: where the traffic
+     goes, how long it takes, whether a tunnel endpoint moves, and whether a
+     tunnel that was given up comes back.
 """
 
 from __future__ import annotations
@@ -34,6 +35,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -223,6 +225,7 @@ def expected_sessions(router: model.Router) -> int:
 
 
 PING_INTERVAL_S: float = 0.2
+LONG_SILENCE_S: int = 200
 
 HQ: str = "fr-fw-edge"
 JOURNAL: str = (
@@ -455,7 +458,9 @@ def faults(lab: Lab) -> None:
     moved, detail = wait_tunnel(lab, backup, 40)
     lookup = lab.shell("hc-fw-edge", pin_lookup(first))
     # Long enough for WireGuard's keepalive and handshake retries, and for IKE's.
-    leak = lab.shell("hc-fw-edge", "sleep 20; nft list table inet cmleak 2>&1; nft delete table inet cmleak", wait_s=120)
+    leak = lab.shell(
+        "hc-fw-edge", "sleep 20; nft list table inet cmleak 2>&1; nft delete table inet cmleak", wait_s=120
+    )
     leaked = sum(int(count) for count in re.findall(r"counter packets (\d+)", leak))
     lab.check(
         "with its uplink's link down, a tunnel does not move to the other uplink",
@@ -466,6 +471,30 @@ def faults(lab: Lab) -> None:
     lab.shell("hc-fw-edge", f"ip link set {uplink} up; echo up")
     back, detail = wait_tunnel(lab, primary, 90)
     lab.check("the tunnel returns when the link does", back, detail)
+
+    # A long silence on the site's ShadeCast uplink: longer than IKEv2 goes on
+    # retransmitting before it gives a peer up (about 165 s with strongSwan's
+    # defaults) and longer than a WireGuard session key is used (180 s).
+    if KIND == vyos_sketch.WIREGUARD:
+        tunnel_state = f"wg show {primary} latest-handshakes; date +%s"
+    else:
+        tunnel_state = f"swanctl --list-sas 2>&1 | grep -E '^[a-z]|INSTALLED'; ip -br link show {primary}"
+    blackhole(lab, "shadecast", eth["hc-fw-edge"])
+    moved, detail = wait_tunnel(lab, backup, 40)
+    for _ in range(4):
+        lab.shell("hc-fw-edge", "sleep 50; echo waited", wait_s=120)
+    before = " ".join(lab.shell("hc-fw-edge", tunnel_state).split())
+    drops = heal(lab, "shadecast")
+    healed = time.monotonic()
+    back, detail = wait_tunnel(lab, primary, 300)
+    took = time.monotonic() - healed
+    after = " ".join(lab.shell("hc-fw-edge", tunnel_state).split())
+    lab.check(
+        f"after {LONG_SILENCE_S} s of silence on its uplink, the first tunnel comes back by itself",
+        moved and back,
+        f"on {detail} {took:.0f} s after the repair (the fault dropped {drops} packets). "
+        f"The first tunnel before the repair: {before[:500]}. After: {after[:500]}",
+    )
     intact, detail = tunnels_intact(lab)
     lab.check("both tunnels are as configured after all the faults", intact, detail)
 

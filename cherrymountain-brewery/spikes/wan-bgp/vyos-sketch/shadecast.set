@@ -18,6 +18,7 @@ set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
 set policy route-map TO-CUSTOMER rule 10 action permit
 set protocols bgp system-as 64500
 set protocols bgp parameters router-id 203.0.113.254
+set protocols bgp parameters log-neighbor-changes
 set policy prefix-list OWN rule 10 action permit
 set policy prefix-list OWN rule 10 prefix 203.0.113.0/24
 set policy route-map FROM-CUSTOMER rule 10 action permit

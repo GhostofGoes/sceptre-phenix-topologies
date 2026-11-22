@@ -27,12 +27,27 @@ OUT: Path = Path(__file__).resolve().parent / "vyos-sketch"
 # missed. The lab's namespaces use 300 ms.
 BFD_INTERVAL_MS: int = 1000
 
+WIREGUARD: str = "wireguard"
+# Route-based IPsec: IKEv2 with a pre-shared key, and a VTI for each tunnel.
+VTI: str = "vti"
+
 # (tunnel, "hub" or "site") -> (this side's private key, the other side's public key)
 Keys = Callable[[lab.Tunnel, str], tuple[str, str]]
+# tunnel -> its pre-shared key
+PreSharedKey = Callable[[lab.Tunnel], str]
 
 
 def placeholder_keys(_tunnel: lab.Tunnel, _side: str) -> tuple[str, str]:
     return "PRIVATE-KEY-OF-THIS-ROUTER", "PUBLIC-KEY-OF-THE-PEER"
+
+
+def placeholder_psk(_tunnel: lab.Tunnel) -> str:
+    return "PRE-SHARED-KEY-OF-THIS-TUNNEL"
+
+
+def tunnel_if(kind: str, tunnel: lab.Tunnel) -> str:
+    """The name of a tunnel's interface on a VyOS router."""
+    return f"{'wg' if kind == WIREGUARD else 'vti'}{tunnel.mark()}"
 
 
 def reduce_lab() -> None:
@@ -197,7 +212,72 @@ def isp_sketch(router: lab.Router) -> list[str]:
     return lines
 
 
-def sketch(router: lab.Router, keys: Keys = placeholder_keys) -> list[str]:
+def ipsec_groups() -> list[str]:
+    """The IKE and ESP groups of the VTI tunnels."""
+    return [
+        # strongSwan would otherwise install a route for each tunnel's selectors.
+        "set vpn ipsec options disable-route-autoinstall",
+        "set vpn ipsec ike-group WAN key-exchange ikev2",
+        "set vpn ipsec ike-group WAN lifetime 28800",
+        "set vpn ipsec ike-group WAN close-action start",
+        "set vpn ipsec ike-group WAN dead-peer-detection action restart",
+        "set vpn ipsec ike-group WAN dead-peer-detection interval 10",
+        "set vpn ipsec ike-group WAN dead-peer-detection timeout 30",
+        # MOBIKE would let a tunnel move to another address pair, as a WireGuard endpoint roams.
+        "set vpn ipsec ike-group WAN disable-mobike",
+        "set vpn ipsec ike-group WAN proposal 10 dh-group 14",
+        "set vpn ipsec ike-group WAN proposal 10 encryption aes256",
+        "set vpn ipsec ike-group WAN proposal 10 hash sha256",
+        "set vpn ipsec esp-group WAN lifetime 3600",
+        "set vpn ipsec esp-group WAN pfs dh-group14",
+        "set vpn ipsec esp-group WAN proposal 10 encryption aes256",
+        "set vpn ipsec esp-group WAN proposal 10 hash sha256",
+    ]
+
+
+def vti_tunnel(router: lab.Router, tunnel: lab.Tunnel, psk: PreSharedKey) -> list[str]:
+    """One route-based IPsec tunnel on a site edge."""
+    at_hub = router.name == tunnel.hub
+    _isp, gateway, uplink = lab.peer_of(lab.link_of(tunnel.site, tunnel.via), tunnel.site)
+    local, remote = (lab.HUB_ENDPOINT, uplink) if at_hub else (uplink, lab.HUB_ENDPOINT)
+    own = tunnel.hub_address() if at_hub else tunnel.site_address()
+    vti = tunnel_if(VTI, tunnel)
+    peer = f"set vpn ipsec site-to-site peer {tunnel.name}"
+    lines = [
+        f"set interfaces vti {vti} description '{tunnel.name} over {lab.BY_NAME[tunnel.via].title}'",
+        f"set interfaces vti {vti} address {own}/{ipaddress.ip_network(tunnel.net).prefixlen}",
+        f"set vpn ipsec authentication psk {tunnel.name} id '{local}'",
+        f"set vpn ipsec authentication psk {tunnel.name} id '{remote}'",
+        f"set vpn ipsec authentication psk {tunnel.name} secret '{psk(tunnel)}'",
+        f"{peer} authentication mode pre-shared-secret",
+        f"{peer} authentication local-id '{local}'",
+        f"{peer} authentication remote-id '{remote}'",
+        # The site opens the tunnel; the head office answers.
+        f"{peer} connection-type {'none' if at_hub else 'initiate'}",
+        f"{peer} ike-group WAN",
+        f"{peer} default-esp-group WAN",
+        f"{peer} local-address {local}",
+        f"{peer} remote-address {remote}",
+        f"{peer} vti bind {vti}",
+        f"{peer} vti esp-group WAN",
+    ]
+    if not at_hub:
+        mark = tunnel.mark()
+        lines += [
+            # The pin: the tunnel's packets leave from this uplink's address, a
+            # rule sends that source to its own table, and the table holds this
+            # uplink and, behind it, a blackhole.
+            f"set policy local-route rule {mark} source address {uplink}",
+            f"set policy local-route rule {mark} set table {mark}",
+            f"set protocols static table {mark} route 0.0.0.0/0 next-hop {gateway}",
+            f"set protocols static table {mark} route 0.0.0.0/0 blackhole distance 250",
+        ]
+    return lines
+
+
+def sketch(
+    router: lab.Router, keys: Keys = placeholder_keys, kind: str = WIREGUARD, psk: PreSharedKey = placeholder_psk
+) -> list[str]:
     """A site edge: the head office, or a site with ISP-assigned addresses."""
     hub = router.multipath
     lines: list[str] = [
@@ -243,15 +323,22 @@ def sketch(router: lab.Router, keys: Keys = placeholder_keys) -> list[str]:
         for index, (_eth, _link, _isp, gateway, _own) in enumerate(uplinks(router)):
             lines.append(f"set protocols static route 0.0.0.0/0 next-hop {gateway} distance {10 * (index + 1)}")
 
+    if kind == VTI:
+        lines += ipsec_groups()
     for tunnel in lab.TUNNELS:
         if router.name not in (tunnel.hub, tunnel.site):
             continue
-        wg = f"wg{tunnel.mark()}"
+        wg = tunnel_if(WIREGUARD, tunnel)
         at_hub = router.name == tunnel.hub
         own = tunnel.hub_address() if at_hub else tunnel.site_address()
         peer = tunnel.site_address() if at_hub else tunnel.hub_address()
         peer_as = lab.BY_NAME[tunnel.site if at_hub else tunnel.hub].asn
         prefix = ipaddress.ip_network(tunnel.net).prefixlen
+        policy = "OVERLAY-PRIMARY" if tunnel.primary else "OVERLAY-BACKUP"
+        if kind == VTI:
+            lines += vti_tunnel(router, tunnel, psk)
+            lines += neighbor(peer, peer_as, f"overlay {tunnel.name}", policy, "OVERLAY-OUT")
+            continue
         private_key, public_key = keys(tunnel, "hub" if at_hub else "site")
         lines += [
             f"set interfaces wireguard {wg} description '{tunnel.name} over {lab.BY_NAME[tunnel.via].title}'",
@@ -280,7 +367,6 @@ def sketch(router: lab.Router, keys: Keys = placeholder_keys) -> list[str]:
                 f"set protocols static table {mark} route 0.0.0.0/0 next-hop {gateway}",
                 f"set protocols static table {mark} route 0.0.0.0/0 blackhole distance 250",
             ]
-        policy = "OVERLAY-PRIMARY" if tunnel.primary else "OVERLAY-BACKUP"
         lines += neighbor(peer, peer_as, f"overlay {tunnel.name}", policy, "OVERLAY-OUT")
     return lines
 
@@ -289,9 +375,11 @@ def is_site_edge(router: lab.Router) -> bool:
     return any(router.name in (tunnel.hub, tunnel.site) for tunnel in lab.TUNNELS)
 
 
-def commands(router: lab.Router, keys: Keys = placeholder_keys) -> list[str]:
+def commands(
+    router: lab.Router, keys: Keys = placeholder_keys, kind: str = WIREGUARD, psk: PreSharedKey = placeholder_psk
+) -> list[str]:
     """The `config` list of one router, checked against the patch's rule for a line."""
-    lines = sketch(router, keys) if is_site_edge(router) else isp_sketch(router)
+    lines = sketch(router, keys, kind, psk) if is_site_edge(router) else isp_sketch(router)
     for line in lines:
         if why := refused(line):
             raise ValueError(f"{router.name}: `{line}` {why}")
@@ -324,6 +412,11 @@ def main() -> int:
         lines = commands(router)
         (OUT / f"{router.name}.set").write_text("\n".join(lines) + "\n")
         print(f"{router.name}: {len(lines)} commands")
+        if is_site_edge(router):
+            # The same edge with route-based IPsec in place of WireGuard.
+            lines = commands(router, kind=VTI)
+            (OUT / f"{router.name}.vti.set").write_text("\n".join(lines) + "\n")
+            print(f"{router.name}, VTI: {len(lines)} commands")
     return 0
 
 

@@ -39,10 +39,11 @@ on:
 
 permissions: {}
 
-# A newer push supersedes the run in progress for the same ref.
+# A newer push supersedes the run in progress for the same ref. On the wan-bgp test
+# branch it waits its turn instead: a cancelled run would lose its image builds.
 concurrency:
   group: cherrymountain-spikes-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref_name != 'test-wan-bgp-vyos' }}
 
 env:
   PHENIX_REPOSITORY: GhostofGoes/sceptre-phenix

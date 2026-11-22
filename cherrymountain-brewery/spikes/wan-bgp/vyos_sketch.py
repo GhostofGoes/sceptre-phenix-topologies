@@ -323,6 +323,13 @@ def sketch(
         ]
         for _eth, _link, isp, gateway, _own in uplinks(router):
             lines += neighbor(gateway, lab.BY_NAME[isp].asn, lab.BY_NAME[isp].title, "DEFAULT-ONLY", "OWN-ONLY")
+            # Keep what the ISP sent, so that a change of policy is applied to
+            # the stored routes and asks the ISP for nothing: FRR leaves the
+            # default route out of its answer to a route refresh that arrives
+            # just after a session comes up, and the head office then drops it.
+            lines.append(
+                f"set protocols bgp neighbor {gateway} address-family ipv4-unicast soft-reconfiguration inbound"
+            )
     else:
         # ISP-assigned addresses: a default route for each uplink, the first preferred.
         for index, (_eth, _link, _isp, gateway, _own) in enumerate(uplinks(router)):

@@ -58,6 +58,7 @@ set protocols bgp neighbor 10.255.0.8 remote-as 64505
 set protocols bgp neighbor 10.255.0.8 description 'overlay gc-a'
 set protocols bgp neighbor 10.255.0.8 timers keepalive 3
 set protocols bgp neighbor 10.255.0.8 timers holdtime 9
+set protocols bgp neighbor 10.255.0.8 timers connect 5
 set protocols bgp neighbor 10.255.0.8 bfd profile WAN
 set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
 set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map export OVERLAY-OUT

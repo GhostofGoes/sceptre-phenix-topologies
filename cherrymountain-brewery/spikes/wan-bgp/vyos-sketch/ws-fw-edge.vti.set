@@ -59,6 +59,7 @@ set protocols bgp neighbor 10.255.0.4 remote-as 64505
 set protocols bgp neighbor 10.255.0.4 description 'overlay ws-a'
 set protocols bgp neighbor 10.255.0.4 timers keepalive 3
 set protocols bgp neighbor 10.255.0.4 timers holdtime 9
+set protocols bgp neighbor 10.255.0.4 timers connect 5
 set protocols bgp neighbor 10.255.0.4 bfd profile WAN
 set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
 set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map export OVERLAY-OUT
@@ -85,6 +86,7 @@ set protocols bgp neighbor 10.255.0.6 remote-as 64505
 set protocols bgp neighbor 10.255.0.6 description 'overlay ws-b'
 set protocols bgp neighbor 10.255.0.6 timers keepalive 3
 set protocols bgp neighbor 10.255.0.6 timers holdtime 9
+set protocols bgp neighbor 10.255.0.6 timers connect 5
 set protocols bgp neighbor 10.255.0.6 bfd profile WAN
 set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map import OVERLAY-BACKUP
 set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map export OVERLAY-OUT

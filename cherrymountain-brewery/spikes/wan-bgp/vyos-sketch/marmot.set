@@ -38,5 +38,6 @@ set protocols bgp neighbor 198.18.0.21 remote-as 64501
 set protocols bgp neighbor 198.18.0.21 description 'Tumbleweed Fiber'
 set protocols bgp neighbor 198.18.0.21 timers keepalive 3
 set protocols bgp neighbor 198.18.0.21 timers holdtime 9
+set protocols bgp neighbor 198.18.0.21 timers connect 5
 set protocols bgp neighbor 198.18.0.21 address-family ipv4-unicast route-map import FROM-PROVIDER
 set protocols bgp neighbor 198.18.0.21 address-family ipv4-unicast route-map export TO-UPSTREAM

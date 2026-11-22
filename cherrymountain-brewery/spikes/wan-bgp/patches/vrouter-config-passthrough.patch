@@ -1,0 +1,229 @@
+diff --git a/docs/content/apps.md b/docs/content/apps.md
+index 8d1d5d4..38d0372 100644
+--- a/docs/content/apps.md
++++ b/docs/content/apps.md
+@@ -768,6 +768,22 @@ spec:
+     * `reordering`: percentage of reordered packets for interface and direction
+       this traffic policy is applied to, from 0 to 100.
+ 
++* `config`: if present, a list of VyOS configuration commands that phēnix
++  writes after the configuration it generates and before the commit. Use it
++  for what the other options cannot express, for example BGP, tunnel
++  interfaces, or logging. Each line is one `set` or `delete` command. A line
++  that starts with anything else is an error, and so is a line with a control
++  character, a double quote, or a character the shell acts on (such as `;`,
++  `$`, or a backtick) outside single quotes. Only VyOS routers accept it: on
++  any other router it is an error.
++
++    ``` yaml title="vrouter config example"
++    config:
++      - set protocols bgp system-as 64505
++      - set protocols bgp neighbor 203.0.113.1 remote-as 64500
++      - set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast
++    ```
++
+ !!! important
+     The `ingress` and `egress` setting for ACLs are from the perspective of the
+     network segment the specified interface is connected to, not from the
+diff --git a/src/go/app/vrouter.go b/src/go/app/vrouter.go
+index 283f7cc..47d715a 100644
+--- a/src/go/app/vrouter.go
++++ b/src/go/app/vrouter.go
+@@ -42,6 +42,7 @@ var (
+ 	ErrNATInterfaceAddress = errors.New("nat inside interface has no valid address")
+ 	ErrEmulatorInterface   = errors.New("emulator interface not found")
+ 	ErrUnsafeVyosPassword  = errors.New("vyos password cannot be written safely")
++	ErrVyosConfigLine      = errors.New("vyos config line is not valid")
+ )
+ 
+ type ACLConfig struct {
+@@ -364,6 +365,17 @@ func (v *Vrouter) PreStart(ctx context.Context, exp *types.Experiment) error {
+ 						data["snat"] = sources
+ 						data["dnat"] = destinations
+ 
++						config, err := vyosConfigLines(md, isVyos)
++						if err != nil {
++							return fmt.Errorf(
++								"processing config metadata for host %s: %w",
++								host.Hostname(),
++								err,
++							)
++						}
++
++						data["config"] = config
++
+ 						break
+ 					}
+ 				}
+@@ -737,6 +749,56 @@ func vyosPassword(val any) (string, error) {
+ 	}
+ }
+ 
++// vyosConfigLines returns the `config` metadata of a router: VyOS
++// configuration commands that the template writes after everything it
++// generates itself, before the commit. Each line is one `set` or `delete`
++// command. The rendered file is a vbash script, so a line may not hold
++// anything the shell would act on outside single quotes.
++func vyosConfigLines(md map[string]any, isVyos bool) ([]string, error) {
++	raw, ok := md["config"]
++	if !ok {
++		return nil, nil
++	}
++
++	if !isVyos {
++		return nil, fmt.Errorf("%w: config is only supported for os_type vyos", ErrVyosConfigLine)
++	}
++
++	var lines []string
++
++	err := mapstructure.Decode(raw, &lines)
++	if err != nil {
++		return nil, fmt.Errorf("decoding config lines: %w", err)
++	}
++
++	for idx, line := range lines {
++		if !strings.HasPrefix(line, "set ") && !strings.HasPrefix(line, "delete ") {
++			return nil, fmt.Errorf("%w: line %d does not start with set or delete", ErrVyosConfigLine, idx)
++		}
++
++		quoted := false
++
++		for _, r := range line {
++			switch {
++			case unicode.IsControl(r):
++				return nil, fmt.Errorf("%w: line %d has a control character", ErrVyosConfigLine, idx)
++			case r == '\'':
++				quoted = !quoted
++			case !quoted && strings.ContainsRune("\"`$;|&<>(){}\\#!*?~", r):
++				return nil, fmt.Errorf(
++					"%w: line %d has %q outside single quotes", ErrVyosConfigLine, idx, r,
++				)
++			}
++		}
++
++		if quoted {
++			return nil, fmt.Errorf("%w: line %d has an unclosed single quote", ErrVyosConfigLine, idx)
++		}
++	}
++
++	return lines, nil
++}
++
+ func (Vrouter) processSNMP(md map[string]any) (*SNMPConfig, error) {
+ 	raw, ok := md["snmp"]
+ 	if !ok {
+diff --git a/src/go/app/vrouter_internal_test.go b/src/go/app/vrouter_internal_test.go
+index 4805252..3ccf301 100644
+--- a/src/go/app/vrouter_internal_test.go
++++ b/src/go/app/vrouter_internal_test.go
+@@ -1064,3 +1064,85 @@ func TestVrouterProcessIPSec(t *testing.T) {
+ 		t.Errorf("preshared key for another site pair = %q, want a new key", got)
+ 	}
+ }
++
++// TestVrouterPreStartVyosConfig verifies that the `config` metadata of a VyOS
++// router is written verbatim after the generated configuration and before the
++// commit, so that it can add what the template cannot render (BGP, tunnel
++// interfaces) and can override what it does render.
++func TestVrouterPreStartVyosConfig(t *testing.T) {
++	t.Parallel()
++
++	md := map[string]any{"config": []any{
++		"set protocols bgp system-as 64505",
++		"set protocols bgp neighbor 203.0.113.1 remote-as 64500",
++		"set policy as-path-list TRANSIT rule 10 regex '^64500_'",
++		"delete service ntp",
++	}}
++	got := renderVrouter(t, vrouterExperiment(t, vrouterScenario(vrouterApp(md)), vrouterNode("rtr", osTypeVyos)))
++
++	want := "# ------------------------------ Extra config -----------------------------\n" +
++		"set protocols bgp system-as 64505\n" +
++		"set protocols bgp neighbor 203.0.113.1 remote-as 64500\n" +
++		"set policy as-path-list TRANSIT rule 10 regex '^64500_'\n" +
++		"delete service ntp\n" +
++		"commit\n" +
++		"save\n" +
++		"exit"
++	if !strings.HasSuffix(strings.TrimRight(got, "\n"), want) {
++		t.Errorf("rendered config does not end with the extra config and the commit:\n%q", got[max(0, len(got)-len(want)-20):])
++	}
++
++	if hostname := strings.Index(got, "set system host-name rtr"); hostname < 0 ||
++		hostname > strings.Index(got, "set protocols bgp system-as") {
++		t.Errorf("extra config is not after the generated configuration:\n%s", got)
++	}
++}
++
++// TestVrouterPreStartVyosConfigAbsent verifies that a router without `config`
++// metadata gets no extra config section.
++func TestVrouterPreStartVyosConfigAbsent(t *testing.T) {
++	t.Parallel()
++
++	got := renderVrouter(t, vrouterExperiment(t, vrouterScenario(vrouterApp(map[string]any{})), vrouterNode("rtr", osTypeVyos)))
++	if strings.Contains(got, "Extra config") {
++		t.Errorf("rendered config has an extra config section without config metadata:\n%s", got)
++	}
++}
++
++// TestVrouterPreStartVyosConfigErrors verifies that PreStart refuses a config
++// line the vbash script would not run as one VyOS command, and config on a
++// router that is not VyOS.
++func TestVrouterPreStartVyosConfigErrors(t *testing.T) {
++	t.Parallel()
++
++	tests := []struct {
++		name   string
++		osType string
++		lines  any
++	}{
++		{name: "not set or delete", osType: osTypeVyos, lines: []any{"commit"}},
++		{name: "shell command", osType: osTypeVyos, lines: []any{"reboot now"}},
++		{name: "second command", osType: osTypeVyos, lines: []any{"set system host-name a; reboot"}},
++		{name: "command substitution", osType: osTypeVyos, lines: []any{"set system host-name $(hostname)"}},
++		{name: "backtick", osType: osTypeVyos, lines: []any{"set system host-name `hostname`"}},
++		{name: "newline", osType: osTypeVyos, lines: []any{"set system host-name a\nreboot"}},
++		{name: "unclosed quote", osType: osTypeVyos, lines: []any{"set system login banner pre-login 'hello"}},
++		{name: "double quote", osType: osTypeVyos, lines: []any{"set system host-name \"a\""}},
++		{name: "not a list", osType: osTypeVyos, lines: "set system host-name a"},
++		{name: "vyatta", osType: "vyatta", lines: []any{"set system host-name a"}},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			t.Parallel()
++
++			md := map[string]any{"config": tt.lines}
++			exp := vrouterExperiment(t, vrouterScenario(vrouterApp(md)), vrouterNode("rtr", tt.osType))
++
++			var v Vrouter
++			if err := v.PreStart(t.Context(), exp); err == nil {
++				t.Errorf("PreStart() with config %v error = nil, want an error", tt.lines)
++			}
++		})
++	}
++}
+diff --git a/src/go/tmpl/templates/vyatta.tmpl b/src/go/tmpl/templates/vyatta.tmpl
+index fe8fefa..c64a3c0 100644
+--- a/src/go/tmpl/templates/vyatta.tmpl
++++ b/src/go/tmpl/templates/vyatta.tmpl
+@@ -8,6 +8,7 @@
+ {{- $emulators := index . "emulators" -}}
+ {{- $snat := index . "snat" -}}
+ {{- $dnat := index . "dnat" -}}
++{{- $config := index . "config" -}}
+ {{- if $vyos -}}
+ #!/bin/vbash
+ source /opt/vyatta/etc/functions/script-template
+@@ -270,6 +271,12 @@ set system login user vyos authentication plaintext-password '{{ $passwd }}'
+ set system name-server {{ $dnsServer }}
+     {{- end }}
+ {{- end }}
++{{- if $config }}
++# ------------------------------ Extra config -----------------------------
++    {{- range $line := $config }}
++{{ $line }}
++    {{- end }}
++{{- end }}
+ commit
+ save
+ exit

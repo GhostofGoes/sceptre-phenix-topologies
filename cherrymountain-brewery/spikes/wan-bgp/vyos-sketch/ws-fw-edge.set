@@ -1,0 +1,58 @@
+set protocols bfd profile WAN interval transmit 1000
+set protocols bfd profile WAN interval receive 1000
+set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list SITE-NETS rule 10 action permit
+set policy prefix-list SITE-NETS rule 10 prefix 10.0.0.0/8
+set policy prefix-list SITE-NETS rule 10 ge 16
+set policy prefix-list SITE-NETS rule 10 le 24
+set policy route-map OVERLAY-PRIMARY rule 10 action permit
+set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP rule 10 action permit
+set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
+set policy route-map OVERLAY-OUT rule 10 action permit
+set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
+set protocols bgp system-as 65030
+set protocols bgp parameters router-id 10.255.3.1
+set protocols bgp address-family ipv4-unicast network 10.22.30.0/24
+set protocols static route 0.0.0.0/0 next-hop 198.18.101.9 distance 10
+set protocols static route 0.0.0.0/0 next-hop 203.0.113.17 distance 20
+set interfaces wireguard wg103 description 'ws-a over Tumbleweed Fiber'
+set interfaces wireguard wg103 address 10.255.0.5/31
+set interfaces wireguard wg103 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
+set interfaces wireguard wg103 peer ws-a public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg103 peer ws-a allowed-ips 0.0.0.0/0
+set interfaces wireguard wg103 peer ws-a address 198.18.105.1
+set interfaces wireguard wg103 peer ws-a port 51823
+set interfaces wireguard wg103 peer ws-a persistent-keepalive 5
+set interfaces wireguard wg103 fwmark 103
+set policy local-route rule 103 fwmark 103
+set policy local-route rule 103 set table 103
+set protocols static table 103 route 0.0.0.0/0 next-hop 198.18.101.9
+set protocols bgp neighbor 10.255.0.4 remote-as 64505
+set protocols bgp neighbor 10.255.0.4 description 'overlay ws-a'
+set protocols bgp neighbor 10.255.0.4 timers keepalive 3
+set protocols bgp neighbor 10.255.0.4 timers holdtime 9
+set protocols bgp neighbor 10.255.0.4 bfd profile WAN
+set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
+set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map export OVERLAY-OUT
+set interfaces wireguard wg104 description 'ws-b over ShadeCast Cable'
+set interfaces wireguard wg104 address 10.255.0.7/31
+set interfaces wireguard wg104 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
+set interfaces wireguard wg104 peer ws-b public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg104 peer ws-b allowed-ips 0.0.0.0/0
+set interfaces wireguard wg104 peer ws-b address 198.18.105.1
+set interfaces wireguard wg104 peer ws-b port 51824
+set interfaces wireguard wg104 peer ws-b persistent-keepalive 5
+set interfaces wireguard wg104 fwmark 104
+set policy local-route rule 104 fwmark 104
+set policy local-route rule 104 set table 104
+set protocols static table 104 route 0.0.0.0/0 next-hop 203.0.113.17
+set protocols bgp neighbor 10.255.0.6 remote-as 64505
+set protocols bgp neighbor 10.255.0.6 description 'overlay ws-b'
+set protocols bgp neighbor 10.255.0.6 timers keepalive 3
+set protocols bgp neighbor 10.255.0.6 timers holdtime 9
+set protocols bgp neighbor 10.255.0.6 bfd profile WAN
+set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map import OVERLAY-BACKUP
+set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map export OVERLAY-OUT

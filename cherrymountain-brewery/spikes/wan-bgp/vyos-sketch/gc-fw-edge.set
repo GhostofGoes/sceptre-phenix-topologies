@@ -1,0 +1,38 @@
+set protocols bfd profile WAN interval transmit 1000
+set protocols bfd profile WAN interval receive 1000
+set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list SITE-NETS rule 10 action permit
+set policy prefix-list SITE-NETS rule 10 prefix 10.0.0.0/8
+set policy prefix-list SITE-NETS rule 10 ge 16
+set policy prefix-list SITE-NETS rule 10 le 24
+set policy route-map OVERLAY-PRIMARY rule 10 action permit
+set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP rule 10 action permit
+set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
+set policy route-map OVERLAY-OUT rule 10 action permit
+set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
+set protocols bgp system-as 65040
+set protocols bgp parameters router-id 10.255.4.1
+set protocols bgp address-family ipv4-unicast network 10.23.30.0/24
+set protocols static route 0.0.0.0/0 next-hop 198.18.103.1 distance 10
+set interfaces wireguard wg105 description 'gc-a over Pelican Coast Broadband'
+set interfaces wireguard wg105 address 10.255.0.9/31
+set interfaces wireguard wg105 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
+set interfaces wireguard wg105 peer gc-a public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg105 peer gc-a allowed-ips 0.0.0.0/0
+set interfaces wireguard wg105 peer gc-a address 198.18.105.1
+set interfaces wireguard wg105 peer gc-a port 51825
+set interfaces wireguard wg105 peer gc-a persistent-keepalive 5
+set interfaces wireguard wg105 fwmark 105
+set policy local-route rule 105 fwmark 105
+set policy local-route rule 105 set table 105
+set protocols static table 105 route 0.0.0.0/0 next-hop 198.18.103.1
+set protocols bgp neighbor 10.255.0.8 remote-as 64505
+set protocols bgp neighbor 10.255.0.8 description 'overlay gc-a'
+set protocols bgp neighbor 10.255.0.8 timers keepalive 3
+set protocols bgp neighbor 10.255.0.8 timers holdtime 9
+set protocols bgp neighbor 10.255.0.8 bfd profile WAN
+set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
+set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map export OVERLAY-OUT

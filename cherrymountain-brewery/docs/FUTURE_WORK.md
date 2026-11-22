@@ -467,11 +467,19 @@ have no Wazuh rules.
 A `fleet` variant would put four breweries in one experiment, joined to a
 head office by a site-to-site VPN over a mock internet of five BGP networks.
 [multisite/PLANS.md](multisite/PLANS.md) has three plans for it, the choices
-behind them, and twelve decisions to take. Two spikes back it: a
-[lab of the WAN](../spikes/wan-bgp/README.md) in network namespaces, where the
-site on a failed ISP lost about one second of traffic, and a [stamp of the plant](../spikes/multisite-stamp/README.md) as
-four sites, which plantgen generates after one line changes. Nothing of it
-has run on VyOS or in a VM, and it depends on
+behind them, where its VMs run on a cluster of minimega nodes, and fifteen
+decisions to take. Three spikes back it:
+
+- a [lab of the WAN](../spikes/wan-bgp/README.md) in network namespaces, where
+  the site on a failed ISP lost about one second of traffic;
+- [the core of that WAN on four VyOS routers](../spikes/wan-bgp/README.md#the-same-wan-on-vyos-routers)
+  in CI, configured by phenix through a patch to its `vrouter` app, where the
+  site lost two to three seconds, with WireGuard and with route-based IPsec;
+- a [stamp of the plant](../spikes/multisite-stamp/README.md) as four sites,
+  which plantgen generates after one line changes.
+
+No site has run next to that WAN, nothing has run on more than one node, and
+the variant depends on
 [the first run of the single site](#the-first-run-on-a-phenix-host).
 
 ## Decided against

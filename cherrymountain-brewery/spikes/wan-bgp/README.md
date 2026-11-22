@@ -9,7 +9,9 @@ uplink ([PLANS.md](../../docs/multisite/PLANS.md) sections 4.2 to 4.5).
 ## What it builds
 
 Ten routers, each a network namespace with its own FRR (zebra, bgpd, bfdd,
-staticd), and a host behind each site edge. Nothing here is a VM.
+staticd), and a host behind each site edge. Nothing in this lab is a VM.
+[The same WAN on VyOS routers](#the-same-wan-on-vyos-routers) is the part of
+it that ran on VyOS VMs, under phenix and minimega, in CI.
 
 ```mermaid
 flowchart TB
@@ -90,7 +92,7 @@ cd cherrymountain-brewery/spikes/wan-bgp
 sudo -E python netns_lab.py                    # build, check, tear down (about 6 minutes)
 sudo -E python netns_lab.py --keep             # leave the lab up; `--down` removes it
 sudo -E python netns_lab.py --pin destination  # the first design, which drifts (finding 2)
-python vyos_sketch.py                          # the site edges as VyOS commands
+python vyos_sketch.py                          # every router as VyOS commands
 ```
 
 A kept lab is ten namespaces: `ip netns exec fr-fw-edge vtysh -N fr-fw-edge`.
@@ -133,11 +135,13 @@ site's uplink is set down, to see where its tunnel goes.
   and the mark's routing table ends in a blackhole (finding 3).
 - **Run:** in a container with no VM. Linux 6.18 with no WireGuard, no ESP,
   and no netem in the kernel; FRR 8.4.4; wireguard-go 0.0.20230223;
-  `feat-secret-topo` at `fb43c7f`. The final design ran six times. All 26
-  checks passed in the last two. The four runs before them had 23 checks, and
-  the design did not yet have the blackhole or the two last events. In two of
-  those four, one check failed for a fault of the kit: it left Pelican's
-  blackhole route in place after the hijack.
+  `feat-secret-topo` at `fb43c7f`. The final design ran seven times. The last
+  run passed all 27 checks, with the head office keeping the routes its ISPs
+  send (finding 7) and a check that neither of its default routes is stale.
+  The two runs before it passed all 26 they had. The four runs before those
+  had 23 checks, and the design did not yet have the blackhole or the two
+  last events. In two of those four, one check failed for a fault of the kit:
+  it left Pelican's blackhole route in place after the hijack.
 - **Evidence:** [evidence/wan-bgp-netns](evidence/wan-bgp-netns) has the
   summary, the result, and each router's `frr.conf` of the last run of the
   final design. [evidence/wan-bgp-netns-destination](evidence/wan-bgp-netns-destination)
@@ -223,25 +227,20 @@ which it chose from two equal customer routes.
    was about 500 MiB: bgpd 175, zebra 133, bfdd 67, wireguard-go 64,
    staticd 60.
 6. **The 13 BGP sessions came up in 8 to 9 s** from a cold start, in every run.
+7. **The head office must keep the routes its ISPs send
+   (`soft-reconfiguration inbound`), or FRR can take a default route away
+   from it at start.** The VyOS runs found this ([below](#findings-on-vyos)),
+   and the lab then showed the same thing on FRR 8.4.4: seconds after a start,
+   ShadeCast's default route at the head office was marked `(stale)`. FRR
+   8.4.4 keeps a stale route, so no check had failed. FRR 10.7.1 removes it.
+   With the setting, neither route is stale.
 
 ### What the kit did not test
 
-- **VyOS.** Every router here is FRR on Linux. [vyos-sketch](vyos-sketch) has
-  the four site edges as VyOS commands (286 in all), written by
-  `vyos_sketch.py` from the lab's own model. Each command path was read in
-  the vyos-1x source (branch `rolling`, commit `f1789c0`, 2026-11-21). None
-  has run.
-- **WireGuard in the kernel**, which VyOS uses. Its `send4`
-  (`drivers/net/wireguard/socket.c`, read on 2026-11-22) looks the route up
-  with the remembered source address and no interface. When the route leaves
-  through another interface than the packet came in on, it forgets the
-  remembered source and lets the route choose one. So finding 1 may not apply
-  there, and finding 2 applies more: without the preferred source, every reply
-  that leaves through the other ISP carries the uplink's address, fault or no
-  fault. `TODO(verify)` on a VM.
-- **IPsec.** The kernel here has no ESP. For a route-based tunnel on VyOS,
-  MOBIKE is on unless `disable-mobike` is set, and an open VyOS bug leaves a
-  VTI down after its peer reconnects ([T9154](https://vyos.dev/T9154)).
+- **VyOS, WireGuard in the kernel, and IPsec.** Every router here is FRR on
+  Linux, the tunnels are wireguard-go, and the kernel has no ESP.
+  [The same WAN on VyOS routers](#the-same-wan-on-vyos-routers) ran a part of
+  this lab on VyOS with each of them.
 - **The ISPs' filters.** No run offered an ISP a prefix it should refuse (a
   private one, one longer than a /24, or one a customer has not registered).
 - **A fault inside the transit carrier**, between its two routers.
@@ -258,20 +257,201 @@ the head office lost its ShadeCast uplink. Finding 2 is the likely cause. The
 rules now count what they drop, and each run records the internet path under
 every site's primary tunnel before and after each event.
 
-## What a spike on VyOS VMs has to show
+## The same WAN on VyOS routers
 
-Two VyOS routers (`fr-fw-edge`, `hc-fw-edge`) and the ISPs, in CI as the
-`vyos-ipsec` spike ran:
+**Question.** Does a VyOS router take this design from phenix at first boot,
+and does it then behave as the lab did, with WireGuard and with route-based
+IPsec? **Decides:** where the tunnels and BGP run at a site, how they get
+their configuration, and which tunnel
+([PLANS.md](../../docs/multisite/PLANS.md) sections 4.3 to 4.5, decisions D2
+and D3).
 
-- [ ] The commands of [vyos-sketch](vyos-sketch) commit at first boot, given
-      to phenix as the `config` list of the patched `vrouter` app
-      ([patches](patches) has the change for `main` and for the fork's
-      `ci-e2e-minimega`), or through the post-boot script.
-- [ ] BGP and BFD come up inside a WireGuard tunnel, and the mark sends each
-      tunnel through its own uplink.
-- [ ] With the kernel's WireGuard, no endpoint moves across a fault and its
-      repair.
-- [ ] A silent fault on one uplink moves the traffic, and the repair moves it
-      back.
-- [ ] The same with a VTI in place of WireGuard: does the interface come back
-      after the repair?
+### What it boots
+
+`vyos_ci.py` runs as the `wan-bgp-vyos` job of the
+[CherryMountain spikes workflow](../../../.github/workflows/cherrymountain-spikes.yml),
+on a GitHub runner with KVM and 4 vCPUs. phenix and minimega boot four VyOS
+routers (2 vCPUs and 2 GB each) and two hosts.
+
+```mermaid
+flowchart LR
+  SC["shadecast<br/>AS64500"]
+  TW["tumbleweed<br/>AS64501"]
+  FR["fr-fw-edge<br/>AS64505, 198.18.105.0/24<br/>head office"]
+  HC["hc-fw-edge<br/>AS65020"]
+  FH["fr-historian"]
+  HH["hc-historian"]
+  SC <-.->|peer| TW
+  SC -->|"BGP + BFD"| FR
+  TW -->|"BGP + BFD"| FR
+  SC --- HC
+  TW --- HC
+  HC ==>|"hc-a, primary<br/>over ShadeCast"| FR
+  HC -.->|"hc-b, backup<br/>over Tumbleweed"| FR
+  FR --- FH
+  HC --- HH
+```
+
+**Text alternative to the diagram.** ShadeCast (AS 64500) and Tumbleweed
+(AS 64501) peer. The head office's edge, `fr-fw-edge` (AS 64505), speaks BGP
+with BFD to both. The High Country edge, `hc-fw-edge` (AS 65020), has an
+uplink to each with ISP-assigned addresses. It has two tunnels to the head
+office: `hc-a`, the primary, over ShadeCast, and `hc-b`, the backup, over
+Tumbleweed. A host sits behind each edge.
+
+- **It is the lab, reduced.** There is no transit carrier, and Tumbleweed
+  stands in for Marmot as the site's second ISP. So nothing here can wait for
+  a BGP hold timer, and the hijack has nobody to believe it.
+- **phenix delivers everything.** Each router's BGP, BFD, policy, and tunnels
+  are the `config` list of the patched `vrouter` app ([patches](patches)): 59
+  commands for an ISP, 66 to 119 for a site edge. `vyos_sketch.py` writes them
+  from the lab's model. The job applies the patch for the fork's
+  `ci-e2e-minimega` to phenix before it builds it.
+- **Two jobs, one for each tunnel.** `CM_TUNNEL=wireguard`, and
+  `CM_TUNNEL=vti` for route-based IPsec: IKEv2 with a pre-shared key, a VTI
+  for each tunnel, MOBIKE off. WireGuard ties a tunnel to its uplink by a
+  mark, as in the lab. IPsec ties it by its source address
+  (`policy local-route … source address`). Both use the same table: the
+  uplink, and behind it a blackhole.
+- **BFD runs at 1 s**, three missed, so that a router that waits for a CPU
+  does not look like a dead link. The runner has 10 vCPUs of guests on 4.
+
+### Steps
+
+Run the workflow by hand with `spikes` set to `wan-bgp-vyos`. A push to
+`feat-secret-topo` that touches `spikes/` runs it with the other spikes. Each
+job uploads `evidence-wan-bgp-vyos-<tunnel>`.
+
+**What a run checks, in order.** phenix rendered each list after its own
+configuration and before the commit. Each router committed it at first boot
+(if one does not, `vyos_commit_check.sh` applies the lines one by one and
+names those VyOS refuses). Every BGP session is up. The head office has a
+default route through each ISP, with its endpoint as the source. Each tunnel
+leaves through its own uplink. A host at the site reaches a host at the head
+office through the primary tunnel. Then the faults, each with a ping five
+times a second: ShadeCast silent toward the site, ShadeCast silent toward the
+head office, the site's uplink set down, and 200 s of silence.
+
+### Pass / fail
+
+- [x] The commands commit at first boot, given to phenix as the `config` list.
+- [x] BGP and BFD come up inside both tunnels, and each tunnel leaves through
+      its own uplink.
+- [x] No WireGuard endpoint moves across a fault and its repair.
+- [x] A silent fault on one uplink moves the traffic, and the repair moves it
+      back without loss.
+- [x] The same with a VTI in place of WireGuard, and the VTI comes back after
+      its peer was given up.
+
+### Result on VyOS
+
+- **Decision:** **go** for the tunnels and BGP on `fw-edge` (E1), configured
+  through the `config` list (R1), with either tunnel. One setting was added
+  for it: the head office keeps the routes its ISPs send (finding V3).
+- **Run:** [run 27](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45072901676)
+  of the workflow, on `test-wan-bgp-vyos` at `3ffff8b`: both jobs passed all
+  29 checks. VyOS 999.202611222040 (rolling, built in the run from vyos-build
+  `91ccaca`), kernel 6.18.64 with WireGuard in the tree, FRR 10.7.1,
+  strongSwan as VyOS ships it; phenix `ci-e2e-minimega` at `afbcba7` with the
+  patch; minimega 3.3.0 at `66ed1aa`.
+- **Evidence:** [evidence/wan-bgp-vyos-wireguard](evidence/wan-bgp-vyos-wireguard)
+  and [evidence/wan-bgp-vyos-vti](evidence/wan-bgp-vyos-vti) have the summary,
+  the result, and the script phenix rendered for each router, with the keys
+  removed.
+
+| Run | Commit | WireGuard job | IPsec job |
+|---|---|---|---|
+| [24](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45067417980) | `b8544af` | 18 of 20. The head office had ShadeCast's session and no default route from it. The faults did not run | 28 of 28 |
+| [25](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45070332103) | `e9613db` | 27 of 28. The same route was missing, and came back when the head office asked ShadeCast again. The faults then passed | 16 of 20. **Both** default routes were missing for nine minutes, so no tunnel came up |
+| [27](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45072901676) | `3ffff8b`, with finding V3's setting | 29 of 29 | 29 of 29 |
+
+Run 26 was cancelled to make room for run 27. Runs 22 and 23 never built the
+VyOS image (finding V7).
+
+**Outages**, as the longest run of lost pings from the site's host to the head
+office's, over the runs whose faults ran (WireGuard: 25 and 27; IPsec: 24 and
+27; the 200 s silence and the packet count are from run 27).
+
+| Event | WireGuard | Route-based IPsec |
+|---|---|---|
+| ShadeCast goes silent toward the site | 2.4 and 2.8 s, then `hc-b` | 2.8 and 2.6 s, then `hc-b` |
+| The repair | none | none |
+| ShadeCast goes silent toward the head office | 2.6 and 2.2 s; ShadeCast then reaches the head office through Tumbleweed | 2.8 and 5.4 s |
+| The repair | none | none |
+| The site's ShadeCast uplink set down, for 20 s and more | No packet of `hc-a` left through the other uplink; back on `hc-a` when the link was | The same |
+| 200 s of silence toward the site, then the repair | Back on `hc-a` 8 s after the repair. The last handshake was 237 s old | Back on `hc-a` 36 s after the repair. IKE had given the peer up, and the VTI was down |
+
+### Findings on VyOS
+
+1. **V1: phenix's `config` list works.** All 24 router boots of the three runs
+   committed the rendered script at first boot, and VyOS refused no line of
+   it. A commit took 15 to 51 s on the runner.
+2. **V2: three seconds next to a fault, as the timers say.** With BFD at 1 s
+   and three missed, the site lost 2.2 to 2.8 s in seven of eight faults and
+   5.4 s in one. Every repair cost nothing. The lab's one second was its
+   300 ms interval.
+3. **V3: the head office must keep the routes its ISPs send.** In three of
+   the first four jobs the head office lost a default route seconds after its
+   sessions came up, and did not get it back by itself. In one job it lost
+   both, and with no route to the internet no tunnel came up.
+   - **Why.** FRR applies a new route-map five seconds after it is loaded
+     (`bgp route-map delay-timer`), and then asks every neighbor that uses it
+     for its routes again. The head office's sessions come up in those same
+     seconds. An ISP that gets the request before its first announcement has
+     gone out postpones the answer, and the postponed answer leaves out the
+     route of `default-originate` (`bgp_process_pending_refresh` in
+     `bgpd/bgp_packet.c`, read in FRR `stable/10.7` at `7d9492e`: the flag
+     that says the route was sent is cleared when a request arrives, not when
+     a postponed answer is made). The head office marks the route stale when
+     the answer begins and removes it when the answer ends.
+   - **What the runs show.** At the head office, the session to the ISP was
+     up, one refresh was sent and its begin and end markers received, and no
+     prefix was accepted. At the ISP, the default route counted as sent. A
+     second request (`clear bgp ipv4 unicast <ISP> soft in`) brought the route
+     back at once, in both jobs of run 25. The debug log of the first seconds
+     was not captured, so the order of the messages is inferred from the
+     counters and the source.
+   - **The fix.** `soft-reconfiguration inbound` on the head office's two ISP
+     neighbors. The head office then applies a new policy to the routes it has
+     stored and asks the ISPs for nothing. Run 27 has it. This is one run of
+     each job: the fault did not show in one of four jobs without the fix.
+4. **V4: the kernel's WireGuard came up with one default route.** In run 24
+   the head office had only Tumbleweed's default route, and both tunnels
+   still shook hands, the one over ShadeCast too. Finding 1 belongs to
+   wireguard-go. The head office still needs both routes, to lose an ISP.
+5. **V5: no endpoint moved, and no tunnel left by the wrong uplink.** After
+   every fault each WireGuard endpoint was still `198.18.105.1`. With the
+   site's ShadeCast link down, a counter on the other uplink saw none of
+   `hc-a`'s packets, for either tunnel.
+6. **V6: IPsec recovers, slower than WireGuard, and leaves a second SA.** A
+   minute of silence does not end an IKE SA: IKEv2 retransmits for about
+   165 s first. After 200 s the site had given the peer up and its VTI was
+   down. It came back 36 s after the repair, against 8 s for WireGuard. The
+   VyOS bug that leaves a VTI down after a reconnect
+   ([T9154](https://vyos.dev/T9154)) did not show. Afterwards `hc-a` had two
+   IKE SAs, one opened from each end: the sketch gives both ends the same IKE
+   group, whose `close-action start` and `dead-peer-detection action restart`
+   make the head office open tunnels too.
+7. **V7: the VyOS image no longer builds without a change.** vyos-build now
+   names the kernel package `linux-image-<version>-<revision>-vyos`. The
+   images repository's `build-vyos.sh` looks for `linux-image-<version>-vyos`,
+   finds nothing, and then asks for a package that does not exist. Runs 22
+   and 23 failed there. `spikes/ci/build_image.sh` now patches the script,
+   and the images repository needs the same change.
+
+### What the VyOS runs did not test
+
+- **The whole internet.** Four routers, not ten: no transit carrier, no third
+  ISP, and one site. The nine-second outage of a site off the fault, and the
+  hijack, are the lab's.
+- **The fix more than once.** Run 27 is one pass of each job with finding
+  V3's setting.
+- **The site's firewall.** These routers have no rulesets, no NAT, and none of
+  what `cm-vyos-config.sh` adds. Rules on a tunnel interface are not written.
+- **One vCPU.** The range gives a router 1 vCPU; these had 2.
+- **The head office answering only.** Finding V6's second SA wants a head
+  office that never opens a tunnel (`close-action none`, DPD `clear`).
+- **phenix `main`.** The patch for `main` passes its unit tests and did not
+  run here: the job uses the fork branch the range pins.
+- **More than one node.** The runner is one machine
+  ([PLANS.md](../../docs/multisite/PLANS.md) section 4.8).

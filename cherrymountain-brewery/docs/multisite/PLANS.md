@@ -1,6 +1,7 @@
 # CherryMountain Brewing: four breweries and a head office
 
-> **Status:** options for a decision. Nothing here is built. Two spikes ran in a
+> **Status:** options, with the decisions taken on 2026-11-22 marked in
+> [section 9](#9-decisions-needed). Nothing here is built. Two spikes ran in a
 > container with no VM. A third ran the WAN's core on four VyOS routers under
 > phenix and minimega in CI, with a patch for phenix that delivers their
 > configuration. Section 7 says what each one showed and what it did not.
@@ -13,8 +14,8 @@
 > BGP and BFD inside the tunnels. On VyOS routers a site lost two to three
 > seconds when an uplink went silent, with WireGuard and with route-based
 > IPsec. In the lab a site whose path crossed the failed ISP inside the
-> internet lost nine. On a cluster of nodes with 48 cores and 512 GB, four
-> full breweries fit with a node for each site.
+> internet lost nine. The cluster the range will run on has three nodes of 48
+> cores and 512 GB, and four full breweries fit on it.
 
 ## Contents
 
@@ -39,13 +40,14 @@
   a head office at one of them.
 - A site-to-site VPN between them, over a mock internet with BGP and more than
   one ISP.
-- A host with 48 cores and 96 threads. A later note widened it: the range can
-  run on **a cluster of minimega nodes, each with 48 cores and 512 GB**
+- A host with 48 cores and 96 threads. Later notes widened it: the range runs
+  on **a cluster of three minimega nodes, each with 48 cores and 512 GB**. The
+  head node runs VMs, the cluster bridges VLANs between its nodes itself, and
+  the MTU of its network is thought to be 1500
   ([4.8](#48-where-the-vms-run)).
 
 **Assumed, because it was not said:** a node has two threads for each core,
-like the first host. The number of nodes was not said, so
-[4.8](#48-where-the-vms-run) places the range on one to five.
+like the first host.
 
 **Fixed by phenix, minimega, and the range as it is.** Each row was read from
 source or shown by a spike.
@@ -60,8 +62,8 @@ source or shown by a spike.
 | C6 | phenix renders IPsec for VyOS as policy-based tunnels with a pre-shared key, one fixed proposal, and any number of peers | A static hub-and-spoke VPN works **with phenix as it is** | `src/go/app/vrouter.go` (`processIPSec`); the `vyos-ipsec` spike |
 | C7 | The `helics` app starts one root broker for an experiment | Four separate plant simulations need **their brokers started another way** ([4.7](#47-simulation)) | sceptre-phenix-apps `helics/app.py` lines 18 to 37 |
 | C8 | **No part of the range has run on a phenix host** | A fleet multiplies what is unverified. The stages in [section 8](#8-stages) boot the WAN and one site before four | [DESIGN.md, Status](../DESIGN.md#status) |
-| C9 | On one node, four full plants with the SOC are 205 vCPUs: 2.1 for each thread. The single-site design runs at about 1.1. With a node for each site, no node is above 0.85 | **On one node the site mix is a choice** ([4.1](#41-how-big-each-site-is)). On a cluster the mix is free and the placement is the choice ([4.8](#48-where-the-vms-run)). Either way the load of one site must be measured first | The stamp spike |
-| C10 | A VLAN with VMs on two nodes needs a path between the nodes' bridges: a trunk on the cluster's switch, or phenix's GRE mesh, which needs room in the MTU of the nodes' network | **A full-size frame must cross between nodes.** The fleet's workflow turns on the mesh, or the switch carries VLANs 100 to 599 ([4.8](#48-where-the-vms-run)) | phenix `docs/content/gre-mesh.md`; minimega `doc/content/articles/cluster.md` |
+| C9 | On one node, four full plants with the SOC are 205 vCPUs: 2.1 for each thread. The single-site design runs at about 1.1. On the three-node cluster no node is above 0.94 | **On one node the site mix is a choice** ([4.1](#41-how-big-each-site-is)). On the cluster the mix is free and the placement is the choice ([4.8](#48-where-the-vms-run)). Either way the load of one site must be measured first | The stamp spike |
+| C10 | A VLAN with VMs on two nodes needs a path between the nodes' bridges: a trunk on the cluster's switch, or phenix's GRE mesh, which needs room in the MTU of the nodes' network | **A full-size frame must cross between nodes.** This cluster bridges VLANs between its nodes itself, so the range sets nothing up and uses no mesh; the check in [4.8](#48-where-the-vms-run) confirms it | phenix `docs/content/gre-mesh.md`; minimega `doc/content/articles/cluster.md` |
 
 ## 2. The company
 
@@ -203,25 +205,26 @@ already cut a plant down by area and host, as `ci` does.
 
 | Mix | VMs | vCPUs | Memory (GB) | vCPUs per thread, all on one node |
 |---|---:|---:|---:|---:|
-| M1: four full plants, central SOC | 154 | 205 | 364 | 2.1 |
-| M2: M1, and a network sensor at each of the other three sites | 157 | 217 | 412 | 2.3 |
-| M3: two full plants (`fr`, `ws`) and two brewpubs (`hc`, `gc`), central SOC | 134 | 183 | 338 | 1.9 |
-| M4: one full plant (`fr`) and three cellar slices, central SOC | 85 | 124 | 262 | 1.3 |
-| M5: four full plants, no SOC and no vendor access | 147 | 182 | 273 | 1.9 |
+| M1: four full plants, central SOC | 154 | 205 | 373 | 2.1 |
+| M2: M1, and a network sensor at each of the other three sites | 157 | 217 | 421 | 2.3 |
+| M3: two full plants (`fr`, `ws`) and two brewpubs (`hc`, `gc`), central SOC | 134 | 183 | 347 | 1.9 |
+| M4: one full plant (`fr`) and three cellar slices, central SOC | 85 | 124 | 271 | 1.3 |
+| M5: four full plants, no SOC and no vendor access | 147 | 182 | 282 | 1.9 |
 
 Each mix includes a 12-VM internet and three head-office VMs. The internet is
-counted with FRR routers (I1 in [4.2](#42-the-mock-internet)); with VyOS
-routers (I2) every mix is 9 GB larger and has the same vCPUs.
+counted with VyOS routers (I2 in [4.2](#42-the-mock-internet), which is
+decided); with FRR routers every mix would be 9 GB smaller, with the same
+vCPUs.
 
 - **What the ratio compares with.** The single-site design assumes its 68
   vCPUs on a host of 32 cores, which is about 1.1 for each thread. It has not
   run. On one of these nodes one full site alone would be 0.7.
 - **Memory.** Every mix fits the 512 GB of one node: the largest, M2, takes
-  80% of it. M4's 262 GB includes 84 GB for the SOC, of which Malcolm has 48
+  82% of it. M4's 271 GB includes 84 GB for the SOC, of which Malcolm has 48
   and can run in 24
   ([DESIGN.md §11](../DESIGN.md#11-node-inventory-and-resources)).
-- **On a cluster the mix is not a question of capacity.** With a node for
-  each site, M2 puts at most 0.85 vCPUs on a thread
+- **On the cluster the mix is not a question of capacity.** On its three
+  nodes, M2 puts at most 0.94 vCPUs on a thread
   ([4.8](#48-where-the-vms-run)).
 - **Every profile keeps a `historian` and an `ews`**, because the head
   office's conduits end there ([4.6](#46-what-the-head-office-does)).
@@ -241,6 +244,10 @@ routers (I2) every mix is 9 GB larger and has the same vCPUs.
   fits. Boot one site before four all the same: nothing of the range has run
   (C8). **On one node,** bring the fleet up as M4, measure, then promote sites
   (M3, then M1) as far as the node allows.
+- **What is still open** (D4) is only whether the four sites are the same
+  plant. Four full plants are also the least work: plantgen has no variant for
+  a brewpub or a cellar slice behind a site's firewalls, so a smaller site has
+  to be written first.
 
 ### 4.2 The mock internet
 
@@ -294,7 +301,7 @@ somewhere to reroute.
 | Option | Routers | Cost | For | Against |
 |---|---|---|---|---|
 | I1: a VM for each router, FRR on Linux | 6 | 6 vCPUs, 3 GB | The configuration is a file (`frr.conf`), and the lab's files carry over. Each router shows in the phenix UI, and a fault is a phenix action (disconnect a NIC, stop a VM) | A new small image (`cm-frr`) and a second way to configure a router. Link delay and loss need a `tc` unit; the `vrouter` app's emulators do not apply |
-| **I2: a VM for each router, VyOS** (recommended) | 6 | 6 vCPUs, 12 GB | The image exists, and `isp-rtr` is VyOS today. Two ISPs ran this way in CI: their customer, peer, and provider rules are 59 commands in R1's `config` list ([7.4](#74-wan-bgp-on-vyos-routers)). Every router of the range then has one image and one way to get its configuration. Each router shows in the phenix UI, and the emulators work | 9 GB more than I1, which a node of 512 GB does not notice. Six more routers depend on R1 and on the VyOS rolling build |
+| **I2: a VM for each router, VyOS** (decided, D6) | 6 | 6 vCPUs, 12 GB | The image exists, and `isp-rtr` is VyOS today. Two ISPs ran this way in CI: their customer, peer, and provider rules are 59 commands in R1's `config` list ([7.4](#74-wan-bgp-on-vyos-routers)). Every router of the range then has one image and one way to get its configuration. Each router shows in the phenix UI, and the emulators work | 9 GB more than I1, which a node of 512 GB does not notice. Six more routers depend on R1 and on the VyOS rolling build |
 | I3: the whole internet in one VM | 1 | 2 vCPUs, 2 GB | Ten FRR routers took 0.5 GB in the lab, so 20 or 30 networks, an exchange with a route server, and an RPKI validator would fit | One box in the UI. Faults are scripts inside it. The lab script would become a product |
 
 minimega's own router image (minirouter, which runs BIRD) is not an option:
@@ -328,7 +335,7 @@ phenix cannot render that for VyOS (C5). There are four ways to deliver it.
 
 | Option | What it is | For | Against |
 |---|---|---|---|
-| **R1: a `config` list in the `vrouter` app** (recommended, needs a phenix change) | Each router's metadata lists VyOS `set` and `delete` commands. phenix writes them after its own, before the commit | One commit at first boot, with the rest of the configuration. It also carries what `cm-vyos-config.sh` does after boot today (logging, syslog, IKEv2, the NTP source), so that script could go. The patch is 167 lines and its tests pass ([7.3](#73-a-config-list-for-the-vrouter-app)). In CI, 32 boots of VyOS routers committed their lists at first boot, 59 to 119 commands each ([7.4](#74-wan-bgp-on-vyos-routers)) | A change to phenix, on a fork branch until upstream takes it |
+| **R1: a `config` list in the `vrouter` app** (recommended, needs a phenix change) | Each router's metadata lists VyOS `set` and `delete` commands. phenix writes them after its own, before the commit | One commit at first boot, with the rest of the configuration. It also carries what `cm-vyos-config.sh` does after boot today (logging, syslog, IKEv2, the NTP source), so that script could go. The change is small, its tests pass, and it is a draft pull request ([7.3](#73-a-config-list-for-the-vrouter-app)). In CI, 32 boots of VyOS routers committed their lists at first boot, 59 to 119 commands each ([7.4](#74-wan-bgp-on-vyos-routers)) | A change to phenix, on a fork branch until upstream takes it |
 | R2: the post-boot script | `cm-vyos-config.sh` grows a BGP and tunnel section | No phenix change. The mechanism is in the range | A second commit after boot, which a `cc exec` starts. The script has not run on a VyOS VM, and its first form changed nothing and reported success ([DESIGN.md §10.3](../DESIGN.md#103-conduit-matrix-default-deny-stateful-logged)) |
 | R3: BGP as a schema feature of phenix | `network.bgp` in the topology, as `network.ospf` is | The right upstream answer to the TODO | A large change (schema, types, template, Builder checks). It still would not cover tunnels or BFD |
 | R4: keep BGP off VyOS | A Linux router with FRR does the WAN work at each site ([4.4](#44-where-the-tunnels-end), E2) | No phenix change and no VyOS syntax to verify. It is what the lab ran | One more VM at each site |
@@ -460,7 +467,7 @@ point-to-point interface.
 | Configuration at a site, as VyOS commands | 93 | 66 |
 | Evidence | Three passing runs on VyOS (28 of 28, then 29 of 29 twice) | The lab with wireguard-go, and two passing runs on VyOS (29 of 29) after the head office's fix |
 
-**Recommendation:** route-based IPsec between the sites, and WireGuard stays
+**Decided (D3):** route-based IPsec between the sites, and WireGuard stays
 the vendor's. Both passed every check on VyOS, so the choice is about what
 the range shows: IPsec is what a brewery group's integrator would install,
 and it gives a defender IKE and ESP to look at. WireGuard is the simpler and
@@ -548,88 +555,97 @@ time zone.
 
 ### 4.8 Where the VMs run
 
-The range was sized for one host. It can also run on a cluster of minimega
+The range was sized for one host. It will run on a cluster of three minimega
 nodes, each with 48 cores, 96 threads, and 512 GB. It stays one experiment
 (C1): phenix starts an experiment across nodes, and minimega carries its VLANs
-between them. Three things become choices: which node runs each VM, how a VLAN
-gets from one node to the next, and whether the node that runs phenix also
-runs VMs. This section was read from phenix's and minimega's source and
-documentation. None of it ran: the spikes had one machine.
+between them. What is known about the cluster:
+
+- **Three nodes, and the head node runs VMs.** The workflow says
+  `deployMode: all`, because phenix by default places no VM on the node it
+  runs on.
+- **The cluster bridges VLANs between its nodes itself.** The range sets
+  nothing up for it and does not turn on phenix's GRE mesh.
+- **The MTU of its network is thought to be 1500.** That is enough without a
+  mesh: a guest's frame crosses with a VLAN tag and no tunnel header.
+
+This section was read from phenix's and minimega's source and documentation.
+None of it ran: the spikes had one machine.
 
 ```mermaid
 flowchart LR
-  subgraph N1["node 1: 55 VMs, 0.85 vCPUs per thread"]
-    ONCE["mock internet, head office,<br/>SOC, vendor access"]
-    FR["site fr"]
-  end
-  subgraph N2["node 2: 34 VMs, 0.47"]
-    HC["site hc<br/>and its sensor"]
-  end
-  subgraph N3["node 3: 34 VMs, 0.47"]
+  subgraph N1["head node: 34 VMs, 0.47 vCPUs per thread"]
     WS["site ws<br/>and its sensor"]
   end
-  subgraph N4["node 4: 34 VMs, 0.47"]
+  subgraph N2["node 2: 55 VMs, 0.85"]
+    FR["site fr"]
+    ONCE["mock internet, head office,<br/>SOC, vendor access"]
+  end
+  subgraph N3["node 3: 68 VMs, 0.94"]
+    HC["site hc<br/>and its sensor"]
     GC["site gc<br/>and its sensor"]
   end
   FR --- ONCE
-  HC -. "2 uplinks" .- ONCE
   WS -. "2 uplinks" .- ONCE
+  HC -. "2 uplinks" .- ONCE
   GC -. "1 uplink" .- ONCE
 ```
 
-**Text alternative to the diagram.** Four nodes. Node 1 runs the mock
-internet, the head office's services, the SOC, the vendor's access, and the
-Front Range site: 55 VMs at 0.85 vCPUs per thread. Nodes 2, 3, and 4 run the
-High Country, Western Slope, and Gulf Coast sites, each with its sensor: 34
-VMs at 0.47 vCPUs per thread. The only networks that leave a node are a
-site's uplinks to its ISPs: two for `hc`, two for `ws`, and one for `gc`.
+**Text alternative to the diagram.** Three nodes. The head node runs the
+Western Slope site and its sensor: 34 VMs at 0.47 vCPUs per thread. Node 2
+runs the Front Range site and what the range has once (the mock internet, the
+head office's services, the SOC, the vendor's access): 55 VMs at 0.85. Node 3
+runs the High Country and Gulf Coast sites, each with its sensor: 68 VMs at
+0.94. The only networks that leave a node are a site's uplinks to its ISPs:
+two for `ws`, two for `hc`, and one for `gc`.
 
-**Mix M2 on one to five nodes**, from the stamp spike
+**Mix M2 on the cluster**, from the stamp spike
 ([7.2](#72-multisite-stamp-four-sites-from-one-plant)). M2 is the largest mix.
 
-| Nodes | The busiest node runs | vCPUs per thread there | Memory used there | vCPUs per thread on the quietest node |
-|---:|---|---:|---:|---:|
-| 1 | Everything: 157 VMs, 217 vCPUs, 412 GB | 2.26 | 80% | — |
-| 2 | The shared part, `fr`, and `hc`: 89 VMs, 127 vCPUs, 254 GB | 1.32 | 50% | 0.94 |
-| 3 | `hc` and `gc`: 68 VMs, 90 vCPUs, 158 GB | 0.94 | 31% | 0.47 |
-| 4 | The shared part and `fr`: 55 VMs, 82 vCPUs, 175 GB | 0.85 | 34% | 0.47 |
-| 5 | A site and its sensor: 34 VMs, 45 vCPUs, 79 GB | 0.47 | 15% | 0.43 |
+| Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
+|---|---|---:|---:|---:|---:|---:|
+| Head node | `ws` | 34 | 45 | 79 | 0.47 | 15% |
+| Node 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
+| Node 3 | `hc`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
 
 "The shared part" is what the range has once: the mock internet, the head
 office's additions, the SOC, and the vendor's access (22 VMs, 41 vCPUs,
-112 GB). The single-site design assumes about 1.1 vCPUs per thread. From three
-nodes on, every node is under that, and memory is never the limit.
+121 GB). The single-site design assumes about 1.1 vCPUs per thread, and every
+node is under that. Memory is not the limit: all of M2 is 82% of one node.
+The head node gets the lightest share, because it also runs phenix and serves
+the images. Which two sites share node 3 does not matter to the design.
+
+On other clusters the same mix puts 2.26 vCPUs on each thread of one node,
+1.32 on the busier of two, 0.85 on the busiest of four, and 0.47 with a node
+for each site and one for the shared part.
 
 **Which node runs a VM.**
 
 | Option | How | For | Against |
 |---|---|---|---|
-| **P1: a node for each site, written in the workflow** (recommended) | The generator writes `schedules` (VM to node) into `phenix-fleet.yml`. The stamp spike wrote that map for the 132 site VMs, and the file validates against phenix's Workflow schema | What a site does stays on its node: PLC polling, HMI screens, the federation, the mirror to the site's sensor. Only the uplinks to the ISPs cross between nodes, which is where a WAN belongs. A node that fails is one site that fails. Every start places the VMs the same way, so two measurements compare | The node names of one cluster are in a committed file. Another cluster needs its own copy, or a step that fills the names in |
+| **P1: each site on one node, written in the workflow** (recommended) | The generator writes `schedules` (VM to node) into `phenix-fleet.yml`. The stamp spike wrote that map for the 132 site VMs on the three nodes, and the file validates against phenix's Workflow schema | What a site does stays on its node: PLC polling, HMI screens, the federation, the mirror to the site's sensor. Only uplinks to the ISPs cross between nodes, which is where a WAN belongs. A node that fails takes whole sites with it, not parts of every site. Every start places the VMs the same way, so two measurements compare | The node names of one cluster are in a committed file. Another cluster needs its own copy, or a step that fills the names in |
 | P2: phenix's `subnet-compute` scheduler | `phenix experiment schedule cherrymountain-fleet subnet-compute`, after the experiment is created | No node names in the repository | It groups VMs by the VLAN of their first interface. The first interfaces of the single-site core are on 15 different VLANs, so each site is spread over the nodes and its own traffic crosses between them |
 | P3: no schedule | minimega places each VM at start | Nothing to write | The placement is not the range's to decide, and can differ between starts |
 
-**How a VLAN reaches another node.**
+**How a VLAN reaches another node.** This cluster does it itself (N2 below),
+so there is nothing to choose. The other way is here for a cluster that does
+not.
 
 | Option | How | For | Against |
 |---|---|---|---|
-| **N1: phenix's GRE mesh** (recommended) | `useGREMesh: true` in the workflow. phenix joins the nodes' copies of the experiment's bridge with GRE tunnels | The cluster's switch needs no VLAN configuration. The mesh covers the experiment's default bridge, and the range has one bridge | The nodes' network needs room for the GRE header: an MTU of 1600 or more for guests at 1500, on every interface and switch port between the nodes. phenix does not set it |
-| N2: a trunk on the cluster's switch | Each node's bridge gets a physical port, and the switch carries VLANs 100 to 599 with their tags | No tunnel, and no change to the MTU | Somebody configures the switch for the range's VLAN range, and no other experiment on the cluster may use those IDs |
+| N1: phenix's GRE mesh | `useGREMesh: true` in the workflow. phenix joins the nodes' copies of the experiment's bridge with GRE tunnels | The cluster's switch needs no VLAN configuration | The nodes' network needs room for the GRE header: an MTU of 1600 or more for guests at 1500. phenix does not set it |
+| **N2: the cluster carries the VLANs** (this cluster) | Each node's bridge reaches the others' through the cluster's own network, with the VLAN tags | No tunnel, so an MTU of 1500 between nodes is enough | The range's VLAN IDs, 100 to 599, must be free on the cluster while it runs |
 
 With P1 little crosses between nodes either way: five access links, each with
 one or two tunnels inside.
 
-- **The MTU matters more than usual.** A WAN link carries WireGuard or ESP
-  packets that are already full size. A path between nodes without room for
-  them drops or fragments exactly those packets, while small pings pass. The
-  range has met this once: the mirror's GRE port lost full-size frames until
+- **Check a full-size frame once.** A WAN link carries IPsec packets that are
+  already full size. A path between nodes that is short of room drops or
+  fragments exactly those packets, while small pings pass. The range has met
+  this once: the mirror's GRE port lost full-size frames until
   `df_default=false` was set
-  ([DESIGN.md §14](../DESIGN.md#14-blue-team-monitoring)). The check is a
-  full-size ping that may not be fragmented, between two guests on different
-  nodes (`ping -M do -s 1472`).
-- **The node that runs phenix.** By default phenix places no VM on it
-  (`deployMode: no-headnode`). On a cluster of two or three nodes that leaves
-  a third or a half of the machines idle, so the workflow would set
-  `deployMode: all`. On a larger cluster the default is fine.
+  ([DESIGN.md §14](../DESIGN.md#14-blue-team-monitoring)). The check is a ping
+  of 1472 bytes that may not be fragmented, between two guests on different
+  nodes (`ping -M do -s 1472`). It is stage C in [section 8](#8-stages).
 - **Images.** phenix looks for each image on the node it runs on before a
   start, and minimega copies an image to a node that lacks it when a VM there
   needs it. The first start on each node waits for those copies (the VyOS
@@ -638,37 +654,31 @@ one or two tunnels inside.
   ([DESIGN.md §15.9](../DESIGN.md#159-operations)) is done on every node. The
   `cherrymountain` app already sets the mirror's `df_default=false` on every
   cluster host.
-- **Monitoring.** One central `malcolm` means the mirror of three sites'
-  VLANs crosses the cluster's network to node 1. A sensor at each site keeps
-  each mirror on its node and sends through the VPN what a real sensor would.
-  On a cluster that is the better default, and the memory for it is there
-  ([4.6](#46-what-the-head-office-does)).
-- **BFD.** At 0.47 to 0.85 vCPUs per thread a router rarely waits for a CPU,
+- **Monitoring.** One central `malcolm` would pull the mirror of three sites'
+  VLANs across the cluster's network to node 2. A sensor at each site, which
+  is decided (D7), keeps each mirror on its node and sends through the VPN
+  what a real sensor would ([4.6](#46-what-the-head-office-does)).
+- **BFD.** At 0.47 to 0.94 vCPUs per thread a router rarely waits for a CPU,
   so the 1 s interval has more margin than on one node. It stays until a node
   is measured.
-- **More than one fleet.** A cluster of five or more nodes could run two
-  fleets, for two teams. Each needs its own bridge and its own VLAN range
-  (C1, C4), so the VLAN IDs would have to come from a per-experiment offset.
-  Nothing here plans it.
-- **Not known.** Whether the nodes are already one minimega mesh with phenix
-  on a head node; the MTU of their network; and whether the phenix on the
-  cluster accepts `schedules`, `useGREMesh`, and `deployMode` in a workflow
-  (the fork's `main` at `86fd732` does).
+- **Not known.** The names of the nodes, which the workflow needs; the VLAN
+  IDs the cluster has free; and whether its phenix accepts `schedules` and
+  `deployMode` in a workflow (the fork's `main` at `86fd732` does).
 
 ## 5. Three plans
 
 | | Plan A: static hub and spoke | Plan B: dual-homed overlay (recommended) | Plan C: Plan B and more |
 |---|---|---|---|
-| Internet | The five networks of [4.2](#42-the-mock-internet), as VyOS routers (I2) or FRR routers (I1) | The same, as VyOS routers (I2) | I3: 20 or more networks in one VM, with an exchange and an RPKI validator |
+| Internet | The five networks of [4.2](#42-the-mock-internet), as VyOS routers (I2) | The same | I3: 20 or more networks in one VM, with an exchange and an RPKI validator |
 | Uplinks | One ISP for each site | Two for `fr`, `hc`, and `ws`; one for `gc` | The same |
 | BGP at a brewery | None | Every site edge, inside the tunnels; the head office also with its ISPs | The same |
-| VPN | V1: policy-based IPsec to the head office | V2: a tunnel per uplink (route-based IPsec, or WireGuard), BGP and BFD | V3: V2 with a second hub at `ws` |
+| VPN | V1: policy-based IPsec to the head office | V2: a route-based IPsec tunnel per uplink, BGP and BFD | V3: V2 with a second hub at `ws` |
 | Tunnel end | `fw-edge`, as phenix renders it | E1 (`fw-edge`, with R1), which ran on VyOS in CI; or E2 | The same |
 | Failover | None | 2 to 3 s next to the fault on VyOS; the ISPs' hold time for a site with one uplink | The same, and the head office's site can fail |
-| Monitoring | Central | A sensor at each site on a cluster (M2); central on one node | A sensor at each site (M2) |
+| Monitoring | Central | A sensor at each site on the cluster (M2); central on one node | A sensor at each site (M2) |
 | Changes to phenix | None | R1 (or none, with E2) | The same |
-| New images | None with I2; `cm-frr` with I1 | None with I2 and central monitoring; a sensor image with M2 | An internet image, a sensor image |
-| Site mix | On a cluster M1; on one node M4 | On a cluster **M2**; on one node M4, then M3 or M1 | M2 |
+| New images | None | A sensor image (M2) | An internet image, a sensor image |
+| Site mix | On the cluster M1; on one node M4 | On the cluster **M2**; on one node M4, then M3 or M1 | M2 |
 | What it teaches | Segmentation across sites; one ISP outage is one site outage | That, and WAN failover, BGP at a company edge, a hijack of the company's prefix | That, and route validation, hub failure, monitoring across a WAN |
 
 ### Plan A: static hub and spoke
@@ -874,11 +884,11 @@ Kit: [spikes/multisite-stamp](../../spikes/multisite-stamp/README.md).
   validate against phenix's Topology schema. The one duplicate address is each
   `fw-edge`'s WAN address, which the WAN plan assigns.
 - **The budgets** in [4.1](#41-how-big-each-site-is) come from this kit.
-- **On a cluster,** the kit spreads mix M2 over one to five nodes
-  ([4.8](#48-where-the-vms-run)) and writes a `phenix-fleet.yml` with the 60
-  VLAN IDs, `schedules` that name a node for each of the 132 site VMs,
-  `useGREMesh`, and `deployMode`. No VLAN ID is given twice, and the file
-  validates against phenix's Workflow schema.
+- **On a cluster,** the kit spreads mix M2 over one to five nodes and writes
+  a `phenix-fleet.yml` for the three-node cluster
+  ([4.8](#48-where-the-vms-run)): the 60 VLAN IDs, `schedules` that name a
+  node for each of the 132 site VMs, and `deployMode: all`. No VLAN ID is
+  given twice, and the file validates against phenix's Workflow schema.
 - **Not tested:** phenix merging the files or reading the workflow, a
   cluster, and every other tool on a stamped site.
 
@@ -902,12 +912,19 @@ against sceptre-phenix at `86fd732` (the head of `main` on 2026-11-22).
   or `delete`. A control character, a double quote, or a character the shell
   acts on outside single quotes is an error, because the file is a `vbash`
   script. On a router that is not VyOS, `config` is an error.
-- **Tested.** 167 lines with three unit tests (one rendering, one without the
-  option, ten refused inputs). `go test ./app ./tmpl` passes.
+- **Tested.** Unit tests for the rendering, a router without the option, and
+  tables of accepted and refused lines. Every line the check accepts is run
+  in `bash`, whose words must be the words of the line, and a fuzz target
+  checks the function against a model. `go test ./app ./tmpl` passes.
+- **A draft pull request.** The change is
+  [GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27),
+  and both patch files here are that change. Its check also refuses `[` and
+  `]`, which a shell reads as a file name pattern; the form that ran in runs
+  24 to 28 did not, and none of its lines had them.
 - **For the fork too.** The range pins the fork branch `ci-e2e-minimega`,
   whose `vrouter.go` is older, so the patch does not apply there.
   [vrouter-config-passthrough.ci-e2e-minimega.patch](../../spikes/wan-bgp/patches/vrouter-config-passthrough.ci-e2e-minimega.patch)
-  is the same change for that branch at `afbcba7` (159 lines, two tests), and
+  is the same change for that branch at `afbcba7`, and
   `go test ./app ./tmpl` passes there as well.
 - **On VyOS.** The patch for `ci-e2e-minimega` was applied to phenix in CI,
   and 32 boots of VyOS routers committed what it rendered
@@ -1005,37 +1022,40 @@ C (the cluster check) lead to stage 2. Stage 4 leads to stage 5 (measure, then g
 | 1 | **Done.** A spike on VyOS VMs in CI: four VyOS routers, with R1's `config` list carrying the commands of [spikes/wan-bgp/vyos-sketch](../../spikes/wan-bgp/vyos-sketch), once with WireGuard and once with a VTI ([7.4](#74-wan-bgp-on-vyos-routers)) | The commit succeeded at first boot, BGP came up in the tunnels, and a silent uplink failed over and came back, for both tunnels. It settles D2 and leaves D3 a choice between two that work |
 | 2 | The `wan` variant: `wan.yaml`, its generator, the six internet routers, the four site edges with their firewall rules and NAT next to the WAN configuration, a host at each site | The lab's checks pass on VMs, as SoH tests and a SCORCH run for each fault, with the transit carrier and all four sites |
 | 3 | Sites in plantgen, `sync.py`, the app, and the FUXA builder | The `lite` variant generates as a prefixed site and passes the offline checks; after stage 0, it boots alone |
-| C | On the cluster: two small VMs on one VLAN, pinned to different nodes with `schedules`, with the GRE mesh on (or the switch trunk) | A ping of 1472 bytes that may not be fragmented passes between them, and the experiment stops cleanly on both nodes |
-| 4 | The `fleet` variant: the site files, the head-office services, the cross-site conduits, `netcheck` for the fleet. On a cluster, one site first and then all four at M2, each on its node; on one node, mix M4 | Every conduit and every blocked path passes SoH across the VPN |
-| 5 | Measure each node with the fleet running. On one node, then promote sites | Load and steal time are recorded for each node and mix, and the BFD interval is set from them |
+| C | On the cluster: two small VMs on one VLAN, pinned to different nodes with `schedules` and `deployMode: all` | A ping of 1472 bytes that may not be fragmented passes between them, and the experiment stops cleanly on both nodes |
+| 4 | The `fleet` variant: the site files, the head-office services, the cross-site conduits, `netcheck` for the fleet. One site first, then all four at M2, placed as in [4.8](#48-where-the-vms-run) | Every conduit and every blocked path passes SoH across the VPN |
+| 5 | Measure each node with the fleet running | Load and steal time are recorded for each node, and the BFD interval is set from them |
 
 Stage 1 ran on a GitHub runner, as the Phase 0 VM spikes did. Stage C needs
 the cluster and an hour: it is the first thing to run there, because every
-later stage on the cluster depends on a full-size frame crossing between
-nodes. Stage 2 follows both and is about 20 small VMs, with the internet on
-one node and the site edges on the others. Stage 3 is generator work with offline checks,
+later stage depends on a full-size frame crossing between nodes. Stage 2
+follows both and is about 20 small VMs, with the internet on one node and the
+site edges on the others. Stage 3 is generator work with offline checks,
 and does not wait for anything; booting its one site is stage 0's risk again,
 so that part follows stage 0.
 
 ## 9. Decisions needed
 
-| # | Decision | Options | Recommended |
-|---|---|---|---|
-| D1 | The plan | A, B, or C ([section 5](#5-three-plans)) | **B** |
-| D2 | Where the tunnels and BGP run at a site | E1 on `fw-edge` with R1 (a phenix change) or R2 (the script); E2 on a `wan-edge` VM ([4.3](#43-who-runs-bgp-and-how-the-routers-get-their-configuration), [4.4](#44-where-the-tunnels-end)) | **E1 with R1**. The VyOS spike passed |
-| D3 | The tunnel between sites | Route-based IPsec or WireGuard ([4.5](#45-the-vpn)). Both passed on VyOS | **Route-based IPsec**, because it is what such a company runs and gives a defender more to see. WireGuard is simpler and recovers faster, and stays one setting away |
-| D4 | The site mix | M1 to M5 ([4.1](#41-how-big-each-site-is)) | On the cluster, **M2**. On one node, start at M4, then measure |
-| D5 | The head office's uplinks | Its own AS on two ISPs, or ISP-assigned addresses like the other sites ([4.5](#45-the-vpn)) | **Its own AS** |
-| D6 | The ISP routers | I1 (FRR VMs), I2 (VyOS VMs), or I3 (one VM) ([4.2](#42-the-mock-internet)) | **I2**, since two ISPs ran as VyOS in CI and memory is no longer short. It was I1 |
-| D7 | Monitoring of the other sites | Central with the out-of-band mirror, a sensor at each site, or none ([4.6](#46-what-the-head-office-does)) | On the cluster, **a sensor at each site**. On one node, central to start |
-| D8 | The simulation | A federation for each site, or one for all ([4.7](#47-simulation)) | **One for each site** |
-| D9 | The sites | The four places, their codes, and the ISP names ([section 2](#2-the-company)) | As written; the names need a check |
-| D10 | The cluster | How many nodes run VMs; whether the node that runs phenix is one of them; the MTU of the nodes' network; which phenix it runs ([4.8](#48-where-the-vms-run)) | — (facts to supply) |
-| D11 | The phenix patch | Open it as a branch and pull request on the fork, or keep it as a patch file that CI applies | **A branch and a pull request on the fork**, now that the spike passed. Nothing was opened |
-| D12 | The VyOS image build | Fix `build-vyos.sh` in the images repository for vyos-build's new kernel package name, or leave the patch in `spikes/ci/build_image.sh` ([7.4](#74-wan-bgp-on-vyos-routers)) | **Fix it in the images repository**: until then no VyOS image builds from it |
-| D13 | Which node runs a VM | P1 (a node for each site, in the workflow), P2 (`subnet-compute`), or P3 (minimega decides) ([4.8](#48-where-the-vms-run)) | **P1** |
-| D14 | How a VLAN reaches another node | N1 (phenix's GRE mesh, with an MTU of 1600 or more between nodes) or N2 (a trunk on the cluster's switch) ([4.8](#48-where-the-vms-run)) | **N1**, if the MTU can be raised; N2 if not |
-| D15 | The FRR behavior that drops a default route | Report it to FRR and VyOS, or only work around it ([7.4](#74-wan-bgp-on-vyos-routers)) | **Report it**, with a debug log of the first seconds, which no run captured yet |
+The last column has what was decided on 2026-11-22. A row that says "not
+answered" still stands as recommended.
+
+| # | Decision | Options | Recommended | Decided on 2026-11-22 |
+|---|---|---|---|---|
+| D1 | The plan | A, B, or C ([section 5](#5-three-plans)) | **B** | Not answered. D3, D6, and D7 were decided as Plan B has them |
+| D2 | Where the tunnels and BGP run at a site | E1 on `fw-edge` with R1 (a phenix change) or R2 (the script); E2 on a `wan-edge` VM ([4.3](#43-who-runs-bgp-and-how-the-routers-get-their-configuration), [4.4](#44-where-the-tunnels-end)) | **E1 with R1**. The VyOS spike passed | Not answered. The phenix change is a draft pull request (D11) |
+| D3 | The tunnel between sites | Route-based IPsec or WireGuard ([4.5](#45-the-vpn)). Both passed on VyOS | **Route-based IPsec**, because it is what such a company runs and gives a defender more to see. WireGuard is simpler and recovers faster, and stays one setting away | **Route-based IPsec** |
+| D4 | The site mix | M1 to M5 ([4.1](#41-how-big-each-site-is)) | On the cluster, **M2**. On one node, start at M4, then measure | Open: are the four sites the same plant? Planned as M2 until said otherwise ([4.1](#41-how-big-each-site-is)) |
+| D5 | The head office's uplinks | Its own AS on two ISPs, or ISP-assigned addresses like the other sites ([4.5](#45-the-vpn)) | **Its own AS** | Not answered |
+| D6 | The ISP routers | I1 (FRR VMs), I2 (VyOS VMs), or I3 (one VM) ([4.2](#42-the-mock-internet)) | **I2**, since two ISPs ran as VyOS in CI and memory is no longer short. It was I1 | **I2: VyOS** |
+| D7 | Monitoring of the other sites | Central with the out-of-band mirror, a sensor at each site, or none ([4.6](#46-what-the-head-office-does)) | On the cluster, **a sensor at each site**. On one node, central to start | **A sensor at each site** |
+| D8 | The simulation | A federation for each site, or one for all ([4.7](#47-simulation)) | **One for each site** | Not answered |
+| D9 | The sites | The four places, their codes, and the ISP names ([section 2](#2-the-company)) | As written; the names need a check | Not answered |
+| D10 | The cluster | How many nodes run VMs; whether the node that runs phenix is one of them; the MTU of the nodes' network; which phenix it runs ([4.8](#48-where-the-vms-run)) | — (facts to supply). Still to supply: the node names, and which phenix it runs | **Three nodes. The head node runs VMs. The MTU is thought to be 1500. The cluster bridges VLANs between its nodes itself** |
+| D11 | The phenix patch | Open it as a branch and pull request on the fork, or keep it as a patch file that CI applies | **A branch and a pull request on the fork**, now that the spike passed. Nothing was opened | **A draft pull request:** [GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27) |
+| D12 | The VyOS image build | Fix `build-vyos.sh` in the images repository for vyos-build's new kernel package name, or leave the patch in `spikes/ci/build_image.sh` ([7.4](#74-wan-bgp-on-vyos-routers)) | **Fix it in the images repository**: until then no VyOS image builds from it | **Fixed** on the branch `fix-vyos-kernel-revision` of the images repository (`c57351b`). Not merged, and no pull request |
+| D13 | Which node runs a VM | P1 (each site on one node, in the workflow), P2 (`subnet-compute`), or P3 (minimega decides) ([4.8](#48-where-the-vms-run)) | **P1** | Not answered. [4.8](#48-where-the-vms-run) places the sites by P1 |
+| D14 | How a VLAN reaches another node | N1 (phenix's GRE mesh, with an MTU of 1600 or more between nodes) or N2 (the cluster carries the VLANs) ([4.8](#48-where-the-vms-run)) | Whichever the cluster has | **N2**: the cluster does it (from D10) |
+| D15 | The FRR behavior that drops a default route | Report it to FRR and VyOS, or only work around it ([7.4](#74-wan-bgp-on-vyos-routers)) | **Report it**, with a debug log of the first seconds, which no run captured yet | **Not reported** |
 
 ## 10. References
 

@@ -15,8 +15,8 @@ Three questions, one per step (README.md has the result):
    VLAN ID per alias) and still validate against its Topology schema?
 3. Budget: what do the candidate site mixes cost in VMs, vCPUs, and memory?
 4. Cluster: how does the largest mix sit on one to five minimega nodes of 48
-   cores and 512 GB, and does a workflow that pins each site to a node and
-   turns on the GRE mesh validate against phenix's Workflow schema?
+   cores and 512 GB, and does a workflow that pins each site to a node of the
+   three-node cluster validate against phenix's Workflow schema?
 
 Nothing here is a generator for the range. It rewrites strings, which is how
 the probe finds every place that still assumes one plant.
@@ -62,6 +62,15 @@ MGMT_SECOND_OCTET: int = 16
 # A cluster node: 48 cores, two threads each, 512 GB.
 NODE_THREADS: int = 96
 NODE_MEMORY_GB: int = 512
+# The cluster the range is planned for, and what each of its nodes runs.
+# "once" is what the range has once: the mock internet, the head office's
+# additions, the SOC, and the vendor's remote access.
+CLUSTER: str = "three nodes, with the head node"
+CLUSTER_LAYOUT: dict[str, tuple[str, ...]] = {
+    "head node": ("ws",),
+    "node 2": ("once", "fr"),
+    "node 3": ("hc", "gc"),
+}
 # The single-site workflow, whose VLAN IDs a site keeps, plus 100 for each site after the first.
 WORKFLOW: Path = RANGE / "phenix.yml"
 VLAN_STEP: int = 100
@@ -487,8 +496,9 @@ def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> list
     result.budgets["mock internet, FRR routers (6 routers, 6 small hosts)"] = internet_frr
     result.budgets["head office additions (fleet historian, corporate server, second office desktop)"] = head_office
     result.budgets["network sensor at a site (Hedgehog-style, 4 vCPU, 16 GB)"] = sensor
-    # Every mix has the mock internet as FRR routers and the head-office additions.
-    shared = Budget().add(internet_frr).add(head_office)
+    # Every mix has the mock internet as VyOS routers (decision D6 of the plans)
+    # and the head-office additions.
+    shared = Budget().add(internet_vyos).add(head_office)
     result.plans = {
         "M1: four full plants, central SOC": shared
         .add(full, 4).add(soc_b).add(remote_b),
@@ -510,19 +520,23 @@ def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> list
     layouts: dict[str, list[tuple[str, ...]]] = {
         "one node": [("once", "fr", "hc", "ws", "gc")],
         "two nodes": [("once", "fr", "hc"), ("ws", "gc")],
-        "three nodes": [("once", "fr"), ("hc", "gc"), ("ws",)],
+        # The cluster the range is planned for: three nodes, and the head node
+        # runs VMs. It gets the lightest share, because it also runs phenix
+        # and serves the images.
+        CLUSTER: [CLUSTER_LAYOUT[name] for name in CLUSTER_LAYOUT],
         "four nodes, one for each site": [("once", "fr"), ("hc",), ("ws",), ("gc",)],
         "five nodes, one for each site and one for what the range has once": [("once",), ("fr",), ("hc",), ("ws",), ("gc",)],
     }  # fmt: skip
     label = {"once": "internet, head office, SOC, vendor access"}
     for title, groups in layouts.items():
         placement = Placement(title=title)
-        for number, group in enumerate(groups, start=1):
+        names = list(CLUSTER_LAYOUT) if title == CLUSTER else [f"node {n}" for n in range(1, len(groups) + 1)]
+        for name, group in zip(names, groups, strict=True):
             cost = Budget()
             for part in group:
                 cost = cost.add(once if part == "once" else site[part])
-            placement.nodes[f"node {number}"] = "; ".join(label.get(part, f"site {part}") for part in group)
-            placement.cost[f"node {number}"] = cost
+            placement.nodes[name] = "; ".join(label.get(part, f"site {part}") for part in group)
+            placement.cost[name] = cost
         result.placements.append(placement)
     return merged
 
@@ -540,7 +554,8 @@ def cluster_workflow(result: Result, merged: list[dict[str, Any]], out: Path, sc
                 vlans.setdefault(alias, number)
             else:
                 vlans[site.vlan(alias)] = number + VLAN_STEP * site.index
-    node_of = {site.code: f"compute{site.index + 1}" for site in SITES}
+    # The names are stand-ins for the cluster's own node names.
+    node_of = {part: name.replace(" ", "-") for name, parts in CLUSTER_LAYOUT.items() for part in parts}
     schedules = {n["general"]["hostname"]: node_of[n["general"]["hostname"].split("-", 1)[0]] for n in merged}
     workflow = {
         "apiVersion": "phenix.sandia.gov/v0",
@@ -554,9 +569,8 @@ def cluster_workflow(result: Result, merged: list[dict[str, Any]], out: Path, sc
             # The sites use 100 to 499, and the internet's links 500 to 539 (PLANS.md section 3).
             "vlanRange": {"min": 100, "max": 599},
             "defaultBridge": "cherrymtn-fleet",
-            # VLANs cross the nodes inside GRE tunnels, so the switch between them needs no trunk.
-            "useGREMesh": True,
-            # The node that runs phenix runs VMs too.
+            # The cluster bridges VLANs between its nodes itself, so there is no
+            # `useGREMesh` here. The node that runs phenix runs VMs too.
             "deployMode": "all",
             "schedules": schedules,
         },
@@ -619,7 +633,7 @@ def write(result: Result) -> None:
         lines.append(f"| {key} | {budget.row()} |")
     lines += [
         "",
-        "## Site mixes on a host with 48 cores and 96 threads",
+        "## Site mixes on one node with 48 cores and 96 threads",
         "",
         "| Mix | VMs | vCPUs | Memory (GB) | vCPUs per thread | vCPUs per core |",
         "|---|---:|---:|---:|---:|---:|",

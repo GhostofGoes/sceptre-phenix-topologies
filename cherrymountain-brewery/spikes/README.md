@@ -62,7 +62,8 @@ phenix and minimega. Each keeps the summary of its last run in its own
 commands to the `vrouter` app, as two patches: one for sceptre-phenix `main`
 at `86fd732`, and one for the fork's `ci-e2e-minimega` at `afbcba7`. Each
 passes `go test ./app ./tmpl` on its branch, and the `wan-bgp-vyos` job
-applies the second before it builds phenix.
+applies the second before it builds phenix. The first is the draft pull
+request [GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27).
 
 ## Retired kits
 

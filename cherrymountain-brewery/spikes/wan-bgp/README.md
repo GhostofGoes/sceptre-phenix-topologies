@@ -303,8 +303,10 @@ Tumbleweed. A host sits behind each edge.
   stands in for Marmot as the site's second ISP. So nothing here can wait for
   a BGP hold timer, and the hijack has nobody to believe it.
 - **phenix delivers everything.** Each router's BGP, BFD, policy, and tunnels
-  are the `config` list of the patched `vrouter` app ([patches](patches)): 59
-  commands for an ISP, 66 to 119 for a site edge. `vyos_sketch.py` writes them
+  are the `config` list of the patched `vrouter` app ([patches](patches), and
+  the draft pull request
+  [GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27)):
+  59 commands for an ISP, 66 to 119 for a site edge. `vyos_sketch.py` writes them
   from the lab's model. The job applies the patch for the fork's
   `ci-e2e-minimega` to phenix before it builds it.
 - **Two jobs, one for each tunnel.** `CM_TUNNEL=wireguard`, and

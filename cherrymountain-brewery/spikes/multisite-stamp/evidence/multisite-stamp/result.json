@@ -1,0 +1,153 @@
+{
+  "probes": [
+    {
+      "name": "ci: plant.yaml as it is (control)",
+      "passed": true,
+      "detail": "12 files generated"
+    },
+    {
+      "name": "ci: site hc subnets and VLAN aliases, same hostnames",
+      "passed": true,
+      "detail": "12 files generated"
+    },
+    {
+      "name": "ci: site hc subnets, VLAN aliases, and hostnames",
+      "passed": true,
+      "detail": "12 files generated; no first-site hostname or address in the configuration of 12 files"
+    },
+    {
+      "name": "lite: plant.yaml as it is (control)",
+      "passed": true,
+      "detail": "30 files generated"
+    },
+    {
+      "name": "lite: site hc subnets and VLAN aliases, same hostnames",
+      "passed": true,
+      "detail": "30 files generated"
+    },
+    {
+      "name": "lite: site hc subnets, VLAN aliases, and hostnames",
+      "passed": false,
+      "detail": "plantgen/render.py, line 348, in helics_doc: KeyError: 'sim-ctl'"
+    },
+    {
+      "name": "lite: the same, with plantgen's one `sim-ctl` lookup taken from the broker host",
+      "passed": true,
+      "detail": "30 files generated; no first-site hostname or address in the configuration of 30 files; 82 mentions in descriptions and comments only"
+    },
+    {
+      "name": "full: plant.yaml as it is (control)",
+      "passed": true,
+      "detail": "31 files generated"
+    },
+    {
+      "name": "full: site hc subnets and VLAN aliases, same hostnames",
+      "passed": true,
+      "detail": "31 files generated"
+    },
+    {
+      "name": "full: site hc subnets, VLAN aliases, and hostnames",
+      "passed": false,
+      "detail": "plantgen/render.py, line 348, in helics_doc: KeyError: 'sim-ctl'"
+    },
+    {
+      "name": "full: the same, with plantgen's one `sim-ctl` lookup taken from the broker host",
+      "passed": true,
+      "detail": "31 files generated; no first-site hostname or address in the configuration of 31 files; 82 mentions in descriptions and comments only"
+    }
+  ],
+  "merge": {
+    "site topology files": 4,
+    "nodes in the four sites": 132,
+    "duplicate hostnames": [],
+    "duplicate addresses": [
+      "203.0.113.2"
+    ],
+    "VLAN aliases in the four sites": 57,
+    "longest hostname": "fr-bas-rtu-taproom (18 characters; phenix allows 63)",
+    "subnets of fr": "10.10.10.0/24, 10.10.20.0/24, 10.20.10.0/24, 10.20.11.0/24, 10.20.12.0/24, 10.20.13.0/24, 10.20.14.0/24, 10.20.15.0/24, 10.20.16.0/24, 10.20.20.0/24, 10.20.30.0/24, 10.30.10.0/24, 10.40.10.0/24, 172.16.0.0/16, 203.0.113.0/24",
+    "subnets of hc": "10.11.10.0/24, 10.11.20.0/24, 10.21.10.0/24, 10.21.11.0/24, 10.21.12.0/24, 10.21.13.0/24, 10.21.14.0/24, 10.21.15.0/24, 10.21.16.0/24, 10.21.20.0/24, 10.21.30.0/24, 10.31.10.0/24, 10.41.10.0/24, 172.17.0.0/16, 203.0.113.0/24",
+    "subnets of ws": "10.12.10.0/24, 10.12.20.0/24, 10.22.10.0/24, 10.22.11.0/24, 10.22.12.0/24, 10.22.13.0/24, 10.22.14.0/24, 10.22.15.0/24, 10.22.16.0/24, 10.22.20.0/24, 10.22.30.0/24, 10.32.10.0/24, 10.42.10.0/24, 172.18.0.0/16, 203.0.113.0/24",
+    "subnets of gc": "10.13.10.0/24, 10.13.20.0/24, 10.23.10.0/24, 10.23.11.0/24, 10.23.12.0/24, 10.23.13.0/24, 10.23.14.0/24, 10.23.15.0/24, 10.23.16.0/24, 10.23.20.0/24, 10.23.30.0/24, 10.33.10.0/24, 10.43.10.0/24, 172.19.0.0/16, 203.0.113.0/24",
+    "phenix Topology schema": "ok (4 files)"
+  },
+  "budgets": {
+    "site, full plant (core without the shared internet nodes)": {
+      "vms": 33,
+      "vcpus": 41,
+      "memory_mb": 64512
+    },
+    "shared internet nodes of the single-site core": {
+      "vms": 4,
+      "vcpus": 4,
+      "memory_mb": 6144
+    },
+    "SOC module (malcolm, wazuh, soc-analyst, soc-purple)": {
+      "vms": 4,
+      "vcpus": 18,
+      "memory_mb": 86016
+    },
+    "remote-access module (vendor-ws, dmz-vpn, dmz-jump)": {
+      "vms": 3,
+      "vcpus": 5,
+      "memory_mb": 7168
+    },
+    "site, brewpub (brewhouse, cellar, BAS)": {
+      "vms": 20,
+      "vcpus": 26,
+      "memory_mb": 45056
+    },
+    "site, cellar slice (the ci variant behind a firewall)": {
+      "vms": 8,
+      "vcpus": 10,
+      "memory_mb": 19456
+    },
+    "mock internet, VyOS routers (6 routers, 6 small hosts)": {
+      "vms": 12,
+      "vcpus": 12,
+      "memory_mb": 18432
+    },
+    "mock internet, FRR routers (6 routers, 6 small hosts)": {
+      "vms": 12,
+      "vcpus": 12,
+      "memory_mb": 9216
+    },
+    "head office additions (fleet historian, corporate server, second office desktop)": {
+      "vms": 3,
+      "vcpus": 6,
+      "memory_mb": 12288
+    },
+    "network sensor at a site (Hedgehog-style, 4 vCPU, 16 GB)": {
+      "vms": 1,
+      "vcpus": 4,
+      "memory_mb": 16384
+    }
+  },
+  "plans": {
+    "M1: four full plants, central SOC": {
+      "vms": 154,
+      "vcpus": 205,
+      "memory_mb": 372736
+    },
+    "M2: four full plants, central SOC, a network sensor at each of the other three sites": {
+      "vms": 157,
+      "vcpus": 217,
+      "memory_mb": 421888
+    },
+    "M3: two full plants and two brewpubs, central SOC": {
+      "vms": 128,
+      "vcpus": 175,
+      "memory_mb": 333824
+    },
+    "M4: one full plant and three cellar slices, central SOC": {
+      "vms": 79,
+      "vcpus": 112,
+      "memory_mb": 237568
+    },
+    "M5: four full plants, no SOC and no vendor access": {
+      "vms": 147,
+      "vcpus": 182,
+      "memory_mb": 279552
+    }
+  }
+}

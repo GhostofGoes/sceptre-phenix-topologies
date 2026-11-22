@@ -21,6 +21,7 @@ on:
         description: >-
           Spikes to run, space-separated (empty runs all): vyos-ipsec bbmd-netns
           bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror
+          wan-bgp-vyos
         type: string
         default: ''
       phenix-ref:
@@ -95,7 +96,7 @@ jobs:
           SPIKES: ${{ inputs.spikes }}
         run: |
           set -euo pipefail
-          all='vyos-ipsec bbmd-netns bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror'
+          all='vyos-ipsec bbmd-netns bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror wan-bgp-vyos'
           read -r -a want <<<"${SPIKES:-$all}"
           for n in "${want[@]}"; do
             [[ " $all " == *" $n "* ]] || { echo "::error::unknown spike '$n'"; exit 1; }
@@ -114,6 +115,7 @@ jobs:
       contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
       || contains(needs.plan.outputs.spikes, ' autotunnel ') || contains(needs.plan.outputs.spikes, ' serial ')
       || contains(needs.plan.outputs.spikes, ' serial-pr130 ') || contains(needs.plan.outputs.spikes, ' malcolm-mirror ')
+      || contains(needs.plan.outputs.spikes, ' wan-bgp-vyos ')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -170,7 +172,9 @@ jobs:
   image-vyos:
     name: Image vyos
     needs: plan
-    if: contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
+    if: >-
+      contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
+      || contains(needs.plan.outputs.spikes, ' wan-bgp-vyos ')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -341,6 +345,58 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: evidence-bbmd-vyos
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  wan-bgp-vyos:
+    name: Spike wan-bgp (VyOS routers)
+    needs: [plan, image-cm-spike, image-vyos]
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' wan-bgp-vyos ') && needs.image-cm-spike.result == 'success' && needs.image-vyos.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    permissions:
+      contents: read
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
+      CM_IMAGES_REF: ${{ needs.plan.outputs.images-ref }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # tools/plantgen/plantgen has wgkeys.py, which derives the tunnels' keys.
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+            cherrymountain-brewery/tools/plantgen/plantgen
+          persist-credentials: false
+
+      # phenix's vrouter app with a `config` list of VyOS commands, which carries the BGP,
+      # BFD and tunnel configuration the app cannot render. The patch is for the fork's branch.
+      - name: Set up the lab with the vrouter config list
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          phenix-patch: cherrymountain-brewery/spikes/wan-bgp/patches/vrouter-config-passthrough.ci-e2e-minimega.patch
+          images: cm-spike|vyos
+
+      - name: Run the spike
+        run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/wan-bgp/vyos_ci.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" evidence || true
+          find evidence -type f -size +50M -delete 2>/dev/null || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-wan-bgp-vyos
           path: evidence
           retention-days: 14
           if-no-files-found: ignore

@@ -1,0 +1,63 @@
+set protocols bfd profile WAN interval transmit 1000
+set protocols bfd profile WAN interval receive 1000
+set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list SITE-NETS rule 10 action permit
+set policy prefix-list SITE-NETS rule 10 prefix 10.0.0.0/8
+set policy prefix-list SITE-NETS rule 10 ge 16
+set policy prefix-list SITE-NETS rule 10 le 24
+set policy route-map OVERLAY-PRIMARY rule 10 action permit
+set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP rule 10 action permit
+set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
+set policy route-map OVERLAY-OUT rule 10 action permit
+set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
+set protocols bgp system-as 65040
+set protocols bgp parameters router-id 10.255.4.1
+set protocols bgp address-family ipv4-unicast network 10.13.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.23.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.33.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.43.0.0/16
+set protocols static route 0.0.0.0/0 next-hop 198.18.103.1 distance 10
+set vpn ipsec options disable-route-autoinstall
+set vpn ipsec ike-group WAN key-exchange ikev2
+set vpn ipsec ike-group WAN lifetime 28800
+set vpn ipsec ike-group WAN close-action start
+set vpn ipsec ike-group WAN dead-peer-detection action restart
+set vpn ipsec ike-group WAN dead-peer-detection interval 10
+set vpn ipsec ike-group WAN dead-peer-detection timeout 30
+set vpn ipsec ike-group WAN disable-mobike
+set vpn ipsec ike-group WAN proposal 10 dh-group 14
+set vpn ipsec ike-group WAN proposal 10 encryption aes256
+set vpn ipsec ike-group WAN proposal 10 hash sha256
+set vpn ipsec esp-group WAN lifetime 3600
+set vpn ipsec esp-group WAN pfs dh-group14
+set vpn ipsec esp-group WAN proposal 10 encryption aes256
+set vpn ipsec esp-group WAN proposal 10 hash sha256
+set interfaces vti vti105 description 'gc-a over Pelican Coast Broadband'
+set interfaces vti vti105 address 10.255.0.9/31
+set vpn ipsec authentication psk gc-a id '198.18.103.2'
+set vpn ipsec authentication psk gc-a id '198.18.105.1'
+set vpn ipsec authentication psk gc-a secret 'PRE-SHARED-KEY-OF-THIS-TUNNEL'
+set vpn ipsec site-to-site peer gc-a authentication mode pre-shared-secret
+set vpn ipsec site-to-site peer gc-a authentication local-id '198.18.103.2'
+set vpn ipsec site-to-site peer gc-a authentication remote-id '198.18.105.1'
+set vpn ipsec site-to-site peer gc-a connection-type initiate
+set vpn ipsec site-to-site peer gc-a ike-group WAN
+set vpn ipsec site-to-site peer gc-a default-esp-group WAN
+set vpn ipsec site-to-site peer gc-a local-address 198.18.103.2
+set vpn ipsec site-to-site peer gc-a remote-address 198.18.105.1
+set vpn ipsec site-to-site peer gc-a vti bind vti105
+set vpn ipsec site-to-site peer gc-a vti esp-group WAN
+set policy local-route rule 105 source address 198.18.103.2
+set policy local-route rule 105 set table 105
+set protocols static table 105 route 0.0.0.0/0 next-hop 198.18.103.1
+set protocols static table 105 route 0.0.0.0/0 blackhole distance 250
+set protocols bgp neighbor 10.255.0.8 remote-as 64505
+set protocols bgp neighbor 10.255.0.8 description 'overlay gc-a'
+set protocols bgp neighbor 10.255.0.8 timers keepalive 3
+set protocols bgp neighbor 10.255.0.8 timers holdtime 9
+set protocols bgp neighbor 10.255.0.8 bfd profile WAN
+set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
+set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map export OVERLAY-OUT

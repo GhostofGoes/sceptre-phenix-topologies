@@ -38,9 +38,9 @@ python stamp.py --schema ~/sceptre-phenix/schemas
 3. **Budget.** It adds up VMs, vCPUs, and memory for the building blocks and
    for five site mixes.
 4. **Cluster.** It spreads the largest mix (M2) over one to five nodes of 48
-   cores and 512 GB, one site to a node where there are enough, and writes a
-   workflow that names a node for each site VM. With `--schema` it validates
-   that file against phenix's Workflow schema.
+   cores and 512 GB, and writes a workflow that names a node of the
+   three-node cluster for each site VM. With `--schema` it validates that file
+   against phenix's Workflow schema.
 
 `--out DIR` keeps the four stamped topology files and the workflow.
 
@@ -65,9 +65,9 @@ The first site keeps the address plan of DESIGN.md §10.2 unchanged.
       against the Topology schema.
 - [x] At least one site mix stays near the single-site design's overcommit
       on 96 threads.
-- [x] With one cluster node for each site, no node carries more than one vCPU
-      for each thread, and a workflow that names a node for every site VM
-      validates against the Workflow schema.
+- [x] On the three-node cluster no node carries more than one vCPU for each
+      thread, and a workflow that names a node for every site VM validates
+      against the Workflow schema.
 
 ## Result
 
@@ -140,17 +140,17 @@ sensor are estimates.
 
 ### Site mixes on 48 cores and 96 threads
 
-Every mix includes the mock internet as FRR routers and the head-office
+Every mix includes the mock internet as VyOS routers and the head-office
 additions. The single-site design runs 68 vCPUs on 32 or more cores: at most
 2.1 vCPUs per core, or about 1.1 per thread.
 
 | Mix | VMs | vCPUs | Memory (GB) | vCPUs per thread | vCPUs per core |
 |---|---:|---:|---:|---:|---:|
-| M1: four full plants, central SOC | 154 | 205 | 364 | 2.1 | 4.3 |
-| M2: M1 and a network sensor at each of the other three sites | 157 | 217 | 412 | 2.3 | 4.5 |
-| M3: two full plants and two brewpubs, central SOC | 134 | 183 | 338 | 1.9 | 3.8 |
-| M4: one full plant and three cellar slices, central SOC | 85 | 124 | 262 | 1.3 | 2.6 |
-| M5: four full plants, no SOC and no vendor access | 147 | 182 | 273 | 1.9 | 3.8 |
+| M1: four full plants, central SOC | 154 | 205 | 373 | 2.1 | 4.3 |
+| M2: M1 and a network sensor at each of the other three sites | 157 | 217 | 421 | 2.3 | 4.5 |
+| M3: two full plants and two brewpubs, central SOC | 134 | 183 | 347 | 1.9 | 3.8 |
+| M4: one full plant and three cellar slices, central SOC | 85 | 124 | 271 | 1.3 | 2.6 |
+| M5: four full plants, no SOC and no vendor access | 147 | 182 | 282 | 1.9 | 3.8 |
 
 M4 is the only mix near the single-site design's overcommit (1.3 vCPUs per
 thread against about 1.1). M1 doubles it. Every mix needs more than 256 GB of
@@ -158,33 +158,37 @@ memory as sized. DESIGN.md §11 sizes the full variant for a 512 GB host.
 
 ### Mix M2 on a cluster
 
-A node has 48 cores, 96 threads, and 512 GB. The node of the first site also
-runs what the range has once: the mock internet, the head office's additions,
-the SOC, and the vendor's remote access (22 VMs, 41 vCPUs, 112 GB).
+A node has 48 cores, 96 threads, and 512 GB. "The shared part" is what the
+range has once: the mock internet, the head office's additions, the SOC, and
+the vendor's remote access (22 VMs, 41 vCPUs, 121 GB).
 
 | Cluster | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
 |---|---|---|---:|---:|---:|---:|---:|
-| One node | 1 | Everything | 157 | 217 | 412 | 2.26 | 80% |
-| Two nodes | 1 | The shared part, `fr`, `hc` | 89 | 127 | 254 | 1.32 | 50% |
+| One node | 1 | Everything | 157 | 217 | 421 | 2.26 | 82% |
+| Two nodes | 1 | The shared part, `fr`, `hc` | 89 | 127 | 263 | 1.32 | 51% |
 | | 2 | `ws`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
-| Three nodes | 1 | The shared part, `fr` | 55 | 82 | 175 | 0.85 | 34% |
-| | 2 | `hc`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
-| | 3 | `ws` | 34 | 45 | 79 | 0.47 | 15% |
-| Four nodes | 1 | The shared part, `fr` | 55 | 82 | 175 | 0.85 | 34% |
+| **Three nodes, with the head node** | head node | `ws` | 34 | 45 | 79 | 0.47 | 15% |
+| | 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
+| | 3 | `hc`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
+| Four nodes | 1 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
 | | 2, 3, 4 | `hc`, `ws`, `gc`: one each | 34 | 45 | 79 | 0.47 | 15% |
-| Five nodes | 1 | The shared part | 22 | 41 | 112 | 0.43 | 22% |
+| Five nodes | 1 | The shared part | 22 | 41 | 121 | 0.43 | 24% |
 | | 2 | `fr` | 33 | 41 | 63 | 0.43 | 12% |
 | | 3, 4, 5 | `hc`, `ws`, `gc`: one each | 34 | 45 | 79 | 0.47 | 15% |
 
-From three nodes on, no node carries more than one vCPU for each thread, and
-memory is never the limit: the whole mix is 80% of one node.
+The cluster the range is planned for has three nodes, and its head node runs
+VMs. No node there carries more than one vCPU for each thread, and memory is
+never the limit: the whole mix is 82% of one node. The head node gets the
+lightest share, because it also runs phenix and serves the images.
 
 ### A workflow that pins each site to a node
 
 The kit writes `phenix-fleet.yml` next to the stamped topologies: the VLAN
 IDs (a site keeps the single-site IDs plus 100 for each site after the first),
-`schedules` with a node for each of the 132 site VMs (`compute1` to
-`compute4`, 33 each), `useGREMesh: true`, and `deployMode: all`.
+`schedules` with a node for each of the 132 site VMs (33 on `head-node`, 33
+on `node-2`, 66 on `node-3`; the names stand in for the cluster's own), and
+`deployMode: all`. It does not set `useGREMesh`: the cluster bridges VLANs
+between its nodes itself.
 
 - No VLAN ID is given twice, and every alias of the site topologies has an ID
   (60 aliases: 14 for each site and 4 shared).
@@ -195,7 +199,7 @@ IDs (a site keeps the single-site IDs plus 100 for each site after the first),
 ## What the kit did not test
 
 - **No cluster.** The node names are made up, phenix did not read the
-  workflow, and no VLAN crossed a GRE tunnel. The placement table counts
+  workflow, and no VLAN crossed between two nodes. The placement table counts
   vCPUs; it does not measure a node.
 
 - **No VM ran.** The vCPU figures are counts, not load. No part of the range

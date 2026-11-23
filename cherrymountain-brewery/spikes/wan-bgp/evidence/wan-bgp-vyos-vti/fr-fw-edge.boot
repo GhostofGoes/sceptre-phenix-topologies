@@ -81,8 +81,8 @@ set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast soft-reconfi
 set vpn ipsec options disable-route-autoinstall
 set vpn ipsec ike-group WAN key-exchange ikev2
 set vpn ipsec ike-group WAN lifetime 28800
-set vpn ipsec ike-group WAN close-action start
-set vpn ipsec ike-group WAN dead-peer-detection action restart
+set vpn ipsec ike-group WAN close-action none
+set vpn ipsec ike-group WAN dead-peer-detection action clear
 set vpn ipsec ike-group WAN dead-peer-detection interval 10
 set vpn ipsec ike-group WAN dead-peer-detection timeout 30
 set vpn ipsec ike-group WAN disable-mobike

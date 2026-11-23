@@ -127,27 +127,27 @@
     "M1: four full plants, central SOC": {
       "vms": 154,
       "vcpus": 205,
-      "memory_mb": 372736
+      "memory_mb": 381952
     },
     "M2: four full plants, central SOC, a network sensor at each of the other three sites": {
       "vms": 157,
       "vcpus": 217,
-      "memory_mb": 421888
+      "memory_mb": 431104
     },
     "M3: two full plants and two brewpubs, central SOC": {
       "vms": 134,
       "vcpus": 183,
-      "memory_mb": 346112
+      "memory_mb": 355328
     },
     "M4: one full plant and three cellar slices, central SOC": {
       "vms": 85,
       "vcpus": 124,
-      "memory_mb": 268288
+      "memory_mb": 277504
     },
     "M5: four full plants, no SOC and no vendor access": {
       "vms": 147,
       "vcpus": 182,
-      "memory_mb": 279552
+      "memory_mb": 288768
     }
   },
   "placements": [
@@ -160,7 +160,7 @@
         "node 1": {
           "vms": 157,
           "vcpus": 217,
-          "memory_mb": 421888
+          "memory_mb": 431104
         }
       }
     },
@@ -174,7 +174,7 @@
         "node 1": {
           "vms": 89,
           "vcpus": 127,
-          "memory_mb": 260096
+          "memory_mb": 269312
         },
         "node 2": {
           "vms": 68,
@@ -184,27 +184,27 @@
       }
     },
     {
-      "title": "three nodes",
+      "title": "three nodes, with the head node",
       "nodes": {
-        "node 1": "internet, head office, SOC, vendor access; site fr",
-        "node 2": "site hc; site gc",
-        "node 3": "site ws"
+        "head node": "site ws",
+        "node 2": "internet, head office, SOC, vendor access; site fr",
+        "node 3": "site hc; site gc"
       },
       "cost": {
-        "node 1": {
-          "vms": 55,
-          "vcpus": 82,
-          "memory_mb": 179200
-        },
-        "node 2": {
-          "vms": 68,
-          "vcpus": 90,
-          "memory_mb": 161792
-        },
-        "node 3": {
+        "head node": {
           "vms": 34,
           "vcpus": 45,
           "memory_mb": 80896
+        },
+        "node 2": {
+          "vms": 55,
+          "vcpus": 82,
+          "memory_mb": 188416
+        },
+        "node 3": {
+          "vms": 68,
+          "vcpus": 90,
+          "memory_mb": 161792
         }
       }
     },
@@ -220,7 +220,7 @@
         "node 1": {
           "vms": 55,
           "vcpus": 82,
-          "memory_mb": 179200
+          "memory_mb": 188416
         },
         "node 2": {
           "vms": 34,
@@ -252,7 +252,7 @@
         "node 1": {
           "vms": 22,
           "vcpus": 41,
-          "memory_mb": 114688
+          "memory_mb": 123904
         },
         "node 2": {
           "vms": 33,
@@ -279,7 +279,7 @@
   ],
   "cluster": {
     "VMs with a node in `schedules`": "132 of 132 (the four sites; the shared nodes are not stamped)",
-    "VMs for each node": "{\"compute1\": 33, \"compute2\": 33, \"compute3\": 33, \"compute4\": 33}",
+    "VMs for each node": "{\"head-node\": 33, \"node-2\": 33, \"node-3\": 66}",
     "VLAN aliases with an ID": 60,
     "VLAN IDs given twice": [],
     "aliases of the site topologies without an ID": [],

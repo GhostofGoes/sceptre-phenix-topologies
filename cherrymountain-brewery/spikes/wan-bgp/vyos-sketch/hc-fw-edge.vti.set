@@ -1,10 +1,42 @@
 set protocols bfd profile WAN interval transmit 1000
 set protocols bfd profile WAN interval receive 1000
 set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list SITE-HC rule 10 action permit
+set policy prefix-list SITE-HC rule 10 prefix 10.11.0.0/16
+set policy prefix-list SITE-HC rule 10 le 24
 set policy prefix-list SITE-NETS rule 10 action permit
-set policy prefix-list SITE-NETS rule 10 prefix 10.0.0.0/8
-set policy prefix-list SITE-NETS rule 10 ge 16
+set policy prefix-list SITE-NETS rule 10 prefix 10.11.0.0/16
 set policy prefix-list SITE-NETS rule 10 le 24
+set policy prefix-list SITE-HC rule 20 action permit
+set policy prefix-list SITE-HC rule 20 prefix 10.21.0.0/16
+set policy prefix-list SITE-HC rule 20 le 24
+set policy prefix-list SITE-NETS rule 20 action permit
+set policy prefix-list SITE-NETS rule 20 prefix 10.21.0.0/16
+set policy prefix-list SITE-NETS rule 20 le 24
+set policy prefix-list SITE-FR rule 10 action permit
+set policy prefix-list SITE-FR rule 10 prefix 10.10.0.0/16
+set policy prefix-list SITE-FR rule 10 le 24
+set policy prefix-list SITE-NETS rule 30 action permit
+set policy prefix-list SITE-NETS rule 30 prefix 10.10.0.0/16
+set policy prefix-list SITE-NETS rule 30 le 24
+set policy prefix-list SITE-FR rule 20 action permit
+set policy prefix-list SITE-FR rule 20 prefix 10.20.0.0/16
+set policy prefix-list SITE-FR rule 20 le 24
+set policy prefix-list SITE-NETS rule 40 action permit
+set policy prefix-list SITE-NETS rule 40 prefix 10.20.0.0/16
+set policy prefix-list SITE-NETS rule 40 le 24
+set policy prefix-list SITE-FR rule 30 action permit
+set policy prefix-list SITE-FR rule 30 prefix 10.30.0.0/16
+set policy prefix-list SITE-FR rule 30 le 24
+set policy prefix-list SITE-NETS rule 50 action permit
+set policy prefix-list SITE-NETS rule 50 prefix 10.30.0.0/16
+set policy prefix-list SITE-NETS rule 50 le 24
+set policy prefix-list SITE-FR rule 40 action permit
+set policy prefix-list SITE-FR rule 40 prefix 10.40.0.0/16
+set policy prefix-list SITE-FR rule 40 le 24
+set policy prefix-list SITE-NETS rule 60 action permit
+set policy prefix-list SITE-NETS rule 60 prefix 10.40.0.0/16
+set policy prefix-list SITE-NETS rule 60 le 24
 set policy route-map OVERLAY-PRIMARY rule 10 action permit
 set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
 set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
@@ -12,14 +44,12 @@ set policy route-map OVERLAY-BACKUP rule 10 action permit
 set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
 set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
 set policy route-map OVERLAY-OUT rule 10 action permit
-set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-HC
 set protocols bgp system-as 65020
 set protocols bgp parameters router-id 10.255.2.1
 set protocols bgp parameters log-neighbor-changes
 set protocols bgp address-family ipv4-unicast network 10.11.0.0/16
 set protocols bgp address-family ipv4-unicast network 10.21.0.0/16
-set protocols bgp address-family ipv4-unicast network 10.31.0.0/16
-set protocols bgp address-family ipv4-unicast network 10.41.0.0/16
 set protocols static route 0.0.0.0/0 next-hop 203.0.113.9 distance 10
 set protocols static route 0.0.0.0/0 next-hop 198.18.102.1 distance 20
 set vpn ipsec options disable-route-autoinstall

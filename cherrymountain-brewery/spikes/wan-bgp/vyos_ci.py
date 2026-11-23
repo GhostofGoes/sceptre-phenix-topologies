@@ -19,7 +19,9 @@ Checked, in order:
      default routes and their preferred source;
   4. the two WireGuard tunnels, the mark that ties each to an uplink, and BGP
      with BFD inside them;
-  5. a host at the site reaches a host at the head office through the tunnel;
+  5. a host at the site reaches a host at the head office through the tunnel,
+     and the head office refuses a network of another site when the site's
+     edge announces it;
   6. silent faults on ShadeCast (the site's uplink, then the head office's),
      the site's uplink set down, and a silence of 200 s: where the traffic
      goes, how long it takes, whether a tunnel endpoint moves, and whether a
@@ -387,6 +389,45 @@ def wait_tunnel(lab: Lab, want: str, timeout_s: float) -> tuple[bool, str]:
         return False, str(exc)[-200:]
 
 
+def foreign_prefix(lab: Lab, site: str) -> None:
+    """The site's edge announces a network of another site, and the head office must not take it.
+
+    The edge's own export filter is opened first, as somebody who controls the
+    edge would open it, so that what stops the route is the head office's
+    filter for this site. FRR is told directly: nothing here is committed to
+    the VyOS configuration.
+    """
+    prefix = model.GC_LAN
+    asn = model.BY_NAME[site].asn
+    own = f"SITE-{vyos_sketch.site_code(site)}"
+    peers = [tunnel.hub_address() for tunnel in model.TUNNELS]
+    vtysh(
+        lab, site, "configure terminal", f"ip route {prefix} blackhole", f"ip prefix-list {own} seq 900 permit {prefix}",
+        f"router bgp {asn}", "address-family ipv4 unicast", f"network {prefix}",
+    )  # fmt: skip
+
+    def offered() -> tuple[bool, str]:
+        out = vtysh(lab, site, *[f"show bgp ipv4 unicast neighbors {peer} advertised-routes" for peer in peers])
+        return out.count(prefix) >= len(peers), " ".join(out.split())[-300:]
+
+    try:
+        detail, sent = wait_for(f"{site} offering {prefix}", 60, 5, offered), True
+    except TimeoutError as exc:
+        detail, sent = str(exc)[-300:], False
+    held = vtysh(lab, HQ, f"show bgp ipv4 unicast {prefix}")
+    route = lab.shell(HQ, f"ip route show {prefix} 2>&1").strip()
+    lab.check(
+        "the head office refuses another site's network when the site announces it",
+        sent and "not in table" in held and not route,
+        f"{site} offered {prefix} on {len(peers)} tunnels: {sent} ({detail[-120:]}). "
+        f"The head office: {' '.join(held.split())[:200]}; kernel route: {route or 'none'}",
+    )
+    vtysh(
+        lab, site, "configure terminal", f"router bgp {asn}", "address-family ipv4 unicast", f"no network {prefix}",
+        "exit", "exit", f"no ip route {prefix} blackhole", f"no ip prefix-list {own} seq 900",
+    )  # fmt: skip
+
+
 def faults(lab: Lab) -> None:
     """Silent faults on ShadeCast, and one link set down, with a ping running through each."""
     isp = model.BY_NAME["shadecast"]
@@ -665,6 +706,7 @@ def run() -> int:
         # 5. End to end.
         ping = lab.shell("hc-historian", "ping -c 10 -i 0.2 -W 2 10.20.30.11 2>&1 | tail -3")
         lab.check("a host at the site reaches a host at the head office", " 0% packet loss" in ping, ping.strip())
+        foreign_prefix(lab, site)
 
         # 6. Faults, when the baseline works (a default route that had to be asked for again counts).
         failed = [check.name for check in lab.evidence.checks if not check.passed]

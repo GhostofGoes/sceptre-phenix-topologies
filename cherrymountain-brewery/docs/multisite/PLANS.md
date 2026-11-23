@@ -335,7 +335,7 @@ phenix cannot render that for VyOS (C5). There are four ways to deliver it.
 
 | Option | What it is | For | Against |
 |---|---|---|---|
-| **R1: a `config` list in the `vrouter` app** (recommended, needs a phenix change) | Each router's metadata lists VyOS `set` and `delete` commands. phenix writes them after its own, before the commit | One commit at first boot, with the rest of the configuration. It also carries what `cm-vyos-config.sh` does after boot today (logging, syslog, IKEv2, the NTP source), so that script could go. The change is small, its tests pass, and it is a draft pull request ([7.3](#73-a-config-list-for-the-vrouter-app)). In CI, 32 boots of VyOS routers committed their lists at first boot, 59 to 119 commands each ([7.4](#74-wan-bgp-on-vyos-routers)) | A change to phenix, on a fork branch until upstream takes it |
+| **R1: a `config` list in the `vrouter` app** (recommended, needs a phenix change) | Each router's metadata lists VyOS `set` and `delete` commands. phenix writes them after its own, before the commit | One commit at first boot, with the rest of the configuration. It also carries what `cm-vyos-config.sh` does after boot today (logging, syslog, IKEv2, the NTP source), so that script could go. The change is small, its tests pass, and it is a draft pull request ([7.3](#73-a-config-list-for-the-vrouter-app)). In CI, 40 boots of VyOS routers committed their lists at first boot, 59 to 119 commands each ([7.4](#74-wan-bgp-on-vyos-routers)) | A change to phenix, on a fork branch until upstream takes it |
 | R2: the post-boot script | `cm-vyos-config.sh` grows a BGP and tunnel section | No phenix change. The mechanism is in the range | A second commit after boot, which a `cc exec` starts. The script has not run on a VyOS VM, and its first form changed nothing and reported success ([DESIGN.md §10.3](../DESIGN.md#103-conduit-matrix-default-deny-stateful-logged)) |
 | R3: BGP as a schema feature of phenix | `network.bgp` in the topology, as `network.ospf` is | The right upstream answer to the TODO | A large change (schema, types, template, Builder checks). It still would not cover tunnels or BFD |
 | R4: keep BGP off VyOS | A Linux router with FRR does the WAN work at each site ([4.4](#44-where-the-tunnels-end), E2) | No phenix change and no VyOS syntax to verify. It is what the lab ran | One more VM at each site |
@@ -462,19 +462,20 @@ point-to-point interface.
 | Endpoints | Fixed by configuration, once MOBIKE is off (VyOS leaves it on: `disable-mobike`) | **Roam**: a peer's endpoint becomes whatever address its last packet came from. The mark pin makes that harmless |
 | A tunnel tied to its uplink | By its source address: a rule sends that address to the uplink's table | By a mark on the tunnel's packets |
 | After a minute of silence | The IKE SA is still there (IKEv2 retransmits for about 165 s), and traffic returns with BGP | The same: nothing to renegotiate |
-| After 200 s of silence | The site had given the peer up and its VTI was down. Back on the primary tunnel 36 s and 20 s after the repair | Back 8 s after the repair, both times |
-| Known problem on VyOS | An open bug leaves a VTI down after its peer reconnects ([T9154](https://vyos.dev/T9154), not fixed on 2026-11-21). It did not show: the VTI came back. With one IKE group for both ends, the head office opens tunnels too, and once a tunnel had two IKE SAs after the long silence | None found |
+| After 200 s of silence | The site had given the peer up and its VTI was down. Back on the primary tunnel 36 s and 20 s after the repair with both ends opening tunnels, and 57 s with the head office only answering | Back 8 or 9 s after the repair, three times |
+| Known problem on VyOS | An open bug leaves a VTI down after its peer reconnects ([T9154](https://vyos.dev/T9154), not fixed on 2026-11-21). It did not show: the VTI came back. With one IKE group for both ends, the head office opens tunnels too, and once a tunnel had two IKE SAs after the long silence. With the head office only answering, it had one | None found |
 | Configuration at a site, as VyOS commands | 93 | 66 |
-| Evidence | Three passing runs on VyOS (28 of 28, then 29 of 29 twice) | The lab with wireguard-go, and two passing runs on VyOS (29 of 29) after the head office's fix |
+| Evidence | Four passing runs on VyOS (28 of 28, then 29 of 29 three times) | The lab with wireguard-go, and three passing runs on VyOS (29 of 29) after the head office's fix |
 
 **Decided (D3):** route-based IPsec between the sites, and WireGuard stays
 the vendor's. Both passed every check on VyOS, so the choice is about what
 the range shows: IPsec is what a brewery group's integrator would install,
 and it gives a defender IKE and ESP to look at. WireGuard is the simpler and
 the quicker to recover, and it is one setting away: the generator writes
-either tunnel from the same model, as `vyos_sketch.py` does. Before IPsec is
-built, the head office should answer only (its own IKE group, with
-`close-action none`), so that a tunnel has one SA.
+either tunnel from the same model, as `vyos_sketch.py` does. The head office
+only answers IKE (`close-action none`), so that a tunnel has one SA. The
+price is a slower return from a long outage: 57 s in the one run that had
+it, against 20 s and 36 s.
 
 **Should the head office have its own AS?** It could instead take ISP-assigned
 addresses on two uplinks, like `hc` and `ws`, with one hub endpoint on each.
@@ -920,14 +921,14 @@ against sceptre-phenix at `86fd732` (the head of `main` on 2026-11-22).
   [GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27),
   and both patch files here are that change. Its check also refuses `[` and
   `]`, which a shell reads as a file name pattern; the form that ran in runs
-  24 to 28 did not, and none of its lines had them.
+  24 to 28 did not, and none of its lines had them. Run 29 had this form.
 - **For the fork too.** The range pins the fork branch `ci-e2e-minimega`,
   whose `vrouter.go` is older, so the patch does not apply there.
   [vrouter-config-passthrough.ci-e2e-minimega.patch](../../spikes/wan-bgp/patches/vrouter-config-passthrough.ci-e2e-minimega.patch)
   is the same change for that branch at `afbcba7`, and
   `go test ./app ./tmpl` passes there as well.
 - **On VyOS.** The patch for `ci-e2e-minimega` was applied to phenix in CI,
-  and 32 boots of VyOS routers committed what it rendered
+  and 40 boots of VyOS routers committed what it rendered
   ([7.4](#74-wan-bgp-on-vyos-routers)).
 - **Not tested.** The patch for `main` on a router. The lint that phenix's CI
   runs (`golangci-lint`). The patches are files in this repository, not a
@@ -950,20 +951,21 @@ without the transit carrier.
 | [25](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45070332103) | 27 of 28: the same route missing; back after a second request, and the faults passed | 16 of 20: both default routes missing, so no tunnel came up |
 | [27](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45072901676), with the fix | **29 of 29** | **29 of 29** |
 | [28](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45075247853), the same code | **29 of 29** | **29 of 29** |
+| [29](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45082278191), with the pull request's patch and a head office that only answers IKE | **29 of 29** | **29 of 29** |
 
 | Event | WireGuard | Route-based IPsec |
 |---|---|---|
-| ShadeCast goes silent toward the site | 2.4, 2.8, and 3.0 s | 2.8, 2.6, and 3.0 s |
-| ShadeCast goes silent toward the head office | 2.6, 2.2, and 2.2 s | 2.8, 5.4, and 2.8 s |
+| ShadeCast goes silent toward the site | 2.4 to 3.0 s, four times | 2.6 to 3.0 s, four times |
+| ShadeCast goes silent toward the head office | 2.2 to 2.6 s, four times | 2.2 to 2.8 s three times, and 5.4 s once |
 | Each repair | no loss | no loss |
 | The site's ShadeCast uplink set down | None of the first tunnel's packets left through the other uplink | The same |
-| 200 s of silence, then the repair | Back on the primary tunnel after 8 s, both times | Back after 36 s and 20 s; the VTI had gone down and came back |
+| 200 s of silence, then the repair | Back on the primary tunnel after 8 or 9 s, three times | Back after 20 s, 36 s, and 57 s; the VTI had gone down and came back |
 
-- **R1 works on VyOS.** All 32 router boots committed the rendered script at
+- **R1 works on VyOS.** All 40 router boots committed the rendered script at
   first boot, and VyOS refused no line: 59 commands for an ISP, 66 to 119 for
   a site edge.
-- **The outages are three BFD intervals.** With 1 s and three missed, eleven of
-  twelve silent faults cost 2.2 to 3.0 s and one cost 5.4 s. The lab's one
+- **The outages are three BFD intervals.** With 1 s and three missed, fifteen
+  of sixteen silent faults cost 2.2 to 3.0 s and one cost 5.4 s. The lab's one
   second was its 300 ms interval.
 - **No endpoint moved and no tunnel changed uplinks**, through every fault,
   with a mark for WireGuard and a source-address rule for IPsec.
@@ -976,21 +978,23 @@ without the transit carrier.
   FRR's source and fits the counters of both routers; the first seconds were
   not captured in a debug log. It happened in three of the first four jobs.
   With `soft-reconfiguration inbound` on the head office's ISP sessions the
-  head office asks for nothing, and runs 27 and 28 passed: four jobs of four,
+  head office asks for nothing, and runs 27 to 29 passed: six jobs of six,
   where three of four had failed.
 - **The kernel's WireGuard came up with one default route**, so finding 1 of
   [7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it) is wireguard-go's.
 - **IPsec recovers by itself.** A minute of silence does not end an IKE SA.
-  After 200 s the site had given its peer up, and the VTI came back 36 s and
-  20 s after the repair. T9154 did not show.
+  After 200 s the site had given its peer up, and the VTI came back each
+  time: after 36 s and 20 s with both ends opening tunnels, and after 57 s
+  with the head office only answering, which leaves one SA for a tunnel and
+  is what the sketch has now. T9154 did not show.
 - **The VyOS image needed a fix to build.** vyos-build renamed its kernel
   package, and the images repository's script asks for one that does not
   exist. `spikes/ci/build_image.sh` patches the script. The images repository
   needs the same change, or no VyOS image builds from it.
 - **Not tested:** the transit carrier, the third ISP, and three of the four
   sites; the nine-second outage and the hijack; a router with firewall rules,
-  NAT, and one vCPU; a head office that only answers IKE; the patch for phenix
-  `main`; more than one node.
+  NAT, and one vCPU; the patch for phenix `main` on a router; more than one
+  node.
 
 ## 8. Stages
 

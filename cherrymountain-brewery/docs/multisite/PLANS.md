@@ -1,21 +1,25 @@
 # CherryMountain Brewing: four breweries and a head office
 
-> **Status:** options, with the decisions taken on 2026-11-22 marked in
-> [section 9](#9-decisions-needed). Nothing here is built. Two spikes ran in a
-> container with no VM. A third ran the WAN's core on four VyOS routers under
-> phenix and minimega in CI, with a patch for phenix that delivers their
-> configuration. Section 7 says what each one showed and what it did not.
-> [DESIGN.md](../DESIGN.md) stays the design of the single-site range.
+> **Status:** options, with the decisions taken on 2026-11-22 and 2026-11-23
+> marked in [section 9](#9-decisions-needed). Nothing here is built. Three
+> spikes ran in a container with no VM. A fourth ran the WAN's core on four
+> VyOS routers under phenix and minimega in CI, with a patch for phenix that
+> delivers their configuration. Section 7 says what each one showed and what
+> it did not. [DESIGN.md](../DESIGN.md) stays the design of the single-site
+> range.
 >
 > **tl;dr:** a `fleet` variant can put four breweries in one phenix experiment,
 > joined to a head office by a site-to-site VPN over a mock internet of five
-> BGP networks. Three plans follow. The recommended one (Plan B) gives the head
-> office its own AS on two ISPs and gives each site one tunnel per uplink, with
-> BGP and BFD inside the tunnels. On VyOS routers a site lost two to three
-> seconds when an uplink went silent, with WireGuard and with route-based
-> IPsec. In the lab a site whose path crossed the failed ISP inside the
-> internet lost nine. The cluster the range will run on has three nodes of 48
-> cores and 512 GB, and four full breweries fit on it.
+> BGP networks. The four are not copies: a flagship with the head office, a
+> newer production brewery, a brewery the company bought, and a brewpub, from
+> 39 VMs down to 17, each with the network such a site would have. Three plans
+> follow. The recommended one (Plan B) gives the head office its own AS on two
+> ISPs and gives each site one tunnel per uplink, with BGP and BFD inside the
+> tunnels. On VyOS routers a site lost two to three seconds when an uplink
+> went silent, with WireGuard and with route-based IPsec. In the lab a site
+> whose path crossed the failed ISP inside the internet lost nine. The whole
+> range is 133 VMs, and on the cluster of three nodes of 48 cores and 512 GB
+> no node carries more than 0.85 vCPUs for each thread.
 
 ## Contents
 
@@ -40,6 +44,10 @@
   a head office at one of them.
 - A site-to-site VPN between them, over a mock internet with BGP and more than
   one ISP.
+- Sites that are not copies: they vary in size, and their networks differ a
+  little, as the sites of a real business do. This was said on 2026-11-23,
+  after the first version of these plans stamped one plant four times
+  ([4.1](#41-what-each-site-is)).
 - A host with 48 cores and 96 threads. Later notes widened it: the range runs
   on **a cluster of three minimega nodes, each with 48 cores and 512 GB**. The
   head node runs VMs, the cluster bridges VLANs between its nodes itself, and
@@ -57,41 +65,111 @@ source or shown by a spike.
 | C1 | Two experiments cannot share a VLAN ID, and phenix has no supported link between experiments | The four sites and the internet are **one experiment** | minimega refuses a VLAN ID that another alias holds; a workflow creates one experiment (`api/workflow/spec.go`) |
 | C2 | `includeTopologies` appends nodes and fails on a duplicate hostname. It cannot include one file four times with a prefix | **One topology file per site**, generated | `src/go/types/topology.go` lines 42 to 99 |
 | C3 | SoH keeps one host per IP address | **No site may reuse another site's addresses**, even behind NAT | `api/soh/app.go` (`addrHosts[ip]=host`) |
-| C4 | A VLAN alias is one L2 segment for the whole experiment | **Every site has its own VLAN aliases and IDs**, and `vlanRange` must grow past 100 to 199 | The stamp spike counted 57 aliases for four sites |
+| C4 | A VLAN alias is one L2 segment for the whole experiment | **Every site has its own VLAN aliases and IDs**, and `vlanRange` must grow past 100 to 199 | The four sites have 53 aliases, and the single-site range has 18 ([7.5](#75-site-profiles-four-sites-that-are-not-copies)) |
 | C5 | phenix's `vrouter` app cannot render BGP, a tunnel interface, WireGuard, or BFD for VyOS. Its template has an empty `bgp` block marked TODO for Vyatta, and nothing for VyOS | The routers get that configuration **another way** ([4.3](#43-who-runs-bgp-and-how-the-routers-get-their-configuration)) | `src/go/tmpl/templates/vyatta.tmpl` line 531 |
 | C6 | phenix renders IPsec for VyOS as policy-based tunnels with a pre-shared key, one fixed proposal, and any number of peers | A static hub-and-spoke VPN works **with phenix as it is** | `src/go/app/vrouter.go` (`processIPSec`); the `vyos-ipsec` spike |
 | C7 | The `helics` app starts one root broker for an experiment | Four separate plant simulations need **their brokers started another way** ([4.7](#47-simulation)) | sceptre-phenix-apps `helics/app.py` lines 18 to 37 |
 | C8 | **No part of the range has run on a phenix host** | A fleet multiplies what is unverified. The stages in [section 8](#8-stages) boot the WAN and one site before four | [DESIGN.md, Status](../DESIGN.md#status) |
-| C9 | On one node, four full plants with the SOC are 205 vCPUs: 2.1 for each thread. The single-site design runs at about 1.1. On the three-node cluster no node is above 0.94 | **On one node the site mix is a choice** ([4.1](#41-how-big-each-site-is)). On the cluster the mix is free and the placement is the choice ([4.8](#48-where-the-vms-run)). Either way the load of one site must be measured first | The stamp spike |
+| C9 | On one node the four sites, with the SOC and three sensors, are 190 vCPUs: 2.0 for each thread. The single-site design runs at about 1.1. On the three-node cluster no node is above 0.85 | **On one node the range would have to shrink.** On the cluster the placement is the choice ([4.8](#48-where-the-vms-run)). Either way the load of one site must be measured first | The site-profiles spike |
 | C10 | A VLAN with VMs on two nodes needs a path between the nodes' bridges: a trunk on the cluster's switch, or phenix's GRE mesh, which needs room in the MTU of the nodes' network | **A full-size frame must cross between nodes.** This cluster bridges VLANs between its nodes itself, so the range sets nothing up and uses no mesh; the check in [4.8](#48-where-the-vms-run) confirms it | phenix `docs/content/gre-mesh.md`; minimega `doc/content/articles/cluster.md` |
+| C11 | A PLC's program is written for its whole process area, and plantgen writes the addresses around it | **A site can leave out a whole area at no cost.** One unit less inside an area needs a program for that unit list ([4.1](#41-what-each-site-is)) | `plc/`, and the site-profiles spike |
 
 ## 2. The company
 
-CherryMountain Brewery grew into **CherryMountain Brewing Company**. The
-Front Range brewery of [DESIGN.md](../DESIGN.md) is the flagship and holds the
-head office. Three more breweries followed. The places differ in what the
-range can show: elevation changes the boil, climate changes the building and
-glycol loads, and a second state brings a second time zone and utility.
+CherryMountain Brewery grew into **CherryMountain Brewing Company**. A company
+with four breweries did not build the same brewery four times. It built one
+and outgrew it, built a bigger one with what it had learned, opened a pub
+where the visitors are, and bought a competitor in another state. Each site's
+plant and network date from how the site joined, and that is where the
+differences come from. The Front Range brewery of [DESIGN.md](../DESIGN.md) is
+the flagship and holds the head office.
 
-| Code | Site | What it is | Elevation | Water boils at | Climate | Time zone | Uplinks |
-|---|---|---|---:|---:|---|---|---|
-| `fr` | Front Range | Flagship brewery and taproom (the existing plant), **head office** | 5,200 ft | 202 °F | Denver TMY3, as today | Mountain | ShadeCast Cable and Tumbleweed Fiber, with the company's own AS |
-| `hc` | High Country | Brewpub in a ski town | about 9,300 ft | about 195 °F | Long, cold heating season | Mountain | ShadeCast Cable, and Marmot Wireless as the backup |
-| `ws` | Western Slope | Second production brewery | about 4,600 ft | about 204 °F | Hot, dry summers; strong sun | Mountain | Tumbleweed Fiber and ShadeCast Cable |
-| `gc` | Gulf Coast | First brewery outside Colorado | near sea level | 212 °F | Hot and humid; storm season | Central | Pelican Coast Broadband only |
+| Code | Site | What it is | How it joined the company | Elevation | Water boils at | Climate | Time zone |
+|---|---|---|---|---:|---:|---|---|
+| `fr` | Front Range | Flagship brewery and taproom (the existing plant), **head office** | The first brewery. Its network was rebuilt to a standard after it grew: the design of DESIGN.md | 5,200 ft | 202 °F | Denver TMY3, as today | Mountain |
+| `ws` | Western Slope | Production brewery: the beer that goes to distributors | Built new by the company and its integrator, to the standard and one step past it | about 4,600 ft | about 204 °F | Hot, dry summers; strong sun | Mountain |
+| `gc` | Gulf Coast | Brewery and taproom, the first outside Colorado | **Bought** from another company, with the network that company's integrator built. It is being brought into the fleet | near sea level | 212 °F | Hot and humid; storm season | Central |
+| `hc` | High Country | Brewpub in a ski town | Opened by the company as a pub. Nobody on site looks after its network | about 9,300 ft | about 195 °F | Long, cold heating season | Mountain |
 
-All of it is notional. The ISP names other than ShadeCast Cable are
+The places differ in what the plant model can show: elevation changes the
+boil, climate changes the building and glycol loads, and a second state brings
+a second time zone. The sites differ in what the range can show:
+
+| | `fr` | `ws` | `gc` | `hc` |
+|---|---|---|---|---|
+| Process | Brewhouse, cellar, packaging, utilities, on-site power, building | The same, with no taproom | No on-site power: no solar, battery, generator, or utility link | No packaging line and no on-site power |
+| PLCs | 5 | 5 | 4 | 3 |
+| Firewalls | Two, with a DMZ between them | Two, with a DMZ that has its own jump host | One | One |
+| Zones behind them | Office, operations, HMI, control, building, security | The same, with control split into a zone for each process cell | Office, plant, building | Office, plant |
+| What shares a network with a PLC | The other PLCs | Nothing but its own cell | The other PLCs, the HMIs, the SCADA, the historian, the engineering workstation | The other PLCs, the HMI, the SCADA, the building's controllers |
+| Addresses | The company's plan | The company's plan | The plan it was bought with, in `192.168.0.0/16` | The company's plan |
+| On site | Historian, engineering workstation, SOC, vendor gateway, fleet services | Historian, engineering workstation, jump host | Historian, engineering workstation | Neither: the SCADA is all there is |
+| Uplinks | ShadeCast Cable and Tumbleweed Fiber, with the company's own AS | Tumbleweed Fiber and ShadeCast Cable | Pelican Coast Broadband only | ShadeCast Cable, and Marmot Wireless as the backup |
+| VMs | 39, and 3 for the head office | 33 | 25 | 17 |
+
+[4.1](#41-what-each-site-is) has the reasons, the sizes, and what was left for
+later. All of it is notional. The ISP names other than ShadeCast Cable are
 placeholders that nobody has checked against real companies.
+
+```mermaid
+flowchart TB
+  subgraph FR["fr: two firewalls, a zone for each level"]
+    direction TB
+    FRE{{"fr-fw-edge"}} --- FRC["CORP"]
+    FRE --- FRD["DMZ<br/>vendor gateway, jump host"]
+    FRD --- FRT{{"fr-fw-ot"}}
+    FRT --- FRP["OPS<br/>SCADA, historian, EWS"]
+    FRT --- FRH["HMI"]
+    FRT --- FRCT["CTRL<br/>5 PLCs"]
+    FRT --- FRB["BAS"]
+    FRT --- FRS["SOC"]
+  end
+  subgraph WS["ws: the same, and a zone for each cell"]
+    direction TB
+    WSE{{"ws-fw-edge"}} --- WSC["CORP"]
+    WSE --- WSD["DMZ<br/>jump host"]
+    WSD --- WST{{"ws-fw-ot"}}
+    WST --- WSP["OPS<br/>SCADA, historian, EWS"]
+    WST --- WSH["HMI"]
+    WST --- WSCT["CTRL-BH, CTRL-CEL, CTRL-PKG,<br/>CTRL-UTL, CTRL-PWR<br/>one PLC in each"]
+    WST --- WSB["BAS"]
+    WST --- WSS["SOC<br/>sensor"]
+  end
+  subgraph GC["gc: one firewall, three zones"]
+    direction TB
+    GCE{{"gc-fw-edge"}} --- GCO["OFFICE"]
+    GCE --- GCP["PLANT<br/>SCADA, historian, EWS,<br/>HMIs, 4 PLCs, sensor"]
+    GCE --- GCB["BAS"]
+  end
+  subgraph HC["hc: one firewall, two zones"]
+    direction TB
+    HCE{{"hc-fw-edge"}} --- HCO["OFFICE"]
+    HCE --- HCP["PLANT<br/>SCADA, HMI, 3 PLCs,<br/>building controllers, sensor"]
+  end
+```
+
+**Text alternative to the diagram.** Four site networks. At `fr`, the edge
+firewall `fr-fw-edge` has the office network (CORP) and a DMZ with the vendor
+gateway and a jump host. Behind the DMZ a second firewall, `fr-fw-ot`, has
+five zones: OPS (SCADA, historian, engineering workstation), HMI, CTRL (the
+five PLCs), BAS, and SOC. `ws` has the same two firewalls, a DMZ with its own
+jump host, and the same zones, except that control is five VLANs, one for each
+PLC, and its SOC zone holds a sensor. `gc` has one firewall, `gc-fw-edge`,
+with three zones: OFFICE, PLANT (SCADA, historian, engineering workstation,
+HMIs, four PLCs, and the sensor in one VLAN), and BAS. `hc` has one firewall,
+`hc-fw-edge`, with two zones: OFFICE, and PLANT, which holds the SCADA, the
+HMI, three PLCs, the building's controllers, and the sensor. The field
+networks behind each PLC and the simulation's own network are not shown.
 
 ```mermaid
 flowchart TB
   subgraph CO["Colorado (Mountain Time)"]
     FR["<b>fr</b> Front Range<br/>brewery, taproom, head office<br/>5,200 ft"]
     HC["<b>hc</b> High Country<br/>brewpub<br/>9,300 ft"]
-    WS["<b>ws</b> Western Slope<br/>brewery<br/>4,600 ft"]
+    WS["<b>ws</b> Western Slope<br/>production brewery<br/>4,600 ft"]
   end
   subgraph GULF["Gulf Coast (Central Time)"]
-    GC["<b>gc</b> Gulf Coast<br/>brewery and taproom<br/>sea level"]
+    GC["<b>gc</b> Gulf Coast<br/>brewery and taproom, bought<br/>sea level"]
   end
   NET(("Mock internet<br/>5 networks, BGP"))
   FR ---|"2 ISPs, own AS"| NET
@@ -105,11 +183,11 @@ flowchart TB
 
 **Text alternative to the diagram.** Three sites are in Colorado on Mountain
 Time: Front Range (the existing brewery, with the head office), High Country
-(a brewpub), and Western Slope (a second brewery). The fourth, Gulf Coast, is
-on Central Time. Each site connects to the mock internet: Front Range through
-two ISPs with its own AS, High Country and Western Slope through two ISPs
-each, and Gulf Coast through one. A VPN runs from each of the three other
-sites to Front Range.
+(a brewpub), and Western Slope (the production brewery). The fourth, Gulf
+Coast, which the company bought, is on Central Time. Each site connects to the
+mock internet: Front Range through two ISPs with its own AS, High Country and
+Western Slope through two ISPs each, and Gulf Coast through one. A VPN runs
+from each of the three other sites to Front Range.
 
 ## 3. What every plan shares
 
@@ -119,31 +197,35 @@ These follow from the constraints, so they do not change between plans.
 `phenix-fleet.yml`, experiment `cherrymountain-fleet`, bridge
 `cherrymtn-fleet`. `topology-fleet.yml` includes `topology-site-fr.yml`,
 `-hc.yml`, `-ws.yml`, `-gc.yml`, and `topology-internet.yml`. The site files
-are generated and committed, like plantgen's output today.
+are generated and committed, like plantgen's output today. Each is generated
+from the one plant and a short description of the site: what it leaves out and
+how its network is cut ([4.1](#41-what-each-site-is)).
 
-**Names and addresses.** The stamp spike generated the hostnames, the VLAN
-aliases, the subnets, and the MGMT networks without a clash
-([7.2](#72-multisite-stamp-four-sites-from-one-plant)). The VLAN IDs and the
-route blocks are the proposal: nothing has generated them yet.
+**Names and addresses.** The site-profiles spike generated the hostnames, the
+VLAN aliases and IDs, the subnets, and the MGMT networks of the four sites
+without a clash
+([7.5](#75-site-profiles-four-sites-that-are-not-copies)). The route blocks
+ran in the lab ([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it)).
 
 | Item | Rule | Example |
 |---|---|---|
 | Hostname | Site code, then today's name | `hc-plc-cellar`, `fr-fw-edge` |
-| VLAN alias | Site code in capitals, then today's alias | `HC-CTRL` |
-| VLAN ID | Today's ID plus 100 for each site after the first | CTRL is 108 at `fr`, 208 at `hc`, 308 at `ws`, 408 at `gc`; internet links use 500 to 539; `vlanRange` 100 to 599 |
-| Private subnets | Today's plan, with the site's number added to the second octet | CTRL is `10.20.10.0/24` at `fr`, `10.21.10.0/24` at `hc`, `10.22.10.0/24` at `ws`, `10.23.10.0/24` at `gc` |
-| MGMT | Its own VLAN and /16 at each site | `172.16.0.0/16` at `fr`, `172.17.0.0/16` at `hc` |
-| A site as routes | Four blocks | `hc` is `10.11.0.0/16` (IT), `10.21.0.0/16` (OT), `10.31.0.0/16` (BAS), `10.41.0.0/16` (SOC) |
+| VLAN alias | Site code in capitals, then the zone | `FR-CTRL`, `WS-CTRL-CEL`, `HC-PLANT` |
+| VLAN ID | A hundred for each site. A zone that `fr` has keeps `fr`'s last two digits; a zone it does not have takes 20 and up. The access links to the ISPs take 500 to 506; `vlanRange` is 100 to 599 | CTRL is 108 at `fr`; `WS-OPS` is 306, `WS-CTRL-BH` 320, `HC-PLANT` 221, `GC-PLANT` 421 |
+| Private subnets of `fr`, `hc`, `ws` | The company's plan: today's, with the site's number added to the second octet | OPS is `10.20.30.0/24` at `fr` and `10.22.30.0/24` at `ws`; the brewpub's plant network is `10.21.10.0/24` |
+| Private subnets of `gc` | The plan it was bought with | Office `192.168.10.0/24`, plant `192.168.20.0/24`, building `192.168.30.0/24`; field networks `192.168.21.0/24` to `192.168.24.0/24` |
+| MGMT | Its own VLAN and /16 at each site. It is the simulation's network, not the company's | `172.16.0.0/16` at `fr`, `172.19.0.0/16` at `gc` |
 
-| Site | Added to the second octet | VLAN IDs | AS inside the VPN |
-|---|---:|---|---:|
-| `fr` | 0 | 104 to 117 | 64505 |
-| `hc` | 1 | 204 to 217 | 65020 |
-| `ws` | 2 | 304 to 317 | 65030 |
-| `gc` | 3 | 404 to 417 | 65040 |
+| Site | Number | VLAN IDs | AS inside the VPN | What it announces into the VPN |
+|---|---:|---|---:|---|
+| `fr` | 0 | 104 to 117 | 64505 | `10.10.0.0/16`, `10.20.0.0/16`, `10.30.0.0/16`, `10.40.0.0/16` |
+| `hc` | 1 | 209 to 221 | 65020 | `10.11.0.0/16`, `10.21.0.0/16` |
+| `ws` | 2 | 304 to 324 | 65030 | `10.12.0.0/16`, `10.22.0.0/16`, `10.32.0.0/16`, `10.42.0.0/16` |
+| `gc` | 3 | 409 to 421 | 65040 | `192.168.10.0/24`, `192.168.20.0/24`, `192.168.30.0/24` |
 
-The second octet counts from 0 so that `fr` keeps today's addresses. The VLAN
-hundreds and the AS numbers count from 1.
+The site numbers count from 0 so that `fr` keeps today's addresses. The VLAN
+hundreds and the AS numbers count from 1. A site's blocks are what the head
+office lets it announce ([4.5](#45-the-vpn)).
 
 The Front Range site keeps every private address of
 [DESIGN.md §10.2](../DESIGN.md#102-vlan-and-ip-plan), and `fr-fw-edge` keeps
@@ -179,75 +261,138 @@ tells its peers and providers only its own and its customers' prefixes. An ISP
 accepts from the head office, which is a customer with one prefix, only that
 prefix. From another network it accepts any public prefix up to a /24, as much
 of the real internet does, and that is what lets the hijack in
-[4.2](#42-the-mock-internet) work. Nothing in `10.0.0.0/8` is accepted. The
+[4.2](#42-the-mock-internet) work. No private address space is accepted. The
 lab checks the first two rules and that no ISP carries a private route
 ([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it)). It does not offer an
 ISP a prefix it should refuse.
 
 **Build the WAN before the sites.** A `wan` variant holds the internet, the
-four site edges, and one small host at each site: about 20 VMs. It boots
+four site edges, and one small host at each site: about 20 VMs. The WAN is the
+same whatever is behind an edge. It boots
 without a plant, so the WAN can be proved on VMs while the single-site range
 gets its own first run ([section 8](#8-stages)).
 
 ## 4. The choices
 
-### 4.1 How big each site is
+### 4.1 What each site is
 
-A site is the single-site core without the nodes that belong to the internet
-(`isp-rtr`, `inet-traffic`, `util-rtr`, `utility-derms`). plantgen variants
-already cut a plant down by area and host, as `ci` does.
+**Decided (D4, on 2026-11-23): the four sites are not copies.** They vary in
+size, and their networks differ a little, as the sites of a real business do.
+The first version of these plans stamped the Front Range plant four times. The
+mixes it compared (M1 to M5) are in the
+[stamp spike](../../spikes/multisite-stamp/README.md).
 
-| Site profile | VMs | vCPUs | Memory (GB) | What runs |
-|---|---:|---:|---:|---|
-| Full plant | 33 | 41 | 63 | Everything a site has in `lite` |
-| Brewpub | 23 | 30 | 50 | Brewhouse, cellar, the utilities that serve them (glycol, steam, CIP), building automation; no packaging line, no on-site generation, no DER link |
-| Cellar slice | 10 | 14 | 29 | The `ci` variant behind the two site firewalls, with a `historian` and an `ews`: one fermentation cell |
+**How different.** There are three ways to make sites differ.
 
-| Mix | VMs | vCPUs | Memory (GB) | vCPUs per thread, all on one node |
-|---|---:|---:|---:|---:|
-| M1: four full plants, central SOC | 154 | 205 | 373 | 2.1 |
-| M2: M1, and a network sensor at each of the other three sites | 157 | 217 | 421 | 2.3 |
-| M3: two full plants (`fr`, `ws`) and two brewpubs (`hc`, `gc`), central SOC | 134 | 183 | 347 | 1.9 |
-| M4: one full plant (`fr`) and three cellar slices, central SOC | 85 | 124 | 271 | 1.3 |
-| M5: four full plants, no SOC and no vendor access | 147 | 182 | 282 | 1.9 |
+| Option | What differs | For | Against |
+|---|---|---|---|
+| S1: size only | Which process areas a site has. Every site keeps the two firewalls and the zones of DESIGN.md | The least work: a site is a list of areas | Every network is the same network. A company that grew does not look like that, and a defender learns one layout |
+| **S2: size, and how the network is cut** (recommended; the rest of this document assumes it) | The areas, and the number of firewalls, the zones, the address plan, what is on site, and the uplinks. Every device is one the range already has | Each difference has a reason in the company's history ([section 2](#2-the-company)). All of it is data to the generator: the site-profiles spike generated the four sites ([7.5](#75-site-profiles-four-sites-that-are-not-copies)) | Three firewall rule sets to write and check where S1 has one |
+| S3: S2, and other products | S2, and at the site that was bought: another firewall product, another PLC vendor and protocol, addresses that overlap the head office's behind NAT | The closest to a real acquisition | New images, new PLC programs, and a second firewall product to configure. Overlapping addresses break the health checks (C3) |
 
-Each mix includes a 12-VM internet and three head-office VMs. The internet is
-counted with VyOS routers (I2 in [4.2](#42-the-mock-internet), which is
-decided); with FRR routers every mix would be 9 GB smaller, with the same
-vCPUs.
+**One rule keeps S2 cheap:** a site differs by what it leaves out and by how
+its network is cut, never by a new kind of device.
 
-- **What the ratio compares with.** The single-site design assumes its 68
-  vCPUs on a host of 32 cores, which is about 1.1 for each thread. It has not
-  run. On one of these nodes one full site alone would be 0.7.
-- **Memory.** Every mix fits the 512 GB of one node: the largest, M2, takes
-  82% of it. M4's 271 GB includes 84 GB for the SOC, of which Malcolm has 48
-  and can run in 24
-  ([DESIGN.md §11](../DESIGN.md#11-node-inventory-and-resources)).
-- **On the cluster the mix is not a question of capacity.** On its three
-  nodes, M2 puts at most 0.94 vCPUs on a thread
-  ([4.8](#48-where-the-vms-run)).
-- **Every profile keeps a `historian` and an `ews`**, because the head
-  office's conduits end there ([4.6](#46-what-the-head-office-does)).
+- **A site leaves out whole process areas.** An area has one PLC and one
+  program. Dropping the area drops the PLC, its I/O, and its part of the
+  simulation, and plantgen leaves out everything that named them. One unit
+  less inside an area (two fermenters where the plant has four) needs a PLC
+  program for that unit list (C11), so no site does that in the first build.
+- **The network is data.** plantgen took one firewall, a merged VLAN, a VLAN
+  for each cell, and another address plan with no change to its code.
+
+**The four sites.** The sizes are from the site-profiles spike.
+
+| | `fr` | `ws` | `gc` | `hc` |
+|---|---|---|---|---|
+| Process areas | Brewhouse, cellar, packaging, utilities, power, building | The same; the building without the taproom's rooftop unit | Brewhouse, cellar, packaging, utilities, building | Brewhouse, cellar, utilities, building |
+| PLCs, tags | 5, 516 | 5, 504 | 4, 458 | 3, 365 |
+| Network | 2 firewalls, 8 routed zones | 2 firewalls, 12 routed zones | 1 firewall, 3 routed zones | 1 firewall, 2 routed zones |
+| VMs | 39 | 33 | 25 | 17 |
+| vCPUs | 62 | 42 | 33 | 21 |
+| Memory (GB) | 151 | 65 | 53 | 33 |
+| With its sensor | The SOC is here | 34 VMs, 46 vCPUs, 81 GB | 26 VMs, 37 vCPUs, 69 GB | 18 VMs, 25 vCPUs, 49 GB |
+
+`fr`'s 39 VMs are the plant's 33, the SOC's 4 (18 vCPUs and 84 GB), and the
+vendor's gateway and jump host.
+
+- **`fr`, the standard.** The plant and the network of DESIGN.md, unchanged,
+  with the SOC, the vendor's gateway, and the head office's additions
+  ([4.6](#46-what-the-head-office-does)).
+- **`ws`, the standard and one step past it.** The same plant without a
+  taproom. Its integrator gave each process cell its own control VLAN, so a
+  PLC shares a network with nothing but its own cell, and a PLC that reads
+  another (the utilities PLC reads the cellar's interlocks) does it through
+  `ws-fw-ot`. Its DMZ has its own jump host, so that its engineers do not
+  depend on the head office. It has the solar, the battery, and the generator
+  that `fr` has, and its own link to the utility.
+- **`gc`, bought.** One firewall and three zones: office, plant, building.
+  Everything that runs the plant is in one VLAN: PLCs, HMIs, SCADA, historian,
+  engineering workstation. It keeps the address plan it came with, because
+  renumbering a running plant is the last thing an integration does. What the
+  company has done so far: its own firewall at the edge, the VPN, a sensor,
+  and a small server for time, names, and logs. It has no on-site power in
+  the first build.
+- **`hc`, the brewpub.** One firewall and two zones. The plant VLAN holds the
+  three PLCs, the HMI, the SCADA, and the building's controllers. It has no
+  historian and no engineering workstation: its SCADA sends its data to the
+  fleet historian through the VPN, and its PLCs are programmed from the head
+  office ([4.6](#46-what-the-head-office-does)). It is the site that depends
+  on the VPN most and has the least between its office and its PLCs.
+
+**What the differences give an exercise.**
+
+| Contrast | Where |
+|---|---|
+| The same foothold reaches different things | An office PC at `hc` is one firewall away from the PLCs. At `gc` the engineering workstation and the PLCs share a VLAN. At `fr` and `ws` two firewalls and a DMZ are in between, and at `ws` one PLC cannot reach another without the firewall |
+| A WAN failure means different things | `hc` loses its trends at the head office and its engineering access. `ws` keeps both on site. `gc` has one uplink and nothing to fail over to |
+| A site in the wrong hands | The brewpub's edge is the least defended router that speaks BGP inside the VPN. The head office takes from it only the pub's own prefixes ([4.5](#45-the-vpn)) |
+| An integration half done | `gc` has the company's VPN and sensor on a network the company did not design, with addresses no other site uses |
+
+**The size of the range.**
+
+| Part | VMs | vCPUs | Memory (GB) |
+|---|---:|---:|---:|
+| Mock internet: 6 VyOS routers (I2 in [4.2](#42-the-mock-internet)) and 6 small hosts | 12 | 12 | 18 |
+| The vendor's workstation, on the internet | 1 | 2 | 3 |
+| Head-office additions: fleet historian, corporate server, a second office desktop | 3 | 6 | 12 |
+| `fr` | 39 | 62 | 151 |
+| `ws` and its sensor | 34 | 46 | 81 |
+| `gc` and its sensor | 26 | 37 | 69 |
+| `hc` and its sensor | 18 | 25 | 49 |
+| **All of it** | **133** | **190** | **383** |
+
+- **On the cluster** no node carries more than 0.85 vCPUs for each thread
+  ([4.8](#48-where-the-vms-run)). On one node it would be 2.0, against the 1.1
+  the single-site design assumes, and 75% of the memory.
+- **Four copies were larger:** 157 VMs, 217 vCPUs, and 421 GB with a sensor at
+  three of them.
 - **These are counts, not load.** Most VMs idle, but the PLCs scan every
   100 ms, the kiosks render in software, and every PLC compiles its program on
   first boot. Nobody has measured a site.
+- **The brewpub is the cheapest thing to boot first:** 17 VMs with a whole
+  plant behind them. Nothing of the range has run (C8).
 - **BFD makes overcommit visible.** A router VM that waits 900 ms for a CPU
   drops its BFD sessions and moves traffic for no reason. The range should use
-  1 s intervals (3 s to detect) until the host is measured. The lab used
+  1 s intervals (3 s to detect) until a node is measured. The lab used
   300 ms. The VyOS runs used 1 s on a runner with 10 vCPUs of guests on 4
   threads, and no check saw a session drop without a fault
   ([7.4](#74-wan-bgp-on-vyos-routers)).
-- **Recommendation:** make the profile a setting of each site in the
-  generator, and aim at **M2 on the cluster**: four full plants, with a sensor
-  at each site so that mirrored traffic stays on the site's node. A brewpub or
-  a cellar slice is then a choice about what a site teaches, not about what
-  fits. Boot one site before four all the same: nothing of the range has run
-  (C8). **On one node,** bring the fleet up as M4, measure, then promote sites
-  (M3, then M1) as far as the node allows.
-- **What is still open** (D4) is only whether the four sites are the same
-  plant. Four full plants are also the least work: plantgen has no variant for
-  a brewpub or a cellar slice behind a site's firewalls, so a smaller site has
-  to be written first.
+
+**Left for later.** Each fits the company's story, and none is in the first
+build.
+
+| Addition | What it needs |
+|---|---|
+| A standby generator at `gc`, for the storm season, with no solar and no battery | A `plc-power` program for that unit list |
+| Fewer fermenters at `hc`, or one PLC for the whole pub | PLC programs for those unit lists |
+| Bigger vessels at `ws` | The simulation holds the vessel sizes as constants |
+| The old integrator's remote-access box at `gc`: a second way in that the head office does not control | A small VM at the site and a host on the internet |
+| Marmot Wireless behind carrier NAT, so that `hc`'s backup tunnel starts from an address the head office cannot name | NAT traversal for the IPsec tunnel, which is not tested. The head office already only answers |
+| A point of sale and a guest network at the taprooms | Hosts and a VLAN; nothing in the plant |
+
+Four choices inside S2 are still the user's: D16 to D19 in
+[section 9](#9-decisions-needed).
 
 ### 4.2 The mock internet
 
@@ -394,9 +539,9 @@ fallback.
 ```mermaid
 flowchart LR
   HUB["Front Range: fr-fw-edge<br/>AS64505<br/>one endpoint, 198.18.105.1,<br/>a port for each tunnel"]
-  HC["hc-fw-edge<br/>AS65020<br/>10.11, 10.21, 10.31, 10.41"]
+  HC["hc-fw-edge<br/>AS65020<br/>10.11, 10.21"]
   WS["ws-fw-edge<br/>AS65030<br/>10.12, 10.22, 10.32, 10.42"]
-  GC["gc-fw-edge<br/>AS65040<br/>10.13, 10.23, 10.33, 10.43"]
+  GC["gc-fw-edge<br/>AS65040<br/>192.168.10, .20, .30"]
   HC ==>|"hc-a, primary<br/>over ShadeCast, port 51821"| HUB
   HC -.->|"hc-b, backup<br/>over Marmot, port 51822"| HUB
   WS ==>|"ws-a, primary<br/>over Tumbleweed, port 51823"| HUB
@@ -411,7 +556,8 @@ ShadeCast (port 51821) and a backup tunnel `hc-b` over Marmot (port 51822).
 `ws-fw-edge` (AS 65030) has a primary tunnel `ws-a` over Tumbleweed (port
 51823) and a backup `ws-b` over ShadeCast (port 51824). `gc-fw-edge`
 (AS 65040) has one tunnel, `gc-a`, over Pelican (port 51825). Each site
-announces its four address blocks.
+announces its own address blocks: `hc` two /16 blocks, `ws` four, and `gc`
+three /24 networks of `192.168.0.0/16`.
 
 | Option | Tunnels | Routing | Failover | Needs |
 |---|---|---|---|---|
@@ -435,9 +581,16 @@ announces its four address blocks.
 - **The head office sends from its endpoint address.** Its default routes
   carry the endpoint as the preferred source, so a reply never leaves with the
   address of an uplink.
-- **Only site prefixes cross a tunnel.** Each end filters to `10.0.0.0/8`,
-  /16 to /24. A default route or a public prefix learned through a tunnel would
-  send the tunnel into itself.
+- **Only site prefixes cross a tunnel, and only a site's own.** The head
+  office takes from each site that site's blocks
+  ([section 3](#3-what-every-plan-shares)) and nothing else, and a site
+  announces only its own. No end takes a default route or a public prefix,
+  which would send the tunnel into itself. The first design let any prefix of
+  `10.0.0.0/8` in from any site. A site's edge in the wrong hands could then
+  announce a /24 inside another site's /16 and draw that traffic to itself.
+  In the lab the brewpub's edge announced the Gulf Coast plant network, and
+  the head office kept its one route, through the Gulf Coast tunnel
+  ([7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it), finding 7).
 - **Site to site goes through the head office**, where `fr-fw-edge` decides
   whether it may. In the lab a packet from `hc` reached `gc` in four hops.
 - **The head office installs the default route of both ISPs**, not only the
@@ -489,12 +642,12 @@ hijack in [4.2](#42-the-mock-internet) has a victim. It is decision
 
 ```mermaid
 flowchart LR
-  subgraph SITE["A site (hc, ws, gc)"]
-    SH["historian"]
-    SA["Wazuh agents,<br/>ot-svc syslog relay"]
-    SE["ews"]
-    SS["ot-svc<br/>NTP, DNS"]
-    SN["network sensor<br/>(mix M2 only)"]
+  subgraph SITE["A site (ws, gc, hc)"]
+    SH["historian<br/>(at hc: the SCADA)"]
+    SA["Wazuh agents,<br/>syslog relay"]
+    SE["ews<br/>(ws, gc)"]
+    SS["time and names"]
+    SN["network sensor"]
     SP["PLCs"]
   end
   VPN{{"VPN<br/>site fw-edge to fr-fw-edge"}}
@@ -503,6 +656,7 @@ flowchart LR
     WZ["wazuh"]
     MA["malcolm"]
     JP["dmz-jump"]
+    FE["ews"]
     FS["ot-svc"]
   end
   SH -->|"TCP 8086"| VPN --> FH
@@ -511,31 +665,44 @@ flowchart LR
   SS -->|"UDP 123, 53"| VPN --> FS
   JP -->|"RDP 3389"| VPN --> SE
   SE --- SP
+  FE -.->|"hc only: TCP 8443"| VPN -.-> SP
 ```
 
 **Text alternative to the diagram.** Five flows cross the VPN between a site
 and the head office. The site's historian sends to the fleet historian
-(TCP 8086). The site's Wazuh agents and its `ot-svc` syslog relay send to
-`wazuh` (TCP 1514 and 1515, UDP 514). A network sensor, in mix M2 only, sends
-to `malcolm`. The site's `ot-svc` asks the head office's `ot-svc` for time and
-names (UDP 123 and 53). One flow goes the other way: the head office's
-`dmz-jump` opens RDP to the site's `ews`, which is the only way to the site's
-PLCs.
+(TCP 8086); at `hc`, which has no historian, the SCADA server sends. The
+site's Wazuh agents and its syslog relay send to `wazuh` (TCP 1514 and 1515,
+UDP 514). The site's network sensor sends to `malcolm`. The site asks the head
+office's `ot-svc` for time and names (UDP 123 and 53). One flow goes the other
+way: the head office's `dmz-jump` opens RDP to the `ews` of `ws` or `gc`, which
+is the only way to those sites' PLCs. `hc` has no `ews`, and there the head
+office's own `ews` reaches the pub's PLCs directly (TCP 8443).
 
 | Function | Proposal | Other way |
 |---|---|---|
 | Security operations | The SOC module stays at `fr`. Agents and syslog from every site reach `wazuh` through the VPN | A SOC at each site: 84 GB each |
-| Network monitoring | One `malcolm` at `fr`. The mirror app feeds it every site's VLANs out of band, which costs nothing and is not how a real fleet works | A sensor at each site that forwards over the VPN (M2): real, 4 vCPUs and 16 GB a site. Or `fr` only, which leaves the blue team blind at the other sites on purpose |
-| Process data | Each site keeps its `historian`. It also writes to a fleet historian at `fr`, where a Grafana board shows all four breweries | `fr`'s own historian doubles as the fleet's |
-| Engineering | Each site keeps its `ews`. Head-office engineers and the vendor go through `fr`'s `dmz-jump` to a site's `ews` | One `ews` at `fr` that programs every site's PLCs. Fewer VMs, and it gives one desktop every PLC in the company |
+| Network monitoring | A sensor at each of the other three sites (decided, D7). The mirror app feeds each sensor its own site's VLANs, and the sensor forwards through the VPN what a real one would. One `mirror` entry lists the four monitor hosts | One `malcolm` at `fr` fed every site's VLANs out of band, which is not how a real fleet works. Or `fr` only, which leaves the blue team blind at the other sites on purpose |
+| Process data | `ws` and `gc` keep their `historian`, which also writes to a fleet historian at `fr`, where a Grafana board shows all four breweries. `hc` has none: its SCADA writes to the fleet historian, and a tunnel that is down is a gap in the pub's trends | A historian at `hc` too (2 vCPUs, 6 GB) |
+| Engineering | `ws`: the head office's `dmz-jump`, then the site's own jump host, then its `ews`. `gc`: the head office's `dmz-jump`, then the site's `ews`. `hc`: the head office's `ews` to the pub's three PLCs, the one conduit that reaches a PLC from outside its site (D18) | An `ews` at `hc` (2 vCPUs, 4 GB), reached as `gc`'s is. Or one `ews` at `fr` for every site, which gives one desktop every PLC in the company |
 | Vendor access | One WireGuard gateway and one jump host, at `fr` | A gateway and a jump host at each site: 6 more VMs |
-| Time and names | Each site's `ot-svc` serves its site and asks `fr`'s for the rest | — |
-| Utility link | `fr` keeps Summit Valley Power. `ws` gets the same utility on its own tunnel, and `gc` a second utility. The `hc` brewpub has no generation and no link | Only `fr` has a DER link |
+| Time and names | At `ws` and `gc` the site's `ot-svc` serves its site and asks `fr`'s for the rest. At `hc` the SCADA server keeps time for the PLCs, as it does in the `ci` variant, and the firewall forwards names | An `ot-svc` at `hc` |
+| Utility link | `fr` keeps Summit Valley Power. `ws` has the same utility on its own tunnel. `gc` and `hc` have no generation and no link | Only `fr` has a DER link |
 
-**No conduit reaches a site's PLCs from outside the site.** The five flows of
-the diagram are the only new rows of the conduit matrix. Each crosses a site's
-`fw-edge` and `fw-ot` and `fr`'s, default deny. Site to site is denied at
-`fr-fw-edge`.
+**What crosses the VPN, by site.**
+
+| Flow | `ws` | `gc` | `hc` |
+|---|---|---|---|
+| Process data to the fleet historian | From the site's historian | From the site's historian | From the SCADA server |
+| Logs to `wazuh` | Agents, and `ot-svc` as the relay | The same | Agents, and the firewall |
+| Sensor to `malcolm` | From its security zone | From the plant VLAN | From the plant VLAN |
+| Time and names | `ot-svc` asks `fr`'s | The same | The firewall and the SCADA server ask `fr`'s |
+| Engineering, from the head office | RDP to the site's jump host, then to its `ews` | RDP to its `ews` | The head office's `ews` to the PLCs |
+
+**At `fr`, `ws`, and `gc` no conduit reaches a PLC from outside its site.** At
+`hc` one does, on purpose: a pub with no engineer is programmed from where the
+engineer sits. These flows are the only new rows of the conduit matrix. Each
+crosses the site's firewalls and `fr`'s, default deny. Site to site is denied
+at `fr-fw-edge`.
 
 ### 4.7 Simulation
 
@@ -549,6 +716,11 @@ time zone.
   already, and the `ot-sim` app accepts a broker per host), or the four sites
   share one federation with every name prefixed, which changes about 50 topic
   strings in the federates. The first is the proposal. It needs a small spike.
+- **A site runs the federates of its areas.** `hc` has no packaging and no
+  power federate, and `gc` no power federate. plantgen generated each site's
+  federation once the snapshot's key list and five keys that name variants
+  followed the site
+  ([7.5](#75-site-profiles-four-sites-that-are-not-copies)).
 - **What a site sets.** The elevation and pressure, the weather file, the time
   zone, and the tariff. Today the federates hold some of them as constants
   (the pressure in `recipe.py`, the latitude and longitude in `weather.py`, the
@@ -570,20 +742,21 @@ between them. What is known about the cluster:
   mesh: a guest's frame crosses with a VLAN tag and no tunnel header.
 
 This section was read from phenix's and minimega's source and documentation.
-None of it ran: the spikes had one machine.
+None of it ran: the spikes had one machine. The sites differ in size
+([4.1](#41-what-each-site-is)), so which sites share a node now matters.
 
 ```mermaid
 flowchart LR
-  subgraph N1["head node: 34 VMs, 0.47 vCPUs per thread"]
+  subgraph N1["head node: 34 VMs, 0.48 vCPUs per thread"]
     WS["site ws<br/>and its sensor"]
   end
   subgraph N2["node 2: 55 VMs, 0.85"]
-    FR["site fr"]
-    ONCE["mock internet, head office,<br/>SOC, vendor access"]
+    FR["site fr<br/>with the SOC"]
+    ONCE["mock internet,<br/>vendor, head office"]
   end
-  subgraph N3["node 3: 68 VMs, 0.94"]
-    HC["site hc<br/>and its sensor"]
+  subgraph N3["node 3: 44 VMs, 0.65"]
     GC["site gc<br/>and its sensor"]
+    HC["site hc<br/>and its sensor"]
   end
   FR --- ONCE
   WS -. "2 uplinks" .- ONCE
@@ -592,38 +765,42 @@ flowchart LR
 ```
 
 **Text alternative to the diagram.** Three nodes. The head node runs the
-Western Slope site and its sensor: 34 VMs at 0.47 vCPUs per thread. Node 2
-runs the Front Range site and what the range has once (the mock internet, the
-head office's services, the SOC, the vendor's access): 55 VMs at 0.85. Node 3
-runs the High Country and Gulf Coast sites, each with its sensor: 68 VMs at
-0.94. The only networks that leave a node are a site's uplinks to its ISPs:
-two for `ws`, two for `hc`, and one for `gc`.
+Western Slope site and its sensor: 34 VMs at 0.48 vCPUs per thread. Node 2
+runs the Front Range site, with the SOC, and what the range has outside any
+site (the mock internet, the vendor's workstation, the head office's
+additions): 55 VMs at 0.85. Node 3 runs the Gulf Coast and High Country sites,
+each with its sensor: 44 VMs at 0.65. The only networks that leave a node are
+a site's uplinks to its ISPs: two for `ws`, two for `hc`, and one for `gc`.
 
-**Mix M2 on the cluster**, from the stamp spike
-([7.2](#72-multisite-stamp-four-sites-from-one-plant)). M2 is the largest mix.
+**The four sites on the cluster**, from the site-profiles spike
+([7.5](#75-site-profiles-four-sites-that-are-not-copies)).
 
-| Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
-|---|---|---:|---:|---:|---:|---:|
-| Head node | `ws` | 34 | 45 | 79 | 0.47 | 15% |
-| Node 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
-| Node 3 | `hc`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
+| Layout | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
+|---|---|---|---:|---:|---:|---:|---:|
+| **L1: the head office next to the internet** (proposed) | Head node | `ws` | 34 | 46 | 81 | 0.48 | 16% |
+| | Node 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
+| | Node 3 | `gc`, `hc` | 44 | 62 | 118 | 0.65 | 23% |
+| L2: the two small sites on the head node | Head node | `gc`, `hc` | 44 | 62 | 118 | 0.65 | 23% |
+| | Node 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
+| | Node 3 | `ws` | 34 | 46 | 81 | 0.48 | 16% |
+| L3: the head office alone on a node | Head node | The shared part, `gc` | 42 | 57 | 102 | 0.59 | 20% |
+| | Node 2 | `fr` | 39 | 62 | 151 | 0.65 | 29% |
+| | Node 3 | `ws`, `hc` | 52 | 71 | 130 | 0.74 | 25% |
 
-"The shared part" is what the range has once: the mock internet, the head
-office's additions, the SOC, and the vendor's access (22 VMs, 41 vCPUs,
-121 GB). The single-site design assumes about 1.1 vCPUs per thread, and every
-node is under that. Memory is not the limit: all of M2 is 82% of one node.
-The head node gets the lightest share, because it also runs phenix and serves
-the images. Which two sites share node 3 does not matter to the design.
-
-On other clusters the same mix puts 2.26 vCPUs on each thread of one node,
-1.32 on the busier of two, 0.85 on the busiest of four, and 0.47 with a node
-for each site and one for the shared part.
+"The shared part" is what the range has outside any site: the mock internet,
+the vendor's workstation, and the head office's additions (16 VMs, 20 vCPUs,
+33 GB). The single-site design assumes about 1.1 vCPUs per thread, and every
+node of every layout is under that. Memory is not the limit: the whole range
+is 75% of one node. L1 gives the head node the least, because it also runs
+phenix and serves the images, and it keeps the head office's two BGP uplinks
+on one node. L3 is the most even. On one node the range would put 1.98 vCPUs
+on each thread.
 
 **Which node runs a VM.**
 
 | Option | How | For | Against |
 |---|---|---|---|
-| **P1: each site on one node, written in the workflow** (recommended) | The generator writes `schedules` (VM to node) into `phenix-fleet.yml`. The stamp spike wrote that map for the 132 site VMs on the three nodes, and the file validates against phenix's Workflow schema | What a site does stays on its node: PLC polling, HMI screens, the federation, the mirror to the site's sensor. Only uplinks to the ISPs cross between nodes, which is where a WAN belongs. A node that fails takes whole sites with it, not parts of every site. Every start places the VMs the same way, so two measurements compare | The node names of one cluster are in a committed file. Another cluster needs its own copy, or a step that fills the names in |
+| **P1: each site on one node, written in the workflow** (recommended) | The generator writes `schedules` (VM to node) into `phenix-fleet.yml`. The site-profiles spike wrote that map for the 117 site VMs on the three nodes, and the file validates against phenix's Workflow schema | What a site does stays on its node: PLC polling, HMI screens, the federation, the mirror to the site's sensor. Only uplinks to the ISPs cross between nodes, which is where a WAN belongs. A node that fails takes whole sites with it, not parts of every site. Every start places the VMs the same way, so two measurements compare | The node names of one cluster are in a committed file. Another cluster needs its own copy, or a step that fills the names in |
 | P2: phenix's `subnet-compute` scheduler | `phenix experiment schedule cherrymountain-fleet subnet-compute`, after the experiment is created | No node names in the repository | It groups VMs by the VLAN of their first interface. The first interfaces of the single-site core are on 15 different VLANs, so each site is spread over the nodes and its own traffic crosses between them |
 | P3: no schedule | minimega places each VM at start | Nothing to write | The placement is not the range's to decide, and can differ between starts |
 
@@ -658,8 +835,10 @@ one or two tunnels inside.
 - **Monitoring.** One central `malcolm` would pull the mirror of three sites'
   VLANs across the cluster's network to node 2. A sensor at each site, which
   is decided (D7), keeps each mirror on its node and sends through the VPN
-  what a real sensor would ([4.6](#46-what-the-head-office-does)).
-- **BFD.** At 0.47 to 0.94 vCPUs per thread a router rarely waits for a CPU,
+  what a real sensor would ([4.6](#46-what-the-head-office-does)). The mirror
+  app puts every monitor host on one mirror VLAN, so that VLAN is on all three
+  nodes, and each sensor's traffic stays on its own.
+- **BFD.** At 0.48 to 0.85 vCPUs per thread a router rarely waits for a CPU,
   so the 1 s interval has more margin than on one node. It stays until a node
   is measured.
 - **Not known.** The names of the nodes, which the workflow needs; the VLAN
@@ -676,10 +855,10 @@ one or two tunnels inside.
 | VPN | V1: policy-based IPsec to the head office | V2: a route-based IPsec tunnel per uplink, BGP and BFD | V3: V2 with a second hub at `ws` |
 | Tunnel end | `fw-edge`, as phenix renders it | E1 (`fw-edge`, with R1), which ran on VyOS in CI; or E2 | The same |
 | Failover | None | 2 to 3 s next to the fault on VyOS; the ISPs' hold time for a site with one uplink | The same, and the head office's site can fail |
-| Monitoring | Central | A sensor at each site on the cluster (M2); central on one node | A sensor at each site (M2) |
+| Monitoring | Central | A sensor at each of the other three sites (D7) | The same |
 | Changes to phenix | None | R1 (or none, with E2) | The same |
-| New images | None | A sensor image (M2) | An internet image, a sensor image |
-| Site mix | On the cluster M1; on one node M4 | On the cluster **M2**; on one node M4, then M3 or M1 | M2 |
+| New images | None | A sensor image | An internet image, a sensor image |
+| Sites | The four of [4.1](#41-what-each-site-is), without the sensors | The four of [4.1](#41-what-each-site-is) | The same |
 | What it teaches | Segmentation across sites; one ISP outage is one site outage | That, and WAN failover, BGP at a company edge, a hijack of the company's prefix | That, and route validation, hub failure, monitoring across a WAN |
 
 ### Plan A: static hub and spoke
@@ -730,44 +909,44 @@ plan.
 
 ### Plan C: Plan B and more
 
-Plan C is Plan B with three additions that do not depend on each other. Each
-can be added later.
+Plan C is Plan B with two additions that do not depend on each other. Each
+can be added later. A third, a sensor at each site, became part of Plan B when
+D7 was decided.
 
 1. **A second hub at `ws`** (V3). `hc` and `gc` get tunnels to both hubs, and
    the hubs to each other.
 2. **A wider internet** (I3): 20 or more networks in one VM, an exchange
    point with a route server, and an RPKI validator, so that the hijack has a
    defense to configure.
-3. **A network sensor at each site** (M2) that forwards to `malcolm` over the
-   VPN.
 
 - **For.** The most to defend and the most that can go wrong on purpose.
 - **Against.** The most new parts, on a range that has not run one site yet.
-  Its size (157 VMs and 217 vCPUs with M2) is no longer the objection on a
-  cluster.
+  Its size is no longer the objection on a cluster.
 
 ## 6. What has to change in the repository
 
-Read from the code, apart from the plantgen row, which the stamp spike ran.
+Read from the code, apart from the plantgen rows, which the stamp spike and
+the site-profiles spike ran.
 
 | Part | Today | For a fleet | Size |
 |---|---|---|---|
-| `plant/plant.yaml` and plantgen | Hosts, VLANs, subnets, and variants are data. One lookup of `sim-ctl` by name (`render.py` line 348) | A `sites` list (code, number, profile, elevation, weather, time zone, tariff), one output directory for each site, the one lookup fixed | Small |
+| `plant/plant.yaml` and plantgen | Hosts, VLANs, subnets, and variants are data. One lookup of `sim-ctl` by name (`render.py` line 348). A time source must be a host of the variant. Five federate keys name the variants `full` and `lite` | A `sites` list (code, number, elevation, weather, time zone, tariff), one output directory for each site, the one lookup fixed. A time source outside the site is accepted, and a flag on a variant replaces the lists of names | Small |
+| A site's description | — | For each site: the areas it leaves out, the hosts it leaves out, its zones (which of today's VLANs become which, with what subnet and which router), its uplinks, its time source, and the snapshot's keys. The kit's `Profile` is the start: about 20 lines for the largest change | Small |
 | Topology files | Written by hand (1,900 lines for the three modules) | Generated from the site list, one file a site | Medium |
 | `sync.py` | Variant and PLC names are literals | A loop over sites | Small |
 | `cherrymountain` app | One variant, one `sim-ctl`, the first historian | Hosts grouped by a `site` label; a broker for each site | Medium |
-| FUXA builder | Keys on hostnames (`scada-fuxa`, `removeprefix("plc-")`) | Keys on roles | Small |
-| PLC programs | Hold no addresses; the app replaces the plugin configuration at boot | One ZIP for each profile serves every site | None |
+| FUXA builder | Keys on hostnames (`scada-fuxa`, `removeprefix("plc-")`) | Keys on roles. The brewpub's one SCADA also shows the building's points | Small |
+| PLC programs | Hold no addresses; the app replaces the plugin configuration at boot. One program for each PLC, for its whole area | Every site uses the same five programs, or fewer. A unit list inside an area would need its own program (C11) | None |
 | Federates | 50 topic strings and four site constants are literals | The constants come from the site; the topics stay if each site has its own federation | Small |
 | Static injects | About 26 of 79 hold plant addresses or hostnames (`dnsmasq`, BBMD, Wazuh, the Suricata rules, the Zeek script) | Rendered for each site | Medium |
-| `scenario-*.yml` | The firewall rulesets and the SoH overlay are written by hand (more than 200 addresses) | Rendered for each site, with the cross-site conduits | Medium |
+| `scenario-*.yml` | The firewall rulesets and the SoH overlay are written by hand (more than 200 addresses) | Rendered for each site, with the cross-site conduits. Three conduit matrices where there is one: two firewalls, two firewalls with a VLAN for each cell, and one firewall | Large |
 | `tools/netcheck` | The address plan, 44 nodes, and 29 conduits are Python literals. It models static routes, NAT, and policy IPsec, and no routing protocol | The plan generated for each site; the overlay's routes supplied as what BGP is expected to install | Large |
 | WAN | — | A `wan.yaml` (networks, links, relations, tunnels) and a generator for `topology-internet.yml` and every router's `config` list (or, with I1, each `frr.conf`). The lab's model and `vyos_sketch.py` are the start: they wrote the lists the VyOS runs used | Medium |
 | phenix | — | R1, if chosen | Small (written, and run in CI on the fork branch) |
 
 ```mermaid
 flowchart LR
-  P["plant.yaml<br/>+ sites"] --> G["plantgen<br/>once for each site"]
+  P["plant.yaml<br/>+ a description<br/>of each site"] --> G["plantgen<br/>once for each site"]
   W["wan.yaml<br/>networks, links, tunnels"] --> WG["wangen"]
   G --> GS["generated/fleet/&lt;site&gt;/<br/>tags, registers, app blocks"]
   G --> TS["topology-site-&lt;site&gt;.yml"]
@@ -783,8 +962,8 @@ flowchart LR
 ```
 
 **Text alternative to the diagram.** Two inputs feed two generators.
-`plant.yaml`, with a list of sites, feeds plantgen, which runs once for each
-site and writes that site's generated files and its topology file. `wan.yaml`,
+`plant.yaml`, with a description of each site, feeds plantgen, which runs
+once for each site and writes that site's generated files and its topology file. `wan.yaml`,
 which lists the networks, links, and tunnels, feeds a new generator, `wangen`,
 which writes the internet's topology file and the `vrouter` configuration list
 of every router. `sync.py` embeds the
@@ -799,7 +978,7 @@ reads the fleet topology and scenario.
 Kit: [spikes/wan-bgp](../../spikes/wan-bgp/README.md). Ten routers as network
 namespaces, each with its own FRR 8.4.4, built as the diagrams in
 [4.2](#42-the-mock-internet) and [4.5](#45-the-vpn) show, with two
-differences: a site announces one /24, not four blocks, and the head office's
+differences: a site announces one /24, not its blocks, and the head office's
 ShadeCast link is a /30 with no utility on it. The tunnels are WireGuard
 (wireguard-go). It is Plan B with E2.
 
@@ -813,7 +992,7 @@ final design.
 | ShadeCast drops High Country's uplink | 0.8 to 0.9 s, then its tunnel over Marmot | not on the path | not on the path |
 | ShadeCast drops the head office's uplink | 0.6 to 1.0 s | not on the path | not on the path |
 | All of ShadeCast fails | 0.8 to 0.9 s | not on the path | not on the path |
-| All of ShadeCast fails, with the transit carrier routing to the head office through it | 0.8 s | not on the path | **8.8 to 9.0 s** |
+| All of ShadeCast fails, with the transit carrier routing to the head office through it | 0.8 s | not on the path | **8.8 to 9.8 s** |
 | Each repair | no loss | no loss | no loss |
 
 - **Two kinds of outage.** A site next to the fault has a BFD session that
@@ -824,8 +1003,8 @@ final design.
   use 3 s keepalives and a 9 s hold time; real routers ship with 60 s and
   180 s. The range's ISP routers should keep short timers, or run BFD between
   themselves.
-- **The checks.** The last run passed all 27, and the two before it all 26
-  they had: the 13 BGP sessions come up
+- **The checks.** The last run passed all 28, the one before it all 27, and
+  the two before that all 26 they had: the 13 BGP sessions come up
   in 8 to 9 s; paths follow the customer, peer, and provider rules; no ISP
   carries a private route; a site learns only site prefixes through a tunnel;
   every site reaches the head office and every other site. Four earlier runs
@@ -867,7 +1046,16 @@ final design.
   runs found that FRR can take a default route away from the head office at
   start ([7.4](#74-wan-bgp-on-vyos-routers)). The lab then showed the same
   mark on FRR 8.4.4, which keeps the route where FRR 10.7.1 removes it. The
-  lab has the setting and a check for it now, and its last run passed all 27.
+  lab has the setting and a check for it now.
+- **Finding 7: the head office must filter each site's routes by site.** The
+  sites now differ, and one of them has its own address plan, so the filter
+  "any `10.0.0.0/8` prefix from any site" became a list for each site. The
+  last run gave the Gulf Coast site `192.168.20.0/24` and put the brewpub's
+  host on its flat plant network. Then the brewpub's edge, with its own
+  export filter opened, announced the Gulf Coast plant network. The head
+  office kept its one route, through the Gulf Coast tunnel, and another site
+  still reached the Gulf Coast host. The ISPs now refuse all private space,
+  not only `10.0.0.0/8`.
 - **Not tested here:** VyOS, IPsec, and WireGuard in the kernel, which
   [7.4](#74-wan-bgp-on-vyos-routers) ran; link delay and loss; the ISPs'
   filters against a prefix they should refuse; firewall rules on tunnel
@@ -884,8 +1072,11 @@ Kit: [spikes/multisite-stamp](../../spikes/multisite-stamp/README.md).
 - **Four stamped site topologies** (132 nodes) have no duplicate hostname and
   validate against phenix's Topology schema. The one duplicate address is each
   `fw-edge`'s WAN address, which the WAN plan assigns.
-- **The budgets** in [4.1](#41-how-big-each-site-is) come from this kit.
-- **On a cluster,** the kit spreads mix M2 over one to five nodes and writes
+- **The budgets of four copies** (mixes M1 to M5) are in this kit's README.
+  The sizes of the sites as decided are from the site-profiles spike
+  ([7.5](#75-site-profiles-four-sites-that-are-not-copies)).
+- **On a cluster,** the kit spreads four copies with their sensors (M2) over
+  one to five nodes and writes
   a `phenix-fleet.yml` for the three-node cluster
   ([4.8](#48-where-the-vms-run)): the 60 VLAN IDs, `schedules` that name a
   node for each of the 132 site VMs, and `deployMode: all`. No VLAN ID is
@@ -996,6 +1187,41 @@ without the transit carrier.
   NAT, and one vCPU; the patch for phenix `main` on a router; more than one
   node.
 
+### 7.5 `site-profiles`: four sites that are not copies
+
+Kit: [spikes/site-profiles](../../spikes/site-profiles/README.md). It edits a
+copy of the plant file for each of the four sites of
+[4.1](#41-what-each-site-is) in seven steps, runs the real plantgen after each
+step, builds each site's phenix nodes, and sizes the result.
+
+- **plantgen generates all four sites.** It needed the one line the stamp
+  spike found, and three kinds of edit to the plant file. A time source must
+  be a host of the site, where a real edge follows one outside it. The
+  ground-truth snapshot's key list must name only federates the site runs.
+  And five federate keys are limited to the variants `full` and `lite` by
+  name, so a variant with another name loses them without a word; adding the
+  site's name to those lists is the step that made every site generate.
+- **What a site drops needs no more than saying so.** Taking out every FUXA
+  source, DNP3 upstream, conduit, and agent that named a missing host changed
+  no generated file: plantgen had left them out already.
+- **The network is data.** One firewall, a plant VLAN made of three, a control
+  VLAN for each cell, and `192.168.0.0/16` passed every check of plantgen, and
+  changed only the files that hold an address: 2 at `ws`, 9 at `gc`, 4 at
+  `hc`.
+- **Four sites in one experiment:** 117 nodes, no duplicate hostname, no
+  duplicate address, 53 VLAN aliases, and four topology files that validate
+  against phenix's Topology schema. The largest router is `ws-fw-ot`, with 11
+  interfaces.
+- **The sizes** in [4.1](#41-what-each-site-is) and the placements in
+  [4.8](#48-where-the-vms-run) come from this kit, with a `phenix-fleet.yml`
+  that names a node for each of the 117 site VMs and gives an ID to each of
+  the 54 VLAN aliases. No ID is given twice, and the file validates against
+  phenix's Workflow schema.
+- **Not tested:** any VM; every tool but plantgen; the firewall rules of a
+  site with one firewall, a flat plant VLAN, or a VLAN for each cell; a unit
+  dropped inside a PLC's area; the brewpub's SCADA showing the building's
+  points; a sensor image.
+
 ## 8. Stages
 
 ```mermaid
@@ -1025,9 +1251,9 @@ C (the cluster check) lead to stage 2. Stage 4 leads to stage 5 (measure, then g
 | 0 | The single site's first run on a phenix host. It is [FUTURE_WORK.md](../FUTURE_WORK.md#the-first-run-on-a-phenix-host) already, and the fleet depends on it | One site passes SoH, and its host load is recorded |
 | 1 | **Done.** A spike on VyOS VMs in CI: four VyOS routers, with R1's `config` list carrying the commands of [spikes/wan-bgp/vyos-sketch](../../spikes/wan-bgp/vyos-sketch), once with WireGuard and once with a VTI ([7.4](#74-wan-bgp-on-vyos-routers)) | The commit succeeded at first boot, BGP came up in the tunnels, and a silent uplink failed over and came back, for both tunnels. It settles D2 and leaves D3 a choice between two that work |
 | 2 | The `wan` variant: `wan.yaml`, its generator, the six internet routers, the four site edges with their firewall rules and NAT next to the WAN configuration, a host at each site | The lab's checks pass on VMs, as SoH tests and a SCORCH run for each fault, with the transit carrier and all four sites |
-| 3 | Sites in plantgen, `sync.py`, the app, and the FUXA builder | The `lite` variant generates as a prefixed site and passes the offline checks; after stage 0, it boots alone |
+| 3 | Sites in plantgen, `sync.py`, the app, and the FUXA builder, from a description of each site | `ws` (the standard, with a prefix) and `hc` (the smallest, with one firewall) generate and pass the offline checks; after stage 0, `hc` boots alone: 17 VMs |
 | C | On the cluster: two small VMs on one VLAN, pinned to different nodes with `schedules` and `deployMode: all` | A ping of 1472 bytes that may not be fragmented passes between them, and the experiment stops cleanly on both nodes |
-| 4 | The `fleet` variant: the site files, the head-office services, the cross-site conduits, `netcheck` for the fleet. One site first, then all four at M2, placed as in [4.8](#48-where-the-vms-run) | Every conduit and every blocked path passes SoH across the VPN |
+| 4 | The `fleet` variant: the site files, the head-office services, the cross-site conduits, `netcheck` for the fleet. One site first, then all four, placed as in [4.8](#48-where-the-vms-run) | Every conduit and every blocked path passes SoH across the VPN |
 | 5 | Measure each node with the fleet running | Load and steal time are recorded for each node, and the BFD interval is set from them |
 
 Stage 1 ran on a GitHub runner, as the Phase 0 VM spikes did. Stage C needs
@@ -1040,15 +1266,15 @@ so that part follows stage 0.
 
 ## 9. Decisions needed
 
-The last column has what was decided on 2026-11-22. A row that says "not
-answered" still stands as recommended.
+The last column has what was decided, on 2026-11-22 unless it says another
+day. A row that says "not answered" still stands as recommended.
 
-| # | Decision | Options | Recommended | Decided on 2026-11-22 |
+| # | Decision | Options | Recommended | Decided |
 |---|---|---|---|---|
 | D1 | The plan | A, B, or C ([section 5](#5-three-plans)) | **B** | Not answered. D3, D6, and D7 were decided as Plan B has them |
 | D2 | Where the tunnels and BGP run at a site | E1 on `fw-edge` with R1 (a phenix change) or R2 (the script); E2 on a `wan-edge` VM ([4.3](#43-who-runs-bgp-and-how-the-routers-get-their-configuration), [4.4](#44-where-the-tunnels-end)) | **E1 with R1**. The VyOS spike passed | Not answered. The phenix change is a draft pull request (D11) |
 | D3 | The tunnel between sites | Route-based IPsec or WireGuard ([4.5](#45-the-vpn)). Both passed on VyOS | **Route-based IPsec**, because it is what such a company runs and gives a defender more to see. WireGuard is simpler and recovers faster, and stays one setting away | **Route-based IPsec** |
-| D4 | The site mix | M1 to M5 ([4.1](#41-how-big-each-site-is)) | On the cluster, **M2**. On one node, start at M4, then measure | Open: are the four sites the same plant? Planned as M2 until said otherwise ([4.1](#41-how-big-each-site-is)) |
+| D4 | The sites | Four copies of the plant (the mixes M1 to M5), or sites that differ: S1, S2, or S3 ([4.1](#41-what-each-site-is)) | **S2**: the size, and how the network is cut | **Not copies** (2026-11-23): sites of varying size, with networks that differ a little, as a real business has. Planned as S2 |
 | D5 | The head office's uplinks | Its own AS on two ISPs, or ISP-assigned addresses like the other sites ([4.5](#45-the-vpn)) | **Its own AS** | Not answered |
 | D6 | The ISP routers | I1 (FRR VMs), I2 (VyOS VMs), or I3 (one VM) ([4.2](#42-the-mock-internet)) | **I2**, since two ISPs ran as VyOS in CI and memory is no longer short. It was I1 | **I2: VyOS** |
 | D7 | Monitoring of the other sites | Central with the out-of-band mirror, a sensor at each site, or none ([4.6](#46-what-the-head-office-does)) | On the cluster, **a sensor at each site**. On one node, central to start | **A sensor at each site** |
@@ -1060,6 +1286,11 @@ answered" still stands as recommended.
 | D13 | Which node runs a VM | P1 (each site on one node, in the workflow), P2 (`subnet-compute`), or P3 (minimega decides) ([4.8](#48-where-the-vms-run)) | **P1** | Not answered. [4.8](#48-where-the-vms-run) places the sites by P1 |
 | D14 | How a VLAN reaches another node | N1 (phenix's GRE mesh, with an MTU of 1600 or more between nodes) or N2 (the cluster carries the VLANs) ([4.8](#48-where-the-vms-run)) | Whichever the cluster has | **N2**: the cluster does it (from D10) |
 | D15 | The FRR behavior that drops a default route | Report it to FRR and VyOS, or only work around it ([7.4](#74-wan-bgp-on-vyos-routers)) | **Report it**, with a debug log of the first seconds, which no run captured yet | **Not reported** |
+
+| D16 | The control network at `ws` | A VLAN for each process cell, or one VLAN for the PLCs as at `fr` ([4.1](#41-what-each-site-is)) | **A VLAN for each cell**: it is the one site that is stricter than the standard | Open |
+| D17 | The addresses at `gc` | The plan it was bought with (`192.168.0.0/16`), or renumbered into the company's plan | **Its own plan**: the head office then filters and routes something it did not design | Open |
+| D18 | Engineering and history at `hc` | Neither on site (the head office's `ews` reaches the pub's PLCs, and the SCADA writes to the fleet historian), or an `ews`, or an `ews` and a historian ([4.6](#46-what-the-head-office-does)) | **Neither on site**: it is what a pub has, and it makes the VPN matter to the plant | Open |
+| D19 | The sensors at `gc` and `hc` | The same sensor as `ws` (4 vCPUs, 16 GB), a lighter one, or none at the pub | **The same**, until a sensor image exists to measure | Open |
 
 ## 10. References
 

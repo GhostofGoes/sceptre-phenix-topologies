@@ -57,20 +57,25 @@ and `ws-b`, and `gc-a`.
 - **The ISPs** prefer a customer's route to a peer's, and a peer's to a
   provider's. They tell peers and providers only their own and their
   customers' prefixes. From the head office they accept only its one prefix.
-  From another network they accept any public prefix up to a /24, and nothing
-  in `10.0.0.0/8`.
+  From another network they accept any public prefix up to a /24, and no
+  private address space.
 - **The head office** takes a default route from each ISP and installs both.
   It gives each ISP its own prefix and nothing else.
 - **The other sites** have ISP-assigned addresses and a static default route
   for each uplink. They speak no BGP with their ISPs.
 - **Each site announces one /24**, the network of its one host. A site of the
-  range announces four blocks ([PLANS.md](../../docs/multisite/PLANS.md)
-  section 3); `vyos_sketch.py` writes those.
+  range announces its blocks ([PLANS.md](../../docs/multisite/PLANS.md)
+  section 3); `vyos_sketch.py` writes those. The sites are not copies: the
+  brewpub's host is on its one flat plant network (`10.21.10.0/24`), and the
+  Gulf Coast site, which the company bought, has its own address plan
+  (`192.168.20.0/24`). The hosts keep the names `<site>-historian`.
 - **The head office's ShadeCast link is a /30** here. In the range it is
   today's INET segment, which also holds the utility's router.
 - **Each tunnel** carries eBGP with BFD (300 ms, three missed). The primary
   tunnel of a site wins by local preference at both ends. Only site prefixes
-  (`10.0.0.0/8`, /16 to /24) cross a tunnel in either direction.
+  cross a tunnel, and only a site's own: the head office takes from each site
+  the blocks of that site (`SITE-HC`, `SITE-WS`, `SITE-GC`), and a site
+  announces only its own.
 - **Underlay BGP timers** are 3 s keepalive and 9 s hold, not the real default
   of 60 s and 180 s, so that a silent failure in the core ends in seconds.
 
@@ -124,6 +129,8 @@ site's uplink is set down, to see where its tunnel goes.
       the BGP hold time.
 - [x] After the faults, every tunnel still leaves through its own uplink, and
       a tunnel whose uplink is down stays down.
+- [x] The head office refuses another site's network when a site announces
+      it.
 
 ## Result
 
@@ -135,10 +142,12 @@ site's uplink is set down, to see where its tunnel goes.
   and the mark's routing table ends in a blackhole (finding 3).
 - **Run:** in a container with no VM. Linux 6.18 with no WireGuard, no ESP,
   and no netem in the kernel; FRR 8.4.4; wireguard-go 0.0.20230223;
-  `feat-secret-topo` at `fb43c7f`. The final design ran seven times. The last
-  run passed all 27 checks, with the head office keeping the routes its ISPs
-  send (finding 7) and a check that neither of its default routes is stale.
-  The two runs before it passed all 26 they had. The four runs before those
+  `feat-secret-topo` at `fb43c7f`. The final design ran eight times. The last
+  run passed all 28 checks, with a route filter for each site and a site that
+  announces another site's network (finding 8). The run before it passed all
+  27, with the head office keeping the routes its ISPs send (finding 7) and a
+  check that neither of its default routes is stale. The two runs before that
+  passed all 26 they had. The four runs before those
   had 23 checks, and the design did not yet have the blackhole or the two
   last events. In two of those four, one check failed for a fault of the kit:
   it left Pelican's blackhole route in place after the hijack.
@@ -161,7 +170,7 @@ which it chose from two equal customer routes.
 | ShadeCast drops `hc`'s uplink | 0.8 to 0.9 s | not on the path | not on the path | `hc` to its tunnel over Marmot |
 | ShadeCast drops the head office's uplink | 0.6 to 1.0 s | not on the path | not on the path | ShadeCast reaches the head office through its peer; `hc` uses its backup until then |
 | All of ShadeCast goes dark | 0.8 to 0.9 s | not on the path | not on the path | `hc` to Marmot |
-| All of ShadeCast goes dark, with the transit carrier routing to the head office through it | 0.8 s | not on the path | **8.8 to 9.0 s** | `hc` to Marmot; the transit carrier to Tumbleweed, when its BGP hold timer ran out |
+| All of ShadeCast goes dark, with the transit carrier routing to the head office through it | 0.8 s | not on the path | **8.8 to 9.8 s** | `hc` to Marmot; the transit carrier to Tumbleweed, when its BGP hold timer ran out |
 | Each repair | none | none | none | Back to the primary tunnel and the direct route |
 | The link of `hc`'s ShadeCast uplink set down | not timed | | | `hc` to Marmot; its first tunnel stayed down, and came back 2 s after the link |
 
@@ -234,6 +243,17 @@ which it chose from two equal customer routes.
    ShadeCast's default route at the head office was marked `(stale)`. FRR
    8.4.4 keeps a stale route, so no check had failed. FRR 10.7.1 removes it.
    With the setting, neither route is stale.
+8. **The head office must filter each site's routes by site.** The first
+   filter let any prefix of `10.0.0.0/8`, /16 to /24, cross a tunnel in
+   either direction. With sites that announce /16 blocks, a site's edge in
+   the wrong hands could announce a /24 inside another site's block, and the
+   longer prefix would win at the head office. The filter is now a list for
+   each site. In the last run the brewpub's edge, with its own export filter
+   opened, announced the Gulf Coast plant network (`192.168.20.0/24`). It
+   offered the route on its tunnels, the head office kept its one route
+   through the Gulf Coast tunnel, and the Western Slope host still reached the
+   Gulf Coast host. The ISPs' filter now refuses all private space, not only
+   `10.0.0.0/8`.
 
 ### What the kit did not test
 
@@ -243,6 +263,7 @@ which it chose from two equal customer routes.
   this lab on VyOS with each of them.
 - **The ISPs' filters.** No run offered an ISP a prefix it should refuse (a
   private one, one longer than a /24, or one a customer has not registered).
+  Finding 8 tested the head office's filter inside the VPN, not an ISP's.
 - **A fault inside the transit carrier**, between its two routers.
 - **A site's own internet access.** A site's default route is static, with no
   health check, so it stays on a dead first uplink. The tunnels are not

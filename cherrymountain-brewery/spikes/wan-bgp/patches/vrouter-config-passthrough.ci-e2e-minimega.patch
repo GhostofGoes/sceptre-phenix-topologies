@@ -1,5 +1,5 @@
 diff --git a/src/go/app/vrouter.go b/src/go/app/vrouter.go
-index 4d89f2c..cd4ae49 100644
+index 4d89f2c..66c862e 100644
 --- a/src/go/app/vrouter.go
 +++ b/src/go/app/vrouter.go
 @@ -9,6 +9,7 @@ import (
@@ -90,7 +90,7 @@ index 4d89f2c..cd4ae49 100644
  						break
  					}
  				}
-@@ -967,6 +1025,85 @@ func (v *Vrouter) processIPSec(
+@@ -967,6 +1025,91 @@ func (v *Vrouter) processIPSec(
  	return &ipsec, nil
  }
  
@@ -137,6 +137,12 @@ index 4d89f2c..cd4ae49 100644
 +// `set -...` and `set +...` to the shell's own `set` builtin (vyatta-cfg,
 +// VyOS T1604), which would change the options of the script that commits the
 +// configuration.
++//
++// The check guards against a line the shell would misread, not against the
++// line's author: `config` has full control of the router. VyOS's own
++// `system task-scheduler` runs commands, and while it completes a line VyOS
++// evaluates the output of completion scripts, some of which print values that
++// earlier lines stored.
 +func checkVyosConfigLine(line string) error {
 +	var rest string
 +
@@ -251,7 +257,7 @@ index 0000000..09f9188
 +}
 diff --git a/src/go/app/vrouter_config_test.go b/src/go/app/vrouter_config_test.go
 new file mode 100644
-index 0000000..5a5e5dd
+index 0000000..51c1b3d
 --- /dev/null
 +++ b/src/go/app/vrouter_config_test.go
 @@ -0,0 +1,299 @@
@@ -311,7 +317,7 @@ index 0000000..5a5e5dd
 +func vrouterConfigSpecial() []string {
 +	return []string{
 +		"[ab]", "[!x]", "a*", "?", "{a,b}", "~", "$HOME", "$(echo a)", "`echo a`",
-+		"a;b", "a|b", "a&b", ">x", "<a", "#a", "!!", `\a`, `"a"`, "'", "\n", "\t",
++		"a;b", "a|b", "a&b", ">x", "<a", "#a", "!!", "a(b", "a)", "(", `\a`, `"a"`, "'", "\n", "\t",
 +	}
 +}
 +

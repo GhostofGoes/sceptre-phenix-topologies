@@ -1,20 +1,20 @@
 diff --git a/CHANGELOG.md b/CHANGELOG.md
-index aba7ac5..ba1023c 100644
+index aba7ac5..c810c8e 100644
 --- a/CHANGELOG.md
 +++ b/CHANGELOG.md
 @@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
  ### Added
  
  - **Web UI Help**: Added a Help link to the documentation in the footer.
-+- **vrouter App**: Added the `config` option, a list of VyOS `set` and `delete` commands that phēnix writes after the configuration it generates and before the commit, for what the app's other options can't express (BGP, BFD, tunnel interfaces). phēnix refuses a line that is not one plain `set` or `delete`: one whose next word does not start with a lowercase letter (VyOS hands `set -x` to the shell's own `set`), or that has a control character or a shell metacharacter outside single quotes. It also refuses `config` on a host that is not a VyOS router or firewall, which would otherwise drop it.
++- **vrouter App**: Added the `config` option, a list of VyOS `set` and `delete` commands that phēnix writes after the configuration it generates and before the commit, for what the app's other options can't express (BGP, BFD, tunnel interfaces). phēnix refuses a line that is not one plain `set` or `delete`: one whose next word does not start with a lowercase letter (VyOS hands `set -x` to the shell's own `set`), or that has a control character or a shell metacharacter outside single quotes. It also refuses `config` on a host that is not a VyOS router or firewall, which would otherwise drop it. The check catches mistakes, not a hostile author: `config` gives full control of the router.
  - **Image Releases**: `phenix image create` recognizes the Debian releases `trixie` and `forky`.
  - **SCORCH**: Support the `cleanup` stage in the built-in `tap` component for reliable tap teardown on run completion or cancellation.
  - **Topology Builder**:
 diff --git a/docs/content/apps.md b/docs/content/apps.md
-index 8d1d5d4..dc1cf78 100644
+index 8d1d5d4..a542b54 100644
 --- a/docs/content/apps.md
 +++ b/docs/content/apps.md
-@@ -768,6 +768,24 @@ spec:
+@@ -768,6 +768,28 @@ spec:
      * `reordering`: percentage of reordered packets for interface and direction
        this traffic policy is applied to, from 0 to 100.
  
@@ -27,7 +27,11 @@ index 8d1d5d4..dc1cf78 100644
 +  `set`). A line that does not is an error, and so is a line with a control
 +  character, a double quote, or a character the shell acts on (such as `;`,
 +  `$`, or a backtick) outside single quotes. Only routers and firewalls with
-+  `os_type: vyos` accept it: for any other host it is an error.
++  `os_type: vyos` accept it: for any other host it is an error. The check
++  catches a mistake, not a hostile author: whoever writes `config` controls
++  the router, since VyOS configuration can run commands
++  (`system task-scheduler`) and VyOS evaluates what some completion scripts
++  print, including values that an earlier line stored.
 +
 +    ``` yaml title="vrouter config example"
 +    config:
@@ -40,7 +44,7 @@ index 8d1d5d4..dc1cf78 100644
      The `ingress` and `egress` setting for ACLs are from the perspective of the
      network segment the specified interface is connected to, not from the
 diff --git a/src/go/app/vrouter.go b/src/go/app/vrouter.go
-index 283f7cc..6613350 100644
+index 283f7cc..c361de9 100644
 --- a/src/go/app/vrouter.go
 +++ b/src/go/app/vrouter.go
 @@ -42,6 +42,7 @@ var (
@@ -123,7 +127,7 @@ index 283f7cc..6613350 100644
  						break
  					}
  				}
-@@ -737,6 +794,85 @@ func vyosPassword(val any) (string, error) {
+@@ -737,6 +794,91 @@ func vyosPassword(val any) (string, error) {
  	}
  }
  
@@ -170,6 +174,12 @@ index 283f7cc..6613350 100644
 +// `set -...` and `set +...` to the shell's own `set` builtin (vyatta-cfg,
 +// VyOS T1604), which would change the options of the script that commits the
 +// configuration.
++//
++// The check guards against a line the shell would misread, not against the
++// line's author: `config` has full control of the router. VyOS's own
++// `system task-scheduler` runs commands, and while it completes a line VyOS
++// evaluates the output of completion scripts, some of which print values that
++// earlier lines stored.
 +func checkVyosConfigLine(line string) error {
 +	var rest string
 +
@@ -284,7 +294,7 @@ index 0000000..09f9188
 +}
 diff --git a/src/go/app/vrouter_config_test.go b/src/go/app/vrouter_config_test.go
 new file mode 100644
-index 0000000..78d86f5
+index 0000000..213bd4c
 --- /dev/null
 +++ b/src/go/app/vrouter_config_test.go
 @@ -0,0 +1,295 @@
@@ -346,7 +356,7 @@ index 0000000..78d86f5
 +func vrouterConfigSpecial() []string {
 +	return []string{
 +		"[ab]", "[!x]", "a*", "?", "{a,b}", "~", "$HOME", "$(echo a)", "`echo a`",
-+		"a;b", "a|b", "a&b", ">x", "<a", "#a", "!!", `\a`, `"a"`, "'", "\n", "\t",
++		"a;b", "a|b", "a&b", ">x", "<a", "#a", "!!", "a(b", "a)", "(", `\a`, `"a"`, "'", "\n", "\t",
 +	}
 +}
 +

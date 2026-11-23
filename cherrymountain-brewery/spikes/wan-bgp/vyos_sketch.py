@@ -79,11 +79,25 @@ def uplinks(router: lab.Router) -> list[tuple[str, lab.Link, str, str, str]]:
 
 
 def site_blocks(router: lab.Router) -> list[str]:
-    """The four address blocks of the site behind `router` (IT, OT, BAS, SOC)."""
-    lan = next(lan for lan in lab.LANS if lan.router == router.name)
-    # The lab's host sits in the site's OPS network, 10.2n.30.0/24.
-    number = int(lan.net.split(".")[1]) - 20
-    return [f"10.{block + number}.0.0/16" for block in (10, 20, 30, 40)]
+    """The private blocks of the site behind `router` (PLANS.md section 3)."""
+    return lab.SITE_BLOCKS[router.name]
+
+
+def site_code(name: str) -> str:
+    return name.split("-")[0].upper()
+
+
+def site_prefix_lists(names: list[str]) -> list[str]:
+    """`SITE-<CODE>` with the blocks of each named site, and `SITE-NETS` with all of them."""
+    lines: list[str] = []
+    rule = 10
+    for name in names:
+        for index, block in enumerate(lab.SITE_BLOCKS[name], start=1):
+            le = 0 if block.endswith("/24") else 24
+            lines += prefix_list(f"SITE-{site_code(name)}", block, le=le, rule=index * 10)
+            lines += prefix_list("SITE-NETS", block, le=le, rule=rule)
+            rule += 10
+    return lines
 
 
 def prefix_list(name: str, prefix: str, ge: int = 0, le: int = 0, rule: int = 10, action: str = "permit") -> list[str]:
@@ -150,7 +164,11 @@ def isp_sketch(router: lab.Router) -> list[str]:
     asn = router.asn
     lines: list[str] = [
         *bfd_profile(),
-        *prefix_list("PUBLIC", "10.0.0.0/8", le=32, rule=5, action="deny"),
+        *[
+            line
+            for rule, block in enumerate(lab.PRIVATE, start=1)
+            for line in prefix_list("PUBLIC", block, le=32, rule=rule, action="deny")
+        ],
         *prefix_list("PUBLIC", "0.0.0.0/0", rule=10, action="deny"),
         *prefix_list("PUBLIC", "0.0.0.0/0", le=24, rule=15),
         "set policy community-list FROM-CUSTOMERS rule 10 action permit",
@@ -289,20 +307,36 @@ def sketch(
 ) -> list[str]:
     """A site edge: the head office, or a site with ISP-assigned addresses."""
     hub = router.multipath
+    # The sites this router has a tunnel with, and itself.
+    sites = [router.name] + sorted(
+        {t.site if router.name == t.hub else t.hub for t in lab.TUNNELS if router.name in (t.hub, t.site)}
+    )
     lines: list[str] = [
         *bfd_profile(),
-        *prefix_list("SITE-NETS", "10.0.0.0/8", ge=16, le=24),
-        *route_map("OVERLAY-PRIMARY", "SITE-NETS", local_preference=200),
-        *route_map("OVERLAY-BACKUP", "SITE-NETS", local_preference=100),
-        *route_map("OVERLAY-OUT", "SITE-NETS"),
+        *site_prefix_lists(sites),
+    ]
+    if hub:
+        # The head office takes from each site only that site's blocks, and
+        # gives every site the blocks of all of them.
+        for name in sites[1:]:
+            code = site_code(name)
+            lines += route_map(f"OVERLAY-PRIMARY-{code}", f"SITE-{code}", local_preference=200)
+            lines += route_map(f"OVERLAY-BACKUP-{code}", f"SITE-{code}", local_preference=100)
+        lines += route_map("OVERLAY-OUT", "SITE-NETS")
+    else:
+        # A site takes any site's blocks from the head office, and gives it only its own.
+        lines += route_map("OVERLAY-PRIMARY", "SITE-NETS", local_preference=200)
+        lines += route_map("OVERLAY-BACKUP", "SITE-NETS", local_preference=100)
+        lines += route_map("OVERLAY-OUT", f"SITE-{site_code(router.name)}")
+    lines += [
         f"set protocols bgp system-as {router.asn}",
         f"set protocols bgp parameters router-id {router.router_id}",
         "set protocols bgp parameters log-neighbor-changes",
     ]
     for block in site_blocks(router):
         # The lab announces the one /24 it has behind each edge. A site of the
-        # range announces its four blocks (PLANS.md section 3). VyOS announces
-        # a `network` whether or not a route for it is installed.
+        # range announces its blocks (PLANS.md section 3). VyOS announces a
+        # `network` whether or not a route for it is installed.
         lines.append(f"set protocols bgp address-family ipv4-unicast network {block}")
 
     if hub:
@@ -352,6 +386,8 @@ def sketch(
         peer_as = lab.BY_NAME[tunnel.site if at_hub else tunnel.hub].asn
         prefix = ipaddress.ip_network(tunnel.net).prefixlen
         policy = "OVERLAY-PRIMARY" if tunnel.primary else "OVERLAY-BACKUP"
+        if at_hub:
+            policy += f"-{site_code(tunnel.site)}"
         if kind == VTI:
             lines += vti_tunnel(router, tunnel, psk)
             lines += neighbor(peer, peer_as, f"overlay {tunnel.name}", policy, "OVERLAY-OUT")

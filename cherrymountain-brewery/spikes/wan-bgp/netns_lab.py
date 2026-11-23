@@ -238,6 +238,19 @@ ROUTERS: list[Router] = [
 ]
 
 HQ_PREFIX: str = "198.18.105.0/24"
+HQ_LAN: str = "10.20.30.0/24"
+HC_LAN: str = "10.21.10.0/24"
+GC_LAN: str = "192.168.20.0/24"
+
+# The private blocks of each site. The head office takes from a site only what
+# is in that site's blocks, and a site announces only its own.
+SITE_BLOCKS: dict[str, list[str]] = {
+    "fr-fw-edge": ["10.10.0.0/16", "10.20.0.0/16", "10.30.0.0/16", "10.40.0.0/16"],
+    "hc-fw-edge": ["10.11.0.0/16", "10.21.0.0/16"],
+    "ws-fw-edge": ["10.12.0.0/16", "10.22.0.0/16", "10.32.0.0/16", "10.42.0.0/16"],
+    "gc-fw-edge": ["192.168.10.0/24", "192.168.20.0/24", "192.168.30.0/24"],
+}
+PRIVATE: tuple[str, ...] = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
 
 LINKS: list[Link] = [
     Link(a="cb-west", b="cb-south", net="198.18.0.0/30", relation="ibgp"),
@@ -270,10 +283,12 @@ LINKS: list[Link] = [
 ]
 
 LANS: list[Lan] = [
-    Lan(router="fr-fw-edge", host="fr-historian", net="10.20.30.0/24"),
-    Lan(router="hc-fw-edge", host="hc-historian", net="10.21.30.0/24"),
+    Lan(router="fr-fw-edge", host="fr-historian", net=HQ_LAN),
+    # The brewpub has one flat control network, and the site that was bought
+    # keeps its own address plan (PLANS.md 4.1). The hosts keep the lab's names.
+    Lan(router="hc-fw-edge", host="hc-historian", net=HC_LAN),
     Lan(router="ws-fw-edge", host="ws-historian", net="10.22.30.0/24"),
-    Lan(router="gc-fw-edge", host="gc-historian", net="10.23.30.0/24"),
+    Lan(router="gc-fw-edge", host="gc-historian", net=GC_LAN),
     Lan(router="cb-west", host="inet", net="198.18.110.0/24", advertise_public=True),
 ]
 
@@ -385,6 +400,19 @@ def peer_of(link: Link, router: str) -> tuple[str, str, str]:
 # ------------------------------- FRR config -------------------------------
 
 
+def site_prefix_lists() -> list[str]:
+    """`SITE-<CODE>` for each site's blocks, and `SITE-NETS` for all of them: a /16 down to its /24s."""
+    lines: list[str] = []
+    seq = 5
+    for name, blocks in SITE_BLOCKS.items():
+        for number, block in enumerate(blocks, start=1):
+            le = "" if block.endswith("/24") else " le 24"
+            lines.append(f"ip prefix-list SITE-{name.split('-')[0].upper()} seq {number * 5} permit {block}{le}")
+            lines.append(f"ip prefix-list SITE-NETS seq {seq} permit {block}{le}")
+            seq += 5
+    return lines
+
+
 def frr_config(router: Router) -> str:
     """The integrated frr.conf of one router."""
     lines: list[str] = [
@@ -402,10 +430,11 @@ def frr_config(router: Router) -> str:
         lines.append("ip prefix-list OWN seq 5 deny 0.0.0.0/0 le 32")
     lines += [
         "ip prefix-list DEFAULT seq 5 permit 0.0.0.0/0",
-        # The overlay carries the sites' private prefixes and nothing else.
-        "ip prefix-list SITE-NETS seq 5 permit 10.0.0.0/8 ge 16 le 24",
+        # The overlay carries the sites' private prefixes and nothing else: one
+        # list for each site with that site's blocks, and one with all of them.
+        *site_prefix_lists(),
         # What an ISP takes from another AS: public space, nothing longer than /24.
-        "ip prefix-list PUBLIC seq 5 deny 10.0.0.0/8 le 32",
+        *[f"ip prefix-list PUBLIC seq {seq} deny {block} le 32" for seq, block in enumerate(PRIVATE, start=1)],
         "ip prefix-list PUBLIC seq 10 deny 0.0.0.0/0",
         "ip prefix-list PUBLIC seq 15 permit 0.0.0.0/0 le 24",
         f"bgp community-list standard FROM-CUSTOMERS permit {asn}:{RELATION_TAG['customer']}",
@@ -436,16 +465,29 @@ def frr_config(router: Router) -> str:
         "route-map OWN-ONLY permit 10",
         " match ip address prefix-list OWN",
         "!",
-        "route-map OVERLAY-PRIMARY permit 10",
-        " match ip address prefix-list SITE-NETS",
-        " set local-preference 200",
-        "!",
-        "route-map OVERLAY-BACKUP permit 10",
-        " match ip address prefix-list SITE-NETS",
-        " set local-preference 100",
-        "!",
+    ]
+    # A site takes any site's prefix from the head office and gives it only its
+    # own. The head office takes from each site only that site's prefixes.
+    hub = router.name == TUNNELS[0].hub
+    for other in SITE_BLOCKS:
+        if other != router.name and not hub:
+            continue
+        taken = f"SITE-{other.split('-')[0].upper()}" if other != router.name else "SITE-NETS"
+        suffix = f"-{other.split('-')[0].upper()}" if other != router.name else ""
+        lines += [
+            f"route-map OVERLAY-PRIMARY{suffix} permit 10",
+            f" match ip address prefix-list {taken}",
+            " set local-preference 200",
+            "!",
+            f"route-map OVERLAY-BACKUP{suffix} permit 10",
+            f" match ip address prefix-list {taken}",
+            " set local-preference 100",
+            "!",
+        ]
+    own = f"SITE-{router.name.split('-')[0].upper()}" if router.name in SITE_BLOCKS and not hub else "SITE-NETS"
+    lines += [
         "route-map OVERLAY-OUT permit 10",
-        " match ip address prefix-list SITE-NETS",
+        f" match ip address prefix-list {own}",
         "!",
     ]
 
@@ -523,6 +565,8 @@ def frr_config(router: Router) -> str:
         else:
             continue
         policy = "OVERLAY-PRIMARY" if tunnel.primary else "OVERLAY-BACKUP"
+        if router.name == tunnel.hub:
+            policy += f"-{tunnel.site.split('-')[0].upper()}"
         neighbors += [
             f" neighbor {address} remote-as {remote_as}",
             f" neighbor {address} description overlay-{tunnel.name}",
@@ -822,6 +866,24 @@ def routes(router: str) -> dict[str, list[dict]]:
     return vtysh_json(router, "show ip route json")
 
 
+def is_private(prefix: str) -> bool:
+    network = ipaddress.ip_network(prefix)
+    return any(network.subnet_of(ipaddress.ip_network(block)) for block in PRIVATE)
+
+
+def in_blocks(prefix: str, site: str = "") -> bool:
+    """`prefix` is inside a block of `site`, or of any site."""
+    network = ipaddress.ip_network(prefix)
+    blocks = SITE_BLOCKS[site] if site else [b for blocks in SITE_BLOCKS.values() for b in blocks]
+    return any(network.subnet_of(ipaddress.ip_network(block)) for block in blocks)
+
+
+def bgp_paths(router: str, prefix: str) -> list[str]:
+    """The neighbors `router` holds a path to `prefix` from."""
+    data = vtysh_json(router, f"show bgp ipv4 unicast {prefix} json")
+    return sorted(path.get("peer", {}).get("peerId", "?") for path in data.get("paths", []))
+
+
 def bgp_path(router: str, prefix: str) -> str:
     """The AS path of the best route to `prefix`, as text."""
     data = vtysh_json(router, f"show bgp ipv4 unicast {prefix} json")
@@ -1089,9 +1151,9 @@ def run_checks(mode: str) -> Evidence:
         f"cb-west to Marmot's prefix: {bgp_path('cb-west', '198.18.102.0/24')!r}",
     )
     public_routers = [r.name for r in ROUTERS if r.public_bgp and r.name != "fr-fw-edge"]
-    leaked = {name: [p for p in routes(name) if p.startswith("10.")] for name in public_routers}
+    leaked = {name: [p for p in routes(name) if is_private(p)] for name in public_routers}
     check(
-        "no ISP carries a private (10.0.0.0/8) route",
+        "no ISP carries a private route",
         not any(leaked.values()),
         json.dumps({k: v for k, v in leaked.items() if v}) or "none",
     )
@@ -1116,7 +1178,7 @@ def run_checks(mode: str) -> Evidence:
     }
     check(
         "a site learns only site prefixes over the tunnels (no default, no public route)",
-        all(all(p.startswith("10.") for p in prefixes) and len(prefixes) == 3 for prefixes in site_routes.values()),
+        all(all(in_blocks(p) for p in prefixes) and len(prefixes) == 3 for prefixes in site_routes.values()),
         json.dumps(site_routes),
     )
 
@@ -1133,9 +1195,9 @@ def run_checks(mode: str) -> Evidence:
     facts["path, hc-historian to gc-historian"] = " > ".join(traceroute("hc-historian", SITE_HOSTS["gc-historian"]))
     check(
         "site traffic rides the primary tunnel",
-        next_hop_if("hc-fw-edge", "10.20.30.0/24") == "wgs-hc-a"
-        and next_hop_if("fr-fw-edge", "10.21.30.0/24") == "wgh-hc-a",
-        f"hc-fw-edge via {next_hop_if('hc-fw-edge', '10.20.30.0/24')}, fr-fw-edge back via {next_hop_if('fr-fw-edge', '10.21.30.0/24')}",
+        next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-a"
+        and next_hop_if("fr-fw-edge", HC_LAN) == "wgh-hc-a",
+        f"hc-fw-edge via {next_hop_if('hc-fw-edge', HQ_LAN)}, fr-fw-edge back via {next_hop_if('fr-fw-edge', HC_LAN)}",
     )
     check(
         "a private address is not reachable from the internet side",
@@ -1158,8 +1220,8 @@ def run_checks(mode: str) -> Evidence:
     hc = next(o for o in result if o.stream.startswith("hc-historian"))
     check(
         "the High Country site fails over to its second ISP when its ShadeCast uplink goes silent",
-        0 < hc.longest_gap_s <= 3.0 and next_hop_if("hc-fw-edge", "10.20.30.0/24") == "wgs-hc-b",
-        f"outage {hc.longest_gap_s} s, now via {next_hop_if('hc-fw-edge', '10.20.30.0/24')}",
+        0 < hc.longest_gap_s <= 3.0 and next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-b",
+        f"outage {hc.longest_gap_s} s, now via {next_hop_if('hc-fw-edge', HQ_LAN)}",
     )
     check(
         "the other sites do not notice",
@@ -1172,8 +1234,8 @@ def run_checks(mode: str) -> Evidence:
     time.sleep(5)
     check(
         "the High Country site returns to the primary tunnel after the repair",
-        next_hop_if("hc-fw-edge", "10.20.30.0/24") == "wgs-hc-a" and hc.longest_gap_s <= 1.0,
-        f"via {next_hop_if('hc-fw-edge', '10.20.30.0/24')}, outage on the way back {hc.longest_gap_s} s",
+        next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-a" and hc.longest_gap_s <= 1.0,
+        f"via {next_hop_if('hc-fw-edge', HQ_LAN)}, outage on the way back {hc.longest_gap_s} s",
     )
 
     # Fault 2: the head office loses its ShadeCast uplink, silently.
@@ -1203,8 +1265,8 @@ def run_checks(mode: str) -> Evidence:
     check(
         "every site keeps the head office through the loss of a whole ISP",
         all(reachable(h, HQ_HOST_ADDRESS, 2) for h in SITE_HOSTS),
-        f"longest outage {worst} s; High Country via {next_hop_if('hc-fw-edge', '10.20.30.0/24')}, "
-        f"Western Slope via {next_hop_if('ws-fw-edge', '10.20.30.0/24')}",
+        f"longest outage {worst} s; High Country via {next_hop_if('hc-fw-edge', HQ_LAN)}, "
+        f"Western Slope via {next_hop_if('ws-fw-edge', HQ_LAN)}",
     )
     check(
         "the outage is bounded by the BGP hold time of the ISP core",
@@ -1259,18 +1321,18 @@ def run_checks(mode: str) -> Evidence:
         check(
             "with its uplink's link down, a tunnel does not move to the other uplink",
             stayed
-            and next_hop_if("hc-fw-edge", "10.20.30.0/24") == "wgs-hc-b"
+            and next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-b"
             and reachable("hc-historian", HQ_HOST_ADDRESS),
             f"lookup for hc-a: {' '.join(lookup.split()) or 'no route (blackhole)'}; "
-            f"traffic via {next_hop_if('hc-fw-edge', '10.20.30.0/24')}",
+            f"traffic via {next_hop_if('hc-fw-edge', HQ_LAN)}",
         )
         ns("hc-fw-edge", "ip", "link", "set", uplink, "up")
         started = time.monotonic()
-        while time.monotonic() - started < 60 and next_hop_if("hc-fw-edge", "10.20.30.0/24") != "wgs-hc-a":
+        while time.monotonic() - started < 60 and next_hop_if("hc-fw-edge", HQ_LAN) != "wgs-hc-a":
             time.sleep(1)
         check(
             "the tunnel returns when the link does",
-            next_hop_if("hc-fw-edge", "10.20.30.0/24") == "wgs-hc-a",
+            next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-a",
             f"after {time.monotonic() - started:.0f} s",
         )
 
@@ -1303,6 +1365,40 @@ def run_checks(mode: str) -> Evidence:
                     + vtysh(name, "show bfd peers")
                     + ns(name, "wg", "show")
                 )
+
+    # Scenario: the brewpub's edge announces the plant network of the Gulf Coast
+    # site, as an edge that somebody else controls could. Its own export filter
+    # is opened first, so that what stops the route is the head office's filter.
+    gc_tunnel = next(tunnel for tunnel in TUNNELS if tunnel.site == "gc-fw-edge")
+    hc_peers = sorted(tunnel.site_address() for tunnel in TUNNELS if tunnel.site == "hc-fw-edge")
+    before_paths = bgp_paths("fr-fw-edge", GC_LAN)
+    ns("hc-fw-edge", "vtysh", "-N", "hc-fw-edge", "-c", "configure terminal",
+       "-c", f"ip route {GC_LAN} blackhole",
+       "-c", f"ip prefix-list SITE-HC seq 90 permit {GC_LAN}",
+       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast", "-c", f"network {GC_LAN}")  # fmt: skip
+    time.sleep(10)
+    sent = vtysh_json("hc-fw-edge", f"show bgp ipv4 unicast neighbors {TUNNELS[0].hub_address()} advertised-routes json")
+    offered = GC_LAN in sent.get("advertisedRoutes", {})
+    after_paths = bgp_paths("fr-fw-edge", GC_LAN)
+    facts["foreign prefix, the head office's paths before"] = json.dumps(before_paths)
+    facts["foreign prefix, the head office's paths after"] = json.dumps(after_paths)
+    check(
+        "the head office refuses another site's network when a site announces it",
+        offered
+        and after_paths == [gc_tunnel.site_address()]
+        and not set(after_paths) & set(hc_peers)
+        and next_hop_if("fr-fw-edge", GC_LAN) == gc_tunnel.hub_if()
+        and reachable("ws-historian", SITE_HOSTS["gc-historian"], 2),
+        f"hc-fw-edge offered {GC_LAN}: {offered}; the head office holds it from {', '.join(after_paths)} "
+        f"(the Gulf Coast tunnel is {gc_tunnel.site_address()}), next hop {next_hop_if('fr-fw-edge', GC_LAN)}; "
+        f"ws-historian still reaches gc-historian",
+    )
+    ns("hc-fw-edge", "vtysh", "-N", "hc-fw-edge", "-c", "configure terminal",
+       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast", "-c", f"no network {GC_LAN}",
+       "-c", "exit", "-c", "exit",
+       "-c", f"no ip route {GC_LAN} blackhole",
+       "-c", "no ip prefix-list SITE-HC seq 90")  # fmt: skip
+    time.sleep(5)
 
     # Scenario: Pelican announces the head office's prefix (an origin hijack).
     before = {name: bgp_path(name, HQ_PREFIX) for name in ("cb-west", "cb-south", "shadecast", "tumbleweed")}

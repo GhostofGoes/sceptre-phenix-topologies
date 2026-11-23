@@ -16,7 +16,7 @@ VLAN aliases, the site's number in its addresses).
 | | `fr` Front Range | `ep` Eastern Plains | `cs` Colorado Springs | `fc` Fort Collins |
 |---|---|---|---|---|
 | What it is | Flagship brewery, taproom, head office | Production brewery | Brewery and taproom, bought from another company | Brewpub |
-| Process areas | All six | All six, without the taproom's rooftop unit | Brewhouse, cellar, packaging, utilities, building | Brewhouse, cellar, utilities, building |
+| Process areas | All six | All six; the taproom's rooftop unit cools the office and tasting room | Brewhouse, cellar, packaging, utilities, building | Brewhouse, cellar, utilities, building |
 | PLCs | 5 | 5 | 4 | 3 |
 | Firewalls | 2, with a DMZ between them | 2, with a DMZ and its own jump host | 1 | 1 |
 | Control network | One VLAN for the PLCs | One VLAN for each process cell: 5 | One flat plant VLAN: PLCs, HMIs, SCADA, historian, EWS | One flat plant VLAN, with the building controllers on it too |
@@ -132,7 +132,7 @@ The seven steps, in order:
 | Site | Hosts | PLCs | Tags | VLANs | VMs | vCPUs | Memory (GB) | With its sensor |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
 | `fr` | 39 | 5 | 516 | 16 | 39 | 62 | 151 | the SOC is here |
-| `ep` | 33 | 5 | 504 | 20 | 33 | 42 | 65 | 34 VMs, 46 vCPUs, 81 GB |
+| `ep` | 34 | 5 | 516 | 20 | 34 | 43 | 66 | 35 VMs, 47 vCPUs, 82 GB |
 | `cs` | 25 | 4 | 458 | 9 | 25 | 33 | 53 | 26 VMs, 37 vCPUs, 69 GB |
 | `fc` | 18 | 3 | 365 | 8 | 18 | 23 | 39 | 19 VMs, 27 vCPUs, 55 GB |
 
@@ -150,7 +150,7 @@ gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
 
 | Item | Value |
 |---|---|
-| Nodes in the four site files | 118 (39, 34, 26, and 19) |
+| Nodes in the four site files | 119 (39, 35, 26, and 19) |
 | Duplicate hostnames | none |
 | Duplicate addresses | none. Each edge has its own address on each access link |
 | VLAN aliases | 53, and MIRROR |
@@ -163,34 +163,34 @@ gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
 |---|---:|---:|---:|
 | Mock internet, VyOS routers (6 routers, 6 small hosts) | 12 | 12 | 18 |
 | The vendor's workstation, on the internet | 1 | 2 | 3 |
-| Head-office additions (fleet historian, corporate server, second office desktop) | 3 | 6 | 12 |
+| Head-office additions (fleet historian, corporate server, second office desktop, engineering jump host) | 4 | 8 | 16 |
 | `fr` | 39 | 62 | 151 |
-| `ep` and its sensor | 34 | 46 | 81 |
+| `ep` and its sensor | 35 | 47 | 82 |
 | `cs` and its sensor | 26 | 37 | 69 |
 | `fc` and its sensor | 19 | 27 | 55 |
-| **All of it** | **134** | **192** | **389** |
+| **All of it** | **136** | **195** | **394** |
 
 Four full plants with a sensor at three of them were 157 VMs, 217 vCPUs, and
-421 GB (mix M2 of the stamp spike). On one node this range would be 2.00
-vCPUs for each thread and 76% of the memory.
+421 GB (mix M2 of the stamp spike). On one node this range would be 2.03
+vCPUs for each thread and 77% of the memory.
 
 ### On the three-node cluster
 
 A node has 48 cores, 96 threads, and 512 GB. "The shared part" is the mock
-internet, the vendor's workstation, and the head office's additions (16 VMs,
-20 vCPUs, 33 GB).
+internet, the vendor's workstation, and the head office's additions (17 VMs,
+22 vCPUs, 37 GB).
 
 | Layout | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
 |---|---|---|---:|---:|---:|---:|---:|
-| **L1: the head office next to the internet** | head node | `ep` | 34 | 46 | 81 | 0.48 | 16% |
-| | 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
+| **L1: the head office next to the internet** | head node | `ep` | 35 | 47 | 82 | 0.49 | 16% |
+| | 2 | The shared part, `fr` | 56 | 84 | 188 | 0.88 | 37% |
 | | 3 | `cs`, `fc` | 45 | 64 | 124 | 0.67 | 24% |
 | L2: the two small sites on the head node | head node | `cs`, `fc` | 45 | 64 | 124 | 0.67 | 24% |
-| | 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
-| | 3 | `ep` | 34 | 46 | 81 | 0.48 | 16% |
-| L3: the head office alone on a node | head node | The shared part, `cs` | 42 | 57 | 102 | 0.59 | 20% |
+| | 2 | The shared part, `fr` | 56 | 84 | 188 | 0.88 | 37% |
+| | 3 | `ep` | 35 | 47 | 82 | 0.49 | 16% |
+| L3: the head office alone on a node | head node | The shared part, `cs` | 43 | 59 | 106 | 0.61 | 21% |
 | | 2 | `fr` | 39 | 62 | 151 | 0.65 | 29% |
-| | 3 | `ep`, `fc` | 53 | 73 | 136 | 0.76 | 27% |
+| | 3 | `ep`, `fc` | 54 | 74 | 137 | 0.77 | 27% |
 
 Every layout keeps each node under one vCPU for each thread. L1 gives the
 head node the least, and it also runs phenix and serves the images. L3 is the
@@ -198,7 +198,7 @@ most even. The kit writes the workflow for L1.
 
 ### A workflow that pins each site to a node
 
-`phenix-fleet.yml` names a node for each of the 118 site VMs (34 on
+`phenix-fleet.yml` names a node for each of the 119 site VMs (35 on
 `head-node`, 39 on `node-2`, 45 on `node-3`; the names stand in for the
 cluster's own) and gives an ID to each of the 54 VLAN aliases.
 
@@ -221,14 +221,27 @@ cluster's own) and gives an ID to each of the 54 VLAN aliases.
   each cell is not written. At `ep` the utilities PLC's read from the cellar
   PLC becomes a conduit through `ep-fw-ot`.
 - **Whole areas only.** Every site drops whole process areas, which drops
-  whole PLCs. The one unit dropped inside an area is the taproom's rooftop
-  unit at `ep`, which is a BACnet controller with no PLC. A site that drops a
-  unit inside a PLC's area (a brewpub with two fermenters, a site with a
+  whole PLCs, and no site drops a unit inside an area. An earlier version
+  dropped the taproom's rooftop unit at `ep`; the building federate, the
+  power PLC's load shedding, and the building SCADA's screen all assume it,
+  so `ep` keeps it. A site that drops a unit inside a PLC's area (a brewpub with two fermenters, a site with a
   generator and no battery) needs a PLC program for that unit list. The
   programs are per PLC today.
 - **The brewpub's SCADA.** `fc` has no building SCADA. Its one SCADA server
   would show the taproom's and the cold room's points too. The kit did not
   add them to its FUXA sources.
+- **The shared part is not scheduled.** The workflow pins the site VMs
+  only. minimega places any VM without a node at start, so the internet and
+  the head office's additions could land anywhere; a fleet generator pins
+  them to node 2 as well.
+- **What the merge copies as it is.** A site's nodes are copies of the
+  single-site nodes with new names and addresses; the rest of each node is
+  copied unchanged. So every site's FUXA and historian ask the head node for
+  the same forwarded host port (11881 and 13000), `ot-svc` injects the
+  single-site `dnsmasq-plant.conf` and `plant.hosts`, and annotations carry
+  single-site values. The merge also drops every node's `routes` and adds
+  none back, and leaves out the ISP side of each access link. A fleet
+  generator has to rewrite these; the kit only counts nodes and addresses.
 - **The sensor is a stand-in:** a node with a name, a size, and an address. No
   image exists for it.
 - **The size of a plant.** Every site runs the same vessels: 15 bbl brews and

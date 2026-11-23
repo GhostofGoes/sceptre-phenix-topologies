@@ -1,0 +1,50 @@
+BGP router identifier 198.18.0.252, local AS number 64496 vrf-id 0
+BGP table version 20
+RIB entries 13, using 2496 bytes of memory
+Peers 2, using 1448 KiB of memory
+
+Neighbor        V         AS   MsgRcvd   MsgSent   TblVer  InQ OutQ  Up/Down State/PfxRcd   PfxSnt Desc
+198.18.0.1      4      64496       143       129        0    0    0 00:06:10            6        1 cb-west
+198.18.0.14     4      64503       135       154        0    0    0 00:06:09            1        7 bristlecone
+
+Total number of neighbors 2
+
+BGP table version is 20, local router ID is 198.18.0.252, vrf id 0
+Default local pref 100, local AS 64496
+Status codes:  s suppressed, d damped, h history, * valid, > best, = multipath,
+               i internal, r RIB-failure, S Stale, R Removed
+Nexthop codes: @NNN nexthop's vrf id, < announce-nh-self
+Origin codes:  i - IGP, e - EGP, ? - incomplete
+RPKI validation codes: V valid, I invalid, N Not found
+
+   Network          Next Hop            Metric LocPrf Weight Path
+*>i198.18.0.0/24    198.18.0.1               0    100      0 i
+*>i198.18.101.0/24  198.18.0.1               0    200      0 64501 i
+*>i198.18.102.0/24  198.18.0.1                    200      0 64501 64502 i
+*> 198.18.103.0/24  198.18.0.14              0    200      0 64503 i
+*>i198.18.105.0/24  198.18.0.1                    200      0 64501 64505 i
+*>i198.18.110.0/24  198.18.0.1               0    100      0 i
+*>i203.0.113.0/24   198.18.0.1               0    200      0 64500 i
+
+Displayed  7 routes and 7 total paths
+
+Codes: K - kernel route, C - connected, S - static, R - RIP,
+       O - OSPF, I - IS-IS, B - BGP, E - EIGRP, N - NHRP,
+       T - Table, v - VNC, V - VNC-Direct, A - Babel, F - PBR,
+       f - OpenFabric,
+       > - selected route, * - FIB route, q - queued, r - rejected, b - backup
+       t - trapped, o - offload failure
+
+B>* 198.18.0.0/24 [200/0] via 198.18.0.1, cbs-cbw, weight 1, 00:06:08
+C>* 198.18.0.0/30 is directly connected, cbs-cbw, 00:06:13
+C>* 198.18.0.12/30 is directly connected, cbs-bc, 00:06:14
+B>* 198.18.101.0/24 [200/0] via 198.18.0.1, cbs-cbw, weight 1, 00:06:08
+B>* 198.18.102.0/24 [200/0] via 198.18.0.1, cbs-cbw, weight 1, 00:06:08
+B>* 198.18.103.0/24 [20/0] via 198.18.0.14, cbs-bc, weight 1, 00:06:08
+B>* 198.18.105.0/24 [200/0] via 198.18.0.1, cbs-cbw, weight 1, 00:00:03
+B>* 198.18.110.0/24 [200/0] via 198.18.0.1, cbs-cbw, weight 1, 00:06:08
+B>* 203.0.113.0/24 [200/0] via 198.18.0.1, cbs-cbw, weight 1, 00:00:48
+
+Session count: 0
+SessionId  LocalAddress                             PeerAddress                             Status         
+=========  ============                             ===========                             ======         

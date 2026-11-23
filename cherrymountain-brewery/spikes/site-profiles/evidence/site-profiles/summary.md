@@ -1,5 +1,9 @@
 # site-profiles
 
+## Problems
+
+None.
+
 ## What plantgen said after each step
 
 ### `fr`: Front Range: flagship brewery, taproom, head office
@@ -21,10 +25,10 @@
 | 1. The site's hosts, areas, and federates as a variant; nothing else changed | **fail** |   ntp: util-rtr is not a variant host /   ntp: ep-corp-ws source inet-traffic is not a server /   ntp: ep-fw-edge source inet-traffic is not a server |
 | 2. Every clock follows a server of the site | **fail** | plantgen: site: consistency checks failed: /   HELICS: no publisher for cellar/co2.draw_slpm /   HELICS: no publisher for cellar/beer.supply_psia |
 | 3. The ground-truth snapshot asks only for federates the site runs | **fail** | plantgen: site: consistency checks failed: /   HELICS: no publisher for cellar/co2.draw_slpm /   HELICS: no publisher for cellar/beer.supply_psia |
-| 4. The site's variant added to the federate keys that name `full` and `lite` | pass | 28 files generated |
-| 5. Take out what names a host the site does not have | pass | 28 files generated; 0 differ from the step before |
-| 6. An access link to each ISP in place of the INET VLAN | pass | 28 files generated; 0 differ from the step before |
-| 7. The site's own zones: VLANs merged, split, renamed, or renumbered | pass | 28 files generated; 2 differ from the step before (fuxa/ep-scada-fuxa-tags.json, openplc/ep-plc-utilities/modbus_master.json); no first-site hostname or address in the configuration of 28 files; 82 mentions in descriptions and comments only |
+| 4. The site's variant added to the federate keys that name `full` and `lite` | pass | 29 files generated |
+| 5. Take out what names a host the site does not have | pass | 29 files generated; 0 differ from the step before |
+| 6. An access link to each ISP in place of the INET VLAN | pass | 29 files generated; 0 differ from the step before |
+| 7. The site's own zones: VLANs merged, split, renamed, or renumbered | pass | 29 files generated; 2 differ from the step before (fuxa/ep-scada-fuxa-tags.json, openplc/ep-plc-utilities/modbus_master.json); no first-site hostname or address in the configuration of 29 files; 82 mentions in descriptions and comments only |
 
 ### `cs`: Colorado Springs: brewery and taproom, bought from another company
 
@@ -36,7 +40,7 @@
 | 4. The site's variant added to the federate keys that name `full` and `lite` | pass | 25 files generated |
 | 5. Take out what names a host the site does not have | pass | 25 files generated; 0 differ from the step before |
 | 6. An access link to each ISP in place of the INET VLAN | pass | 25 files generated; 0 differ from the step before |
-| 7. The site's own zones: VLANs merged, split, renamed, or renumbered | pass | 25 files generated; 9 differ from the step before (bacnet/cs-bas-coldroom.json, bacnet/cs-bas-rtu-taproom.json, bacnet/cs-bas-vent.json, fuxa/cs-bas-fuxa-tags.json, ...); no first-site hostname or address in the configuration of 25 files; 70 mentions in descriptions and comments only |
+| 7. The site's own zones: VLANs merged, split, renamed, or renumbered | pass | 25 files generated; 9 differ from the step before (bacnet/cs-bas-coldroom.json, bacnet/cs-bas-rtu-taproom.json, bacnet/cs-bas-vent.json, fuxa/cs-bas-fuxa-tags.json, fuxa/cs-scada-fuxa-tags.json, openplc/cs-plc-brewhouse/modbus_master.json, openplc/cs-plc-cellar/modbus_master.json, openplc/cs-plc-packaging/modbus_master.json, openplc/cs-plc-utilities/modbus_master.json); no first-site hostname or address in the configuration of 25 files; 70 mentions in descriptions and comments only |
 
 ### `fc`: Fort Collins: brewpub
 
@@ -55,7 +59,7 @@
 | Site | Hosts in its plant file | PLCs | Tags | VLANs | VMs | vCPUs | Memory (GB) | With its sensor |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
 | `fr` | 39 | 5 | 516 | 16 | 39 | 62 | 151 | none |
-| `ep` | 33 | 5 | 504 | 20 | 33 | 42 | 65 | 34, 46, 81 |
+| `ep` | 34 | 5 | 516 | 20 | 34 | 43 | 66 | 35, 47, 82 |
 | `cs` | 25 | 4 | 458 | 9 | 25 | 33 | 53 | 26, 37, 69 |
 | `fc` | 18 | 3 | 365 | 8 | 18 | 23 | 39 | 19, 27, 55 |
 
@@ -73,7 +77,7 @@
 | Item | Value |
 |---|---|
 | site topology files | 4 |
-| nodes in the four sites | 118 |
+| nodes in the four sites | 119 |
 | duplicate hostnames | [] |
 | duplicate addresses | [] |
 | VLAN aliases in the four sites | 53 |
@@ -89,36 +93,36 @@
 |---|---:|---:|---:|
 | mock internet, VyOS routers (6 routers, 6 small hosts) | 12 | 12 | 18 |
 | the vendor's workstation, on the internet | 1 | 2 | 3 |
-| head office additions (fleet historian, corporate server, second office desktop) | 3 | 6 | 12 |
+| head office additions (fleet historian, corporate server, second office desktop, engineering jump host) | 4 | 8 | 16 |
 | site `fr`, with its sensor if it has one | 39 | 62 | 151 |
-| site `ep`, with its sensor if it has one | 34 | 46 | 81 |
+| site `ep`, with its sensor if it has one | 35 | 47 | 82 |
 | site `cs`, with its sensor if it has one | 26 | 37 | 69 |
 | site `fc`, with its sensor if it has one | 19 | 27 | 55 |
-| **all of it** | 134 | 192 | 389 |
+| **all of it** | 136 | 195 | 394 |
 
-All of it on one node would be 2.00 vCPUs per thread and 76% of its memory.
+All of it on one node would be 2.03 vCPUs per thread and 77% of its memory.
 
 ## On three nodes of 48 cores, 96 threads, and 512 GB
 
 | Layout | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
 |---|---|---|---:|---:|---:|---:|---:|
-| L1: the head office apart | head node | site ep | 34 | 46 | 81 | 0.48 | 16% |
-| L1: the head office apart | node 2 | internet, vendor, head office additions; site fr | 55 | 82 | 184 | 0.85 | 36% |
+| L1: the head office apart | head node | site ep | 35 | 47 | 82 | 0.49 | 16% |
+| L1: the head office apart | node 2 | internet, vendor, head office additions; site fr | 56 | 84 | 188 | 0.88 | 37% |
 | L1: the head office apart | node 3 | site cs; site fc | 45 | 64 | 124 | 0.67 | 24% |
 | L2: the two small sites on the head node | head node | site cs; site fc | 45 | 64 | 124 | 0.67 | 24% |
-| L2: the two small sites on the head node | node 2 | internet, vendor, head office additions; site fr | 55 | 82 | 184 | 0.85 | 36% |
-| L2: the two small sites on the head node | node 3 | site ep | 34 | 46 | 81 | 0.48 | 16% |
-| L3: the head office alone on a node | head node | internet, vendor, head office additions; site cs | 42 | 57 | 102 | 0.59 | 20% |
+| L2: the two small sites on the head node | node 2 | internet, vendor, head office additions; site fr | 56 | 84 | 188 | 0.88 | 37% |
+| L2: the two small sites on the head node | node 3 | site ep | 35 | 47 | 82 | 0.49 | 16% |
+| L3: the head office alone on a node | head node | internet, vendor, head office additions; site cs | 43 | 59 | 106 | 0.61 | 21% |
 | L3: the head office alone on a node | node 2 | site fr | 39 | 62 | 151 | 0.65 | 29% |
-| L3: the head office alone on a node | node 3 | site ep; site fc | 53 | 73 | 136 | 0.76 | 27% |
+| L3: the head office alone on a node | node 3 | site ep; site fc | 54 | 74 | 137 | 0.77 | 27% |
 
 ## A workflow that pins each site to a node
 
 | Item | Value |
 |---|---|
 | layout | L1: the head office apart |
-| VMs with a node in `schedules` | 118 |
-| VMs for each node | {"head-node": 34, "node-2": 39, "node-3": 45} |
+| VMs with a node in `schedules` | 119 |
+| VMs for each node | {"head-node": 35, "node-2": 39, "node-3": 45} |
 | VLAN aliases with an ID | 54 |
 | VLAN IDs given twice | [] |
 | aliases of the site topologies without an ID | [] |

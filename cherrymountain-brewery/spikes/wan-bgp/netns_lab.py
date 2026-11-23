@@ -247,6 +247,9 @@ HQ_PREFIX: str = "198.18.105.0/24"
 HQ_LAN: str = "10.20.30.0/24"
 FC_LAN: str = "10.21.10.0/24"
 CS_LAN: str = "192.168.20.0/24"
+# A /24 inside the head office's own block that nothing announces. A site that
+# announces it would draw the head office's traffic for it into its tunnel.
+HQ_MORE_SPECIFIC: str = "10.20.99.0/24"
 
 # The private blocks of each site. The head office takes from a site only what
 # is in that site's blocks, and a site announces only its own.
@@ -417,6 +420,41 @@ def site_prefix_lists() -> list[str]:
             lines.append(f"ip prefix-list SITE-NETS seq {seq} permit {block}{le}")
             seq += 5
     return lines
+
+
+def discards(name: str) -> list[tuple[str, int]]:
+    """The blackhole routes of a site edge or the head office, with their distances.
+
+    An unused address in one of the edge's own blocks, and any private address
+    while no tunnel carries it, are dropped here. Without them such traffic
+    would follow the default route out of an uplink, unencrypted. Every more
+    specific route (a LAN, a block learned through a tunnel, a tunnel's /31)
+    still wins.
+    """
+    if name not in SITE_BLOCKS:
+        return []
+    return [(block, 250) for block in SITE_BLOCKS[name]] + [(block, 254) for block in PRIVATE]
+
+
+def private_probes(name: str) -> list[str]:
+    """Unused private addresses to ask an edge about: one in each of its own blocks, and one in each private range."""
+    probes = []
+    for block in SITE_BLOCKS[name]:
+        network = ipaddress.ip_network(block)
+        probes.append(str(network.network_address + (99 * 256 + 1 if network.prefixlen <= 16 else 250)))
+    return probes + ["10.99.0.1", "172.20.0.1", "192.168.99.1"]
+
+
+def private_exits(name: str) -> dict[str, str]:
+    """The probes of private_probes that `name` would send out of an uplink, with the kernel's answer."""
+    uplinks = [link.ifname(name) for link in LINKS if name in (link.a, link.b)]
+    found = {}
+    for probe in private_probes(name):
+        proc = run(["ip", "netns", "exec", name, "ip", "route", "get", probe], check=False)
+        answer = " ".join((proc.stdout + proc.stderr).split())
+        if any(f"dev {ifname} " in answer + " " for ifname in uplinks):
+            found[probe] = answer
+    return found
 
 
 def frr_config(router: Router) -> str:
@@ -634,6 +672,7 @@ def frr_config(router: Router) -> str:
     for prefix in router.originates:
         # An originated aggregate needs a route to stand on.
         static_routes.append(f"ip route {prefix} blackhole 250")
+    static_routes += [f"ip route {block} blackhole {distance}" for block, distance in discards(router.name)]
 
     lines += customer_maps
     lines += static_routes
@@ -890,6 +929,20 @@ def bgp_paths(router: str, prefix: str) -> list[str]:
     return sorted(path.get("peer", {}).get("peerId", "?") for path in data.get("paths", []))
 
 
+def best_local_pref(router: str, prefix: str) -> int:
+    """The local preference of `router`'s best path to `prefix`, or -1."""
+    data = vtysh_json(router, f"show bgp ipv4 unicast {prefix} json")
+    for path in data.get("paths", []):
+        if path.get("bestpath", {}).get("overall"):
+            return int(path.get("locPrf", path.get("localpref", -1)))
+    return -1
+
+
+def neighbor_address(router: str, other: str) -> str:
+    """The address of `other` on its link with `router`."""
+    return peer_of(link_of(router, other), router)[1]
+
+
 def bgp_path(router: str, prefix: str) -> str:
     """The AS path of the best route to `prefix`, as text."""
     data = vtysh_json(router, f"show bgp ipv4 unicast {prefix} json")
@@ -1009,7 +1062,10 @@ def underlay_path(site_host: str) -> str:
     """The internet hops under a site's primary tunnel, from its edge to the head office's endpoint."""
     site = next(lan.router for lan in LANS if lan.host == site_host)
     tunnel = next(t for t in TUNNELS if t.site == site and t.primary)
-    return " > ".join(traceroute(site, tunnel.endpoint(), mark=tunnel.mark() if PIN == PIN_MARK else 0))
+    # The endpoint WireGuard sends to now, which may have roamed (finding 2).
+    live = endpoints().get(tunnel.name, "(none)").rsplit(":", 1)[0]
+    target = live if live not in ("(none)", "") else tunnel.endpoint()
+    return " > ".join(traceroute(site, target, mark=tunnel.mark() if PIN == PIN_MARK else 0))
 
 
 def timed_event(
@@ -1095,16 +1151,21 @@ def uplink_of(tunnel: Tunnel) -> str:
 
 
 def footprint() -> dict[str, float]:
-    """Resident memory in MiB of the routing daemons, per kind of process."""
+    """Proportional memory (PSS) in MiB of the routing daemons, per kind of process.
+
+    PSS splits each shared page among the processes that map it, so the sum is
+    what the daemons cost together; RSS would count the shared libraries once
+    for every process.
+    """
     totals: dict[str, float] = {}
     for router in ROUTERS:
         for pid in run(["ip", "netns", "pids", router.name], check=False).stdout.split():
             try:
                 comm = Path(f"/proc/{pid}/comm").read_text().strip()
-                status = Path(f"/proc/{pid}/status").read_text()
+                status = Path(f"/proc/{pid}/smaps_rollup").read_text()
             except OSError:
                 continue
-            match = re.search(r"VmRSS:\s+(\d+) kB", status)
+            match = re.search(r"^Pss:\s+(\d+) kB", status, flags=re.M)
             if match:
                 totals[comm] = totals.get(comm, 0.0) + int(match.group(1)) / 1024
     return {comm: round(mib, 1) for comm, mib in sorted(totals.items())}
@@ -1145,24 +1206,55 @@ def run_checks(mode: str) -> Evidence:
     }
     for what, path in paths.items():
         facts[f"AS path, {what}"] = path
+    # By preference, not by length: in every case here the path the policy
+    # prefers is also the shorter one, so the AS path alone would not show it.
+    peer_pref = best_local_pref("shadecast", "198.18.101.0/24")
     check(
         "ShadeCast reaches Tumbleweed and its customer Marmot over the peering link, not through transit",
-        paths["shadecast to Tumbleweed's prefix"] == "64501" and paths["shadecast to Marmot's prefix"] == "64501 64502",
-        f"{paths["shadecast to Tumbleweed's prefix"]!r}, {paths["shadecast to Marmot's prefix"]!r}",
+        paths["shadecast to Tumbleweed's prefix"] == "64501"
+        and paths["shadecast to Marmot's prefix"] == "64501 64502"
+        and peer_pref == RELATION_LOCAL_PREF["peer"],
+        f"{paths["shadecast to Tumbleweed's prefix"]!r} at local preference {peer_pref}, "
+        f"{paths["shadecast to Marmot's prefix"]!r}",
     )
+    marmot_from = bgp_paths("cb-west", "198.18.102.0/24")
+    tumbleweed = neighbor_address("cb-west", "tumbleweed")
     check(
         "a route learned from a peer is not given to the provider (no valley)",
-        "64500 64501" not in bgp_path("cb-west", "198.18.102.0/24")
-        and bgp_path("cb-west", "198.18.102.0/24") == "64501 64502",
-        f"cb-west to Marmot's prefix: {bgp_path('cb-west', '198.18.102.0/24')!r}",
+        marmot_from == [tumbleweed],
+        f"cb-west holds Marmot's prefix from {', '.join(marmot_from) or 'nobody'} (Tumbleweed is {tumbleweed}; "
+        f"a path from ShadeCast, {neighbor_address('cb-west', 'shadecast')}, would be a leak)",
     )
+    # No ISP carries a private route of its own accord (looked at before the
+    # test below gives Marmot one to offer).
     public_routers = [r.name for r in ROUTERS if r.public_bgp and r.name != "fr-fw-edge"]
     leaked = {name: [p for p in routes(name) if is_private(p)] for name in public_routers}
+    # An ISP's filters, tried: Marmot offers its provider a private prefix and
+    # a /25, and the provider must take neither.
+    offered = ("10.99.0.0/24", "198.18.102.0/25")
+    provider = neighbor_address("marmot", "tumbleweed")
+    ns("marmot", "vtysh", "-N", "marmot", "-c", "configure terminal",
+       *[arg for seq, prefix in enumerate(offered, start=60)
+         for arg in ("-c", f"ip route {prefix} blackhole", "-c", f"ip prefix-list OWN seq {seq} permit {prefix}")],
+       "-c", "router bgp 64502", "-c", "address-family ipv4 unicast",
+       *[arg for prefix in offered for arg in ("-c", f"network {prefix}")])  # fmt: skip
+    time.sleep(8)
+    sent = vtysh_json("marmot", f"show bgp ipv4 unicast neighbors {provider} advertised-routes json")
+    sent_routes = sent.get("advertisedRoutes", {})
+    taken = {prefix: bgp_paths("tumbleweed", prefix) for prefix in offered}
     check(
-        "no ISP carries a private route",
-        not any(leaked.values()),
-        json.dumps({k: v for k, v in leaked.items() if v}) or "none",
+        "an ISP refuses a private prefix and one longer than a /24 from a customer, and carries no private route",
+        all(prefix in sent_routes for prefix in offered) and not any(taken.values()) and not any(leaked.values()),
+        f"Marmot offered {', '.join(p for p in offered if p in sent_routes) or 'nothing'}; Tumbleweed holds "
+        f"{json.dumps(taken)}; private routes at the ISPs: {json.dumps({k: v for k, v in leaked.items() if v}) or 'none'}",
     )
+    ns("marmot", "vtysh", "-N", "marmot", "-c", "configure terminal",
+       "-c", "router bgp 64502", "-c", "address-family ipv4 unicast",
+       *[arg for prefix in offered for arg in ("-c", f"no network {prefix}")],
+       "-c", "exit", "-c", "exit",
+       *[arg for seq, prefix in enumerate(offered, start=60)
+         for arg in ("-c", f"no ip route {prefix} blackhole", "-c", f"no ip prefix-list OWN seq {seq}")])  # fmt: skip
+    time.sleep(3)
     hq_default = sorted(next_hop_if("fr-fw-edge", "0.0.0.0/0").split(","))
     check(
         "the head office installs a default route through each of its two ISPs",
@@ -1204,6 +1296,16 @@ def run_checks(mode: str) -> Evidence:
         next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-a" and next_hop_if("fr-fw-edge", FC_LAN) == "wgh-fc-a",
         f"fc-fw-edge via {next_hop_if('fc-fw-edge', HQ_LAN)}, fr-fw-edge back via {next_hop_if('fr-fw-edge', FC_LAN)}",
     )
+    exits = {name: private_exits(name) for name in SITE_BLOCKS}
+    blackholed = {name: "blackhole" in ns(name, "ip", "route", "show", "10.0.0.0/8") for name in SITE_BLOCKS}
+    check(
+        "no edge would send an unused private address out of an uplink",
+        not any(exits.values()) and all(blackholed.values()),
+        json.dumps({name: found for name, found in exits.items() if found})
+        if any(exits.values())
+        else f"{sum(len(private_probes(n)) for n in SITE_BLOCKS)} probes at {len(SITE_BLOCKS)} edges; "
+        f"10.0.0.0/8 is a blackhole at {sum(blackholed.values())} of them",
+    )
     check(
         "a private address is not reachable from the internet side",
         not reachable("inet", HQ_HOST_ADDRESS, count=2),
@@ -1216,7 +1318,7 @@ def run_checks(mode: str) -> Evidence:
     )
     facts["pin"] = PIN
     facts["tunnel endpoints at the start"] = json.dumps(endpoints())
-    facts["routing daemons, resident MiB"] = json.dumps(footprint())
+    facts["routing daemons, proportional (PSS) MiB"] = json.dumps(footprint())
     facts["routing daemons, total MiB"] = str(round(sum(footprint().values()), 1))
 
     # Fault 1: the Fort Collins site's primary uplink dies without a link-down.
@@ -1243,33 +1345,42 @@ def run_checks(mode: str) -> Evidence:
         f"via {next_hop_if('fc-fw-edge', HQ_LAN)}, outage on the way back {fc.longest_gap_s} s",
     )
 
-    # Fault 2: the head office loses its ShadeCast uplink, silently.
-    wait_converged(30)
+    # Fault 2: the head office loses its ShadeCast uplink, silently. It starts
+    # with the lab converged and Fort Collins on its primary tunnel, whose
+    # underlay crosses the failed link, so Fort Collins must notice.
+    ready = wait_converged(30) >= 0 and next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-a"
     result = fault("head office uplink to ShadeCast, silent", "shadecast", ["sc-fr"])
     outages += result
     worst = max(o.longest_gap_s for o in result)
+    fc = next(o for o in result if o.stream.startswith("fc-historian"))
+    crosses = fc.underlay_before.split(" > ") == [neighbor_address("fc-fw-edge", "shadecast"), HUB_ENDPOINT]
     check(
         "every site keeps the head office when it loses one of its two ISPs",
-        all(o.longest_gap_s <= 5.0 for o in result) and all(reachable(h, HQ_HOST_ADDRESS, 2) for h in SITE_HOSTS),
-        f"longest outage {worst} s; ShadeCast now reaches the head office over {bgp_path('shadecast', HQ_PREFIX)!r}",
+        ready
+        and 0 < fc.longest_gap_s
+        and all(o.longest_gap_s <= 5.0 for o in result)
+        and all(reachable(h, HQ_HOST_ADDRESS, 2) for h in SITE_HOSTS),
+        f"started converged on fc-a: {ready}; Fort Collins lost {fc.longest_gap_s} s, the longest outage was "
+        f"{worst} s; ShadeCast now reaches the head office over {bgp_path('shadecast', HQ_PREFIX)!r}",
     )
     check(
-        "the fault was real: ShadeCast dropped packets on the head office's link and rerouted through its peer",
-        result[0].fault_drops > 0 and bgp_path("shadecast", HQ_PREFIX) == "64501 64505",
-        f"{result[0].fault_drops} packets dropped; Fort Collins underlay {result[0].underlay_before} -> {result[0].underlay_after}",
+        "the fault was real: Fort Collins's tunnel crossed the failed link, and ShadeCast rerouted through its peer",
+        crosses and fc.fault_drops > 0 and bgp_path("shadecast", HQ_PREFIX) == "64501 64505",
+        f"Fort Collins underlay {fc.underlay_before} -> {fc.underlay_after}; {fc.fault_drops} packets dropped",
     )
     facts["path, fc-historian to fr-historian, head office on one ISP"] = site_path("fc-historian")
     outages += recover("head office uplink to ShadeCast, restored", "shadecast")
     time.sleep(5)
 
     # Fault 3: all of ShadeCast goes dark.
-    wait_converged(30)
+    ready = wait_converged(30) >= 0 and next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-a"
     result = fault("ShadeCast outage, silent", "shadecast", None, seconds=35.0)
     outages += result
     worst = max(o.longest_gap_s for o in result)
+    fc = next(o for o in result if o.stream.startswith("fc-historian"))
     check(
         "every site keeps the head office through the loss of a whole ISP",
-        all(reachable(h, HQ_HOST_ADDRESS, 2) for h in SITE_HOSTS),
+        ready and 0 < fc.longest_gap_s and all(reachable(h, HQ_HOST_ADDRESS, 2) for h in SITE_HOSTS),
         f"longest outage {worst} s; Fort Collins via {next_hop_if('fc-fw-edge', HQ_LAN)}, "
         f"Eastern Plains via {next_hop_if('ep-fw-edge', HQ_LAN)}",
     )
@@ -1301,7 +1412,7 @@ def run_checks(mode: str) -> Evidence:
     cs = next(o for o in result if o.stream.startswith("cs-historian"))
     check(
         "a site whose path crosses the dead ISP in the core waits for the BGP hold timer",
-        through == "64500 64505" and BFD_INTERVAL_MS * BFD_MULTIPLIER / 1000 < cs.longest_gap_s <= CORE_HOLD_S + 3,
+        through == "64500 64505" and CORE_HOLD_S - CORE_KEEPALIVE_S <= cs.longest_gap_s <= CORE_HOLD_S + 3,
         f"cb-west reached the head office over {through!r}; Colorado Springs lost {cs.longest_gap_s} s "
         f"against a {CORE_HOLD_S} s hold time; underlay {cs.underlay_before} -> {cs.underlay_after}",
     )
@@ -1321,12 +1432,19 @@ def run_checks(mode: str) -> Evidence:
         tunnel = next(t for t in TUNNELS if t.name == "fc-a")
         ns("fc-fw-edge", "ip", "link", "set", uplink, "down")
         time.sleep(6)
-        lookup = ns("fc-fw-edge", "ip", "route", "get", HUB_ENDPOINT, "mark", str(tunnel.mark()), check=False)
-        stayed = "dev" not in lookup or f"dev {uplink}" in lookup
+        proc = run(
+            ["ip", "netns", "exec", "fc-fw-edge", "ip", "route", "get", HUB_ENDPOINT, "mark", str(tunnel.mark())],
+            check=False,
+        )
+        lookup = (proc.stdout + proc.stderr).strip()
+        table = ns("fc-fw-edge", "ip", "route", "show", "table", str(tunnel.mark()), check=False)
+        # The kernel answers a lookup that ends in a blackhole with "Invalid
+        # argument"; the table must hold that blackhole and no route out.
+        stayed = "Invalid argument" in lookup and "blackhole" in table and " dev " not in table
         check(
             "with its uplink's link down, a tunnel does not move to the other uplink",
             stayed and next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-b" and reachable("fc-historian", HQ_HOST_ADDRESS),
-            f"lookup for fc-a: {' '.join(lookup.split()) or 'no route (blackhole)'}; "
+            f"lookup for fc-a: {' '.join(lookup.split())}; table {tunnel.mark()}: {' '.join(table.split())}; "
             f"traffic via {next_hop_if('fc-fw-edge', HQ_LAN)}",
         )
         ns("fc-fw-edge", "ip", "link", "set", uplink, "up")
@@ -1372,37 +1490,55 @@ def run_checks(mode: str) -> Evidence:
     # Scenario: the brewpub's edge announces the plant network of the Colorado Springs
     # site, as an edge that somebody else controls could. Its own export filter
     # is opened first, so that what stops the route is the head office's filter.
+    # It also announces a /24 inside the head office's own block, which only a
+    # filter for each site refuses: a filter for all the sites' blocks takes it.
     cs_tunnel = next(tunnel for tunnel in TUNNELS if tunnel.site == "cs-fw-edge")
     fc_peers = sorted(tunnel.site_address() for tunnel in TUNNELS if tunnel.site == "fc-fw-edge")
+    foreign = (CS_LAN, HQ_MORE_SPECIFIC)
     before_paths = bgp_paths("fr-fw-edge", CS_LAN)
-    ns("fc-fw-edge", "vtysh", "-N", "fc-fw-edge", "-c", "configure terminal",
-       "-c", f"ip route {CS_LAN} blackhole",
-       "-c", f"ip prefix-list SITE-FC seq 90 permit {CS_LAN}",
-       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast", "-c", f"network {CS_LAN}")  # fmt: skip
+    opened = [
+        command
+        for seq, prefix in enumerate(foreign, start=90)
+        for command in ("-c", f"ip route {prefix} blackhole", "-c", f"ip prefix-list SITE-FC seq {seq} permit {prefix}")
+    ]
+    ns("fc-fw-edge", "vtysh", "-N", "fc-fw-edge", "-c", "configure terminal", *opened,
+       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast",
+       *[arg for prefix in foreign for arg in ("-c", f"network {prefix}")])  # fmt: skip
     time.sleep(10)
     sent = vtysh_json(
         "fc-fw-edge", f"show bgp ipv4 unicast neighbors {TUNNELS[0].hub_address()} advertised-routes json"
     )
-    offered = CS_LAN in sent.get("advertisedRoutes", {})
+    offered = [prefix for prefix in foreign if prefix in sent.get("advertisedRoutes", {})]
     after_paths = bgp_paths("fr-fw-edge", CS_LAN)
+    more_paths = bgp_paths("fr-fw-edge", HQ_MORE_SPECIFIC)
     facts["foreign prefix, the head office's paths before"] = json.dumps(before_paths)
     facts["foreign prefix, the head office's paths after"] = json.dumps(after_paths)
     check(
         "the head office refuses another site's network when a site announces it",
-        offered
+        offered == list(foreign)
         and after_paths == [cs_tunnel.site_address()]
         and not set(after_paths) & set(fc_peers)
         and next_hop_if("fr-fw-edge", CS_LAN) == cs_tunnel.hub_if()
         and reachable("ep-historian", SITE_HOSTS["cs-historian"], 2),
-        f"fc-fw-edge offered {CS_LAN}: {offered}; the head office holds it from {', '.join(after_paths)} "
-        f"(the Colorado Springs tunnel is {cs_tunnel.site_address()}), next hop {next_hop_if('fr-fw-edge', CS_LAN)}; "
-        f"ep-historian still reaches cs-historian",
+        f"fc-fw-edge offered {', '.join(offered) or 'nothing'}; the head office holds {CS_LAN} from "
+        f"{', '.join(after_paths)} (the Colorado Springs tunnel is {cs_tunnel.site_address()}), next hop "
+        f"{next_hop_if('fr-fw-edge', CS_LAN)}; ep-historian still reaches cs-historian",
     )
+    check(
+        "the head office refuses a site's more-specific of the head office's own block",
+        HQ_MORE_SPECIFIC in offered and not more_paths and next_hop_if("fr-fw-edge", HQ_MORE_SPECIFIC) == "(none)",
+        f"fc-fw-edge offered {HQ_MORE_SPECIFIC}: {HQ_MORE_SPECIFIC in offered}; the head office holds it from "
+        f"{', '.join(more_paths) or 'no neighbor'}",
+    )
+    closed = [
+        command
+        for seq, prefix in enumerate(foreign, start=90)
+        for command in ("-c", f"no ip route {prefix} blackhole", "-c", f"no ip prefix-list SITE-FC seq {seq}")
+    ]
     ns("fc-fw-edge", "vtysh", "-N", "fc-fw-edge", "-c", "configure terminal",
-       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast", "-c", f"no network {CS_LAN}",
-       "-c", "exit", "-c", "exit",
-       "-c", f"no ip route {CS_LAN} blackhole",
-       "-c", "no ip prefix-list SITE-FC seq 90")  # fmt: skip
+       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast",
+       *[arg for prefix in foreign for arg in ("-c", f"no network {prefix}")],
+       "-c", "exit", "-c", "exit", *closed)  # fmt: skip
     time.sleep(5)
 
     # Scenario: Bristlecone announces the head office's prefix (an origin hijack).
@@ -1509,6 +1645,8 @@ def main() -> int:
     if args.down:
         down()
         return 0
+    for stale in ("summary.md", "result.json", *[p.name for p in EVIDENCE.glob("stuck-*.txt")]):
+        (EVIDENCE / stale).unlink(missing_ok=True)
     try:
         mode = up()
         log(f"lab is up (WireGuard: {mode})")

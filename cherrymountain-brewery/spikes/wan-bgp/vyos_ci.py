@@ -58,7 +58,19 @@ WGKEYS: Path = HERE.parents[1] / "tools" / "plantgen" / "plantgen" / "wgkeys.py"
 # Anyone can derive these keys from this seed: they protect nothing but this run.
 KEY_SEED: str = "cherrymountain-wan-bgp-spike-only"
 VBASH: str = "source /opt/vyatta/etc/functions/script-template"
+# VyOS's default MTU for a WireGuard interface.
+WIREGUARD_MTU: int = 1420
 SECRET: re.Pattern[str] = re.compile(r"(private-key|public-key|secret) '[^']+'")
+# A file sent into a guest travels base64-encoded in a cc script, which a log
+# may record; a long base64 run in the evidence is dropped whatever it holds.
+BASE64_RUN: re.Pattern[str] = re.compile(r"[A-Za-z0-9+/]{200,}={0,2}")
+
+
+def redact(text: str) -> str:
+    """The run's evidence without keys, pre-shared keys, or files sent into a guest."""
+    return BASE64_RUN.sub("[base64 removed]", SECRET.sub(r"\1 'REDACTED'", text))
+
+
 # The tunnels: `wireguard`, or `vti` for route-based IPsec.
 KIND: str = os.environ.get("CM_TUNNEL", vyos_sketch.WIREGUARD)
 
@@ -209,6 +221,24 @@ def vyos_op(lab: Lab, vm: str, command: str) -> str:
         "chmod +x /tmp/op.sh; sg vyattacfg -c /tmp/op.sh 2>&1"
     )
     return lab.shell(vm, script, wait_s=180)
+
+
+def config_missing(lab: Lab, vm: str, lines: list[str]) -> list[str]:
+    """The `set` lines of a config list that the router's committed configuration does not hold.
+
+    A refused `set` in the first-boot script prints an error and the script goes
+    on to commit the rest, so a count of BGP lines cannot show it. VyOS quotes
+    values its own way, so quotes are dropped on both sides; lines with keys
+    are left out, since VyOS may show them masked.
+    """
+
+    def norm(line: str) -> str:
+        return " ".join(line.replace("'", "").split())
+
+    shown = {
+        norm(line) for line in vyos_op(lab, vm, "show configuration commands").splitlines() if line.startswith("set ")
+    }
+    return [line for line in lines if line.startswith("set ") and not SECRET.search(line) and norm(line) not in shown]
 
 
 def bgp_states(lab: Lab, vm: str) -> dict[str, str]:
@@ -365,6 +395,34 @@ def site_tunnel(lab: Lab) -> str:
     return match.group(1) if match else f"(none: {out.strip()[:80]})"
 
 
+def tunnel_mtu(lab: Lab, site: str) -> None:
+    """A full-size packet with DF set crosses each tunnel, and one byte more is refused at the edge."""
+    mtu = vyos_sketch.VTI_MTU if KIND == vyos_sketch.VTI else WIREGUARD_MTU
+    answers: dict[str, list[str]] = {}
+    for tunnel in model.TUNNELS:
+        far = tunnel.hub_address()
+        fits = lab.shell(site, f"ping -M do -s {mtu - 28} -c 3 -W 2 {far} 2>&1 | tail -2")
+        over = lab.shell(site, f"ping -M do -s {mtu - 27} -c 1 -W 2 {far} 2>&1 | head -3")
+        answers[tunnel.name] = [" ".join(fits.split()), " ".join(over.split())]
+    lab.check(
+        f"a {mtu}-byte packet with DF set crosses each tunnel, and a larger one is refused at the edge",
+        all(" 0% packet loss" in fits and "too long" in over for fits, over in answers.values()),
+        json.dumps(answers),
+    )
+
+
+def edge_sources(lab: Lab, site: str) -> None:
+    """Each edge's own traffic into a tunnel leaves from its LAN address, not from the tunnel's /31."""
+    lans = {lan.router: lan for lan in model.LANS}
+    to_hq = lab.shell(site, f"ip route get {lans[HQ].host_address()} 2>&1")
+    to_site = lab.shell(HQ, f"ip route get {lans[site].host_address()} 2>&1")
+    lab.check(
+        "each edge sends its own traffic into a tunnel from its LAN address",
+        f"src {lans[site].gateway()} " in f"{to_hq} " and f"src {lans[HQ].gateway()} " in f"{to_site} ",
+        f"{site}: {' '.join(to_hq.split())}; {HQ}: {' '.join(to_site.split())}",
+    )
+
+
 def tunnels_intact(lab: Lab) -> tuple[bool, str]:
     """WireGuard: no endpoint moved off the head office's address. VTI: both interfaces and both SAs are up."""
     if KIND == vyos_sketch.WIREGUARD:
@@ -374,12 +432,18 @@ def tunnels_intact(lab: Lab) -> tuple[bool, str]:
         return seen == wanted, json.dumps(seen)
     out = lab.shell(
         "fc-fw-edge",
-        "for i in " + " ".join(tif(tunnel.name) for tunnel in model.TUNNELS) + "; do ip -br link show $i; done 2>&1; "
-        "echo sas $(swanctl --list-sas 2>/dev/null | grep -c INSTALLED)",
+        "for i in "
+        + " ".join(tif(tunnel.name) for tunnel in model.TUNNELS)
+        + "; do ip -br link show $i; done 2>&1; "
+        + "; ".join(
+            f"echo sas {tunnel.name} $(swanctl --list-sas --ike {tunnel.name} 2>/dev/null | grep -c INSTALLED)"
+            for tunnel in model.TUNNELS
+        ),
     )
     up = len(re.findall(r"<[^>]*\bUP\b[^>]*>", out))
-    sas = int(match.group(1)) if (match := re.search(r"sas (\d+)", out)) else 0
-    return up == len(model.TUNNELS) and sas >= len(model.TUNNELS), " ".join(out.split())
+    sas = {name: int(count) for name, count in re.findall(r"sas (\S+) (\d+)", out)}
+    each = len(sas) == len(model.TUNNELS) and all(count >= 1 for count in sas.values())
+    return up == len(model.TUNNELS) and each, " ".join(out.split())
 
 
 def wait_tunnel(lab: Lab, want: str, timeout_s: float) -> tuple[bool, str]:
@@ -387,6 +451,35 @@ def wait_tunnel(lab: Lab, want: str, timeout_s: float) -> tuple[bool, str]:
         return True, wait_for(f"the site on {want}", timeout_s, 3, lambda: ((got := site_tunnel(lab)) == want, got))
     except TimeoutError as exc:
         return False, str(exc)[-200:]
+
+
+def private_exits(lab: Lab, routers: tuple[str, ...]) -> None:
+    """No edge sends an unused private address out of an uplink: it is dropped by a blackhole.
+
+    The probes are an unused address in each of the edge's own blocks, one in
+    each private range, and one in each block of a site that has no tunnel in
+    this reduced lab, which the head office would otherwise send to an ISP.
+    """
+    leaks: dict[str, dict[str, str]] = {}
+    count = 0
+    for vm in routers:
+        uplinks = [eth for eth, *_rest in vyos_sketch.uplinks(model.BY_NAME[vm])]
+        probes = model.private_probes(vm) + [
+            model.private_probes(other)[0] for other in model.SITE_BLOCKS if other not in (HQ, *routers)
+        ]
+        count += len(probes)
+        for probe in probes:
+            answer = " ".join(lab.shell(vm, f"ip route get {probe} 2>&1").split())
+            if any(f"dev {eth} " in answer + " " for eth in uplinks):
+                leaks.setdefault(vm, {})[probe] = answer
+    blackholes = {vm: "blackhole" in lab.shell(vm, "ip route show 10.0.0.0/8 2>&1") for vm in routers}
+    lab.check(
+        "no edge would send an unused private address out of an uplink",
+        not leaks and all(blackholes.values()),
+        json.dumps(leaks)[:600]
+        if leaks
+        else f"{count} probes; 10.0.0.0/8 is a blackhole at {sum(blackholes.values())} of {len(routers)} edges",
+    )
 
 
 def foreign_prefix(lab: Lab, site: str) -> None:
@@ -397,35 +490,71 @@ def foreign_prefix(lab: Lab, site: str) -> None:
     filter for this site. FRR is told directly: nothing here is committed to
     the VyOS configuration.
     """
-    prefix = model.CS_LAN
     asn = model.BY_NAME[site].asn
     own = f"SITE-{vyos_sketch.site_code(site)}"
     peers = [tunnel.hub_address() for tunnel in model.TUNNELS]
-    vtysh(
-        lab, site, "configure terminal", f"ip route {prefix} blackhole", f"ip prefix-list {own} seq 900 permit {prefix}",
-        f"router bgp {asn}", "address-family ipv4 unicast", f"network {prefix}",
-    )  # fmt: skip
+    # Another site's network, which the head office has from nobody in this
+    # lab, and a /24 inside the head office's own block. The head office's
+    # list of all sites' blocks (SITE-NETS) holds both, so only the filter for
+    # this site refuses both.
+    for prefix, name in (
+        (model.CS_LAN, "another site's network"),
+        (model.HQ_MORE_SPECIFIC, "a more-specific of the head office's own block"),
+    ):
+        vtysh(
+            lab, site, "configure terminal", f"ip route {prefix} blackhole", f"ip prefix-list {own} seq 900 permit {prefix}",
+            f"router bgp {asn}", "address-family ipv4 unicast", f"network {prefix}",
+        )  # fmt: skip
 
-    def offered() -> tuple[bool, str]:
-        out = vtysh(lab, site, *[f"show bgp ipv4 unicast neighbors {peer} advertised-routes" for peer in peers])
-        return out.count(prefix) >= len(peers), " ".join(out.split())[-300:]
+        def offered(p: str = prefix) -> tuple[bool, str]:
+            out = vtysh(lab, site, *[f"show bgp ipv4 unicast neighbors {peer} advertised-routes" for peer in peers])
+            return out.count(p) >= len(peers), " ".join(out.split())[-300:]
 
+        try:
+            detail, sent = wait_for(f"{site} offering {prefix}", 60, 5, offered), True
+        except TimeoutError as exc:
+            detail, sent = str(exc)[-300:], False
+        listed = vtysh(lab, HQ, f"show ip prefix-list SITE-NETS {prefix} first-match")
+        held = vtysh(lab, HQ, f"show bgp ipv4 unicast {prefix}")
+        route = lab.shell(HQ, f"ip route show {prefix} 2>&1").strip()
+        lab.check(
+            f"the head office refuses {name} when the site announces it",
+            sent and "permit" in listed and "not in table" in held and not route,
+            f"{site} offered {prefix} on {len(peers)} tunnels: {sent} ({detail[-120:]}). The head office's list of "
+            f"all sites' blocks covers it: {'permit' in listed}. The head office: {' '.join(held.split())[:160]}; "
+            f"kernel route: {route or 'none'}",
+        )
+        vtysh(
+            lab, site, "configure terminal", f"router bgp {asn}", "address-family ipv4 unicast", f"no network {prefix}",
+            "exit", "exit", f"no ip route {prefix} blackhole", f"no ip prefix-list {own} seq 900",
+        )  # fmt: skip
+
+
+def bfd_sessions(lab: Lab, vm: str) -> tuple[bool, str]:
+    """Every BFD session the router's list configures is up, at the list's interval."""
+    want = sum(" bfd profile WAN" in line for line in vyos_sketch.commands(model.BY_NAME[vm], kind=KIND))
+    out = lab.shell(vm, "vtysh -c 'show bfd peers json' 2>&1")
     try:
-        detail, sent = wait_for(f"{site} offering {prefix}", 60, 5, offered), True
-    except TimeoutError as exc:
-        detail, sent = str(exc)[-300:], False
-    held = vtysh(lab, HQ, f"show bgp ipv4 unicast {prefix}")
-    route = lab.shell(HQ, f"ip route show {prefix} 2>&1").strip()
-    lab.check(
-        "the head office refuses another site's network when the site announces it",
-        sent and "not in table" in held and not route,
-        f"{site} offered {prefix} on {len(peers)} tunnels: {sent} ({detail[-120:]}). "
-        f"The head office: {' '.join(held.split())[:200]}; kernel route: {route or 'none'}",
-    )
-    vtysh(
-        lab, site, "configure terminal", f"router bgp {asn}", "address-family ipv4 unicast", f"no network {prefix}",
-        "exit", "exit", f"no ip route {prefix} blackhole", f"no ip prefix-list {own} seq 900",
-    )  # fmt: skip
+        peers = json.loads(out[out.index("[") :])
+    except ValueError:
+        return False, " ".join(out.split())[:300]
+    up = [peer for peer in peers if peer.get("status") == "up"]
+    intervals = sorted({peer.get("transmit-interval") for peer in peers})
+    ok = len(peers) == want and len(up) == want and intervals == [vyos_sketch.BFD_INTERVAL_MS]
+    return ok, f"{len(up)} of {want} up; transmit intervals {intervals} ms"
+
+
+def best_path(lab: Lab, vm: str, prefix: str) -> str:
+    """The AS path of `vm`'s best route to `prefix`, from FRR's JSON, or "(none)"."""
+    out = lab.shell(vm, f"vtysh -c 'show bgp ipv4 unicast {prefix} json' 2>&1")
+    try:
+        data = json.loads(out[out.index("{") :])
+    except ValueError:
+        return "(none)"
+    for path in data.get("paths", []):
+        if path.get("bestpath", {}).get("overall"):
+            return path.get("aspath", {}).get("string", "") or "(local)"
+    return "(none)"
 
 
 def faults(lab: Lab) -> None:
@@ -434,6 +563,16 @@ def faults(lab: Lab) -> None:
     eth = {other: name for name, _link, other, _gateway, _own in vyos_sketch.uplinks(isp)}
     primary, backup = tif("fc-a"), tif("fc-b")
     detect_s = vyos_sketch.BFD_INTERVAL_MS * model.BFD_MULTIPLIER / 1000
+    # A failover that waits for the BGP hold timer instead of BFD takes more
+    # than the hold time less one keepalive; every outage below that bound came
+    # from BFD.
+    hold_bound = model.CORE_HOLD_S - model.CORE_KEEPALIVE_S
+    states = {vm: bfd_sessions(lab, vm) for vm in (HQ, "fc-fw-edge")}
+    lab.check(
+        "every BFD session is up at the configured interval before the faults",
+        all(ok for ok, _detail in states.values()),
+        "; ".join(f"{vm}: {detail}" for vm, (_ok, detail) in states.items()),
+    )
 
     # The site's ShadeCast uplink goes silent.
     count = start_ping(lab, "site-uplink", 60)
@@ -442,7 +581,7 @@ def faults(lab: Lab) -> None:
     lost, gap, tail = ping_result(lab, "site-uplink", count)
     lab.check(
         "the site moves to its second tunnel when its ShadeCast uplink goes silent",
-        moved and 0 < gap <= detect_s + 6,
+        moved and 0 < gap < hold_bound,
         f"outage {gap} s ({lost} of {count} pings lost; BFD detects in {detect_s:.0f} s); now on {detail}; {tail}",
     )
     count = start_ping(lab, "site-uplink-repair", 60)
@@ -461,14 +600,13 @@ def faults(lab: Lab) -> None:
     count = start_ping(lab, "hq-uplink", 60)
     blackhole(lab, "shadecast", eth["fr-fw-edge"])
     lost, gap, tail = ping_result(lab, "hq-uplink", count)
-    path = lab.shell(
-        "shadecast", f"vtysh -c 'show bgp ipv4 unicast {model.HQ_PREFIX}' 2>&1 | grep -A1 -E '^  [0-9]' | head -6"
-    )
+    best = best_path(lab, "shadecast", model.HQ_PREFIX)
+    on = site_tunnel(lab)
     lab.check(
         "the site keeps the head office when the head office loses its ShadeCast uplink",
-        0 < gap <= detect_s + 8 and "64501 64505" in path,
-        f"outage {gap} s ({lost} of {count} lost); the site is on {site_tunnel(lab)}; "
-        f"ShadeCast's route: {' '.join(path.split())[:200]}",
+        0 < gap < hold_bound and best == "64501 64505" and on == primary,
+        f"outage {gap} s ({lost} of {count} lost); the site stayed on {on}; "
+        f"ShadeCast's best path to the head office is {best!r}",
     )
     intact, detail = tunnels_intact(lab)
     lab.check("both tunnels are as configured while the head office is on one ISP", intact, detail)
@@ -503,6 +641,13 @@ def faults(lab: Lab) -> None:
         "fc-fw-edge", "sleep 20; nft list table inet cmleak 2>&1; nft delete table inet cmleak", wait_s=120
     )
     leaked = sum(int(count) for count in re.findall(r"counter packets (\d+)", leak))
+    if KIND == vyos_sketch.VTI:
+        # The counter matches by the tunnel's own address, so a tunnel that moved
+        # with the other uplink's address would slip past it; the SA would show it.
+        sas = lab.shell("fc-fw-edge", f"swanctl --list-sas --ike {first.name} 2>&1")
+        locals_ = set(re.findall(r"local\s+'[^']*'\s+@\s+([0-9.]+)", sas))
+        leaked += 0 if locals_ <= {own} else 1
+        lab.fact("first tunnel's IKE SA with its link down", " ".join(sas.split())[:400])
     lab.check(
         "with its uplink's link down, a tunnel does not move to the other uplink",
         moved and "counter packets" in leak and leaked == 0 and " dev eth" not in lookup,
@@ -542,6 +687,7 @@ def faults(lab: Lab) -> None:
 
 def run() -> int:
     lab = Lab(f"wan-bgp-vyos-{KIND}", EXP)
+    lab.redact = redact
     lab.versions()
     lab.fact("tunnels", KIND)
     vyos_sketch.reduce_lab()
@@ -619,6 +765,15 @@ def run() -> int:
             except TimeoutError as exc:
                 detail, committed[vm] = str(exc), False
             lab.check(f"{vm} committed the rendered configuration at first boot", committed[vm], detail[:600])
+            if committed[vm]:
+                missing = config_missing(lab, vm, configs[vm])
+                lab.check(
+                    f"{vm} holds every line of its config list after the commit",
+                    not missing,
+                    f"{len(missing)} of {len(configs[vm])} lines missing: {redact(json.dumps(missing[:8]))}"
+                    if missing
+                    else f"all {len(configs[vm])} lines are in `show configuration commands`",
+                )
             if not committed[vm]:
                 # Find out which lines VyOS refuses, and leave the router configured if it takes the rest.
                 lab.put_file(vm, "/tmp/vyos_commit_check.sh", HERE / "vyos_commit_check.sh")
@@ -702,10 +857,13 @@ def run() -> int:
             back.strip(),
         )
         lab.fact("fc-fw-edge bfd", lab.shell(site, "vtysh -c 'show bfd peers brief' 2>&1"))
+        edge_sources(lab, site)
+        tunnel_mtu(lab, site)
 
         # 5. End to end.
         ping = lab.shell("fc-historian", "ping -c 10 -i 0.2 -W 2 10.20.30.11 2>&1 | tail -3")
         lab.check("a host at the site reaches a host at the head office", " 0% packet loss" in ping, ping.strip())
+        private_exits(lab, (HQ, site))
         foreign_prefix(lab, site)
 
         # 6. Faults, when the baseline works (a default route that had to be asked for again counts).

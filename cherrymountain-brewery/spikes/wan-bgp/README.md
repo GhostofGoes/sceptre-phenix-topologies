@@ -117,16 +117,23 @@ site's uplink is set down, to see where its tunnel goes.
 ## Pass / fail
 
 - [x] Every BGP session comes up, and every AS reaches every other on a path
-      that follows the customer, peer, and provider rules.
-- [x] No ISP carries a private route; no site learns anything but site
+      that follows the customer, peer, and provider rules, checked by local
+      preference and by the neighbor each route came from.
+- [x] No ISP carries a private route, and an ISP refuses a private prefix and
+      a /25 that a customer offers; no site learns anything but site
       prefixes through a tunnel.
+- [x] No edge would send an unused private address out of an uplink: each
+      has a blackhole for its own blocks and for all private space.
 - [x] Every site reaches the head office and every other site.
 - [x] A site with two uplinks keeps the head office when one goes silent, and
       returns to the primary tunnel after the repair.
 - [x] Every site keeps the head office when it loses one ISP, and when a
-      whole ISP goes dark.
-- [x] A site whose path crosses the dead ISP in the core comes back within
-      the BGP hold time.
+      whole ISP goes dark. Each fault starts with the lab converged and `fc`
+      on its primary tunnel, whose underlay crosses the failed link, and `fc`
+      must see a gap.
+- [x] A site whose path crosses the dead ISP in the core is cut off for
+      about the BGP hold time: at least the hold time less one keepalive
+      (6 s), and at most the hold time and three seconds (12 s).
 - [x] After the faults, every tunnel still leaves through its own uplink, and
       a tunnel whose uplink is down stays down.
 - [x] The head office refuses another site's network when a site announces
@@ -142,8 +149,15 @@ site's uplink is set down, to see where its tunnel goes.
   and the mark's routing table ends in a blackhole (finding 3).
 - **Run:** in a container with no VM. Linux 6.18 with no WireGuard, no ESP,
   and no netem in the kernel; FRR 8.4.4; wireguard-go 0.0.20230223;
-  `feat-secret-topo` at `fb43c7f`. The final design ran eight times. The last
-  run passed all 28 checks, with a route filter for each site and a site that
+  `feat-secret-topo` at `fb43c7f`. The final design ran ten times. The last
+  run passed all 30 checks, after a review made the checks able to fail: the
+  policy checks look at local preference and the neighbor a route came from,
+  an ISP is offered prefixes it must refuse, each fault must cut a path that
+  crosses it, the hold-timer outage has a lower bound, the pinned lookup must
+  end in the blackhole, and every edge has discard routes. The run before
+  that passed 29 of 30; the one failure was the kit's (it counted the route
+  it had added to make Marmot offer a private prefix). The run before those
+  passed all 28 checks, with a route filter for each site and a site that
   announces another site's network (finding 8). The run before it passed all
   27, with the head office keeping the routes its ISPs send (finding 7) and a
   check that neither of its default routes is stale. The two runs before that
@@ -169,8 +183,8 @@ which it chose from two equal customer routes.
 |---|---|---|---|---|
 | ShadeCast drops `fc`'s uplink | 0.8 to 0.9 s | not on the path | not on the path | `fc` to its tunnel over Marmot |
 | ShadeCast drops the head office's uplink | 0.6 to 1.0 s | not on the path | not on the path | ShadeCast reaches the head office through its peer; `fc` uses its backup until then |
-| All of ShadeCast goes dark | 0.8 to 0.9 s | not on the path | not on the path | `fc` to Marmot |
-| All of ShadeCast goes dark, with the transit carrier routing to the head office through it | 0.8 s | not on the path | **8.8 to 9.8 s** | `fc` to Marmot; the transit carrier to Tumbleweed, when its BGP hold timer ran out |
+| All of ShadeCast goes dark | 0.8 to 1.0 s | not on the path | not on the path | `fc` to Marmot |
+| All of ShadeCast goes dark, with the transit carrier routing to the head office through it | 0.8 to 1.0 s | not on the path | **8.8 to 9.8 s** | `fc` to Marmot; the transit carrier to Tumbleweed, when its BGP hold timer ran out |
 | Each repair | none | none | none | Back to the primary tunnel and the direct route |
 | The link of `fc`'s ShadeCast uplink set down | not timed | | | `fc` to Marmot; its first tunnel stayed down, and came back 2 s after the link |
 
@@ -179,7 +193,8 @@ which it chose from two equal customer routes.
   too short; with 1 s it would be about 3 s.
 - **Anywhere else, the BGP hold time.** `cs` has one uplink and no part in the
   fault. It lost the head office for as long as the transit carrier kept
-  sending toward a dead ISP: 9 s with the lab's timers, and 180 s with the
+  sending toward a dead ISP: 8.8 to 9.8 s with the lab's 9 s hold time, since
+  the outage also includes the time to reconverge, and about 180 s with the
   defaults real routers ship with.
 - After the last repair, every BGP session of the final design was back
   before the check looked. Runs of the first design took up to 48 s, and one
@@ -232,9 +247,12 @@ which it chose from two equal customer routes.
    kept the route from their customer, which they prefer to any route from a
    provider, so `fc` and `ep` stayed up. When the announcement was withdrawn,
    `cs` came back in 3 to 5 s.
-5. **Ten FRR routers took 0.5 GB.** Resident memory of all routing daemons
-   was about 500 MiB: bgpd 175, zebra 133, bfdd 67, wireguard-go 64,
-   staticd 60.
+5. **Ten FRR routers took about 0.3 GB.** Proportional memory (PSS, which
+   splits shared pages among the processes that map them) of all routing
+   daemons was 297 MiB in the last run: bgpd 122, zebra 91, bfdd 30,
+   wireguard-go 27, staticd 27. Earlier runs summed resident memory, which
+   counts the shared libraries once for every process, and reported about
+   500 MiB.
 6. **The 13 BGP sessions came up in 8 to 9 s** from a cold start, in every run.
 7. **The head office must keep the routes its ISPs send
    (`soft-reconfiguration inbound`), or FRR can take a default route away
@@ -261,9 +279,10 @@ which it chose from two equal customer routes.
   Linux, the tunnels are wireguard-go, and the kernel has no ESP.
   [The same WAN on VyOS routers](#the-same-wan-on-vyos-routers) ran a part of
   this lab on VyOS with each of them.
-- **The ISPs' filters.** No run offered an ISP a prefix it should refuse (a
-  private one, one longer than a /24, or one a customer has not registered).
-  Finding 8 tested the head office's filter inside the VPN, not an ISP's.
+- **The ISPs' filters, in part.** The last run offered Tumbleweed a private
+  prefix and a /25 from Marmot, and it took neither. No run offered a public
+  prefix that a customer has not registered: the ISPs accept any public /24
+  from a customer, which is what lets the hijack work.
 - **A fault inside the transit carrier**, between its two routers.
 - **A site's own internet access.** A site's default route is static, with no
   health check, so it stays on a dead first uplink. The tunnels are not

@@ -46,7 +46,7 @@ set protocols bgp neighbor 198.18.0.1 timers holdtime 9
 set protocols bgp neighbor 198.18.0.1 timers connect 5
 set protocols bgp neighbor 198.18.0.1 address-family ipv4-unicast nexthop-self
 set protocols bgp neighbor 198.18.0.14 remote-as 64503
-set protocols bgp neighbor 198.18.0.14 description 'Pelican Coast Broadband'
+set protocols bgp neighbor 198.18.0.14 description 'Bristlecone Broadband'
 set protocols bgp neighbor 198.18.0.14 timers keepalive 3
 set protocols bgp neighbor 198.18.0.14 timers holdtime 9
 set protocols bgp neighbor 198.18.0.14 timers connect 5

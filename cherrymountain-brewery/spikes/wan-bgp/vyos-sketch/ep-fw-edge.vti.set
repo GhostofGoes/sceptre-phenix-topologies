@@ -1,27 +1,27 @@
 set protocols bfd profile WAN interval transmit 1000
 set protocols bfd profile WAN interval receive 1000
 set protocols bfd profile WAN interval multiplier 3
-set policy prefix-list SITE-WS rule 10 action permit
-set policy prefix-list SITE-WS rule 10 prefix 10.12.0.0/16
-set policy prefix-list SITE-WS rule 10 le 24
+set policy prefix-list SITE-EP rule 10 action permit
+set policy prefix-list SITE-EP rule 10 prefix 10.12.0.0/16
+set policy prefix-list SITE-EP rule 10 le 24
 set policy prefix-list SITE-NETS rule 10 action permit
 set policy prefix-list SITE-NETS rule 10 prefix 10.12.0.0/16
 set policy prefix-list SITE-NETS rule 10 le 24
-set policy prefix-list SITE-WS rule 20 action permit
-set policy prefix-list SITE-WS rule 20 prefix 10.22.0.0/16
-set policy prefix-list SITE-WS rule 20 le 24
+set policy prefix-list SITE-EP rule 20 action permit
+set policy prefix-list SITE-EP rule 20 prefix 10.22.0.0/16
+set policy prefix-list SITE-EP rule 20 le 24
 set policy prefix-list SITE-NETS rule 20 action permit
 set policy prefix-list SITE-NETS rule 20 prefix 10.22.0.0/16
 set policy prefix-list SITE-NETS rule 20 le 24
-set policy prefix-list SITE-WS rule 30 action permit
-set policy prefix-list SITE-WS rule 30 prefix 10.32.0.0/16
-set policy prefix-list SITE-WS rule 30 le 24
+set policy prefix-list SITE-EP rule 30 action permit
+set policy prefix-list SITE-EP rule 30 prefix 10.32.0.0/16
+set policy prefix-list SITE-EP rule 30 le 24
 set policy prefix-list SITE-NETS rule 30 action permit
 set policy prefix-list SITE-NETS rule 30 prefix 10.32.0.0/16
 set policy prefix-list SITE-NETS rule 30 le 24
-set policy prefix-list SITE-WS rule 40 action permit
-set policy prefix-list SITE-WS rule 40 prefix 10.42.0.0/16
-set policy prefix-list SITE-WS rule 40 le 24
+set policy prefix-list SITE-EP rule 40 action permit
+set policy prefix-list SITE-EP rule 40 prefix 10.42.0.0/16
+set policy prefix-list SITE-EP rule 40 le 24
 set policy prefix-list SITE-NETS rule 40 action permit
 set policy prefix-list SITE-NETS rule 40 prefix 10.42.0.0/16
 set policy prefix-list SITE-NETS rule 40 le 24
@@ -56,7 +56,7 @@ set policy route-map OVERLAY-BACKUP rule 10 action permit
 set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
 set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
 set policy route-map OVERLAY-OUT rule 10 action permit
-set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-WS
+set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-EP
 set protocols bgp system-as 65030
 set protocols bgp parameters router-id 10.255.3.1
 set protocols bgp parameters log-neighbor-changes
@@ -81,54 +81,54 @@ set vpn ipsec esp-group WAN lifetime 3600
 set vpn ipsec esp-group WAN pfs dh-group14
 set vpn ipsec esp-group WAN proposal 10 encryption aes256
 set vpn ipsec esp-group WAN proposal 10 hash sha256
-set interfaces vti vti103 description 'ws-a over Tumbleweed Fiber'
+set interfaces vti vti103 description 'ep-a over Tumbleweed Fiber'
 set interfaces vti vti103 address 10.255.0.5/31
-set vpn ipsec authentication psk ws-a id '198.18.101.10'
-set vpn ipsec authentication psk ws-a id '198.18.105.1'
-set vpn ipsec authentication psk ws-a secret 'PRE-SHARED-KEY-OF-THIS-TUNNEL'
-set vpn ipsec site-to-site peer ws-a authentication mode pre-shared-secret
-set vpn ipsec site-to-site peer ws-a authentication local-id '198.18.101.10'
-set vpn ipsec site-to-site peer ws-a authentication remote-id '198.18.105.1'
-set vpn ipsec site-to-site peer ws-a connection-type initiate
-set vpn ipsec site-to-site peer ws-a ike-group WAN
-set vpn ipsec site-to-site peer ws-a default-esp-group WAN
-set vpn ipsec site-to-site peer ws-a local-address 198.18.101.10
-set vpn ipsec site-to-site peer ws-a remote-address 198.18.105.1
-set vpn ipsec site-to-site peer ws-a vti bind vti103
-set vpn ipsec site-to-site peer ws-a vti esp-group WAN
+set vpn ipsec authentication psk ep-a id '198.18.101.10'
+set vpn ipsec authentication psk ep-a id '198.18.105.1'
+set vpn ipsec authentication psk ep-a secret 'PRE-SHARED-KEY-OF-THIS-TUNNEL'
+set vpn ipsec site-to-site peer ep-a authentication mode pre-shared-secret
+set vpn ipsec site-to-site peer ep-a authentication local-id '198.18.101.10'
+set vpn ipsec site-to-site peer ep-a authentication remote-id '198.18.105.1'
+set vpn ipsec site-to-site peer ep-a connection-type initiate
+set vpn ipsec site-to-site peer ep-a ike-group WAN
+set vpn ipsec site-to-site peer ep-a default-esp-group WAN
+set vpn ipsec site-to-site peer ep-a local-address 198.18.101.10
+set vpn ipsec site-to-site peer ep-a remote-address 198.18.105.1
+set vpn ipsec site-to-site peer ep-a vti bind vti103
+set vpn ipsec site-to-site peer ep-a vti esp-group WAN
 set policy local-route rule 103 source address 198.18.101.10
 set policy local-route rule 103 set table 103
 set protocols static table 103 route 0.0.0.0/0 next-hop 198.18.101.9
 set protocols static table 103 route 0.0.0.0/0 blackhole distance 250
 set protocols bgp neighbor 10.255.0.4 remote-as 64505
-set protocols bgp neighbor 10.255.0.4 description 'overlay ws-a'
+set protocols bgp neighbor 10.255.0.4 description 'overlay ep-a'
 set protocols bgp neighbor 10.255.0.4 timers keepalive 3
 set protocols bgp neighbor 10.255.0.4 timers holdtime 9
 set protocols bgp neighbor 10.255.0.4 timers connect 5
 set protocols bgp neighbor 10.255.0.4 bfd profile WAN
 set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
 set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map export OVERLAY-OUT
-set interfaces vti vti104 description 'ws-b over ShadeCast Cable'
+set interfaces vti vti104 description 'ep-b over ShadeCast Cable'
 set interfaces vti vti104 address 10.255.0.7/31
-set vpn ipsec authentication psk ws-b id '203.0.113.18'
-set vpn ipsec authentication psk ws-b id '198.18.105.1'
-set vpn ipsec authentication psk ws-b secret 'PRE-SHARED-KEY-OF-THIS-TUNNEL'
-set vpn ipsec site-to-site peer ws-b authentication mode pre-shared-secret
-set vpn ipsec site-to-site peer ws-b authentication local-id '203.0.113.18'
-set vpn ipsec site-to-site peer ws-b authentication remote-id '198.18.105.1'
-set vpn ipsec site-to-site peer ws-b connection-type initiate
-set vpn ipsec site-to-site peer ws-b ike-group WAN
-set vpn ipsec site-to-site peer ws-b default-esp-group WAN
-set vpn ipsec site-to-site peer ws-b local-address 203.0.113.18
-set vpn ipsec site-to-site peer ws-b remote-address 198.18.105.1
-set vpn ipsec site-to-site peer ws-b vti bind vti104
-set vpn ipsec site-to-site peer ws-b vti esp-group WAN
+set vpn ipsec authentication psk ep-b id '203.0.113.18'
+set vpn ipsec authentication psk ep-b id '198.18.105.1'
+set vpn ipsec authentication psk ep-b secret 'PRE-SHARED-KEY-OF-THIS-TUNNEL'
+set vpn ipsec site-to-site peer ep-b authentication mode pre-shared-secret
+set vpn ipsec site-to-site peer ep-b authentication local-id '203.0.113.18'
+set vpn ipsec site-to-site peer ep-b authentication remote-id '198.18.105.1'
+set vpn ipsec site-to-site peer ep-b connection-type initiate
+set vpn ipsec site-to-site peer ep-b ike-group WAN
+set vpn ipsec site-to-site peer ep-b default-esp-group WAN
+set vpn ipsec site-to-site peer ep-b local-address 203.0.113.18
+set vpn ipsec site-to-site peer ep-b remote-address 198.18.105.1
+set vpn ipsec site-to-site peer ep-b vti bind vti104
+set vpn ipsec site-to-site peer ep-b vti esp-group WAN
 set policy local-route rule 104 source address 203.0.113.18
 set policy local-route rule 104 set table 104
 set protocols static table 104 route 0.0.0.0/0 next-hop 203.0.113.17
 set protocols static table 104 route 0.0.0.0/0 blackhole distance 250
 set protocols bgp neighbor 10.255.0.6 remote-as 64505
-set protocols bgp neighbor 10.255.0.6 description 'overlay ws-b'
+set protocols bgp neighbor 10.255.0.6 description 'overlay ep-b'
 set protocols bgp neighbor 10.255.0.6 timers keepalive 3
 set protocols bgp neighbor 10.255.0.6 timers holdtime 9
 set protocols bgp neighbor 10.255.0.6 timers connect 5

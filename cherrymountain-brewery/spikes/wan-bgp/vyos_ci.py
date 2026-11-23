@@ -7,7 +7,7 @@ patched by patches/vrouter-config-passthrough.ci-e2e-minimega.patch:
 
 Four VyOS routers and two hosts boot under phenix and minimega: two ISPs that
 peer (shadecast, tumbleweed), the head office's edge on both (fr-fw-edge), and
-the High Country edge on both (hc-fw-edge). Every router gets the commands of
+the Fort Collins edge on both (fc-fw-edge). Every router gets the commands of
 vyos_sketch.py as the `config` list of the vrouter app, so phenix writes them
 into the script the image runs at first boot.
 
@@ -333,7 +333,7 @@ def start_ping(lab: Lab, tag: str, seconds: float) -> int:
     """Start a background ping from the site's host to the head office's; return how many it sends."""
     count = int(seconds / PING_INTERVAL_S)
     lab.shell(
-        "hc-historian",
+        "fc-historian",
         f"setsid nohup ping -i {PING_INTERVAL_S} -W 1 -c {count} 10.20.30.11 >/tmp/ping-{tag}.log 2>&1 </dev/null & "
         "sleep 1; echo started",
     )
@@ -344,12 +344,12 @@ def ping_result(lab: Lab, tag: str, count: int) -> tuple[int, float, str]:
     """(lost, longest gap in seconds, the summary lines) of a ping that has finished."""
 
     def finished() -> tuple[bool, str]:
-        out = lab.shell("hc-historian", f"tail -3 /tmp/ping-{tag}.log")
+        out = lab.shell("fc-historian", f"tail -3 /tmp/ping-{tag}.log")
         return "packets transmitted" in out, out
 
     tail = wait_for(f"ping {tag}", count * PING_INTERVAL_S + 60, 5, finished)
     seqs = lab.shell(
-        "hc-historian", f"grep -o 'icmp_seq=[0-9]* ttl' /tmp/ping-{tag}.log | grep -o '[0-9]*' | tr '\\n' ' '"
+        "fc-historian", f"grep -o 'icmp_seq=[0-9]* ttl' /tmp/ping-{tag}.log | grep -o '[0-9]*' | tr '\\n' ' '"
     )
     seen = sorted({int(seq) for seq in seqs.split()})
     longest, previous = 0, 0
@@ -360,7 +360,7 @@ def ping_result(lab: Lab, tag: str, count: int) -> tuple[int, float, str]:
 
 def site_tunnel(lab: Lab) -> str:
     """The interface the site uses toward the head office's block."""
-    out = lab.shell("hc-fw-edge", "ip route show 10.20.0.0/16 2>&1")
+    out = lab.shell("fc-fw-edge", "ip route show 10.20.0.0/16 2>&1")
     match = re.search(r"dev (\S+)", out)
     return match.group(1) if match else f"(none: {out.strip()[:80]})"
 
@@ -368,12 +368,12 @@ def site_tunnel(lab: Lab) -> str:
 def tunnels_intact(lab: Lab) -> tuple[bool, str]:
     """WireGuard: no endpoint moved off the head office's address. VTI: both interfaces and both SAs are up."""
     if KIND == vyos_sketch.WIREGUARD:
-        out = lab.shell("hc-fw-edge", "wg show all endpoints 2>&1")
+        out = lab.shell("fc-fw-edge", "wg show all endpoints 2>&1")
         seen = dict(re.findall(r"(wg\d+)\s+\S+\s+(\S+:\d+)", out))
         wanted = {tif(tunnel.name): f"{model.HUB_ENDPOINT}:{tunnel.port}" for tunnel in model.TUNNELS}
         return seen == wanted, json.dumps(seen)
     out = lab.shell(
-        "hc-fw-edge",
+        "fc-fw-edge",
         "for i in " + " ".join(tif(tunnel.name) for tunnel in model.TUNNELS) + "; do ip -br link show $i; done 2>&1; "
         "echo sas $(swanctl --list-sas 2>/dev/null | grep -c INSTALLED)",
     )
@@ -397,7 +397,7 @@ def foreign_prefix(lab: Lab, site: str) -> None:
     filter for this site. FRR is told directly: nothing here is committed to
     the VyOS configuration.
     """
-    prefix = model.GC_LAN
+    prefix = model.CS_LAN
     asn = model.BY_NAME[site].asn
     own = f"SITE-{vyos_sketch.site_code(site)}"
     peers = [tunnel.hub_address() for tunnel in model.TUNNELS]
@@ -432,12 +432,12 @@ def faults(lab: Lab) -> None:
     """Silent faults on ShadeCast, and one link set down, with a ping running through each."""
     isp = model.BY_NAME["shadecast"]
     eth = {other: name for name, _link, other, _gateway, _own in vyos_sketch.uplinks(isp)}
-    primary, backup = tif("hc-a"), tif("hc-b")
+    primary, backup = tif("fc-a"), tif("fc-b")
     detect_s = vyos_sketch.BFD_INTERVAL_MS * model.BFD_MULTIPLIER / 1000
 
     # The site's ShadeCast uplink goes silent.
     count = start_ping(lab, "site-uplink", 60)
-    blackhole(lab, "shadecast", eth["hc-fw-edge"])
+    blackhole(lab, "shadecast", eth["fc-fw-edge"])
     moved, detail = wait_tunnel(lab, backup, 40)
     lost, gap, tail = ping_result(lab, "site-uplink", count)
     lab.check(
@@ -483,24 +483,24 @@ def faults(lab: Lab) -> None:
     )
 
     # A loud fault: the link of the site's ShadeCast uplink goes down.
-    first = tunnel_named("hc-a")
+    first = tunnel_named("fc-a")
     uplink, own = site_uplink(first)
-    other = next(name for name, *_rest in vyos_sketch.uplinks(model.BY_NAME["hc-fw-edge"]) if name != uplink)
+    other = next(name for name, *_rest in vyos_sketch.uplinks(model.BY_NAME["fc-fw-edge"]) if name != uplink)
     # Count what the first tunnel sends through the other uplink: WireGuard to
     # its port, IPsec from its address. Either would be the tunnel moving.
     lab.shell(
-        "hc-fw-edge",
+        "fc-fw-edge",
         "nft add table inet cmleak; "
         "nft add chain inet cmleak cm_out '{ type filter hook output priority -290; }'; "
         f"nft add rule inet cmleak cm_out oifname {other} udp dport {first.port} counter; "
         f"nft add rule inet cmleak cm_out oifname {other} ip saddr {own} counter; echo counting",
     )
-    lab.shell("hc-fw-edge", f"ip link set {uplink} down; echo down")
+    lab.shell("fc-fw-edge", f"ip link set {uplink} down; echo down")
     moved, detail = wait_tunnel(lab, backup, 40)
-    lookup = lab.shell("hc-fw-edge", pin_lookup(first))
+    lookup = lab.shell("fc-fw-edge", pin_lookup(first))
     # Long enough for WireGuard's keepalive and handshake retries, and for IKE's.
     leak = lab.shell(
-        "hc-fw-edge", "sleep 20; nft list table inet cmleak 2>&1; nft delete table inet cmleak", wait_s=120
+        "fc-fw-edge", "sleep 20; nft list table inet cmleak 2>&1; nft delete table inet cmleak", wait_s=120
     )
     leaked = sum(int(count) for count in re.findall(r"counter packets (\d+)", leak))
     lab.check(
@@ -509,7 +509,7 @@ def faults(lab: Lab) -> None:
         f"{leaked} of the first tunnel's packets left through {other} in 20 s; its route lookup now answers "
         f"`{' '.join(lookup.split())}` (a blackhole route answers Invalid argument); traffic on {detail}",
     )
-    lab.shell("hc-fw-edge", f"ip link set {uplink} up; echo up")
+    lab.shell("fc-fw-edge", f"ip link set {uplink} up; echo up")
     back, detail = wait_tunnel(lab, primary, 90)
     lab.check("the tunnel returns when the link does", back, detail)
 
@@ -520,16 +520,16 @@ def faults(lab: Lab) -> None:
         tunnel_state = f"wg show {primary} latest-handshakes; date +%s"
     else:
         tunnel_state = f"swanctl --list-sas 2>&1 | grep -E '^[a-z]|INSTALLED'; ip -br link show {primary}"
-    blackhole(lab, "shadecast", eth["hc-fw-edge"])
+    blackhole(lab, "shadecast", eth["fc-fw-edge"])
     moved, detail = wait_tunnel(lab, backup, 40)
     for _ in range(4):
-        lab.shell("hc-fw-edge", "sleep 50; echo waited", wait_s=120)
-    before = " ".join(lab.shell("hc-fw-edge", tunnel_state).split())
+        lab.shell("fc-fw-edge", "sleep 50; echo waited", wait_s=120)
+    before = " ".join(lab.shell("fc-fw-edge", tunnel_state).split())
     drops = heal(lab, "shadecast")
     healed = time.monotonic()
     back, detail = wait_tunnel(lab, primary, 300)
     took = time.monotonic() - healed
-    after = " ".join(lab.shell("hc-fw-edge", tunnel_state).split())
+    after = " ".join(lab.shell("fc-fw-edge", tunnel_state).split())
     lab.check(
         f"after {LONG_SILENCE_S} s of silence on its uplink, the first tunnel comes back by itself",
         moved and back,
@@ -659,7 +659,7 @@ def run() -> int:
         lab.fact("shadecast's routes to the head office and to Tumbleweed", paths)
 
         # 4. The tunnels and the pin.
-        site = "hc-fw-edge"
+        site = "fc-fw-edge"
         rules = lab.shell(site, "ip rule 2>&1")
         for tunnel in model.TUNNELS:
             eth, own = site_uplink(tunnel)
@@ -670,12 +670,12 @@ def run() -> int:
                 f"dev {eth} " in got and rule in rules,
                 f"wants {eth} by the rule `{rule}`: {' '.join(got.split())}",
             )
-        lab.fact("hc-fw-edge ip rule", rules)
+        lab.fact("fc-fw-edge ip rule", rules)
         if KIND == vyos_sketch.WIREGUARD:
             wg = lab.shell(
                 site, "wg show all endpoints 2>&1; wg show all latest-handshakes 2>&1; wg show all fwmark 2>&1"
             )
-            lab.fact("hc-fw-edge wg", wg)
+            lab.fact("fc-fw-edge wg", wg)
             handshakes = [int(stamp) for stamp in re.findall(r"wg\d+\s+\S+\s+(\d+)\s*$", wg, flags=re.M)]
             intact, detail = tunnels_intact(lab)
             lab.check(
@@ -692,19 +692,19 @@ def run() -> int:
         route = lab.shell(site, "ip route get 10.20.30.11 2>&1; ip route show 10.20.0.0/16 2>&1")
         lab.check(
             "the site reaches the head office's block through its primary tunnel",
-            f"dev {tif('hc-a')}" in route,
+            f"dev {tif('fc-a')}" in route,
             " ".join(route.split()),
         )
         back = lab.shell("fr-fw-edge", "ip route show 10.21.0.0/16 2>&1")
         lab.check(
             "the head office reaches the site's block through the same tunnel",
-            f"dev {tif('hc-a')}" in back,
+            f"dev {tif('fc-a')}" in back,
             back.strip(),
         )
-        lab.fact("hc-fw-edge bfd", lab.shell(site, "vtysh -c 'show bfd peers brief' 2>&1"))
+        lab.fact("fc-fw-edge bfd", lab.shell(site, "vtysh -c 'show bfd peers brief' 2>&1"))
 
         # 5. End to end.
-        ping = lab.shell("hc-historian", "ping -c 10 -i 0.2 -W 2 10.20.30.11 2>&1 | tail -3")
+        ping = lab.shell("fc-historian", "ping -c 10 -i 0.2 -W 2 10.20.30.11 2>&1 | tail -3")
         lab.check("a host at the site reaches a host at the head office", " 0% packet loss" in ping, ping.strip())
         foreign_prefix(lab, site)
 

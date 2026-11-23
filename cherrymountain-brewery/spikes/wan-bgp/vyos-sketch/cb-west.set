@@ -46,7 +46,7 @@ set protocols static route 198.18.0.0/24 blackhole distance 250
 set protocols bgp address-family ipv4-unicast network 198.18.110.0/24
 set protocols static route 198.18.110.0/24 blackhole distance 250
 set protocols bgp neighbor 198.18.0.2 remote-as 64496
-set protocols bgp neighbor 198.18.0.2 description 'Continental Backbone, Houston'
+set protocols bgp neighbor 198.18.0.2 description 'Continental Backbone, Colorado Springs'
 set protocols bgp neighbor 198.18.0.2 timers keepalive 3
 set protocols bgp neighbor 198.18.0.2 timers holdtime 9
 set protocols bgp neighbor 198.18.0.2 timers connect 5

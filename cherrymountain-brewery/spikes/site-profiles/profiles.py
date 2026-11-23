@@ -120,9 +120,9 @@ PROFILES: list[Profile] = [
         sensor=False,
     ),
     Profile(
-        code="ws",
+        code="ep",
         index=2,
-        title="Western Slope: production brewery",
+        title="Eastern Plains: production brewery",
         origin="Built new by the company, to the standard and one step past it",
         network="Two firewalls and a DMZ with its own jump host; a control network for each process cell",
         extra_hosts=("dmz-jump",),
@@ -138,9 +138,9 @@ PROFILES: list[Profile] = [
         uplinks=(("tumbleweed", "198.18.101.10/30"), ("shadecast", "203.0.113.18/30")),
     ),
     Profile(
-        code="gc",
+        code="cs",
         index=3,
-        title="Gulf Coast: brewery and taproom, bought from another company",
+        title="Colorado Springs: brewery and taproom, bought from another company",
         origin="Bought with its network as its integrator built it. The company is bringing it into the fleet",
         network="One firewall and three zones (office, plant, building); its own address plan in 192.168.0.0/16",
         drop_areas=("PWR",),
@@ -165,13 +165,13 @@ PROFILES: list[Profile] = [
             "FIELD-PKG": Move(vlan="FIELD-PKG", subnet="192.168.23.0/24"),
             "FIELD-UTL": Move(vlan="FIELD-UTL", subnet="192.168.24.0/24"),
         },
-        uplinks=(("pelican", "198.18.103.2/30"),),
+        uplinks=(("bristlecone", "198.18.103.2/30"),),
     ),
     Profile(
-        code="hc",
+        code="fc",
         index=1,
-        title="High Country: brewpub",
-        origin="Opened as a brewpub in a ski town. Nobody on site looks after its network",
+        title="Fort Collins: brewpub",
+        origin="Opened as a brewpub in Old Town Fort Collins. Nobody on site looks after its network",
         network="One firewall and two zones: the office, and one flat network for everything that controls",
         drop_areas=("PKG", "PWR"),
         drop_hosts=(
@@ -610,19 +610,19 @@ def merge_sites(result: Result, plants: dict[str, dict[str, Any]], out: Path, sc
 
 LAYOUTS: dict[str, dict[str, tuple[str, ...]]] = {
     "L1: the head office apart": {
-        "head node": ("ws",),
+        "head node": ("ep",),
         "node 2": ("once", "fr"),
-        "node 3": ("gc", "hc"),
+        "node 3": ("cs", "fc"),
     },
     "L2: the two small sites on the head node": {
-        "head node": ("gc", "hc"),
+        "head node": ("cs", "fc"),
         "node 2": ("once", "fr"),
-        "node 3": ("ws",),
+        "node 3": ("ep",),
     },
     "L3: the head office alone on a node": {
-        "head node": ("once", "gc"),
+        "head node": ("once", "cs"),
         "node 2": ("fr",),
-        "node 3": ("ws", "hc"),
+        "node 3": ("ep", "fc"),
     },
 }
 CHOSEN: str = "L1: the head office apart"

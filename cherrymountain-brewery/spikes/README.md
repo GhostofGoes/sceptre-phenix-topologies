@@ -46,17 +46,19 @@ The workflow's `serial-pr130` job (spike name `serial-pr130`) applies
 
 These kits are not Phase 0 spikes. They back the plan options for a variant
 with four breweries and a head office
-([docs/multisite/PLANS.md](../docs/multisite/PLANS.md)). The first two ran in
-a container with no VM. The third is a job of the spike workflow
+([docs/multisite/PLANS.md](../docs/multisite/PLANS.md)). The first, the third,
+and the fourth ran in a container with no VM. The second is a job of the
+spike workflow
 (`wan-bgp-vyos`, once for each kind of tunnel) and booted VyOS routers under
 phenix and minimega. Each keeps the summary of its last run in its own
 `evidence/` directory.
 
 | Spike | Question | Unblocks | Status |
 |---|---|---|---|
-| [wan-bgp](wan-bgp/README.md) | Can four sites keep a VPN to their head office over a mock internet of BGP networks when an uplink or a whole ISP fails? | The WAN of the multi-site variant, and how a site ties a tunnel to an uplink | pass (namespaces with FRR and wireguard-go; 27 of 27 checks) |
-| [wan-bgp on VyOS](wan-bgp/README.md#the-same-wan-on-vyos-routers) | Does a VyOS router take that design from phenix at first boot, and behave as the lab did, with WireGuard and with route-based IPsec? | Where the tunnels and BGP run at a site, how they get their configuration, and which tunnel | pass in CI (four VyOS routers; 29 of 29 checks for each tunnel, after one fix to the design) |
+| [wan-bgp](wan-bgp/README.md) | Can four sites keep a VPN to their head office over a mock internet of BGP networks when an uplink or a whole ISP fails? | The WAN of the multi-site variant, and how a site ties a tunnel to an uplink | pass (namespaces with FRR and wireguard-go; 28 of 28 checks) |
+| [wan-bgp on VyOS](wan-bgp/README.md#the-same-wan-on-vyos-routers) | Does a VyOS router take that design from phenix at first boot, and behave as the lab did, with WireGuard and with route-based IPsec? | Where the tunnels and BGP run at a site, how they get their configuration, and which tunnel | pass in CI (four VyOS routers; 30 of 30 checks for each tunnel, after one fix to the design) |
 | [multisite-stamp](multisite-stamp/README.md) | Can the plant be stamped out as four sites in one experiment, what does each site mix cost, and how does it sit on a cluster? | How the multi-site variant is generated, sized, and placed on nodes | pass (plantgen needs one line changed; no VM ran) |
+| [site-profiles](site-profiles/README.md) | Can the generator make four sites that differ in size and in how their networks are cut, do they fit in one experiment, and what do they cost? | What each site is, how a site is described to the generator, and where each site runs | pass (all four generate after three kinds of edit to the plant file; no VM ran) |
 
 `wan-bgp/patches/` has a change to phenix that adds a `config` list of VyOS
 commands to the `vrouter` app, as two patches: one for sceptre-phenix `main`

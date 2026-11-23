@@ -26,12 +26,12 @@ python stamp.py --schema ~/sceptre-phenix/schemas
 `stamp.py` does four things and writes `summary.md` and `result.json` under
 `$CM_EVIDENCE_DIR/multisite-stamp` (default `evidence/`):
 
-1. **plantgen.** It writes a `plant.yaml` for a second site (`hc`): every
+1. **plantgen.** It writes a `plant.yaml` for a second site (`fc`): every
    private subnet moved to the site's block, every VLAN alias and hostname
    prefixed. It runs the real plantgen on it for the `ci`, `lite`, and `full`
    variants, then scans the output for names and addresses of the first site.
 2. **Topology.** It stamps the site part of `topology-core.yml` four times
-   (`fr`, `hc`, `ws`, `gc`), checks the merged node list against the three
+   (`fr`, `fc`, `ep`, `cs`), checks the merged node list against the three
    rules a phenix experiment enforces (no duplicate hostname, no duplicate
    address, one VLAN ID per alias), and validates each file against phenix's
    Topology schema.
@@ -50,7 +50,7 @@ python stamp.py --schema ~/sceptre-phenix/schemas
 |---|---|---|
 | Hostname | `fr-plc-cellar` | `<code>-plc-cellar` |
 | VLAN alias | `FR-CTRL` | `<CODE>-CTRL` |
-| IT, OT, BAS, and SOC blocks | `10.10`, `10.20`, `10.30`, `10.40` | second octet plus n: `10.21.10.0/24` is CTRL at `hc` |
+| IT, OT, BAS, and SOC blocks | `10.10`, `10.20`, `10.30`, `10.40` | second octet plus n: `10.21.10.0/24` is CTRL at `fc` |
 | MGMT | `172.16.0.0/16` | `172.(16+n).0.0/16`, its own VLAN |
 | Shared, not stamped | `isp-rtr`, `inet-traffic`, `util-rtr`, `utility-derms`, `vendor-ws`; VLANs INET, VENDOR, UTIL, MIRROR | the same nodes |
 
@@ -84,8 +84,8 @@ The first site keeps the address plan of DESIGN.md §10.2 unchanged.
 | Run | `ci` | `lite` | `full` |
 |---|---|---|---|
 | `plant.yaml` as it is (control) | pass, 12 files | pass, 30 files | pass, 31 files |
-| Site `hc` subnets and VLAN aliases, same hostnames | pass | pass | pass |
-| Site `hc` subnets, VLAN aliases, and hostnames | pass | **fail** | **fail** |
+| Site `fc` subnets and VLAN aliases, same hostnames | pass | pass | pass |
+| Site `fc` subnets, VLAN aliases, and hostnames | pass | **fail** | **fail** |
 | The same, with one lookup changed | not needed | pass | pass |
 
 - **The one failure** is `render.py` line 348: the ground-truth endpoint reads
@@ -94,8 +94,8 @@ The first site keeps the address plan of DESIGN.md §10.2 unchanged.
   `ci` has no ground truth, so it passes unchanged.
 - **The output is the site's own.** The stamped `full` output (31 files) holds
   no hostname and no address of the first site in its configuration. The
-  broker is `hc-sim-ctl` at `172.17.10.1`, and the files are named for the
-  site's hosts (`openplc/hc-plc-cellar/…`, `fuxa/hc-scada-fuxa-tags.json`).
+  broker is `fc-sim-ctl` at `172.17.10.1`, and the files are named for the
+  site's hosts (`openplc/fc-plc-cellar/…`, `fuxa/fc-scada-fuxa-tags.json`).
   82 mentions remain in tag descriptions and Structured Text comments, such
   as "peer status for plc-utilities". They are prose.
 - **Names that are both a host and a kind.** `ews`, `historian`, and `sim-ctl`
@@ -165,16 +165,16 @@ the vendor's remote access (22 VMs, 41 vCPUs, 121 GB).
 | Cluster | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
 |---|---|---|---:|---:|---:|---:|---:|
 | One node | 1 | Everything | 157 | 217 | 421 | 2.26 | 82% |
-| Two nodes | 1 | The shared part, `fr`, `hc` | 89 | 127 | 263 | 1.32 | 51% |
-| | 2 | `ws`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
-| **Three nodes, with the head node** | head node | `ws` | 34 | 45 | 79 | 0.47 | 15% |
+| Two nodes | 1 | The shared part, `fr`, `fc` | 89 | 127 | 263 | 1.32 | 51% |
+| | 2 | `ep`, `cs` | 68 | 90 | 158 | 0.94 | 31% |
+| **Three nodes, with the head node** | head node | `ep` | 34 | 45 | 79 | 0.47 | 15% |
 | | 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
-| | 3 | `hc`, `gc` | 68 | 90 | 158 | 0.94 | 31% |
+| | 3 | `fc`, `cs` | 68 | 90 | 158 | 0.94 | 31% |
 | Four nodes | 1 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
-| | 2, 3, 4 | `hc`, `ws`, `gc`: one each | 34 | 45 | 79 | 0.47 | 15% |
+| | 2, 3, 4 | `fc`, `ep`, `cs`: one each | 34 | 45 | 79 | 0.47 | 15% |
 | Five nodes | 1 | The shared part | 22 | 41 | 121 | 0.43 | 24% |
 | | 2 | `fr` | 33 | 41 | 63 | 0.43 | 12% |
-| | 3, 4, 5 | `hc`, `ws`, `gc`: one each | 34 | 45 | 79 | 0.47 | 15% |
+| | 3, 4, 5 | `fc`, `ep`, `cs`: one each | 34 | 45 | 79 | 0.47 | 15% |
 
 The cluster the range is planned for has three nodes, and its head node runs
 VMs. No node there carries more than one vCPU for each thread, and memory is

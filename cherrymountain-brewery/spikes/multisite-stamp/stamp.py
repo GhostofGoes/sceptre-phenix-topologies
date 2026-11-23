@@ -67,9 +67,9 @@ NODE_MEMORY_GB: int = 512
 # additions, the SOC, and the vendor's remote access.
 CLUSTER: str = "three nodes, with the head node"
 CLUSTER_LAYOUT: dict[str, tuple[str, ...]] = {
-    "head node": ("ws",),
+    "head node": ("ep",),
     "node 2": ("once", "fr"),
-    "node 3": ("hc", "gc"),
+    "node 3": ("fc", "cs"),
 }
 # The single-site workflow, whose VLAN IDs a site keeps, plus 100 for each site after the first.
 WORKFLOW: Path = RANGE / "phenix.yml"
@@ -109,9 +109,9 @@ class Site(BaseModel):
 
 SITES: list[Site] = [
     Site(code="fr", index=0, title="Front Range brewery and head office"),
-    Site(code="hc", index=1, title="High Country brewpub"),
-    Site(code="ws", index=2, title="Western Slope brewery"),
-    Site(code="gc", index=3, title="Gulf Coast brewery"),
+    Site(code="fc", index=1, title="Fort Collins brewpub"),
+    Site(code="ep", index=2, title="Eastern Plains brewery"),
+    Site(code="cs", index=3, title="Colorado Springs brewery"),
 ]
 
 
@@ -516,16 +516,16 @@ def stamp_topologies(result: Result, out: Path, schema_dir: Path | None) -> list
     # what the range has once: the mock internet, the head office's additions,
     # the SOC, and the vendor's remote access.
     once = shared.add(soc_b).add(remote_b)
-    site = {"fr": full, "hc": full.add(sensor), "ws": full.add(sensor), "gc": full.add(sensor)}
+    site = {"fr": full, "fc": full.add(sensor), "ep": full.add(sensor), "cs": full.add(sensor)}
     layouts: dict[str, list[tuple[str, ...]]] = {
-        "one node": [("once", "fr", "hc", "ws", "gc")],
-        "two nodes": [("once", "fr", "hc"), ("ws", "gc")],
+        "one node": [("once", "fr", "fc", "ep", "cs")],
+        "two nodes": [("once", "fr", "fc"), ("ep", "cs")],
         # The cluster the range is planned for: three nodes, and the head node
         # runs VMs. It gets the lightest share, because it also runs phenix
         # and serves the images.
         CLUSTER: [CLUSTER_LAYOUT[name] for name in CLUSTER_LAYOUT],
-        "four nodes, one for each site": [("once", "fr"), ("hc",), ("ws",), ("gc",)],
-        "five nodes, one for each site and one for what the range has once": [("once",), ("fr",), ("hc",), ("ws",), ("gc",)],
+        "four nodes, one for each site": [("once", "fr"), ("fc",), ("ep",), ("cs",)],
+        "five nodes, one for each site and one for what the range has once": [("once",), ("fr",), ("fc",), ("ep",), ("cs",)],
     }  # fmt: skip
     label = {"once": "internet, head office, SOC, vendor access"}
     for title, groups in layouts.items():

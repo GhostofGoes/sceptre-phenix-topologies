@@ -21,38 +21,38 @@ flowchart TB
   SC["shadecast<br/>AS64500"]
   TW["tumbleweed<br/>AS64501"]
   MM["marmot<br/>AS64502"]
-  PC["pelican<br/>AS64503"]
+  BC["bristlecone<br/>AS64503"]
   CBW -->|customer| SC
   CBW -->|customer| TW
-  CBS -->|customer| PC
+  CBS -->|customer| BC
   TW -->|customer| MM
   SC <-.->|peer| TW
   FR["fr-fw-edge<br/>AS64505, 198.18.105.0/24<br/>head office"]
-  HC["hc-fw-edge<br/>AS65020"]
-  WS["ws-fw-edge<br/>AS65030"]
-  GC["gc-fw-edge<br/>AS65040"]
+  FC["fc-fw-edge<br/>AS65020"]
+  EP["ep-fw-edge<br/>AS65030"]
+  CS["cs-fw-edge<br/>AS65040"]
   SC -->|"BGP + BFD"| FR
   TW -->|"BGP + BFD"| FR
-  SC --> HC
-  MM --> HC
-  TW --> WS
-  SC --> WS
-  PC --> GC
-  HC ==>|"hc-a, hc-b"| FR
-  WS ==>|"ws-a, ws-b"| FR
-  GC ==>|"gc-a"| FR
+  SC --> FC
+  MM --> FC
+  TW --> EP
+  SC --> EP
+  BC --> CS
+  FC ==>|"fc-a, fc-b"| FR
+  EP ==>|"ep-a, ep-b"| FR
+  CS ==>|"cs-a"| FR
 ```
 
 **Text alternative to the diagram.** The transit carrier (AS 64496) has two
 routers, `cb-west` and `cb-south`, joined by iBGP. `shadecast` (AS 64500) and
 `tumbleweed` (AS 64501) are customers of `cb-west` and peer with each other.
-`marmot` (AS 64502) is a customer of `tumbleweed`, and `pelican` (AS 64503) of
+`marmot` (AS 64502) is a customer of `tumbleweed`, and `bristlecone` (AS 64503) of
 `cb-south`. The head office's edge, `fr-fw-edge` (AS 64505), announces
 `198.18.105.0/24` to `shadecast` and `tumbleweed` over BGP with BFD.
-`hc-fw-edge` has uplinks to `shadecast` and `marmot`, `ws-fw-edge` to
-`tumbleweed` and `shadecast`, and `gc-fw-edge` to `pelican`. Each site has one
-WireGuard tunnel to the head office for each uplink: `hc-a` and `hc-b`, `ws-a`
-and `ws-b`, and `gc-a`.
+`fc-fw-edge` has uplinks to `shadecast` and `marmot`, `ep-fw-edge` to
+`tumbleweed` and `shadecast`, and `cs-fw-edge` to `bristlecone`. Each site has one
+WireGuard tunnel to the head office for each uplink: `fc-a` and `fc-b`, `ep-a`
+and `ep-b`, and `cs-a`.
 
 - **The ISPs** prefer a customer's route to a peer's, and a peer's to a
   provider's. They tell peers and providers only their own and their
@@ -67,14 +67,14 @@ and `ws-b`, and `gc-a`.
   range announces its blocks ([PLANS.md](../../docs/multisite/PLANS.md)
   section 3); `vyos_sketch.py` writes those. The sites are not copies: the
   brewpub's host is on its one flat plant network (`10.21.10.0/24`), and the
-  Gulf Coast site, which the company bought, has its own address plan
+  Colorado Springs site, which the company bought, has its own address plan
   (`192.168.20.0/24`). The hosts keep the names `<site>-historian`.
 - **The head office's ShadeCast link is a /30** here. In the range it is
   today's INET segment, which also holds the utility's router.
 - **Each tunnel** carries eBGP with BFD (300 ms, three missed). The primary
   tunnel of a site wins by local preference at both ends. Only site prefixes
   cross a tunnel, and only a site's own: the head office takes from each site
-  the blocks of that site (`SITE-HC`, `SITE-WS`, `SITE-GC`), and a site
+  the blocks of that site (`SITE-FC`, `SITE-EP`, `SITE-CS`), and a site
   announces only its own.
 - **Underlay BGP timers** are 3 s keepalive and 9 s hold, not the real default
   of 60 s and 180 s, so that a silent failure in the core ends in seconds.
@@ -150,7 +150,7 @@ site's uplink is set down, to see where its tunnel goes.
   passed all 26 they had. The four runs before those
   had 23 checks, and the design did not yet have the blackhole or the two
   last events. In two of those four, one check failed for a fault of the kit:
-  it left Pelican's blackhole route in place after the hijack.
+  it left Bristlecone's blackhole route in place after the hijack.
 - **Evidence:** [evidence/wan-bgp-netns](evidence/wan-bgp-netns) has the
   summary, the result, and each router's `frr.conf` of the last run of the
   final design. [evidence/wan-bgp-netns-destination](evidence/wan-bgp-netns-destination)
@@ -160,24 +160,24 @@ site's uplink is set down, to see where its tunnel goes.
 
 Longest run of lost pings from each site's host to the head office's, at ten
 pings a second, over the runs of the final design. Every fault is on
-ShadeCast. `hc` has its primary uplink there. `ws` has only its backup there,
-and `gc` is behind Pelican, so in the first three events neither was on the
+ShadeCast. `fc` has its primary uplink there. `ep` has only its backup there,
+and `cs` is behind Bristlecone, so in the first three events neither was on the
 failed path: the transit carrier reached the head office through Tumbleweed,
 which it chose from two equal customer routes.
 
-| Event | `hc` | `ws` | `gc` | What moved |
+| Event | `fc` | `ep` | `cs` | What moved |
 |---|---|---|---|---|
-| ShadeCast drops `hc`'s uplink | 0.8 to 0.9 s | not on the path | not on the path | `hc` to its tunnel over Marmot |
-| ShadeCast drops the head office's uplink | 0.6 to 1.0 s | not on the path | not on the path | ShadeCast reaches the head office through its peer; `hc` uses its backup until then |
-| All of ShadeCast goes dark | 0.8 to 0.9 s | not on the path | not on the path | `hc` to Marmot |
-| All of ShadeCast goes dark, with the transit carrier routing to the head office through it | 0.8 s | not on the path | **8.8 to 9.8 s** | `hc` to Marmot; the transit carrier to Tumbleweed, when its BGP hold timer ran out |
+| ShadeCast drops `fc`'s uplink | 0.8 to 0.9 s | not on the path | not on the path | `fc` to its tunnel over Marmot |
+| ShadeCast drops the head office's uplink | 0.6 to 1.0 s | not on the path | not on the path | ShadeCast reaches the head office through its peer; `fc` uses its backup until then |
+| All of ShadeCast goes dark | 0.8 to 0.9 s | not on the path | not on the path | `fc` to Marmot |
+| All of ShadeCast goes dark, with the transit carrier routing to the head office through it | 0.8 s | not on the path | **8.8 to 9.8 s** | `fc` to Marmot; the transit carrier to Tumbleweed, when its BGP hold timer ran out |
 | Each repair | none | none | none | Back to the primary tunnel and the direct route |
-| The link of `hc`'s ShadeCast uplink set down | not timed | | | `hc` to Marmot; its first tunnel stayed down, and came back 2 s after the link |
+| The link of `fc`'s ShadeCast uplink set down | not timed | | | `fc` to Marmot; its first tunnel stayed down, and came back 2 s after the link |
 
 - **Next to a BFD session, about one second.** The first three outages are
   three BFD intervals of 300 ms. In a VM that has to wait for a CPU, 300 ms is
   too short; with 1 s it would be about 3 s.
-- **Anywhere else, the BGP hold time.** `gc` has one uplink and no part in the
+- **Anywhere else, the BGP hold time.** `cs` has one uplink and no part in the
   fault. It lost the head office for as long as the transit carrier kept
   sending toward a dead ISP: 9 s with the lab's timers, and 180 s with the
   defaults real routers ship with.
@@ -200,7 +200,7 @@ which it chose from two equal customer routes.
    uplink.** The first design gave the head office two endpoint addresses and
    each site a static host route for each, through the uplink that was to
    carry it. `--pin destination` reproduces it.
-   - After one fault and its repair, `hc-a` pointed at `203.0.113.2`, the
+   - After one fault and its repair, `fc-a` pointed at `203.0.113.2`, the
      head office's address on the ShadeCast link, not at `198.18.105.1`. In
      another run it pointed at `198.18.101.2`, its address on the Tumbleweed
      link. WireGuard takes a peer's endpoint from the source address of the
@@ -210,8 +210,8 @@ which it chose from two equal customer routes.
    - The host route no longer matches, so the tunnel follows the site's
      default route. A backup tunnel that drifts ends up on the primary uplink
      and fails with it.
-   - It also hid a fault. In two of three runs `hc` lost nothing when the
-     head office lost its ShadeCast uplink, because `hc-a` had already moved
+   - It also hid a fault. In two of three runs `fc` lost nothing when the
+     head office lost its ShadeCast uplink, because `fc-a` had already moved
      to an address behind Tumbleweed. The same event cost 0.7 to 0.9 s when
      the tunnel had not moved.
    - **The fix** is the default, `--pin mark`. The head office has one
@@ -225,13 +225,13 @@ which it chose from two equal customer routes.
    the uplink. When the uplink's link goes down that route goes too, and the
    lookup falls through to the main table: the tunnel would leave through the
    other uplink. With a blackhole behind the uplink route, the lookup for
-   `hc-a` found no route while the link was down, and `hc` ran on `hc-b`.
-4. **An origin hijack is partial.** `pelican` announced `198.18.105.0/24`.
+   `fc-a` found no route while the link was down, and `fc` ran on `fc-b`.
+4. **An origin hijack is partial.** `bristlecone` announced `198.18.105.0/24`.
    Both transit routers took it, because its path is one AS long against two.
-   `gc`, behind `pelican`, lost the head office. `shadecast` and `tumbleweed`
+   `cs`, behind `bristlecone`, lost the head office. `shadecast` and `tumbleweed`
    kept the route from their customer, which they prefer to any route from a
-   provider, so `hc` and `ws` stayed up. When the announcement was withdrawn,
-   `gc` came back in 3 to 5 s.
+   provider, so `fc` and `ep` stayed up. When the announcement was withdrawn,
+   `cs` came back in 3 to 5 s.
 5. **Ten FRR routers took 0.5 GB.** Resident memory of all routing daemons
    was about 500 MiB: bgpd 175, zebra 133, bfdd 67, wireguard-go 64,
    staticd 60.
@@ -249,10 +249,10 @@ which it chose from two equal customer routes.
    the wrong hands could announce a /24 inside another site's block, and the
    longer prefix would win at the head office. The filter is now a list for
    each site. In the last run the brewpub's edge, with its own export filter
-   opened, announced the Gulf Coast plant network (`192.168.20.0/24`). It
+   opened, announced the Colorado Springs plant network (`192.168.20.0/24`). It
    offered the route on its tunnels, the head office kept its one route
-   through the Gulf Coast tunnel, and the Western Slope host still reached the
-   Gulf Coast host. The ISPs' filter now refuses all private space, not only
+   through the Colorado Springs tunnel, and the Eastern Plains host still reached the
+   Colorado Springs host. The ISPs' filter now refuses all private space, not only
    `10.0.0.0/8`.
 
 ### What the kit did not test
@@ -299,25 +299,25 @@ flowchart LR
   SC["shadecast<br/>AS64500"]
   TW["tumbleweed<br/>AS64501"]
   FR["fr-fw-edge<br/>AS64505, 198.18.105.0/24<br/>head office"]
-  HC["hc-fw-edge<br/>AS65020"]
+  FC["fc-fw-edge<br/>AS65020"]
   FH["fr-historian"]
-  HH["hc-historian"]
+  HH["fc-historian"]
   SC <-.->|peer| TW
   SC -->|"BGP + BFD"| FR
   TW -->|"BGP + BFD"| FR
-  SC --- HC
-  TW --- HC
-  HC ==>|"hc-a, primary<br/>over ShadeCast"| FR
-  HC -.->|"hc-b, backup<br/>over Tumbleweed"| FR
+  SC --- FC
+  TW --- FC
+  FC ==>|"fc-a, primary<br/>over ShadeCast"| FR
+  FC -.->|"fc-b, backup<br/>over Tumbleweed"| FR
   FR --- FH
-  HC --- HH
+  FC --- HH
 ```
 
 **Text alternative to the diagram.** ShadeCast (AS 64500) and Tumbleweed
 (AS 64501) peer. The head office's edge, `fr-fw-edge` (AS 64505), speaks BGP
-with BFD to both. The High Country edge, `hc-fw-edge` (AS 65020), has an
+with BFD to both. The Fort Collins edge, `fc-fw-edge` (AS 65020), has an
 uplink to each with ISP-assigned addresses. It has two tunnels to the head
-office: `hc-a`, the primary, over ShadeCast, and `hc-b`, the backup, over
+office: `fc-a`, the primary, over ShadeCast, and `fc-b`, the backup, over
 Tumbleweed. A host sits behind each edge.
 
 - **It is the lab, reduced.** There is no transit carrier, and Tumbleweed
@@ -412,12 +412,12 @@ office's, over the runs whose faults ran (WireGuard: 25 and 27 to 30; IPsec:
 
 | Event | WireGuard | Route-based IPsec |
 |---|---|---|
-| ShadeCast goes silent toward the site | 2.4, 2.8, 3.0, 2.8, and 2.4 s, then `hc-b` | 2.8, 2.6, 3.0, 2.8, and 3.0 s, then `hc-b` |
+| ShadeCast goes silent toward the site | 2.4, 2.8, 3.0, 2.8, and 2.4 s, then `fc-b` | 2.8, 2.6, 3.0, 2.8, and 3.0 s, then `fc-b` |
 | The repair | none | none |
 | ShadeCast goes silent toward the head office | 2.6, 2.2, 2.2, 2.4, and 2.6 s; ShadeCast then reaches the head office through Tumbleweed | 2.8, 5.4, 2.8, 2.2, and 2.6 s |
 | The repair | none | none |
-| The site's ShadeCast uplink set down, for 20 s and more | No packet of `hc-a` left through the other uplink; back on `hc-a` when the link was | The same |
-| 200 s of silence toward the site, then the repair | Back on `hc-a` 8, 8, 9, and 8 s after the repair. The last handshake was 237 s old | Back on `hc-a` after 36 s and 20 s with both ends opening tunnels, and after 57 s and 59 s with the head office only answering. IKE had given the peer up, and the VTI was down |
+| The site's ShadeCast uplink set down, for 20 s and more | No packet of `fc-a` left through the other uplink; back on `fc-a` when the link was | The same |
+| 200 s of silence toward the site, then the repair | Back on `fc-a` 8, 8, 9, and 8 s after the repair. The last handshake was 237 s old | Back on `fc-a` after 36 s and 20 s with both ends opening tunnels, and after 57 s and 59 s with the head office only answering. IKE had given the peer up, and the VTI was down |
 
 ### Findings on VyOS
 
@@ -461,7 +461,7 @@ office's, over the runs whose faults ran (WireGuard: 25 and 27 to 30; IPsec:
 5. **V5: no endpoint moved, and no tunnel left by the wrong uplink.** After
    every fault each WireGuard endpoint was still `198.18.105.1`. With the
    site's ShadeCast link down, a counter on the other uplink saw none of
-   `hc-a`'s packets, for either tunnel.
+   `fc-a`'s packets, for either tunnel.
 6. **V6: IPsec recovers, slower than WireGuard, and leaves a second SA.** A
    minute of silence does not end an IKE SA: IKEv2 retransmits for about
    165 s first. After 200 s the site had given the peer up and its VTI was
@@ -470,7 +470,7 @@ office's, over the runs whose faults ran (WireGuard: 25 and 27 to 30; IPsec:
    time. How fast depends on who opens tunnels.
    - **Both ends** (runs 27 and 28: one IKE group, with `close-action start`
      and `dead-peer-detection action restart`): back after 36 s and 20 s. In
-     run 27 `hc-a` then had two IKE SAs, one opened from each end, and in run
+     run 27 `fc-a` then had two IKE SAs, one opened from each end, and in run
      28 the one the head office opened.
    - **Only the site** (runs 29 and 30: the head office has `close-action
      none` and `dead-peer-detection action clear`): back after 57 s and 59 s,
@@ -485,10 +485,10 @@ office's, over the runs whose faults ran (WireGuard: 25 and 27 to 30; IPsec:
    and the images repository needs the same change.
 8. **V8: the head office refuses another site's network, on VyOS too.** Run
    30 gave the routers a route filter for each site (finding 8 of the lab).
-   The site's edge then announced `192.168.20.0/24`, a network of the Gulf
-   Coast site, on both of its tunnels, with its own export filter opened in
+   The site's edge then announced `192.168.20.0/24`, a network of the Colorado
+   Springs site, on both of its tunnels, with its own export filter opened in
    FRR. The head office had no path for it in BGP and no route in the kernel,
-   for either kind of tunnel. The reduced lab has no Gulf Coast site, so this
+   for either kind of tunnel. The reduced lab has no Colorado Springs site, so this
    shows the refusal and not that traffic to that site stays where it was;
    the lab in namespaces showed that.
 

@@ -42,7 +42,7 @@ set policy route-map FROM-PROVIDER rule 10 set community replace 64503:3
 set protocols bgp address-family ipv4-unicast network 198.18.103.0/24
 set protocols static route 198.18.103.0/24 blackhole distance 250
 set protocols bgp neighbor 198.18.0.13 remote-as 64496
-set protocols bgp neighbor 198.18.0.13 description 'Continental Backbone, Houston'
+set protocols bgp neighbor 198.18.0.13 description 'Continental Backbone, Colorado Springs'
 set protocols bgp neighbor 198.18.0.13 timers keepalive 3
 set protocols bgp neighbor 198.18.0.13 timers holdtime 9
 set protocols bgp neighbor 198.18.0.13 timers connect 5

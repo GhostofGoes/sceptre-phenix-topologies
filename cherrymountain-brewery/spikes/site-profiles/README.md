@@ -13,7 +13,7 @@ VLAN aliases, the site's number in its addresses).
 
 ## The four sites
 
-| | `fr` Front Range | `ws` Western Slope | `gc` Gulf Coast | `hc` High Country |
+| | `fr` Front Range | `ep` Eastern Plains | `cs` Colorado Springs | `fc` Fort Collins |
 |---|---|---|---|---|
 | What it is | Flagship brewery, taproom, head office | Production brewery | Brewery and taproom, bought from another company | Brewpub |
 | Process areas | All six | All six, without the taproom's rooftop unit | Brewhouse, cellar, packaging, utilities, building | Brewhouse, cellar, utilities, building |
@@ -92,7 +92,7 @@ The seven steps, in order:
 
 ### What plantgen needed
 
-| Step | `fr` | `ws` | `gc` | `hc` |
+| Step | `fr` | `ep` | `cs` | `fc` |
 |---|---|---|---|---|
 | 1. The site as a variant | fail | fail | fail | fail |
 | 2. Clocks | fail | fail | fail | fail |
@@ -108,7 +108,7 @@ The seven steps, in order:
   them at the site's own server to get past the check. A real edge follows a
   server outside the site, so plantgen must learn to accept one.
 - **Snapshot (step 3).** The snapshot's key list names federates. A site
-  without packaging or power needs its own list. `fr` and `ws` did not need
+  without packaging or power needs its own list. `fr` and `ep` did not need
   the step.
 - **Variant names (step 4).** Five federate keys in `plant.yaml` carry
   `variants: [full, lite]`. A variant with another name loses them without a
@@ -121,9 +121,9 @@ The seven steps, in order:
 - **Uplinks (step 6) changed nothing in plantgen's output.** The edge's WAN
   side is in the topology and in the routers' configuration, not in the files
   plantgen writes.
-- **Zones (step 7) changed only the files that hold an address.** At `ws` the
+- **Zones (step 7) changed only the files that hold an address.** At `ep` the
   FUXA project and the utilities PLC's peer read moved to the cell VLANs. At
-  `gc` and `hc` the FUXA projects, the BACnet tables, and the PLCs' Modbus
+  `cs` and `fc` the FUXA projects, the BACnet tables, and the PLCs' Modbus
   files moved to the new subnets. plantgen takes the networks as data: no
   check failed on one firewall, a merged VLAN, or `192.168.0.0/16`.
 
@@ -132,9 +132,9 @@ The seven steps, in order:
 | Site | Hosts | PLCs | Tags | VLANs | VMs | vCPUs | Memory (GB) | With its sensor |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
 | `fr` | 39 | 5 | 516 | 16 | 39 | 62 | 151 | the SOC is here |
-| `ws` | 33 | 5 | 504 | 20 | 33 | 42 | 65 | 34 VMs, 46 vCPUs, 81 GB |
-| `gc` | 25 | 4 | 458 | 9 | 25 | 33 | 53 | 26 VMs, 37 vCPUs, 69 GB |
-| `hc` | 17 | 3 | 365 | 8 | 17 | 21 | 33 | 18 VMs, 25 vCPUs, 49 GB |
+| `ep` | 33 | 5 | 504 | 20 | 33 | 42 | 65 | 34 VMs, 46 vCPUs, 81 GB |
+| `cs` | 25 | 4 | 458 | 9 | 25 | 33 | 53 | 26 VMs, 37 vCPUs, 69 GB |
+| `fc` | 17 | 3 | 365 | 8 | 17 | 21 | 33 | 18 VMs, 25 vCPUs, 49 GB |
 
 `fr`'s count includes the SOC (4 VMs, 18 vCPUs, 84 GB) and the vendor's
 gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
@@ -142,9 +142,9 @@ gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
 | Site | Routed zones | Unrouted |
 |---|---|---|
 | `fr` | CORP, DMZ, OPS, HMI, CTRL, DERLINK, BAS, SOC | 5 field networks, MGMT |
-| `ws` | CORP, DMZ, OPS, HMI, CTRL-BH, CTRL-CEL, CTRL-PKG, CTRL-UTL, CTRL-PWR, DERLINK, BAS, SOC | 5 field networks, MGMT |
-| `gc` | OFFICE, PLANT, BAS | 4 field networks, MGMT |
-| `hc` | OFFICE, PLANT | 3 field networks, MGMT |
+| `ep` | CORP, DMZ, OPS, HMI, CTRL-BH, CTRL-CEL, CTRL-PKG, CTRL-UTL, CTRL-PWR, DERLINK, BAS, SOC | 5 field networks, MGMT |
+| `cs` | OFFICE, PLANT, BAS | 4 field networks, MGMT |
+| `fc` | OFFICE, PLANT | 3 field networks, MGMT |
 
 ### Four sites in one experiment
 
@@ -155,7 +155,7 @@ gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
 | Duplicate addresses | none. Each edge has its own address on each access link |
 | VLAN aliases | 53, and MIRROR |
 | phenix Topology schema | ok, 4 files |
-| Largest router | `ws-fw-ot`, with 11 interfaces |
+| Largest router | `ep-fw-ot`, with 11 interfaces |
 
 ### The whole range
 
@@ -165,9 +165,9 @@ gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
 | The vendor's workstation, on the internet | 1 | 2 | 3 |
 | Head-office additions (fleet historian, corporate server, second office desktop) | 3 | 6 | 12 |
 | `fr` | 39 | 62 | 151 |
-| `ws` and its sensor | 34 | 46 | 81 |
-| `gc` and its sensor | 26 | 37 | 69 |
-| `hc` and its sensor | 18 | 25 | 49 |
+| `ep` and its sensor | 34 | 46 | 81 |
+| `cs` and its sensor | 26 | 37 | 69 |
+| `fc` and its sensor | 18 | 25 | 49 |
 | **All of it** | **133** | **190** | **383** |
 
 Four full plants with a sensor at three of them were 157 VMs, 217 vCPUs, and
@@ -182,15 +182,15 @@ internet, the vendor's workstation, and the head office's additions (16 VMs,
 
 | Layout | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
 |---|---|---|---:|---:|---:|---:|---:|
-| **L1: the head office next to the internet** | head node | `ws` | 34 | 46 | 81 | 0.48 | 16% |
+| **L1: the head office next to the internet** | head node | `ep` | 34 | 46 | 81 | 0.48 | 16% |
 | | 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
-| | 3 | `gc`, `hc` | 44 | 62 | 118 | 0.65 | 23% |
-| L2: the two small sites on the head node | head node | `gc`, `hc` | 44 | 62 | 118 | 0.65 | 23% |
+| | 3 | `cs`, `fc` | 44 | 62 | 118 | 0.65 | 23% |
+| L2: the two small sites on the head node | head node | `cs`, `fc` | 44 | 62 | 118 | 0.65 | 23% |
 | | 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
-| | 3 | `ws` | 34 | 46 | 81 | 0.48 | 16% |
-| L3: the head office alone on a node | head node | The shared part, `gc` | 42 | 57 | 102 | 0.59 | 20% |
+| | 3 | `ep` | 34 | 46 | 81 | 0.48 | 16% |
+| L3: the head office alone on a node | head node | The shared part, `cs` | 42 | 57 | 102 | 0.59 | 20% |
 | | 2 | `fr` | 39 | 62 | 151 | 0.65 | 29% |
-| | 3 | `ws`, `hc` | 52 | 71 | 130 | 0.74 | 25% |
+| | 3 | `ep`, `fc` | 52 | 71 | 130 | 0.74 | 25% |
 
 Every layout keeps each node under one vCPU for each thread. L1 gives the
 head node the least, and it also runs phenix and serves the images. L3 is the
@@ -204,7 +204,7 @@ cluster's own) and gives an ID to each of the 54 VLAN aliases.
 
 - A site keeps the single-site IDs plus 100 for each site after the first. A
   VLAN the single-site plan does not have takes the next ID from 20 up in the
-  site's hundred (`WS-CTRL-BH` is 320, `GC-PLANT` is 421).
+  site's hundred (`EP-CTRL-BH` is 320, `CS-PLANT` is 421).
 - The seven access links take 500 to 506.
 - No ID is given twice, every alias of the site topologies has one, and the
   file validates against phenix's Workflow schema.
@@ -218,15 +218,15 @@ cluster's own) and gives an ID to each of the 54 VLAN aliases.
   the four sites.
 - **Firewall rules.** The kit moves interfaces and addresses. The conduit
   matrix of a site with one firewall, of a flat plant VLAN, and of a VLAN for
-  each cell is not written. At `ws` the utilities PLC's read from the cellar
-  PLC becomes a conduit through `ws-fw-ot`.
+  each cell is not written. At `ep` the utilities PLC's read from the cellar
+  PLC becomes a conduit through `ep-fw-ot`.
 - **Whole areas only.** Every site drops whole process areas, which drops
   whole PLCs. The one unit dropped inside an area is the taproom's rooftop
-  unit at `ws`, which is a BACnet controller with no PLC. A site that drops a
+  unit at `ep`, which is a BACnet controller with no PLC. A site that drops a
   unit inside a PLC's area (a brewpub with two fermenters, a site with a
   generator and no battery) needs a PLC program for that unit list. The
   programs are per PLC today.
-- **The brewpub's SCADA.** `hc` has no building SCADA. Its one SCADA server
+- **The brewpub's SCADA.** `fc` has no building SCADA. Its one SCADA server
   would show the taproom's and the cold room's points too. The kit did not
   add them to its FUXA sources.
 - **The sensor is a stand-in:** a node with a name, a size, and an address. No

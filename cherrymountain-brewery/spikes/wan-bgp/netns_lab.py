@@ -168,7 +168,13 @@ ROUTERS: list[Router] = [
         title="Continental Backbone, Denver",
         originates=["198.18.0.0/24", "198.18.110.0/24"],
     ),
-    Router(name="cb-south", short="cbs", asn=64496, router_id="198.18.0.252", title="Continental Backbone, Houston"),
+    Router(
+        name="cb-south",
+        short="cbs",
+        asn=64496,
+        router_id="198.18.0.252",
+        title="Continental Backbone, Colorado Springs",
+    ),
     Router(
         name="shadecast",
         short="sc",
@@ -194,11 +200,11 @@ ROUTERS: list[Router] = [
         originates=["198.18.102.0/24"],
     ),
     Router(
-        name="pelican",
-        short="pc",
+        name="bristlecone",
+        short="bc",
         asn=64503,
         router_id="198.18.103.254",
-        title="Pelican Coast Broadband",
+        title="Bristlecone Broadband",
         originates=["198.18.103.0/24"],
     ),
     Router(
@@ -212,43 +218,43 @@ ROUTERS: list[Router] = [
         multipath=True,
     ),
     Router(
-        name="hc-fw-edge",
-        short="hc",
+        name="fc-fw-edge",
+        short="fc",
         asn=65020,
         router_id="10.255.2.1",
-        title="High Country brewpub edge",
+        title="Fort Collins brewpub edge",
         public_bgp=False,
     ),
     Router(
-        name="ws-fw-edge",
-        short="ws",
+        name="ep-fw-edge",
+        short="ep",
         asn=65030,
         router_id="10.255.3.1",
-        title="Western Slope brewery edge",
+        title="Eastern Plains brewery edge",
         public_bgp=False,
     ),
     Router(
-        name="gc-fw-edge",
-        short="gc",
+        name="cs-fw-edge",
+        short="cs",
         asn=65040,
         router_id="10.255.4.1",
-        title="Gulf Coast brewery edge",
+        title="Colorado Springs brewery edge",
         public_bgp=False,
     ),
 ]
 
 HQ_PREFIX: str = "198.18.105.0/24"
 HQ_LAN: str = "10.20.30.0/24"
-HC_LAN: str = "10.21.10.0/24"
-GC_LAN: str = "192.168.20.0/24"
+FC_LAN: str = "10.21.10.0/24"
+CS_LAN: str = "192.168.20.0/24"
 
 # The private blocks of each site. The head office takes from a site only what
 # is in that site's blocks, and a site announces only its own.
 SITE_BLOCKS: dict[str, list[str]] = {
     "fr-fw-edge": ["10.10.0.0/16", "10.20.0.0/16", "10.30.0.0/16", "10.40.0.0/16"],
-    "hc-fw-edge": ["10.11.0.0/16", "10.21.0.0/16"],
-    "ws-fw-edge": ["10.12.0.0/16", "10.22.0.0/16", "10.32.0.0/16", "10.42.0.0/16"],
-    "gc-fw-edge": ["192.168.10.0/24", "192.168.20.0/24", "192.168.30.0/24"],
+    "fc-fw-edge": ["10.11.0.0/16", "10.21.0.0/16"],
+    "ep-fw-edge": ["10.12.0.0/16", "10.22.0.0/16", "10.32.0.0/16", "10.42.0.0/16"],
+    "cs-fw-edge": ["192.168.10.0/24", "192.168.20.0/24", "192.168.30.0/24"],
 }
 PRIVATE: tuple[str, ...] = ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
 
@@ -256,7 +262,7 @@ LINKS: list[Link] = [
     Link(a="cb-west", b="cb-south", net="198.18.0.0/30", relation="ibgp"),
     Link(a="cb-west", b="shadecast", net="198.18.0.4/30", relation="customer"),
     Link(a="cb-west", b="tumbleweed", net="198.18.0.8/30", relation="customer"),
-    Link(a="cb-south", b="pelican", net="198.18.0.12/30", relation="customer"),
+    Link(a="cb-south", b="bristlecone", net="198.18.0.12/30", relation="customer"),
     Link(a="shadecast", b="tumbleweed", net="198.18.0.16/30", relation="peer"),
     Link(a="tumbleweed", b="marmot", net="198.18.0.20/30", relation="customer"),
     Link(
@@ -275,27 +281,27 @@ LINKS: list[Link] = [
         customer_prefixes=[HQ_PREFIX],
         bfd=True,
     ),
-    Link(a="shadecast", b="hc-fw-edge", net="203.0.113.8/30", relation="static"),
-    Link(a="marmot", b="hc-fw-edge", net="198.18.102.0/30", relation="static"),
-    Link(a="tumbleweed", b="ws-fw-edge", net="198.18.101.8/30", relation="static"),
-    Link(a="shadecast", b="ws-fw-edge", net="203.0.113.16/30", relation="static"),
-    Link(a="pelican", b="gc-fw-edge", net="198.18.103.0/30", relation="static"),
+    Link(a="shadecast", b="fc-fw-edge", net="203.0.113.8/30", relation="static"),
+    Link(a="marmot", b="fc-fw-edge", net="198.18.102.0/30", relation="static"),
+    Link(a="tumbleweed", b="ep-fw-edge", net="198.18.101.8/30", relation="static"),
+    Link(a="shadecast", b="ep-fw-edge", net="203.0.113.16/30", relation="static"),
+    Link(a="bristlecone", b="cs-fw-edge", net="198.18.103.0/30", relation="static"),
 ]
 
 LANS: list[Lan] = [
     Lan(router="fr-fw-edge", host="fr-historian", net=HQ_LAN),
     # The brewpub has one flat control network, and the site that was bought
     # keeps its own address plan (PLANS.md 4.1). The hosts keep the lab's names.
-    Lan(router="hc-fw-edge", host="hc-historian", net=HC_LAN),
-    Lan(router="ws-fw-edge", host="ws-historian", net="10.22.30.0/24"),
-    Lan(router="gc-fw-edge", host="gc-historian", net=GC_LAN),
+    Lan(router="fc-fw-edge", host="fc-historian", net=FC_LAN),
+    Lan(router="ep-fw-edge", host="ep-historian", net="10.22.30.0/24"),
+    Lan(router="cs-fw-edge", host="cs-historian", net=CS_LAN),
     Lan(router="cb-west", host="inet", net="198.18.110.0/24", advertise_public=True),
 ]
 
 TUNNELS: list[Tunnel] = [
     Tunnel(
-        name="hc-a",
-        site="hc-fw-edge",
+        name="fc-a",
+        site="fc-fw-edge",
         hub="fr-fw-edge",
         via="shadecast",
         hub_endpoint="198.18.105.1",
@@ -304,8 +310,8 @@ TUNNELS: list[Tunnel] = [
         primary=True,
     ),
     Tunnel(
-        name="hc-b",
-        site="hc-fw-edge",
+        name="fc-b",
+        site="fc-fw-edge",
         hub="fr-fw-edge",
         via="marmot",
         hub_endpoint="198.18.105.2",
@@ -314,8 +320,8 @@ TUNNELS: list[Tunnel] = [
         primary=False,
     ),
     Tunnel(
-        name="ws-a",
-        site="ws-fw-edge",
+        name="ep-a",
+        site="ep-fw-edge",
         hub="fr-fw-edge",
         via="tumbleweed",
         hub_endpoint="198.18.105.1",
@@ -324,8 +330,8 @@ TUNNELS: list[Tunnel] = [
         primary=True,
     ),
     Tunnel(
-        name="ws-b",
-        site="ws-fw-edge",
+        name="ep-b",
+        site="ep-fw-edge",
         hub="fr-fw-edge",
         via="shadecast",
         hub_endpoint="198.18.105.2",
@@ -334,10 +340,10 @@ TUNNELS: list[Tunnel] = [
         primary=False,
     ),
     Tunnel(
-        name="gc-a",
-        site="gc-fw-edge",
+        name="cs-a",
+        site="cs-fw-edge",
         hub="fr-fw-edge",
-        via="pelican",
+        via="bristlecone",
         hub_endpoint="198.18.105.1",
         port=51825,
         net="10.255.0.8/31",
@@ -1131,11 +1137,11 @@ def run_checks(mode: str) -> Evidence:
     # The internet: every AS reaches every other AS's prefix, on a valley-free path.
     paths = {
         "cb-south to the head office's prefix": bgp_path("cb-south", HQ_PREFIX),
-        "pelican to the head office's prefix": bgp_path("pelican", HQ_PREFIX),
+        "bristlecone to the head office's prefix": bgp_path("bristlecone", HQ_PREFIX),
         "marmot to ShadeCast's prefix": bgp_path("marmot", "203.0.113.0/24"),
         "shadecast to Tumbleweed's prefix": bgp_path("shadecast", "198.18.101.0/24"),
         "shadecast to Marmot's prefix": bgp_path("shadecast", "198.18.102.0/24"),
-        "tumbleweed to Pelican's prefix": bgp_path("tumbleweed", "198.18.103.0/24"),
+        "tumbleweed to Bristlecone's prefix": bgp_path("tumbleweed", "198.18.103.0/24"),
     }
     for what, path in paths.items():
         facts[f"AS path, {what}"] = path
@@ -1174,7 +1180,7 @@ def run_checks(mode: str) -> Evidence:
     )
     site_routes = {
         name: sorted(p for p, entries in routes(name).items() if entries[0].get("protocol") == "bgp")
-        for name in ("hc-fw-edge", "ws-fw-edge", "gc-fw-edge")
+        for name in ("fc-fw-edge", "ep-fw-edge", "cs-fw-edge")
     }
     check(
         "a site learns only site prefixes over the tunnels (no default, no public route)",
@@ -1192,12 +1198,11 @@ def run_checks(mode: str) -> Evidence:
     check("every site reaches the head office and every other site", all(reach.values()), json.dumps(reach))
     for host in SITE_HOSTS:
         facts[f"path, {host} to fr-historian"] = site_path(host)
-    facts["path, hc-historian to gc-historian"] = " > ".join(traceroute("hc-historian", SITE_HOSTS["gc-historian"]))
+    facts["path, fc-historian to cs-historian"] = " > ".join(traceroute("fc-historian", SITE_HOSTS["cs-historian"]))
     check(
         "site traffic rides the primary tunnel",
-        next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-a"
-        and next_hop_if("fr-fw-edge", HC_LAN) == "wgh-hc-a",
-        f"hc-fw-edge via {next_hop_if('hc-fw-edge', HQ_LAN)}, fr-fw-edge back via {next_hop_if('fr-fw-edge', HC_LAN)}",
+        next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-a" and next_hop_if("fr-fw-edge", FC_LAN) == "wgh-fc-a",
+        f"fc-fw-edge via {next_hop_if('fc-fw-edge', HQ_LAN)}, fr-fw-edge back via {next_hop_if('fr-fw-edge', FC_LAN)}",
     )
     check(
         "a private address is not reachable from the internet side",
@@ -1214,28 +1219,28 @@ def run_checks(mode: str) -> Evidence:
     facts["routing daemons, resident MiB"] = json.dumps(footprint())
     facts["routing daemons, total MiB"] = str(round(sum(footprint().values()), 1))
 
-    # Fault 1: the High Country site's primary uplink dies without a link-down.
-    result = fault("High Country uplink to ShadeCast, silent", "shadecast", ["sc-hc"])
+    # Fault 1: the Fort Collins site's primary uplink dies without a link-down.
+    result = fault("Fort Collins uplink to ShadeCast, silent", "shadecast", ["sc-fc"])
     outages += result
-    hc = next(o for o in result if o.stream.startswith("hc-historian"))
+    fc = next(o for o in result if o.stream.startswith("fc-historian"))
     check(
-        "the High Country site fails over to its second ISP when its ShadeCast uplink goes silent",
-        0 < hc.longest_gap_s <= 3.0 and next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-b",
-        f"outage {hc.longest_gap_s} s, now via {next_hop_if('hc-fw-edge', HQ_LAN)}",
+        "the Fort Collins site fails over to its second ISP when its ShadeCast uplink goes silent",
+        0 < fc.longest_gap_s <= 3.0 and next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-b",
+        f"outage {fc.longest_gap_s} s, now via {next_hop_if('fc-fw-edge', HQ_LAN)}",
     )
     check(
         "the other sites do not notice",
-        all(o.lost == 0 for o in result if not o.stream.startswith("hc-historian")),
-        ", ".join(f"{o.stream}: {o.lost} lost" for o in result if not o.stream.startswith("hc-historian")),
+        all(o.lost == 0 for o in result if not o.stream.startswith("fc-historian")),
+        ", ".join(f"{o.stream}: {o.lost} lost" for o in result if not o.stream.startswith("fc-historian")),
     )
-    result = recover("High Country uplink to ShadeCast, restored", "shadecast")
+    result = recover("Fort Collins uplink to ShadeCast, restored", "shadecast")
     outages += result
-    hc = next(o for o in result if o.stream.startswith("hc-historian"))
+    fc = next(o for o in result if o.stream.startswith("fc-historian"))
     time.sleep(5)
     check(
-        "the High Country site returns to the primary tunnel after the repair",
-        next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-a" and hc.longest_gap_s <= 1.0,
-        f"via {next_hop_if('hc-fw-edge', HQ_LAN)}, outage on the way back {hc.longest_gap_s} s",
+        "the Fort Collins site returns to the primary tunnel after the repair",
+        next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-a" and fc.longest_gap_s <= 1.0,
+        f"via {next_hop_if('fc-fw-edge', HQ_LAN)}, outage on the way back {fc.longest_gap_s} s",
     )
 
     # Fault 2: the head office loses its ShadeCast uplink, silently.
@@ -1251,9 +1256,9 @@ def run_checks(mode: str) -> Evidence:
     check(
         "the fault was real: ShadeCast dropped packets on the head office's link and rerouted through its peer",
         result[0].fault_drops > 0 and bgp_path("shadecast", HQ_PREFIX) == "64501 64505",
-        f"{result[0].fault_drops} packets dropped; High Country underlay {result[0].underlay_before} -> {result[0].underlay_after}",
+        f"{result[0].fault_drops} packets dropped; Fort Collins underlay {result[0].underlay_before} -> {result[0].underlay_after}",
     )
-    facts["path, hc-historian to fr-historian, head office on one ISP"] = site_path("hc-historian")
+    facts["path, fc-historian to fr-historian, head office on one ISP"] = site_path("fc-historian")
     outages += recover("head office uplink to ShadeCast, restored", "shadecast")
     time.sleep(5)
 
@@ -1265,8 +1270,8 @@ def run_checks(mode: str) -> Evidence:
     check(
         "every site keeps the head office through the loss of a whole ISP",
         all(reachable(h, HQ_HOST_ADDRESS, 2) for h in SITE_HOSTS),
-        f"longest outage {worst} s; High Country via {next_hop_if('hc-fw-edge', HQ_LAN)}, "
-        f"Western Slope via {next_hop_if('ws-fw-edge', HQ_LAN)}",
+        f"longest outage {worst} s; Fort Collins via {next_hop_if('fc-fw-edge', HQ_LAN)}, "
+        f"Eastern Plains via {next_hop_if('ep-fw-edge', HQ_LAN)}",
     )
     check(
         "the outage is bounded by the BGP hold time of the ISP core",
@@ -1278,7 +1283,7 @@ def run_checks(mode: str) -> Evidence:
 
     # Fault 4: the same outage, with the transit carrier's route to the head
     # office going through ShadeCast. Until now it went through Tumbleweed (the
-    # two customer routes tie), so the Gulf Coast site was never on the path.
+    # two customer routes tie), so the Colorado Springs site was never on the path.
     wait_converged(60)
     _name, shadecast_address, _own = peer_of(link_of("cb-west", "shadecast"), "cb-west")
     ns("cb-west", "vtysh", "-N", "cb-west", "-c", "configure terminal",
@@ -1293,12 +1298,12 @@ def run_checks(mode: str) -> Evidence:
     through = bgp_path("cb-west", HQ_PREFIX)
     result = fault("ShadeCast outage, the transit carrier routing through it", "shadecast", None, seconds=45.0)
     outages += result
-    gc = next(o for o in result if o.stream.startswith("gc-historian"))
+    cs = next(o for o in result if o.stream.startswith("cs-historian"))
     check(
         "a site whose path crosses the dead ISP in the core waits for the BGP hold timer",
-        through == "64500 64505" and BFD_INTERVAL_MS * BFD_MULTIPLIER / 1000 < gc.longest_gap_s <= CORE_HOLD_S + 3,
-        f"cb-west reached the head office over {through!r}; Gulf Coast lost {gc.longest_gap_s} s "
-        f"against a {CORE_HOLD_S} s hold time; underlay {gc.underlay_before} -> {gc.underlay_after}",
+        through == "64500 64505" and BFD_INTERVAL_MS * BFD_MULTIPLIER / 1000 < cs.longest_gap_s <= CORE_HOLD_S + 3,
+        f"cb-west reached the head office over {through!r}; Colorado Springs lost {cs.longest_gap_s} s "
+        f"against a {CORE_HOLD_S} s hold time; underlay {cs.underlay_before} -> {cs.underlay_after}",
     )
     outages += recover("ShadeCast outage, restored again", "shadecast", seconds=35.0)
     ns("cb-west", "vtysh", "-N", "cb-west", "-c", "configure terminal",
@@ -1309,30 +1314,28 @@ def run_checks(mode: str) -> Evidence:
     time.sleep(8)
 
     if PIN == PIN_MARK:
-        # A loud fault: the link of High Country's ShadeCast uplink goes down,
+        # A loud fault: the link of Fort Collins's ShadeCast uplink goes down,
         # and the route of the tunnel's table goes with it.
         wait_converged(60)
-        uplink = link_of("hc-fw-edge", "shadecast").ifname("hc-fw-edge")
-        tunnel = next(t for t in TUNNELS if t.name == "hc-a")
-        ns("hc-fw-edge", "ip", "link", "set", uplink, "down")
+        uplink = link_of("fc-fw-edge", "shadecast").ifname("fc-fw-edge")
+        tunnel = next(t for t in TUNNELS if t.name == "fc-a")
+        ns("fc-fw-edge", "ip", "link", "set", uplink, "down")
         time.sleep(6)
-        lookup = ns("hc-fw-edge", "ip", "route", "get", HUB_ENDPOINT, "mark", str(tunnel.mark()), check=False)
+        lookup = ns("fc-fw-edge", "ip", "route", "get", HUB_ENDPOINT, "mark", str(tunnel.mark()), check=False)
         stayed = "dev" not in lookup or f"dev {uplink}" in lookup
         check(
             "with its uplink's link down, a tunnel does not move to the other uplink",
-            stayed
-            and next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-b"
-            and reachable("hc-historian", HQ_HOST_ADDRESS),
-            f"lookup for hc-a: {' '.join(lookup.split()) or 'no route (blackhole)'}; "
-            f"traffic via {next_hop_if('hc-fw-edge', HQ_LAN)}",
+            stayed and next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-b" and reachable("fc-historian", HQ_HOST_ADDRESS),
+            f"lookup for fc-a: {' '.join(lookup.split()) or 'no route (blackhole)'}; "
+            f"traffic via {next_hop_if('fc-fw-edge', HQ_LAN)}",
         )
-        ns("hc-fw-edge", "ip", "link", "set", uplink, "up")
+        ns("fc-fw-edge", "ip", "link", "set", uplink, "up")
         started = time.monotonic()
-        while time.monotonic() - started < 60 and next_hop_if("hc-fw-edge", HQ_LAN) != "wgs-hc-a":
+        while time.monotonic() - started < 60 and next_hop_if("fc-fw-edge", HQ_LAN) != "wgs-fc-a":
             time.sleep(1)
         check(
             "the tunnel returns when the link does",
-            next_hop_if("hc-fw-edge", HQ_LAN) == "wgs-hc-a",
+            next_hop_if("fc-fw-edge", HQ_LAN) == "wgs-fc-a",
             f"after {time.monotonic() - started:.0f} s",
         )
 
@@ -1366,43 +1369,45 @@ def run_checks(mode: str) -> Evidence:
                     + ns(name, "wg", "show")
                 )
 
-    # Scenario: the brewpub's edge announces the plant network of the Gulf Coast
+    # Scenario: the brewpub's edge announces the plant network of the Colorado Springs
     # site, as an edge that somebody else controls could. Its own export filter
     # is opened first, so that what stops the route is the head office's filter.
-    gc_tunnel = next(tunnel for tunnel in TUNNELS if tunnel.site == "gc-fw-edge")
-    hc_peers = sorted(tunnel.site_address() for tunnel in TUNNELS if tunnel.site == "hc-fw-edge")
-    before_paths = bgp_paths("fr-fw-edge", GC_LAN)
-    ns("hc-fw-edge", "vtysh", "-N", "hc-fw-edge", "-c", "configure terminal",
-       "-c", f"ip route {GC_LAN} blackhole",
-       "-c", f"ip prefix-list SITE-HC seq 90 permit {GC_LAN}",
-       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast", "-c", f"network {GC_LAN}")  # fmt: skip
+    cs_tunnel = next(tunnel for tunnel in TUNNELS if tunnel.site == "cs-fw-edge")
+    fc_peers = sorted(tunnel.site_address() for tunnel in TUNNELS if tunnel.site == "fc-fw-edge")
+    before_paths = bgp_paths("fr-fw-edge", CS_LAN)
+    ns("fc-fw-edge", "vtysh", "-N", "fc-fw-edge", "-c", "configure terminal",
+       "-c", f"ip route {CS_LAN} blackhole",
+       "-c", f"ip prefix-list SITE-FC seq 90 permit {CS_LAN}",
+       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast", "-c", f"network {CS_LAN}")  # fmt: skip
     time.sleep(10)
-    sent = vtysh_json("hc-fw-edge", f"show bgp ipv4 unicast neighbors {TUNNELS[0].hub_address()} advertised-routes json")
-    offered = GC_LAN in sent.get("advertisedRoutes", {})
-    after_paths = bgp_paths("fr-fw-edge", GC_LAN)
+    sent = vtysh_json(
+        "fc-fw-edge", f"show bgp ipv4 unicast neighbors {TUNNELS[0].hub_address()} advertised-routes json"
+    )
+    offered = CS_LAN in sent.get("advertisedRoutes", {})
+    after_paths = bgp_paths("fr-fw-edge", CS_LAN)
     facts["foreign prefix, the head office's paths before"] = json.dumps(before_paths)
     facts["foreign prefix, the head office's paths after"] = json.dumps(after_paths)
     check(
         "the head office refuses another site's network when a site announces it",
         offered
-        and after_paths == [gc_tunnel.site_address()]
-        and not set(after_paths) & set(hc_peers)
-        and next_hop_if("fr-fw-edge", GC_LAN) == gc_tunnel.hub_if()
-        and reachable("ws-historian", SITE_HOSTS["gc-historian"], 2),
-        f"hc-fw-edge offered {GC_LAN}: {offered}; the head office holds it from {', '.join(after_paths)} "
-        f"(the Gulf Coast tunnel is {gc_tunnel.site_address()}), next hop {next_hop_if('fr-fw-edge', GC_LAN)}; "
-        f"ws-historian still reaches gc-historian",
+        and after_paths == [cs_tunnel.site_address()]
+        and not set(after_paths) & set(fc_peers)
+        and next_hop_if("fr-fw-edge", CS_LAN) == cs_tunnel.hub_if()
+        and reachable("ep-historian", SITE_HOSTS["cs-historian"], 2),
+        f"fc-fw-edge offered {CS_LAN}: {offered}; the head office holds it from {', '.join(after_paths)} "
+        f"(the Colorado Springs tunnel is {cs_tunnel.site_address()}), next hop {next_hop_if('fr-fw-edge', CS_LAN)}; "
+        f"ep-historian still reaches cs-historian",
     )
-    ns("hc-fw-edge", "vtysh", "-N", "hc-fw-edge", "-c", "configure terminal",
-       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast", "-c", f"no network {GC_LAN}",
+    ns("fc-fw-edge", "vtysh", "-N", "fc-fw-edge", "-c", "configure terminal",
+       "-c", "router bgp 65020", "-c", "address-family ipv4 unicast", "-c", f"no network {CS_LAN}",
        "-c", "exit", "-c", "exit",
-       "-c", f"no ip route {GC_LAN} blackhole",
-       "-c", "no ip prefix-list SITE-HC seq 90")  # fmt: skip
+       "-c", f"no ip route {CS_LAN} blackhole",
+       "-c", "no ip prefix-list SITE-FC seq 90")  # fmt: skip
     time.sleep(5)
 
-    # Scenario: Pelican announces the head office's prefix (an origin hijack).
+    # Scenario: Bristlecone announces the head office's prefix (an origin hijack).
     before = {name: bgp_path(name, HQ_PREFIX) for name in ("cb-west", "cb-south", "shadecast", "tumbleweed")}
-    ns("pelican", "vtysh", "-N", "pelican", "-c", "configure terminal",
+    ns("bristlecone", "vtysh", "-N", "bristlecone", "-c", "configure terminal",
        "-c", f"ip route {HQ_PREFIX} blackhole",
        "-c", f"ip prefix-list OWN seq 50 permit {HQ_PREFIX}",
        "-c", "router bgp 64503", "-c", "address-family ipv4 unicast", "-c", f"network {HQ_PREFIX}")  # fmt: skip
@@ -1412,27 +1417,27 @@ def run_checks(mode: str) -> Evidence:
     facts["hijack, AS path to the head office's prefix after"] = json.dumps(after)
     hijack_reach = {host: reachable(host, HQ_HOST_ADDRESS, 2) for host in SITE_HOSTS}
     check(
-        "an origin hijack by Pelican takes the transit carrier's traffic and cuts off the site behind Pelican",
-        after["cb-south"] == "64503" and not hijack_reach["gc-historian"],
+        "an origin hijack by Bristlecone takes the transit carrier's traffic and cuts off the site behind Bristlecone",
+        after["cb-south"] == "64503" and not hijack_reach["cs-historian"],
         f"paths {json.dumps(after)}; reach {json.dumps(hijack_reach)}",
     )
     check(
         "the head office's own ISPs still prefer their customer route, so their sites stay up",
-        after["shadecast"] == "64505" and hijack_reach["hc-historian"] and hijack_reach["ws-historian"],
+        after["shadecast"] == "64505" and hijack_reach["fc-historian"] and hijack_reach["ep-historian"],
         f"shadecast {after['shadecast']!r}, tumbleweed {after['tumbleweed']!r}",
     )
-    ns("pelican", "vtysh", "-N", "pelican", "-c", "configure terminal",
+    ns("bristlecone", "vtysh", "-N", "bristlecone", "-c", "configure terminal",
        "-c", "router bgp 64503", "-c", "address-family ipv4 unicast", "-c", f"no network {HQ_PREFIX}",
        "-c", "exit", "-c", "exit",
        "-c", f"no ip route {HQ_PREFIX} blackhole",
        "-c", "no ip prefix-list OWN seq 50")  # fmt: skip
     started = time.monotonic()
-    while time.monotonic() - started < 90 and not reachable("gc-historian", HQ_HOST_ADDRESS, 2):
+    while time.monotonic() - started < 90 and not reachable("cs-historian", HQ_HOST_ADDRESS, 2):
         time.sleep(1)
     took = time.monotonic() - started
     check(
-        "the site behind Pelican comes back when the announcement is withdrawn",
-        reachable("gc-historian", HQ_HOST_ADDRESS),
+        "the site behind Bristlecone comes back when the announcement is withdrawn",
+        reachable("cs-historian", HQ_HOST_ADDRESS),
         f"after {took:.0f} s; cb-south path {bgp_path('cb-south', HQ_PREFIX)!r}",
     )
 

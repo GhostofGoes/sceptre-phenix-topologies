@@ -6,12 +6,12 @@
       "detail": "12 files generated"
     },
     {
-      "name": "ci: site hc subnets and VLAN aliases, same hostnames",
+      "name": "ci: site fc subnets and VLAN aliases, same hostnames",
       "passed": true,
       "detail": "12 files generated"
     },
     {
-      "name": "ci: site hc subnets, VLAN aliases, and hostnames",
+      "name": "ci: site fc subnets, VLAN aliases, and hostnames",
       "passed": true,
       "detail": "12 files generated; no first-site hostname or address in the configuration of 12 files"
     },
@@ -21,12 +21,12 @@
       "detail": "30 files generated"
     },
     {
-      "name": "lite: site hc subnets and VLAN aliases, same hostnames",
+      "name": "lite: site fc subnets and VLAN aliases, same hostnames",
       "passed": true,
       "detail": "30 files generated"
     },
     {
-      "name": "lite: site hc subnets, VLAN aliases, and hostnames",
+      "name": "lite: site fc subnets, VLAN aliases, and hostnames",
       "passed": false,
       "detail": "plantgen/render.py, line 348, in helics_doc: KeyError: 'sim-ctl'"
     },
@@ -41,12 +41,12 @@
       "detail": "31 files generated"
     },
     {
-      "name": "full: site hc subnets and VLAN aliases, same hostnames",
+      "name": "full: site fc subnets and VLAN aliases, same hostnames",
       "passed": true,
       "detail": "31 files generated"
     },
     {
-      "name": "full: site hc subnets, VLAN aliases, and hostnames",
+      "name": "full: site fc subnets, VLAN aliases, and hostnames",
       "passed": false,
       "detail": "plantgen/render.py, line 348, in helics_doc: KeyError: 'sim-ctl'"
     },
@@ -66,9 +66,9 @@
     "VLAN aliases in the four sites": 57,
     "longest hostname": "fr-bas-rtu-taproom (18 characters; phenix allows 63)",
     "subnets of fr": "10.10.10.0/24, 10.10.20.0/24, 10.20.10.0/24, 10.20.11.0/24, 10.20.12.0/24, 10.20.13.0/24, 10.20.14.0/24, 10.20.15.0/24, 10.20.16.0/24, 10.20.20.0/24, 10.20.30.0/24, 10.30.10.0/24, 10.40.10.0/24, 172.16.0.0/16, 203.0.113.0/24",
-    "subnets of hc": "10.11.10.0/24, 10.11.20.0/24, 10.21.10.0/24, 10.21.11.0/24, 10.21.12.0/24, 10.21.13.0/24, 10.21.14.0/24, 10.21.15.0/24, 10.21.16.0/24, 10.21.20.0/24, 10.21.30.0/24, 10.31.10.0/24, 10.41.10.0/24, 172.17.0.0/16, 203.0.113.0/24",
-    "subnets of ws": "10.12.10.0/24, 10.12.20.0/24, 10.22.10.0/24, 10.22.11.0/24, 10.22.12.0/24, 10.22.13.0/24, 10.22.14.0/24, 10.22.15.0/24, 10.22.16.0/24, 10.22.20.0/24, 10.22.30.0/24, 10.32.10.0/24, 10.42.10.0/24, 172.18.0.0/16, 203.0.113.0/24",
-    "subnets of gc": "10.13.10.0/24, 10.13.20.0/24, 10.23.10.0/24, 10.23.11.0/24, 10.23.12.0/24, 10.23.13.0/24, 10.23.14.0/24, 10.23.15.0/24, 10.23.16.0/24, 10.23.20.0/24, 10.23.30.0/24, 10.33.10.0/24, 10.43.10.0/24, 172.19.0.0/16, 203.0.113.0/24",
+    "subnets of fc": "10.11.10.0/24, 10.11.20.0/24, 10.21.10.0/24, 10.21.11.0/24, 10.21.12.0/24, 10.21.13.0/24, 10.21.14.0/24, 10.21.15.0/24, 10.21.16.0/24, 10.21.20.0/24, 10.21.30.0/24, 10.31.10.0/24, 10.41.10.0/24, 172.17.0.0/16, 203.0.113.0/24",
+    "subnets of ep": "10.12.10.0/24, 10.12.20.0/24, 10.22.10.0/24, 10.22.11.0/24, 10.22.12.0/24, 10.22.13.0/24, 10.22.14.0/24, 10.22.15.0/24, 10.22.16.0/24, 10.22.20.0/24, 10.22.30.0/24, 10.32.10.0/24, 10.42.10.0/24, 172.18.0.0/16, 203.0.113.0/24",
+    "subnets of cs": "10.13.10.0/24, 10.13.20.0/24, 10.23.10.0/24, 10.23.11.0/24, 10.23.12.0/24, 10.23.13.0/24, 10.23.14.0/24, 10.23.15.0/24, 10.23.16.0/24, 10.23.20.0/24, 10.23.30.0/24, 10.33.10.0/24, 10.43.10.0/24, 172.19.0.0/16, 203.0.113.0/24",
     "phenix Topology schema": "ok (4 files)"
   },
   "budgets": {
@@ -154,7 +154,7 @@
     {
       "title": "one node",
       "nodes": {
-        "node 1": "internet, head office, SOC, vendor access; site fr; site hc; site ws; site gc"
+        "node 1": "internet, head office, SOC, vendor access; site fr; site fc; site ep; site cs"
       },
       "cost": {
         "node 1": {
@@ -167,8 +167,8 @@
     {
       "title": "two nodes",
       "nodes": {
-        "node 1": "internet, head office, SOC, vendor access; site fr; site hc",
-        "node 2": "site ws; site gc"
+        "node 1": "internet, head office, SOC, vendor access; site fr; site fc",
+        "node 2": "site ep; site cs"
       },
       "cost": {
         "node 1": {
@@ -186,9 +186,9 @@
     {
       "title": "three nodes, with the head node",
       "nodes": {
-        "head node": "site ws",
+        "head node": "site ep",
         "node 2": "internet, head office, SOC, vendor access; site fr",
-        "node 3": "site hc; site gc"
+        "node 3": "site fc; site cs"
       },
       "cost": {
         "head node": {
@@ -212,9 +212,9 @@
       "title": "four nodes, one for each site",
       "nodes": {
         "node 1": "internet, head office, SOC, vendor access; site fr",
-        "node 2": "site hc",
-        "node 3": "site ws",
-        "node 4": "site gc"
+        "node 2": "site fc",
+        "node 3": "site ep",
+        "node 4": "site cs"
       },
       "cost": {
         "node 1": {
@@ -244,9 +244,9 @@
       "nodes": {
         "node 1": "internet, head office, SOC, vendor access",
         "node 2": "site fr",
-        "node 3": "site hc",
-        "node 4": "site ws",
-        "node 5": "site gc"
+        "node 3": "site fc",
+        "node 4": "site ep",
+        "node 5": "site cs"
       },
       "cost": {
         "node 1": {

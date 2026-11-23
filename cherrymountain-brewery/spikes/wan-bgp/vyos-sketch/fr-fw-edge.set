@@ -25,72 +25,72 @@ set policy prefix-list SITE-FR rule 40 le 24
 set policy prefix-list SITE-NETS rule 40 action permit
 set policy prefix-list SITE-NETS rule 40 prefix 10.40.0.0/16
 set policy prefix-list SITE-NETS rule 40 le 24
-set policy prefix-list SITE-GC rule 10 action permit
-set policy prefix-list SITE-GC rule 10 prefix 192.168.10.0/24
+set policy prefix-list SITE-CS rule 10 action permit
+set policy prefix-list SITE-CS rule 10 prefix 192.168.10.0/24
 set policy prefix-list SITE-NETS rule 50 action permit
 set policy prefix-list SITE-NETS rule 50 prefix 192.168.10.0/24
-set policy prefix-list SITE-GC rule 20 action permit
-set policy prefix-list SITE-GC rule 20 prefix 192.168.20.0/24
+set policy prefix-list SITE-CS rule 20 action permit
+set policy prefix-list SITE-CS rule 20 prefix 192.168.20.0/24
 set policy prefix-list SITE-NETS rule 60 action permit
 set policy prefix-list SITE-NETS rule 60 prefix 192.168.20.0/24
-set policy prefix-list SITE-GC rule 30 action permit
-set policy prefix-list SITE-GC rule 30 prefix 192.168.30.0/24
+set policy prefix-list SITE-CS rule 30 action permit
+set policy prefix-list SITE-CS rule 30 prefix 192.168.30.0/24
 set policy prefix-list SITE-NETS rule 70 action permit
 set policy prefix-list SITE-NETS rule 70 prefix 192.168.30.0/24
-set policy prefix-list SITE-HC rule 10 action permit
-set policy prefix-list SITE-HC rule 10 prefix 10.11.0.0/16
-set policy prefix-list SITE-HC rule 10 le 24
+set policy prefix-list SITE-EP rule 10 action permit
+set policy prefix-list SITE-EP rule 10 prefix 10.12.0.0/16
+set policy prefix-list SITE-EP rule 10 le 24
 set policy prefix-list SITE-NETS rule 80 action permit
-set policy prefix-list SITE-NETS rule 80 prefix 10.11.0.0/16
+set policy prefix-list SITE-NETS rule 80 prefix 10.12.0.0/16
 set policy prefix-list SITE-NETS rule 80 le 24
-set policy prefix-list SITE-HC rule 20 action permit
-set policy prefix-list SITE-HC rule 20 prefix 10.21.0.0/16
-set policy prefix-list SITE-HC rule 20 le 24
+set policy prefix-list SITE-EP rule 20 action permit
+set policy prefix-list SITE-EP rule 20 prefix 10.22.0.0/16
+set policy prefix-list SITE-EP rule 20 le 24
 set policy prefix-list SITE-NETS rule 90 action permit
-set policy prefix-list SITE-NETS rule 90 prefix 10.21.0.0/16
+set policy prefix-list SITE-NETS rule 90 prefix 10.22.0.0/16
 set policy prefix-list SITE-NETS rule 90 le 24
-set policy prefix-list SITE-WS rule 10 action permit
-set policy prefix-list SITE-WS rule 10 prefix 10.12.0.0/16
-set policy prefix-list SITE-WS rule 10 le 24
+set policy prefix-list SITE-EP rule 30 action permit
+set policy prefix-list SITE-EP rule 30 prefix 10.32.0.0/16
+set policy prefix-list SITE-EP rule 30 le 24
 set policy prefix-list SITE-NETS rule 100 action permit
-set policy prefix-list SITE-NETS rule 100 prefix 10.12.0.0/16
+set policy prefix-list SITE-NETS rule 100 prefix 10.32.0.0/16
 set policy prefix-list SITE-NETS rule 100 le 24
-set policy prefix-list SITE-WS rule 20 action permit
-set policy prefix-list SITE-WS rule 20 prefix 10.22.0.0/16
-set policy prefix-list SITE-WS rule 20 le 24
+set policy prefix-list SITE-EP rule 40 action permit
+set policy prefix-list SITE-EP rule 40 prefix 10.42.0.0/16
+set policy prefix-list SITE-EP rule 40 le 24
 set policy prefix-list SITE-NETS rule 110 action permit
-set policy prefix-list SITE-NETS rule 110 prefix 10.22.0.0/16
+set policy prefix-list SITE-NETS rule 110 prefix 10.42.0.0/16
 set policy prefix-list SITE-NETS rule 110 le 24
-set policy prefix-list SITE-WS rule 30 action permit
-set policy prefix-list SITE-WS rule 30 prefix 10.32.0.0/16
-set policy prefix-list SITE-WS rule 30 le 24
+set policy prefix-list SITE-FC rule 10 action permit
+set policy prefix-list SITE-FC rule 10 prefix 10.11.0.0/16
+set policy prefix-list SITE-FC rule 10 le 24
 set policy prefix-list SITE-NETS rule 120 action permit
-set policy prefix-list SITE-NETS rule 120 prefix 10.32.0.0/16
+set policy prefix-list SITE-NETS rule 120 prefix 10.11.0.0/16
 set policy prefix-list SITE-NETS rule 120 le 24
-set policy prefix-list SITE-WS rule 40 action permit
-set policy prefix-list SITE-WS rule 40 prefix 10.42.0.0/16
-set policy prefix-list SITE-WS rule 40 le 24
+set policy prefix-list SITE-FC rule 20 action permit
+set policy prefix-list SITE-FC rule 20 prefix 10.21.0.0/16
+set policy prefix-list SITE-FC rule 20 le 24
 set policy prefix-list SITE-NETS rule 130 action permit
-set policy prefix-list SITE-NETS rule 130 prefix 10.42.0.0/16
+set policy prefix-list SITE-NETS rule 130 prefix 10.21.0.0/16
 set policy prefix-list SITE-NETS rule 130 le 24
-set policy route-map OVERLAY-PRIMARY-GC rule 10 action permit
-set policy route-map OVERLAY-PRIMARY-GC rule 10 match ip address prefix-list SITE-GC
-set policy route-map OVERLAY-PRIMARY-GC rule 10 set local-preference 200
-set policy route-map OVERLAY-BACKUP-GC rule 10 action permit
-set policy route-map OVERLAY-BACKUP-GC rule 10 match ip address prefix-list SITE-GC
-set policy route-map OVERLAY-BACKUP-GC rule 10 set local-preference 100
-set policy route-map OVERLAY-PRIMARY-HC rule 10 action permit
-set policy route-map OVERLAY-PRIMARY-HC rule 10 match ip address prefix-list SITE-HC
-set policy route-map OVERLAY-PRIMARY-HC rule 10 set local-preference 200
-set policy route-map OVERLAY-BACKUP-HC rule 10 action permit
-set policy route-map OVERLAY-BACKUP-HC rule 10 match ip address prefix-list SITE-HC
-set policy route-map OVERLAY-BACKUP-HC rule 10 set local-preference 100
-set policy route-map OVERLAY-PRIMARY-WS rule 10 action permit
-set policy route-map OVERLAY-PRIMARY-WS rule 10 match ip address prefix-list SITE-WS
-set policy route-map OVERLAY-PRIMARY-WS rule 10 set local-preference 200
-set policy route-map OVERLAY-BACKUP-WS rule 10 action permit
-set policy route-map OVERLAY-BACKUP-WS rule 10 match ip address prefix-list SITE-WS
-set policy route-map OVERLAY-BACKUP-WS rule 10 set local-preference 100
+set policy route-map OVERLAY-PRIMARY-CS rule 10 action permit
+set policy route-map OVERLAY-PRIMARY-CS rule 10 match ip address prefix-list SITE-CS
+set policy route-map OVERLAY-PRIMARY-CS rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP-CS rule 10 action permit
+set policy route-map OVERLAY-BACKUP-CS rule 10 match ip address prefix-list SITE-CS
+set policy route-map OVERLAY-BACKUP-CS rule 10 set local-preference 100
+set policy route-map OVERLAY-PRIMARY-EP rule 10 action permit
+set policy route-map OVERLAY-PRIMARY-EP rule 10 match ip address prefix-list SITE-EP
+set policy route-map OVERLAY-PRIMARY-EP rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP-EP rule 10 action permit
+set policy route-map OVERLAY-BACKUP-EP rule 10 match ip address prefix-list SITE-EP
+set policy route-map OVERLAY-BACKUP-EP rule 10 set local-preference 100
+set policy route-map OVERLAY-PRIMARY-FC rule 10 action permit
+set policy route-map OVERLAY-PRIMARY-FC rule 10 match ip address prefix-list SITE-FC
+set policy route-map OVERLAY-PRIMARY-FC rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP-FC rule 10 action permit
+set policy route-map OVERLAY-BACKUP-FC rule 10 match ip address prefix-list SITE-FC
+set policy route-map OVERLAY-BACKUP-FC rule 10 set local-preference 100
 set policy route-map OVERLAY-OUT rule 10 action permit
 set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
 set protocols bgp system-as 64505
@@ -136,73 +136,73 @@ set protocols bgp neighbor 198.18.101.1 bfd profile WAN
 set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map import DEFAULT-ONLY
 set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map export OWN-ONLY
 set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast soft-reconfiguration inbound
-set interfaces wireguard wg101 description 'hc-a over ShadeCast Cable'
+set interfaces wireguard wg101 description 'fc-a over ShadeCast Cable'
 set interfaces wireguard wg101 address 10.255.0.0/31
 set interfaces wireguard wg101 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
-set interfaces wireguard wg101 peer hc-a public-key 'PUBLIC-KEY-OF-THE-PEER'
-set interfaces wireguard wg101 peer hc-a allowed-ips 0.0.0.0/0
+set interfaces wireguard wg101 peer fc-a public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg101 peer fc-a allowed-ips 0.0.0.0/0
 set interfaces wireguard wg101 port 51821
 set protocols bgp neighbor 10.255.0.1 remote-as 65020
-set protocols bgp neighbor 10.255.0.1 description 'overlay hc-a'
+set protocols bgp neighbor 10.255.0.1 description 'overlay fc-a'
 set protocols bgp neighbor 10.255.0.1 timers keepalive 3
 set protocols bgp neighbor 10.255.0.1 timers holdtime 9
 set protocols bgp neighbor 10.255.0.1 timers connect 5
 set protocols bgp neighbor 10.255.0.1 bfd profile WAN
-set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-HC
+set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-FC
 set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map export OVERLAY-OUT
-set interfaces wireguard wg102 description 'hc-b over Marmot Wireless'
+set interfaces wireguard wg102 description 'fc-b over Marmot Wireless'
 set interfaces wireguard wg102 address 10.255.0.2/31
 set interfaces wireguard wg102 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
-set interfaces wireguard wg102 peer hc-b public-key 'PUBLIC-KEY-OF-THE-PEER'
-set interfaces wireguard wg102 peer hc-b allowed-ips 0.0.0.0/0
+set interfaces wireguard wg102 peer fc-b public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg102 peer fc-b allowed-ips 0.0.0.0/0
 set interfaces wireguard wg102 port 51822
 set protocols bgp neighbor 10.255.0.3 remote-as 65020
-set protocols bgp neighbor 10.255.0.3 description 'overlay hc-b'
+set protocols bgp neighbor 10.255.0.3 description 'overlay fc-b'
 set protocols bgp neighbor 10.255.0.3 timers keepalive 3
 set protocols bgp neighbor 10.255.0.3 timers holdtime 9
 set protocols bgp neighbor 10.255.0.3 timers connect 5
 set protocols bgp neighbor 10.255.0.3 bfd profile WAN
-set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map import OVERLAY-BACKUP-HC
+set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map import OVERLAY-BACKUP-FC
 set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map export OVERLAY-OUT
-set interfaces wireguard wg103 description 'ws-a over Tumbleweed Fiber'
+set interfaces wireguard wg103 description 'ep-a over Tumbleweed Fiber'
 set interfaces wireguard wg103 address 10.255.0.4/31
 set interfaces wireguard wg103 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
-set interfaces wireguard wg103 peer ws-a public-key 'PUBLIC-KEY-OF-THE-PEER'
-set interfaces wireguard wg103 peer ws-a allowed-ips 0.0.0.0/0
+set interfaces wireguard wg103 peer ep-a public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg103 peer ep-a allowed-ips 0.0.0.0/0
 set interfaces wireguard wg103 port 51823
 set protocols bgp neighbor 10.255.0.5 remote-as 65030
-set protocols bgp neighbor 10.255.0.5 description 'overlay ws-a'
+set protocols bgp neighbor 10.255.0.5 description 'overlay ep-a'
 set protocols bgp neighbor 10.255.0.5 timers keepalive 3
 set protocols bgp neighbor 10.255.0.5 timers holdtime 9
 set protocols bgp neighbor 10.255.0.5 timers connect 5
 set protocols bgp neighbor 10.255.0.5 bfd profile WAN
-set protocols bgp neighbor 10.255.0.5 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-WS
+set protocols bgp neighbor 10.255.0.5 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-EP
 set protocols bgp neighbor 10.255.0.5 address-family ipv4-unicast route-map export OVERLAY-OUT
-set interfaces wireguard wg104 description 'ws-b over ShadeCast Cable'
+set interfaces wireguard wg104 description 'ep-b over ShadeCast Cable'
 set interfaces wireguard wg104 address 10.255.0.6/31
 set interfaces wireguard wg104 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
-set interfaces wireguard wg104 peer ws-b public-key 'PUBLIC-KEY-OF-THE-PEER'
-set interfaces wireguard wg104 peer ws-b allowed-ips 0.0.0.0/0
+set interfaces wireguard wg104 peer ep-b public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg104 peer ep-b allowed-ips 0.0.0.0/0
 set interfaces wireguard wg104 port 51824
 set protocols bgp neighbor 10.255.0.7 remote-as 65030
-set protocols bgp neighbor 10.255.0.7 description 'overlay ws-b'
+set protocols bgp neighbor 10.255.0.7 description 'overlay ep-b'
 set protocols bgp neighbor 10.255.0.7 timers keepalive 3
 set protocols bgp neighbor 10.255.0.7 timers holdtime 9
 set protocols bgp neighbor 10.255.0.7 timers connect 5
 set protocols bgp neighbor 10.255.0.7 bfd profile WAN
-set protocols bgp neighbor 10.255.0.7 address-family ipv4-unicast route-map import OVERLAY-BACKUP-WS
+set protocols bgp neighbor 10.255.0.7 address-family ipv4-unicast route-map import OVERLAY-BACKUP-EP
 set protocols bgp neighbor 10.255.0.7 address-family ipv4-unicast route-map export OVERLAY-OUT
-set interfaces wireguard wg105 description 'gc-a over Pelican Coast Broadband'
+set interfaces wireguard wg105 description 'cs-a over Bristlecone Broadband'
 set interfaces wireguard wg105 address 10.255.0.8/31
 set interfaces wireguard wg105 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
-set interfaces wireguard wg105 peer gc-a public-key 'PUBLIC-KEY-OF-THE-PEER'
-set interfaces wireguard wg105 peer gc-a allowed-ips 0.0.0.0/0
+set interfaces wireguard wg105 peer cs-a public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg105 peer cs-a allowed-ips 0.0.0.0/0
 set interfaces wireguard wg105 port 51825
 set protocols bgp neighbor 10.255.0.9 remote-as 65040
-set protocols bgp neighbor 10.255.0.9 description 'overlay gc-a'
+set protocols bgp neighbor 10.255.0.9 description 'overlay cs-a'
 set protocols bgp neighbor 10.255.0.9 timers keepalive 3
 set protocols bgp neighbor 10.255.0.9 timers holdtime 9
 set protocols bgp neighbor 10.255.0.9 timers connect 5
 set protocols bgp neighbor 10.255.0.9 bfd profile WAN
-set protocols bgp neighbor 10.255.0.9 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-GC
+set protocols bgp neighbor 10.255.0.9 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-CS
 set protocols bgp neighbor 10.255.0.9 address-family ipv4-unicast route-map export OVERLAY-OUT

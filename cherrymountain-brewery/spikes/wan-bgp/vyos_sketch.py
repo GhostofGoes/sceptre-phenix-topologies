@@ -53,18 +53,18 @@ def tunnel_if(kind: str, tunnel: lab.Tunnel) -> str:
 def reduce_lab() -> None:
     """Shrink the lab's model to what a GitHub runner boots as VMs.
 
-    Two ISPs that peer, the head office on both, and the High Country site on
+    Two ISPs that peer, the head office on both, and the Fort Collins site on
     both. Tumbleweed stands in for Marmot as the site's second ISP, so there is
     no transit carrier and no third ISP.
     """
-    keep = ("shadecast", "tumbleweed", "fr-fw-edge", "hc-fw-edge")
+    keep = ("shadecast", "tumbleweed", "fr-fw-edge", "fc-fw-edge")
     lab.ROUTERS[:] = [router for router in lab.ROUTERS if router.name in keep]
     lab.BY_NAME.clear()
     lab.BY_NAME.update({router.name: router for router in lab.ROUTERS})
     lab.LINKS[:] = [link for link in lab.LINKS if link.a in keep and link.b in keep]
-    lab.LINKS.append(lab.Link(a="tumbleweed", b="hc-fw-edge", net="198.18.101.8/30", relation="static"))
+    lab.LINKS.append(lab.Link(a="tumbleweed", b="fc-fw-edge", net="198.18.101.8/30", relation="static"))
     tunnels = {tunnel.name: tunnel for tunnel in lab.TUNNELS}
-    lab.TUNNELS[:] = [tunnels["hc-a"], tunnels["hc-b"].model_copy(update={"via": "tumbleweed"})]
+    lab.TUNNELS[:] = [tunnels["fc-a"], tunnels["fc-b"].model_copy(update={"via": "tumbleweed"})]
     lab.LANS[:] = [lan for lan in lab.LANS if lan.router in keep]
 
 

@@ -177,7 +177,6 @@ PROFILES: list[Profile] = [
         drop_hosts=(
             "fw-ot",
             "ot-svc",
-            "historian",
             "ews",
             "hmi-packaging",
             "bas-bbmd",

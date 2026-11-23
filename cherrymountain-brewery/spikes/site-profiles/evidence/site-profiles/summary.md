@@ -57,7 +57,7 @@
 | `fr` | 39 | 5 | 516 | 16 | 39 | 62 | 151 | none |
 | `ep` | 33 | 5 | 504 | 20 | 33 | 42 | 65 | 34, 46, 81 |
 | `cs` | 25 | 4 | 458 | 9 | 25 | 33 | 53 | 26, 37, 69 |
-| `fc` | 17 | 3 | 365 | 8 | 17 | 21 | 33 | 18, 25, 49 |
+| `fc` | 18 | 3 | 365 | 8 | 18 | 23 | 39 | 19, 27, 55 |
 
 ## VLANs of each site
 
@@ -73,7 +73,7 @@
 | Item | Value |
 |---|---|
 | site topology files | 4 |
-| nodes in the four sites | 117 |
+| nodes in the four sites | 118 |
 | duplicate hostnames | [] |
 | duplicate addresses | [] |
 | VLAN aliases in the four sites | 53 |
@@ -93,10 +93,10 @@
 | site `fr`, with its sensor if it has one | 39 | 62 | 151 |
 | site `ep`, with its sensor if it has one | 34 | 46 | 81 |
 | site `cs`, with its sensor if it has one | 26 | 37 | 69 |
-| site `fc`, with its sensor if it has one | 18 | 25 | 49 |
-| **all of it** | 133 | 190 | 383 |
+| site `fc`, with its sensor if it has one | 19 | 27 | 55 |
+| **all of it** | 134 | 192 | 389 |
 
-All of it on one node would be 1.98 vCPUs per thread and 75% of its memory.
+All of it on one node would be 2.00 vCPUs per thread and 76% of its memory.
 
 ## On three nodes of 48 cores, 96 threads, and 512 GB
 
@@ -104,21 +104,21 @@ All of it on one node would be 1.98 vCPUs per thread and 75% of its memory.
 |---|---|---|---:|---:|---:|---:|---:|
 | L1: the head office apart | head node | site ep | 34 | 46 | 81 | 0.48 | 16% |
 | L1: the head office apart | node 2 | internet, vendor, head office additions; site fr | 55 | 82 | 184 | 0.85 | 36% |
-| L1: the head office apart | node 3 | site cs; site fc | 44 | 62 | 118 | 0.65 | 23% |
-| L2: the two small sites on the head node | head node | site cs; site fc | 44 | 62 | 118 | 0.65 | 23% |
+| L1: the head office apart | node 3 | site cs; site fc | 45 | 64 | 124 | 0.67 | 24% |
+| L2: the two small sites on the head node | head node | site cs; site fc | 45 | 64 | 124 | 0.67 | 24% |
 | L2: the two small sites on the head node | node 2 | internet, vendor, head office additions; site fr | 55 | 82 | 184 | 0.85 | 36% |
 | L2: the two small sites on the head node | node 3 | site ep | 34 | 46 | 81 | 0.48 | 16% |
 | L3: the head office alone on a node | head node | internet, vendor, head office additions; site cs | 42 | 57 | 102 | 0.59 | 20% |
 | L3: the head office alone on a node | node 2 | site fr | 39 | 62 | 151 | 0.65 | 29% |
-| L3: the head office alone on a node | node 3 | site ep; site fc | 52 | 71 | 130 | 0.74 | 25% |
+| L3: the head office alone on a node | node 3 | site ep; site fc | 53 | 73 | 136 | 0.76 | 27% |
 
 ## A workflow that pins each site to a node
 
 | Item | Value |
 |---|---|
 | layout | L1: the head office apart |
-| VMs with a node in `schedules` | 117 |
-| VMs for each node | {"head-node": 34, "node-2": 39, "node-3": 44} |
+| VMs with a node in `schedules` | 118 |
+| VMs for each node | {"head-node": 34, "node-2": 39, "node-3": 45} |
 | VLAN aliases with an ID | 54 |
 | VLAN IDs given twice | [] |
 | aliases of the site topologies without an ID | [] |

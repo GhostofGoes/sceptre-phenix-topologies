@@ -21,7 +21,7 @@ VLAN aliases, the site's number in its addresses).
 | Firewalls | 2, with a DMZ between them | 2, with a DMZ and its own jump host | 1 | 1 |
 | Control network | One VLAN for the PLCs | One VLAN for each process cell: 5 | One flat plant VLAN: PLCs, HMIs, SCADA, historian, EWS | One flat plant VLAN, with the building controllers on it too |
 | Address plan | The company's | The company's | Its own, `192.168.0.0/16` | The company's |
-| Historian and EWS on site | Both | Both | Both | Neither |
+| Historian and EWS on site | Both | Both | Both | A historian; no EWS |
 | Uplinks | 2 | 2 | 1 | 2 |
 
 ## Prerequisites
@@ -134,7 +134,7 @@ The seven steps, in order:
 | `fr` | 39 | 5 | 516 | 16 | 39 | 62 | 151 | the SOC is here |
 | `ep` | 33 | 5 | 504 | 20 | 33 | 42 | 65 | 34 VMs, 46 vCPUs, 81 GB |
 | `cs` | 25 | 4 | 458 | 9 | 25 | 33 | 53 | 26 VMs, 37 vCPUs, 69 GB |
-| `fc` | 17 | 3 | 365 | 8 | 17 | 21 | 33 | 18 VMs, 25 vCPUs, 49 GB |
+| `fc` | 18 | 3 | 365 | 8 | 18 | 23 | 39 | 19 VMs, 27 vCPUs, 55 GB |
 
 `fr`'s count includes the SOC (4 VMs, 18 vCPUs, 84 GB) and the vendor's
 gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
@@ -150,7 +150,7 @@ gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
 
 | Item | Value |
 |---|---|
-| Nodes in the four site files | 117 (39, 34, 26, and 18) |
+| Nodes in the four site files | 118 (39, 34, 26, and 19) |
 | Duplicate hostnames | none |
 | Duplicate addresses | none. Each edge has its own address on each access link |
 | VLAN aliases | 53, and MIRROR |
@@ -167,12 +167,12 @@ gateway and jump host. A sensor is 4 vCPUs and 16 GB, an estimate.
 | `fr` | 39 | 62 | 151 |
 | `ep` and its sensor | 34 | 46 | 81 |
 | `cs` and its sensor | 26 | 37 | 69 |
-| `fc` and its sensor | 18 | 25 | 49 |
-| **All of it** | **133** | **190** | **383** |
+| `fc` and its sensor | 19 | 27 | 55 |
+| **All of it** | **134** | **192** | **389** |
 
 Four full plants with a sensor at three of them were 157 VMs, 217 vCPUs, and
-421 GB (mix M2 of the stamp spike). On one node this range would be 1.98
-vCPUs for each thread and 75% of the memory.
+421 GB (mix M2 of the stamp spike). On one node this range would be 2.00
+vCPUs for each thread and 76% of the memory.
 
 ### On the three-node cluster
 
@@ -184,13 +184,13 @@ internet, the vendor's workstation, and the head office's additions (16 VMs,
 |---|---|---|---:|---:|---:|---:|---:|
 | **L1: the head office next to the internet** | head node | `ep` | 34 | 46 | 81 | 0.48 | 16% |
 | | 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
-| | 3 | `cs`, `fc` | 44 | 62 | 118 | 0.65 | 23% |
-| L2: the two small sites on the head node | head node | `cs`, `fc` | 44 | 62 | 118 | 0.65 | 23% |
+| | 3 | `cs`, `fc` | 45 | 64 | 124 | 0.67 | 24% |
+| L2: the two small sites on the head node | head node | `cs`, `fc` | 45 | 64 | 124 | 0.67 | 24% |
 | | 2 | The shared part, `fr` | 55 | 82 | 184 | 0.85 | 36% |
 | | 3 | `ep` | 34 | 46 | 81 | 0.48 | 16% |
 | L3: the head office alone on a node | head node | The shared part, `cs` | 42 | 57 | 102 | 0.59 | 20% |
 | | 2 | `fr` | 39 | 62 | 151 | 0.65 | 29% |
-| | 3 | `ep`, `fc` | 52 | 71 | 130 | 0.74 | 25% |
+| | 3 | `ep`, `fc` | 53 | 73 | 136 | 0.76 | 27% |
 
 Every layout keeps each node under one vCPU for each thread. L1 gives the
 head node the least, and it also runs phenix and serves the images. L3 is the
@@ -198,8 +198,8 @@ most even. The kit writes the workflow for L1.
 
 ### A workflow that pins each site to a node
 
-`phenix-fleet.yml` names a node for each of the 117 site VMs (34 on
-`head-node`, 39 on `node-2`, 44 on `node-3`; the names stand in for the
+`phenix-fleet.yml` names a node for each of the 118 site VMs (34 on
+`head-node`, 39 on `node-2`, 45 on `node-3`; the names stand in for the
 cluster's own) and gives an ID to each of the 54 VLAN aliases.
 
 - A site keeps the single-site IDs plus 100 for each site after the first. A

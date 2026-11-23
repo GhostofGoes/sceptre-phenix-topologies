@@ -257,7 +257,7 @@
         }
       ],
       "generated": "",
-      "hosts": 17,
+      "hosts": 18,
       "plcs": 3,
       "tags": 365,
       "vlans": [
@@ -271,20 +271,20 @@
         "FC-WAN-B"
       ],
       "budget": {
-        "vms": 17,
-        "vcpus": 21,
-        "memory_mb": 33792
+        "vms": 18,
+        "vcpus": 23,
+        "memory_mb": 39936
       },
       "with_sensor": {
-        "vms": 18,
-        "vcpus": 25,
-        "memory_mb": 50176
+        "vms": 19,
+        "vcpus": 27,
+        "memory_mb": 56320
       }
     }
   ],
   "merge": {
     "site topology files": 4,
-    "nodes in the four sites": 117,
+    "nodes in the four sites": 118,
     "duplicate hostnames": [],
     "duplicate addresses": [],
     "VLAN aliases in the four sites": 53,
@@ -312,9 +312,9 @@
     }
   },
   "total": {
-    "vms": 133,
-    "vcpus": 190,
-    "memory_mb": 392192
+    "vms": 134,
+    "vcpus": 192,
+    "memory_mb": 398336
   },
   "placements": [
     {
@@ -336,9 +336,9 @@
           "memory_mb": 188416
         },
         "node 3": {
-          "vms": 44,
-          "vcpus": 62,
-          "memory_mb": 120832
+          "vms": 45,
+          "vcpus": 64,
+          "memory_mb": 126976
         }
       }
     },
@@ -351,9 +351,9 @@
       },
       "cost": {
         "head node": {
-          "vms": 44,
-          "vcpus": 62,
-          "memory_mb": 120832
+          "vms": 45,
+          "vcpus": 64,
+          "memory_mb": 126976
         },
         "node 2": {
           "vms": 55,
@@ -386,17 +386,17 @@
           "memory_mb": 154624
         },
         "node 3": {
-          "vms": 52,
-          "vcpus": 71,
-          "memory_mb": 133120
+          "vms": 53,
+          "vcpus": 73,
+          "memory_mb": 139264
         }
       }
     }
   ],
   "cluster": {
     "layout": "L1: the head office apart",
-    "VMs with a node in `schedules`": 117,
-    "VMs for each node": "{\"head-node\": 34, \"node-2\": 39, \"node-3\": 44}",
+    "VMs with a node in `schedules`": 118,
+    "VMs for each node": "{\"head-node\": 34, \"node-2\": 39, \"node-3\": 45}",
     "VLAN aliases with an ID": 54,
     "VLAN IDs given twice": [],
     "aliases of the site topologies without an ID": [],

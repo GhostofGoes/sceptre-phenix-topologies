@@ -327,7 +327,8 @@ Tumbleweed. A host sits behind each edge.
   are the `config` list of the patched `vrouter` app ([patches](patches), and
   the draft pull request
   [GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27)):
-  59 commands for an ISP, 66 to 119 for a site edge. `vyos_sketch.py` writes them
+  65 commands for an ISP, 96 to 151 for a site edge (59, and 66 to 119, before
+  the route filters were a list for each site). `vyos_sketch.py` writes them
   from the lab's model. The job applies the patch for the fork's
   `ci-e2e-minimega` to phenix before it builds it.
 - **Two jobs, one for each tunnel.** `CM_TUNNEL=wireguard`, and
@@ -351,7 +352,8 @@ configuration and before the commit. Each router committed it at first boot
 names those VyOS refuses). Every BGP session is up. The head office has a
 default route through each ISP, with its endpoint as the source. Each tunnel
 leaves through its own uplink. A host at the site reaches a host at the head
-office through the primary tunnel. Then the faults, each with a ping five
+office through the primary tunnel. The site's edge announces a network of
+another site, and the head office does not take it. Then the faults, each with a ping five
 times a second: ShadeCast silent toward the site, ShadeCast silent toward the
 head office, the site's uplink set down, and 200 s of silence.
 
@@ -365,6 +367,8 @@ head office, the site's uplink set down, and 200 s of silence.
       back without loss.
 - [x] The same with a VTI in place of WireGuard, and the VTI comes back after
       its peer was given up.
+- [x] The head office refuses a network of another site when the site's edge
+      announces it.
 
 ### Result on VyOS
 
@@ -373,18 +377,21 @@ head office, the site's uplink set down, and 200 s of silence.
   for it: the head office keeps the routes its ISPs send (finding V3).
 - **Run:** [run 27](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45072901676),
   [run 28](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45075247853),
-  and [run 29](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45082278191)
-  of the workflow, on `test-wan-bgp-vyos` at `3ffff8b`, `86a9d07`, and
-  `3966f5b`: both jobs passed all 29 checks in each. Run 29 had the patch as
-  it is in the pull request, a head office that only answers IKE, and a newer
-  VyOS (999.202611222329). For runs 27 and 28: VyOS 999.202611222040 (rolling, built in the run from vyos-build
+  [run 29](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45082278191),
+  and [run 30](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45092312260)
+  of the workflow, on `test-wan-bgp-vyos` at `3ffff8b`, `86a9d07`,
+  `3966f5b`, and `119e1b4`: both jobs passed every check in each, 29 in runs
+  27 to 29 and 30 in run 30. Run 29 had the patch as it is in the pull
+  request, a head office that only answers IKE, and a newer VyOS
+  (999.202611222329). Run 30 had the route filters as a list for each site
+  and the check of finding V8. For runs 27 and 28: VyOS 999.202611222040 (rolling, built in the run from vyos-build
   `91ccaca`), kernel 6.18.64 with WireGuard in the tree, FRR 10.7.1,
   strongSwan as VyOS ships it; phenix `ci-e2e-minimega` at `afbcba7` with the
   patch; minimega 3.3.0 at `66ed1aa`.
 - **Evidence:** [evidence/wan-bgp-vyos-wireguard](evidence/wan-bgp-vyos-wireguard)
   and [evidence/wan-bgp-vyos-vti](evidence/wan-bgp-vyos-vti) have the summary,
   the result, and the script phenix rendered for each router, with the keys
-  removed, from run 29.
+  removed, from run 30.
 
 | Run | Commit | WireGuard job | IPsec job |
 |---|---|---|---|
@@ -393,31 +400,32 @@ head office, the site's uplink set down, and 200 s of silence.
 | [27](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45072901676) | `3ffff8b`, with finding V3's setting | 29 of 29 | 29 of 29 |
 | [28](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45075247853) | `86a9d07`, the same code | 29 of 29 | 29 of 29 |
 | [29](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45082278191) | `3966f5b`: the pull request's patch, and a head office that only answers IKE | 29 of 29 | 29 of 29 |
+| [30](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45092312260) | `119e1b4`: a route filter for each site, and a site that announces another site's network | 30 of 30 | 30 of 30 |
 
 Run 26 was cancelled to make room for run 27. Runs 22 and 23 never built the
 VyOS image (finding V7).
 
 **Outages**, as the longest run of lost pings from the site's host to the head
-office's, over the runs whose faults ran (WireGuard: 25 and 27 to 29; IPsec:
-24 and 27 to 29; the 200 s silence and the packet count are from runs 27 to
-29).
+office's, over the runs whose faults ran (WireGuard: 25 and 27 to 30; IPsec:
+24 and 27 to 30; the 200 s silence and the packet count are from runs 27 to
+30).
 
 | Event | WireGuard | Route-based IPsec |
 |---|---|---|
-| ShadeCast goes silent toward the site | 2.4, 2.8, 3.0, and 2.8 s, then `hc-b` | 2.8, 2.6, 3.0, and 2.8 s, then `hc-b` |
+| ShadeCast goes silent toward the site | 2.4, 2.8, 3.0, 2.8, and 2.4 s, then `hc-b` | 2.8, 2.6, 3.0, 2.8, and 3.0 s, then `hc-b` |
 | The repair | none | none |
-| ShadeCast goes silent toward the head office | 2.6, 2.2, 2.2, and 2.4 s; ShadeCast then reaches the head office through Tumbleweed | 2.8, 5.4, 2.8, and 2.2 s |
+| ShadeCast goes silent toward the head office | 2.6, 2.2, 2.2, 2.4, and 2.6 s; ShadeCast then reaches the head office through Tumbleweed | 2.8, 5.4, 2.8, 2.2, and 2.6 s |
 | The repair | none | none |
 | The site's ShadeCast uplink set down, for 20 s and more | No packet of `hc-a` left through the other uplink; back on `hc-a` when the link was | The same |
-| 200 s of silence toward the site, then the repair | Back on `hc-a` 8, 8, and 9 s after the repair. The last handshake was 237 s old | Back on `hc-a` after 36 s and 20 s with both ends opening tunnels, and after 57 s with the head office only answering. IKE had given the peer up, and the VTI was down |
+| 200 s of silence toward the site, then the repair | Back on `hc-a` 8, 8, 9, and 8 s after the repair. The last handshake was 237 s old | Back on `hc-a` after 36 s and 20 s with both ends opening tunnels, and after 57 s and 59 s with the head office only answering. IKE had given the peer up, and the VTI was down |
 
 ### Findings on VyOS
 
-1. **V1: phenix's `config` list works.** All 40 router boots of the five runs
+1. **V1: phenix's `config` list works.** All 48 router boots of the six runs
    committed the rendered script at first boot, and VyOS refused no line of
    it. A commit took 15 to 51 s on the runner.
 2. **V2: three seconds next to a fault, as the timers say.** With BFD at 1 s
-   and three missed, the site lost 2.2 to 3.0 s in fifteen of sixteen faults
+   and three missed, the site lost 2.2 to 3.0 s in nineteen of twenty faults
    and 5.4 s in one. Every repair cost nothing. The lab's one second was its
    300 ms interval.
 3. **V3: the head office must keep the routes its ISPs send.** In three of
@@ -443,9 +451,9 @@ office's, over the runs whose faults ran (WireGuard: 25 and 27 to 29; IPsec:
      counters and the source.
    - **The fix.** `soft-reconfiguration inbound` on the head office's two ISP
      neighbors. The head office then applies a new policy to the routes it has
-     stored and asks the ISPs for nothing. Runs 27 to 29 have it, and all
-     six jobs passed. Without it the fault showed in three jobs of four, so
-     six passes are strong evidence and not proof.
+     stored and asks the ISPs for nothing. Runs 27 to 30 have it, and all
+     eight jobs passed. Without it the fault showed in three jobs of four, so
+     eight passes are strong evidence and not proof.
 4. **V4: the kernel's WireGuard came up with one default route.** In run 24
    the head office had only Tumbleweed's default route, and both tunnels
    still shook hands, the one over ShadeCast too. Finding 1 belongs to
@@ -464,31 +472,39 @@ office's, over the runs whose faults ran (WireGuard: 25 and 27 to 29; IPsec:
      and `dead-peer-detection action restart`): back after 36 s and 20 s. In
      run 27 `hc-a` then had two IKE SAs, one opened from each end, and in run
      28 the one the head office opened.
-   - **Only the site** (run 29: the head office has `close-action none` and
-     `dead-peer-detection action clear`): back after 57 s, with one IKE SA.
-     The site was between two tries when the repair came. The sketch has
+   - **Only the site** (runs 29 and 30: the head office has `close-action
+     none` and `dead-peer-detection action clear`): back after 57 s and 59 s,
+     with one IKE SA. The site was between two tries when the repair came. The sketch has
      this now, because one SA for a tunnel is the plainer state.
-   - WireGuard was back after 8 or 9 s each time.
+   - WireGuard was back after 8 or 9 s each time, four times.
 7. **V7: the VyOS image no longer builds without a change.** vyos-build now
    names the kernel package `linux-image-<version>-<revision>-vyos`. The
    images repository's `build-vyos.sh` looks for `linux-image-<version>-vyos`,
    finds nothing, and then asks for a package that does not exist. Runs 22
    and 23 failed there. `spikes/ci/build_image.sh` now patches the script,
    and the images repository needs the same change.
+8. **V8: the head office refuses another site's network, on VyOS too.** Run
+   30 gave the routers a route filter for each site (finding 8 of the lab).
+   The site's edge then announced `192.168.20.0/24`, a network of the Gulf
+   Coast site, on both of its tunnels, with its own export filter opened in
+   FRR. The head office had no path for it in BGP and no route in the kernel,
+   for either kind of tunnel. The reduced lab has no Gulf Coast site, so this
+   shows the refusal and not that traffic to that site stays where it was;
+   the lab in namespaces showed that.
 
 ### What the VyOS runs did not test
 
 - **The whole internet.** Four routers, not ten: no transit carrier, no third
   ISP, and one site. The nine-second outage of a site off the fault, and the
   hijack, are the lab's.
-- **The first seconds of a start, in a debug log.** Six jobs passed with
+- **The first seconds of a start, in a debug log.** Eight jobs passed with
   finding V3's setting. The order of FRR's messages without it is still
   inferred.
 - **The site's firewall.** These routers have no rulesets, no NAT, and none of
   what `cm-vyos-config.sh` adds. Rules on a tunnel interface are not written.
 - **One vCPU.** The range gives a router 1 vCPU; these had 2.
 - **A faster return for IPsec.** The 57 s of finding V6 is the site's own
-  retry schedule, which nothing here tunes. It ran once.
+  retry schedule, which nothing here tunes. It ran twice.
 - **phenix `main`.** The patch for `main` is the draft pull request. Its
   tests pass in phenix's CI, and it did not run a router here: the job uses
   the fork branch the range pins.

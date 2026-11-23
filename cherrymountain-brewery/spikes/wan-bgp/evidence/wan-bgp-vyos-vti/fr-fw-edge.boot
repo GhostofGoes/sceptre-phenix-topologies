@@ -23,16 +23,48 @@ set system host-name fr-fw-edge
 set protocols bfd profile WAN interval transmit 1000
 set protocols bfd profile WAN interval receive 1000
 set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list SITE-FR rule 10 action permit
+set policy prefix-list SITE-FR rule 10 prefix 10.10.0.0/16
+set policy prefix-list SITE-FR rule 10 le 24
 set policy prefix-list SITE-NETS rule 10 action permit
-set policy prefix-list SITE-NETS rule 10 prefix 10.0.0.0/8
-set policy prefix-list SITE-NETS rule 10 ge 16
+set policy prefix-list SITE-NETS rule 10 prefix 10.10.0.0/16
 set policy prefix-list SITE-NETS rule 10 le 24
-set policy route-map OVERLAY-PRIMARY rule 10 action permit
-set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
-set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
-set policy route-map OVERLAY-BACKUP rule 10 action permit
-set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
-set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
+set policy prefix-list SITE-FR rule 20 action permit
+set policy prefix-list SITE-FR rule 20 prefix 10.20.0.0/16
+set policy prefix-list SITE-FR rule 20 le 24
+set policy prefix-list SITE-NETS rule 20 action permit
+set policy prefix-list SITE-NETS rule 20 prefix 10.20.0.0/16
+set policy prefix-list SITE-NETS rule 20 le 24
+set policy prefix-list SITE-FR rule 30 action permit
+set policy prefix-list SITE-FR rule 30 prefix 10.30.0.0/16
+set policy prefix-list SITE-FR rule 30 le 24
+set policy prefix-list SITE-NETS rule 30 action permit
+set policy prefix-list SITE-NETS rule 30 prefix 10.30.0.0/16
+set policy prefix-list SITE-NETS rule 30 le 24
+set policy prefix-list SITE-FR rule 40 action permit
+set policy prefix-list SITE-FR rule 40 prefix 10.40.0.0/16
+set policy prefix-list SITE-FR rule 40 le 24
+set policy prefix-list SITE-NETS rule 40 action permit
+set policy prefix-list SITE-NETS rule 40 prefix 10.40.0.0/16
+set policy prefix-list SITE-NETS rule 40 le 24
+set policy prefix-list SITE-HC rule 10 action permit
+set policy prefix-list SITE-HC rule 10 prefix 10.11.0.0/16
+set policy prefix-list SITE-HC rule 10 le 24
+set policy prefix-list SITE-NETS rule 50 action permit
+set policy prefix-list SITE-NETS rule 50 prefix 10.11.0.0/16
+set policy prefix-list SITE-NETS rule 50 le 24
+set policy prefix-list SITE-HC rule 20 action permit
+set policy prefix-list SITE-HC rule 20 prefix 10.21.0.0/16
+set policy prefix-list SITE-HC rule 20 le 24
+set policy prefix-list SITE-NETS rule 60 action permit
+set policy prefix-list SITE-NETS rule 60 prefix 10.21.0.0/16
+set policy prefix-list SITE-NETS rule 60 le 24
+set policy route-map OVERLAY-PRIMARY-HC rule 10 action permit
+set policy route-map OVERLAY-PRIMARY-HC rule 10 match ip address prefix-list SITE-HC
+set policy route-map OVERLAY-PRIMARY-HC rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP-HC rule 10 action permit
+set policy route-map OVERLAY-BACKUP-HC rule 10 match ip address prefix-list SITE-HC
+set policy route-map OVERLAY-BACKUP-HC rule 10 set local-preference 100
 set policy route-map OVERLAY-OUT rule 10 action permit
 set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
 set protocols bgp system-as 64505
@@ -114,7 +146,7 @@ set protocols bgp neighbor 10.255.0.1 timers keepalive 3
 set protocols bgp neighbor 10.255.0.1 timers holdtime 9
 set protocols bgp neighbor 10.255.0.1 timers connect 5
 set protocols bgp neighbor 10.255.0.1 bfd profile WAN
-set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
+set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-HC
 set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map export OVERLAY-OUT
 set interfaces vti vti102 description 'hc-b over Tumbleweed Fiber'
 set interfaces vti vti102 address 10.255.0.2/31
@@ -137,7 +169,7 @@ set protocols bgp neighbor 10.255.0.3 timers keepalive 3
 set protocols bgp neighbor 10.255.0.3 timers holdtime 9
 set protocols bgp neighbor 10.255.0.3 timers connect 5
 set protocols bgp neighbor 10.255.0.3 bfd profile WAN
-set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map import OVERLAY-BACKUP
+set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map import OVERLAY-BACKUP-HC
 set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map export OVERLAY-OUT
 commit
 save

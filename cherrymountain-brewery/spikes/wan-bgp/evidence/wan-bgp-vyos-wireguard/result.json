@@ -4,42 +4,42 @@
     {
       "name": "phenix rendered the config list of shadecast after its own configuration, before the commit",
       "passed": true,
-      "detail": "59 commands; /phenix/experiments/spike-wan-bgp/vrouter/shadecast.boot"
+      "detail": "65 commands; /phenix/experiments/spike-wan-bgp/vrouter/shadecast.boot"
     },
     {
       "name": "phenix rendered the config list of tumbleweed after its own configuration, before the commit",
       "passed": true,
-      "detail": "59 commands; /phenix/experiments/spike-wan-bgp/vrouter/tumbleweed.boot"
+      "detail": "65 commands; /phenix/experiments/spike-wan-bgp/vrouter/tumbleweed.boot"
     },
     {
       "name": "phenix rendered the config list of fr-fw-edge after its own configuration, before the commit",
       "passed": true,
-      "detail": "86 commands; /phenix/experiments/spike-wan-bgp/vrouter/fr-fw-edge.boot"
+      "detail": "118 commands; /phenix/experiments/spike-wan-bgp/vrouter/fr-fw-edge.boot"
     },
     {
       "name": "phenix rendered the config list of hc-fw-edge after its own configuration, before the commit",
       "passed": true,
-      "detail": "66 commands; /phenix/experiments/spike-wan-bgp/vrouter/hc-fw-edge.boot"
+      "detail": "96 commands; /phenix/experiments/spike-wan-bgp/vrouter/hc-fw-edge.boot"
     },
     {
       "name": "shadecast committed the rendered configuration at first boot",
       "passed": true,
-      "detail": "20\nNov 22 23:51:11 vyos vyos-router[2690]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\n"
+      "detail": "20\nNov 23 01:08:35 vyos vyos-router[2670]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 23 01:09:00 shadecast commit[4647]: Successful change to active configuration by user root on unknown\n"
     },
     {
       "name": "tumbleweed committed the rendered configuration at first boot",
       "passed": true,
-      "detail": "20\nNov 22 23:51:06 vyos commit[2635]: Successful change to active configuration by user root on unknown\nNov 22 23:51:07 vyos vyos-router[2676]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 22 23:51:43 tumbleweed commit[4521]: Successful change to active configuration by user root on unknown\n"
+      "detail": "20\nNov 23 01:08:32 vyos vyos-router[2686]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\n"
     },
     {
       "name": "fr-fw-edge committed the rendered configuration at first boot",
       "passed": true,
-      "detail": "44\nNov 22 23:51:09 vyos vyos-router[2687]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 22 23:51:50 fr-fw-edge commit[5301]: Successful change to active configuration by user root on unknown\n"
+      "detail": "44\nNov 23 01:08:39 vyos vyos-router[2666]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 23 01:09:06 fr-fw-edge commit[6145]: Successful change to active configuration by user root on unknown\n"
     },
     {
       "name": "hc-fw-edge committed the rendered configuration at first boot",
       "passed": true,
-      "detail": "23\nNov 22 23:51:01 vyos commit[2660]: Successful change to active configuration by user root on unknown\nNov 22 23:51:03 vyos vyos-router[2702]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 22 23:51:38 hc-fw-edge commit[4822]: Successful change to active configuration by user root on unknown\n"
+      "detail": "21\nNov 23 01:08:15 vyos commit[2635]: Successful change to active configuration by user root on unknown\nNov 23 01:08:16 vyos vyos-router[2676]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 23 01:08:50 hc-fw-edge commit[5481]: Successful change to active configuration by user root on unknown\n"
     },
     {
       "name": "all 2 BGP sessions of shadecast are Established",
@@ -79,7 +79,7 @@
     {
       "name": "both tunnels have a handshake, to the endpoint the site was given",
       "passed": true,
-      "detail": "endpoints {\"wg102\": \"198.18.105.1:51822\", \"wg101\": \"198.18.105.1:51821\"}, handshakes [1795391516, 1795391517]"
+      "detail": "endpoints {\"wg102\": \"198.18.105.1:51822\", \"wg101\": \"198.18.105.1:51821\"}, handshakes [1795396155, 1795396156]"
     },
     {
       "name": "the site reaches the head office's block through its primary tunnel",
@@ -89,22 +89,27 @@
     {
       "name": "the head office reaches the site's block through the same tunnel",
       "passed": true,
-      "detail": "10.21.0.0/16 nhid 38 via 10.255.0.1 dev wg101 proto bgp metric 20"
+      "detail": "10.21.0.0/16 nhid 37 via 10.255.0.1 dev wg101 proto bgp metric 20"
     },
     {
       "name": "a host at the site reaches a host at the head office",
       "passed": true,
-      "detail": "--- 10.20.30.11 ping statistics ---\n10 packets transmitted, 10 received, 0% packet loss, time 1807ms\nrtt min/avg/max/mdev = 3.378/4.194/8.234/1.366 ms"
+      "detail": "--- 10.20.30.11 ping statistics ---\n10 packets transmitted, 10 received, 0% packet loss, time 1808ms\nrtt min/avg/max/mdev = 2.675/3.108/3.980/0.411 ms"
+    },
+    {
+      "name": "the head office refuses another site's network when the site announces it",
+      "passed": true,
+      "detail": "hc-fw-edge offered 192.168.20.0/24 on 2 tunnels: True (0 0 i *> 10.21.0.0/16 0.0.0.0 0 0 i *> 192.168.20.0/24 0.0.0.0 0 0 i Total number of prefixes 3, total number of paths 3). The head office: % Network not in table; kernel route: none"
     },
     {
       "name": "the site moves to its second tunnel when its ShadeCast uplink goes silent",
       "passed": true,
-      "detail": "outage 2.8 s (14 of 300 pings lost; BFD detects in 3 s); now on wg102; --- 10.20.30.11 ping statistics --- 300 packets transmitted, 286 received, 4.66667% packet loss, time 60153ms rtt min/avg/max/mdev = 3.036/3.795/7.706/0.367 ms"
+      "detail": "outage 2.4 s (12 of 300 pings lost; BFD detects in 3 s); now on wg102; --- 10.20.30.11 ping statistics --- 300 packets transmitted, 288 received, 4% packet loss, time 60106ms rtt min/avg/max/mdev = 2.320/3.042/5.941/0.356 ms"
     },
     {
       "name": "the site returns to its primary tunnel after the repair",
       "passed": true,
-      "detail": "the fault dropped 397 packets; outage on the way back 0.0 s (0 lost); now on wg101"
+      "detail": "the fault dropped 347 packets; outage on the way back 0.0 s (0 lost); now on wg101"
     },
     {
       "name": "both tunnels are as configured after the site's uplink failed and came back",
@@ -114,7 +119,7 @@
     {
       "name": "the site keeps the head office when the head office loses its ShadeCast uplink",
       "passed": true,
-      "detail": "outage 2.4 s (12 of 300 lost); the site is on wg101; ShadeCast's route: 64501 64505 198.18.0.18 from 198.18.0.18 (198.18.101.254)"
+      "detail": "outage 2.6 s (13 of 300 lost); the site is on wg101; ShadeCast's route: 64501 64505 198.18.0.18 from 198.18.0.18 (198.18.101.254)"
     },
     {
       "name": "both tunnels are as configured while the head office is on one ISP",
@@ -124,7 +129,7 @@
     {
       "name": "the repair costs nothing, and the site is on its primary tunnel",
       "passed": true,
-      "detail": "the fault dropped 416 packets; outage 0.0 s (0 lost); now on wg101"
+      "detail": "the fault dropped 436 packets; outage 0.0 s (0 lost); now on wg101"
     },
     {
       "name": "with its uplink's link down, a tunnel does not move to the other uplink",
@@ -139,7 +144,7 @@
     {
       "name": "after 200 s of silence on its uplink, the first tunnel comes back by itself",
       "passed": true,
-      "detail": "on wg101 9 s after the repair (the fault dropped 835 packets). The first tunnel before the repair: MjK527RQ8GquTIHN4xhOMBFeLjJl04bTkV6NZlTZ9QM= 1795391969 1795392207. After: MjK527RQ8GquTIHN4xhOMBFeLjJl04bTkV6NZlTZ9QM= 1795392216 1795392222"
+      "detail": "on wg101 8 s after the repair (the fault dropped 833 packets). The first tunnel before the repair: MjK527RQ8GquTIHN4xhOMBFeLjJl04bTkV6NZlTZ9QM= 1795396601 1795396838. After: MjK527RQ8GquTIHN4xhOMBFeLjJl04bTkV6NZlTZ9QM= 1795396846 1795396853"
     },
     {
       "name": "both tunnels are as configured after all the faults",
@@ -148,8 +153,8 @@
     }
   ],
   "versions": {
-    "phenix": "Branch afbcba7 [ghostofgoes/sceptre-phenix] (commit afbcba7) Sun Nov 22 23:48:02 UTC 2026",
-    "minimega": "runnervmeozm8: minimega 3.3.0 66ed1aacc8107f00cb003a512e835d6f32886dda 2026-11-22",
+    "phenix": "Branch afbcba7 [ghostofgoes/sceptre-phenix] (commit afbcba7) Mon Nov 23 01:04:53 UTC 2026",
+    "minimega": "ip-10-0-137-228: minimega 3.3.0 66ed1aacc8107f00cb003a512e835d6f32886dda 2026-11-23",
     "qemu": "Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers",
     "ovs": "DB Schema 8.5.1",
     "phenix-ref": "afbcba70f488e222f0236114d162bbb526051784",
@@ -157,13 +162,13 @@
   },
   "facts": {
     "tunnels": "wireguard",
-    "commands": "{\"shadecast\": 59, \"tumbleweed\": 59, \"fr-fw-edge\": 86, \"hc-fw-edge\": 66}",
-    "fr-fw-edge show version": "Version:          VyOS 999.202611222329\nRelease train:    rolling\nRelease flavor:   qemu\n\nBuilt by:         root@0e6dea577f1e\nBuilt on:         Sun 22 Nov 2026 23:29 UTC\nBuild UUID:       41bcf8b0-3642-402d-a02f-3d6aec427a1a\nBuild commit ID:  91ccacad5e507a\n\nArchitecture:     x86_64\nBoot via:         installed image\nSystem type:      KVM guest\nSecure Boot:      n/a (BIOS)\n\nHardware vendor:  QEMU\nHardware model:   Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996)\nHardware S/N:     \nHardware UUID:    4ae01147-28cd-47d4-b71f-4ff725ad007e\n\nCopyright:        VyOS maintainers and contributors\n",
+    "commands": "{\"shadecast\": 65, \"tumbleweed\": 65, \"fr-fw-edge\": 118, \"hc-fw-edge\": 96}",
+    "fr-fw-edge show version": "Version:          VyOS 999.202611222329\nRelease train:    rolling\nRelease flavor:   qemu\n\nBuilt by:         root@0e6dea577f1e\nBuilt on:         Sun 22 Nov 2026 23:29 UTC\nBuild UUID:       41bcf8b0-3642-402d-a02f-3d6aec427a1a\nBuild commit ID:  91ccacad5e507a\n\nArchitecture:     x86_64\nBoot via:         installed image\nSystem type:      KVM guest\nSecure Boot:      n/a (BIOS)\n\nHardware vendor:  QEMU\nHardware model:   Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996)\nHardware S/N:     \nHardware UUID:    ca1d45f1-3486-4552-8a7b-48a2d75bfa6a\n\nCopyright:        VyOS maintainers and contributors\n",
     "fr-fw-edge kernel, FRR, WireGuard": "6.18.64-1-vyos\nFRRouting 10.7.1 (fr-fw-edge) on Linux(6.18.64-1-vyos).\nfilename:       /lib/modules/6.18.64-1-vyos/kernel/drivers/net/wireguard/wireguard.ko.xz\nversion:        1.0.0\nintree:         Y\n",
-    "shadecast's routes to the head office and to Tumbleweed": "BGP routing table entry for 198.18.105.0/24, version 3\nPaths: (2 available, best #1, table default)\n  Advertised to peers:\n  198.18.0.18 203.0.113.2\n  64505\n    203.0.113.2 from 203.0.113.2 (198.18.105.1)\n      Origin IGP, metric 0, localpref 200, valid, external, best (Local Pref)\n      Community: 64500:1\n      Last update: Sun Nov 22 23:51:55 2026\n  64501 64505\n    198.18.0.18 from 198.18.0.18 (198.18.101.254)\n      Origin IGP, localpref 150, valid, external\n      Community: 64500:2\n      Last update: Sun Nov 22 23:51:56 2026\nBGP routing table entry for 198.18.101.0/24, version 2\nPaths: (1 available, best #1, table default)\n  Advertised to peers:\n  203.0.113.2\n  64501\n    198.18.0.18 from 198.18.0.18 (198.18.101.254)\n      Origin IGP, metric 0, localpref 150, valid, external, best (First path received)\n      Community: 64500:2\n      Last update: Sun Nov 22 23:51:51 2026\n",
+    "shadecast's routes to the head office and to Tumbleweed": "BGP routing table entry for 198.18.105.0/24, version 3\nPaths: (2 available, best #1, table default)\n  Advertised to peers:\n  198.18.0.18 203.0.113.2\n  64505\n    203.0.113.2 from 203.0.113.2 (198.18.105.1)\n      Origin IGP, metric 0, localpref 200, valid, external, best (Local Pref)\n      Community: 64500:1\n      Last update: Mon Nov 23 01:09:11 2026\n  64501 64505\n    198.18.0.18 from 198.18.0.18 (198.18.101.254)\n      Origin IGP, localpref 150, valid, external\n      Community: 64500:2\n      Last update: Mon Nov 23 01:09:11 2026\nBGP routing table entry for 198.18.101.0/24, version 2\nPaths: (1 available, best #1, table default)\n  Advertised to peers:\n  203.0.113.2\n  64501\n    198.18.0.18 from 198.18.0.18 (198.18.101.254)\n      Origin IGP, metric 0, localpref 150, valid, external, best (First path received)\n      Community: 64500:2\n      Last update: Mon Nov 23 01:09:04 2026\n",
     "hc-fw-edge ip rule": "0:\tfrom all lookup local\n101:\tfrom all fwmark 0x65/0x7fffffff lookup 101\n102:\tfrom all fwmark 0x66/0x7fffffff lookup 102\n32766:\tfrom all lookup main\n32767:\tfrom all lookup default\n",
-    "hc-fw-edge wg": "wg102\tERbyyXCVIp/otwfO3zvMgm5gMlnJO/G1s2kC83kh2Hs=\t198.18.105.1:51822\nwg101\tMjK527RQ8GquTIHN4xhOMBFeLjJl04bTkV6NZlTZ9QM=\t198.18.105.1:51821\nwg102\tERbyyXCVIp/otwfO3zvMgm5gMlnJO/G1s2kC83kh2Hs=\t1795391516\nwg101\tMjK527RQ8GquTIHN4xhOMBFeLjJl04bTkV6NZlTZ9QM=\t1795391517\nwg102\t0x66\nwg101\t0x65\n",
-    "fr-fw-edge wg": "wg102\tGWARcplB1gR9byemqdIR4RTaVPruCTjrWIlFbASQcBw=\t198.18.101.10:38188\nwg101\tSnho6i+KhXoifR61c+FGJsktzSdZNhra7IfF8qZYrlI=\t203.0.113.10:36634\n",
-    "hc-fw-edge bfd": "Session count: 2\nSessionId  LocalAddress                             PeerAddress                             Status          Profile             \n=========  ============                             ===========                             ======          =======             \n603210806  10.255.0.1                               10.255.0.0                              up              WAN                 \n412373727  10.255.0.3                               10.255.0.2                              up              WAN                 \n"
+    "hc-fw-edge wg": "wg102\tERbyyXCVIp/otwfO3zvMgm5gMlnJO/G1s2kC83kh2Hs=\t198.18.105.1:51822\nwg101\tMjK527RQ8GquTIHN4xhOMBFeLjJl04bTkV6NZlTZ9QM=\t198.18.105.1:51821\nwg102\tERbyyXCVIp/otwfO3zvMgm5gMlnJO/G1s2kC83kh2Hs=\t1795396155\nwg101\tMjK527RQ8GquTIHN4xhOMBFeLjJl04bTkV6NZlTZ9QM=\t1795396156\nwg102\t0x66\nwg101\t0x65\n",
+    "fr-fw-edge wg": "wg102\tGWARcplB1gR9byemqdIR4RTaVPruCTjrWIlFbASQcBw=\t198.18.101.10:46088\nwg101\tSnho6i+KhXoifR61c+FGJsktzSdZNhra7IfF8qZYrlI=\t203.0.113.10:43204\n",
+    "hc-fw-edge bfd": "Session count: 2\nSessionId  LocalAddress                             PeerAddress                             Status          Profile             \n=========  ============                             ===========                             ======          =======             \n2032076735 10.255.0.3                               10.255.0.2                              up              WAN                 \n659410841  10.255.0.1                               10.255.0.0                              up              WAN                 \n"
   }
 }

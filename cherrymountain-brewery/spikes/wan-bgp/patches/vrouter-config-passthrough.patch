@@ -594,10 +594,10 @@ index 0000000..213bd4c
 +	}
 +}
 diff --git a/src/go/app/vrouter_internal_test.go b/src/go/app/vrouter_internal_test.go
-index 4805252..961cf4f 100644
+index 4805252..3f085fa 100644
 --- a/src/go/app/vrouter_internal_test.go
 +++ b/src/go/app/vrouter_internal_test.go
-@@ -1064,3 +1064,92 @@ func TestVrouterProcessIPSec(t *testing.T) {
+@@ -1064,3 +1064,141 @@ func TestVrouterProcessIPSec(t *testing.T) {
  		t.Errorf("preshared key for another site pair = %q, want a new key", got)
  	}
  }
@@ -649,6 +649,55 @@ index 4805252..961cf4f 100644
 +// TestVrouterPreStartVyosConfigErrors verifies that PreStart refuses a config
 +// line the vbash script would not run as one VyOS command, and config on a
 +// router that is not VyOS.
++// TestVrouterPreStartVyosConfigHosts checks that config is refused on a host
++// whose vrouter metadata PreStart would otherwise drop without a word.
++func TestVrouterPreStartVyosConfigHosts(t *testing.T) {
++	t.Parallel()
++
++	external := true
++
++	tests := []struct {
++		name string
++		node func() *v1.Node
++	}{
++		{name: "no node of that name", node: func() *v1.Node { return vrouterNode("other", osTypeVyos) }},
++		{name: "not a router or firewall", node: func() *v1.Node {
++			n := vrouterNode("rtr", osTypeVyos)
++			n.TypeF = "VirtualMachine"
++
++			return n
++		}},
++		{name: "external", node: func() *v1.Node {
++			n := vrouterNode("rtr", osTypeVyos)
++			n.ExternalF = &external
++
++			return n
++		}},
++		{name: "default apps off", node: func() *v1.Node {
++			n := vrouterNode("rtr", osTypeVyos)
++			n.AnnotationsF = map[string]any{defaultAppsAnnotation: false}
++
++			return n
++		}},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			t.Parallel()
++
++			md := map[string]any{"config": []any{"set system host-name a"}}
++			exp := vrouterExperiment(t, vrouterScenario(vrouterApp(md)), tt.node())
++
++			var v Vrouter
++
++			err := v.PreStart(t.Context(), exp)
++			if !errors.Is(err, ErrVyosConfigLine) {
++				t.Errorf("PreStart() error = %v, want ErrVyosConfigLine", err)
++			}
++		})
++	}
++}
++
 +func TestVrouterPreStartVyosConfigErrors(t *testing.T) {
 +	t.Parallel()
 +

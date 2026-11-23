@@ -1333,12 +1333,13 @@ without the transit carrier.
   62 s (five runs) with the head office only answering, which leaves one SA
   for a tunnel and is what the sketch has now. T9154 did not show.
 - **The VyOS image needed a fix to build.** vyos-build renamed its kernel
-  package and its rolling images, and the images repository's script asks
+  package and its rolling images, and the images repository's script asked
   for a package and a directory that do not exist. `spikes/ci/build_image.sh`
-  patches the script. The images repository's fix is the draft pull request
-  [GhostofGoes/sceptre-phenix-images#4](https://github.com/GhostofGoes/sceptre-phenix-images/pull/4),
-  which also falls back only to a kernel package of the form vyos-build
-  installs.
+  patches the script. The images repository's `main` took both fixes on
+  2026-11-23 (`0caad08`, `68e4b08`), from another change. The draft pull request
+  [GhostofGoes/sceptre-phenix-images#4](https://github.com/GhostofGoes/sceptre-phenix-images/pull/4)
+  now holds only what is left: a fallback that picks only a kernel package of
+  the form vyos-build installs.
 - **Not tested:** the transit carrier, the third ISP, and three of the four
   sites; the nine-second outage and the hijack; a router with firewall rules,
   NAT, and one vCPU; the patch for phenix `main` on a router; more than one
@@ -1444,7 +1445,7 @@ day. A row that says "not answered" still stands as recommended.
 | D9 | The sites | The four places, their codes, and the ISP names ([section 2](#2-the-company)) | As written; the names need a check | Not answered |
 | D10 | The cluster | How many nodes run VMs; whether the node that runs phenix is one of them; the MTU of the nodes' network; which phenix it runs ([4.8](#48-where-the-vms-run)) | — (facts to supply). Still to supply: the node names, and which phenix it runs | **Three nodes. The head node runs VMs. The MTU is thought to be 1500. The cluster bridges VLANs between its nodes itself** |
 | D11 | The phenix patch | Open it as a branch and pull request on the fork, or keep it as a patch file that CI applies | **A branch and a pull request on the fork**, now that the spike passed. Nothing was opened | **A draft pull request:** [GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27) |
-| D12 | The VyOS image build | Fix `build-vyos.sh` in the images repository for vyos-build's new kernel package name, or leave the patch in `spikes/ci/build_image.sh` ([7.4](#74-wan-bgp-on-vyos-routers)) | **Fix it in the images repository**: until then no VyOS image builds from it | **A draft pull request** (2026-11-23): [GhostofGoes/sceptre-phenix-images#4](https://github.com/GhostofGoes/sceptre-phenix-images/pull/4), with vyos-build's image names and a kernel fallback that only picks a package vyos-build can install. Its VyOS build passes on the head commit. **It stays a draft** (decided 2026-11-23) |
+| D12 | The VyOS image build | Fix `build-vyos.sh` in the images repository for vyos-build's new kernel package name, or leave the patch in `spikes/ci/build_image.sh` ([7.4](#74-wan-bgp-on-vyos-routers)) | **Fix it in the images repository**: until then no VyOS image builds from it | **Fixed on `main`** of the images repository (2026-11-23, `0caad08` and `68e4b08`, from another change). The draft pull request [GhostofGoes/sceptre-phenix-images#4](https://github.com/GhostofGoes/sceptre-phenix-images/pull/4) was merged with `main` and now holds only a stricter kernel fallback. **It stays a draft** (decided 2026-11-23) |
 | D13 | Which node runs a VM | P1 (each site on one node, in the workflow), P2 (`subnet-compute`), or P3 (minimega decides) ([4.8](#48-where-the-vms-run)) | **P1** | Not answered. [4.8](#48-where-the-vms-run) places the sites by P1 |
 | D14 | How a VLAN reaches another node | N1 (phenix's GRE mesh, with an MTU of 1600 or more between nodes) or N2 (the cluster carries the VLANs) ([4.8](#48-where-the-vms-run)) | Whichever the cluster has | **N2**: the cluster does it (from D10) |
 | D15 | The FRR behavior that drops a default route | Report it to FRR and VyOS, or only work around it ([7.4](#74-wan-bgp-on-vyos-routers)) | **Report it**, with a debug log of the first seconds, which no run captured yet | **Not reported** |

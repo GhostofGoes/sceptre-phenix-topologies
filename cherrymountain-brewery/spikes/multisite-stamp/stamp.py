@@ -260,12 +260,29 @@ def patched_plantgen(work: Path) -> Path:
 PROSE: re.Pattern[str] = re.compile(r'"(?:desc|label|description|text|message)"\s*:|\(\*|^\s*#')
 
 
+def kind_names(node: Any) -> set[str]:
+    """The values of KIND_KEYS keys and the keys of KIND_MAPS maps anywhere in `node`."""
+    found: set[str] = set()
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key in KIND_KEYS and isinstance(value, str):
+                found.add(value)
+            if key in KIND_MAPS and isinstance(value, dict):
+                found |= {str(name) for name in value}
+            found |= kind_names(value)
+    elif isinstance(node, list):
+        for item in node:
+            found |= kind_names(item)
+    return found
+
+
 def leaks(site: Site, plant: dict[str, Any], out: Path) -> str:
     """Names and addresses of the first site that a stamped site's output still carries."""
     site_hosts = sorted(set(plant["hosts"]) - SHARED_HOSTS, key=len, reverse=True)
     host_token = re.compile(r"(?<![A-Za-z0-9_./-])(" + "|".join(map(re.escape, site_hosts)) + r")(?![A-Za-z0-9_-])")
     address = re.compile(r"\b(?:10\.(?:10|20|30|40)|172\.16)\.\d{1,3}\.\d{1,3}\b")
     kind = re.compile(r'"?(?:role|type|profile|model)"?\s*:\s*"?[a-z0-9-]+"?')
+    kinds = kind_names(plant)
     found: Counter[str] = Counter()
     files, prose = 0, 0
     for path in sorted(out.rglob("*")):
@@ -276,7 +293,8 @@ def leaks(site: Site, plant: dict[str, Any], out: Path) -> str:
             # A hostname that is also a kind (see KIND_KEYS) is expected as a value of those
             # keys, and as the key of a device type's own map (`pv-inverter:`).
             line = kind.sub("", line)
-            if re.fullmatch(r"\s*[a-z0-9-]+:\s*", line):
+            bare = re.fullmatch(r"\s*([a-z0-9-]+):\s*", line)
+            if bare and bare.group(1) in kinds:
                 continue
             hits = [m.group(1) for m in host_token.finditer(line)] + address.findall(line)
             if hits and PROSE.search(line):

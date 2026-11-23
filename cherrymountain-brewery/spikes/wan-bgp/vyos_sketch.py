@@ -30,6 +30,9 @@ BFD_INTERVAL_MS: int = 1000
 WIREGUARD: str = "wireguard"
 # Route-based IPsec: IKEv2 with a pre-shared key, and a VTI for each tunnel.
 VTI: str = "vti"
+# A VTI's MTU: 1,500 less the most ESP adds here (outer header 20, ESP header
+# 8, IV 16, padding up to 15, trailer 2, ICV 16), rounded down.
+VTI_MTU: int = 1400
 
 # (tunnel, "hub" or "site") -> (this side's private key, the other side's public key)
 Keys = Callable[[lab.Tunnel, str], tuple[str, str]]
@@ -172,7 +175,9 @@ def isp_sketch(router: lab.Router) -> list[str]:
         *prefix_list("PUBLIC", "0.0.0.0/0", rule=10, action="deny"),
         *prefix_list("PUBLIC", "0.0.0.0/0", le=24, rule=15),
         "set policy community-list FROM-CUSTOMERS rule 10 action permit",
-        f"set policy community-list FROM-CUSTOMERS rule 10 regex '{asn}:{lab.RELATION_TAG['customer']}'",
+        # Anchored: FRR's `_` matches a space or either end, so 64500:1 does not
+        # also match 64500:10 or 164500:1.
+        f"set policy community-list FROM-CUSTOMERS rule 10 regex '_{asn}:{lab.RELATION_TAG['customer']}_'",
         # A peer or a provider hears this network's own prefixes and its
         # customers' prefixes, never a route learned from another peer or provider.
         "set policy route-map TO-UPSTREAM rule 10 action permit",
@@ -273,6 +278,9 @@ def vti_tunnel(router: lab.Router, tunnel: lab.Tunnel, psk: PreSharedKey) -> lis
     lines = [
         f"set interfaces vti {vti} description '{tunnel.name} over {lab.BY_NAME[tunnel.via].title}'",
         f"set interfaces vti {vti} address {own}/{ipaddress.ip_network(tunnel.net).prefixlen}",
+        # Room for ESP in a 1,500-byte underlay (VTI_MTU), and TCP told so.
+        f"set interfaces vti {vti} mtu {VTI_MTU}",
+        f"set interfaces vti {vti} ip adjust-mss clamp-mss-to-pmtu",
         f"set vpn ipsec authentication psk {tunnel.name} id '{local}'",
         f"set vpn ipsec authentication psk {tunnel.name} id '{remote}'",
         f"set vpn ipsec authentication psk {tunnel.name} secret '{psk(tunnel)}'",
@@ -307,18 +315,18 @@ def sketch(
 ) -> list[str]:
     """A site edge: the head office, or a site with ISP-assigned addresses."""
     hub = router.multipath
-    # The sites this router has a tunnel with, and itself.
-    sites = [router.name] + sorted(
-        {t.site if router.name == t.hub else t.hub for t in lab.TUNNELS if router.name in (t.hub, t.site)}
-    )
+    # The sites this router has a tunnel with.
+    peers = sorted({t.site if router.name == t.hub else t.hub for t in lab.TUNNELS if router.name in (t.hub, t.site)})
     lines: list[str] = [
         *bfd_profile(),
-        *site_prefix_lists(sites),
+        # Every edge knows every site's blocks, whether or not it has a tunnel
+        # to that site: a site reaches the others through the head office.
+        *site_prefix_lists(list(lab.SITE_BLOCKS)),
     ]
     if hub:
         # The head office takes from each site only that site's blocks, and
         # gives every site the blocks of all of them.
-        for name in sites[1:]:
+        for name in peers:
             code = site_code(name)
             lines += route_map(f"OVERLAY-PRIMARY-{code}", f"SITE-{code}", local_preference=200)
             lines += route_map(f"OVERLAY-BACKUP-{code}", f"SITE-{code}", local_preference=100)
@@ -349,11 +357,8 @@ def sketch(
             *route_map("OWN-ONLY", "OWN"),
             # What the head office sends on a default route carries the endpoint
             # address as its source, so a tunnel's endpoint never looks like it
-            # moved. Rule 20 leaves every other route, the sites' among them,
-            # as it is.
+            # moved.
             *route_map("SET-SOURCE", "DEFAULT", source=lab.HUB_ENDPOINT),
-            "set policy route-map SET-SOURCE rule 20 action permit",
-            "set system ip protocol bgp route-map SET-SOURCE",
             "set protocols bgp parameters bestpath as-path multipath-relax",
             "set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2",
             f"set protocols bgp address-family ipv4-unicast network {lab.HQ_PREFIX}",
@@ -373,6 +378,24 @@ def sketch(
         # ISP-assigned addresses: a default route for each uplink, the first preferred.
         for index, (_eth, _link, _isp, gateway, _own) in enumerate(uplinks(router)):
             lines.append(f"set protocols static route 0.0.0.0/0 next-hop {gateway} distance {10 * (index + 1)}")
+    # What the edge itself sends into a tunnel (its syslog, NTP, and DNS)
+    # leaves from its LAN address, not from the tunnel's /31, so the far side
+    # sees an address in the site's own blocks. Rule 20 leaves every other
+    # route as it is.
+    lan = next(lan for lan in lab.LANS if lan.router == router.name)
+    lines += [
+        *route_map("SET-SOURCE", "SITE-NETS", source=lan.gateway(), rule=15),
+        "set policy route-map SET-SOURCE rule 20 action permit",
+        "set system ip protocol bgp route-map SET-SOURCE",
+    ]
+    # An unused address in the edge's own blocks, and any private address while
+    # no tunnel carries it, are dropped here instead of following the default
+    # route out of an uplink unencrypted (lab.discards). The blackholes of the
+    # own blocks also back their `network` statements.
+    lines += [
+        f"set protocols static route {block} blackhole distance {distance}"
+        for block, distance in lab.discards(router.name)
+    ]
 
     if kind == VTI:
         lines += ipsec_groups(hub)
@@ -442,11 +465,16 @@ def commands(
 def refused(line: str) -> str:
     """Why the patched `vrouter` app would refuse a `config` line, or "" if it would not.
 
-    The same rule as `checkVyosConfigLine` in the patch: `set` or `delete`, no
-    control character, and nothing the shell acts on outside single quotes.
+    The same rule as `checkVyosConfigLine` in the patch: `set` or `delete`, a
+    next word that starts with a lowercase letter (VyOS hands `set -x` to the
+    shell's own `set`), no control character, and nothing the shell acts on
+    outside single quotes.
     """
     if not line.startswith(("set ", "delete ")):
         return "does not start with set or delete"
+    rest = line.split(" ", 1)[1]
+    if not rest or not ("a" <= rest[0] <= "z"):
+        return "the word after the verb does not start with a lowercase letter"
     quoted = False
     for char in line:
         if ord(char) < 32 or ord(char) == 127:

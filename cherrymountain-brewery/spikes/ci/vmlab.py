@@ -166,9 +166,7 @@ def quote_args(argv: Sequence[str]) -> str:
     return " ".join(json.dumps(a) if any(ch.isspace() for ch in a) else a for a in argv)
 
 
-def wait_for(
-    what: str, timeout_s: float, interval_s: float, probe: Callable[[], tuple[bool, str]]
-) -> str:
+def wait_for(what: str, timeout_s: float, interval_s: float, probe: Callable[[], tuple[bool, str]]) -> str:
     """Poll probe until it returns (True, detail); raise TimeoutError with the last detail."""
     deadline: float = time.monotonic() + timeout_s
     detail: str = ""
@@ -207,6 +205,9 @@ class Lab:
         self.evidence: Evidence = Evidence(spike=spike)
         self.ui: subprocess.Popen[bytes] | None = None
         self._ui_log: Path = self.dir / "phenix-ui.log"
+        # Applied to every text file the run saves or copies into its evidence,
+        # which CI uploads: a spike whose configuration holds keys sets it.
+        self.redact: Callable[[str], str] = lambda text: text
 
     # -- recording ----------------------------------------------------------
 
@@ -224,8 +225,21 @@ class Lab:
     def save(self, name: str, content: str) -> Path:
         path: Path = self.dir / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content)
+        path.write_text(self.redact(content))
         return path
+
+    def redact_tree(self, root: Path) -> None:
+        """Rewrite every text file under `root` through self.redact; leave binary files alone."""
+        for path in sorted(root.rglob("*")):
+            if not path.is_file() or path.is_symlink():
+                continue
+            try:
+                text = path.read_text()
+            except (UnicodeDecodeError, OSError):
+                continue
+            redacted = self.redact(text)
+            if redacted != text:
+                path.write_text(redacted)
 
     # -- phenix -------------------------------------------------------------
 
@@ -386,7 +400,7 @@ class Lab:
                 state["exit_seen"] = False
                 return False, f"stdout {out[:80]!r} is not this command's answer"
             if out.endswith("\n") or state["exit_seen"]:
-                result["stdout"] = out[len(marker):] if nonce else out
+                result["stdout"] = out[len(marker) :] if nonce else out
                 code_file: Path = d / "exitcode"
                 result["exit"] = code_file.read_text().strip() if code_file.exists() else ""
                 err_file: Path = d / "stderr"
@@ -445,9 +459,11 @@ class Lab:
         exp_dir: Path = Path("/phenix/experiments") / self.exp
         if exp_dir.is_dir():
             sh(["cp", "-r", str(exp_dir), str(self.dir / "experiment-files")])
+            self.redact_tree(self.dir / "experiment-files")
         phenix_log: Path = Path("/var/log/phenix")
         if phenix_log.is_dir():
             sh(["cp", "-r", str(phenix_log), str(self.dir / "phenix-log")])
+            self.redact_tree(self.dir / "phenix-log")
 
     def versions(self) -> None:
         cmds: dict[str, list[str]] = {
@@ -470,7 +486,10 @@ class Lab:
         """Write result.json and summary.md; return the process exit code."""
         self.save("result.json", self.evidence.model_dump_json(indent=2))
         lines: list[str] = [f"### Spike {self.spike}: {'PASS' if self.evidence.passed else 'FAIL'}", ""]
-        lines += [f"- {'PASS' if c.passed else 'FAIL'}: {c.name}" + (f" ({c.detail[:200]})" if c.detail else "") for c in self.evidence.checks]
+        lines += [
+            f"- {'PASS' if c.passed else 'FAIL'}: {c.name}" + (f" ({c.detail[:200]})" if c.detail else "")
+            for c in self.evidence.checks
+        ]
         lines += ["", "Versions:"] + [f"- {k}: {v}" for k, v in self.evidence.versions.items()]
         self.save("summary.md", "\n".join(lines) + "\n")
         summary: str | None = os.environ.get("GITHUB_STEP_SUMMARY")

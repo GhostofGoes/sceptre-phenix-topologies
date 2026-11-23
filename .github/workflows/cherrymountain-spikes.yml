@@ -191,13 +191,17 @@ jobs:
             cherrymountain-brewery/spikes
           persist-credentials: false
 
+      - name: Name the month
+        id: month
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
       - name: Restore the image
         id: cache
         uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: out/vyos.qc2
           # The month rebuilds the rolling release monthly.
-          key: cm-image-vyos-${{ hashFiles('cherrymountain-brewery/spikes/ci/build_image.sh') }}-${{ needs.plan.outputs.images-ref }}-${{ needs.plan.outputs.phenix-ref }}
+          key: cm-image-vyos-${{ hashFiles('cherrymountain-brewery/spikes/ci/build_image.sh') }}-${{ needs.plan.outputs.images-ref }}-${{ needs.plan.outputs.phenix-ref }}-${{ steps.month.outputs.month }}
 
       - name: Check out the image recipes
         if: steps.cache.outputs.cache-hit != 'true'

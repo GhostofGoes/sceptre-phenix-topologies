@@ -125,9 +125,11 @@ PROFILES: list[Profile] = [
         title="Eastern Plains: production brewery",
         origin="Built new by the company, to the standard and one step past it",
         network="Two firewalls and a DMZ with its own jump host; a control network for each process cell",
+        # The site's own jump host. The kit copies the vendor's `dmz-jump`; the
+        # range would give it the company's accounts, not the vendor's persona.
         extra_hosts=("dmz-jump",),
-        drop_units={"FAC": ("RTU1",)},
-        drop_hosts=("bas-rtu-taproom",),
+        # No unit is dropped inside an area (PLANS.md 4.1): the rooftop unit
+        # that cools `fr`'s taproom cools `ep`'s office and tasting room.
         cells={
             "plc-brewhouse": Move(vlan="CTRL-BH", subnet="10.20.41.0/24", gateway="fw-ot"),
             "plc-cellar": Move(vlan="CTRL-CEL", subnet="10.20.42.0/24", gateway="fw-ot"),
@@ -177,7 +179,6 @@ PROFILES: list[Profile] = [
         drop_hosts=(
             "fw-ot",
             "ot-svc",
-            "historian",
             "ews",
             "hmi-packaging",
             "bas-bbmd",
@@ -444,7 +445,7 @@ def probe_site(profile: Profile, plant: dict[str, Any], work: Path, patched: Pat
             changed = sorted(key for key in files.keys() | before.keys() if files.get(key) != before.get(key))
             if before:
                 said += f"; {len(changed)} differ from the step before" + (
-                    f" ({', '.join(changed[:4])}{', ...' if len(changed) > 4 else ''})" if changed else ""
+                    f" ({', '.join(changed)})" if changed else ""
                 )
             before = files
         if passed and number == len(STEPS):
@@ -633,14 +634,18 @@ def size(result: Result, merged: list[dict[str, Any]], out: Path, schema_dir: Pa
     # routers and the head office's additions (the stamp spike's figures). The
     # SOC and the vendor's gateway are in `fr`'s own count here.
     internet = stamp.Budget(vms=12, vcpus=12, memory_mb=6 * 2048 + 6 * 1024)
-    head_office = stamp.Budget(vms=3, vcpus=6, memory_mb=3 * 4096)
+    # The fleet historian, a corporate server, a second office desktop, and the
+    # company's engineering jump host (PLANS.md 4.6), at 2 vCPUs and 4 GB each.
+    head_office = stamp.Budget(vms=4, vcpus=8, memory_mb=4 * 4096)
     vendor = stamp.node_budget(
         [n for n in stamp.load_topology("remote-access")["spec"]["nodes"] if n["general"]["hostname"] == "vendor-ws"]
     )
     result.shared = {
         "mock internet, VyOS routers (6 routers, 6 small hosts)": internet,
         "the vendor's workstation, on the internet": vendor,
-        "head office additions (fleet historian, corporate server, second office desktop)": head_office,
+        "head office additions (fleet historian, corporate server, second office desktop, engineering jump host)": (
+            head_office
+        ),
     }
     once = internet.add(vendor).add(head_office)
     cost = {record.code: record.with_sensor for record in result.sites} | {"once": once}
@@ -734,12 +739,43 @@ def size(result: Result, merged: list[dict[str, Any]], out: Path, schema_dir: Pa
 # --------------------------------- Report ---------------------------------
 
 
+def problems(result: Result) -> list[str]:
+    """What the run found wrong. Any of it makes the run fail."""
+    # The steps build on one another, and plantgen refuses the plant file
+    # until the last of them; only the last one has to pass.
+    found = [
+        f"{record.code}: the last step ({record.steps[-1].name}) failed"
+        for record in result.sites
+        if not record.steps or not record.steps[-1].passed
+    ]
+    found += [
+        f"{record.code}: {step.said}"
+        for record in result.sites
+        for step in record.steps[-1:]
+        if "leftovers" in step.said
+    ]
+    for key in ("duplicate hostnames", "duplicate addresses"):
+        if result.merge.get(key):
+            found.append(f"{key}: {', '.join(result.merge[key])}")
+    for key in ("VLAN IDs given twice", "aliases of the site topologies without an ID"):
+        if result.cluster.get(key):
+            found.append(f"{key}: {', '.join(map(str, result.cluster[key]))}")
+    for part, key in ((result.merge, "phenix Topology schema"), (result.cluster, "phenix Workflow schema")):
+        value = str(part.get(key, ""))
+        if not value.startswith(("ok", "not checked")):
+            found.append(f"{key}: {value}")
+    return found
+
+
 def write(result: Result) -> None:
     EVIDENCE.mkdir(parents=True, exist_ok=True)
     for record in result.sites:
         record.generated = ""
     (EVIDENCE / "result.json").write_text(result.model_dump_json(indent=2) + "\n")
-    lines = ["# site-profiles", "", "## What plantgen said after each step", ""]
+    wrong = problems(result)
+    lines = ["# site-profiles", "", "## Problems", ""]
+    lines += [f"- {item}" for item in wrong] or ["None."]
+    lines += ["", "## What plantgen said after each step", ""]
     for record in result.sites:
         lines += [f"### `{record.code}`: {record.title}", "", "| Step | Result | plantgen said |", "|---|---|---|"]
         for number, step in enumerate(record.steps, 1):
@@ -815,7 +851,7 @@ def main() -> int:
         merged = merge_sites(result, plants, out, args.schema)
         size(result, merged, out, args.schema)
         write(result)
-    return 0 if all(record.steps[-1].passed for record in result.sites) else 1
+    return 1 if problems(result) else 0
 
 
 if __name__ == "__main__":

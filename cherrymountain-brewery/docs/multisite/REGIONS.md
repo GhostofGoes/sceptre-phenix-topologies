@@ -522,7 +522,7 @@ City Code chapter 26, article IV [FC3], [FC12], [FC13].
 | **CO₂, shutoff** | **No automatic shutoff.** Section 5307.3 has no shutoff sentence; the code's only "stop the flow of carbon dioxide" is for plant-growing enrichment systems (5307.4.3.1). It asks for "manual valves or automatic remotely activated fail-safe emergency shutoff valves" at the source and the point of use (5003.2.2.1), which a manual valve meets | [FC37], a copy of the code |
 | CO₂, PFA's own documents | PFA lists a "CO2 Beverage Systems Guide 2024", a checklist, and a limited-scope permit under gas detection systems. None could be read, so a permit condition beyond the code is not ruled out. Loveland's guideline of January 2024, next door, repeats the code and asks only for marked manual shutoffs | [FC18], from a search excerpt; [FC38] |
 | Building energy | Building Energy and Water Scoring (BEWS): "most commercial and multi-family buildings 5,000 square feet or larger" report energy by June 1. The same page also says 50,000 sq ft, so a pub of 8,000 to 12,000 sq ft is covered on one reading. A performance standard was defeated on 2025-12-02 | [FC19], [FC20] |
-| Liquor | The Fort Collins Liquor Licensing Authority; a brew pub serves meals wherever alcohol is sold, and 15 % of its sales are food | [FC21] |
+| Liquor | The Fort Collins Liquor Licensing Authority licenses a brew pub, with a hearing; a brewery's taproom needs only notice to the city ([7.6](#76-fort-collins-a-brew-pub-licence-against-a-sales-room)) | [FC21], [L29] |
 | Food | Larimer County's environmental health department licenses the kitchen: $481 to $581 a year by seats | [FC22] |
 | Sales tax | 8.30 % combined: city 4.35 %, Larimer County 1.05 %, state 2.90 % | [FC23] |
 | Stormwater | Lot area × $0.00541 × a runoff factor (0.95 for a lot that is nearly all roof and paving) a month: about $51 for 10,000 sq ft | [FC1]; computed |
@@ -561,45 +561,219 @@ internet could add.
 
 ## 7. Breweries and a pub: licences and records
 
-This section answers decision D18 of [PLANS.md](PLANS.md#9-decisions-needed):
-what does a company that is regulated as breweries and as a pub have to keep
-at the pub, and what would it do?
+This section answers two decisions of [PLANS.md](PLANS.md#9-decisions-needed).
+D20: how is a company with three breweries and a pub licensed, and what
+changes if the pub serves food? D18: what does such a company have to keep at
+the pub, and what would it do? It is background for a notional company, not
+legal advice. A second pass on 2026-11-23 read the statute's 2026 edition, the
+Liquor Rules, the state's licence data, and the federal rules, and corrected
+the first pass in the places marked.
+
+**The short answers.**
+
+- **One set of owners cannot hold a brewery licence and a brew pub licence.**
+  Four sections say so. The bar is on owners and shareholders, so a parent
+  company or a sister LLC does not get round it.
+- **A company can have a taproom at each of its breweries.** Each brewery
+  site holds its own pair of licences, and each pair carries one sales room.
+  The first pass left this open; the state's own data settle it.
+- **Food changes nothing, if the pub pours only beer.** The Liquor Code
+  neither requires nor forbids food in a brewery's taproom. The kitchen needs
+  a county food licence.
+- **Wine, cider, or spirits change everything.** A brewery's taproom may sell
+  malt liquor only. A full bar needs a brew pub licence at every site, or a
+  bar that belongs to an unrelated company.
+- **To the federal government the question does not exist.** A brewpub is a
+  brewery with a "tavern" on its premises, with or without food.
 
 ### 7.1 One owner cannot hold both Colorado licences
 
-| Rule | What it says | Source |
+| Section | Operative words | Source |
 |---|---|---|
-| Brew pub, C.R.S. 44-3-103(5) | "a retail establishment that manufactures not more than one million eight hundred sixty thousand gallons of malt liquor on its licensed premises … each calendar year" | [L5] |
-| Food, 44-3-417(4) | "at least fifteen percent of the gross on-premises food and drink income … is from the sale of food" | [L5] |
-| Its own wholesale, 44-3-417(2)(a)(IV) | "up to three hundred thousand gallons per calendar year" to retailers; more through an independent wholesaler | [L5] |
-| **The bar, 44-3-417(5)(a)** | "It is unlawful for any owner, part owner, shareholder, or person interested directly or indirectly in a brew pub license to … be directly or indirectly interested in any other business licensed pursuant to this article 3 or article 4" | [L5] |
-| Its exceptions, 44-3-417(5)(b) | Retail licence classes, other brew pubs among them. The manufacturer's licence and the beer wholesaler's licence are not on the list | [L5] |
-| The same bar from the other side, 44-3-402(5)(a) | A manufacturer, or anyone "interested financially in or with a licensed manufacturer", may not be "interested financially, directly or indirectly, in the business of any person licensed to sell at retail" | [L5] |
-| A brewery's taproom, 44-3-407(1)(b)(I)(A) | A manufacturer that also holds a wholesaler's beer licence may run "warehouses and one sales room in this state" | [L5], [L6] |
+| Brew pub, C.R.S. 44-3-103(5) | "a retail establishment that manufactures not more than one million eight hundred sixty thousand gallons of malt liquor on its licensed premises or licensed alternating proprietor licensed premises, combined, each calendar year" | [L23] |
+| Brewery, 44-3-103(6) | "any establishment where malt liquors are manufactured, except brew pubs licensed under this article 3" | [L23] |
+| **The bar, from the brew pub's side, 44-3-417(5)(a)** | "It is unlawful for any owner, part owner, shareholder, or person interested directly or indirectly in a brew pub license to conduct, own either in whole or in part, or be directly or indirectly interested in any other business licensed pursuant to this article 3 or article 4" | [L23] |
+| Its exceptions, 44-3-417(5)(b) | Licences "described in section 44-3-401 (1)(j) to (1)(t), (1)(v), or (1)(w)", which are retail classes: beer and wine, hotel and restaurant, tavern, **brew pub**, club, arts, racetrack, public transportation, optional premises, gaming tavern, vintner's restaurant, distillery pub, and entertainment facility. The manufacturer's licence (a) and the wholesalers' licences (f), (g) are not on the list | [L23] |
+| The bar, from the brewery's side, 44-3-402(5)(a) | "It is unlawful for a manufacturer licensed under this article 3 or any person, partnership, association, organization, or corporation interested financially in or with a licensed manufacturer to be interested financially, directly or indirectly, in the business of any person licensed to sell at retail" | [L23] |
+| From the wholesaler's side, 44-3-407(2) | The same words for "any licensed wholesaler" | [L23] |
+| A brew pub owner and a wholesaler's licence, 44-3-308(8) | "It is unlawful for an owner, part owner, shareholder, or person interested directly or indirectly in a brew pub, distillery pub, or vintner's restaurant license to conduct, own in whole or in part, or be directly or indirectly interested in a wholesaler's license" | [L23] |
+| The same bar on restaurants and bars | 44-3-413(14) hotel and restaurant, 44-3-414(3) tavern, 44-3-411(3) beer and wine, each with the same list of exceptions | [L23] |
+| No help to a retailer, 44-3-308(1)(a) | A manufacturer or wholesaler may not give a retailer "any financial assistance" or "any equipment, fixtures, chattels, or furnishings used in the storing, handling, serving, or dispensing of food or alcohol beverages" | [L23] |
 
-So a company cannot be a licensed brewery at three sites and a licensed brew
-pub at the fourth. Real groups use one of three structures:
+- **A brew pub is a retail licence** with brewing and some wholesale added.
+  The statute calls it "a retail establishment", a city issues it
+  (44-3-309(1)(f)), and Regulation 47-100(G) counts it among those "licensed
+  to sell at retail". The same rule also counts it as a manufacturer and a
+  wholesaler for the rules that bind those [L6], [L23].
+- **So a brew pub's owners may hold several brew pubs**, and a tavern or a
+  restaurant too. They may not hold a brewery or a wholesaler's licence.
+- **The bar is on people, not on the licensed company.** It names "any owner,
+  part owner, shareholder, or person interested directly or indirectly", and
+  a "person" includes a company and its officers (44-3-103(35)). The statute
+  sets no minimum share. Regulation 47-304 asks for the history of everyone
+  who owns 10 % or more, but that is a disclosure rule [L6].
+- **What "interested" means** is not defined. The rules give three markers. A
+  landlord paid a fixed rent, or a share of up to 18 % of alcohol sales, is
+  not interested (Regulation 47-1107). A person paid "a fixed amount" for the
+  use of a name is not; one paid "a percentage of sales of alcohol beverages
+  shall be considered to be an owner" (47-1108). And a court looked at
+  whether a transfer was "a sham transaction" and whether the licensee
+  "retained control of or any interest" (*Brass Monkey v. Louisville City
+  Council*, 870 P.2d 636 (Colo. App. 1994), read as the annotation in
+  [L23], not as the opinion).
+- **A test on the state's whole list.** Of 13,580 licensee names in the
+  state's data of 2026-11-10, one holds both a brew pub licence and a
+  brewery's licences, and its brewery licences show an expiry date just past
+  [L24].
 
-| Structure | What it means for `fc` | For | Against |
+### 7.2 A taproom at each brewery
+
+A brewery's taproom is not part of its manufacturer's licence. It is the
+"sales room" of a second licence, the wholesaler's beer licence.
+
+| Point | Text | Source |
+|---|---|---|
+| The brewer needs a wholesaler's licence to sell to the public | "All brewers who are licensed pursuant to 44-3-402, C.R.S. and who sell their manufactured product directly to consumers … must also obtain a wholesale license" | Regulation 47-400(A) [L6] |
+| The taproom | A wholesaler's beer licence is issued "To maintain and operate warehouses and one sales room in this state to handle malt liquors" | 44-3-407(1)(b)(I)(A) [L23] |
+| What a sales room does | It "sells and serves alcohol beverages for consumption on the licensed premises, sells alcohol beverages in sealed containers for consumption off the licensed premises, or both" | 44-3-103(49) [L23] |
+| One for each licence, and a licence for each place | "Each license issued under this article 3 and article 4 of this title 44 is separate and distinct. … A separate license must be issued for each specific business or business entity and each geographic location" | 44-3-301(3)(a)(I) [L23] |
+| Notice to the city, not a city licence | The brewer sends the city a copy of its application. The city "must submit its response within forty-five days", on "traffic, noise, or other neighborhood concerns", and may decide "without requiring a public hearing". The state may deny on the city's finding | 44-3-407(1)(b)(II) [L23] |
+| No extra fee | "Neither the state or local licensing authority shall impose any additional fees" | Regulation 47-428(J) [L6] |
+
+- **One company, several breweries, a taproom at each: the state's data show
+  it.** Odell held sales rooms on three separate wholesaler's licences (Fort
+  Collins and two in Denver); Breckenridge Brewery holds two (Littleton and
+  its first pub in Breckenridge); Goat Patch holds three around Colorado
+  Springs; Timnath Beerwerks holds one in Timnath and one in Fort Collins
+  [L24]. The legislature's handbook reads the words more narrowly, as one
+  sales room in the state [L25]; the licences the state has issued say
+  otherwise.
+- **A second taproom away from the brewery** needs its own wholesaler's beer
+  licence at that place (Regulation 47-434(E)) [L6].
+- **Nothing here changed in 2025 or 2026.** SB 26-114 (effective 2026-08-12)
+  lets a *spirits* maker serve other makers' alcohol with a permit. A bill
+  that "would have allowed certain alcoholic beverage license holders to
+  apply for an expanded sales room permit", HB 26-1190, did not pass
+  [L23], [L25].
+
+### 7.3 What if the pub serves food
+
+**Food alone changes nothing.**
+
+- The Code grants food in words to wineries and distillers ("may serve and
+  sell food, general merchandise, and nonalcohol beverages", 44-3-402(2)(b),
+  (7)(b)). The beer wholesaler's sales room has no such sentence and no ban,
+  and 44-3-103(11.5) lists "A beer wholesaler that operates a sales room"
+  among licensees that share "an outdoor space that is used for food and
+  alcohol beverage service" [L23].
+- No share of sales has to be food. The 15 % rule is the brew pub's, and the
+  25 % rule is the restaurant's.
+- The kitchen needs a retail food establishment licence from the county
+  (6 CCR 1010-2), and the Liquor Rules ask the licensee to keep it "in full
+  force and effect at all times" (Regulation 47-902(B)) [L31], [L6].
+
+**What the taproom may pour is the limit.**
+
+- A beer wholesaler's sales room exists "to handle malt liquors" and "for the
+  purpose of selling malt liquor" (44-3-407(1)(b)(I)(A); Regulation
+  47-412(E)). It may not sell wine, spirits, or cocktails.
+- Nor cider: "hard cider shall in all respects be treated as a vinous liquor
+  except where expressly provided otherwise" (44-3-103(20)) [L23].
+- Other brewers' beer: the text says "malt liquors", not "of its own
+  manufacture" as the winery and distiller clauses do. Whether the state
+  allows guest beers in practice was not confirmed.
+
+**A full bar needs another licence, and a brewery's owners cannot hold it.**
+
+| Licence | What it allows | Food | May a brewery's owners hold it? |
 |---|---|---|---|
-| P1: the pub belongs to another company | An independent restaurant company holds the brew pub licence and the premises. CherryMountain licenses its name to it and runs the brewing system under contract. Great Divide's Castle Rock pub is reported this way: "Roadhouse will actually lease the space and hold the brewing license, Great Divide will operate the five-barrel brewing system" [L9] | It is a real pub, with a full bar and a kitchen. It explains the site as the plan already has it: the head office runs a brewhouse on a network it does not own. The pub's own records and office belong to the licence holder | A second company in the story. The VPN joins two companies, so what crosses it is a contract matter |
-| **P2: every site is a brewery** (recommended) | `fc` holds a manufacturer's and a wholesaler's beer licence like the others, and its taproom is the sales room, with a kitchen under a food licence | One company and one kind of licence, so the design stays as it is: one company's VPN, one company's networks | Legally it is a brewery taproom that serves food, not a brew pub: it pours only the company's own beer. Whether one company may hold a sales room at each of its breweries was not verified |
-| P3: every site is a brew pub | All four hold brew pub licences | One company | The production brewery near Aurora would have to be a retail establishment with 15 % of its on-premises income from food, and each site's own wholesale stops at 300,000 gal a year |
+| Hotel and restaurant, 44-3-413 | All alcohol by the drink | Meals "not less than twenty-five percent of the gross income from sales of food and drink", over a year | No: 402(5)(a), 407(2), 413(14) |
+| Tavern, 44-3-414 | All alcohol by the drink | "sandwiches and light snacks" | No: 414(3) |
+| Beer and wine, 44-3-411 | Malt and vinous liquors | Sandwiches and light snacks | No: 411(3) |
+| Brew pub, 44-3-417 | All alcohol, and brewing on site | See below | Only if they hold no brewery and no wholesaler's licence anywhere |
 
-The single-site design already licenses `fr` as a manufacturer and wholesaler
-with the taproom as its sales room
-([DESIGN.md §18A.1](../DESIGN.md#18a1-alcohol-ttb-and-colorado)). P2 extends
-that to every site and changes nothing else in the design, which is why it is
-the recommendation. P1 is the choice if `fc` must be a brew pub in law: it is
-also the richer exercise, because the VPN would then join two companies, but
-that boundary is not designed yet. The structure is decision D20.
+**The brew pub licence in detail** [L23]:
 
-Either way TTB sees `fc` as a brewery, so what follows holds for P1 and P2.
+| Point | Text |
+|---|---|
+| The food rule, 417(4) | "A brew pub licensee shall sell alcohol beverages for on-premises consumption only if at least fifteen percent of the gross on-premises food and drink income of the business of the licensed premises is from the sale of food." Food means meals: "foodstuffs of such nature as is ordinarily consumed by an individual at regular intervals for the purpose of sustenance" |
+| Measured how | The statute gives no period, where the restaurant's rule gives a year. The base is on-premises income, so wholesale is outside it |
+| Production | 1,860,000 gallons (60,000 barrels) a year for each brew pub |
+| Its own wholesale, 417(2)(a)(IV) | "Sold at wholesale to licensed retailers in an amount up to three hundred thousand gallons per calendar year", about 9,700 barrels |
+| Beyond that, 417(2)(a)(II) | "Sold to independent wholesalers for distribution to licensed retailers", with no limit |
+| Other alcohol, 417(3)(a) | Bought from a licensed wholesaler, and up to $7,000 a year (indexed) from retail stores |
 
-### 7.2 What must be at the pub
+A CherryMountain site makes about 2,500 barrels a year, so neither cap would
+bind.
 
-To TTB a brewpub is a brewery: "'tavern' means a portion of brewery premises
-where beer is sold to consumers" (27 CFR 25.25(a)).
+### 7.4 The lawful structures
+
+| Structure | What it allows | What it forbids or costs | Who does it [L24] |
+|---|---|---|---|
+| **P2: every site a brewery** (recommended). Each site holds a manufacturer's licence and a wholesaler's beer licence; the taproom is the sales room; a kitchen under a food licence | One company. No production cap. Its own sales to retailers, without limit. Beer by the glass and to go. Food. State licences only: the city has 45 days to object | Beer only: no wine, cider, or spirits. No interest in any retail licence anywhere. In law `fc` is a brewery with a taproom, not a brew pub | Avery; Breckenridge Brewery at Littleton and at its first pub; Goat Patch; Timnath Beerwerks; Odell until September 2026 |
+| P3: every site a brew pub | One company. A full bar and a kitchen at every site. Other retail licences too (a tavern, a restaurant) | No brewery or wholesaler's licence at all (417(5)(a), 308(8)). At least 15 % food wherever alcohol is drunk on site. A state and a city licence, with a hearing, for each site. `ep`, a production brewery with no taproom, would have to become "a retail establishment" with a pub and a kitchen | Left Hand (three brew pubs and a tavern); Denver Beer Co (six brew pubs, its production site among them); Odell (three brew pubs and a vintner's restaurant, issued 2026-09-29); Bristol in Colorado Springs |
+| P1: the pub belongs to an unrelated company, which holds a brew pub licence; CherryMountain licenses its name and helps | A real brew pub with a full bar. It may buy CherryMountain's packaged beer through CherryMountain's wholesaler's licence | No shared owner or shareholder. The name for a fixed fee, never a share of alcohol sales (Regulation 47-1108). No money or serving equipment from CherryMountain (308(1)(a)). The pub company is the brewer: it may not "allow any other person to exercise the privileges granted under the licensee's license" (301(3)(a)(I)). **CherryMountain's labour must be paid for** (below) | Great Divide Brewery & Roadhouse, Castle Rock: a brew pub licence held by Riverwalk Market LLC |
+| P1b: the same, with CherryMountain as an alternating proprietor | CherryMountain brews its own beer on the pub's premises, under its own licence and its own federal notice (44-3-103(3); Regulation 47-432) | "retail sales of malt liquors shall not be conducted from an area licensed or defined as an alternating proprietor licensed premises". Each keeps "control over their separate business records". "Nothing in this regulation authorizes joint venture operations" | 49 such records in the state's list |
+| P4: a CherryMountain brewery, and next door a restaurant that belongs to someone else | CherryMountain keeps P2 at `fc`. The neighbour holds a restaurant or tavern licence with a full bar, and buys CherryMountain's beer through a wholesaler's licence | The same wall as P1: no shared owner, no help, the name for a fixed fee. Two premises, two companies, two networks | Lyons: Monster Brewing holds the brewery, and Oskar Blues LLC holds the restaurant; the former owners kept the restaurants and licensed the name back [L30] |
+| Three breweries and one brew pub, or a restaurant or a tavern, under the same owners | Nothing | **Unlawful** | No one, on the state's list |
+
+- **The labour rule.** "unless the retailer pays the supplier at the normal
+  hourly rate of the employee performing the labor, a supplier is prohibited
+  from providing to a retailer … any labor" beyond delivering and stocking
+  its own products, "including … Operating the retailer's powered mechanical
+  equipment" (Regulation 47-322(M)(4)) [L6]. Under P1 and P4 the pub is a
+  retailer and CherryMountain is its supplier. So if CherryMountain's staff
+  run the pub's brewhouse or program its controllers, the pub pays for the
+  hours.
+- **Real groups are moving from P2 to P3.** Denver Beer Co's addresses were
+  sales rooms until 2025 and are brew pubs now, and Odell changed in
+  September 2026, in Fort Collins itself [L24]. Why was not read from a
+  source that could be opened; the one bill that would have widened the
+  brewery's sales room failed in 2026.
+
+**The recommendation for D20 stands, on firmer ground.** P2 is lawful, it is
+what breweries of this size do, and it leaves the design as it is: one
+company, one VPN, state licences only. It holds whether or not `fc` has a
+kitchen. The design may go on calling `fc` "the brewpub"; in law it is a
+brewery with a taproom and a kitchen that pours beer only.
+
+| If the exercise wants | Choose | What it changes in the design |
+|---|---|---|
+| The pub as it is, beer and food | **P2** | Nothing |
+| A full bar at the pub, and one company | P3 | `ep` gains a pub and a kitchen, which it does not have. Every site needs a city licence. No network change |
+| A full bar at the pub, and a second company in the story | P1 or P4 | The VPN joins two companies. The pub's records and its small historian are the pub company's. CherryMountain's remote engineering is billed labour, and the contract terms above belong in the scenario |
+
+### 7.5 Federal law
+
+| Question | Answer | Source |
+|---|---|---|
+| Is a brewpub a brewery? | Yes. "'tavern' means a portion of brewery premises where beer is sold to consumers. Food, and/or taxpaid wine, and/or taxpaid distilled spirits may also be sold at a tavern operated on brewery premises." | 27 CFR 25.25(a) [L1] |
+| One Brewer's Notice for each site? | Yes, by construction: "The brewery shall consist of the land and buildings described in the brewer's notice. The continuity of the brewery must be unbroken", and a brewer with more than one brewery states "the locations of all the breweries" | 26 U.S.C. 5402(a) [L28]; 27 CFR 25.167(b)(3) [L1] |
+| Contract brewing | The owner of the premises is the brewer: "only one person, the contract brewer, must qualify as a brewer". So under P1 the pub company holds the notice | TTB Industry Circular 2005-2 [L27] |
+| Alternating proprietorship | A second company may brew at the pub under its own notice, as a variance: "both the host and the tenant brewer act as brewers and each must be qualified", and "the tenant brewer has title to the beer at all stages" | [L27] |
+| The federal tied-house rule | It does not bite on P2 or P3: "Outright ownership of a retail business by an industry member is not an interest which may result in a violation". For malt beverages it applies only where state law has a similar rule, and Colorado's is the one that binds | 27 CFR 6.27(a); 27 U.S.C. 205 [L26] |
+| The reduced tax rate | $3.50 a barrel on the first 60,000 barrels. Four breweries of one company share one allowance: "the brewer shall apportion the 60,000 barrels among the breweries". A pub brewing "under a license, franchise, or other arrangement" shares it too | 26 U.S.C. 5051(a) [L28]; 27 CFR 25.152(c) [L1] |
+| Beer between the company's own breweries | Moves without payment of tax | 26 U.S.C. 5414 [L28]; 27 CFR 25.181 [L1] |
+
+At about 10,000 barrels a year in all, the company is far inside every
+federal limit.
+
+### 7.6 Fort Collins: a brew pub licence against a sales room
+
+| | Brew pub | A brewery's sales room |
+|---|---|---|
+| Who licenses | The state and the city: "Colorado uses a dual-authority licensing system" | The state only |
+| The city's part | An application, fingerprints and history for each owner of 10 % or more, a posted notice, a petition from a one-mile radius, and a hearing where "you must prove … that the neighborhood's needs and desires aren't currently being met by existing businesses" | A copy of the state application, and 45 days to answer on traffic, noise, or neighborhood concerns |
+| Time | "120 days or more" | Not stated |
+| City fees | $500 application, $75 licence, and $1,600 a year in occupation tax | None for the review |
+| Food | "Food sales must be at least 15% of gross sales" (the city's words; the statute's base is on-premises food and drink income) | None required |
+
+Source: the city's liquor licence pages and its application guide [L29].
+The city's pages do not mention sales rooms.
+
+### 7.7 What must be at the pub
+
+To TTB a brewpub is a brewery, whatever its state licence.
 
 | Rule | What it requires | Source |
 |---|---|---|
@@ -610,23 +784,35 @@ where beer is sold to consumers" (27 CFR 25.25(a)).
 | 27 CFR 25.25(c) | The tax on beer sold in the tavern is determined "each time beer is added to a tax-determination tank", by "a suitable method for measurement of the beer, such as a meter or gauge glass", before it is dispensed | [L1] |
 | 27 CFR 25.42 | A beer meter's error "may not exceed ±0.5 percent", and its tests are recorded | [L1] |
 | Colorado Liquor Rules, Regulation 47-502(A)(1) | "Manufacturers and wholesalers shall maintain upon the licensed premises, and make available for inspection … documents or invoices supporting" the monthly excise reports. A brew pub counts as a manufacturer here | [L6] |
-| Regulation 47-700(B) | Books for the current tax year and the three before it; an electronic format is allowed; copies "without unreasonable delay" | [L6] |
-| C.R.S. 44-3-503 | A monthly excise return by the 20th, and three years of records | [L5] |
+| Regulation 47-700(B) | Books for the current tax year and the three before it; an electronic format is allowed | [L6] |
+| C.R.S. 44-3-503, 44-3-701 | A monthly excise return by the 20th, three years of records, and books "open at all times during business hours" | [L23] |
 | 40 CFR 403.12(o)(2) | Three years of wastewater monitoring records, "available for inspection and copying" | [L11] |
 | 29 CFR 1910.146(e)(6) | Each canceled confined-space permit for a year | [L14] |
 
-Nothing in 27 CFR Part 25, the Colorado Liquor Code, or the Liquor Rules says
-who may program or operate brewing equipment, or from where. No rule asks for
-a historian or an engineering workstation.
+**The structure changes whose records they are, not where they are kept.**
 
-### 7.3 What such a company would do
+| Structure | The federal brewer at `fc` | Whose records are at `fc` |
+|---|---|---|
+| P2 | CherryMountain | CherryMountain's, as a brewery and wholesaler |
+| P3 | CherryMountain | CherryMountain's, as a brew pub, with the receipts for alcohol bought at retail and whatever shows the 15 % |
+| P1 | The pub company | The pub company's. A copy at CherryMountain is a contract matter |
+| P1b | Both | Each keeps its own, and TTB asks the tenant for a variance to keep records at the host's brewery |
+| P4 | CherryMountain, at the brewery | The brewery's at the brewery; the restaurant keeps a retailer's books |
+
+Nothing in 27 CFR Part 25, the Colorado Liquor Code, or the Liquor Rules says
+who may program or operate brewing equipment, or from where, apart from the
+labour rule of [7.4](#74-the-lawful-structures). No rule asks for a historian
+or an engineering workstation.
+
+### 7.8 What such a company would do
 
 **The rules decide half of it.** The pub's records are made and kept at the
 pub. At a brewpub the serving tanks are the tax-determination tanks, so each
 transfer into one is a taxable event that must be measured and written down
 there. If the only copy of that measurement were in a historian at the head
 office, a tunnel outage would be a hole in a required record. So the pub keeps
-its own store, and a copy goes to the head office.
+its own store, and a copy goes to the head office. This holds under every
+structure of [7.4](#74-the-lawful-structures).
 
 **Practice decides the other half.** A plant historian is unusual at a pub
 this size; a panel with trends and a brew log are the norm, and a 10-barrel
@@ -651,12 +837,26 @@ pub. The guidance on reaching it from outside:
 | How the head office gets in | Through its jump host, with multifactor sign-in and a recorded session, to its own engineering workstation, and from there to the pub's PLCs through one firewall rule that the pub's edge keeps closed outside a maintenance window | The 2025 and 2026 guidance above |
 | What the pub must still be able to do alone | Brew, serve, and record with the tunnel down; hold a copy of each PLC program on site | The same guidance |
 
-**Not verified:** TTB has no sentence that says "one Brewer's Notice for each
-site"; it follows from 25.11, 25.22, and 25.62(b). The text of IEC 62443-3-3
-and 62443-2-4 was not read (only the requirement titles). How the common
-brewery record-keeping services behave with no internet was not found in
-vendor documents. The 2026 session's changes to the Liquor Code were checked
-only as two bills, both of which failed.
+### 7.9 Not verified
+
+- **The state's own guidance.** The Liquor Enforcement Division's site did
+  not allow automated reading, so its charts "Liquor Manufacturer Rights" and
+  "Multiple Interests", and any bulletin on sales rooms or on food in one,
+  were not read. A binding answer on unsettled facts comes from a position
+  statement of the Division and then a declaratory order (Regulation 47-200).
+- **Guest beers in a brewery's taproom**: the text allows "malt liquors";
+  practice was not confirmed.
+- **How the 15 % of a brew pub is measured**: the statute gives no period.
+- **The *Brass Monkey* opinion**, read only as the statute's annotation.
+- **Why groups are moving to brew pub licences**, and how a brewery above
+  60,000 barrels fits under one. Odell's announcement could not be opened.
+- **Chapter 3 of the Fort Collins Municipal Code**, and whether the city's
+  occupation tax reaches a brewery's sales room.
+- **One Brewer's Notice for each site** is an inference from 26 U.S.C.
+  5402(a) and 27 CFR 25.11, 25.152(c), and 25.167(b)(3); no single sentence
+  says it. The U.S. Code was read in its 2024 edition.
+- The text of IEC 62443-3-3 and 62443-2-4 (only the requirement titles), and
+  how the common brewery record-keeping services behave with no internet.
 
 ## 8. What the places change in the design
 
@@ -804,7 +1004,7 @@ Read on 2026-11-23 unless an entry says otherwise. *Secondary* marks a copy, a s
 ### Licences, records, and remote access
 
 - [L1] 27 CFR Part 25 (eCFR, as of 2026-11-01), <https://www.ecfr.gov/api/versioner/v1/full/2026-11-01/title-27.xml?part=25>.
-- [L5] Colorado Liquor Code, C.R.S. Title 44, Article 3, the Liquor Enforcement Division's 2025 compilation, <https://sbg.colorado.gov/sites/sbg/files/documents/2025_Liquor_Code.pdf>.
+- [L5] Colorado Liquor Code, C.R.S. Title 44, Article 3, the Liquor Enforcement Division's 2025 compilation (unofficial; the first pass read it, and it matches [L23] in every section quoted), <https://sbg.colorado.gov/sites/sbg/files/documents/2025_Liquor_Code.pdf>.
 - [L6] Colorado Liquor Rules, 1 CCR 203-2, effective 2026-01-01, <https://www.sos.state.co.us/CCR/GenerateRulePdf.do?ruleVersionId=12349&fileName=1%20CCR%20203-2>.
 - [L9] Westword, on Great Divide's Castle Rock pub (secondary), <https://www.westword.com/food-drink/great-divide-brewing-celebrates-25th-anniversary-and-will-open-new-castle-rock-brewpub-11387035/>.
 - [L11] 40 CFR 403.12, <https://www.ecfr.gov/api/versioner/v1/full/2026-11-01/title-40.xml?part=403&section=403.12>.
@@ -815,3 +1015,12 @@ Read on 2026-11-23 unless an entry says otherwise. *Secondary* marks a copy, a s
 - [L19] NCSC-UK with CISA and partners, *Secure connectivity principles for operational technology*, 2026-01, <https://www.ncsc.gov.uk/files/ncsc-secure-connectivity-for-operational-technology.pdf>.
 - [L21] Siemens, a case study of a 10-barrel brewpub (vendor), <https://assets.new.siemens.com/siemens/assets/api/uuid:42cb1ebf-e631-49e9-82e4-aff26ae6d628/JRH-Case-Study-final.pdf>.
 - [L22] Inductive Automation, "Edge architectures" (vendor), <https://docs.inductiveautomation.com/docs/8.3/system-architectures/edge-architectures>.
+- [L23] Colorado Revised Statutes 2026, Title 44, the Office of Legislative Legal Services' edition, current through the 2026 regular session, <https://olls.info/crs/crs2026-title-44.pdf>.
+- [L24] Colorado Liquor Enforcement Division, open data, rows updated 2026-11-10: Liquor Licenses, <https://data.colorado.gov/d/ier5-5ms2>; Sales Rooms, <https://data.colorado.gov/d/9pwz-gi5v>; Recently Approved, <https://data.colorado.gov/d/htyp-tqzh>; Recently Expired and Surrendered, <https://data.colorado.gov/d/pwjb-9dd5>.
+- [L25] Colorado Legislative Council Staff, *Colorado Liquor Licensing Handbook*, 2024 (secondary), <https://leg.colorado.gov/sites/default/files/r24-656_colorado_liquor_licensing_handbook.pdf>; summary of major legislation on liquor, 2026, <https://content.leg.colorado.gov/sites/default/files/r26-578-liquor-tobacco-marijuana-gaming-summary-of-major-legislation-2026-accessible.pdf>.
+- [L26] 27 CFR Part 6, "Tied house" (eCFR, as of 2026-11-19), <https://www.ecfr.gov/api/versioner/v1/full/2026-11-19/title-27.xml?part=6>; 27 U.S.C. 205, <https://www.govinfo.gov/content/pkg/USCODE-2024-title27/html/USCODE-2024-title27-chap8-subchapI-sec205.htm>.
+- [L27] TTB, Industry Circular 2005-2, alternating proprietors at brewery premises, <https://www.ttb.gov/public-information/industry-circulars/archives/2005/05-02>.
+- [L28] 26 U.S.C. 5051, 5402, and 5414 (U.S. Code, 2024 edition), <https://www.govinfo.gov/content/pkg/USCODE-2024-title26/html/USCODE-2024-title26-subtitleE-chap51-subchapA-partI-subpartD-sec5051.htm>.
+- [L29] City of Fort Collins, liquor licence pages and the new liquor licence application guide, <https://www.fortcollins.gov/Business/Permits-and-Licensing/Liquor-License/Liquor-License-Applications>; Liquor Licensing Authority agenda, 2026-06-17, <https://www.fortcollins.gov/files/sharedassets/city/v/1/city-clerks-office/liquor-license/agendas/june-17-lla-agenda-ada-cover-sheet.pdf>.
+- [L30] Westword, on the sale of Oskar Blues and its restaurants (secondary), <https://www.westword.com/food-drink/monster-energy-oskar-blues-sale-13320947/>.
+- [L31] Colorado Retail Food Establishment Rules and Regulations, 6 CCR 1010-2.

@@ -532,7 +532,12 @@ def foreign_prefix(lab: Lab, site: str) -> None:
 
 def bfd_sessions(lab: Lab, vm: str) -> tuple[bool, str]:
     """Every BFD session the router's list configures is up, at the list's interval."""
-    want = sum(" bfd profile WAN" in line for line in vyos_sketch.commands(model.BY_NAME[vm], kind=KIND))
+    # One session for each BGP neighbor that uses the profile; the profile's own
+    # lines (`set protocols bfd profile WAN interval ...`) are not sessions.
+    want = sum(
+        line.startswith("set protocols bgp neighbor ") and line.endswith(" bfd profile WAN")
+        for line in vyos_sketch.commands(model.BY_NAME[vm], kind=KIND)
+    )
     out = lab.shell(vm, "vtysh -c 'show bfd peers json' 2>&1")
     try:
         peers = json.loads(out[out.index("[") :])

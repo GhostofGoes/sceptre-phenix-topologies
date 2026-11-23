@@ -38,7 +38,7 @@ set policy prefix-list PUBLIC rule 15 action permit
 set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
 set policy prefix-list PUBLIC rule 15 le 24
 set policy community-list FROM-CUSTOMERS rule 10 action permit
-set policy community-list FROM-CUSTOMERS rule 10 regex '64500:1'
+set policy community-list FROM-CUSTOMERS rule 10 regex '_64500:1_'
 set policy route-map TO-UPSTREAM rule 10 action permit
 set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
 set policy route-map TO-UPSTREAM rule 20 action permit

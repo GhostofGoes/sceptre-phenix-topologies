@@ -388,6 +388,12 @@ head office, the site's uplink set down, and 200 s of silence.
       its peer was given up.
 - [x] The head office refuses a network of another site when the site's edge
       announces it.
+- [x] Since run 33, also: each router holds every line of its list after the
+      commit; every BFD session is up at 1 s; each IPsec tunnel has its own
+      SA; each edge sends its own traffic from its LAN address; a packet of
+      the tunnel's full MTU (1,400 for a VTI, 1,420 for WireGuard) with DF set
+      crosses each tunnel, and one byte more is refused at the edge; and no
+      edge would send an unused private address out of an uplink.
 
 ### Result on VyOS
 
@@ -397,20 +403,27 @@ head office, the site's uplink set down, and 200 s of silence.
 - **Run:** [run 27](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45072901676),
   [run 28](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45075247853),
   [run 29](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45082278191),
-  and [run 30](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45092312260)
-  of the workflow, on `test-wan-bgp-vyos` at `3ffff8b`, `86a9d07`,
-  `3966f5b`, and `119e1b4`: both jobs passed every check in each, 29 in runs
-  27 to 29 and 30 in run 30. Run 29 had the patch as it is in the pull
-  request, a head office that only answers IKE, and a newer VyOS
-  (999.202611222329). Run 30 had the route filters as a list for each site
-  and the check of finding V8. For runs 27 and 28: VyOS 999.202611222040 (rolling, built in the run from vyos-build
+  [run 30](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45092312260),
+  [run 31](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45120050629),
+  and [run 33](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45131775836)
+  of the workflow, on `test-wan-bgp-vyos`: both jobs passed every check in
+  each, 29 in runs 27 to 29, 30 in runs 30 and 31, and 39 in run 33. Run 29
+  had the patch as it is in the pull request, a head office that only
+  answers IKE, and a newer VyOS (999.202611222329). Run 30 had the route
+  filters as a list for each site and the check of finding V8. Run 33 had
+  the review's changes: discard routes, the VTI's MTU and MSS clamp, the
+  edge's LAN address as the source of its own traffic, the stricter `config`
+  check, and nine more checks, on VyOS 999.202611230649 (built in run 32,
+  kernel 6.18.64-1). Run 32 had the same code
+  and passed 38 of 39 in both jobs: the one failure was the new BFD check's
+  own count, which took the profile's three interval lines for sessions. For runs 27 and 28: VyOS 999.202611222040 (rolling, built in the run from vyos-build
   `91ccaca`), kernel 6.18.64 with WireGuard in the tree, FRR 10.7.1,
   strongSwan as VyOS ships it; phenix `ci-e2e-minimega` at `afbcba7` with the
   patch; minimega 3.3.0 at `66ed1aa`.
 - **Evidence:** [evidence/wan-bgp-vyos-wireguard](evidence/wan-bgp-vyos-wireguard)
   and [evidence/wan-bgp-vyos-vti](evidence/wan-bgp-vyos-vti) have the summary,
   the result, and the script phenix rendered for each router, with the keys
-  removed, from run 30.
+  removed, from run 33.
 
 | Run | Commit | WireGuard job | IPsec job |
 |---|---|---|---|
@@ -420,23 +433,26 @@ head office, the site's uplink set down, and 200 s of silence.
 | [28](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45075247853) | `86a9d07`, the same code | 29 of 29 | 29 of 29 |
 | [29](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45082278191) | `3966f5b`: the pull request's patch, and a head office that only answers IKE | 29 of 29 | 29 of 29 |
 | [30](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45092312260) | `119e1b4`: a route filter for each site, and a site that announces another site's network | 30 of 30 | 30 of 30 |
+| [31](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45120050629) | `84a5b36`: the renamed sites | 30 of 30 | 30 of 30 |
+| [32](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45126127571) | `f0ea1bc`: the review's changes and nine more checks | 38 of 39: the BFD check counted the profile's lines as sessions | 38 of 39: the same |
+| [33](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45131775836) | `90ff41f`: the BFD count fixed | **39 of 39** | **39 of 39** |
 
 Run 26 was cancelled to make room for run 27. Runs 22 and 23 never built the
 VyOS image (finding V7).
 
 **Outages**, as the longest run of lost pings from the site's host to the head
-office's, over the runs whose faults ran (WireGuard: 25 and 27 to 30; IPsec:
-24 and 27 to 30; the 200 s silence and the packet count are from runs 27 to
-30).
+office's, over the runs whose faults ran (WireGuard: 25 and 27 to 33; IPsec:
+24 and 27 to 33; the 200 s silence and the packet count are from runs 27 to
+33).
 
 | Event | WireGuard | Route-based IPsec |
 |---|---|---|
-| ShadeCast goes silent toward the site | 2.4, 2.8, 3.0, 2.8, and 2.4 s, then `fc-b` | 2.8, 2.6, 3.0, 2.8, and 3.0 s, then `fc-b` |
+| ShadeCast goes silent toward the site | 2.4, 2.8, 3.0, 2.8, 2.4, 3.0, 2.8, and 2.8 s, then `fc-b` | 2.8, 2.6, 3.0, 2.8, 3.0, 2.8, 2.8, and 3.0 s, then `fc-b` |
 | The repair | none | none |
-| ShadeCast goes silent toward the head office | 2.6, 2.2, 2.2, 2.4, and 2.6 s; ShadeCast then reaches the head office through Tumbleweed | 2.8, 5.4, 2.8, 2.2, and 2.6 s |
+| ShadeCast goes silent toward the head office | 2.6, 2.2, 2.2, 2.4, 2.6, 2.2, 2.8, and 2.6 s; ShadeCast then reaches the head office through Tumbleweed | 2.8, 5.4, 2.8, 2.2, 2.6, 5.0, 5.2, and 2.2 s: three of eight near 5 s, not looked into |
 | The repair | none | none |
 | The site's ShadeCast uplink set down, for 20 s and more | No packet of `fc-a` left through the other uplink; back on `fc-a` when the link was | The same |
-| 200 s of silence toward the site, then the repair | Back on `fc-a` 8, 8, 9, and 8 s after the repair. The last handshake was 237 s old | Back on `fc-a` after 36 s and 20 s with both ends opening tunnels, and after 57 s and 59 s with the head office only answering. IKE had given the peer up, and the VTI was down |
+| 200 s of silence toward the site, then the repair | Back on `fc-a` 8, 8, 9, 8, 9, 8, and 9 s after the repair. The last handshake was 237 s old | Back on `fc-a` after 36 s and 20 s with both ends opening tunnels, and after 57, 59, 62, 27, and 31 s with the head office only answering. IKE had given the peer up, and the VTI was down |
 
 ### Findings on VyOS
 

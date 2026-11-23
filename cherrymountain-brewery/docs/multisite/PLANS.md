@@ -16,7 +16,7 @@
 > follow. The recommended one (Plan B) gives the head office its own AS on two
 > ISPs and gives each site one tunnel per uplink, with BGP and BFD inside the
 > tunnels. On VyOS routers a site lost 2.2 to 3.0 seconds when an uplink
-> went silent (once 5.4), with WireGuard and with route-based IPsec. In the
+> went silent (5.0 to 5.4 three times, with IPsec), with WireGuard and with route-based IPsec. In the
 > lab a site whose path crossed the failed ISP inside the internet lost nine.
 > The whole range is 136 VMs, and on the cluster of three nodes of 48 cores
 > and 512 GB no node carries more than 0.88 vCPUs for each thread. The four
@@ -515,7 +515,7 @@ phenix cannot render that for VyOS (C5). There are four ways to deliver it.
 
 | Option | What it is | For | Against |
 |---|---|---|---|
-| **R1: a `config` list in the `vrouter` app** (recommended, needs a phenix change) | Each router's metadata lists VyOS `set` and `delete` commands. phenix writes them after its own, before the commit | One commit at first boot, with the rest of the configuration. It also carries what `cm-vyos-config.sh` does after boot today (logging, syslog, IKEv2, the NTP source), so that script could go. The change is small, its tests pass, and it is a draft pull request ([7.3](#73-a-config-list-for-the-vrouter-app)). In CI, 48 boots of VyOS routers committed their lists at first boot, 59 to 151 commands each ([7.4](#74-wan-bgp-on-vyos-routers)) | A change to phenix, on a fork branch until upstream takes it |
+| **R1: a `config` list in the `vrouter` app** (recommended, needs a phenix change) | Each router's metadata lists VyOS `set` and `delete` commands. phenix writes them after its own, before the commit | One commit at first boot, with the rest of the configuration. It also carries what `cm-vyos-config.sh` does after boot today (logging, syslog, IKEv2, the NTP source), so that script could go. The change is small, its tests pass, and it is a draft pull request ([7.3](#73-a-config-list-for-the-vrouter-app)). In CI, 72 boots of VyOS routers committed their lists at first boot, 59 to 201 commands each ([7.4](#74-wan-bgp-on-vyos-routers)) | A change to phenix, on a fork branch until upstream takes it |
 | R2: the post-boot script | `cm-vyos-config.sh` grows a BGP and tunnel section | No phenix change. The mechanism is in the range | A second commit after boot, which a `cc exec` starts. The script has not run on a VyOS VM, and its first form changed nothing and reported success ([DESIGN.md §10.3](../DESIGN.md#103-conduit-matrix-default-deny-stateful-logged)) |
 | R3: BGP as a schema feature of phenix | `network.bgp` in the topology, as `network.ospf` is | The right upstream answer to the TODO | A large change (schema, types, template, Builder checks). It still would not cover tunnels or BFD |
 | R4: keep BGP off VyOS | A Linux router with FRR does the WAN work at each site ([4.4](#44-where-the-tunnels-end), E2) | No phenix change and no VyOS syntax to verify. It is what the lab ran | One more VM at each site |
@@ -599,7 +599,7 @@ port of its own, 51821 to 51825.
 | Option | Tunnels | Routing | Failover | Needs |
 |---|---|---|---|---|
 | **V1: static hub and spoke** | One policy-based IPsec tunnel from each site to the head office | None. The tunnel's selectors are the routes | None. A site with a dead ISP is cut off | Nothing new: phenix renders it (C6) |
-| **V2: a tunnel per uplink, BGP inside** (recommended) | One route-based tunnel for each uplink of each site, to the head office: five in all | eBGP in every tunnel, each site its own private AS. The primary tunnel wins by local preference at both ends. BFD finds a dead tunnel | About 1 s in the lab for a site next to the fault. On VyOS, 2.2 to 3.0 s with the 1 s BFD interval a VM should use, and 5.4 s once. A site with one uplink waits for the ISPs: 9 s in the lab | R1, R2, or E2 |
+| **V2: a tunnel per uplink, BGP inside** (recommended) | One route-based tunnel for each uplink of each site, to the head office: five in all | eBGP in every tunnel, each site its own private AS. The primary tunnel wins by local preference at both ends. BFD finds a dead tunnel | About 1 s in the lab for a site next to the fault. On VyOS, 2.2 to 3.0 s with the 1 s BFD interval a VM should use, and 5.0 to 5.4 s three times (IPsec, the head office's uplink). A site with one uplink waits for the ISPs: 9 s in the lab | R1, R2, or E2 |
 | V3: V2 with a second hub | V2, and a tunnel for each uplink of `fc` and `cs` to a second hub at `ep`: eight in all. `ep` would need its own prefix, or an endpoint on each uplink | The same, with a preference between hubs | Survives the loss of the head office's whole site | The same, and more policy to get wrong |
 | V4: full mesh | A tunnel between every two sites, for each uplink pair | The same | Sites reach each other directly | The most tunnels and the least reason: brewery sites talk to the head office, not to each other |
 
@@ -624,8 +624,7 @@ port of its own, 51821 to 51825.
   syslog, NTP, and DNS would otherwise leave from the tunnel's /31, an address
   in no site's blocks, which the far side's rules would have to admit. A
   route map on the routes BGP installs sets the source, as the head office's
-  does for its defaults. In the sketch since the review; the next VyOS run
-  checks it.
+  does for its defaults. On VyOS since run 33.
 - **A private address with no tunnel route is dropped at the edge.** Each
   edge has a blackhole for each of its own blocks (distance 250) and for all
   of `10.0.0.0/8`, `172.16.0.0/12`, and `192.168.0.0/16` (distance 254). While
@@ -633,13 +632,13 @@ port of its own, 51821 to 51825.
   instead of following the default route out of an uplink unencrypted. VyOS
   announces a `network` whether or not a route stands behind it, so nothing
   else stopped this: during the Bristlecone hijack, `cs`'s traffic for the
-  head office would have gone to Bristlecone, the hijacker, in clear. Lab;
-  the next VyOS run checks it.
+  head office would have gone to Bristlecone, the hijacker, in clear. Lab,
+  and VyOS since run 33.
 - **A tunnel carries full-size packets.** Each VTI has an MTU of 1,400 and
   clamps TCP's maximum segment size to it, so a segment fits in ESP inside a
-  1,500-byte underlay without depending on path MTU discovery. The next VyOS
-  run pings 1,372 bytes with fragmentation forbidden through each tunnel, and
-  checks that one byte more is refused at the edge.
+  1,500-byte underlay without depending on path MTU discovery. In run 33 a
+  1,372-byte ping with fragmentation forbidden crossed each tunnel, and one
+  byte more was refused at the edge (WireGuard: 1,420 and 1,392).
 - **Only site prefixes cross a tunnel, and only a site's own.** The head
   office takes from each site that site's blocks
   ([section 3](#3-what-every-plan-shares)) and nothing else, and a site
@@ -700,10 +699,10 @@ point-to-point interface.
 | Endpoints | Fixed by configuration, once MOBIKE is off (VyOS leaves it on: `disable-mobike`) | **Roam**: a peer's endpoint becomes whatever address its last packet came from. The mark pin makes that harmless |
 | A tunnel tied to its uplink | By its source address: a rule sends that address to the uplink's table | By a mark on the tunnel's packets |
 | After a minute of silence | The IKE SA is still there (IKEv2 retransmits for about 165 s), and traffic returns with BGP | The same: nothing to renegotiate |
-| After 200 s of silence | The site had given the peer up and its VTI was down. Back on the primary tunnel 36 s and 20 s after the repair with both ends opening tunnels, and 57 s and 59 s with the head office only answering | Back 8 or 9 s after the repair, four times |
+| After 200 s of silence | The site had given the peer up and its VTI was down. Back on the primary tunnel 36 s and 20 s after the repair with both ends opening tunnels, and 27 to 62 s (five runs) with the head office only answering | Back 8 or 9 s after the repair, seven times |
 | Known problem on VyOS | An open bug leaves a VTI down after its peer reconnects ([T9154](https://vyos.dev/T9154), not fixed on 2026-11-21). It did not show: the VTI came back. With one IKE group for both ends, the head office opens tunnels too, and once a tunnel had two IKE SAs after the long silence. With the head office only answering, it had one | None found |
 | Configuration at a site, as VyOS commands | 93 | 66 |
-| Evidence | Five passing runs on VyOS (28 of 28, 29 of 29 three times, then 30 of 30) | The lab with wireguard-go, and four passing runs on VyOS (29 of 29 three times, then 30 of 30) after the head office's fix |
+| Evidence | Seven passing runs on VyOS (28 of 28, 29 of 29 three times, 30 of 30 twice, then 39 of 39) | The lab with wireguard-go, and six passing runs on VyOS (29 of 29 three times, 30 of 30 twice, then 39 of 39) after the head office's fix |
 
 **Decided (D3):** route-based IPsec between the sites, and WireGuard stays
 the vendor's. Both passed every check on VyOS, so the choice is about what
@@ -712,7 +711,7 @@ and it gives a defender IKE and ESP to look at. WireGuard is the simpler and
 the quicker to recover, and it is one setting away: the generator writes
 either tunnel from the same model, as `vyos_sketch.py` does. The head office
 only answers IKE (`close-action none`), so that a tunnel has one SA. The
-price is a slower return from a long outage: 57 s and 59 s in the two runs
+price is a slower return from a long outage: 27 to 62 s in the five runs
 that had it, against 20 s and 36 s. **A second price, found in review:** a
 head office that restarts leaves every site holding a dead SA until the
 site's dead-peer detection gives up, about 175 s. strongSwan drops an IKE
@@ -965,7 +964,7 @@ one or two tunnels inside.
 | BGP at a brewery | None | Every site edge, inside the tunnels; the head office also with its ISPs | The same |
 | VPN | V1: policy-based IPsec to the head office | V2: a route-based IPsec tunnel per uplink, BGP and BFD | V3: V2 with a second hub at `ep` |
 | Tunnel end | `fw-edge`, as phenix renders it | E1 (`fw-edge`, with R1), which ran on VyOS in CI; or E2 | The same |
-| Failover | None | 2.2 to 3.0 s next to the fault on VyOS, once 5.4 s; for a site with one uplink, the ISPs' hold time (9 s in the lab; not run on VyOS) | The same, and the head office's site can fail |
+| Failover | None | 2.2 to 3.0 s next to the fault on VyOS, three times 5.0 to 5.4 s; for a site with one uplink, the ISPs' hold time (9 s in the lab; not run on VyOS) | The same, and the head office's site can fail |
 | Monitoring | Central | A sensor at each of the other three sites (D7) | The same |
 | Changes to phenix | None | R1 (or none, with E2) | The same |
 | New images | None | A sensor image | An internet image, a sensor image |
@@ -1263,7 +1262,7 @@ against sceptre-phenix at `86fd732` (the head of `main` on 2026-11-22).
   is the same change for that branch at `afbcba7`, and
   `go test ./app ./tmpl` passes there as well.
 - **On VyOS.** The patch for `ci-e2e-minimega` was applied to phenix in CI,
-  and 48 boots of VyOS routers committed what it rendered
+  and 72 boots of VyOS routers committed what it rendered
   ([7.4](#74-wan-bgp-on-vyos-routers)).
 - **Not tested.** The patch for `main` on a router. The lint that phenix's CI
   runs (`golangci-lint`). The patches are files in this repository, not a
@@ -1288,21 +1287,26 @@ without the transit carrier.
 | [28](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45075247853), the same code | **29 of 29** | **29 of 29** |
 | [29](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45082278191), with the pull request's patch and a head office that only answers IKE | **29 of 29** | **29 of 29** |
 | [30](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45092312260), with a route filter for each site and a site that announces another site's network | **30 of 30** | **30 of 30** |
+| [31](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45120050629), the renamed sites | **30 of 30** | **30 of 30** |
+| [32](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45126127571), with the review's changes and nine more checks | 38 of 39: the new BFD check counted the profile's lines as sessions | 38 of 39: the same |
+| [33](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45131775836), with that count fixed | **39 of 39** | **39 of 39** |
 
 | Event | WireGuard | Route-based IPsec |
 |---|---|---|
-| ShadeCast goes silent toward the site | 2.4 to 3.0 s, five times | 2.6 to 3.0 s, five times |
-| ShadeCast goes silent toward the head office | 2.2 to 2.6 s, five times | 2.2 to 2.8 s four times, and 5.4 s once |
+| ShadeCast goes silent toward the site | 2.4 to 3.0 s, eight times | 2.6 to 3.0 s, eight times |
+| ShadeCast goes silent toward the head office | 2.2 to 2.8 s, eight times | 2.2 to 2.8 s five times, and 5.0, 5.2, and 5.4 s once each |
 | Each repair | no loss | no loss |
 | The site's ShadeCast uplink set down | None of the first tunnel's packets left through the other uplink | The same |
-| 200 s of silence, then the repair | Back on the primary tunnel after 8 or 9 s, four times | Back after 20 s, 36 s, 57 s, and 59 s; the VTI had gone down and came back |
+| 200 s of silence, then the repair | Back on the primary tunnel after 8 or 9 s, seven times | Back after 20 and 36 s with both ends opening tunnels, and 27 to 62 s with the head office only answering (five times); the VTI had gone down and came back |
 
-- **R1 works on VyOS.** All 48 router boots committed the rendered script at
+- **R1 works on VyOS.** All 72 router boots committed the rendered script at
   first boot, and VyOS refused no line: 59 to 65 commands for an ISP, 66 to
-  151 for a site edge.
+  201 for a site edge. Since run 33 the job also checks that each router
+  holds every line of its list after the commit.
 - **The outages are three BFD intervals.** With 1 s and three missed,
-  nineteen of twenty silent faults cost 2.2 to 3.0 s and one cost 5.4 s. The lab's one
-  second was its 300 ms interval.
+  29 of 32 silent faults cost 2.2 to 3.0 s. Three cost 5.0 to 5.4 s, all
+  with IPsec and the head office's uplink; why was not looked into. The
+  lab's one second was its 300 ms interval.
 - **No endpoint moved and no tunnel changed uplinks**, through every fault,
   with a mark for WireGuard and a source-address rule for IPsec.
 - **FRR can take a default route away from the head office at first boot.**
@@ -1325,9 +1329,9 @@ without the transit carrier.
   [7.1](#71-wan-bgp-a-mock-internet-and-a-vpn-over-it) is wireguard-go's.
 - **IPsec recovers by itself.** A minute of silence does not end an IKE SA.
   After 200 s the site had given its peer up, and the VTI came back each
-  time: after 36 s and 20 s with both ends opening tunnels, and after 57 s
-  and 59 s with the head office only answering, which leaves one SA for a
-  tunnel and is what the sketch has now. T9154 did not show.
+  time: after 36 s and 20 s with both ends opening tunnels, and after 27 to
+  62 s (five runs) with the head office only answering, which leaves one SA
+  for a tunnel and is what the sketch has now. T9154 did not show.
 - **The VyOS image needed a fix to build.** vyos-build renamed its kernel
   package and its rolling images, and the images repository's script asks
   for a package and a directory that do not exist. `spikes/ci/build_image.sh`

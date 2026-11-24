@@ -9,9 +9,9 @@ import sys
 import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
-from plantgen import fleet, sites, topology
+from plantgen import fleet, injects, sites, topology, workflow
 from plantgen.allocate import allocate
 from plantgen.checks import file_checks, plant_checks
 from plantgen.model import Plant, PlantError, PlantFile, expand, load, load_file
@@ -43,23 +43,60 @@ def generate_site(
         raise PlantError(f"site {site.code}: {exc}") from exc
 
 
-def generate_site_and_topology(
-    site: SiteSpec,
-    plant: PlantFile,
-    wan: dict[str, Any],
-    nodes: dict[str, dict[str, Any]],
-) -> tuple[dict[str, str], str]:
-    """The files of one site, and the text of its phenix topology file.
+class SiteSources(NamedTuple):
+    """What a site's files come from, besides plant.yaml and sites.yaml."""
 
-    `nodes` are today's nodes (`topology.load_nodes`). Both come from one
-    plant description of the site.
+    #: wan/wan.yaml as data.
+    wan: dict[str, Any]
+    #: Today's nodes (`topology.load_nodes`).
+    nodes: dict[str, dict[str, Any]]
+    #: The VLAN IDs of the single-site plan (`workflow.load_single_site`).
+    vlan_ids: dict[str, int]
+    #: phenix-injects, the hand-written injected files.
+    injects: Path
+
+
+class SiteSet(NamedTuple):
+    """Everything that plantgen writes for one site."""
+
+    #: The files of the site's generated directory. Its copies of injected
+    #: files are under `injects/`.
+    files: dict[str, str]
+    #: The text of its phenix topology file.
+    topology: str
+    #: The text of its phenix workflow file.
+    workflow: str
+
+
+def generate_site_set(
+    site: SiteSpec, plant: PlantFile, sources: SiteSources
+) -> SiteSet:
+    """The files of one site, its topology file, and its workflow file.
+
+    All come from one plant description of the site: the workflow pins the
+    VLANs of the topology, and an injected copy is rendered for the nodes that
+    inject it.
     """
-    expanded = fleet.expand_site(site, plant, wan)
+    expanded = fleet.expand_site(site, plant, sources.wan)
     try:
         files = render_checked(expanded)
     except PlantError as exc:
         raise PlantError(f"site {site.code}: {exc}") from exc
-    return files, topology.render(site, plant, expanded.file, nodes)
+    config = topology.site_topology(site, plant, expanded.file, sources.nodes)
+    nodes: list[dict[str, Any]] = config["spec"]["nodes"]
+    copies = injects.site_files(site, expanded, nodes, sources.injects)
+    for path, text in copies.items():
+        files[f"{injects.DIRECTORY}/{path}"] = text
+    aliases = {
+        interface["vlan"]
+        for node in nodes
+        for interface in node["network"]["interfaces"]
+    }
+    return SiteSet(
+        files=files,
+        topology=topology.dump(site, config),
+        workflow=workflow.render(site, aliases, sources.vlan_ids, sources.wan),
+    )
 
 
 def _variant_files(plant: PlantFile, variant: str) -> dict[str, str]:
@@ -82,7 +119,10 @@ def _raise_if(errors: list[str]) -> None:
 
 
 def write(files: dict[str, str], out_dir: Path) -> None:
-    """Write ``files`` under ``out_dir``, removing stale generated files."""
+    """Write ``files`` under ``out_dir``, removing stale generated files.
+
+    A file that starts with ``#!`` is a script, so it can be executed.
+    """
     out_dir.mkdir(parents=True, exist_ok=True)
     for old in sorted(out_dir.rglob("*"), reverse=True):
         rel = old.relative_to(out_dir).as_posix()
@@ -94,6 +134,7 @@ def write(files: dict[str, str], out_dir: Path) -> None:
         path = out_dir / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8", newline="\n")
+        path.chmod(0o755 if text.startswith("#!") else 0o644)
 
 
 def diff(expected: Path, committed: Path) -> list[str]:
@@ -136,7 +177,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=Path,
         help="output directory for one variant or one site (default: "
         "<plant dir>/generated/<variant>, <plant dir>/generated/fleet/<site>). "
-        "A site's topology file goes there too (default: phenix-configs/)",
+        "A site's topology and workflow files go there too (default: "
+        "phenix-configs/ and the directory above it)",
     )
     ap.add_argument(
         "--check",
@@ -194,12 +236,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
-    # A site also needs the names of its access links and today's nodes.
+    # A site also needs the names of its access links, today's nodes, the
+    # single site's VLAN IDs, and the hand-written injected files.
     root: Path = plant_path.parent.parent
     configs: Path = root / "phenix-configs"
     try:
-        wan = sites.load_wan(root / "wan" / "wan.yaml")
-        nodes = topology.load_nodes(configs)
+        sources = SiteSources(
+            wan=sites.load_wan(root / "wan" / "wan.yaml"),
+            nodes=topology.load_nodes(configs),
+            vlan_ids=workflow.load_single_site(root / workflow.SINGLE_SITE),
+            injects=root / "phenix-injects",
+        )
     except PlantError as exc:
         print(f"plantgen: {exc}", file=sys.stderr)
         return 1
@@ -208,14 +255,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             status,
             _run_site(
                 site,
-                functools.partial(generate_site_and_topology, site, plant, wan, nodes),
+                functools.partial(generate_site_set, site, plant, sources),
                 args.out or generated / fleet.DIRECTORY / site.code,
                 args.out or configs,
+                args.out or root,
                 check=args.check,
             ),
         )
     if every:
-        leftovers = _other_sites(generated / fleet.DIRECTORY, configs, found)
+        leftovers = _other_sites(generated / fleet.DIRECTORY, configs, root, found)
         status = max(status, _clear(leftovers, check=args.check))
     return status
 
@@ -239,16 +287,23 @@ def _sites(plant_path: Path, plant: PlantFile) -> tuple[int, list[SiteSpec] | No
     return 0, found
 
 
-def _other_sites(directory: Path, configs: Path, found: list[SiteSpec]) -> list[Path]:
-    """The directories and topology files of sites that sites.yaml does not have."""
+def _other_sites(
+    directory: Path, configs: Path, root: Path, found: list[SiteSpec]
+) -> list[Path]:
+    """The directories, topology files, and workflow files of sites that
+    sites.yaml does not have."""
     codes = {site.code for site in found}
-    names = {topology.file_name(site) for site in found}
     others: list[Path] = []
     if directory.is_dir():
         others += sorted(path for path in directory.iterdir() if path.name not in codes)
-    if configs.is_dir():
-        files = configs.glob(topology.FILE_NAME.format(code="*"))
-        others += sorted(path for path in files if path.name not in names)
+    for folder, pattern, name in (
+        (configs, topology.FILE_NAME, topology.file_name),
+        (root, workflow.FILE_NAME, workflow.file_name),
+    ):
+        if folder.is_dir():
+            names = {name(site) for site in found}
+            files = folder.glob(pattern.format(code="*"))
+            others += sorted(path for path in files if path.name not in names)
     return others
 
 
@@ -283,27 +338,35 @@ def _run(
     return _put(files, out_dir, check=check)
 
 
-def _run_site(
+def _run_site(  # noqa: PLR0913 - one directory for each kind of file
     site: SiteSpec,
-    make: Callable[[], tuple[dict[str, str], str]],
+    make: Callable[[], SiteSet],
     out_dir: Path,
     topology_dir: Path,
+    workflow_dir: Path,
     *,
     check: bool,
 ) -> int:
-    """Generate one site, and write or compare its files and its topology file."""
+    """Generate one site, and write or compare its files, its topology file,
+    and its workflow file."""
     try:
-        files, text = make()
+        made = make()
     except PlantError as exc:
         # The message names the site already.
         print(f"plantgen: {exc}", file=sys.stderr)
         return 1
-    name = topology.file_name(site)
+    single = {
+        topology_dir / topology.file_name(site): made.topology,
+        workflow_dir / workflow.file_name(site): made.workflow,
+    }
     if topology_dir == out_dir:
-        # `--out`: one directory holds both.
-        return _put({**files, name: text}, out_dir, check=check)
-    status = _put(files, out_dir, check=check)
-    return max(status, _put_file(topology_dir / name, text, check=check))
+        # `--out`: one directory holds all of them.
+        named = {path.name: text for path, text in single.items()}
+        return _put({**made.files, **named}, out_dir, check=check)
+    status = _put(made.files, out_dir, check=check)
+    for path, text in single.items():
+        status = max(status, _put_file(path, text, check=check))
+    return status
 
 
 def _put(files: dict[str, str], out_dir: Path, *, check: bool) -> int:

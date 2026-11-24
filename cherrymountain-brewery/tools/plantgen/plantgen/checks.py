@@ -269,6 +269,11 @@ def ntp_hosts(plant: Plant, alloc: Allocation) -> list[str]:
     for h in ntp.external:
         if h in plant.hosts:
             errs.append(f"ntp: external server {h} is a variant host")
+    for h, other in ntp.other_nodes.items():
+        if h in plant.hosts:
+            errs.append(f"ntp: other node {h} is a variant host")
+        if not other.client or other.server or other.source:
+            errs.append(f"ntp: other node {h} must be a client of the default source")
     for h in plant.hosts:
         md = plant.ntp_entry(h)
         if md is None:

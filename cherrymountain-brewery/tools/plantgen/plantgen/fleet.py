@@ -35,6 +35,7 @@ from plantgen.model import (
     FuxaSource,
     Interface,
     Network,
+    NtpHost,
     NtpSource,
     Plant,
     PlantError,
@@ -55,6 +56,10 @@ CONTROL_VLAN: Final[str] = "CTRL"
 #: The zone of the network sensor at a site that has the zone's router. A
 #: site with one firewall has no such zone, and its sensor is in the plant's.
 SENSOR_VLAN: Final[str] = "SOC"
+#: The plain name of a site's sensor, a node that the topology file adds.
+SENSOR_NAME: Final[str] = "sensor"
+#: The NTP client of the sensor, a Linux host like the other servers.
+SENSOR_NTP_CLIENT: Final[str] = "chrony"
 #: The mirror app puts its taps on this VLAN. No host of plant.yaml is on it.
 MIRROR_VLAN: Final[str] = "MIRROR"
 #: The key in a variant's `app` block that names hosts (see `_leave_out`).
@@ -276,6 +281,10 @@ def _clocks(site: SiteSpec, doc: PlantFile, variant: VariantSpec) -> None:
         if entry.source is not None
     }
     ntp.external = sorted(sources & servers & sites.SHARED_HOSTS)
+    # The sensor is a node of the site's topology file and no host of the plant.
+    # It follows the site's server.
+    if site.sensor:
+        ntp.other_nodes = {SENSOR_NAME: NtpHost(client=SENSOR_NTP_CLIENT)}
 
 
 def _snapshot(doc: PlantFile, variant: VariantSpec) -> None:
@@ -512,6 +521,9 @@ def _names(site: SiteSpec, doc: PlantFile, plant_hosts: Iterable[str]) -> None:
         ntp = variant.ntp
         ntp.default_source.hostname = host(ntp.default_source.hostname)
         ntp.hosts = {host(name): entry for name, entry in ntp.hosts.items()}
+        ntp.other_nodes = {
+            site.host(name): entry for name, entry in ntp.other_nodes.items()
+        }
         for entry in (*ntp.hosts.values(), *ntp.roles.values()):
             if entry.source is not None:
                 entry.source.hostname = host(entry.source.hostname)

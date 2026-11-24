@@ -178,13 +178,14 @@ def check_addresses(v: m.Variant, ref: Reference | None = None) -> list[Finding]
     return out
 
 
-def check_workflow(v: m.Variant, root: Path) -> list[Finding]:
+def check_workflow(v: m.Variant, root: Path, ref: Reference | None = None) -> list[Finding]:
+    ref = reference(v, ref)
     out: list[Finding] = []
     c: str = f"{v.name}/workflow"
     wf: m.Workflow = v.workflow
     used: set[str] = {i.vlan for n in v.topology.nodes for i in n.interfaces}
     for name in sorted(used):
-        want: int | None = plan.VLANS[name].vid if name in plan.VLANS else None
+        want: int | None = ref.vlans[name].vid if name in ref.vlans else None
         if name not in wf.vlans:
             out.append(_err(c, f"VLAN {name} is used but not pinned in {wf.source_file}"))
         elif wf.vlans[name] != want:
@@ -192,7 +193,7 @@ def check_workflow(v: m.Variant, root: Path) -> list[Finding]:
                 _err(c, f"VLAN {name} is {wf.vlans[name]} in {wf.source_file}, plan says {want}")
             )
     for name, vid in wf.vlans.items():
-        if name not in plan.VLANS:
+        if name not in ref.vlans:
             out.append(_err(c, f"VLAN {name} is pinned but not in the plan"))
         lo: int = wf.vlan_range.get("min", 0)
         hi: int = wf.vlan_range.get("max", 0)
@@ -201,7 +202,7 @@ def check_workflow(v: m.Variant, root: Path) -> list[Finding]:
     ids: list[int] = list(wf.vlans.values())
     if len(ids) != len(set(ids)):
         out.append(_err(c, "two VLANs share an id"))
-    bridge: str = plan.BRIDGES[v.name]
+    bridge: str = ref.bridge
     if (wf.default_bridge or "") != bridge:
         out.append(
             _err(
@@ -849,7 +850,8 @@ GENERATED_APPS: tuple[str, ...] = ("ot-sim", "helics", "cherrymountain", "ntp")
 APP_ORDER: tuple[str, ...] = ("ot-sim", "cherrymountain", "helics")
 
 
-def check_apps(v: m.Variant) -> list[Finding]:
+def check_apps(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
+    ref = reference(v, ref)
     out: list[Finding] = []
     c: str = f"{v.name}/apps"
     if v.scenario is None:
@@ -878,7 +880,9 @@ def check_apps(v: m.Variant) -> list[Finding]:
             )
     ntp: m.App | None = sc.app("ntp")
     if ntp is not None:
-        out += _check_ntp(c, v, ntp, names)
+        # At a site, a source may be a host of the internet, which no site has.
+        outside: set[str] = set(plan.NODE_BY_NAME) - names if ref.site else set()
+        out += _check_ntp(c, v, ntp, names, outside)
     for want in ("startup", "vrouter", "soh"):
         if sc.app(want) is None:
             out.append(_err(c, f"scenario has no {want} app"))
@@ -890,7 +894,11 @@ def check_apps(v: m.Variant) -> list[Finding]:
     return out
 
 
-def _check_ntp(c: str, v: m.Variant, ntp: m.App, names: set[str]) -> list[Finding]:
+def _check_ntp(
+    c: str, v: m.Variant, ntp: m.App, names: set[str], outside: set[str]
+) -> list[Finding]:
+    """``outside`` are hosts that a source may name although the topology does
+    not have them. phenix's ntp app then gives the client the default source."""
     out: list[Finding] = []
     listed: dict[str, dict[str, Any]] = {h["hostname"]: h.get("metadata") or {} for h in ntp.hosts}
     node_by: dict[str, m.TNode] = {n.hostname: n for n in v.topology.nodes}
@@ -908,7 +916,15 @@ def _check_ntp(c: str, v: m.Variant, ntp: m.App, names: set[str]) -> list[Findin
         if not md.get("client") and not md.get("server"):
             out.append(_err(c, f"ntp: {hn} has neither client nor server"))
         src: dict[str, Any] = md.get("source") or {}
-        if src.get("hostname"):
+        if src.get("hostname") in outside:
+            out.append(
+                _note(
+                    c,
+                    f"ntp: {hn} names {src['hostname']}, a host of the internet. This topology "
+                    "does not have it, so phenix gives the host the default source",
+                )
+            )
+        elif src.get("hostname"):
             tgt: m.TNode | None = node_by.get(src["hostname"])
             if tgt is None or tgt.iface(src.get("interface", "")) is None:
                 out.append(_err(c, f"ntp: {hn} source {src} is not a topology host and interface"))
@@ -1024,12 +1040,21 @@ def check_app_hosts(v: m.Variant) -> list[Finding]:
 # --- ot-svc and the BBMDs ----------------------------------------------------
 
 
-def check_services(root: Path, v: m.Variant) -> list[Finding]:
-    """ot-svc's DNS zone lists every host, and the BBMD config matches the plan."""
+def check_services(root: Path, v: m.Variant, ref: Reference | None = None) -> list[Finding]:
+    """ot-svc's DNS zone lists every host, and the BBMD config matches the plan.
+
+    A site has its own zone file, when a node of the site injects one."""
     out: list[Finding] = []
     c: str = f"{v.name}/services"
     inj: Path = root / "phenix-injects"
     hosts_file: Path = inj / "ot-svc" / "plant.hosts"
+    nodes: list[plan.Node] = plan.nodes_for("full")
+    if ref is not None and ref.site:
+        hosts_file = inj / "fleet" / v.name / "ot-svc" / "plant.hosts"
+        nodes = list(ref.nodes)
+        suffix: str = f"/fleet/{v.name}/ot-svc/plant.hosts"
+        if not any(i.src.endswith(suffix) for n in v.topology.nodes for i in n.injections):
+            return [_note(c, "no node of the site injects a plant.hosts (it has no ot-svc)")]
     if hosts_file.is_file():
         entries: dict[str, str] = {}
         for raw in hosts_file.read_text().splitlines():
@@ -1038,7 +1063,7 @@ def check_services(root: Path, v: m.Variant) -> list[Finding]:
                 ip, *aliases = line.split()
                 for a in aliases:
                     entries[a] = ip
-        for n in plan.nodes_for("full"):
+        for n in nodes:
             for nic in n.nics:
                 key: str = n.name if nic is n.nics[0] else f"{n.name}-{nic.name.lower()}"
                 if entries.get(key) != nic.ip:
@@ -1046,7 +1071,7 @@ def check_services(root: Path, v: m.Variant) -> list[Finding]:
                         _err(c, f"plant.hosts: {key} should be {nic.ip}, found {entries.get(key)}")
                     )
     else:
-        out.append(_note(c, "phenix-injects/ot-svc/plant.hosts not present"))
+        out.append(_note(c, f"{hosts_file.relative_to(root).as_posix()} not present"))
     return out
 
 
@@ -1097,23 +1122,21 @@ def run_ci(root: Path = m.ROOT) -> list[Finding]:
 
 #: The checks that a site's run leaves out, each with its reason.
 SITE_SKIPS: dict[str, str] = {
-    "workflow": "a site has no workflow file yet (VLAN IDs, bridge)",
     "nat-ipsec": "the edge's WAN side (NAT, IPsec, netem) is the fleet's stage",
     "scorch": "a site's scenario has no scorch app",
-    "apps": "sync.py does not embed the site's app blocks yet",
     "app-hosts": "WireGuard and the mirror are the fleet's stage",
-    "services": "plant.hosts is the single site's file",
 }
 
 
 def run_site(code: str, root: Path = m.ROOT) -> list[Finding]:
     """The checks of one site of the fleet, with the site's own plan and
-    conduits (``netcheck.site``): its topology file and its scenario alone.
+    conduits (``netcheck.site``): its workflow, its topology file, and its
+    scenario alone.
 
     The check functions are those of a variant. ``SITE_SKIPS`` names the ones
     that do not apply yet. Two findings are a site's own: ``generated`` (the
-    committed scenario is what the generator writes) and the notes of
-    ``separation`` (what no firewall separates at this site)."""
+    committed scenario holds the two apps that ``netcheck.sitegen`` computes)
+    and the notes of ``separation`` (what no firewall separates at this site)."""
     # Imported here: only a site's run needs plantgen on the import path.
     from netcheck import site as site_data  # noqa: PLC0415
     from netcheck import sitegen  # noqa: PLC0415
@@ -1122,16 +1145,7 @@ def run_site(code: str, root: Path = m.ROOT) -> list[Finding]:
         derived: site_data.Site = site_data.load(code, root)
     except site_data.SiteError as exc:
         return [_err(f"{code}/load", str(exc))]
-    out: list[Finding] = []
-    path: Path = root / "phenix-configs" / sitegen.file_name(code)
-    if not path.is_file() or path.read_text(encoding="utf-8") != sitegen.render(derived):
-        out.append(
-            _err(
-                f"{code}/generated",
-                f"phenix-configs/{path.name} is not what the generator writes; run "
-                "`python -m netcheck --write-sites` and commit the result",
-            )
-        )
+    out: list[Finding] = check_generated(code, root, sitegen.apps(derived))
     try:
         v: m.Variant = m.load_site(code, root)
     except (m.LoadError, KeyError) as exc:
@@ -1139,6 +1153,7 @@ def run_site(code: str, root: Path = m.ROOT) -> list[Finding]:
     ref: Reference = derived.reference
     out += check_plan(v, ref)
     out += check_addresses(v, ref)
+    out += check_workflow(v, root, ref)
     out += check_boot_order(v)
     out += check_injects(v, root)
     out += check_router_commands(v)
@@ -1146,7 +1161,47 @@ def run_site(code: str, root: Path = m.ROOT) -> list[Finding]:
     out += check_flows(v, ref)
     out += check_rule_coverage(v, ref)
     out += check_soh(v, ref)
+    out += check_apps(v, ref)
+    out += check_services(root, v, ref)
     out += site_notes(derived)
+    return out
+
+
+def check_generated(code: str, root: Path, computed: dict[str, dict[str, Any]]) -> list[Finding]:
+    """The site's scenario holds the two apps that follow from the conduits.
+
+    ``sync.py`` writes the file. Its ``vrouter`` app must be the computed one.
+    Its ``soh`` app also holds what plantgen adds, so it must hold every
+    computed test and may hold more.
+    """
+    c: str = f"{code}/generated"
+    name: str = f"phenix-configs/scenario-site-{code}.yml"
+    path: Path = root / name
+    again: str = "run `python sync.py` and commit the result"
+    if not path.is_file():
+        return [_err(c, f"{name} does not exist; {again}")]
+    try:
+        apps: dict[str, Any] = {
+            app.get("name"): app for app in m.read_yaml(path)["spec"]["apps"]
+        }
+    except (m.LoadError, KeyError, TypeError, AttributeError) as exc:
+        return [_err(c, f"{name}: {type(exc).__name__}: {exc}")]
+    out: list[Finding] = []
+    if apps.get("vrouter") != computed["vrouter"]:
+        out.append(_err(c, f"the vrouter app of {name} is not the computed rulesets; {again}"))
+    have: dict[str, Any] = (apps.get("soh") or {}).get("metadata") or {}
+    for key, want in computed["soh"]["metadata"].items():
+        got: Any = have.get(key)
+        if key == "testCustomReachability":
+            missing: bool = not isinstance(got, list) or any(t not in got for t in want)
+        elif key == "hostCustomTests":
+            missing = not isinstance(got, dict) or any(
+                t not in got.get(host, []) for host, tests in want.items() for t in tests
+            )
+        else:
+            missing = got != want
+        if missing:
+            out.append(_err(c, f"the soh app of {name} lacks the computed {key}; {again}"))
     return out
 
 

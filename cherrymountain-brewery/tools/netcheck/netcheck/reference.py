@@ -33,6 +33,8 @@ class Reference(BaseModel):
     totals: tuple[int, int, int] | None = None
     #: A site's conduits name hosts of the site, with no selector to expand.
     site: bool = False
+    #: The bridge that the workflow must name: each workflow has its own.
+    bridge: str = ""
 
     def expand(self, conduit: conduits.Conduit) -> list[Flow]:
         """Every (src host, dst host, proto, port) that a conduit allows here."""
@@ -68,4 +70,5 @@ def for_variant(
         blocked=conduits.BLOCKED_PROBES,
         external_vlans=external_vlans,
         totals=totals,
+        bridge=plan.BRIDGES.get(variant, ""),
     )

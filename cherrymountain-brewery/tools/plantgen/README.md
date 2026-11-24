@@ -65,12 +65,15 @@ plantgen writes the files of each site under `plant/generated/fleet/<code>/`.
 A site has the files that a variant has ([Outputs](#outputs)). In these
 files, `variant` holds the code of the site.
 
-| Site | Hosts | PLCs | Tags | Files |
-|---|---:|---:|---:|---:|
-| `fr` | 39 | 5 | 516 | 29 |
-| `ep` | 34 | 5 | 516 | 29 |
-| `cs` | 25 | 4 | 458 | 25 |
-| `fc` | 18 | 3 | 365 | 22 |
+| Site | Hosts | PLCs | Tags | Files | Copies of injected files |
+|---|---:|---:|---:|---:|---:|
+| `fr` | 39 | 5 | 516 | 29 | 8 |
+| `ep` | 34 | 5 | 516 | 29 | 8 |
+| `cs` | 25 | 4 | 458 | 25 | 6 |
+| `fc` | 18 | 3 | 365 | 22 | 1 |
+
+The copies are under `injects/` in the directory of the site
+([The injected files of a site](#the-injected-files-of-a-site)).
 
 `plantgen/fleet.py` builds a plant description of the site from `plant.yaml`
 and the entry of the site. The description has one variant, and the name of
@@ -83,7 +86,7 @@ files.
 | Variant | It starts from the `full` variant. It keeps the hosts and the areas of the site, and the federates of those areas |
 | References | It removes each reference to a host that the site does not have. Examples are a FUXA source, a conduit, and a Wazuh agent |
 | FUXA sources | A site can leave out a FUXA host and keep the devices of that host. The one SCADA host of the site then takes those devices |
-| Clocks | The clocks follow the `time_server` of the site. The edge firewall and the office PC keep `inet-traffic` as their source |
+| Clocks | The clocks follow the `time_server` of the site. The edge firewall and the office PC keep `inet-traffic` as their source. The NTP block also lists the sensor, because the app needs every node |
 | Snapshot | The snapshot keeps the key patterns of the federates that the site runs |
 | Zones | Each interface goes to the VLAN and the subnet that `moves` and `cells` give. A router gets a leg in each new network that it routes. A network with no host goes away |
 | Names | A hostname gets the prefix of the site, and a VLAN alias gets the prefix in capitals. The `10.` blocks of the company and MGMT move by the index of the site |
@@ -145,7 +148,8 @@ host or an address follow the plant description of the site.
 | `network.routes` | The edge firewall and the DMZ hosts get a route to each network behind the OT firewall. The OT firewall gets a default route through the edge. At `fr`, the jump host gets a route to the WireGuard network |
 | `labels` | `zone` is the first network of the host, and a router keeps its label. `site` is the code of the site |
 | `phenix/startup-autotunnel` | The port of the head node moves by 100 for each step of the index of the site. `fr` keeps 11881, and `ep` gets 12081 |
-| `hardware`, `type`, `commands`, the paths of an injection | No change |
+| `src` of an injection | The copy of the site, when the file holds a name or an address of the plant. For each other file, no change |
+| `hardware`, `type`, `commands`, the `dst` of an injection | No change |
 
 - The uplinks of the edge are its first interfaces. They have the VLAN alias,
   the address, and the mask that `topology-wan.yml` gives the same router. A
@@ -160,14 +164,75 @@ host or an address follow the plant description of the site.
 
 A topology file is not a finished site. The header of each file says so.
 
-- The firewall rulesets are not in the topology file. netcheck writes them to
-  `phenix-configs/scenario-site-<code>.yml`, for the conduits inside the site
+- The firewall rulesets are not in the topology file. They are in
+  `phenix-configs/scenario-site-<code>.yml`, for the conduits inside the site.
+  netcheck computes them, and `sync.py` writes the scenario
   ([netcheck README](../netcheck/README.md#a-site-of-the-fleet)).
 - The edge has no default route and no route to a different site. The WAN
   generator writes the WAN side of the edge.
-- The injected files still hold the names and the addresses of the single
-  site. Examples are `plant.hosts` and the BBMD tables.
-- No workflow uses these files, and the scenario of a site is not whole.
+
+### The workflow file of a site
+
+plantgen writes `phenix-site-<code>.yml` for each site, next to `phenix.yml`
+(`plantgen/workflow.py`). `phenix workflow apply` takes this file. It names the
+topology and the scenario of the site, and it gives an ID to each VLAN alias
+of the topology file.
+
+The IDs follow the plan of the fleet
+([PLANS.md §3](../../docs/multisite/PLANS.md#3-what-every-plan-shares)). A site then
+keeps its IDs when the four sites become one experiment.
+
+| VLAN | Its ID | Example |
+|---|---|---|
+| A zone that `phenix.yml` has | The hundred of the site, and the last two digits from `phenix.yml` | `OPS` is 106 there, and `EP-OPS` is 306 |
+| A zone that `phenix.yml` does not have | The next ID from 20 up in the hundred of the site, in the order of the aliases | `EP-CTRL-BH` is 320, and `FC-PLANT` is 221 |
+| An access link to an ISP | 500 and up, in the order of the links in `wan/wan.yaml` | `WAN-SC-FR` is 500 |
+
+- The hundred of the first site is 100. Thus `fr` keeps the IDs of
+  `phenix.yml`.
+- The WAN generator pins the access links and one zone of each site too
+  (`tools/wangen`). A test compares each such ID with `phenix-wan.yml`.
+- Each site has its own bridge, for example `cherrymtn-fc`. phenix lets only
+  one stored experiment use a bridge that is not `phenix`.
+- plantgen stops when two aliases get one ID, or when an alias is not a zone
+  of the site and not an access link.
+
+### The injected files of a site
+
+A node of a site injects the files that the node of the single site injects.
+Most of these files are the same at each site. Some hold an address or a
+hostname of the plant, and a site needs its own copy of them.
+
+`plantgen/injects.py` renders the copies. A copy is the hand-written file
+with a small number of lines set again from the plant description of the
+site. The generator finds each line by its first characters. When the
+hand-written file does not have the line exactly one time, the generator
+stops and names the line.
+
+| File under `phenix-injects/` | What the copy of a site sets |
+|---|---|
+| `vrouter/cm-vyos-config.sh` | The names of the routers of the site, and the address of the time server. The script drops the prefix of the site from the hostname. Then its steps for `fw-edge` and `fw-ot` apply |
+| `bbmd/ot-svc.env`, `bbmd/bas-bbmd.env` | The address of the BBMD, and the table with the addresses of both BBMDs |
+| `ot-svc/dnsmasq-plant.conf` | The address that the name server listens on |
+| `ot-svc/plant.hosts` | The whole file: each address of each node of the site |
+| `ot-svc/60-ot-svc.sh` | The networks of the hosts that take their time from `ot-svc` |
+| `guacamole/cm-guacamole-start`, `guacamole/nginx.conf` | The name and the address of the jump host in its certificate, and the name that its web server answers to |
+
+- plantgen writes a copy only when a node of the site injects the file. `fc`
+  has one router and no `ot-svc`, so it has one copy.
+- The copies go to `plant/generated/fleet/<code>/injects/`. `sync.py` copies
+  them to `phenix-injects/fleet/<code>/`, and the topology file of the site
+  names them there.
+- `python -m plantgen --check` fails when a copy is out of date. A script
+  keeps its permission to run.
+- The syslog target stays `10.40.10.11`, because the fleet has one Wazuh, at
+  `fr`.
+- At `fr`, the files of the SOC and of the vendor's tunnel are not rendered
+  yet. They still hold the names of the single site. A test in
+  `tools/netcheck/tests/test_site_set.py` lists them.
+- The program ZIP that `ews` gets (`openplc/full/plc-cellar.zip`) holds the
+  addresses of the Front Range remote I/O. A site needs its own build of that
+  ZIP.
 
 ## Outputs
 

@@ -37,12 +37,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--site",
         default=None,
         help="a site code of plant/sites.yaml, or `all`: check that site alone "
-        "(its topology file and its scenario)",
-    )
-    ap.add_argument(
-        "--write-sites",
-        action="store_true",
-        help="write phenix-configs/scenario-site-<code>.yml for the sites, then check them",
+        "(its workflow, its topology file, and its scenario)",
     )
     ap.add_argument("-q", "--quiet", action="store_true", help="hide notes")
     args: argparse.Namespace = ap.parse_args(argv)
@@ -50,19 +45,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     known: list[str] = _site_codes(args.root)
     variant: str | None = args.variant
     sites: list[str] = []
-    if args.site is not None or args.write_sites:
+    if args.site is not None:
         sites = known if args.site in (None, "all") else [args.site]
         if args.site not in (None, "all", *known):
             print(f"netcheck: no site {args.site!r}; the sites are {known}", file=sys.stderr)
             return 2
     elif variant is None:
         variant, sites = "all", known
-
-    if args.write_sites:
-        from netcheck import site, sitegen  # noqa: PLC0415
-
-        for code in sites:
-            print(f"netcheck: wrote {sitegen.write(site.load(code, args.root), args.root)}")
 
     findings: list[checks.Finding] = []
     if variant == "all":

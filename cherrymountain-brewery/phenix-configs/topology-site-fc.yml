@@ -4,14 +4,17 @@
 # topology-remote-access.yml as the source of each node. Do not edit.
 #
 # The firewall rulesets are not here. They are in scenario-site-fc.yml,
-# which netcheck writes (tools/netcheck): the rules of the conduits whose two
-# ends are hosts of this site.
+# which sync.py writes: the rules of the conduits whose two ends are hosts of
+# this site, as netcheck computes them (tools/netcheck).
+#
+# An injected file that holds a name or an address of the plant is the site's
+# own copy, under phenix-injects/fleet/fc/ (plantgen renders it, and sync.py
+# puts it there).
 #
 # This file is not a finished site. It does not have these parts yet:
 # - The edge's WAN side: its default route, NAT, and the VPN, which the WAN
 #   generator writes (tools/wangen).
-# - The conduits between sites, with their rules, and a whole scenario. The
-#   injected files still hold the names and addresses of the single site.
+# - The conduits between sites, with their rules.
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
 metadata:
@@ -34,7 +37,7 @@ spec:
     - description: VyOS logging, Wazuh syslog, IKEv2, and NTP settings the vrouter app cannot render
       dst: /boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
       permissions: '0755'
-      src: /phenix/injects/${BRANCH_NAME}/vrouter/cm-vyos-config.sh
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fc/vrouter/cm-vyos-config.sh
     labels:
       site: fc
       zone: edge

@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 from conftest import ROOT, edit_yaml, node_of, ruleset, vrouter_host
 
-from netcheck import checks, conduits, site, sitegen
+from netcheck import checks, conduits, plan, site, sitegen
 from netcheck import model as m
 from netcheck.cli import main
 from netcheck.sim import Net, flow
@@ -66,11 +66,32 @@ def test_committed_site_is_clean(code: str) -> None:
 
 
 @pytest.mark.parametrize("code", CODES)
-def test_the_committed_scenario_is_what_the_generator_writes(
+def test_the_committed_scenario_holds_the_computed_apps(
     code: str, derived: dict[str, site.Site]
 ) -> None:
-    path: Path = ROOT / "phenix-configs" / sitegen.file_name(code)
-    assert path.read_text(encoding="utf-8") == sitegen.render(derived[code])
+    """sync.py writes the file. Its vrouter app is the computed one, and its
+    soh app holds every computed test."""
+    computed: dict[str, dict[str, Any]] = sitegen.apps(derived[code])
+    assert checks.check_generated(code, ROOT, computed) == []
+    doc: dict[str, Any] = m.read_yaml(ROOT / "phenix-configs" / sitegen.file_name(code))
+    apps: dict[str, Any] = {app["name"]: app for app in doc["spec"]["apps"]}
+    assert apps["vrouter"] == computed["vrouter"]
+    assert list(computed) == ["vrouter", "soh"]
+
+
+def test_a_scenario_without_a_computed_test_is_reported(site_tree: Path) -> None:
+    def edit(doc: dict[str, Any]) -> None:
+        soh: dict[str, Any] = next(a for a in doc["spec"]["apps"] if a["name"] == "soh")
+        probes: list[dict[str, Any]] = soh["metadata"]["testCustomReachability"]
+        hit: list[dict[str, Any]] = [p for p in probes if p["dst"].startswith("ep-plc-cellar|")]
+        assert hit
+        probes.remove(hit[0])
+
+    edit_yaml(scenario(site_tree, "ep"), edit)
+    found: list[str] = errors(checks.run_site("ep", site_tree))
+    assert has(found, "ep/generated", "lacks the computed testCustomReachability", "sync.py")
+    scenario(site_tree, "ep").unlink()
+    assert has(errors(checks.run_site("ep", site_tree)), "ep/generated", "does not exist")
 
 
 def test_an_edited_scenario_is_reported_as_stale(site_tree: Path) -> None:
@@ -236,6 +257,131 @@ def test_a_flat_network_is_reported_and_is_no_error(derived: dict[str, site.Site
 
 
 # --- broken copies: the site checks can fail -----------------------------------
+
+
+def workflow_file(tree: Path, code: str) -> Path:
+    return tree / f"phenix-site-{code}.yml"
+
+
+def test_a_sites_vlan_ids_and_bridge_come_from_this_tools_own_plan(
+    derived: dict[str, site.Site],
+) -> None:
+    """The ID rule is plantgen's. The single-site IDs under it are netcheck's
+    plan, so a workflow that follows another base is found."""
+    ep = derived["ep"].reference
+    assert ep.vlans["EP-OPS"].vid == 300 + plan.VLANS["OPS"].vid % 100 == 306
+    assert (ep.vlans["EP-CTRL-BH"].vid, ep.vlans["WAN-TW-EP"].vid) == (320, 504)
+    assert derived["fc"].reference.vlans["FC-PLANT"].vid == 221
+    assert {code: s.reference.bridge for code, s in derived.items()} == {
+        "fr": "cherrymtn-fr",
+        "ep": "cherrymtn-ep",
+        "cs": "cherrymtn-cs",
+        "fc": "cherrymtn-fc",
+    }
+    assert "MIRROR" not in ep.vlans
+
+
+def test_a_wrong_vlan_id_in_a_sites_workflow_is_found(site_tree: Path) -> None:
+    edit_yaml(workflow_file(site_tree, "ep"), lambda d: d["spec"]["vlans"].update({"EP-OPS": 307}))
+    found: list[str] = run(site_tree, "ep")
+    assert has(found, "ep/workflow", "VLAN EP-OPS is 307 in phenix-site-ep.yml, plan says 306")
+    assert has(found, "ep/workflow", "two VLANs share an id")
+
+
+def test_an_unpinned_or_unknown_vlan_in_a_sites_workflow_is_found(site_tree: Path) -> None:
+    def edit(doc: dict[str, Any]) -> None:
+        del doc["spec"]["vlans"]["FC-PLANT"]
+        doc["spec"]["vlans"]["FC-NEW"] = 250
+        doc["spec"]["vlans"]["FC-OFFICE"] = 600
+
+    edit_yaml(workflow_file(site_tree, "fc"), edit)
+    found: list[str] = run(site_tree, "fc")
+    assert has(found, "fc/workflow", "VLAN FC-PLANT is used but not pinned in phenix-site-fc.yml")
+    assert has(found, "fc/workflow", "VLAN FC-NEW is pinned but not in the plan")
+    assert has(found, "fc/workflow", "VLAN FC-OFFICE id 600 is outside vlanRange 100-599")
+
+
+def test_a_site_needs_its_own_bridge(site_tree: Path) -> None:
+    def edit(doc: dict[str, Any]) -> None:
+        doc["spec"]["defaultBridge"] = "cherrymtn"
+
+    edit_yaml(workflow_file(site_tree, "fc"), edit)
+    assert has(run(site_tree, "fc"), "fc/workflow", "defaultBridge must be cherrymtn-fc")
+    workflow_file(site_tree, "cs").unlink()
+    assert has(errors(checks.run_site("cs", site_tree)), "cs/load", "phenix-site-cs.yml")
+
+
+def _app(doc: dict[str, Any], name: str) -> dict[str, Any]:
+    found: dict[str, Any] = next(a for a in doc["spec"]["apps"] if a["name"] == name)
+    return found
+
+
+def test_the_ntp_app_of_a_site_lists_every_node(site_tree: Path) -> None:
+    """The sensor is a node that the plant does not describe. The ntp app runs
+    in app mode, so its block must list the sensor too."""
+
+    def edit(doc: dict[str, Any]) -> None:
+        ntp: dict[str, Any] = _app(doc, "ntp")
+        ntp["hosts"] = [h for h in ntp["hosts"] if h["hostname"] != "fc-sensor"]
+
+    edit_yaml(scenario(site_tree, "fc"), edit)
+    assert has(run(site_tree, "fc"), "fc/apps", "ntp app mode needs every host: fc-sensor")
+
+
+def test_a_time_source_outside_the_site_is_a_note_and_an_unknown_one_is_an_error(
+    site_tree: Path,
+) -> None:
+    findings: list[checks.Finding] = checks.run_site("fc", site_tree)
+    notes: list[str] = [f.message for f in findings if f.check == "fc/apps"]
+    assert len(notes) == 2 and all(f.severity == "note" for f in findings)
+    assert all("inet-traffic, a host of the internet" in n for n in notes)
+    assert {n.split()[1] for n in notes} == {"fc-corp-ws", "fc-fw-edge"}
+
+    def edit(doc: dict[str, Any]) -> None:
+        for host in _app(doc, "ntp")["hosts"]:
+            if host["hostname"] == "fc-corp-ws":
+                host["metadata"]["source"]["hostname"] = "fc-nowhere"
+
+    edit_yaml(scenario(site_tree, "fc"), edit)
+    assert has(run(site_tree, "fc"), "fc/apps", "fc-corp-ws source", "fc-nowhere", "is not a")
+
+
+def test_an_app_of_a_site_names_only_nodes_of_the_site(site_tree: Path) -> None:
+    def edit(doc: dict[str, Any]) -> None:
+        _app(doc, "cherrymountain")["hosts"][0]["hostname"] = "scada-fuxa"
+        doc["spec"]["apps"] = [a for a in doc["spec"]["apps"] if a["name"] != "startup"]
+
+    edit_yaml(scenario(site_tree, "ep"), edit)
+    found: list[str] = run(site_tree, "ep")
+    assert has(found, "ep/apps", "app cherrymountain: host scada-fuxa is not in the topology")
+    assert has(found, "ep/apps", "scenario has no startup app")
+
+
+def test_a_sites_zone_file_is_checked_against_its_nodes(site_tree: Path) -> None:
+    zone: Path = site_tree / "phenix-injects" / "fleet" / "ep" / "ot-svc" / "plant.hosts"
+    text: str = zone.read_text(encoding="utf-8")
+    assert "10.22.42.12 ep-plc-cellar\n" in text
+    zone.write_text(text.replace("10.22.42.12 ep-plc-cellar\n", "10.20.10.12 ep-plc-cellar\n"))
+    found: list[str] = run(site_tree, "ep")
+    assert has(found, "ep/services", "ep-plc-cellar should be 10.22.42.12, found 10.20.10.12")
+    zone.unlink()
+    found = run(site_tree, "ep")
+    assert has(found, "ep/injects", "missing phenix-injects/fleet/ep/ot-svc/plant.hosts")
+    notes: list[str] = [f.message for f in checks.run_site("fc") if f.check == "fc/services"]
+    assert notes == ["no node of the site injects a plant.hosts (it has no ot-svc)"]
+
+
+def test_a_site_run_leaves_out_three_checks() -> None:
+    assert set(checks.SITE_SKIPS) == {"app-hosts", "nat-ipsec", "scorch"}
+
+
+def test_netcheck_writes_no_scenario(capsys: pytest.CaptureFixture[str]) -> None:
+    """sync.py owns scenario-site-<code>.yml. netcheck computes two of its
+    apps and checks the file."""
+    with pytest.raises(SystemExit):
+        main(["--write-sites"])
+    assert "unrecognized arguments: --write-sites" in capsys.readouterr().err
+    assert not hasattr(sitegen, "write") and not hasattr(sitegen, "render")
 
 
 def _drop_rule(description: str, router: str) -> Any:

@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 import yaml
 
-from plantgen import fleet, sites, topology
+from plantgen import fleet, injects, sites, topology
 from plantgen.cli import DEFAULT_PLANT
 from plantgen.model import PlantError, PlantFile, load_file
 
@@ -131,7 +131,7 @@ def test_a_file_says_what_it_is_and_what_it_lacks(
         "Do not edit.",
         f"rulesets are not here. They are in scenario-site-{code}.yml",
         "conduits between sites",
-        "a whole scenario",
+        f"the site's\n# own copy, under phenix-injects/fleet/{code}/",
     ):
         assert words in head, words
     doc = yaml.safe_load(texts[code])
@@ -398,10 +398,13 @@ def test_the_forwarded_ports_of_the_four_sites_do_not_collide(
 
 
 def _plain(node: Node) -> Node:
-    """A node of `fr` without the prefix on its hostnames and without the site label."""
+    """A node of `fr` without the prefix on its hostnames, without the site
+    label, and with the file that every site injects in place of its own copy."""
     text = re.sub(r"(?<![A-Za-z0-9_./-])(?:fr|FR)-", "", yaml.safe_dump(node))
     plain: Node = yaml.safe_load(text)
     assert plain["labels"].pop("site") == "fr"
+    for injection in plain.get("injections", []):
+        injection["src"] = injection["src"].replace("}/fleet/fr/", "}/")
     return plain
 
 
@@ -502,7 +505,9 @@ def test_the_name_server_of_each_site(nodes: dict[str, dict[str, Node]]) -> None
 
 
 def test_a_small_site_waits_only_for_its_own_hosts(
-    nodes: dict[str, dict[str, Node]], today: dict[str, Node]
+    nodes: dict[str, dict[str, Node]],
+    today: dict[str, Node],
+    specs: dict[str, sites.SiteSpec],
 ) -> None:
     def waits(node: Node) -> list[str]:
         return [wait["hostname"] for wait in node.get("delay", {}).get("c2", [])]
@@ -525,11 +530,26 @@ def test_a_small_site_waits_only_for_its_own_hosts(
     assert (zones["fc-corp-ws"], zones["fc-fw-edge"]) == ("office", "edge")
     assert zones["fc-rio-cellar"] == "field-cel" and zones["fc-sim-ctl"] == "mgmt"
     assert nodes["ep"]["ep-plc-cellar"]["labels"] == {"zone": "ctrl-cel", "site": "ep"}
-    # An injection keeps its files: a path names a file, not a host of the site.
+    # An injection keeps its place on the host. Its file is the site's own
+    # copy when the file holds a name or an address of the plant.
     source = today["ot-svc"]["injections"]
     assert [
         (entry["src"], entry["dst"]) for entry in nodes["cs"]["cs-ot-svc"]["injections"]
-    ] == [(entry["src"], entry["dst"]) for entry in source]
+    ] == [
+        (injects.site_source(specs["cs"], entry["src"]), entry["dst"])
+        for entry in source
+    ]
+    copies = [
+        entry["src"].partition("/fleet/cs/")[2]
+        for entry in nodes["cs"]["cs-ot-svc"]["injections"]
+        if "/fleet/cs/" in entry["src"]
+    ]
+    assert copies == [
+        "bbmd/ot-svc.env",
+        "ot-svc/dnsmasq-plant.conf",
+        "ot-svc/plant.hosts",
+        "ot-svc/60-ot-svc.sh",
+    ]
 
 
 # -- what does not fit ----------------------------------------------------------

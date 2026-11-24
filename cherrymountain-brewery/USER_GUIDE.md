@@ -829,7 +829,7 @@ four parts that exist. Then it shows how the fleet is planned to start.
 |---|---|---|---|
 | [A](#a-the-whole-wan-on-one-linux-host) | The whole WAN as network namespaces: ten routers and a host at each site | One Linux host and root. No phenix and no VMs | 10 min |
 | [B](#b-the-wans-core-on-vyos-routers-under-phenix) | The core of the WAN on four VyOS routers under phenix and minimega | GitHub Actions on this repository | 20 to 45 min |
-| [C](#c-the-four-sites-as-phenix-topology-files) | The four sites as phenix topology files, with their sizes | Python and a phenix checkout | 1 min |
+| [C](#c-the-four-sites-as-phenix-topology-files) | The four sites as generated phenix files, checked offline | Python | 2 min |
 | [D](#d-the-whole-wan-as-a-phenix-variant-wan) | The whole WAN as a phenix variant: ten VyOS routers and five hosts. Nobody ran this part yet | A phenix host with the draft `vrouter` change, and two images | Not measured |
 
 ### A. The whole WAN on one Linux host
@@ -896,20 +896,23 @@ two ISPs, the edge of the head office, and the Fort Collins edge. At first
 boot, each router takes its BGP, BFD, and tunnels from the `config` list of the
 phenix `vrouter` app. That list needs a change to phenix that is still a draft
 ([GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27)).
-One job builds the tunnels with WireGuard, and one job builds them with
+One job builds the tunnels with WireGuard, and two jobs build them with
 route-based IPsec.
 
 This part runs in GitHub Actions, as the `wan-bgp-vyos` job of the workflow
 [cherrymountain-spikes.yml](../.github/workflows/cherrymountain-spikes.yml).
 The job builds the VyOS image, patches phenix, and boots the routers. Then it
-runs 39 checks and four faults. It uploads `evidence-wan-bgp-vyos-wireguard`
-and `evidence-wan-bgp-vyos-vti`.
+runs 53 checks, with the faults and a restart of the head office. It has
+three parts: one for WireGuard, and two for IPsec (only the site opens the
+tunnels, or both ends open them). It uploads
+`evidence-wan-bgp-vyos-wireguard`, `evidence-wan-bgp-vyos-vti`, and
+`evidence-wan-bgp-vyos-vti-both`.
 
 - The runs so far started with a push to the branch `test-wan-bgp-vyos`. That
   branch is the feature branch, with the push trigger of the workflow extended
-  to it. The last run is
-  [run 33](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45131775836),
-  with 39 of 39 checks for each type of tunnel.
+  to it. The last run in this guide is
+  [run 38](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45354270513),
+  with 53 of 53 checks in each of the three parts.
 - The workflow also has a manual trigger with a `spikes` input. Set the input
   to `wan-bgp-vyos`. The runs above did not use this trigger.
 - No person tried a run on a different phenix host. The steps of the job are
@@ -925,28 +928,43 @@ has the results of each run.
 
 ### C. The four sites as phenix topology files
 
-The kit in [spikes/site-profiles](spikes/site-profiles/README.md) builds the
-nodes of each site from the single-site plant and a short description of the
-site. It also sizes the range for a cluster of three nodes. Run these commands
-on a host that has Python and a sceptre-phenix checkout:
+The generators write a set of phenix files for each site from the single-site
+plant (`plant/plant.yaml`) and a short description of each site
+(`plant/sites.yaml`). The files are committed. To make them again and to check
+them, run these commands on a host that has Python, `pyyaml`, and `pydantic`:
 
 ```shell
-cd cherrymountain-brewery/spikes/site-profiles
-python3 profiles.py --schema /phenix/schemas --out /tmp/fleet
+cd cherrymountain-brewery
+(cd tools/plantgen && python -m plantgen)            # the files of each site, and its topology and workflow
+python fuxa/build_project.py --all                   # the FUXA projects, with those of each site
+python sync.py                                       # the scenario and the injected files of each site
+(cd tools/netcheck && python -m netcheck --site fc)  # check one site: fr, ep, cs, or fc
 ```
-
-`--schema` is the `schemas/` directory of a sceptre-phenix checkout. The kit
-also needs `pyyaml`, `pydantic`, and `check-jsonschema` on `PATH`. It writes
-these files:
 
 | File | What it is |
 |---|---|
-| `topology-site-fr.yml`, `-ep.yml`, `-cs.yml`, `-fc.yml` | The nodes of each site: 39, 35, 26, and 19 with the sensors |
-| `phenix-fleet.yml` | A workflow with a VLAN ID for each of the 54 aliases and a cluster node for each site VM |
+| `phenix-configs/topology-site-fr.yml`, `-ep.yml`, `-cs.yml`, `-fc.yml` | The nodes of each site: 39, 35, 26, and 19 with the sensors |
+| `phenix-configs/scenario-site-<code>.yml` | The app blocks of the site, its firewall rules, and its SoH tests |
+| `phenix-site-<code>.yml` | The workflow of the site, with the VLAN IDs of the fleet and a bridge of its own |
+| `plant/generated/fleet/<code>/` | What plantgen writes for the site: tags, registers, and app blocks |
+| `fuxa/fleet/<code>/` | The FUXA projects of the site |
+| `phenix-injects/fleet/<code>/` | The site's copies of the injected files that hold names or addresses |
 
-Do not apply that workflow. The files are for counts and for tests of names and
-addresses. They have no routes, no firewall rules, no internet, and no
-scenario. The workflow names a topology that does not exist.
+Do not apply a site's workflow yet. Nobody started a site, and three parts
+are missing:
+
+- The `cherrymountain` app does not know the sites. It needs a change in the
+  apps repository before it can read a site's files.
+- The sensor image `cm-sensor.qc2` does not exist.
+- The edge of a site has no WAN side in these files: no ISP, no default
+  route, no NAT, and no VPN. Part D has that side.
+
+netcheck prints what no firewall separates at a site. Fort Collins and
+Colorado Springs have one flat plant network. Thus their PLCs, operator
+stations, and SCADA host reach each other with no firewall between them.
+
+The kit in [spikes/site-profiles](spikes/site-profiles/README.md) was the
+probe for this part. It does not run on the current plantgen.
 
 ### D. The whole WAN as a phenix variant (`wan`)
 
@@ -956,9 +974,10 @@ office, and the edges of the three other sites. It also has one host behind
 each edge and one host on the internet. That is 15 VMs, 25 vCPUs, and 25 GB.
 
 Nobody ran this variant yet. Its files are generated and tested offline. The
-four routers of part B commit the same configuration lists in CI. The other
-six routers, the transit carrier, and the SoH tests are not proven on VMs. The
-first run is stage 2 of [PLANS.md §8](docs/multisite/PLANS.md#8-stages).
+four routers of part B commit the lists of the same generator in CI, and they
+pass each check there. The other six routers, the transit carrier, and the SoH
+tests are not proven on VMs. The first run is stage 2 of
+[PLANS.md §8](docs/multisite/PLANS.md#8-stages).
 
 The tool [tools/wangen](tools/wangen/README.md) writes the three files of the
 variant from `wan/wan.yaml`: `phenix-wan.yml`,
@@ -1044,7 +1063,8 @@ None of this works yet. This section tells you what a start will need.
 | A cluster of three minimega nodes. A full-size packet must go between two nodes on the bridge of the fleet (stage C) | Not run. The test is a ping of 1472 bytes with fragmentation not permitted. Do the test after `phenix doctor` passes its bridge-trunk check on each node |
 | A phenix that accepts the `vrouter` `config` list | A draft pull request |
 | A `wan` variant: the mock internet and the four site edges, 15 VMs (stage 2) | Built and not run on VMs. Part D shows how to start it |
-| The site files, the cross-site firewall rules, and a sensor image (stages 3 and 4) | Not built. Part C is the start |
+| The site files (stage 3) | Built and checked offline. Part C lists them. No site started |
+| The app's change for the sites, a sensor image, and the cross-site firewall rules (stages 3 and 4) | Not built |
 
 When those items exist, the plan is to start the fleet with one command, as for
 the other variants. You will run it on the head node of the cluster:

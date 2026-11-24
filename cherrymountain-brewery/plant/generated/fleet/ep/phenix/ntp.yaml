@@ -158,3 +158,6 @@ hosts:
     source:
       hostname: ep-sim-ctl
       interface: mgmt
+- hostname: ep-sensor
+  metadata:
+    client: chrony

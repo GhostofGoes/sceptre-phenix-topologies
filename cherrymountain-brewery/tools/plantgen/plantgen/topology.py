@@ -19,16 +19,17 @@ What each field of a node becomes:
   of the hand-written node (see `_name_server`).
 - `network.routes`: built again from the site's networks (see `static_routes`).
 - `network.rulesets`: none. A router gets its rulesets from the `vrouter` app
-  of the site's scenario (`scenario-site-<code>.yml`), which netcheck writes
-  (tools/netcheck, `netcheck.sitegen`).
+  of the site's scenario (`scenario-site-<code>.yml`). netcheck computes them
+  (tools/netcheck, `netcheck.sitegen`), and sync.py writes the scenario.
 - `labels`: `zone` is the host's first network, as in the hand-written
   modules, and a router keeps its own label. `site` is new: the site's code.
 - `annotations`: a forwarded port of the head node moves by the site's index
   (see `_tunnel`).
-- `hardware`, `type`, `commands`, and the `src`, `dst`, and `permissions` of
-  an injection: as they are. A path names a file under phenix-injects
-  (`bbmd/ot-svc.env`, `openplc/full/plc-cellar.zip`), not a host of the site.
-  The content of those files is still the single site's.
+- `hardware`, `type`, `commands`, and the `dst` and `permissions` of an
+  injection: as they are.
+- The `src` of an injection: the site's own copy of the file, when the file
+  holds a name or an address of the plant (`injects.site_source`). Any other
+  file is the one that every site injects.
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ from typing import Any, Final
 
 import yaml
 
-from plantgen import fleet, sites
+from plantgen import fleet, injects, sites
 from plantgen.model import HostSpec, PlantError, PlantFile
 from plantgen.sites import SiteSpec
 
@@ -57,7 +58,7 @@ TUNNEL_STEP: Final[int] = 100
 OPS_VLAN: Final[str] = "OPS"
 #: The network sensor. No image exists yet: the name, the size (decision D19:
 #: 4 vCPUs, 16 GB), and the host number are those of the site-profiles spike.
-SENSOR_NAME: Final[str] = "sensor"
+SENSOR_NAME: Final[str] = fleet.SENSOR_NAME
 SENSOR_IMAGE: Final[str] = "cm-sensor.qc2"
 SENSOR_VCPUS: Final[int] = 4
 SENSOR_MEMORY_MB: Final[int] = 16384
@@ -73,14 +74,17 @@ HEADER: Final[str] = """\
 # topology-remote-access.yml as the source of each node. Do not edit.
 #
 # The firewall rulesets are not here. They are in scenario-site-{code}.yml,
-# which netcheck writes (tools/netcheck): the rules of the conduits whose two
-# ends are hosts of this site.
+# which sync.py writes: the rules of the conduits whose two ends are hosts of
+# this site, as netcheck computes them (tools/netcheck).
+#
+# An injected file that holds a name or an address of the plant is the site's
+# own copy, under phenix-injects/fleet/{code}/ (plantgen renders it, and sync.py
+# puts it there).
 #
 # This file is not a finished site. It does not have these parts yet:
 # - The edge's WAN side: its default route, NAT, and the VPN, which the WAN
 #   generator writes (tools/wangen).
-# - The conduits between sites, with their rules, and a whole scenario. The
-#   injected files still hold the names and addresses of the single site.
+# - The conduits between sites, with their rules.
 """
 
 
@@ -109,13 +113,13 @@ def render(
     site: SiteSpec, plant: PlantFile, doc: PlantFile, nodes: dict[str, dict[str, Any]]
 ) -> str:
     """The text of the site's topology file."""
+    return dump(site, site_topology(site, plant, doc, nodes))
+
+
+def dump(site: SiteSpec, config: dict[str, Any]) -> str:
+    """The text of the site's topology file, from its config (`site_topology`)."""
     # Block style only, as for the app blocks: prek enforces it with yamllint.
-    body = yaml.safe_dump(
-        site_topology(site, plant, doc, nodes),
-        sort_keys=True,
-        default_flow_style=False,
-        width=1000,
-    )
+    body = yaml.safe_dump(config, sort_keys=True, default_flow_style=False, width=1000)
     return HEADER.format(code=site.code, title=site.title) + body
 
 
@@ -160,6 +164,8 @@ def _node(
     for described in (general, *node.get("injections", [])):
         if "description" in described:
             described["description"] = stamp(described["description"])
+    for injection in node.get("injections", []):
+        injection["src"] = injects.site_source(site, injection["src"])
     waits = [
         {**wait, "hostname": site.host(wait["hostname"])}
         for wait in node.get("delay", {}).get("c2", [])

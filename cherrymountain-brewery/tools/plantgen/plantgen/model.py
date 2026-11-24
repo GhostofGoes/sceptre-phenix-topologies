@@ -488,13 +488,16 @@ class NtpSpec(Strict):
     A host's entry is ``hosts[name]`` if present, else ``roles[role]``.
     ``external`` names the time servers that are not hosts of the variant. A
     site of the fleet has one: its edge follows a server of the internet. A
-    client can name such a server as its ``source``.
+    client can name such a server as its ``source``. ``other_nodes`` are the
+    nodes of the topology that the plant does not describe (a site's sensor):
+    the app runs in app mode, so its block must list every node.
     """
 
     default_source: NtpSource
     hosts: dict[str, NtpHost] = Field(default_factory=dict)
     roles: dict[str, NtpHost] = Field(default_factory=dict)
     external: list[str] = Field(default_factory=list)
+    other_nodes: dict[str, NtpHost] = Field(default_factory=dict)
 
 
 class ClockSpec(Strict):

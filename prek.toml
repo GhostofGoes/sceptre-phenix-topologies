@@ -53,6 +53,9 @@ exclude = { glob = [
     "**/*.DSS",
     "**/*.dss",
     "cherrymountain-brewery/viz/cherrymountain_viz/web/vendor/**",
+    # A spike's recorded result is program output: it holds router output that
+    # the harness cuts at a fixed length, so a cut word is not a misspelling.
+    "cherrymountain-brewery/spikes/**/evidence/**/result.json",
     "renewables/wind/plant/phenix-images/workstation/drivers/**",
     "renewables/wind/plant/phenix-injects/wind-test-harness/**",
     "renewables/wind/plant/simulation-replay/docs/**",

@@ -903,7 +903,10 @@ its own clock and time zone.
   That app renders `sim-ctl`'s units already, and the `ot-sim` app accepts a
   broker per host. In the second, the four sites share one federation with
   every name prefixed, which changes about 50 topic strings in the federates.
-  The first is the proposal, and it needs a small spike.
+  The first is the proposal. Its spike passed, on two conditions
+  ([7.6](#76-site-brokers-a-broker-for-each-site)). The network must keep the
+  sites' MGMT networks apart, and a site restarts its broker and its federates
+  together.
 - A site runs the federates of its areas. `fc` has no packaging and no power
   federate, and `cs` has no power federate. After the snapshot's key list and
   five keys that name variants followed the site, plantgen generated each
@@ -1514,6 +1517,38 @@ each step, builds each site's phenix nodes, and sizes the result.
   - A unit dropped inside a PLC's area.
   - The display of the building's points on the brewpub's SCADA.
   - A sensor image.
+
+### 7.6 `site-brokers`: a broker for each site
+
+Kit: [spikes/site-brokers](../../spikes/site-brokers/README.md). It runs four
+federations at once on one machine. Each federation has its own broker in its
+own network namespace, as a site has its own MGMT network. The federations use
+the real simulation package, with the same federate and topic names. The kit
+passed 16 of 16 checks on 2026-11-24.
+
+- Each site receives only its own values. With the `ci` federation at four
+  sites, 4,686 received values equal the site's own reference, and none equals
+  another site's. With the whole plant, and with the files that plantgen writes
+  for the fleet, a write and a scenario event act only at their own site.
+- One site restarts alone. The broker and federates of `ep` stopped for 6 s
+  and ran again 9 to 10 s later. The other sites missed no step.
+- A site restarts as a whole. A restart of the federates alone did not recover
+  in 261 s, because the broker refused them 43 times. A restart of the broker
+  alone left the cellar federate with no partner.
+- The network must keep the sites apart. A field device that reached the
+  waiting broker of another site joined that federation with no error. HELICS
+  does not compare a broker name. A broker key refuses a wrong federate, but
+  the refusal makes the broker drop the first federate that registered. A
+  broker that listens only on its site's address, or a port for each site,
+  keeps two federations apart on one network.
+- The changes are small. The `cherrymountain` app starts a broker on each
+  site's `sim-ctl` and finds each site's hosts by the site, not by one name.
+  plantgen writes no `helics` block for the fleet, and it names the site's
+  broker for each device. The `helics` app, the `ot-sim` app, and the
+  simulation package need no change.
+- Not tested: the real I/O modules of ot-sim (stand-ins took their place),
+  phenix, minimega, a firewall between the sites' MGMT networks, and VMs under
+  load. The app change is not written.
 
 ## 8. Stages
 

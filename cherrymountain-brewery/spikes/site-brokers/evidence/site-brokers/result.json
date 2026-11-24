@@ -1,0 +1,528 @@
+{
+  "spike": "site-brokers",
+  "checks": [
+    {
+      "name": "ci: 4 federations with the same federate names run at once, one broker each",
+      "passed": true,
+      "detail": "each root broker lists ['cellar', 'rio-cellar']; fr: ['cellar', 'rio-cellar'], fc: ['cellar', 'rio-cellar'], ep: ['cellar', 'rio-cellar'], cs: ['cellar', 'rio-cellar']"
+    },
+    {
+      "name": "ci: ep restarts alone, and the other sites go on",
+      "passed": true,
+      "detail": "window 20.0 s; fr: 20 steps, t 13 to 32, 0 irregular, longest gap 1.00 s; fc: 20 steps, t 13 to 32, 0 irregular, longest gap 1.00 s; cs: 20 steps, t 13 to 32, 0 irregular, longest gap 1.00 s; ep (restarted): down 6 s, then 9.0 s until step 10; its time starts again at 1"
+    },
+    {
+      "name": "ci: each federation receives exactly the values of its own site's cellar, through the restart of a neighbor",
+      "passed": true,
+      "detail": "fr: 1023 values over 31 steps, 0 not equal; fc: 1419 values over 43 steps, 0 not equal; ep: 858 values over 26 steps, 0 not equal; cs: 1023 values over 31 steps, 0 not equal; ep, before its restart: 363 values over 11 steps, 0 not equal; the comparison covers the 20 s of the neighbor's restart"
+    },
+    {
+      "name": "ci: a write to `cellar/updates` changes the setpoint at the site that sent it, and at no other",
+      "passed": true,
+      "detail": "`cellar/fv101.spund_sp_psia` at the end: {'fr': 17.25, 'fc': 13.096147841033412, 'ep': 13.096147841033412, 'cs': 18.5}; written: {'fr': 17.25, 'cs': 18.5}; the setpoint of each site's model with no write: {'fr': 13.096147841033412, 'fc': 13.096147841033412, 'ep': 13.096147841033412, 'cs': 13.096147841033412}"
+    },
+    {
+      "name": "full: 4 federations (19, 19, 19, 19 federates) run at once, and 19 federate names are in all of them",
+      "passed": true,
+      "detail": "in every federation: bas-coldroom, bas-rtu-taproom, bas-vent, bess-pcs, brewhouse, building, cellar, gen-ats, glycol-chiller, packaging, power, pv-inverter, relay-main, rio-brewhouse, rio-cellar, rio-packaging, rio-utilities, utilities, weather; fr: 7 real federates and 12 stand-ins, health ok; fc: 7 real federates and 12 stand-ins, health ok; ep: 7 real federates and 12 stand-ins, health ok; cs: 7 real federates and 12 stand-ins, health ok"
+    },
+    {
+      "name": "full: every stand-in receives its own site's setpoint and calendar day, and never another site's",
+      "passed": true,
+      "detail": "fr: setpoint [13.13643] in 12 values, day [20649.0] in 15 values; fc: setpoint [13.226234] in 12 values, day [20650.0] in 15 values; ep: setpoint [13.567801] in 12 values, day [20651.0] in 15 values; cs: setpoint [12.762159] in 12 values, day [20652.0] in 15 values"
+    },
+    {
+      "name": "full: a scenario event at one site acts on that site's plant, and on no other",
+      "passed": true,
+      "detail": "fr: event FV-102, FV-102 40 g/s, FV-103 0 g/s; fc: event none, FV-102 0 g/s, FV-103 0 g/s; ep: event none, FV-102 0 g/s, FV-103 0 g/s; cs: event FV-103, FV-102 0 g/s, FV-103 40 g/s"
+    },
+    {
+      "name": "full: ep restarts alone, and the other sites go on",
+      "passed": true,
+      "detail": "window 20.9 s; fr: 21 steps, t 28 to 48, 0 irregular, longest gap 1.02 s; fc: 21 steps, t 28 to 48, 0 irregular, longest gap 1.01 s; cs: 21 steps, t 28 to 48, 0 irregular, longest gap 1.02 s; ep (restarted): down 6 s, then 9.8 s until step 10; its time starts again at 1"
+    },
+    {
+      "name": "full: after the restart of ep, every other site's time went on and its event API reports `ok`",
+      "passed": true,
+      "detail": "fr: t_s 25 to 49, ok, 2026-07-15T04:30:49-06:00; fc: t_s 25 to 49, ok, 2026-07-16T04:30:50-06:00; cs: t_s 25 to 49, ok, 2026-07-18T04:30:50-06:00; ep (restarted): t_s stopped to 12, ok, 2026-07-17T04:30:11-06:00"
+    },
+    {
+      "name": "fleet: 4 federations (19, 12, 19, 14 federates) run at once, and 5 federate names are in all of them",
+      "passed": true,
+      "detail": "in every federation: brewhouse, building, cellar, utilities, weather; fr: 7 real federates and 12 stand-ins, health ok; fc: 5 real federates and 7 stand-ins, health ok; ep: 7 real federates and 12 stand-ins, health ok; cs: 6 real federates and 8 stand-ins, health ok"
+    },
+    {
+      "name": "fleet: every stand-in receives its own site's setpoint and calendar day, and never another site's",
+      "passed": true,
+      "detail": "fr: setpoint [13.13643] in 12 values, day [20649.0] in 15 values; fc: setpoint [13.226234] in 13 values, day the site has no power area; ep: setpoint [13.567801] in 12 values, day [20651.0] in 15 values; cs: setpoint [12.762159] in 12 values, day the site has no power area"
+    },
+    {
+      "name": "fleet: a scenario event at one site acts on that site's plant, and on no other",
+      "passed": true,
+      "detail": "fr: event FV-102, FV-102 40 g/s, FV-103 0 g/s; fc: event none, FV-102 0 g/s, FV-103 0 g/s; ep: event none, FV-102 0 g/s, FV-103 0 g/s; cs: event FV-103, FV-102 0 g/s, FV-103 40 g/s"
+    },
+    {
+      "name": "fleet: ep restarts alone, and the other sites go on",
+      "passed": true,
+      "detail": "window 21.4 s; fr: 22 steps, t 28 to 49, 0 irregular, longest gap 1.16 s; fc: 21 steps, t 29 to 49, 0 irregular, longest gap 1.02 s; cs: 21 steps, t 29 to 49, 0 irregular, longest gap 1.01 s; ep (restarted): down 6 s, then 10.3 s until step 10; its time starts again at 1"
+    },
+    {
+      "name": "fleet: after the restart of ep, every other site's time went on and its event API reports `ok`",
+      "passed": true,
+      "detail": "fr: t_s 25 to 49, ok, 2026-07-15T04:30:50-06:00; fc: t_s 26 to 50, ok, 2026-07-16T04:30:50-06:00; cs: t_s 26 to 50, ok, 2026-07-18T04:30:51-06:00; ep (restarted): t_s stopped to 12, ok, 2026-07-17T04:30:11-06:00"
+    },
+    {
+      "name": "shared network: each broker bound to its own site's address keeps two federations apart on the default port",
+      "passed": true,
+      "detail": "brokers with `--local_interface <the site's sim-ctl address>`, federates with their site's `--broker_address`; listeners: 172.16.10.1:23404, 172.16.10.1:23405, 172.16.10.1:23492, 172.16.10.1:23493, 172.18.10.1:23404, 172.18.10.1:23405, 172.18.10.1:23414, 172.18.10.1:23415; fr: 363 values over 11 steps, 0 not equal; ep: 528 values over 16 steps, 0 not equal"
+    },
+    {
+      "name": "shared network: a port for each site keeps two federations apart on one address",
+      "passed": true,
+      "detail": "brokers with `--port 23404` and `--port 23504` on all addresses, federates with HELICS_BROKER_PORT in their environment; listeners: 0.0.0.0:23404, 0.0.0.0:23405, 0.0.0.0:23504, 0.0.0.0:23505, 172.16.10.1:23414, 172.16.10.1:23415, 172.18.10.1:23509, 172.18.10.1:23510; fr: 363 values over 11 steps, 0 not equal; ep: 528 values over 16 steps, 0 not equal"
+    }
+  ],
+  "versions": {
+    "Python": "3.12.3",
+    "helics (pip)": "3.6.1 (2025-02-24)",
+    "helics_broker": "3.6.1 (2025-02-24)",
+    "Kernel": "6.18.44-fc-v819",
+    "CPUs": "4"
+  },
+  "facts": {
+    "Sites": "fr (broker 172.16.10.1), fc (broker 172.17.10.1), ep (broker 172.18.10.1), cs (broker 172.19.10.1)",
+    "Parts": "ci, full, fleet, shared",
+    "ci: broker command": "<venv>/bin/helics_broker --name fr-sim-ctl -f2 --ipv4 --loglevel summary --logfile <work>/ci-fr-first/helics-root-broker.log --autorestart",
+    "ci: federate command": "<venv>/bin/python -m cherrymountain_sim --config <work>/ci-fr-first/helics.json --federate cellar --broker-address 172.16.10.1 --log-level INFO",
+    "ci: listeners in each sim-ctl namespace": "cmsb-fr-ctl: 0.0.0.0:23404, 0.0.0.0:23405; cmsb-fc-ctl: 0.0.0.0:23404, 0.0.0.0:23405; cmsb-ep-ctl: 0.0.0.0:23404, 0.0.0.0:23405; cmsb-cs-ctl: 0.0.0.0:23404, 0.0.0.0:23405",
+    "ci: TCP from cmsb-fr-sim to the broker of fc": "no connection ([Errno 101] Network is unreachable)",
+    "ci: TCP from cmsb-fr-sim to its own broker": "open",
+    "Run time": "328 s",
+    "Namespaces left after the run": "none"
+  },
+  "observations": [
+    {
+      "name": "A SIGTERM to the process that the command `helics_broker` starts",
+      "observed": "`helics_broker` of the pip wheel is a Python script that runs the broker as a child. The script exited (code -15), and the broker went on: it still listens on 0.0.0.0:23404, 0.0.0.0:23405. A signal to the whole process group, as systemd sends to a unit, stops both.",
+      "hazard": false
+    },
+    {
+      "name": "Where a broker listens",
+      "observed": "With no interface option: 127.0.0.1:23404, 127.0.0.1:23405. With `--ipv4`, as the `helics` app starts it: every address (see the next row). With the options of the `ot-sim` app (`--ipv4 --web --http_server_args=--http_port=8080 --external`): 0.0.0.0:23404, 0.0.0.0:23405, 0.0.0.0:8080. A server that then asks for 127.0.0.1:8080, as the event API of `sim-ctl` does, gets: no bind ([Errno 98] Address already in use).",
+      "hazard": false
+    },
+    {
+      "name": "By default, a second broker on the same network and port",
+      "observed": "`--name ep-sim-ctl -f2 --ipv4` exited with code 252 after 4.6 s ( reply socket giving up tcp://*:23405 / [2026-11-24 08:50:04.759] [console] [error] commERROR||ep-sim-ctl (1)[connecting]::receiver connection failure / Broker is unable to connect). The first broker listens on 0.0.0.0:23404, 0.0.0.0:23405. The app starts the broker with `&`, so nothing reports the exit.",
+      "hazard": true
+    },
+    {
+      "name": "By default, a field device of one site that reaches the waiting broker of another site",
+      "observed": "`rio-cellar` of ep, pointed at 172.18.10.1, joined the federation of `fr-sim-ctl`: True. It received 165 values over 5 steps. In 5 of those steps, every value equals the reference of fr. In 0 steps, every value equals the reference of its own site. The broker's federates: ['cellar', 'rio-cellar']. No message names the wrong site.",
+      "hazard": true
+    },
+    {
+      "name": "A federate that a running broker refuses",
+      "observed": "`rio-cellar` of fr came late to its own broker and got: HelicsException: [-1] broker responded with error: already in initialization mode. After the refusal, the first federate of that federation (`cellar` of fr) exited with code 1 (helics.capi.HelicsException: [-10] publications not allowed outside of execution and initialization state). The broker's log: [info] fr-sim-ctl::got disconnect from cellar_core_W5IBEi(0) / [info] fr-sim-ctl::got disconnect from cellar_core_W5IBEi(1879048192). The broker dropped the first core that had registered, not the one that it refused.",
+      "hazard": true
+    },
+    {
+      "name": "A broker key (`--brokerkey`, or HELICS_BROKER_KEY for a federate)",
+      "observed": "The broker of fr has the key `fr-key`. A stand-in of ep with the key `ep-key` got: HelicsException: [-1] broker responded with error: broker key does not match. It did not join (federates created: []). The same refusal after `cellar` of fr registered with the right key from its environment: that cellar exited with code 1 (helics.capi.HelicsException: [-6] HELICS system failure). A key stops the join. It does not protect the federation that the stranger reached.",
+      "hazard": true
+    },
+    {
+      "name": "The real federate takes the broker key from its environment",
+      "observed": "With HELICS_BROKER_KEY in the federate's environment file and no change to `federate.py`, the federation ran: True (231 values, 0 not equal to the reference). The port check does the same with HELICS_BROKER_PORT.",
+      "hazard": false
+    },
+    {
+      "name": "A broker name (`--name` at the broker, `--brokername` at the federate)",
+      "observed": "A stand-in that asked for the broker `ep-sim-ctl` at the address of `fr-sim-ctl` joined: True. The zmq core finds its broker by address and port. It does not compare the name.",
+      "hazard": true
+    },
+    {
+      "name": "A restart of the federates alone, with the broker left up",
+      "observed": "The federation ran 62 steps. Then both federate units restarted (`Restart=always`, `RestartSec=5`), and the broker (`--autorestart`) stayed. In 261 s, `cellar` started 43 times and the stand-in 45 times. The broker's answer: HelicsException: [-1] broker responded with error: already in initialization mode. The federation did not run again.",
+      "hazard": false
+    },
+    {
+      "name": "A restart of the broker alone, with the federates left up",
+      "observed": "The federation ran 62 steps. Then the broker stopped, and it started again 2 s later with the same command. In 261 s, the `cellar` unit started its process again 0 times. The federate logged 258 lines with `forced Granted Time`: with HELICS's real-time flag it steps on alone, and it does not register at the new broker. The stand-in started again 0 times (HelicsException: [-101] core lost connection with broker). The federation did not run again.",
+      "hazard": false
+    }
+  ],
+  "tables": {
+    "ci: one site restarts": [
+      {
+        "Site": "fr",
+        "Before the restart": "12 steps, t 1 to 12, 0 irregular, longest gap 1.00 s",
+        "During the restart": "20 steps, t 13 to 32, 0 irregular, longest gap 1.00 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "fc",
+        "Before the restart": "12 steps, t 1 to 12, 0 irregular, longest gap 1.00 s",
+        "During the restart": "20 steps, t 13 to 32, 0 irregular, longest gap 1.00 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "cs",
+        "Before the restart": "12 steps, t 1 to 12, 0 irregular, longest gap 1.00 s",
+        "During the restart": "20 steps, t 13 to 32, 0 irregular, longest gap 1.00 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "ep (restarted)",
+        "Before the restart": "stopped at t 12",
+        "During the restart": "down 6 s, then 9.0 s until step 10; its time starts again at 1",
+        "Processes that exited": "none"
+      }
+    ],
+    "ci: received values against the offline reference": [
+      {
+        "Site": "fr",
+        "Steps": "31",
+        "Values held against its own reference": "1023",
+        "Not equal": "0",
+        "Steps equal to another site's reference": "0"
+      },
+      {
+        "Site": "fc",
+        "Steps": "43",
+        "Values held against its own reference": "1419",
+        "Not equal": "0",
+        "Steps equal to another site's reference": "0"
+      },
+      {
+        "Site": "ep",
+        "Steps": "26",
+        "Values held against its own reference": "858",
+        "Not equal": "0",
+        "Steps equal to another site's reference": "0"
+      },
+      {
+        "Site": "cs",
+        "Steps": "31",
+        "Values held against its own reference": "1023",
+        "Not equal": "0",
+        "Steps equal to another site's reference": "0"
+      },
+      {
+        "Site": "ep, before its restart",
+        "Steps": "11",
+        "Values held against its own reference": "363",
+        "Not equal": "0",
+        "Steps equal to another site's reference": "not counted"
+      }
+    ],
+    "full: the federations": [
+      {
+        "Site": "fr",
+        "Source": "plant/generated/full/helics.json",
+        "Broker": "fr-sim-ctl at 172.16.10.1",
+        "Real federates": "cellar, weather, brewhouse, utilities, packaging, power, building",
+        "Stand-ins for field devices": "rio-brewhouse, rio-cellar, rio-packaging, rio-utilities, glycol-chiller, relay-main, pv-inverter, bess-pcs, gen-ats, bas-rtu-taproom, bas-coldroom, bas-vent",
+        "Federates that the root broker lists": "19"
+      },
+      {
+        "Site": "fc",
+        "Source": "plant/generated/full/helics.json",
+        "Broker": "fc-sim-ctl at 172.17.10.1",
+        "Real federates": "cellar, weather, brewhouse, utilities, packaging, power, building",
+        "Stand-ins for field devices": "rio-brewhouse, rio-cellar, rio-packaging, rio-utilities, glycol-chiller, relay-main, pv-inverter, bess-pcs, gen-ats, bas-rtu-taproom, bas-coldroom, bas-vent",
+        "Federates that the root broker lists": "19"
+      },
+      {
+        "Site": "ep",
+        "Source": "plant/generated/full/helics.json",
+        "Broker": "ep-sim-ctl at 172.18.10.1",
+        "Real federates": "cellar, weather, brewhouse, utilities, packaging, power, building",
+        "Stand-ins for field devices": "rio-brewhouse, rio-cellar, rio-packaging, rio-utilities, glycol-chiller, relay-main, pv-inverter, bess-pcs, gen-ats, bas-rtu-taproom, bas-coldroom, bas-vent",
+        "Federates that the root broker lists": "19"
+      },
+      {
+        "Site": "cs",
+        "Source": "plant/generated/full/helics.json",
+        "Broker": "cs-sim-ctl at 172.19.10.1",
+        "Real federates": "cellar, weather, brewhouse, utilities, packaging, power, building",
+        "Stand-ins for field devices": "rio-brewhouse, rio-cellar, rio-packaging, rio-utilities, glycol-chiller, relay-main, pv-inverter, bess-pcs, gen-ats, bas-rtu-taproom, bas-coldroom, bas-vent",
+        "Federates that the root broker lists": "19"
+      }
+    ],
+    "full: each site's own inputs, as its federation delivers them": [
+      {
+        "Site": "fr",
+        "Elevation (m)": "1585",
+        "FV-102 setpoint for that elevation (psia)": "13.136430",
+        "Received by `rio-cellar`": "[13.13643] in 12 values",
+        "Calendar day, configured": "20649",
+        "Received by `gen-ats`": "[20649.0] in 15 values",
+        "`sim_time` of the event API": "2026-07-15T04:30:13-06:00"
+      },
+      {
+        "Site": "fc",
+        "Elevation (m)": "1525",
+        "FV-102 setpoint for that elevation (psia)": "13.226234",
+        "Received by `rio-cellar`": "[13.226234] in 12 values",
+        "Calendar day, configured": "20650",
+        "Received by `gen-ats`": "[20650.0] in 15 values",
+        "`sim_time` of the event API": "2026-07-16T04:30:13-06:00"
+      },
+      {
+        "Site": "ep",
+        "Elevation (m)": "1300",
+        "FV-102 setpoint for that elevation (psia)": "13.567801",
+        "Received by `rio-cellar`": "[13.567801] in 12 values",
+        "Calendar day, configured": "20651",
+        "Received by `gen-ats`": "[20651.0] in 15 values",
+        "`sim_time` of the event API": "2026-07-17T04:30:14-06:00"
+      },
+      {
+        "Site": "cs",
+        "Elevation (m)": "1839",
+        "FV-102 setpoint for that elevation (psia)": "12.762159",
+        "Received by `rio-cellar`": "[12.762159] in 12 values",
+        "Calendar day, configured": "20652",
+        "Received by `gen-ats`": "[20652.0] in 15 values",
+        "`sim_time` of the event API": "2026-07-18T04:30:14-06:00"
+      }
+    ],
+    "full: a CO2 release at one site": [
+      {
+        "Site": "fr",
+        "Event sent": "FV-102",
+        "Events in its API": "1",
+        "FV-102 leak (g/s)": "40",
+        "FV-103 leak (g/s)": "0"
+      },
+      {
+        "Site": "fc",
+        "Event sent": "none",
+        "Events in its API": "0",
+        "FV-102 leak (g/s)": "0",
+        "FV-103 leak (g/s)": "0"
+      },
+      {
+        "Site": "ep",
+        "Event sent": "none",
+        "Events in its API": "0",
+        "FV-102 leak (g/s)": "0",
+        "FV-103 leak (g/s)": "0"
+      },
+      {
+        "Site": "cs",
+        "Event sent": "FV-103",
+        "Events in its API": "1",
+        "FV-102 leak (g/s)": "0",
+        "FV-103 leak (g/s)": "40"
+      }
+    ],
+    "full: one site restarts": [
+      {
+        "Site": "fr",
+        "Before the restart": "27 steps, t 1 to 27, 0 irregular, longest gap 1.01 s",
+        "During the restart": "21 steps, t 28 to 48, 0 irregular, longest gap 1.02 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "fc",
+        "Before the restart": "27 steps, t 1 to 27, 0 irregular, longest gap 1.02 s",
+        "During the restart": "21 steps, t 28 to 48, 0 irregular, longest gap 1.01 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "cs",
+        "Before the restart": "27 steps, t 1 to 27, 0 irregular, longest gap 1.03 s",
+        "During the restart": "21 steps, t 28 to 48, 0 irregular, longest gap 1.02 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "ep (restarted)",
+        "Before the restart": "stopped at t 27",
+        "During the restart": "down 6 s, then 9.8 s until step 10; its time starts again at 1",
+        "Processes that exited": "none"
+      }
+    ],
+    "full: the event API of each site around the restart": [
+      {
+        "Site": "fr",
+        "`t_s` before": "25",
+        "`t_s` after": "49",
+        "Health after": "ok, 2026-07-15T04:30:49-06:00"
+      },
+      {
+        "Site": "fc",
+        "`t_s` before": "25",
+        "`t_s` after": "49",
+        "Health after": "ok, 2026-07-16T04:30:50-06:00"
+      },
+      {
+        "Site": "cs",
+        "`t_s` before": "25",
+        "`t_s` after": "49",
+        "Health after": "ok, 2026-07-18T04:30:50-06:00"
+      },
+      {
+        "Site": "ep (restarted)",
+        "`t_s` before": "stopped",
+        "`t_s` after": "12",
+        "Health after": "ok, 2026-07-17T04:30:11-06:00"
+      }
+    ],
+    "fleet: the federations": [
+      {
+        "Site": "fr",
+        "Source": "plant/generated/fleet/fr/helics.json",
+        "Broker": "fr-sim-ctl at 172.16.10.1",
+        "Real federates": "cellar, weather, brewhouse, utilities, packaging, power, building",
+        "Stand-ins for field devices": "fr-rio-brewhouse, fr-rio-cellar, fr-rio-packaging, fr-rio-utilities, fr-glycol-chiller, fr-relay-main, fr-pv-inverter, fr-bess-pcs, fr-gen-ats, fr-bas-rtu-taproom, fr-bas-coldroom, fr-bas-vent",
+        "Federates that the root broker lists": "19"
+      },
+      {
+        "Site": "fc",
+        "Source": "plant/generated/fleet/fc/helics.json",
+        "Broker": "fc-sim-ctl at 172.17.10.1",
+        "Real federates": "cellar, weather, brewhouse, utilities, building",
+        "Stand-ins for field devices": "fc-rio-brewhouse, fc-rio-cellar, fc-rio-utilities, fc-glycol-chiller, fc-bas-rtu-taproom, fc-bas-coldroom, fc-bas-vent",
+        "Federates that the root broker lists": "12"
+      },
+      {
+        "Site": "ep",
+        "Source": "plant/generated/fleet/ep/helics.json",
+        "Broker": "ep-sim-ctl at 172.18.10.1",
+        "Real federates": "cellar, weather, brewhouse, utilities, packaging, power, building",
+        "Stand-ins for field devices": "ep-rio-brewhouse, ep-rio-cellar, ep-rio-packaging, ep-rio-utilities, ep-glycol-chiller, ep-relay-main, ep-pv-inverter, ep-bess-pcs, ep-gen-ats, ep-bas-rtu-taproom, ep-bas-coldroom, ep-bas-vent",
+        "Federates that the root broker lists": "19"
+      },
+      {
+        "Site": "cs",
+        "Source": "plant/generated/fleet/cs/helics.json",
+        "Broker": "cs-sim-ctl at 172.19.10.1",
+        "Real federates": "cellar, weather, brewhouse, utilities, packaging, building",
+        "Stand-ins for field devices": "cs-rio-brewhouse, cs-rio-cellar, cs-rio-packaging, cs-rio-utilities, cs-glycol-chiller, cs-bas-rtu-taproom, cs-bas-coldroom, cs-bas-vent",
+        "Federates that the root broker lists": "14"
+      }
+    ],
+    "fleet: each site's own inputs, as its federation delivers them": [
+      {
+        "Site": "fr",
+        "Elevation (m)": "1585",
+        "FV-102 setpoint for that elevation (psia)": "13.136430",
+        "Received by `rio-cellar`": "[13.13643] in 12 values",
+        "Calendar day, configured": "20649",
+        "Received by `gen-ats`": "[20649.0] in 15 values",
+        "`sim_time` of the event API": "2026-07-15T04:30:13-06:00"
+      },
+      {
+        "Site": "fc",
+        "Elevation (m)": "1525",
+        "FV-102 setpoint for that elevation (psia)": "13.226234",
+        "Received by `rio-cellar`": "[13.226234] in 13 values",
+        "Calendar day, configured": "20650",
+        "Received by `gen-ats`": "the site has no power area",
+        "`sim_time` of the event API": "2026-07-16T04:30:14-06:00"
+      },
+      {
+        "Site": "ep",
+        "Elevation (m)": "1300",
+        "FV-102 setpoint for that elevation (psia)": "13.567801",
+        "Received by `rio-cellar`": "[13.567801] in 12 values",
+        "Calendar day, configured": "20651",
+        "Received by `gen-ats`": "[20651.0] in 15 values",
+        "`sim_time` of the event API": "2026-07-17T04:30:13-06:00"
+      },
+      {
+        "Site": "cs",
+        "Elevation (m)": "1839",
+        "FV-102 setpoint for that elevation (psia)": "12.762159",
+        "Received by `rio-cellar`": "[12.762159] in 12 values",
+        "Calendar day, configured": "20652",
+        "Received by `gen-ats`": "the site has no power area",
+        "`sim_time` of the event API": "2026-07-18T04:30:14-06:00"
+      }
+    ],
+    "fleet: a CO2 release at one site": [
+      {
+        "Site": "fr",
+        "Event sent": "FV-102",
+        "Events in its API": "1",
+        "FV-102 leak (g/s)": "40",
+        "FV-103 leak (g/s)": "0"
+      },
+      {
+        "Site": "fc",
+        "Event sent": "none",
+        "Events in its API": "0",
+        "FV-102 leak (g/s)": "0",
+        "FV-103 leak (g/s)": "0"
+      },
+      {
+        "Site": "ep",
+        "Event sent": "none",
+        "Events in its API": "0",
+        "FV-102 leak (g/s)": "0",
+        "FV-103 leak (g/s)": "0"
+      },
+      {
+        "Site": "cs",
+        "Event sent": "FV-103",
+        "Events in its API": "1",
+        "FV-102 leak (g/s)": "0",
+        "FV-103 leak (g/s)": "40"
+      }
+    ],
+    "fleet: one site restarts": [
+      {
+        "Site": "fr",
+        "Before the restart": "27 steps, t 1 to 27, 0 irregular, longest gap 1.01 s",
+        "During the restart": "22 steps, t 28 to 49, 0 irregular, longest gap 1.16 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "fc",
+        "Before the restart": "28 steps, t 1 to 28, 0 irregular, longest gap 1.00 s",
+        "During the restart": "21 steps, t 29 to 49, 0 irregular, longest gap 1.02 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "cs",
+        "Before the restart": "28 steps, t 1 to 28, 0 irregular, longest gap 1.04 s",
+        "During the restart": "21 steps, t 29 to 49, 0 irregular, longest gap 1.01 s",
+        "Processes that exited": "none"
+      },
+      {
+        "Site": "ep (restarted)",
+        "Before the restart": "stopped at t 27",
+        "During the restart": "down 6 s, then 10.3 s until step 10; its time starts again at 1",
+        "Processes that exited": "none"
+      }
+    ],
+    "fleet: the event API of each site around the restart": [
+      {
+        "Site": "fr",
+        "`t_s` before": "25",
+        "`t_s` after": "49",
+        "Health after": "ok, 2026-07-15T04:30:50-06:00"
+      },
+      {
+        "Site": "fc",
+        "`t_s` before": "26",
+        "`t_s` after": "50",
+        "Health after": "ok, 2026-07-16T04:30:50-06:00"
+      },
+      {
+        "Site": "cs",
+        "`t_s` before": "26",
+        "`t_s` after": "50",
+        "Health after": "ok, 2026-07-18T04:30:51-06:00"
+      },
+      {
+        "Site": "ep (restarted)",
+        "`t_s` before": "stopped",
+        "`t_s` after": "12",
+        "Health after": "ok, 2026-07-17T04:30:11-06:00"
+      }
+    ]
+  }
+}

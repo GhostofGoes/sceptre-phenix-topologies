@@ -108,8 +108,14 @@ set protocols bgp parameters router-id 10.255.2.1
 set protocols bgp parameters log-neighbor-changes
 set protocols bgp address-family ipv4-unicast network 10.11.0.0/16
 set protocols bgp address-family ipv4-unicast network 10.21.0.0/16
-set protocols static route 0.0.0.0/0 next-hop 203.0.113.9 distance 10
-set protocols static route 0.0.0.0/0 next-hop 198.18.101.9 distance 20
+set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 interface eth0
+set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 metric 10
+set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 check target 203.0.113.9 interface eth0
+set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 check timeout 2
+set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 interface eth1
+set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 metric 20
+set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 check target 198.18.101.9 interface eth1
+set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 check timeout 2
 set policy route-map SET-SOURCE rule 15 action permit
 set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
 set policy route-map SET-SOURCE rule 15 set src 10.21.10.1
@@ -193,6 +199,15 @@ set protocols bgp neighbor 10.255.0.2 timers connect 5
 set protocols bgp neighbor 10.255.0.2 bfd profile WAN
 set protocols bgp neighbor 10.255.0.2 address-family ipv4-unicast route-map import OVERLAY-BACKUP
 set protocols bgp neighbor 10.255.0.2 address-family ipv4-unicast route-map export OVERLAY-OUT
+set firewall group network-group PRIVATE network 10.0.0.0/8
+set firewall group network-group PRIVATE network 172.16.0.0/12
+set firewall group network-group PRIVATE network 192.168.0.0/16
+set nat source rule 100 outbound-interface name eth0
+set nat source rule 100 source group network-group PRIVATE
+set nat source rule 100 translation address masquerade
+set nat source rule 110 outbound-interface name eth1
+set nat source rule 110 source group network-group PRIVATE
+set nat source rule 110 translation address masquerade
 commit
 save
 exit

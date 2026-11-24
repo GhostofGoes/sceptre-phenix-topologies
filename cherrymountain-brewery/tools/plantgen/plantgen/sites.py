@@ -182,6 +182,12 @@ def check(
     ):
         if len(set(values)) != len(values):
             raise PlantError(f"sites: a site {label} is used twice: {values}")
+    # The FUXA builder and the app name a site as they name a variant.
+    for site in sites:
+        if site.code in plant.variants:
+            raise PlantError(
+                f"site {site.code}: its code is the name of a variant of plant.yaml"
+            )
     areas = {area.id for area in plant.areas}
     vlans = {
         interface.vlan
@@ -306,6 +312,39 @@ def _fits_wan(site: SiteSpec, plant: PlantFile, wan: dict[str, Any]) -> None:
                 f"{where}: wan.yaml puts its host on {lan['vlan']} ({lan['net']}), "
                 f"and the site has {site.routed_networks(plant).get(lan['vlan'])} there"
             )
+
+
+def uplink_links(site: SiteSpec, wan: dict[str, Any]) -> list[tuple[str, str]]:
+    """(VLAN alias, network) of each access link of the site, the primary first.
+
+    Both are the WAN generator's, because the ISP's router is on the same
+    link. It names a link `WAN-<a>-<b>` in capitals, with the short names of
+    the link's two routers in the order of wan.yaml (tools/wangen,
+    `link_vlan`), and the link's network is `net` there. The prefix length of
+    the address in sites.yaml is not used.
+    """
+    short = {router["name"]: router["short"] for router in wan["routers"]}
+    edge = site.host(EDGE)
+    links: list[tuple[str, str]] = []
+    for uplink in site.uplinks:
+        ends = {edge, uplink.isp}
+        link = next((x for x in wan["links"] if {x["a"], x["b"]} == ends), None)
+        if link is None:
+            raise PlantError(
+                f"site {site.code}: wan.yaml has no link between {edge} and "
+                f"{uplink.isp}"
+            )
+        alias = f"WAN-{short[link['a']]}-{short[link['b']]}".upper()
+        links.append((alias, str(link["net"])))
+    return links
+
+
+def load_wan(path: Path = WAN_PATH) -> dict[str, Any]:
+    """wan/wan.yaml as data."""
+    if not path.is_file():
+        raise PlantError(f"{path} does not exist; a site needs it for its uplinks")
+    wan: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return wan
 
 
 def load(

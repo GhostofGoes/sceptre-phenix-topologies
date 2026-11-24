@@ -111,16 +111,26 @@ set protocols bgp address-family ipv4-unicast network 10.20.0.0/16
 set protocols bgp address-family ipv4-unicast network 10.30.0.0/16
 set protocols bgp address-family ipv4-unicast network 10.40.0.0/16
 set interfaces dummy dum0 address 198.18.105.1/32
-set policy prefix-list DEFAULT rule 10 action permit
-set policy prefix-list DEFAULT rule 10 prefix 0.0.0.0/0
+set policy prefix-list INTERNET rule 1 action deny
+set policy prefix-list INTERNET rule 1 prefix 10.0.0.0/8
+set policy prefix-list INTERNET rule 1 le 32
+set policy prefix-list INTERNET rule 2 action deny
+set policy prefix-list INTERNET rule 2 prefix 172.16.0.0/12
+set policy prefix-list INTERNET rule 2 le 32
+set policy prefix-list INTERNET rule 3 action deny
+set policy prefix-list INTERNET rule 3 prefix 192.168.0.0/16
+set policy prefix-list INTERNET rule 3 le 32
+set policy prefix-list INTERNET rule 10 action permit
+set policy prefix-list INTERNET rule 10 prefix 0.0.0.0/0
+set policy prefix-list INTERNET rule 10 le 24
 set policy prefix-list OWN rule 10 action permit
 set policy prefix-list OWN rule 10 prefix 198.18.105.0/24
-set policy route-map DEFAULT-ONLY rule 10 action permit
-set policy route-map DEFAULT-ONLY rule 10 match ip address prefix-list DEFAULT
+set policy route-map FROM-ISP rule 10 action permit
+set policy route-map FROM-ISP rule 10 match ip address prefix-list INTERNET
 set policy route-map OWN-ONLY rule 10 action permit
 set policy route-map OWN-ONLY rule 10 match ip address prefix-list OWN
 set policy route-map SET-SOURCE rule 10 action permit
-set policy route-map SET-SOURCE rule 10 match ip address prefix-list DEFAULT
+set policy route-map SET-SOURCE rule 10 match ip address prefix-list INTERNET
 set policy route-map SET-SOURCE rule 10 set src 198.18.105.1
 set protocols bgp parameters bestpath as-path multipath-relax
 set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2
@@ -132,7 +142,7 @@ set protocols bgp neighbor 203.0.113.1 timers keepalive 3
 set protocols bgp neighbor 203.0.113.1 timers holdtime 9
 set protocols bgp neighbor 203.0.113.1 timers connect 5
 set protocols bgp neighbor 203.0.113.1 bfd profile WAN
-set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map import DEFAULT-ONLY
+set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map import FROM-ISP
 set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map export OWN-ONLY
 set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast soft-reconfiguration inbound
 set protocols bgp neighbor 198.18.101.1 remote-as 64501
@@ -141,7 +151,7 @@ set protocols bgp neighbor 198.18.101.1 timers keepalive 3
 set protocols bgp neighbor 198.18.101.1 timers holdtime 9
 set protocols bgp neighbor 198.18.101.1 timers connect 5
 set protocols bgp neighbor 198.18.101.1 bfd profile WAN
-set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map import DEFAULT-ONLY
+set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map import FROM-ISP
 set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map export OWN-ONLY
 set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast soft-reconfiguration inbound
 set policy route-map SET-SOURCE rule 15 action permit
@@ -184,6 +194,35 @@ set protocols bgp neighbor 10.255.0.3 timers connect 5
 set protocols bgp neighbor 10.255.0.3 bfd profile WAN
 set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map import OVERLAY-BACKUP-FC
 set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map export OVERLAY-OUT
+set firewall group network-group PRIVATE network 10.0.0.0/8
+set firewall group network-group PRIVATE network 172.16.0.0/12
+set firewall group network-group PRIVATE network 192.168.0.0/16
+set nat source rule 100 outbound-interface name eth0
+set nat source rule 100 source group network-group PRIVATE
+set nat source rule 100 translation address 198.18.105.2
+set nat source rule 110 outbound-interface name eth1
+set nat source rule 110 source group network-group PRIVATE
+set nat source rule 110 translation address 198.18.105.2
+set firewall group network-group VPN-FC network 10.11.0.0/16
+set firewall group network-group VPN-FC network 10.21.0.0/16
+set firewall group network-group VPN-FC network 10.255.0.1/32
+set firewall group network-group VPN-FC network 10.255.0.3/32
+set firewall ipv4 forward filter rule 100 action drop
+set firewall ipv4 forward filter rule 100 inbound-interface name wg101
+set firewall ipv4 forward filter rule 100 source group network-group '!VPN-FC'
+set firewall ipv4 forward filter rule 100 log
+set firewall ipv4 input filter rule 100 action drop
+set firewall ipv4 input filter rule 100 inbound-interface name wg101
+set firewall ipv4 input filter rule 100 source group network-group '!VPN-FC'
+set firewall ipv4 input filter rule 100 log
+set firewall ipv4 forward filter rule 101 action drop
+set firewall ipv4 forward filter rule 101 inbound-interface name wg102
+set firewall ipv4 forward filter rule 101 source group network-group '!VPN-FC'
+set firewall ipv4 forward filter rule 101 log
+set firewall ipv4 input filter rule 101 action drop
+set firewall ipv4 input filter rule 101 inbound-interface name wg102
+set firewall ipv4 input filter rule 101 source group network-group '!VPN-FC'
+set firewall ipv4 input filter rule 101 log
 commit
 save
 exit

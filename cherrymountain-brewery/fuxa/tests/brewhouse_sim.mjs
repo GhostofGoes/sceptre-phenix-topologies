@@ -286,11 +286,11 @@ export class Plant {
     }
   }
 
-  /** The OPC UA device of plc-brewhouse as FUXA drives it (`tags`: id -> project tag). */
-  plcDevice(tags) {
+  /** The OPC UA device of the brewhouse PLC as FUXA drives it (`tags`: id -> project tag). */
+  plcDevice(tags, name) {
     const plant = this;
     return {
-      name: 'plc-brewhouse',
+      name,
       tags,
       up: () => plant.plcLinkUp,
       read: (id) => {
@@ -306,10 +306,10 @@ export class Plant {
     };
   }
 
-  cellarDevice(tags) {
+  cellarDevice(tags, name) {
     const plant = this;
     return {
-      name: 'plc-cellar',
+      name,
       tags,
       up: () => plant.cellar.linkUp,
       read: (id) => {

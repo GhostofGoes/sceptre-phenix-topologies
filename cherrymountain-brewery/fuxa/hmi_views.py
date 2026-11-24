@@ -1,4 +1,5 @@
-"""The process graphics of scada-fuxa and bas-fuxa, laid out with ``hmi_kit.py``.
+"""The process graphics of a SCADA host and a building front end, laid out
+with ``hmi_kit.py``. A host gets the screens of the areas that its tags cover.
 
 Each function draws one screen. A screen is 1,240 px wide and 820 px high, so it
 fits an HMI station's 1440x900 display beside the menu without scrolling.
@@ -6,7 +7,7 @@ fits an HMI station's 1440x900 display beside the menu without scrolling.
 The screens form the hierarchy ISA-101 describes. **Overview** is level 1: the
 whole plant at a glance, with nothing to operate; each of its panels opens the
 area behind it. **Brewhouse**, **Cellar**, **Packaging**, **Utilities**,
-**Power**, **Cellar CO2**, and bas-fuxa's **Building** are level 2: the picture
+**Power**, **Cellar CO2**, and the **Building** are level 2: the picture
 an operator runs an area from. The generated "... points" tables stay as levels
 3 and 4: every tag of a controller, for the engineer.
 """
@@ -66,17 +67,31 @@ FERMENTING: list[tuple[float, float, str]] = [
 FV_COLORS: tuple[str, ...] = (INK, MEDIA["wort"], LIVE, MEDIA["cip"])
 
 
+#: One tag of each area: a host that reads it gets the area's screen and its
+#: panel on the Overview.
+AREA_TAG: dict[str, str] = {
+    "Brewhouse": "BH.MLT.TT01.PV",
+    "Cellar": "CEL.FV101.TT01.PV",
+    "Packaging": "PKG.LINE.PACKML.STATE",
+    "Power": "PWR.MAIN.JT01.PV",
+    "Building": "FAC.RTU1.TT01.PV",
+}
+
+
 class Plant(NamedTuple):
     """What a screen is drawn from: a host's tags, the alarms by their source
-    tag, and the device each tag is read from."""
+    tag, the device each tag is read from, and the controller that owns each
+    tag of the plant (also the tags that this host does not read)."""
 
     tags: dict[str, PlantTag]
     alarms: dict[str, list[Alarm]]
     devices: dict[str, str]
+    owners: dict[str, str] = {}
 
 
 def canvas(name: str, plant: Plant) -> Canvas:
-    return Canvas(name, plant.tags, WIDTH, HEIGHT, alarms=plant.alarms, devices=plant.devices)
+    return Canvas(name, plant.tags, WIDTH, HEIGHT, alarms=plant.alarms, devices=plant.devices,
+                  owners=plant.owners)
 
 
 def row(c: Canvas, x: float, y: float, caption: str, tag: str, digits: int = 1, unit: str = "",
@@ -159,32 +174,34 @@ def overview(plant: Plant) -> Screen:
         c.number(x + 24, 170, f"CEL.{bbt}.AT01.PV", digits=1, size=11, anchor="middle", bold=False)
         c.flags(x + 8, 244, f"CEL.{bbt}.PT01.PV")
     c.pipe_run([(838, 200), (864, 200)], "beer", 4, flow="CEL.BBT202.XV01.CMD")
-    c.arrow(868, 200)
+    if c.has(AREA_TAG["Packaging"]):
+        c.arrow(868, 200)
     c.label(446, 300, "°F and °P in a fermenter; level % and CO2 volumes in a bright tank", size=9)
     status(c, 446, 322, "Transfer running", "CEL.XFER.YS01.PV")
     status(c, 590, 322, "Carbonation inhibited", "CEL.SYS.XS01.CO2_INHIBIT")
     c.link(430, 46, 420, 286, VIEW_ID["Cellar"], "Cellar")
 
     # -- packaging
-    c.card(870, 46, 350, 286, "Packaging")
-    c.word(884, 92, "PKG.LINE.PACKML.STATE", PACKML, size=20)
-    c.label(884, 110, "bottling line", size=10)
-    c.flags(884, 118, "PKG.LINE.PACKML.STATE")
-    c.dial(1090, 54, 110, 96, "PKG.LINE.KQ01.OEE", 0, 100)
-    c.label(1145, 156, "shift OEE %", size=10, anchor="middle")
-    for i, m in enumerate(("RINSER", "FILLER", "CODER", "LABELER", "PACKER")):
-        x = 884 + i * 66
-        if i:
-            c.path(f"M{x - 10:g} 191 L{x:g} 191", width=2)
-        c.rect(x, 172, 56, 38, radius=3)
-        c.label(x + 28, 187, m.capitalize(), size=9, color=INK, anchor="middle")
-        c.step_lamp(x + 28, 199, f"PKG.{m}.PACKML.STATE", 6, r=4)
-        c.flags(x + 21, 214, f"PKG.{m}.YA01.PV")
-    row(c, 884, 256, "Filler speed", "PKG.FILLER.PACKML.SPEED", 0, "bottles/min", 200)
-    row(c, 884, 278, "Bottles this shift", "PKG.LINE.PACKML.PROCESSED", 0, "", 200)
-    row(c, 884, 300, "Rejected", "PKG.LINE.PACKML.DEFECTIVE", 0, "", 200)
-    status(c, 884, 322, "Filler bowl low (no beer)", "PKG.FILLER.LSL01.PV")
-    c.link(870, 46, 350, 286, VIEW_ID["Packaging"], "Packaging")
+    if c.has(AREA_TAG["Packaging"]):
+        c.card(870, 46, 350, 286, "Packaging")
+        c.word(884, 92, "PKG.LINE.PACKML.STATE", PACKML, size=20)
+        c.label(884, 110, "bottling line", size=10)
+        c.flags(884, 118, "PKG.LINE.PACKML.STATE")
+        c.dial(1090, 54, 110, 96, "PKG.LINE.KQ01.OEE", 0, 100)
+        c.label(1145, 156, "shift OEE %", size=10, anchor="middle")
+        for i, m in enumerate(("RINSER", "FILLER", "CODER", "LABELER", "PACKER")):
+            x = 884 + i * 66
+            if i:
+                c.path(f"M{x - 10:g} 191 L{x:g} 191", width=2)
+            c.rect(x, 172, 56, 38, radius=3)
+            c.label(x + 28, 187, m.capitalize(), size=9, color=INK, anchor="middle")
+            c.step_lamp(x + 28, 199, f"PKG.{m}.PACKML.STATE", 6, r=4)
+            c.flags(x + 21, 214, f"PKG.{m}.YA01.PV")
+        row(c, 884, 256, "Filler speed", "PKG.FILLER.PACKML.SPEED", 0, "bottles/min", 200)
+        row(c, 884, 278, "Bottles this shift", "PKG.LINE.PACKML.PROCESSED", 0, "", 200)
+        row(c, 884, 300, "Rejected", "PKG.LINE.PACKML.DEFECTIVE", 0, "", 200)
+        status(c, 884, 322, "Filler bowl low (no beer)", "PKG.FILLER.LSL01.PV")
+        c.link(870, 46, 350, 286, VIEW_ID["Packaging"], "Packaging")
 
     # -- utilities
     c.card(20, 344, 600, 216, "Utilities")
@@ -201,36 +218,40 @@ def overview(plant: Plant) -> Screen:
     c.link(20, 344, 600, 216, VIEW_ID["Utilities"], "Utilities")
 
     # -- power
-    c.card(630, 344, 590, 216, "Power")
-    c.label(646, 384, "Utility", size=11, color=INK, bold=True)
-    c.wire([(700, 380), (764, 380)])
-    c.wire([(788, 380), (1196, 380)], "PWR.MAIN.ZS01.PV", width=6)
-    c.switch(776, 380, "PWR.MAIN.ZS01.PV")
-    c.label(990, 370, "480 V switchboard", size=10, anchor="middle")
-    c.number(742, 404, "PWR.MAIN.JT01.PV", digits=0, size=16)
-    c.label(744, 404, "kW import", size=9)
-    for i, (cap, tag, sw) in enumerate((
-        ("PV", "PWR.PV.JT01.PV", "PWR.PV.ZS01.PV"),
-        ("Battery", "PWR.BESS.JT01.PV", "PWR.BESS.ZS01.PV"),
-        ("Generator", "PWR.GEN.JT01.PV", "PWR.GEN.YS01.PV"),
-    )):
-        x = 850 + i * 130
-        c.wire([(x, 380), (x, 440)], sw, width=3)
-        c.switch(x, 412, sw, r=6)
-        c.rect(x - 44, 440, 88, 56, radius=4)
-        c.label(x, 456, cap, size=11, color=INK, anchor="middle", bold=True)
-        c.number(x + 12, 480, tag, digits=0, size=15)
-        c.label(x + 14, 480, "kW", size=9)
-    c.hbar(646, 520, 150, 10, "PWR.MAIN.JQ01.PV", 0, 400, normal=(0, 250))
-    c.label(646, 546, "15-minute demand", size=10)
-    c.number(796, 546, "PWR.MAIN.JQ01.PV", digits=0, size=12)
-    c.hbar(850, 520, 110, 10, "PWR.BESS.EY01.PV", 0, 100, normal=(50, 100), color=LIVE)
-    c.label(850, 546, "battery charge", size=10)
-    c.number(960, 546, "PWR.BESS.EY01.PV", digits=0, size=12)
-    status(c, 1010, 524, "On-peak", "PWR.DMD.XS01.ONPEAK")
-    status(c, 1010, 546, "Load shed", "PWR.DMD.XS02.SHED")
-    status(c, 1100, 524, "On generator", "PWR.GEN.ZS01.PV")
-    c.link(630, 344, 590, 216, VIEW_ID["Power"], "Power")
+    if c.has(AREA_TAG["Power"]):
+        c.card(630, 344, 590, 216, "Power")
+        c.label(646, 384, "Utility", size=11, color=INK, bold=True)
+        c.wire([(700, 380), (764, 380)])
+        c.wire([(788, 380), (1196, 380)], "PWR.MAIN.ZS01.PV", width=6)
+        c.switch(776, 380, "PWR.MAIN.ZS01.PV")
+        c.label(990, 370, "480 V switchboard", size=10, anchor="middle")
+        c.number(742, 404, "PWR.MAIN.JT01.PV", digits=0, size=16)
+        c.label(744, 404, "kW import", size=9)
+        for i, (cap, tag, sw) in enumerate((
+            ("PV", "PWR.PV.JT01.PV", "PWR.PV.ZS01.PV"),
+            ("Battery", "PWR.BESS.JT01.PV", "PWR.BESS.ZS01.PV"),
+            ("Generator", "PWR.GEN.JT01.PV", "PWR.GEN.YS01.PV"),
+        )):
+            x = 850 + i * 130
+            c.wire([(x, 380), (x, 440)], sw, width=3)
+            c.switch(x, 412, sw, r=6)
+            c.rect(x - 44, 440, 88, 56, radius=4)
+            c.label(x, 456, cap, size=11, color=INK, anchor="middle", bold=True)
+            c.number(x + 12, 480, tag, digits=0, size=15)
+            c.label(x + 14, 480, "kW", size=9)
+        c.hbar(646, 520, 150, 10, "PWR.MAIN.JQ01.PV", 0, 400, normal=(0, 250))
+        c.label(646, 546, "15-minute demand", size=10)
+        c.number(796, 546, "PWR.MAIN.JQ01.PV", digits=0, size=12)
+        c.hbar(850, 520, 110, 10, "PWR.BESS.EY01.PV", 0, 100, normal=(50, 100), color=LIVE)
+        c.label(850, 546, "battery charge", size=10)
+        c.number(960, 546, "PWR.BESS.EY01.PV", digits=0, size=12)
+        status(c, 1010, 524, "On-peak", "PWR.DMD.XS01.ONPEAK")
+        status(c, 1010, 546, "Load shed", "PWR.DMD.XS02.SHED")
+        status(c, 1100, 524, "On generator", "PWR.GEN.ZS01.PV")
+        c.link(630, 344, 590, 216, VIEW_ID["Power"], "Power")
+    elif c.has(AREA_TAG["Building"]):
+        # A site with no power area whose one SCADA host also has the building.
+        _building_panel(c, 630, 344)
 
     # -- life safety and trends
     c.card(20, 572, 400, 232, "Cellar CO2 (life safety)")
@@ -249,12 +270,34 @@ def overview(plant: Plant) -> Screen:
     c.trend(430, 572, 390, 232, "Fermenters °F, last hour", [
         (f"CEL.{fv}.TT01.PV", fv[2:], color) for fv, color in zip(FVS, FV_COLORS, strict=True)
     ])
-    c.trend(830, 572, 390, 232, "Power kW, last hour", [
-        ("PWR.MAIN.JT01.PV", "Import", INK),
-        ("PWR.PV.JT01.PV", "PV", MEDIA["beer"]),
-        ("PWR.BESS.JT01.PV", "Battery", LIVE),
-    ])
+    if c.has(AREA_TAG["Power"]):
+        c.trend(830, 572, 390, 232, "Power kW, last hour", [
+            ("PWR.MAIN.JT01.PV", "Import", INK),
+            ("PWR.PV.JT01.PV", "PV", MEDIA["beer"]),
+            ("PWR.BESS.JT01.PV", "Battery", LIVE),
+        ])
     return c.screen(VIEW_ID["Overview"])
+
+
+def _building_panel(c: Canvas, x: float, y: float) -> None:
+    """The building on the Overview: the two room temperatures with their
+    setpoints, and what runs. It operates nothing, and it opens the Building
+    screen."""
+    c.card(x, y, 590, 216, "Building")
+    for i, (room, unit, setpoint) in enumerate((
+        ("Taproom", "RTU1", "FAC.RTU1.TIC01.SP"),
+        ("Cold room", "CR", "FAC.CR.TT01.SP"),
+    )):
+        rx: float = x + 16 + i * 290
+        c.label(rx, y + 48, room, size=11, color=INK, bold=True)
+        c.number(rx + 96, y + 92, f"FAC.{unit}.TT01.PV", digits=1, size=28)
+        c.label(rx + 100, y + 92, "°F", size=12)
+        c.flags(rx + 130, y + 70, f"FAC.{unit}.TT01.PV")
+        row(c, rx, y + 124, "Cooling setpoint" if unit == "RTU1" else "Setpoint", setpoint, 1, "°F", 170)
+    status(c, x + 16, y + 160, "Rooftop unit fan", "FAC.RTU1.FAN01.CMD")
+    status(c, x + 306, y + 160, "Cold room compressor", "FAC.CR.CMP01.CMD")
+    status(c, x + 306, y + 184, "Cold room door open", "FAC.CR.ZS01.PV")
+    c.link(x, y, 590, 216, VIEW_ID["Building"], "Building")
 
 
 # ---------------------------------------------------------------- brewhouse
@@ -491,7 +534,7 @@ def cellar(plant: Plant) -> Screen:
     else:
         _legend(c, 790, 90)
         c.card(890, 520, 330, 284, "This plant")
-        c.label(906, 558, "Four fermenters on plc-cellar.", size=11)
+        c.label(906, 558, f"Four fermenters on {c.owner('CEL.FV101.TT01.PV')}.", size=11)
         c.label(906, 578, "Set a side or cone temperature in the", size=11)
         c.label(906, 596, "box under its fermenter.", size=11)
     return c.screen(VIEW_ID["Cellar"])
@@ -992,7 +1035,7 @@ def _co2_room(c: Canvas, x: float, y: float) -> None:
     """The cellar as a room seen from above: the CO2 header along the wall, the
     vessels (a ring around one that is venting, a flag at one whose relief valve
     lifted), the four low sensors where they hang, and the purge fans in the
-    wall. The vessels' own points are plc-cellar's: the building's HMI does not
+    wall. The vessels' own points are the cellar PLC's: the building's HMI does not
     have them and draws the vessels alone."""
     c.rect(x, y, ROOM_W, ROOM_H, fill=WHITE, stroke=INK, width=3)
     c.label(x + 4, y - 8, "Cellar, from above. CO2 is heavier than air: it pools at the floor, where the sensors hang.",
@@ -1059,11 +1102,14 @@ def _co2_ladder(c: Canvas, x: float, y: float, operate: bool) -> float:
             c.button(x + 196, fy - 17, 54, 24, "Run", f"FAC.VENT.FAN0{k + 1}.CMD", 1)
             c.button(x + 256, fy - 17, 54, 24, "Stop", f"FAC.VENT.FAN0{k + 1}.CMD", 0)
     y2: float = y + 92
+    # The two PLCs that the relays are wired to, by their names at this plant.
+    cellar_plc: str = c.owner("CEL.SYS.XS01.CO2_INHIBIT")
+    utilities_plc: str = c.owner("UTL.CO2.XS02.SHUTOFF")
     tier(y2, 2, "15,000", "stop adding CO2")
     if c.has("CEL.SYS.XS01.CO2_INHIBIT"):
-        effect(y2 + 24, "Carbonation inhibited (plc-cellar)", "CEL.SYS.XS01.CO2_INHIBIT")
+        effect(y2 + 24, f"Carbonation inhibited ({cellar_plc})", "CEL.SYS.XS01.CO2_INHIBIT")
     else:
-        effect(y2 + 24, "The cellar relay opens: plc-cellar stops carbonating")
+        effect(y2 + 24, f"The cellar relay opens: {cellar_plc} stops carbonating")
     y3: float = y2 + 58
     tier(y3, 3, "30,000", "evacuate, and shut the supply")
     effect(y3 + 24, "Horns and strobes", "FAC.VENT.XA01.CMD")
@@ -1075,18 +1121,18 @@ def _co2_ladder(c: Canvas, x: float, y: float, operate: bool) -> float:
         effect(under + 24, "CO2 supply shut off (latched)", "UTL.CO2.XS02.SHUTOFF")
         under += 24
     else:
-        effect(under + 24, "The shutoff relay opens: plc-utilities closes the CO2 supply")
+        effect(under + 24, f"The shutoff relay opens: {utilities_plc} closes the CO2 supply")
         under += 24
     c.path(f"M{x:g} {under + 14:g} L{x + 310:g} {under + 14:g}", stroke=RULE, width=1)
     c.label(x, under + 32, "THE RELAYS (LIT: HEALTHY, AND HOLDING THE CO2 ON)", size=9, bold=True)
     under += 54
     if c.has("CEL.SYS.XS01.CO2_OK"):
-        status(c, x, under, "Cellar relay, as plc-cellar reads it", "CEL.SYS.XS01.CO2_OK")
+        status(c, x, under, f"Cellar relay, as {cellar_plc} reads it", "CEL.SYS.XS01.CO2_OK")
         under += 24
     status(c, x, under, "Shutoff relay, as the building drives it", "FAC.VENT.XS01.SHUTOFF_OK")
     if c.has("UTL.CO2.XS01.CO2_OK"):
         under += 24
-        status(c, x, under, "Shutoff relay, as plc-utilities reads it", "UTL.CO2.XS01.CO2_OK")
+        status(c, x, under, f"Shutoff relay, as {utilities_plc} reads it", "UTL.CO2.XS01.CO2_OK")
     return under
 
 
@@ -1146,7 +1192,8 @@ def co2(plant: Plant) -> Screen:
 
 
 def building(plant: Plant) -> Screen:
-    """bas-fuxa: the building as a plan, with each controller in its room."""
+    """The building as a plan, with each controller in its room: the screen of
+    the building's front end."""
     c: Canvas = canvas("Building", plant)
     c.title(20, 30, "Building")
     c.label(124, 30, "taproom rooftop unit, cold room, and ventilation", size=12)
@@ -1223,14 +1270,24 @@ def building(plant: Plant) -> Screen:
 
 
 def screens(plant: Plant) -> list[Screen]:
-    """The process graphics a host's tags allow, in menu order: the whole plant
-    for scada-fuxa, the Cellar alone for the ci plant, the Building for bas-fuxa."""
+    """The process graphics a host's tags allow, in menu order. A host that
+    reads the brewhouse is a plant's SCADA: it gets the Overview and a screen
+    for each area that its tags cover, so a site without packaging or power
+    has no such screen. The ci plant has the Cellar alone. A host that reads
+    the building's controllers gets the Building, after its process screens: a
+    front end has nothing else, and a site's one SCADA host has both."""
     names: dict[str, PlantTag] = plant.tags
-    if "FAC.RTU1.TT01.PV" in names:
-        return [building(plant)]
-    if "BH.MLT.TT01.PV" in names:
-        return [overview(plant), brewhouse(plant), cellar(plant), packaging(plant), utilities(plant),
-                power(plant), co2(plant)]
-    if "CEL.FV101.TT01.PV" in names:
-        return [cellar(plant)]
-    return []
+    found: list[Screen] = []
+    if AREA_TAG["Brewhouse"] in names:
+        found += [overview(plant), brewhouse(plant), cellar(plant)]
+        if AREA_TAG["Packaging"] in names:
+            found.append(packaging(plant))
+        found.append(utilities(plant))
+        if AREA_TAG["Power"] in names:
+            found.append(power(plant))
+        found.append(co2(plant))
+    elif AREA_TAG["Cellar"] in names:
+        found.append(cellar(plant))
+    if AREA_TAG["Building"] in names:
+        found.append(building(plant))
+    return found

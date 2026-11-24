@@ -71,6 +71,7 @@ def file_checks(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[
     errors += master_agrees(plant, alloc, files)
     errors += slave_agrees(plant, alloc, files)
     errors += fuxa_agrees(plant, alloc, files)
+    errors += fuxa_evaluates(plant, files)
     errors += helics_closed(plant, files)
     return errors
 
@@ -550,6 +551,26 @@ def fuxa_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[
                         f"but the tag is {a.plc_iec}"
                     )
     return errs
+
+
+def fuxa_evaluates(plant: Plant, files: dict[str, str]) -> list[str]:
+    """An alarm without a PLC bit has a FUXA instance that reads its tag.
+
+    FUXA evaluates such an alarm from the tag's value (the building's alarms),
+    so a tag in no FUXA tag list is an alarm that nobody raises.
+    """
+    read: set[str] = set()
+    for name, text in files.items():
+        if name.startswith("fuxa/"):
+            for dev in json.loads(text)["devices"]:
+                read |= {tag["name"] for tag in dev["tags"]}
+    if not read:
+        return []  # no FUXA host in the variant
+    return [
+        f"alarm {a.name}: FUXA evaluates it, and no FUXA instance reads {a.source}"
+        for a in plant.alarms
+        if not a.has_bit and a.source not in read
+    ]
 
 
 def _fuxa_bacnet(

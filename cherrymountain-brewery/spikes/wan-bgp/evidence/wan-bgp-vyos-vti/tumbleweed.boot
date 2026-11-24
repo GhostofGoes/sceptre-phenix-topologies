@@ -76,7 +76,7 @@ set policy route-map FROM-CUST-FR-FW-EDGE rule 10 action permit
 set policy route-map FROM-CUST-FR-FW-EDGE rule 10 match ip address prefix-list CUST-FR-FW-EDGE
 set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set local-preference 200
 set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set community replace 64501:1
-set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast default-originate
+set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast default-originate route-map DEFAULT-IF-TRANSIT
 set protocols bgp neighbor 198.18.101.2 remote-as 64505
 set protocols bgp neighbor 198.18.101.2 description 'Head office and Front Range brewery edge'
 set protocols bgp neighbor 198.18.101.2 timers keepalive 3
@@ -85,6 +85,10 @@ set protocols bgp neighbor 198.18.101.2 timers connect 5
 set protocols bgp neighbor 198.18.101.2 bfd profile WAN
 set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast route-map import FROM-CUST-FR-FW-EDGE
 set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast route-map export TO-CUSTOMER
+set policy prefix-list TRANSIT rule 10 action permit
+set policy prefix-list TRANSIT rule 10 prefix 203.0.113.0/24
+set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
+set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
 commit
 save
 exit

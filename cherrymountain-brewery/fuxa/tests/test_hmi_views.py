@@ -10,7 +10,7 @@ import re
 from typing import Any
 
 import pytest
-from fuxa_test_support import ROOT, build_project, load_builder
+from fuxa_test_support import build_project, load_builder
 
 GRAPHICS: dict[tuple[str, str], list[str]] = {
     ("full", "scada-fuxa"): ["Overview", "Brewhouse", "Cellar", "Packaging", "Utilities", "Power", "Cellar CO2"],
@@ -18,6 +18,16 @@ GRAPHICS: dict[tuple[str, str], list[str]] = {
     ("ci", "scada-fuxa"): ["Cellar"],
     ("full", "bas-fuxa"): ["Building"],
     ("lite", "bas-fuxa"): ["Building"],
+    # The sites of the fleet, by their codes: the screens follow a site's areas.
+    ("fr", "fr-scada-fuxa"): ["Overview", "Brewhouse", "Cellar", "Packaging", "Utilities", "Power", "Cellar CO2"],
+    ("fr", "fr-bas-fuxa"): ["Building"],
+    ("ep", "ep-scada-fuxa"): ["Overview", "Brewhouse", "Cellar", "Packaging", "Utilities", "Power", "Cellar CO2"],
+    ("ep", "ep-bas-fuxa"): ["Building"],
+    # no power
+    ("cs", "cs-scada-fuxa"): ["Overview", "Brewhouse", "Cellar", "Packaging", "Utilities", "Cellar CO2"],
+    ("cs", "cs-bas-fuxa"): ["Building"],
+    # no packaging, no power, and no building front end: one SCADA host has it all
+    ("fc", "fc-scada-fuxa"): ["Overview", "Brewhouse", "Cellar", "Utilities", "Cellar CO2", "Building"],
 }
 PROJECTS: list[tuple[str, str]] = list(GRAPHICS)
 
@@ -35,13 +45,13 @@ def graphics(variant: str, host: str, project: dict[str, Any]) -> list[dict[str,
 
 def plant_tags(variant: str, host: str) -> dict[str, dict[str, Any]]:
     """Tag id -> the plantgen record of a host's tag."""
-    path = ROOT / "plant" / "generated" / variant / "fuxa" / f"{host}-tags.json"
+    path = load_builder().generated_dir(variant) / "fuxa" / f"{host}-tags.json"
     return {t["id"]: t for d in json.loads(path.read_text())["devices"] for t in d["tags"]}
 
 
 def alarms(variant: str) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = json.loads(
-        (ROOT / "plant" / "generated" / variant / "alarms.json").read_text()
+        (load_builder().generated_dir(variant) / "alarms.json").read_text()
     )["alarms"]
     return records
 
@@ -228,7 +238,7 @@ def test_a_trend_has_its_chart_and_its_tags_are_stored(built: tuple[str, str, di
             assert chart["lines"], item["name"]
             for line in chart["lines"]:
                 assert line["id"] in stored, f'{view["name"]}: {line["name"]} is not stored, so its trend starts empty'
-    assert trends >= 1 or built[1] == "bas-fuxa"
+    assert trends >= 1 or GRAPHICS[(built[0], built[1])] == ["Building"]
     assert len(charts) == trends
 
 

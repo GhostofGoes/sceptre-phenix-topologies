@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 import yaml
 
-from plantgen import checks, fleet, render, sites
+from plantgen import checks, fleet, render, sites, topology
 from plantgen.allocate import allocate
 from plantgen.cli import DEFAULT_PLANT, generate_site, main, render_checked
 from plantgen.model import (
@@ -57,9 +57,18 @@ def specs(plant_file: PlantFile) -> dict[str, sites.SiteSpec]:
 
 
 @pytest.fixture(scope="module")
-def plants(plant_file: PlantFile, specs: dict[str, sites.SiteSpec]) -> dict[str, Plant]:
+def wan() -> dict[str, Any]:
+    return sites.load_wan()
+
+
+@pytest.fixture(scope="module")
+def plants(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], wan: dict[str, Any]
+) -> dict[str, Plant]:
     """Each site, expanded as a variant is."""
-    return {code: fleet.expand_site(site, plant_file) for code, site in specs.items()}
+    return {
+        code: fleet.expand_site(site, plant_file, wan) for code, site in specs.items()
+    }
 
 
 @pytest.fixture(scope="module")
@@ -105,10 +114,13 @@ def test_every_site_passes_every_check(
 
 @pytest.mark.parametrize("code", CODES)
 def test_committed_site_files_are_current(
-    code: str, plant_file: PlantFile, specs: dict[str, sites.SiteSpec]
+    code: str,
+    plant_file: PlantFile,
+    specs: dict[str, sites.SiteSpec],
+    wan: dict[str, Any],
 ) -> None:
     """generated/fleet/<code> holds exactly what plantgen renders now."""
-    files = generate_site(specs[code], plant_file)
+    files = generate_site(specs[code], plant_file, wan)
     root = FLEET / code
     have = {p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()}
     assert have == set(files)
@@ -201,8 +213,8 @@ def test_the_brewpub_has_three_plcs_on_one_flat_network(
     # The one firewall has a leg in each zone, after its two uplinks.
     edge = plant.hosts["fc-fw-edge"].interfaces
     assert {key: (leg.vlan, leg.ip) for key, leg in edge.items()} == {
-        "IF0": ("FC-WAN-A", "203.0.113.10/30"),
-        "IF1": ("FC-WAN-B", "198.18.102.2/30"),
+        "IF0": ("WAN-SC-FC", "203.0.113.10/30"),
+        "IF1": ("WAN-MM-FC", "198.18.102.2/30"),
         "IF2": ("FC-OFFICE", "10.11.10.1/24"),
         "IF3": ("FC-PLANT", "10.21.10.1/24"),
     }
@@ -236,8 +248,8 @@ def test_the_networks_of_each_layout(plants: dict[str, Plant]) -> None:
         "FC-MGMT",
         "FC-OFFICE",
         "FC-PLANT",
-        "FC-WAN-A",
-        "FC-WAN-B",
+        "WAN-SC-FC",
+        "WAN-MM-FC",
     }
     assert len(vlans["fr"]) == 16 and len(vlans["ep"]) == 20 and len(vlans["cs"]) == 9
     assert plants["cs"].file.networks["CS-PLANT"].subnet == "192.168.20.0/24"
@@ -544,9 +556,11 @@ def _ntp_errors(doc: PlantFile) -> list[str]:
 
 
 def test_a_time_source_outside_the_variant_must_be_named_and_in_reach(
-    plant_file: PlantFile, specs: dict[str, sites.SiteSpec]
+    plant_file: PlantFile,
+    specs: dict[str, sites.SiteSpec],
+    wan: dict[str, Any],
 ) -> None:
-    doc = fleet.site_plant(specs["fc"], plant_file)
+    doc = fleet.site_plant(specs["fc"], plant_file, wan)
     ntp = doc.variants["fc"].ntp
     assert _ntp_errors(doc) == []
     # A field device has no routed network, so it cannot reach the internet.
@@ -612,13 +626,14 @@ def test_a_sites_snapshot_asks_only_for_federates_that_the_site_runs(
     plant_file: PlantFile,
     specs: dict[str, sites.SiteSpec],
     site_files: dict[str, dict[str, str]],
+    wan: dict[str, Any],
 ) -> None:
     """Snapshot: `fc` runs no packaging and no power, `cs` no power."""
     whole = plant_file.snapshot
     assert whole is not None
     kept: dict[str, list[str]] = {}
     for code, site in specs.items():
-        snapshot = fleet.site_plant(site, plant_file).snapshot
+        snapshot = fleet.site_plant(site, plant_file, wan).snapshot
         assert snapshot is not None
         kept[code] = snapshot.keys
         asked = _keys(
@@ -639,7 +654,7 @@ def test_a_sites_snapshot_asks_only_for_federates_that_the_site_runs(
     assert "*/load.*.kw" in kept["fc"]
     assert kept["fc"] == [key for key in whole.keys if key in kept["fc"]]
     # With the whole plant's list, the pub's snapshot asks for what nobody publishes.
-    doc = fleet.site_plant(specs["fc"], plant_file)
+    doc = fleet.site_plant(specs["fc"], plant_file, wan)
     assert doc.snapshot is not None
     doc.snapshot.keys = list(whole.keys)
     plant = expand(doc, "fc")
@@ -647,11 +662,104 @@ def test_a_sites_snapshot_asks_only_for_federates_that_the_site_runs(
         render_all(plant, allocate(plant))
 
 
+# -- a site without a building front end ----------------------------------------
+
+
+def test_the_one_scada_host_of_the_pub_reads_and_operates_its_building(
+    plant_file: PlantFile,
+    specs: dict[str, sites.SiteSpec],
+    plants: dict[str, Plant],
+    site_files: dict[str, dict[str, str]],
+) -> None:
+    """`fc` has no bas-fuxa, and its building controllers are still there. So
+    its SCADA host takes the front end's devices: every point, with the right
+    to write. The rule looks at the site's hosts, not at its code."""
+    whole = plant_file.hosts["bas-fuxa"]
+    assert whole.fuxa is not None
+    pub = plants["fc"].hosts["fc-scada-fuxa"]
+    assert pub.fuxa is not None
+    sources = {source.host: (source.tags, source.write) for source in pub.fuxa}
+    assert list(sources) == [
+        "fc-plc-brewhouse",
+        "fc-plc-cellar",
+        "fc-plc-utilities",
+        *(f"fc-{source.host}" for source in whole.fuxa),
+    ]
+    for source in whole.fuxa:
+        assert sources[f"fc-{source.host}"] == (["*"], True)
+    assert sources["fc-plc-cellar"] == (["*"], False)
+    # A site with its own front end changes nothing: the SCADA host reads the
+    # CO2 detection from one controller, and writes none of it.
+    for code in ("fr", "ep", "cs"):
+        kept = plants[code].hosts[f"{code}-scada-fuxa"].fuxa
+        assert kept is not None
+        assert [source.host for source in kept if source.write] == []
+        assert kept[-1].host == f"{code}-bas-vent" and kept[-1].tags != ["*"]
+    pub_tags = json.loads(site_files["fc"]["fuxa/fc-scada-fuxa-tags.json"])
+    front_end = json.loads(site_files["ep"]["fuxa/ep-bas-fuxa-tags.json"])
+    (ours,) = (d for d in pub_tags["devices"] if d["type"] == "BACnet")
+    (theirs,) = front_end["devices"]
+    assert [(t["name"], t["access"]) for t in ours["tags"]] == [
+        (t["name"], t["access"]) for t in theirs["tags"]
+    ]
+    assert len(ours["tags"]) == 39
+    assert sum(tag["access"] == "read-write" for tag in ours["tags"]) == 16
+    # Every tag of the pub has a FUXA host that reads it, as at the other sites.
+    for code, files in site_files.items():
+        read = {
+            tag["name"]
+            for name, text in files.items()
+            if name.startswith("fuxa/")
+            for device in json.loads(text)["devices"]
+            for tag in device["tags"]
+        }
+        every = {tag["name"] for tag in json.loads(files["tags.json"])["tags"]}
+        assert every == read, code
+    soh = yaml.safe_load(site_files["fc"]["phenix/soh.yaml"])["metadata"]
+    flows = {(flow["src"], flow["dst"]) for flow in soh["testCustomReachability"]}
+    assert ("fc-scada-fuxa", "fc-bas-coldroom|IF0") in flows
+
+
+def test_an_alarm_that_fuxa_evaluates_needs_a_fuxa_host_that_reads_its_tag(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], wan: dict[str, Any]
+) -> None:
+    """The check that the pub failed before its SCADA host took the building's
+    points: two alarms of the building had no FUXA host to raise them."""
+    doc = fleet.site_plant(specs["fc"], plant_file, wan)
+    scada = doc.hosts["fc-scada-fuxa"]
+    assert scada.fuxa is not None
+    gone = ("fc-bas-rtu-taproom", "fc-bas-coldroom")
+    scada.fuxa = [source for source in scada.fuxa if source.host not in gone]
+    plant = expand(doc, "fc")
+    alloc = allocate(plant)
+    assert checks.file_checks(plant, alloc, render_all(plant, alloc)) == [
+        "alarm FAC.RTU1.TT01.ALM_HIGH: FUXA evaluates it, and no FUXA instance "
+        "reads FAC.RTU1.TT01.PV",
+        "alarm FAC.CR.TT01.ALM_HIGH: FUXA evaluates it, and no FUXA instance "
+        "reads FAC.CR.TT01.PV",
+    ]
+
+
+def test_a_front_end_that_is_gone_needs_one_scada_host_for_its_devices(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], wan: dict[str, Any]
+) -> None:
+    site = specs["fc"].model_copy(
+        update={"drop_hosts": [*specs["fc"].drop_hosts, "scada-fuxa"]}
+    )
+    with pytest.raises(
+        PlantError,
+        match=r"site fc: scada-fuxa is not at the site, and its devices .* has \[\]",
+    ):
+        fleet.site_plant(site, plant_file, wan)
+
+
 # -- a description that does not fit --------------------------------------------
 
 
 def test_a_network_that_loses_its_router_is_refused_by_name(
-    plant_file: PlantFile, specs: dict[str, sites.SiteSpec]
+    plant_file: PlantFile,
+    specs: dict[str, sites.SiteSpec],
+    wan: dict[str, Any],
 ) -> None:
     """`cs` has no fw-ot. Without a move, its building VLAN has no router."""
     moves = {vlan: move for vlan, move in specs["cs"].moves.items() if vlan != "BAS"}
@@ -660,11 +768,13 @@ def test_a_network_that_loses_its_router_is_refused_by_name(
         PlantError,
         match="site cs: network BAS has hosts of the site, and its router fw-ot",
     ):
-        fleet.site_plant(site, plant_file)
+        fleet.site_plant(site, plant_file, wan)
 
 
 def test_a_site_refuses_a_hostname_that_it_cannot_see(
-    whole_plant: dict[str, Any], specs: dict[str, sites.SiteSpec]
+    whole_plant: dict[str, Any],
+    specs: dict[str, sites.SiteSpec],
+    wan: dict[str, Any],
 ) -> None:
     """The app block is free metadata: a new key that names a host must not
     keep a name of the whole plant."""
@@ -674,17 +784,19 @@ def test_a_site_refuses_a_hostname_that_it_cannot_see(
     with pytest.raises(
         PlantError, match=r"site ep: .* names the hosts \['historian'\]"
     ):
-        fleet.site_plant(specs["ep"], plant)
+        fleet.site_plant(specs["ep"], plant, wan)
 
 
 def test_a_site_needs_the_variant_of_the_whole_plant(
-    whole_plant: dict[str, Any], specs: dict[str, sites.SiteSpec]
+    whole_plant: dict[str, Any],
+    specs: dict[str, sites.SiteSpec],
+    wan: dict[str, Any],
 ) -> None:
     data = _changed(whole_plant)
     del data["variants"]["full"]
     plant = PlantFile.model_validate(data)
     with pytest.raises(PlantError, match="site fc: plant.yaml has no variant 'full'"):
-        fleet.site_plant(specs["fc"], plant)
+        fleet.site_plant(specs["fc"], plant, wan)
 
 
 # -- the command line -----------------------------------------------------------
@@ -697,7 +809,8 @@ def test_the_command_writes_and_checks_one_site(
     assert main(["--site", "fc", "--out", str(out)]) == 0
     printed = capsys.readouterr().out
     assert "sites.yaml fits plant.yaml and wan.yaml (4 sites)" in printed
-    assert f"wrote 22 files to {out}" in printed
+    assert f"wrote 23 files to {out}" in printed
+    assert (out / "topology-site-fc.yml").is_file()
     # One site, and no variant.
     assert printed.count("wrote") == 1
     assert main(["--check", "--site", "fc", "--out", str(out)]) == 0
@@ -733,39 +846,68 @@ def test_one_variant_alone_writes_no_site(
     assert printed.count("wrote") == 1 and fleet.DIRECTORY not in printed
 
 
+def _tree(tmp_path: Path) -> Path:
+    """A copy of what a run for every site reads. Returns its plant.yaml."""
+    root = DEFAULT_PLANT.parents[1]
+    for rel in (
+        "plant/plant.yaml",
+        "plant/sites.yaml",
+        "wan/wan.yaml",
+        *(f"phenix-configs/topology-{module}.yml" for module in topology.MODULES),
+    ):
+        (tmp_path / rel).parent.mkdir(exist_ok=True)
+        shutil.copy(root / rel, tmp_path / rel)
+    return tmp_path / "plant" / "plant.yaml"
+
+
 def test_the_command_writes_every_site_and_check_fails_on_a_stale_one(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """`python -m plantgen` writes the variants and the four sites, and
-    `--check` fails on a stale site file and on the directory of a site that
-    sites.yaml does not have."""
-    plant = tmp_path / "plant" / "plant.yaml"
-    plant.parent.mkdir()
-    shutil.copy(DEFAULT_PLANT, plant)
-    shutil.copy(sites.DEFAULT_PATH, plant.parent / "sites.yaml")
+    """`python -m plantgen` writes the variants and, for each of the four
+    sites, its files and its topology file. `--check` fails on a stale file of
+    a site, and on what is left of a site that sites.yaml does not have."""
+    plant = _tree(tmp_path)
     args = ["--plant", str(plant)]
     made = plant.parent / "generated"
+    configs = tmp_path / "phenix-configs"
     assert main(args) == 0
     printed = capsys.readouterr().out
     for name in ("ci", "full", "lite", *(f"fleet/{code}" for code in CODES)):
         assert f"files to {made / name}\n" in printed
+    for code in CODES:
+        assert f"wrote {configs / f'topology-site-{code}.yml'}\n" in printed
     assert sorted(path.name for path in (made / "fleet").iterdir()) == sorted(CODES)
+    assert len(list(configs.iterdir())) == len(topology.MODULES) + len(CODES)
     stale = made / "fleet" / "ep" / "phenix" / "ntp.yaml"
     text = stale.read_text(encoding="utf-8")
     stale.write_text(text.replace("inet-traffic", "ep-ot-svc"), encoding="utf-8")
+    edited = configs / "topology-site-cs.yml"
+    nodes = edited.read_text(encoding="utf-8")
+    edited.write_text(nodes.replace("192.168.20.60", "192.168.20.61"), encoding="utf-8")
+    (configs / "topology-site-fc.yml").unlink()
     shutil.copytree(made / "fleet" / "fc", made / "fleet" / "xx")
+    shutil.copy(edited, configs / "topology-site-xx.yml")
     assert main([*args, "--check"]) == 1
     captured = capsys.readouterr()
     assert f"{made / 'fleet' / 'ep'} is out of date" in captured.err
     assert "stale: phenix/ntp.yaml" in captured.err
-    assert f"{made / 'fleet'} is out of date" in captured.err
-    assert "unexpected: xx" in captured.err
+    assert "stale: topology-site-cs.yml" in captured.err
+    assert "missing: topology-site-fc.yml" in captured.err
+    for left in (made / "fleet" / "xx", configs / "topology-site-xx.yml"):
+        assert f"{left} is out of date" in captured.err
     for name in ("ci", "full", "lite", "fleet/fr", "fleet/cs", "fleet/fc"):
         assert f"{made / name} is up to date" in captured.out
+    assert f"{configs / 'topology-site-fr.yml'} is up to date" in captured.out
     assert main(args) == 0
     assert not (made / "fleet" / "xx").exists()
+    assert not (configs / "topology-site-xx.yml").exists()
     assert stale.read_text(encoding="utf-8") == text
-    assert main([*args, "--check", "--site", "ep"]) == 0
+    assert edited.read_text(encoding="utf-8") == nodes
+    assert main([*args, "--check", "--site", "fc"]) == 0
+    # A site needs wan.yaml for the names of its access links.
+    (tmp_path / "wan" / "wan.yaml").unlink()
+    assert main([*args, "--site", "fc"]) == 1
+    assert "a site needs it for its uplinks" in capsys.readouterr().err
 
 
 def test_a_variant_cannot_take_the_name_of_the_sites_directory(

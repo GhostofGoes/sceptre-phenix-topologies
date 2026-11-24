@@ -293,7 +293,7 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/|phenix-injects/|tools/netcheck/)'
+files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/|phenix-injects/|tools/netcheck/|tools/plantgen/plantgen/|plant/(plant|sites)\.yaml$|wan/wan\.yaml$)'
 pass_filenames = false
 priority = "check"
 
@@ -310,7 +310,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/netcheck/|sync\.py$|brand/|phenix-injects/(bbmd|vrouter|guacamole)/)'
+files = '^cherrymountain-brewery/(tools/netcheck/|tools/plantgen/plantgen/|plant/(plant|sites)\.yaml$|wan/wan\.yaml$|sync\.py$|brand/|phenix-injects/(bbmd|vrouter|guacamole)/)'
 pass_filenames = false
 priority = "check"
 

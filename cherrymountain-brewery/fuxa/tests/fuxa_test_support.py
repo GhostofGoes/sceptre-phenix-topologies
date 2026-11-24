@@ -42,8 +42,9 @@ def load_builder() -> ModuleType:
     return module
 
 
-def build_project(variant: str, host: str = "scada-fuxa") -> dict[str, Any]:
-    """The project of a host as plain JSON (what is POSTed to FUXA)."""
+def build_project(variant: str, host: str | None = None) -> dict[str, Any]:
+    """The project of a host as plain JSON (what is POSTed to FUXA). ``variant``
+    is a variant or the code of a site. Without ``host``, the process SCADA's."""
     builder: ModuleType = load_builder()
     project: dict[str, Any] = json.loads(builder.render(builder.build_project(variant, host)))
     return project

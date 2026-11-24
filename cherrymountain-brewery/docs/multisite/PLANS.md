@@ -1528,8 +1528,9 @@ passed 16 of 16 checks on 2026-11-24.
 
 - Each site receives only its own values. With the `ci` federation at four
   sites, 4,686 received values equal the site's own reference, and none equals
-  another site's. With the whole plant, and with the files that plantgen writes
-  for the fleet, a write and a scenario event act only at their own site.
+  another site's. The kit also ran the whole plant, and the files that plantgen
+  writes for the fleet. In both, a write and a scenario event act only at
+  their own site.
 - One site restarts alone. The broker and federates of `ep` stopped for 6 s
   and ran again 9 to 10 s later. The other sites missed no step.
 - A site restarts as a whole. A restart of the federates alone did not recover
@@ -1543,7 +1544,7 @@ passed 16 of 16 checks on 2026-11-24.
   keeps two federations apart on one network.
 - The changes are small. The `cherrymountain` app starts a broker on each
   site's `sim-ctl` and finds each site's hosts by the site, not by one name.
-  plantgen writes no `helics` block for the fleet, and it names the site's
+  For the fleet, plantgen writes no `helics` block, and it names the site's
   broker for each device. The `helics` app, the `ot-sim` app, and the
   simulation package need no change.
 - Not tested: the real I/O modules of ot-sim (stand-ins took their place),

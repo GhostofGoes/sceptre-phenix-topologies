@@ -70,20 +70,20 @@ federates:
     outputs:
       - { key: co2.vent_gps, type: double, units: g/s, desc: CO2 vented into the cellar room (to building) }
       - { key: glycol.load_kw, type: double, units: kW, desc: Jacket heat load on the glycol loop (to utilities) }
-      - { key: co2.draw_slpm, type: double, units: L/min, desc: CO2 drawn for BBT carbonation and purges (to utilities), variants: [full, lite] }
-      - { key: beer.supply_psia, type: double, units: psia, desc: "Pressure in the beer line to the filler: the head of the bright tank on line, 0 with none (to packaging)", variants: [full, lite] }
+      - { key: co2.draw_slpm, type: double, units: L/min, desc: CO2 drawn for BBT carbonation and purges (to utilities), in_slice: false }
+      - { key: beer.supply_psia, type: double, units: psia, desc: "Pressure in the beer line to the filler: the head of the bright tank on line, 0 with none (to packaging)", in_slice: false }
     # Inputs from other federates. A subscription is generated only when the
     # source federate is part of the variant; otherwise `default` is used.
     inputs:
       - { key: utilities/glycol.supply_f, type: double, units: degF, default: 28.0 }
       - { key: building/cellar.temp_f, type: double, units: degF, default: 68.0 }
       - { key: weather/pressure.kpa, type: double, units: kPa, default: 83.4 }
-      - { key: brewhouse/knockout.gpm, type: double, units: gal/min, default: 0.0, variants: [full, lite] }
+      - { key: brewhouse/knockout.gpm, type: double, units: gal/min, default: 0.0, in_slice: false }
       # The bas-vent gas-detection relay (1 = healthy, 0 = tripped). It is
       # de-energize to trip, so it reads open (carbonation inhibited) until the
       # building federate first reports it. The ci variant has neither.
-      - { key: building/vent.co2_relay_ok, type: double, default: 0.0, variants: [full, lite] }
-      - { key: packaging/beer.draw_gpm, type: double, units: gal/min, default: 0.0, variants: [full, lite] }
+      - { key: building/vent.co2_relay_ok, type: double, default: 0.0, in_slice: false }
+      - { key: packaging/beer.draw_gpm, type: double, units: gal/min, default: 0.0, in_slice: false }
     # Per-vessel truth (cellar/<unit>.<key>, unit in lower case): values no
     # transmitter measures, for ground truth and the white cell's 3D view
     # (DESIGN.md §15.10). Fermenters have no level transmitter (§6.3), so their
@@ -94,7 +94,8 @@ federates:
       - { key: psv_gps, type: double, units: g/s, desc: CO2 the pressure-relief valve vents into the room, models: [fermenter, bbt] }
       - { key: leak_gps, type: double, units: g/s, desc: "CO2 a scenario release lets out at the vessel (co2-release event)", models: [fermenter, bbt] }
   # Full plant federates (DESIGN.md §9.2). The cellar entry above keeps its
-  # ci inputs and outputs; full-plant-only I/O is scoped with `variants`.
+  # ci inputs and outputs. The I/O that only the whole cellar has says
+  # `in_slice: false`: a variant with `slice: true` (ci) does not get it.
   weather:
     host: sim-ctl
     # Weather values change once a minute; the federate steps every second
@@ -2628,6 +2629,8 @@ variants:
       Cellar slice for e2e CI: sim-ctl, sim-process, rio-cellar, plc-cellar,
       scada-fuxa. scada-fuxa and plc-cellar share one flat CTRL VLAN with no
       firewall; there is no ot-svc, weather, utilities, or building federate.
+    # A part of the plant: no federate input or output with `in_slice: false`.
+    slice: true
     areas: [CEL]
     # The fermentation cell only; BBTs and shared cellar equipment are full
     # plant (and would move the ci register map and the PLC program).

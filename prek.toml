@@ -114,7 +114,7 @@ args = [
     "--strict",
     "--config-file=cherrymountain-brewery/.yamllint-block-style.yml",
 ]
-files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/.+\.ya?ml|phenix-images/.+\.ya?ml|plant/generated/[^/]+/phenix/.+\.ya?ml)$'
+files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/.+\.ya?ml|phenix-images/.+\.ya?ml|plant/generated/(fleet/)?[^/]+/phenix/.+\.ya?ml)$'
 priority = "check"
 
 # Enforce conventional commit messages.

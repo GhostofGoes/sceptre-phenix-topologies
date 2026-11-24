@@ -5,21 +5,23 @@ plantgen reads the plant tag database, `plant/plant.yaml`
 named value of the plant. The tool uses Pydantic to make sure that the database
 is valid. Then it assigns every address and writes the derived files for each
 topology variant under `plant/generated/<variant>/`. A variant is one version
-of the topology.
+of the topology. It also writes the files of each site of the fleet under
+`plant/generated/fleet/<code>/` (see [Sites](#sites)).
 
 The outputs are committed files, and `--check` fails when they are stale. An
 output is stale when a new generation gives a different file.
 
 ```shell
 cd tools/plantgen
-python -m plantgen                    # every variant in plant.yaml (ci, full, lite)
-python -m plantgen --variant full     # one variant
-python -m plantgen --check            # fail if any committed variant is stale
+python -m plantgen                    # every variant (ci, full, lite) and every site
+python -m plantgen --variant full     # one variant, and no site
+python -m plantgen --site fc          # one site, and no variant
+python -m plantgen --check            # fail if a committed variant or site is stale
 python -m pytest                      # unit and consistency tests
 ```
 
-`--out DIR` writes one variant to a different directory. This option needs
-`--variant`.
+`--out DIR` writes one variant or one site to a different directory. This
+option needs `--variant` or `--site`, and not both.
 
 ## Variants
 
@@ -31,7 +33,8 @@ python -m pytest                      # unit and consistency tests
 
 A variant lists its areas and, as an option, the allowed units of each area
 (`units`). It also lists its federates and hosts, and it has switches for the
-`soh`, `wireguard`, and `scorch` outputs.
+`soh`, `wireguard`, and `scorch` outputs. `slice: true` marks a variant that
+keeps only a part of the plant, as `ci` does.
 
 ## Sites
 
@@ -43,8 +46,7 @@ have. It also gives where the hosts of each VLAN go, the uplinks, and the time
 source.
 
 plantgen reads the file on each run (`plantgen/sites.py`) and stops when an
-entry does not fit. No output comes from the file yet. The generation of the
-files of each site is stage 3 of the plan.
+entry does not fit.
 
 | Check | What it refuses |
 |---|---|
@@ -55,11 +57,67 @@ files of each site is stage 3 of the plan.
 A test makes sure that the file equals the profiles that the
 [site-profiles spike](../../spikes/site-profiles/README.md) ran.
 
+### The files of a site
+
+plantgen writes the files of each site under `plant/generated/fleet/<code>/`.
+A site has the files that a variant has ([Outputs](#outputs)). In these
+files, `variant` holds the code of the site.
+
+| Site | Hosts | PLCs | Tags | Files |
+|---|---:|---:|---:|---:|
+| `fr` | 39 | 5 | 516 | 29 |
+| `ep` | 34 | 5 | 516 | 29 |
+| `cs` | 25 | 4 | 458 | 25 |
+| `fc` | 18 | 3 | 365 | 22 |
+
+`plantgen/fleet.py` builds a plant description of the site from `plant.yaml`
+and the entry of the site. The description has one variant, and the name of
+that variant is the code of the site. Then the steps of a variant run on the
+description: plantgen assigns the addresses, runs the checks, and writes the
+files.
+
+| Step | What `fleet.py` does |
+|---|---|
+| Variant | It starts from the `full` variant. It keeps the hosts and the areas of the site, and the federates of those areas |
+| References | It removes each reference to a host that the site does not have. Examples are a FUXA source, a conduit, and a Wazuh agent |
+| Clocks | The clocks follow the `time_server` of the site. The edge firewall and the office PC keep `inet-traffic` as their source |
+| Snapshot | The snapshot keeps the key patterns of the federates that the site runs |
+| Zones | Each interface goes to the VLAN and the subnet that `moves` and `cells` give. A router gets a leg in each new network that it routes. A network with no host goes away |
+| Uplinks | The edge gets one network for each uplink (`WAN-A`, `WAN-B`), with its address from `sites.yaml` |
+| Names | A hostname gets the prefix of the site, and a VLAN alias gets the prefix in capitals. The `10.` blocks of the company and MGMT move by the index of the site |
+
+- The steps change fields, not text. A name that is also a kind keeps its
+  meaning. Examples are the role `ews`, the device type `pv-inverter`, and the
+  HELICS device `bas-vent`.
+- Federate names, HELICS keys, and tag names stay the same at every site. Each
+  site has its own federation.
+- A description (`desc`, the name of a unit, the cause of an alarm) is prose.
+  This is the one place where plantgen replaces hostnames in text.
+- `inet-traffic` is a host of the internet, not of a site. The variant of a
+  site names it under `ntp.external`, and the NTP check then accepts it as a
+  source.
+- `fr` is the `full` variant with the names of the site. Only the entries of
+  the hosts of the internet are absent. A test compares the two.
+
+A site does not have these parts yet. Later steps of the plan add them:
+
+- The WireGuard block and the SCORCH capture lists. One end of the tunnel is
+  `vendor-ws`, which is a host of the internet.
+- The entries of the hosts of the internet in the app blocks. Examples are
+  the DNP3 client `utility-derms` and each SoH flow that crosses the internet.
+- The flows between sites. An example is the Wazuh agents of `ep`, which
+  report to `fr-wazuh`.
+- The alias that the two ends of an uplink share. `wan/wan.yaml` holds the
+  side of the ISP.
+- The values that differ between sites in the simulation. Examples are the
+  elevation, the weather file, and the tariff.
+
 ## Outputs
 
-Paths are relative to `plant/generated/<variant>/`. Files that the Kind column
-marks as "ci" exist in every variant. The other files exist only in a variant
-that has such devices or that switches them on.
+Paths are relative to `plant/generated/<variant>/`, or to
+`plant/generated/fleet/<code>/` for a site. Files that the Kind column marks as
+"ci" exist in every variant. The other files exist only in a variant that has
+such devices or that switches them on.
 
 JSON files have an indent of two spaces. YAML files use block style, and prek
 makes sure that they do. Every file starts with `generator` and `variant`, or
@@ -429,7 +487,9 @@ ci slice, the file has:
 - An alarm can name `suppress`. This is a bit in the same unit
   (`XS01.ACTIVE`), a bit in the same area (`LINE.XS01.RUN`), or a bit by its
   full name.
-- You can limit a federate input or output to some `variants`.
+- A federate input or output can say `in_slice: false`. A variant with
+  `slice: true` (`ci`) does not get such a key. Every other variant gets it,
+  and so does every site.
 - `unit_outputs` on a federate publish one value for each unit whose `model`
   is in the list. They are for truth values (the true state in the simulation)
   that no tag carries. Examples are the fill of a fermenter and its
@@ -444,7 +504,9 @@ ci slice, the file has:
   model that no unit uses. The second case is a federate that publishes one
   key twice (a truth output that shadows a device point). The third case is a
   snapshot pattern that matches no publication.
-- The ntp block can give defaults for each host role (`roles`).
+- The ntp block can give defaults for each host role (`roles`). It can also
+  name time servers that are not hosts of the variant (`external`). A client
+  can use such a server as its source.
 
 ## Checks
 
@@ -464,6 +526,7 @@ every variant
   files. BACnet instances agree between the app block, the FUXA tags, and the
   object table.
 - Interface addresses are inside their VLAN, and they are unique. NTP sources
-  are servers that the client can reach. HELICS lists are closed: every
+  are servers that the client can reach. A client of an `external` server
+  needs a routed network. HELICS lists are closed: every
   subscription has a publisher, and every field write has a federate that
   accepts it.

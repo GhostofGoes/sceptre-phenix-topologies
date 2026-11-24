@@ -3,9 +3,10 @@
 A site is the plant of plant.yaml with parts left out and with its networks
 moved (docs/multisite/PLANS.md, sections 2 and 4.1). This module reads the
 description of each site and makes sure that it fits plant.yaml and
-wan/wan.yaml. It writes nothing: the generation of a site's files is stage 3
-of the plan. The site-profiles spike (spikes/site-profiles) ran these values,
-and a test compares the two.
+wan/wan.yaml. It writes nothing: plantgen.fleet builds the plant description
+of a site from these values, and the command line writes the site's files. The
+site-profiles spike (spikes/site-profiles) ran these values, and a test
+compares the two.
 """
 
 from __future__ import annotations

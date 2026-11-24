@@ -5,6 +5,12 @@ one phenix experiment? To stamp out a plant is to copy it with new names and
 addresses. What does each site mix cost, and how does the largest mix sit on a
 cluster? A site mix is one combination of site sizes and modules.
 
+Status: This kit does not run on the current plantgen. The kit patches one
+line of plantgen, and that line moved when plantgen got the fix. Now plantgen
+writes the files of each site itself
+([tools/plantgen](../../tools/plantgen/README.md#sites)). The evidence below is
+from the last run of the kit, before that change.
+
 A spike is a small test that answers a design question. This spike decides
 three things for sections 4 and 6 of
 [PLANS.md](../../docs/multisite/PLANS.md). It decides how to generate the

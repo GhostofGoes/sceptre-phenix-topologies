@@ -164,3 +164,31 @@ def test_an_isp_with_no_provider_and_no_customer_prefix_has_no_condition() -> No
     for name in ("cb-west", "cb-south", "marmot", "bristlecone"):
         assert not [line for line in vyos.commands(model.BY_NAME[name]) if "default-originate" in line]
     assert not [line for line in vyos.commands(model.BY_NAME["cb-west"]) if "TRANSIT" in line]
+
+
+def test_the_head_office_takes_each_isps_routes_and_no_private_prefix() -> None:
+    lines = vyos.commands(model.BY_NAME["fr-fw-edge"])
+    for neighbor in ("203.0.113.1", "198.18.101.1"):
+        base = f"set protocols bgp neighbor {neighbor} address-family ipv4-unicast route-map import"
+        assert f"{base} FROM-ISP" in lines
+    assert "set policy route-map FROM-ISP rule 10 match ip address prefix-list INTERNET" in lines
+    internet = [line.split("INTERNET ", 1)[1] for line in lines if line.startswith("set policy prefix-list INTERNET ")]
+    assert internet == [
+        "rule 1 action deny",
+        "rule 1 prefix 10.0.0.0/8",
+        "rule 1 le 32",
+        "rule 2 action deny",
+        "rule 2 prefix 172.16.0.0/12",
+        "rule 2 le 32",
+        "rule 3 action deny",
+        "rule 3 prefix 192.168.0.0/16",
+        "rule 3 le 32",
+        "rule 10 action permit",
+        "rule 10 prefix 0.0.0.0/0",
+        "rule 10 le 24",
+    ]
+    # Every route from an ISP gets the endpoint as its source, and a site's block gets the LAN address.
+    assert "set policy route-map SET-SOURCE rule 10 match ip address prefix-list INTERNET" in lines
+    assert "set policy route-map SET-SOURCE rule 10 set src 198.18.105.1" in lines
+    assert "set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS" in lines
+    assert not [line for line in lines if "DEFAULT-ONLY" in line]

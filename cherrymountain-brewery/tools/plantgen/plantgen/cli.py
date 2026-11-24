@@ -8,6 +8,7 @@ import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
+from plantgen import sites
 from plantgen.allocate import allocate
 from plantgen.checks import file_checks, plant_checks
 from plantgen.model import PlantError, load, load_file
@@ -102,11 +103,33 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
     else:
         variants = [args.variant]
-    status = 0
+    status = _sites(plant_path)
     for variant in variants:
         out_dir: Path = args.out or plant_path.parent / "generated" / variant
         status = max(status, _run(plant_path, variant, out_dir, check=args.check))
     return status
+
+
+def _sites(plant_path: Path) -> int:
+    """Check sites.yaml, when the plant file has one next to it.
+
+    The sites of the fleet must fit plant.yaml and wan/wan.yaml. No output
+    comes from sites.yaml yet.
+    """
+    path = plant_path.parent / "sites.yaml"
+    if not path.is_file():
+        return 0
+    try:
+        found = sites.load(
+            path,
+            load_file(plant_path),
+            plant_path.parent.parent / "wan" / "wan.yaml",
+        )
+    except PlantError as exc:
+        print(f"plantgen: {exc}", file=sys.stderr)
+        return 1
+    print(f"plantgen: {path.name} fits plant.yaml and wan.yaml ({len(found)} sites)")
+    return 0
 
 
 def _run(plant_path: Path, variant: str, out_dir: Path, *, check: bool) -> int:

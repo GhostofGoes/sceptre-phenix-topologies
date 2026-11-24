@@ -280,6 +280,8 @@ HQ_UPLINK_ROUNDS: int = 6
 LONG_OUTAGE_S: float = 4.0
 # How long the ping runs through a reboot of the head office's edge.
 HQ_RESTART_WINDOW_S: int = 600
+# How long the head office's edge waits between the reboot command and the reboot.
+REBOOT_DELAY_S: int = 10
 EVENT_LOG: str = "/tmp/frr-events.log"
 
 HQ: str = "fr-fw-edge"
@@ -751,6 +753,29 @@ def internet_access(lab: Lab, site: str) -> None:
     )
 
 
+def tunnel_return_paths(lab: Lab) -> None:
+    """The head office sends each tunnel's packets through the ISP of that tunnel's uplink at the site.
+
+    With a default route only, the kernel's multipath hash picks the ISP, and a
+    tunnel on the site's second ISP can return through the first. A fault of
+    the first ISP then stops both tunnels.
+    """
+    eth = {isp: name for name, _link, isp, _gateway, _own in vyos_sketch.uplinks(model.BY_NAME[HQ])}
+    found: dict[str, str] = {}
+    wrong: list[str] = []
+    for tunnel in model.TUNNELS:
+        _eth, own = site_uplink(tunnel)
+        answer = " ".join(lab.shell(HQ, f"ip route get {own} from {model.HUB_ENDPOINT} 2>&1 | head -1").split())
+        found[tunnel.name] = answer
+        if f"dev {eth[tunnel.via]} " not in answer + " ":
+            wrong.append(f"{tunnel.name} wants {eth[tunnel.via]} ({tunnel.via})")
+    lab.check(
+        "the head office sends each tunnel's packets through the ISP of the site's uplink",
+        not wrong,
+        f"{'; '.join(wrong) or 'each tunnel returns through its own ISP'}: {json.dumps(found)}",
+    )
+
+
 def site_default_route(lab: Lab, site: str, want: str, timeout_s: float) -> tuple[bool, str]:
     """Wait until the site's best default route is through `want`; return (whether it is, the routes)."""
 
@@ -863,8 +888,13 @@ def hq_restart(lab: Lab, lines: list[str]) -> None:
     boot_id = "cat /proc/sys/kernel/random/boot_id"
     before = lab.shell(HQ, boot_id).strip()
     count = start_ping(lab, "hq-restart", HQ_RESTART_WINDOW_S)
-    issued, issued_wall = time.monotonic(), time.time()
-    lab.shell(HQ, "(sleep 2; systemctl reboot) >/dev/null 2>&1 </dev/null & echo rebooting")
+    # The reboot waits, so that the command's answer gets back first. In one run
+    # with 2 s it did not, and the job stopped there. The times count from the reboot.
+    try:
+        lab.shell(HQ, f"(sleep {REBOOT_DELAY_S}; systemctl reboot) >/dev/null 2>&1 </dev/null & echo rebooting")
+    except TimeoutError as exc:
+        lab.fact("the reboot command's answer", f"none: {str(exc)[-160:]}")
+    issued, issued_wall = time.monotonic() + REBOOT_DELAY_S, time.time() + REBOOT_DELAY_S
 
     def rebooted() -> tuple[bool, str]:
         now = lab.shell(HQ, boot_id, wait_s=20).strip()
@@ -1010,6 +1040,20 @@ def faults(lab: Lab) -> None:
     gaps = [entry["outage_s"] for entry in rounds]
     long_rounds = [entry for entry in rounds if entry["outage_s"] >= LONG_OUTAGE_S]
     lab.fact("head office uplink fault, every round", json.dumps(rounds))
+    # The second tunnel does not use ShadeCast in either direction, so this fault must not end its session.
+    second = tunnel_named("fc-b")
+    ended = [
+        f"round {entry['round']}: {router}: {event}"
+        for entry in rounds
+        for router, address in ((HQ, second.site_address()), ("fc-fw-edge", second.hub_address()))
+        for event in entry["sessions down"].get(router, [])
+        if event.startswith(f"{address}:")
+    ]
+    lab.check(
+        "the head office's ShadeCast fault never ends the BGP session of the site's second tunnel",
+        not ended,
+        "; ".join(ended) or f"the session of {second.name} stayed up in all {len(rounds)} rounds",
+    )
     lab.check(
         f"in {HQ_UPLINK_ROUNDS} rounds of the head office's uplink fault, every outage is shorter than the hold time",
         all(0 < value < hold_bound for value in gaps),
@@ -1289,6 +1333,7 @@ def run() -> int:
         # 6. The tunnel's source filter, and NAT at both edges.
         source_filter(lab, site)
         internet_access(lab, site)
+        tunnel_return_paths(lab)
 
         # 7 to 9. Faults, when the baseline works (a default route that had to be asked for again counts).
         failed = [check.name for check in lab.evidence.checks if not check.passed]

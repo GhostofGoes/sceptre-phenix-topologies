@@ -22,6 +22,9 @@ On top of the spike's lists (PLANS.md section 4.5, "What V2 still needs"):
   answering (`internet_failover`).
 * An ISP sends the head office a default route only while the ISP holds a prefix
   of its own providers (`default_condition`).
+* The head office takes each ISP's routes and not only the default route, so
+  that a tunnel's packets return through the ISP of the site's uplink
+  (`internet_routes`).
 
 The spike's VyOS job commits these lists too, with the four routers of its
 reduced lab.
@@ -313,6 +316,25 @@ def vti_tunnel(router: lab.Router, tunnel: lab.Tunnel, psk: PreSharedKey) -> lis
     return lines
 
 
+def internet_routes() -> list[str]:
+    """`INTERNET`: what the head office takes from an ISP, the default route and every public route.
+
+    With the default route only, the head office sends a tunnel's packets back
+    through whichever ISP the kernel's multipath hash picks, and the hash
+    changes at each boot. A tunnel that the site ties to its second ISP then
+    returns through the first ISP in about half of the boots. A silent fault of
+    that ISP at the head office then stops both tunnels of the site, and
+    traffic waits about 5 s for BGP to come back, not 3 s for the second tunnel
+    (spikes/wan-bgp/README.md). With the ISPs' routes, the address of a site's
+    uplink is reached through the ISP that announces it. No private prefix is
+    taken: the sites' blocks come only through the tunnels.
+    """
+    lines: list[str] = []
+    for rule, block in enumerate(lab.PRIVATE, start=1):
+        lines += prefix_list("INTERNET", block, le=32, rule=rule, action="deny")
+    return lines + prefix_list("INTERNET", "0.0.0.0/0", le=24, rule=10)
+
+
 def tunnel_source_filter(router: lab.Router, kind: str) -> list[str]:
     """The head office admits from each tunnel only the sources of that tunnel's site.
 
@@ -436,16 +458,20 @@ def sketch(
 
     if hub:
         # The head office: its own prefix to two ISPs, a default route from each.
+        # The spike took the default route only. The range also takes each ISP's
+        # routes (internet_routes), so that a tunnel's packets go back through
+        # the ISP of the site's uplink.
+        from_isp, internet = ("DEFAULT-ONLY", "DEFAULT") if spike_only else ("FROM-ISP", "INTERNET")
         lines += [
             f"set interfaces dummy dum0 address {lab.HUB_ENDPOINT}/32",
-            *prefix_list("DEFAULT", "0.0.0.0/0"),
+            *(prefix_list("DEFAULT", "0.0.0.0/0") if spike_only else internet_routes()),
             *prefix_list("OWN", lab.HQ_PREFIX),
-            *route_map("DEFAULT-ONLY", "DEFAULT"),
+            *route_map(from_isp, internet),
             *route_map("OWN-ONLY", "OWN"),
-            # What the head office sends on a default route carries the endpoint
-            # address as its source, so a tunnel's endpoint never looks like it
-            # moved.
-            *route_map("SET-SOURCE", "DEFAULT", source=lab.HUB_ENDPOINT),
+            # What the head office sends on a route from an ISP carries the
+            # endpoint address as its source, so a tunnel's endpoint never looks
+            # like it moved.
+            *route_map("SET-SOURCE", internet, source=lab.HUB_ENDPOINT),
             "set protocols bgp parameters bestpath as-path multipath-relax",
             "set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2",
             f"set protocols bgp address-family ipv4-unicast network {lab.HQ_PREFIX}",
@@ -453,7 +479,7 @@ def sketch(
             f"set protocols static route {lab.HQ_PREFIX} blackhole distance 250",
         ]
         for _eth, _link, isp, gateway, _own in uplinks(router):
-            lines += neighbor(gateway, lab.BY_NAME[isp].asn, lab.BY_NAME[isp].title, "DEFAULT-ONLY", "OWN-ONLY")
+            lines += neighbor(gateway, lab.BY_NAME[isp].asn, lab.BY_NAME[isp].title, from_isp, "OWN-ONLY")
             # Keep what the ISP sent, so that a change of policy is applied to
             # the stored routes and asks the ISP for nothing: FRR leaves the
             # default route out of its answer to a route refresh that arrives

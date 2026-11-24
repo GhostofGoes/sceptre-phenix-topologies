@@ -100,3 +100,85 @@ def test_soh_pings_the_internet_host_from_every_site() -> None:
         last = tests[-1]
         assert last["name"] == "internet-to-inet", host
         assert "198.18.110.11" in last["testScript"]
+
+
+def scorch() -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, list[str]]]]:
+    apps = {app["name"]: app for app in phenix.scenario()["spec"]["apps"]}
+    metadata = apps["scorch"]["metadata"]
+    return (
+        {component["name"]: component for component in metadata["components"]},
+        {run["name"]: run for run in metadata["runs"]},
+    )
+
+
+def commands(component: dict[str, Any], hostname: str, stage: str) -> list[dict[str, Any]]:
+    return next(vm for vm in component["metadata"]["vms"] if vm["hostname"] == hostname).get(stage, [])
+
+
+def test_every_scorch_run_names_components_that_exist_and_act_in_that_stage() -> None:
+    components, runs = scorch()
+    assert list(runs) == ["site-uplink-silent", "head-office-uplink-silent", "isp-loses-transit", "head-office-restart"]
+    known = {router.name for router in model.ROUTERS} | {lan.host for lan in model.LANS}
+    for run in runs.values():
+        for stage in ("configure", "start", "stop"):
+            for name in run.get(stage, []):
+                component = components[name]
+                if component["type"] == "cc":
+                    vms = component["metadata"]["vms"]
+                    assert {vm["hostname"] for vm in vms} <= known
+                    assert any(vm.get(stage) for vm in vms), f"{name} does nothing in {stage}"
+
+
+def test_a_fault_is_made_at_the_isp_and_repaired_in_the_same_run() -> None:
+    components, runs = scorch()
+    for name, router, interface in (
+        ("site-uplink-silent", "shadecast", "eth3"),
+        ("head-office-uplink-silent", "shadecast", "eth2"),
+        ("isp-loses-transit", "cb-west", "eth1"),
+    ):
+        fault = commands(components[name], router, "start")[0]["args"]
+        assert f"iifname {interface} counter drop" in fault
+        assert f"oifname {interface} counter drop" in fault
+        assert commands(components[name], router, "stop")[0]["args"] == "nft delete table inet cmfault"
+        assert runs[name]["start"][0] == name
+        assert runs[name]["stop"][0] == name
+    # The interface names are those of the topology.
+    found = nodes()
+    by_vlan = {interface["vlan"]: interface["name"] for interface in found["shadecast"]["network"]["interfaces"]}
+    assert (by_vlan["WAN-SC-FC"], by_vlan["WAN-SC-FR"]) == ("eth3", "eth2")
+    by_vlan = {interface["vlan"]: interface["name"] for interface in found["cb-west"]["network"]["interfaces"]}
+    assert by_vlan["INET-CBW-SC"] == "eth1"
+
+
+def test_the_site_checks_name_its_tunnels_and_gateways() -> None:
+    components, _runs = scorch()
+    moved = commands(components["site-on-second-uplink"], "fc-fw-edge", "start")
+    assert [command["validator"] for command in moved] == ["grep -q 'dev vti102'", "grep -q 'via 198.18.102.1 '"]
+    back = commands(components["site-on-first-uplink"], "fc-fw-edge", "stop")
+    assert [command["validator"] for command in back] == ["grep -q 'dev vti101'", "grep -q 'via 203.0.113.9 '"]
+    assert moved[0]["args"] == "ip route show 10.20.0.0/16"
+
+
+def test_every_site_host_checks_the_head_office_and_the_internet_in_every_stage() -> None:
+    components, _runs = scorch()
+    reach = {vm["hostname"]: vm for vm in components["reach"]["metadata"]["vms"]}
+    assert sorted(reach) == ["cs-historian", "ep-historian", "fc-historian", "fr-historian"]
+    for stage in ("configure", "start", "stop"):
+        assert [command["args"].split()[-1] for command in reach["cs-historian"][stage]] == [
+            "10.20.30.11",
+            "198.18.110.11",
+        ]
+        assert all(command["validator"] == "grep -q ' 0% packet loss'" for command in reach["cs-historian"][stage])
+        assert [command["args"].split()[-1] for command in reach["fr-historian"][stage]] == ["198.18.110.11"]
+
+
+def test_the_transit_run_does_not_ask_a_site_for_the_internet_during_the_fault() -> None:
+    """The failover check proves the ISP's first router only, so fc keeps ShadeCast's default route."""
+    components, runs = scorch()
+    assert "reach-vpn" in runs["isp-loses-transit"]["start"]
+    assert "reach" not in runs["isp-loses-transit"]["start"]
+    assert "reach" in runs["isp-loses-transit"]["stop"]
+    during = commands(components["reach-vpn"], "fc-historian", "start")
+    assert [command["args"].split()[-1] for command in during] == ["10.20.30.11"]
+    # The head office's host still reaches the internet, through the other ISP.
+    assert commands(components["reach-vpn"], "fr-historian", "start")[0]["args"].endswith("198.18.110.11")

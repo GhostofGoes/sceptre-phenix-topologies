@@ -1,0 +1,111 @@
+# The four breweries of the fleet: what each site runs, and how its network is
+# cut (docs/multisite/PLANS.md, sections 2 and 4.1). Each site is the plant of
+# plant.yaml with parts left out and with its networks moved. plantgen reads
+# this file (tools/plantgen/plantgen/sites.py) and checks it against plant.yaml
+# and wan/wan.yaml. No generator writes site files from it yet: that is stage 3
+# of the plan.
+#
+# The values are those that the site-profiles spike ran (spikes/site-profiles).
+# A test compares the two.
+#
+# code:        the site's prefix on hostnames (`ep-historian`) and, in capitals,
+#              on VLAN aliases (`EP-OPS`).
+# index:       the site's number. A `10.` block of the Front Range plan moves by
+#              it: 10.20.0.0/16 is 10.22.0.0/16 at site 2. MGMT moves the same way.
+# modules:     the parts of the single-site range that only the head office has
+#              (`soc`: malcolm, wazuh, soc-analyst, soc-purple. `remote`:
+#              dmz-vpn, dmz-jump).
+# extra_hosts: single hosts of a module that the site has all the same.
+# drop_areas:  the process areas of plant.yaml that the site does not have.
+# drop_hosts:  the hosts of plant.yaml that the site does not have.
+# moves:       by a VLAN of plant.yaml: where its hosts go at this site. `subnet`
+#              is numbered as the Front Range plan numbers it, before the move by
+#              `index`. `shift` is added to a host's last octet, so that two
+#              VLANs can merge with no address used twice. `gateway` is the
+#              router of the new network. A network with no gateway is not routed.
+# cells:       by a PLC: a control network of its own for that PLC's cell.
+# time_server: the host that the site's clocks follow.
+# uplinks:     the ISP and the edge's address on each access link, the primary
+#              first. wan/wan.yaml has the same links.
+# sensor:      whether the site has a network sensor of its own.
+sites:
+- code: fr
+  index: 0
+  title: 'Front Range: flagship brewery, taproom, head office'
+  origin: The first brewery. Its network was rebuilt to the company's standard after it grew
+  network: Two firewalls with a DMZ between them, a zone for each level (DESIGN.md 10)
+  modules: [soc, remote]
+  uplinks:
+  - {isp: shadecast, address: 203.0.113.2/29}
+  - {isp: tumbleweed, address: 198.18.101.2/30}
+  sensor: false
+- code: ep
+  index: 2
+  title: 'Eastern Plains: production brewery'
+  origin: Built new by the company, to the standard and one step past it
+  network: Two firewalls and a DMZ with its own jump host; a control network for each process cell
+  # The site's own jump host, with the company's accounts and not the vendor's.
+  extra_hosts: [dmz-jump]
+  # No unit is dropped inside an area (PLANS.md 4.1): the rooftop unit that
+  # cools the taproom at `fr` cools the office and tasting room here.
+  cells:
+    plc-brewhouse: {vlan: CTRL-BH, subnet: 10.20.41.0/24, gateway: fw-ot}
+    plc-cellar: {vlan: CTRL-CEL, subnet: 10.20.42.0/24, gateway: fw-ot}
+    plc-packaging: {vlan: CTRL-PKG, subnet: 10.20.43.0/24, gateway: fw-ot}
+    plc-utilities: {vlan: CTRL-UTL, subnet: 10.20.44.0/24, gateway: fw-ot}
+    plc-power: {vlan: CTRL-PWR, subnet: 10.20.46.0/24, gateway: fw-ot}
+  uplinks:
+  - {isp: tumbleweed, address: 198.18.101.10/30}
+  - {isp: shadecast, address: 203.0.113.18/30}
+- code: cs
+  index: 3
+  title: 'Colorado Springs: brewery and taproom, bought from another company'
+  origin: Bought with its network as its integrator built it. The company is bringing it into the fleet
+  network: One firewall and three zones (office, plant, building); its own address plan in 192.168.0.0/16
+  drop_areas: [PWR]
+  drop_hosts: [fw-ot, plc-power, relay-main, pv-inverter, bess-pcs, gen-ats, rtu-der, sim-power]
+  moves:
+    CORP: {vlan: OFFICE, subnet: 192.168.10.0/24, gateway: fw-edge}
+    OPS: {vlan: PLANT, subnet: 192.168.20.0/24, shift: 30, gateway: fw-edge}
+    HMI: {vlan: PLANT, subnet: 192.168.20.0/24, shift: 20, gateway: fw-edge}
+    CTRL: {vlan: PLANT, subnet: 192.168.20.0/24, gateway: fw-edge}
+    BAS: {vlan: BAS, subnet: 192.168.30.0/24, gateway: fw-edge}
+    FIELD-BH: {vlan: FIELD-BH, subnet: 192.168.21.0/24}
+    FIELD-CEL: {vlan: FIELD-CEL, subnet: 192.168.22.0/24}
+    FIELD-PKG: {vlan: FIELD-PKG, subnet: 192.168.23.0/24}
+    FIELD-UTL: {vlan: FIELD-UTL, subnet: 192.168.24.0/24}
+  uplinks:
+  - {isp: bristlecone, address: 198.18.103.2/30}
+- code: fc
+  index: 1
+  title: 'Fort Collins: brewpub'
+  origin: Opened as a brewpub in Old Town Fort Collins. Nobody on site looks after its network
+  network: 'One firewall and two zones: the office, and one flat network for everything that controls'
+  drop_areas: [PKG, PWR]
+  drop_hosts:
+  - fw-ot
+  - ot-svc
+  - ews
+  - hmi-packaging
+  - bas-bbmd
+  - bas-fuxa
+  - plc-packaging
+  - rio-packaging
+  - plc-power
+  - relay-main
+  - pv-inverter
+  - bess-pcs
+  - gen-ats
+  - rtu-der
+  - sim-power
+  moves:
+    CORP: {vlan: OFFICE, subnet: 10.10.10.0/24, gateway: fw-edge}
+    OPS: {vlan: PLANT, subnet: 10.20.10.0/24, shift: 30, gateway: fw-edge}
+    HMI: {vlan: PLANT, subnet: 10.20.10.0/24, shift: 20, gateway: fw-edge}
+    CTRL: {vlan: PLANT, subnet: 10.20.10.0/24, gateway: fw-edge}
+    BAS: {vlan: PLANT, subnet: 10.20.10.0/24, shift: 30, gateway: fw-edge}
+  # The pub has no ot-svc: its clocks follow the SCADA host.
+  time_server: scada-fuxa
+  uplinks:
+  - {isp: shadecast, address: 203.0.113.10/30}
+  - {isp: marmot, address: 198.18.102.2/30}

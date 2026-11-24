@@ -1,9 +1,11 @@
 # cherrymountain-wan scenario (docs/multisite/PLANS.md, stage 2). The `vrouter`
 # app gets a `config` list for each router: BGP and its policies, BFD, the
-# tunnels to the head office, each tunnel's tie to its uplink, and the discard
-# routes. The list needs the `config` option of the vrouter app
-# (GhostofGoes/sceptre-phenix#27). The soh app pings through the VPN from each
-# site's host.
+# tunnels to the head office, each tunnel's tie to its uplink, the discard
+# routes, NAT, a site's failover default routes, and the head office's source
+# filter on each tunnel. The list needs the `config` option of the vrouter app
+# (GhostofGoes/sceptre-phenix#27). The soh app pings from each site's host:
+# through the VPN, and to the host on the internet. The scorch app has one run
+# for each fault. Nobody ran the runs on VMs yet.
 #
 # The pre-shared keys are placeholders derived from a fixed text, for a closed
 # range. They are not secrets.
@@ -539,16 +541,26 @@ spec:
         - set protocols bgp address-family ipv4-unicast network 10.30.0.0/16
         - set protocols bgp address-family ipv4-unicast network 10.40.0.0/16
         - set interfaces dummy dum0 address 198.18.105.1/32
-        - set policy prefix-list DEFAULT rule 10 action permit
-        - set policy prefix-list DEFAULT rule 10 prefix 0.0.0.0/0
+        - set policy prefix-list INTERNET rule 1 action deny
+        - set policy prefix-list INTERNET rule 1 prefix 10.0.0.0/8
+        - set policy prefix-list INTERNET rule 1 le 32
+        - set policy prefix-list INTERNET rule 2 action deny
+        - set policy prefix-list INTERNET rule 2 prefix 172.16.0.0/12
+        - set policy prefix-list INTERNET rule 2 le 32
+        - set policy prefix-list INTERNET rule 3 action deny
+        - set policy prefix-list INTERNET rule 3 prefix 192.168.0.0/16
+        - set policy prefix-list INTERNET rule 3 le 32
+        - set policy prefix-list INTERNET rule 10 action permit
+        - set policy prefix-list INTERNET rule 10 prefix 0.0.0.0/0
+        - set policy prefix-list INTERNET rule 10 le 24
         - set policy prefix-list OWN rule 10 action permit
         - set policy prefix-list OWN rule 10 prefix 198.18.105.0/24
-        - set policy route-map DEFAULT-ONLY rule 10 action permit
-        - set policy route-map DEFAULT-ONLY rule 10 match ip address prefix-list DEFAULT
+        - set policy route-map FROM-ISP rule 10 action permit
+        - set policy route-map FROM-ISP rule 10 match ip address prefix-list INTERNET
         - set policy route-map OWN-ONLY rule 10 action permit
         - set policy route-map OWN-ONLY rule 10 match ip address prefix-list OWN
         - set policy route-map SET-SOURCE rule 10 action permit
-        - set policy route-map SET-SOURCE rule 10 match ip address prefix-list DEFAULT
+        - set policy route-map SET-SOURCE rule 10 match ip address prefix-list INTERNET
         - set policy route-map SET-SOURCE rule 10 set src 198.18.105.1
         - set protocols bgp parameters bestpath as-path multipath-relax
         - set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2
@@ -560,7 +572,7 @@ spec:
         - set protocols bgp neighbor 203.0.113.1 timers holdtime 9
         - set protocols bgp neighbor 203.0.113.1 timers connect 5
         - set protocols bgp neighbor 203.0.113.1 bfd profile WAN
-        - set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map import DEFAULT-ONLY
+        - set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map import FROM-ISP
         - set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map export OWN-ONLY
         - set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast soft-reconfiguration inbound
         - set protocols bgp neighbor 198.18.101.1 remote-as 64501
@@ -569,7 +581,7 @@ spec:
         - set protocols bgp neighbor 198.18.101.1 timers holdtime 9
         - set protocols bgp neighbor 198.18.101.1 timers connect 5
         - set protocols bgp neighbor 198.18.101.1 bfd profile WAN
-        - set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map import DEFAULT-ONLY
+        - set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map import FROM-ISP
         - set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map export OWN-ONLY
         - set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast soft-reconfiguration inbound
         - set policy route-map SET-SOURCE rule 15 action permit
@@ -1391,3 +1403,346 @@ spec:
           executor: bash
           testScript: "if ping -c 3 -W 2 198.18.110.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
           testStdout: REACHED
+  - name: scorch
+    metadata:
+      components:
+      - name: reach
+        type: cc
+        metadata:
+          vms:
+          - hostname: fc-historian
+            configure:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            start:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            stop:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+          - hostname: ep-historian
+            configure:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            start:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            stop:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+          - hostname: cs-historian
+            configure:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            start:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            stop:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+          - hostname: fr-historian
+            configure:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            start:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            stop:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+      - name: reach-vpn
+        type: cc
+        metadata:
+          vms:
+          - hostname: fc-historian
+            configure:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            start:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            stop:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+          - hostname: ep-historian
+            configure:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            start:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            stop:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+          - hostname: cs-historian
+            configure:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            start:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            stop:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 10.20.30.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+          - hostname: fr-historian
+            configure:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            start:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+            stop:
+            - type: exec
+              args: ping -c 5 -i 0.2 -W 2 198.18.110.11
+              wait: true
+              validator: grep -q ' 0% packet loss'
+      - name: detect
+        type: pause
+        metadata:
+          duration: 20s
+      - name: recover
+        type: pause
+        metadata:
+          duration: 90s
+      - name: site-uplink-silent
+        type: cc
+        metadata:
+          vms:
+          - hostname: shadecast
+            start:
+            - type: exec
+              args: nft add table inet cmfault; nft add chain inet cmfault cm_forward '{ type filter hook forward priority -300; }'; nft add chain inet cmfault cm_input '{ type filter hook input priority -300; }'; nft add chain inet cmfault cm_output '{ type filter hook output priority -300; }'; nft add rule inet cmfault cm_forward iifname eth3 counter drop; nft add rule inet cmfault cm_forward oifname eth3 counter drop; nft add rule inet cmfault cm_input iifname eth3 counter drop; nft add rule inet cmfault cm_output oifname eth3 counter drop
+              wait: true
+            stop:
+            - type: exec
+              args: nft delete table inet cmfault
+              wait: true
+      - name: site-on-second-uplink
+        type: cc
+        metadata:
+          vms:
+          - hostname: fc-fw-edge
+            start:
+            - type: exec
+              args: ip route show 10.20.0.0/16
+              wait: true
+              validator: grep -q 'dev vti102'
+            - type: exec
+              args: ip -4 route show default | head -1
+              wait: true
+              validator: grep -q 'via 198.18.102.1 '
+      - name: site-on-first-uplink
+        type: cc
+        metadata:
+          vms:
+          - hostname: fc-fw-edge
+            configure:
+            - type: exec
+              args: ip route show 10.20.0.0/16
+              wait: true
+              validator: grep -q 'dev vti101'
+            stop:
+            - type: exec
+              args: ip route show 10.20.0.0/16
+              wait: true
+              validator: grep -q 'dev vti101'
+            - type: exec
+              args: ip -4 route show default | head -1
+              wait: true
+              validator: grep -q 'via 203.0.113.9 '
+      - name: head-office-uplink-silent
+        type: cc
+        metadata:
+          vms:
+          - hostname: shadecast
+            start:
+            - type: exec
+              args: nft add table inet cmfault; nft add chain inet cmfault cm_forward '{ type filter hook forward priority -300; }'; nft add chain inet cmfault cm_input '{ type filter hook input priority -300; }'; nft add chain inet cmfault cm_output '{ type filter hook output priority -300; }'; nft add rule inet cmfault cm_forward iifname eth2 counter drop; nft add rule inet cmfault cm_forward oifname eth2 counter drop; nft add rule inet cmfault cm_input iifname eth2 counter drop; nft add rule inet cmfault cm_output oifname eth2 counter drop
+              wait: true
+            stop:
+            - type: exec
+              args: nft delete table inet cmfault
+              wait: true
+      - name: head-office-on-one-isp
+        type: cc
+        metadata:
+          vms:
+          - hostname: fr-fw-edge
+            start:
+            - type: exec
+              args: ip -4 route show default
+              wait: true
+              validator: '! grep -q ''via 203.0.113.1 '''
+            stop:
+            - type: exec
+              args: ip -4 route show default
+              wait: true
+              validator: '[ "$(grep -c ''nexthop via'')" = 2 ]'
+      - name: isp-loses-transit
+        type: cc
+        metadata:
+          vms:
+          - hostname: cb-west
+            start:
+            - type: exec
+              args: nft add table inet cmfault; nft add chain inet cmfault cm_forward '{ type filter hook forward priority -300; }'; nft add chain inet cmfault cm_input '{ type filter hook input priority -300; }'; nft add chain inet cmfault cm_output '{ type filter hook output priority -300; }'; nft add rule inet cmfault cm_forward iifname eth1 counter drop; nft add rule inet cmfault cm_forward oifname eth1 counter drop; nft add rule inet cmfault cm_input iifname eth1 counter drop; nft add rule inet cmfault cm_output oifname eth1 counter drop
+              wait: true
+            stop:
+            - type: exec
+              args: nft delete table inet cmfault
+              wait: true
+      - name: head-office-restart
+        type: cc
+        metadata:
+          vms:
+          - hostname: fr-fw-edge
+            start:
+            - type: background
+              args: sleep 2; systemctl reboot
+      - name: restart
+        type: pause
+        metadata:
+          duration: 8m
+      - name: head-office-is-back
+        type: cc
+        metadata:
+          vms:
+          - hostname: fr-fw-edge
+            start:
+            - type: exec
+              args: ip -4 route show default
+              wait: true
+              validator: '[ "$(grep -c ''nexthop via'')" = 2 ]'
+      runs:
+      - name: site-uplink-silent
+        configure:
+        - reach
+        - site-on-first-uplink
+        start:
+        - site-uplink-silent
+        - detect
+        - site-on-second-uplink
+        - reach
+        stop:
+        - site-uplink-silent
+        - recover
+        - site-on-first-uplink
+        - reach
+      - name: head-office-uplink-silent
+        configure:
+        - reach
+        - site-on-first-uplink
+        start:
+        - head-office-uplink-silent
+        - detect
+        - head-office-on-one-isp
+        - reach
+        stop:
+        - head-office-uplink-silent
+        - recover
+        - head-office-on-one-isp
+        - site-on-first-uplink
+        - reach
+      - name: isp-loses-transit
+        configure:
+        - reach
+        start:
+        - isp-loses-transit
+        - detect
+        - head-office-on-one-isp
+        - reach-vpn
+        stop:
+        - isp-loses-transit
+        - recover
+        - head-office-on-one-isp
+        - reach
+      - name: head-office-restart
+        configure:
+        - reach
+        start:
+        - head-office-restart
+        - restart
+        - head-office-is-back
+        - reach

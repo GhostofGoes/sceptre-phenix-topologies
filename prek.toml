@@ -386,7 +386,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/plantgen/|plant/)'
+files = '^cherrymountain-brewery/(tools/plantgen/|plant/|wan/wan\.yaml$|spikes/(site-profiles/profiles|multisite-stamp/stamp)\.py$)'
 pass_filenames = false
 priority = "check"
 

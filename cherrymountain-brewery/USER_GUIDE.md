@@ -823,13 +823,14 @@ its decisions. The file
 places.
 
 This directory has no `phenix-fleet.yml`. This section shows how to run the
-three parts that exist. Then it shows how the fleet is planned to start.
+four parts that exist. Then it shows how the fleet is planned to start.
 
 | Part | What it runs | You need | Time |
 |---|---|---|---|
 | [A](#a-the-whole-wan-on-one-linux-host) | The whole WAN as network namespaces: ten routers and a host at each site | One Linux host and root. No phenix and no VMs | 10 min |
 | [B](#b-the-wans-core-on-vyos-routers-under-phenix) | The core of the WAN on four VyOS routers under phenix and minimega | GitHub Actions on this repository | 20 to 45 min |
 | [C](#c-the-four-sites-as-phenix-topology-files) | The four sites as phenix topology files, with their sizes | Python and a phenix checkout | 1 min |
+| [D](#d-the-whole-wan-as-a-phenix-variant-wan) | The whole WAN as a phenix variant: ten VyOS routers and five hosts. Nobody ran this part yet | A phenix host with the draft `vrouter` change, and two images | Not measured |
 
 ### A. The whole WAN on one Linux host
 
@@ -947,6 +948,91 @@ Do not apply that workflow. The files are for counts and for tests of names and
 addresses. They have no routes, no firewall rules, no internet, and no
 scenario. The workflow names a topology that does not exist.
 
+### D. The whole WAN as a phenix variant (`wan`)
+
+The `wan` variant is the mock internet and the company's WAN, with no plant.
+It has the two routers of the transit carrier, four ISPs, the edge of the head
+office, and the edges of the three other sites. It also has one host behind
+each edge and one host on the internet. That is 15 VMs, 25 vCPUs, and 25 GB.
+
+Nobody ran this variant yet. Its files are generated and tested offline. The
+four routers of part B commit the same configuration lists in CI. The other
+six routers, the transit carrier, and the SoH tests are not proven on VMs. The
+first run is stage 2 of [PLANS.md §8](docs/multisite/PLANS.md#8-stages).
+
+The tool [tools/wangen](tools/wangen/README.md) writes the three files of the
+variant from `wan/wan.yaml`: `phenix-wan.yml`,
+`phenix-configs/topology-wan.yml`, and `phenix-configs/scenario-wan.yml`.
+
+Before you start, make sure that the phenix host has these items:
+
+- A phenix that accepts the `config` list of the `vrouter` app. That change is
+  a draft
+  ([GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27)).
+  Without it, the routers boot with addresses only, and no SoH test passes.
+- The images `vyos.qc2` and `cm-svc.qc2` in `/phenix/images`
+  ([step 5](#5-build-the-vm-images)).
+- No other variant in the `running` state. The `wan` variant uses the VLAN IDs
+  of the fleet, 100 to 599.
+
+1. On the phenix host, check the workflow without a start:
+
+   ```shell
+   T=/phenix/topologies/cherrymountain-brewery
+   docker exec phenix phenix workflow apply -n -b cherrymountain-wan -c phenix-wan.yml $T
+   ```
+
+2. Start the variant:
+
+   ```shell
+   docker exec phenix phenix workflow apply -b cherrymountain-wan -c phenix-wan.yml $T
+   ```
+
+   The experiment is `cherrymountain-wan`, on the bridge `cherrymtn-wan`.
+
+3. Make sure that the VMs run, as in [step 7](#7-wait-then-check-health):
+
+   ```shell
+   docker exec phenix phenix vm info cherrymountain-wan
+   ```
+
+4. Open the SoH page at `http://<host>:3000/soh/cherrymountain-wan`. The soh
+   app starts its tests five minutes after the start. Each of the four site
+   hosts pings through the VPN, and pings `inet`, the host on the internet.
+
+5. To examine a router, open its console in the phenix UI
+   ([step 8](#8-connect-from-your-own-computer)) and run a command in it:
+
+   | To see | Command in the router |
+   |---|---|
+   | The BGP sessions | `vtysh -c 'show bgp ipv4 unicast summary'` |
+   | The IPsec tunnels | `sudo swanctl --list-sas` |
+   | The default routes of a site, one for each uplink | `ip -4 route show default` |
+   | The packets that the source filter of the head office dropped | `sudo journalctl -k \| grep ipv4-FWD-filter` |
+
+To change the WAN, edit `wan/wan.yaml`, run `python -m wangen` in
+`tools/wangen`, and apply the workflow again. `vpn.kind` selects route-based
+IPsec (`vti`) or WireGuard. `vpn.hub_opens` selects which end opens the IPsec
+tunnels.
+
+The scenario has one SCORCH run for each fault. Each run makes the fault, waits
+20 seconds, and checks where the traffic goes. Then it repairs the fault,
+waits 90 seconds, and checks the return. In each stage, each site host must
+reach the host of the head office and the host on the internet. Nobody ran
+these runs on VMs yet. Part B runs the first, the second, and the fourth fault
+on four routers.
+
+```shell
+docker exec -it phenix phenix experiment scorch cherrymountain-wan --run 0
+```
+
+| Run | Name | What it does |
+|---:|---|---|
+| 0 | `site-uplink-silent` | ShadeCast drops each packet on its link to Fort Collins. The tunnel and the default route of the site move to the second uplink, and return after the repair |
+| 1 | `head-office-uplink-silent` | ShadeCast drops each packet on its link to the head office. The head office keeps one default route, and the site keeps its first tunnel |
+| 2 | `isp-loses-transit` | The transit carrier drops each packet on its link to ShadeCast. ShadeCast takes its default route back from the head office. During this fault, the run does not ask the sites for the internet. Fort Collins keeps the default route through ShadeCast, because the gateway still answers |
+| 3 | `head-office-restart` | The edge of the head office restarts. After eight minutes, it must have both default routes, and each site host must reach the head office |
+
 ### How the fleet is planned to start
 
 None of this works yet. This section tells you what a start will need.
@@ -957,7 +1043,7 @@ None of this works yet. This section tells you what a start will need.
 | The first run of the single site on a phenix host (stage 0) | Not done. Start with `ci`, as [step 6](#6-start-the-range) says |
 | A cluster of three minimega nodes. A full-size packet must go between two nodes on the bridge of the fleet (stage C) | Not run. The test is a ping of 1472 bytes with fragmentation not permitted. Do the test after `phenix doctor` passes its bridge-trunk check on each node |
 | A phenix that accepts the `vrouter` `config` list | A draft pull request |
-| A `wan` variant: the mock internet and the four site edges, about 20 VMs (stage 2) | Not built. Parts A and B are its proof |
+| A `wan` variant: the mock internet and the four site edges, 15 VMs (stage 2) | Built and not run on VMs. Part D shows how to start it |
 | The site files, the cross-site firewall rules, and a sensor image (stages 3 and 4) | Not built. Part C is the start |
 
 When those items exist, the plan is to start the fleet with one command, as for

@@ -214,3 +214,23 @@ def test_ike_gives_a_silent_peer_up_in_the_time_that_wan_yaml_sets() -> None:
 def test_without_a_schedule_the_lists_leave_strongswans_own() -> None:
     model.IKE_RETRANSMIT = None
     assert not [line for line in vyos.commands(model.BY_NAME["fc-fw-edge"], kind=model.VTI) if "retransmission" in line]
+
+
+@pytest.mark.parametrize(
+    ("kind", "match"), [(model.VTI, "source address 203.0.113.10"), (model.WIREGUARD, "fwmark 101")]
+)
+def test_a_tunnels_packets_have_a_backstop_table_with_only_a_blackhole(kind: str, match: str) -> None:
+    lines = vyos.commands(model.BY_NAME["fc-fw-edge"], kind=kind)
+    # The tunnel's own rule and table come first, by the lower rule number.
+    assert f"set policy local-route rule 101 {match}" in lines
+    assert "set policy local-route rule 101 set table 101" in lines
+    assert f"set policy local-route rule 151 {match}" in lines
+    assert "set policy local-route rule 151 set table 151" in lines
+    assert [line for line in lines if line.startswith("set protocols static table 151 ")] == [
+        "set protocols static table 151 route 0.0.0.0/0 blackhole"
+    ]
+    # Every tunnel of the model fits VyOS's tables, 1 to 200.
+    assert all(1 <= tunnel.mark() + vyos.BACKSTOP_OFFSET <= 200 for tunnel in model.TUNNELS)
+    assert not [line for line in vyos.commands(model.BY_NAME["fr-fw-edge"], kind=kind) if " table 15" in line]
+    spike = vyos.commands(model.BY_NAME["fc-fw-edge"], kind=kind, spike_only=True)
+    assert not [line for line in spike if " 151 " in line]

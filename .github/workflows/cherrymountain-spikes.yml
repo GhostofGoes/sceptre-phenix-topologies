@@ -13,6 +13,9 @@ on:
     branches: ['feat-secret-topo']
     paths:
       - 'cherrymountain-brewery/spikes/**'
+      # The wan-bgp job on VyOS commits the lists of the WAN generator.
+      - 'cherrymountain-brewery/tools/wangen/wangen/**'
+      - 'cherrymountain-brewery/wan/**'
       - '.github/actions/cm-lab/**'
       - '.github/workflows/cherrymountain-spikes.yml'
   workflow_dispatch:
@@ -391,6 +394,8 @@ jobs:
             .github/actions
             cherrymountain-brewery/spikes
             cherrymountain-brewery/tools/plantgen/plantgen
+            cherrymountain-brewery/tools/wangen/wangen
+            cherrymountain-brewery/wan
           persist-credentials: false
 
       # phenix's vrouter app with a `config` list of VyOS commands, which carries the BGP,

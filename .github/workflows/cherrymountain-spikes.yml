@@ -31,7 +31,7 @@ on:
       images-ref:
         description: Ref of GhostofGoes/sceptre-phenix-images
         type: string
-        default: ci-e2e-minimega
+        default: feat-cherrymountain-images
       apps-ref:
         description: Ref of GhostofGoes/sceptre-phenix-apps
         type: string
@@ -66,7 +66,8 @@ jobs:
         id: refs
         env:
           IN_PHENIX_REF: ${{ inputs.phenix-ref || 'ci-e2e-minimega' }}
-          IN_IMAGES_REF: ${{ inputs.images-ref || 'ci-e2e-minimega' }}
+          # The images branch that holds the range's recipes; it includes ci-e2e-minimega.
+          IN_IMAGES_REF: ${{ inputs.images-ref || 'feat-cherrymountain-images' }}
           IN_APPS_REF: ${{ inputs.apps-ref || 'ci-e2e-minimega' }}
         run: |
           set -euo pipefail

@@ -1015,7 +1015,23 @@ To change the WAN, edit `wan/wan.yaml`, run `python -m wangen` in
 IPsec (`vti`) or WireGuard. `vpn.hub_opens` selects which end opens the IPsec
 tunnels.
 
-The variant has no fault runs yet. Part B runs the faults on four routers.
+The scenario has one SCORCH run for each fault. Each run makes the fault, waits
+20 seconds, and checks where the traffic goes. Then it repairs the fault,
+waits 90 seconds, and checks the return. In each stage, each site host must
+reach the host of the head office and the host on the internet. Nobody ran
+these runs on VMs yet. Part B runs the first, the second, and the fourth fault
+on four routers.
+
+```shell
+docker exec -it phenix phenix experiment scorch cherrymountain-wan --run 0
+```
+
+| Run | Name | What it does |
+|---:|---|---|
+| 0 | `site-uplink-silent` | ShadeCast drops each packet on its link to Fort Collins. The tunnel and the default route of the site move to the second uplink, and return after the repair |
+| 1 | `head-office-uplink-silent` | ShadeCast drops each packet on its link to the head office. The head office keeps one default route, and the site keeps its first tunnel |
+| 2 | `isp-loses-transit` | The transit carrier drops each packet on its link to ShadeCast. ShadeCast takes its default route back from the head office. During this fault, the run does not ask the sites for the internet. Fort Collins keeps the default route through ShadeCast, because the gateway still answers |
+| 3 | `head-office-restart` | The edge of the head office restarts. After eight minutes, it must have both default routes, and each site host must reach the head office |
 
 ### How the fleet is planned to start
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
+import json
 from typing import Any, Final
 
 import yaml
@@ -156,6 +157,177 @@ def soh_tests() -> dict[str, list[dict[str, str]]]:
     return tests
 
 
+def _exec(args: str, validator: str = "") -> dict[str, Any]:
+    """One `cc` command that the component waits for. A validator reads the command's output on the phenix host."""
+    entry: dict[str, Any] = {"type": "exec", "args": args, "wait": True}
+    if validator:
+        entry["validator"] = validator
+    return entry
+
+
+def _cc(name: str, vms: dict[str, dict[str, list[dict[str, Any]]]]) -> dict[str, Any]:
+    return {
+        "name": name,
+        "type": "cc",
+        "metadata": {"vms": [{"hostname": hostname, **stages} for hostname, stages in vms.items()]},
+    }
+
+
+def _pause(name: str, duration: str) -> dict[str, Any]:
+    return {"name": name, "type": "pause", "metadata": {"duration": duration}}
+
+
+def _interface_to(router: str, neighbor: str) -> str:
+    """The interface of `router` on its link to `neighbor`."""
+    return next(eth for eth, _link, other, _gw, _own in vyos.uplinks(model.BY_NAME[router]) if other == neighbor)
+
+
+def _silence(interface: str) -> str:
+    """Drop what a router forwards, sends, or receives on one interface. The link stays up."""
+    table = "inet cmfault"
+    return (
+        f"nft add table {table}; "
+        f"nft add chain {table} cm_forward '{{ type filter hook forward priority -300; }}'; "
+        f"nft add chain {table} cm_input '{{ type filter hook input priority -300; }}'; "
+        f"nft add chain {table} cm_output '{{ type filter hook output priority -300; }}'; "
+        f"nft add rule {table} cm_forward iifname {interface} counter drop; "
+        f"nft add rule {table} cm_forward oifname {interface} counter drop; "
+        f"nft add rule {table} cm_input iifname {interface} counter drop; "
+        f"nft add rule {table} cm_output oifname {interface} counter drop"
+    )
+
+
+REPAIR: str = "nft delete table inet cmfault"
+REACHED: str = "grep -q ' 0% packet loss'"
+
+
+def scorch() -> dict[str, Any]:
+    """The fault runs of the variant, as SCORCH components and runs.
+
+    Each run makes one fault, waits, and checks where the traffic goes and that
+    every site host still reaches the head office and the internet. Then it
+    repairs the fault and checks the return. The faults are those of the
+    wan-bgp spike (spikes/wan-bgp/README.md), and one that the spike's reduced
+    lab cannot make: an ISP that loses its transit carrier.
+    """
+    lans = {lan.router: lan for lan in model.LANS}
+    hub = lans[model.HUB]
+    internet = next(lan for lan in model.LANS if lan.advertise_public)
+    sites = sorted({tunnel.site for tunnel in model.TUNNELS}, key=[r.name for r in model.ROUTERS].index)
+    # The site with two uplinks whose first tunnel shares an ISP with the head office.
+    hub_isps = [isp for _eth, _link, isp, _gw, _own in vyos.uplinks(model.BY_NAME[model.HUB])]
+    primary = next(t for t in model.TUNNELS if t.primary and t.via == hub_isps[0])
+    backup = next(t for t in model.TUNNELS if t.site == primary.site and not t.primary)
+    site, isp = primary.site, primary.via
+    site_gateways = [gateway for _eth, _link, _isp, gateway, _own in vyos.uplinks(model.BY_NAME[site])]
+    hub_gateways = [gateway for _eth, _link, _isp, gateway, _own in vyos.uplinks(model.BY_NAME[model.HUB])]
+    carrier = next(
+        model.peer_of(link, isp)[0]
+        for link in model.LINKS
+        if isp in (link.a, link.b) and model.relation_seen_by(link, isp) == "provider"
+    )
+    block = model.SITE_BLOCKS[model.HUB][1]
+
+    def reach() -> dict[str, list[dict[str, Any]]]:
+        return {stage: [] for stage in ("configure", "start", "stop")}
+
+    # Every site host reaches the head office's host and the internet, in every stage that lists the component.
+    reach_vms: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for name in sites:
+        pings = [
+            _exec(f"ping -c 5 -i 0.2 -W 2 {hub.host_address()}", REACHED),
+            _exec(f"ping -c 5 -i 0.2 -W 2 {internet.host_address()}", REACHED),
+        ]
+        reach_vms[lans[name].host] = {stage: pings for stage in reach()}
+    reach_vms[hub.host] = {
+        stage: [_exec(f"ping -c 5 -i 0.2 -W 2 {internet.host_address()}", REACHED)] for stage in reach()
+    }
+    # Without the sites' internet pings. A site whose first ISP lost its transit
+    # keeps that ISP's default route, because the gateway still answers, and
+    # the site then reaches the VPN and not the internet.
+    vpn_vms = {host: {stage: commands[:1] for stage, commands in stages.items()} for host, stages in reach_vms.items()}
+
+    def on(tunnel: model.Tunnel) -> dict[str, Any]:
+        return _exec(f"ip route show {block}", f"grep -q 'dev {vyos.tunnel_if(model.KIND, tunnel)}'")
+
+    def default_through(gateway: str) -> dict[str, Any]:
+        return _exec("ip -4 route show default | head -1", f"grep -q 'via {gateway} '")
+
+    both_defaults = _exec("ip -4 route show default", "[ \"$(grep -c 'nexthop via')\" = 2 ]")
+    components = [
+        _cc("reach", reach_vms),
+        _cc("reach-vpn", vpn_vms),
+        _pause("detect", "20s"),
+        _pause("recover", "90s"),
+        # The site's first uplink goes silent: its tunnel and its default route move, and return.
+        _cc(
+            "site-uplink-silent",
+            {isp: {"start": [_exec(_silence(_interface_to(isp, site)))], "stop": [_exec(REPAIR)]}},
+        ),
+        _cc(
+            "site-on-second-uplink",
+            {site: {"start": [on(backup), default_through(site_gateways[1])]}},
+        ),
+        _cc(
+            "site-on-first-uplink",
+            {site: {"configure": [on(primary)], "stop": [on(primary), default_through(site_gateways[0])]}},
+        ),
+        # The head office's first uplink goes silent: it keeps one default route, and the site keeps its tunnel.
+        _cc(
+            "head-office-uplink-silent",
+            {isp: {"start": [_exec(_silence(_interface_to(isp, model.HUB)))], "stop": [_exec(REPAIR)]}},
+        ),
+        _cc(
+            "head-office-on-one-isp",
+            {
+                model.HUB: {
+                    "start": [_exec("ip -4 route show default", f"! grep -q 'via {hub_gateways[0]} '")],
+                    "stop": [both_defaults],
+                }
+            },
+        ),
+        # An ISP loses its transit carrier: it takes its default route back from the head office.
+        _cc(
+            "isp-loses-transit",
+            {carrier: {"start": [_exec(_silence(_interface_to(carrier, isp)))], "stop": [_exec(REPAIR)]}},
+        ),
+        # The head office restarts: every tunnel returns without help.
+        _cc(
+            "head-office-restart",
+            {model.HUB: {"start": [{"type": "background", "args": "sleep 2; systemctl reboot"}]}},
+        ),
+        _pause("restart", "8m"),
+        _cc("head-office-is-back", {model.HUB: {"start": [both_defaults]}}),
+    ]
+    runs = [
+        {
+            "name": "site-uplink-silent",
+            "configure": ["reach", "site-on-first-uplink"],
+            "start": ["site-uplink-silent", "detect", "site-on-second-uplink", "reach"],
+            "stop": ["site-uplink-silent", "recover", "site-on-first-uplink", "reach"],
+        },
+        {
+            "name": "head-office-uplink-silent",
+            "configure": ["reach", "site-on-first-uplink"],
+            "start": ["head-office-uplink-silent", "detect", "head-office-on-one-isp", "reach"],
+            "stop": ["head-office-uplink-silent", "recover", "head-office-on-one-isp", "site-on-first-uplink", "reach"],
+        },
+        {
+            "name": "isp-loses-transit",
+            "configure": ["reach"],
+            "start": ["isp-loses-transit", "detect", "head-office-on-one-isp", "reach-vpn"],
+            "stop": ["isp-loses-transit", "recover", "head-office-on-one-isp", "reach"],
+        },
+        {
+            "name": "head-office-restart",
+            "configure": ["reach"],
+            "start": ["head-office-restart", "restart", "head-office-is-back", "reach"],
+        },
+    ]
+    # Through JSON, so that a command used in three stages is written three times and not as a YAML alias.
+    return json.loads(json.dumps({"name": "scorch", "metadata": {"components": components, "runs": runs}}))
+
+
 def scenario() -> dict[str, Any]:
     configs = {router.name: vyos.commands(router, psk=psk) for router in model.ROUTERS}
     return {
@@ -179,6 +351,7 @@ def scenario() -> dict[str, Any]:
                         "hostCustomTests": soh_tests(),
                     },
                 },
+                scorch(),
             ]
         },
     }
@@ -222,7 +395,8 @@ HEADERS: Final[dict[str, str]] = {
 # routes, NAT, a site's failover default routes, and the head office's source
 # filter on each tunnel. The list needs the `config` option of the vrouter app
 # (GhostofGoes/sceptre-phenix#27). The soh app pings from each site's host:
-# through the VPN, and to the host on the internet.
+# through the VPN, and to the host on the internet. The scorch app has one run
+# for each fault. Nobody ran the runs on VMs yet.
 #
 # The pre-shared keys are placeholders derived from a fixed text, for a closed
 # range. They are not secrets.

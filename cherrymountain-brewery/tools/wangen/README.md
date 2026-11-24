@@ -25,7 +25,7 @@ Paths are relative to `cherrymountain-brewery/`.
 | File | What it holds |
 |---|---|
 | `phenix-configs/topology-wan.yml` | Ten VyOS routers and five hosts: 15 VMs, 25 vCPUs, and 25 GB. The interfaces of a router are in the order of its links in `wan.yaml` |
-| `phenix-configs/scenario-wan.yml` | The `config` list of each router for the phenix `vrouter` app, and the SoH (state of health) pings of each host |
+| `phenix-configs/scenario-wan.yml` | The `config` list of each router for the phenix `vrouter` app, the SoH (state of health) pings of each host, and one SCORCH run for each fault |
 | `phenix-wan.yml` | The workflow, with a VLAN ID for each of the 18 aliases |
 
 ## What wan.yaml holds

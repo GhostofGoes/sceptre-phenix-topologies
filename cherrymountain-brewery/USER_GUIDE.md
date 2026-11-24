@@ -829,7 +829,7 @@ four parts that exist. Then it shows how the fleet is planned to start.
 |---|---|---|---|
 | [A](#a-the-whole-wan-on-one-linux-host) | The whole WAN as network namespaces: ten routers and a host at each site | One Linux host and root. No phenix and no VMs | 10 min |
 | [B](#b-the-wans-core-on-vyos-routers-under-phenix) | The core of the WAN on four VyOS routers under phenix and minimega | GitHub Actions on this repository | 20 to 45 min |
-| [C](#c-the-four-sites-as-phenix-topology-files) | The four sites as phenix topology files, with their sizes | Python and a phenix checkout | 1 min |
+| [C](#c-the-four-sites-as-phenix-topology-files) | The four sites as generated phenix files, checked offline | Python | 2 min |
 | [D](#d-the-whole-wan-as-a-phenix-variant-wan) | The whole WAN as a phenix variant: ten VyOS routers and five hosts. Nobody ran this part yet | A phenix host with the draft `vrouter` change, and two images | Not measured |
 
 ### A. The whole WAN on one Linux host
@@ -928,28 +928,43 @@ has the results of each run.
 
 ### C. The four sites as phenix topology files
 
-The kit in [spikes/site-profiles](spikes/site-profiles/README.md) builds the
-nodes of each site from the single-site plant and a short description of the
-site. It also sizes the range for a cluster of three nodes. Run these commands
-on a host that has Python and a sceptre-phenix checkout:
+The generators write a set of phenix files for each site from the single-site
+plant (`plant/plant.yaml`) and a short description of each site
+(`plant/sites.yaml`). The files are committed. To make them again and to check
+them, run these commands on a host that has Python, `pyyaml`, and `pydantic`:
 
 ```shell
-cd cherrymountain-brewery/spikes/site-profiles
-python3 profiles.py --schema /phenix/schemas --out /tmp/fleet
+cd cherrymountain-brewery
+(cd tools/plantgen && python -m plantgen)            # the files of each site, and its topology and workflow
+python fuxa/build_project.py --all                   # the FUXA projects, with those of each site
+python sync.py                                       # the scenario and the injected files of each site
+(cd tools/netcheck && python -m netcheck --site fc)  # check one site: fr, ep, cs, or fc
 ```
-
-`--schema` is the `schemas/` directory of a sceptre-phenix checkout. The kit
-also needs `pyyaml`, `pydantic`, and `check-jsonschema` on `PATH`. It writes
-these files:
 
 | File | What it is |
 |---|---|
-| `topology-site-fr.yml`, `-ep.yml`, `-cs.yml`, `-fc.yml` | The nodes of each site: 39, 35, 26, and 19 with the sensors |
-| `phenix-fleet.yml` | A workflow with a VLAN ID for each of the 54 aliases and a cluster node for each site VM |
+| `phenix-configs/topology-site-fr.yml`, `-ep.yml`, `-cs.yml`, `-fc.yml` | The nodes of each site: 39, 35, 26, and 19 with the sensors |
+| `phenix-configs/scenario-site-<code>.yml` | The app blocks of the site, its firewall rules, and its SoH tests |
+| `phenix-site-<code>.yml` | The workflow of the site, with the VLAN IDs of the fleet and a bridge of its own |
+| `plant/generated/fleet/<code>/` | What plantgen writes for the site: tags, registers, and app blocks |
+| `fuxa/fleet/<code>/` | The FUXA projects of the site |
+| `phenix-injects/fleet/<code>/` | The site's copies of the injected files that hold names or addresses |
 
-Do not apply that workflow. The files are for counts and for tests of names and
-addresses. They have no routes, no firewall rules, no internet, and no
-scenario. The workflow names a topology that does not exist.
+Do not apply a site's workflow yet. Nobody started a site, and three parts
+are missing:
+
+- The `cherrymountain` app does not know the sites. It needs a change in the
+  apps repository before it can read a site's files.
+- The sensor image `cm-sensor.qc2` does not exist.
+- The edge of a site has no WAN side in these files: no ISP, no default
+  route, no NAT, and no VPN. Part D has that side.
+
+netcheck prints what no firewall separates at a site. Fort Collins and
+Colorado Springs have one flat plant network. Thus their PLCs, operator
+stations, and SCADA host reach each other with no firewall between them.
+
+The kit in [spikes/site-profiles](spikes/site-profiles/README.md) was the
+probe for this part. It does not run on the current plantgen.
 
 ### D. The whole WAN as a phenix variant (`wan`)
 
@@ -1048,7 +1063,8 @@ None of this works yet. This section tells you what a start will need.
 | A cluster of three minimega nodes. A full-size packet must go between two nodes on the bridge of the fleet (stage C) | Not run. The test is a ping of 1472 bytes with fragmentation not permitted. Do the test after `phenix doctor` passes its bridge-trunk check on each node |
 | A phenix that accepts the `vrouter` `config` list | A draft pull request |
 | A `wan` variant: the mock internet and the four site edges, 15 VMs (stage 2) | Built and not run on VMs. Part D shows how to start it |
-| The site files, the cross-site firewall rules, and a sensor image (stages 3 and 4) | Not built. Part C is the start |
+| The site files (stage 3) | Built and checked offline. Part C lists them. No site started |
+| The app's change for the sites, a sensor image, and the cross-site firewall rules (stages 3 and 4) | Not built |
 
 When those items exist, the plan is to start the fleet with one command, as for
 the other variants. You will run it on the head node of the cluster:

@@ -1629,18 +1629,27 @@ State on 2026-11-24:
   internet, and one SCORCH run for each of four faults. Its lists ran on four
   VyOS routers in CI, with the faults and a head office restart. The ten
   routers, the transit carrier, and the SCORCH runs did not run on VMs.
-- Stage 3: `plant/sites.yaml` describes the four sites. plantgen writes each
-  site's files under `plant/generated/fleet/`, and a topology file for each
-  site. The FUXA builder writes the projects of each site. netcheck writes
-  each site's firewall rules and checks each site alone
-  (`python -m netcheck --site CODE`). All four sites pass, so `ep` and `fc`
-  do. The broker spike passed ([7.6](#76-site-brokers-a-broker-for-each-site)).
-- Stage 3 still needs five parts before one site can boot alone:
-  - The `cherrymountain` app with a broker and a project for each site.
-  - `sync.py` for the sites.
-  - The injected files with the site's names.
-  - A workflow file.
+- Stage 3: `plant/sites.yaml` describes the four sites. From it, the
+  generators write a complete set of files for each site:
+  - plantgen writes the site's files under `plant/generated/fleet/`, its
+    topology file, its workflow file, and its copies of the injected files.
+  - The FUXA builder writes the projects of the site.
+  - netcheck derives the site's firewall rules from the conduit matrix.
+  - `sync.py` writes the site's scenario.
+
+  netcheck checks each site alone (`python -m netcheck --site CODE`), and all
+  four sites pass, so `ep` and `fc` do. The broker spike passed
+  ([7.6](#76-site-brokers-a-broker-for-each-site)).
+- Stage 3 still needs three parts before one site can boot alone:
+  - The `cherrymountain` app with a broker and a project for each site. The
+    app is in the apps repository, and it cannot load a site today.
   - A sensor image.
+  - The first boot itself, after stage 0. Only the schemas read these files.
+    phenix did not.
+- A site with one flat plant network has no firewall between its PLCs, its
+  operator stations, and its SCADA host. netcheck lists those pairs: 45 at
+  `fc` and 65 at `cs`. That is the layout of [4.1](#41-what-each-site-is), and
+  an exercise can use it.
 
 Stage 1 ran on a GitHub runner, as the Phase 0 VM spikes did. Stage C needs
 the cluster and an hour. It is the first thing to run there, because every

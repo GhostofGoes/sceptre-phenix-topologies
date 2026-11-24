@@ -160,13 +160,14 @@ host or an address follow the plant description of the site.
 
 A topology file is not a finished site. The header of each file says so.
 
-- No router has a firewall ruleset. A test makes sure of this, so that nobody
-  takes the file for a finished one.
+- The firewall rulesets are not in the topology file. netcheck writes them to
+  `phenix-configs/scenario-site-<code>.yml`, for the conduits inside the site
+  ([netcheck README](../netcheck/README.md#a-site-of-the-fleet)).
 - The edge has no default route and no route to a different site. The WAN
   generator writes the WAN side of the edge.
 - The injected files still hold the names and the addresses of the single
   site. Examples are `plant.hosts` and the BBMD tables.
-- No scenario and no workflow use these files.
+- No workflow uses these files, and the scenario of a site is not whole.
 
 ## Outputs
 

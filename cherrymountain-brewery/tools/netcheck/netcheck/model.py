@@ -365,6 +365,31 @@ WORKFLOW_FILES: dict[str, str] = {
 }
 
 
+def site_name(code: str) -> str:
+    """The name of a site's topology and of its scenario."""
+    return f"cherrymountain-site-{code}"
+
+
+def load_site(code: str, root: Path = ROOT) -> Variant:
+    """One site of the fleet alone: its topology file and its scenario.
+
+    A site has no workflow file yet, so the workflow here only names the two.
+    """
+    configs: dict[tuple[str, str], tuple[Path, dict[str, Any]]] = _configs(root)
+    name: str = site_name(code)
+    topology: Topology = _load_topology(configs, name, root)
+    scenario: Scenario = _load_scenario(configs, name, root)
+    for n in topology.nodes:
+        if n.is_router:
+            _router_config(n, scenario)
+    return Variant(
+        name=code,
+        workflow=Workflow(topology=name, scenario=name),
+        topology=topology,
+        scenario=scenario,
+    )
+
+
 def load_variant(variant: str, root: Path = ROOT) -> Variant:
     configs: dict[tuple[str, str], tuple[Path, dict[str, Any]]] = _configs(root)
     wf_path: Path = root / WORKFLOW_FILES[variant]

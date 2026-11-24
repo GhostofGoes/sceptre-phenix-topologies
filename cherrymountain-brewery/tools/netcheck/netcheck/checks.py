@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from netcheck import conduits, plan
 from netcheck import model as m
+from netcheck.reference import Reference, for_variant
 from netcheck.sim import Net, Verdict, flow, trace
 
 #: DESIGN.md section 11 totals: (VMs, vCPUs, GB).
@@ -46,14 +47,25 @@ def _note(check: str, message: str) -> Finding:
     return Finding(check=check, message=message, severity="note")
 
 
+#: The untrusted side of fw-edge: no firewall rule of this plant protects it.
+EXTERNAL_VLANS: frozenset[str] = frozenset({"INET", "VENDOR", "UTIL"})
+
+
+def reference(v: m.Variant, ref: Reference | None = None) -> Reference:
+    """What ``v`` is checked against: ``ref`` for a site, and without one the
+    Front Range plan and conduit matrix of the variant."""
+    return ref or for_variant(v.name, EXTERNAL_VLANS, DESIGN_TOTALS.get(v.name))
+
+
 # --- the IP plan -------------------------------------------------------------
 
 
-def check_plan(v: m.Variant) -> list[Finding]:
+def check_plan(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
     """Nodes, interfaces, routes, and resources equal the plan."""
     out: list[Finding] = []
     c: str = f"{v.name}/plan"
-    want: list[plan.Node] = plan.nodes_for(v.name)
+    ref = reference(v, ref)
+    want: list[plan.Node] = list(ref.nodes)
     have: dict[str, m.TNode] = {n.hostname: n for n in v.topology.nodes}
     if v.topology.names() != [n.name for n in want]:
         extra: list[str] = sorted(set(have) - {n.name for n in want})
@@ -66,11 +78,9 @@ def check_plan(v: m.Variant) -> list[Finding]:
         sum(n.vcpus for n in v.topology.nodes),
         sum(n.memory_mb for n in v.topology.nodes) // 1024,
     )
-    if v.name in DESIGN_TOTALS and totals != DESIGN_TOTALS[v.name]:
+    if ref.totals is not None and totals != ref.totals:
         out.append(
-            _err(
-                c, f"totals (VMs, vCPUs, GB) {totals} differ from DESIGN.md {DESIGN_TOTALS[v.name]}"
-            )
+            _err(c, f"totals (VMs, vCPUs, GB) {totals} differ from DESIGN.md {ref.totals}")
         )
     for p in want:
         n: m.TNode | None = have.get(p.name)
@@ -117,10 +127,11 @@ def _check_node(c: str, p: plan.Node, n: m.TNode) -> list[Finding]:
     return out
 
 
-def check_addresses(v: m.Variant) -> list[Finding]:
+def check_addresses(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
     """Unique addresses, addresses inside their VLAN, no overlapping subnets."""
     out: list[Finding] = []
     c: str = f"{v.name}/addresses"
+    vlans: dict[str, plan.Vlan] = reference(v, ref).vlans
     seen: dict[str, str] = {}
     routers_on: dict[str, set[str]] = {}
     for n in v.topology.nodes:
@@ -128,7 +139,7 @@ def check_addresses(v: m.Variant) -> list[Finding]:
             if i.address in seen:
                 out.append(_err(c, f"{i.address} on both {seen[i.address]} and {n.hostname}"))
             seen[i.address] = n.hostname
-            vl: plan.Vlan | None = plan.VLANS.get(i.vlan)
+            vl: plan.Vlan | None = vlans.get(i.vlan)
             if vl is None:
                 out.append(_err(c, f"{n.hostname} {i.name}: VLAN {i.vlan} is not in the plan"))
                 continue
@@ -153,7 +164,7 @@ def check_addresses(v: m.Variant) -> list[Finding]:
                         f"{n.hostname} {i.name}: gateway {i.gateway} is not a router address on {i.vlan}",
                     )
                 )
-    nets: list[plan.Vlan] = list(plan.VLANS.values())
+    nets: list[plan.Vlan] = list(vlans.values())
     for idx, a in enumerate(nets):
         for b in nets[idx + 1 :]:
             if a.network.overlaps(b.network):
@@ -381,12 +392,8 @@ def _service_set() -> list[conduits.Service]:
     return list(seen.values())
 
 
-#: The untrusted side of fw-edge: no firewall rule of this plant protects it.
-EXTERNAL_VLANS: frozenset[str] = frozenset({"INET", "VENDOR", "UTIL"})
-
-
-def _external(net: Net, name: str) -> bool:
-    return all(i.vlan in EXTERNAL_VLANS for i in net.nodes[name].interfaces)
+def _external(net: Net, name: str, external: frozenset[str] = EXTERNAL_VLANS) -> bool:
+    return all(i.vlan in external for i in net.nodes[name].interfaces)
 
 
 def _same_l2(net: Net, a: str, b: str) -> bool:
@@ -394,7 +401,7 @@ def _same_l2(net: Net, a: str, b: str) -> bool:
     return any(i.vlan in va for i in net.nodes[b].interfaces)
 
 
-def check_flows(v: m.Variant) -> list[Finding]:
+def check_flows(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
     """Sweep every host pair and service: allowed flows equal the conduits.
 
     * A conduit flow must be delivered, and its reply must pass back
@@ -405,26 +412,28 @@ def check_flows(v: m.Variant) -> list[Finding]:
     """
     out: list[Finding] = []
     c: str = f"{v.name}/flows"
+    ref = reference(v, ref)
     net: Net = Net(v.topology)
     names: set[str] = set(net.nodes)
-    expected: set[tuple[str, str, str, int]] = conduits.expected_flows(v.name)
+    expected: set[tuple[str, str, str, int]] = set(ref.expected_flows())
     hosts: list[str] = [n.hostname for n in v.topology.nodes if not n.is_router]
     router_srcs: set[str] = {s for (s, _, _, _) in expected if net.nodes[s].is_router}
     services: list[conduits.Service] = _service_set()
     by_flow: dict[tuple[str, str, str, int], conduits.Conduit] = {}
-    for cd in conduits.CONDUITS:
+    for cd in ref.conduits:
         if cd.enforced:
-            for f in conduits.expand(cd, v.name):
+            for f in ref.expand(cd):
                 by_flow[f] = cd
     dnat_dsts: dict[str, str] = {
-        cd.dsts[0]: cd.dst_ip for cd in conduits.CONDUITS if cd.dst_ip and cd.enforced
+        cd.dsts[0]: cd.dst_ip for cd in ref.conduits if cd.dst_ip and cd.enforced
     }
+    external: frozenset[str] = ref.external_vlans
 
     for src in [*hosts, *sorted(router_srcs)]:
         for dst in hosts:
             if src == dst or _same_l2(net, src, dst):
                 continue
-            if _external(net, src) and _external(net, dst):
+            if _external(net, src, external) and _external(net, dst, external):
                 continue  # the internet side: no plant firewall in between
             for svc in services:
                 key: tuple[str, str, str, int] = (src, dst, svc.proto, svc.port)
@@ -454,7 +463,7 @@ def check_flows(v: m.Variant) -> list[Finding]:
         if dst not in names:
             continue
         for src in hosts:
-            if _same_l2(net, src, dst) or _external(net, src):
+            if _same_l2(net, src, dst) or _external(net, src, external):
                 continue  # the DNAT rule has no source restriction by design
             for svc in services:
                 key = (src, dst, svc.proto, svc.port)
@@ -515,16 +524,17 @@ def _check_expected(
     return out
 
 
-def check_rule_coverage(v: m.Variant) -> list[Finding]:
+def check_rule_coverage(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
     """Every explicit accept rule is used by at least one conduit flow."""
     out: list[Finding] = []
     c: str = f"{v.name}/rule-coverage"
+    ref = reference(v, ref)
     net: Net = Net(v.topology)
     used: set[str] = set()
-    for key in conduits.expected_flows(v.name):
+    for key in ref.expected_flows():
         src, dst, proto, port = key
         cd: conduits.Conduit | None = next(
-            (x for x in conduits.CONDUITS if x.enforced and key in set(conduits.expand(x, v.name))),
+            (x for x in ref.conduits if x.enforced and key in set(ref.expand(x))),
             None,
         )
         pub: str | None = cd.dst_ip if cd else None
@@ -641,9 +651,10 @@ def _soh(v: m.Variant) -> m.App | None:
     return v.scenario.app("soh") if v.scenario else None
 
 
-def check_soh(v: m.Variant) -> list[Finding]:
+def check_soh(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
     out: list[Finding] = []
     c: str = f"{v.name}/soh"
+    ref = reference(v, ref)
     app: m.App | None = _soh(v)
     if app is None:
         return [_err(c, "scenario has no soh app")]
@@ -677,7 +688,7 @@ def check_soh(v: m.Variant) -> list[Finding]:
                     out.append(_err(c, f"reachability test {key}: udpPacketBase64 is not base64"))
         if not t.get("wait"):
             out.append(_err(c, f"reachability test {key}: no wait"))
-    for cd in conduits.CONDUITS:
+    for cd in ref.conduits:
         for p in cd.probes:
             if p.src not in names or p.dst not in names:
                 continue
@@ -689,8 +700,8 @@ def check_soh(v: m.Variant) -> list[Finding]:
                     )
                 )
     # Every TCP conduit has a probe.
-    for cd in conduits.CONDUITS:
-        if any(s.proto == "tcp" for s in cd.services) and conduits.expand(cd, v.name):
+    for cd in ref.conduits:
+        if any(s.proto == "tcp" for s in cd.services) and ref.expand(cd):
             tcp_probes: list[conduits.Probe] = [
                 p for p in cd.probes if p.proto == "tcp" and p.src in names and p.dst in names
             ]
@@ -699,7 +710,7 @@ def check_soh(v: m.Variant) -> list[Finding]:
     # A positive probe across a firewall must be allowed (tunnel flows excepted).
     unenforced: set[tuple[str, str, str, int]] = {
         (p.src, p.dst, p.proto, p.port)
-        for cd in conduits.CONDUITS
+        for cd in ref.conduits
         if not cd.enforced
         for p in cd.probes
     }
@@ -713,7 +724,7 @@ def check_soh(v: m.Variant) -> list[Finding]:
             out.append(
                 _err(c, f"reachability test {key} is blocked by the firewall rules ({fwd.detail})")
             )
-    out += _check_negative_tests(v, c, md, net)
+    out += _check_negative_tests(v, c, md, net, ref.blocked)
     return out
 
 
@@ -783,10 +794,16 @@ def check_scorch(v: m.Variant) -> list[Finding]:
     return out
 
 
-def _check_negative_tests(v: m.Variant, c: str, md: dict[str, Any], net: Net) -> list[Finding]:
+def _check_negative_tests(
+    v: m.Variant,
+    c: str,
+    md: dict[str, Any],
+    net: Net,
+    blocked: tuple[conduits.BlockedProbe, ...] = conduits.BLOCKED_PROBES,
+) -> list[Finding]:
     out: list[Finding] = []
     custom: dict[str, list[dict[str, Any]]] = md.get("hostCustomTests") or {}
-    for bp in conduits.BLOCKED_PROBES:
+    for bp in blocked:
         if bp.src not in net.nodes or bp.dst not in net.nodes:
             continue
         dst_ip: str = net.nodes[bp.dst].interfaces[0].address
@@ -815,7 +832,7 @@ def _check_negative_tests(v: m.Variant, c: str, md: dict[str, Any], net: Net) ->
             )
         if test.get("testStdout") != "DROPPED":
             out.append(_err(c, f"negative test {bp.src} -> {bp.dst}:{bp.port} must expect DROPPED"))
-    known: set[tuple[str, str]] = {(b.src, b.dst) for b in conduits.BLOCKED_PROBES}
+    known: set[tuple[str, str]] = {(b.src, b.dst) for b in blocked}
     for host, tests in custom.items():
         for t in tests:
             nm: str = str(t.get("name", ""))
@@ -1075,6 +1092,119 @@ def run_ci(root: Path = m.ROOT) -> list[Finding]:
     out += check_workflow(v, root)
     out += check_boot_order(v)
     out += check_injects(v, root)
+    return out
+
+
+#: The checks that a site's run leaves out, each with its reason.
+SITE_SKIPS: dict[str, str] = {
+    "workflow": "a site has no workflow file yet (VLAN IDs, bridge)",
+    "nat-ipsec": "the edge's WAN side (NAT, IPsec, netem) is the fleet's stage",
+    "scorch": "a site's scenario has no scorch app",
+    "apps": "sync.py does not embed the site's app blocks yet",
+    "app-hosts": "WireGuard and the mirror are the fleet's stage",
+    "services": "plant.hosts is the single site's file",
+}
+
+
+def run_site(code: str, root: Path = m.ROOT) -> list[Finding]:
+    """The checks of one site of the fleet, with the site's own plan and
+    conduits (``netcheck.site``): its topology file and its scenario alone.
+
+    The check functions are those of a variant. ``SITE_SKIPS`` names the ones
+    that do not apply yet. Two findings are a site's own: ``generated`` (the
+    committed scenario is what the generator writes) and the notes of
+    ``separation`` (what no firewall separates at this site)."""
+    # Imported here: only a site's run needs plantgen on the import path.
+    from netcheck import site as site_data  # noqa: PLC0415
+    from netcheck import sitegen  # noqa: PLC0415
+
+    try:
+        derived: site_data.Site = site_data.load(code, root)
+    except site_data.SiteError as exc:
+        return [_err(f"{code}/load", str(exc))]
+    out: list[Finding] = []
+    path: Path = root / "phenix-configs" / sitegen.file_name(code)
+    if not path.is_file() or path.read_text(encoding="utf-8") != sitegen.render(derived):
+        out.append(
+            _err(
+                f"{code}/generated",
+                f"phenix-configs/{path.name} is not what the generator writes; run "
+                "`python -m netcheck --write-sites` and commit the result",
+            )
+        )
+    try:
+        v: m.Variant = m.load_site(code, root)
+    except (m.LoadError, KeyError) as exc:
+        return [*out, _err(f"{code}/load", str(exc))]
+    ref: Reference = derived.reference
+    out += check_plan(v, ref)
+    out += check_addresses(v, ref)
+    out += check_boot_order(v)
+    out += check_injects(v, root)
+    out += check_router_commands(v)
+    out += check_rulesets(v)
+    out += check_flows(v, ref)
+    out += check_rule_coverage(v, ref)
+    out += check_soh(v, ref)
+    out += site_notes(derived)
+    return out
+
+
+def site_notes(derived: Any) -> list[Finding]:
+    """What a site's firewalls do not separate, and what its run leaves out.
+
+    These are notes, not errors: a flat network is the site's layout. Hosts on
+    one network reach each other with no firewall, so no rule can carry or
+    stop a conduit between them."""
+    c: str = f"{derived.code}/separation"
+    ref: Reference = derived.reference
+    enforced: int = sum(1 for cd in ref.conduits if cd.enforced)
+    out: list[Finding] = [
+        _note(
+            c,
+            f"{len(ref.expected_flows())} flows of {enforced} conduit parts cross a firewall; "
+            f"{derived.same_network_pairs} pairs of hosts share a zone network with no "
+            "firewall between them",
+        )
+    ]
+    if derived.unfiltered_rows:
+        out.append(
+            _note(
+                c,
+                f"conduit rows with hosts on one network, which no firewall enforces here: "
+                f"{', '.join(derived.unfiltered_rows)}",
+            )
+        )
+    if derived.flat_rows:
+        out.append(
+            _note(
+                c,
+                f"of those, the Front Range layout puts a firewall across: "
+                f"{', '.join(derived.flat_rows)}",
+            )
+        )
+    if derived.open_paths:
+        paths: str = ", ".join(f"{p.src} -> {p.dst} tcp/{p.port}" for p in derived.open_paths)
+        out.append(
+            _note(c, f"paths that the Front Range layout blocks and this site leaves open: {paths}")
+        )
+    for why, text in (
+        ("outside", "an end on the internet, at the vendor, or at the utility"),
+        ("absent", "an end that this site does not have"),
+    ):
+        if derived.left_out[why]:
+            out.append(
+                _note(
+                    f"{derived.code}/stage-4",
+                    f"conduit rows with {text}, not ruled here: {', '.join(derived.left_out[why])}",
+                )
+            )
+    out.append(
+        _note(
+            f"{derived.code}/skipped",
+            "checks that a site's run leaves out: " + ", ".join(sorted(SITE_SKIPS)),
+        )
+    )
     return out
 
 

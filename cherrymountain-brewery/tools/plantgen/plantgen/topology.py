@@ -17,8 +17,10 @@ What each field of a node becomes:
 - `network.interfaces`: built again from the description: the name, the VLAN
   alias, the address, the mask, and the gateway. `dns` follows the name server
   of the hand-written node (see `_name_server`).
-- `network.routes`: built again from the site's networks (see `_routes`).
-- `network.rulesets`: none. The rules of the three layouts are a later step.
+- `network.routes`: built again from the site's networks (see `static_routes`).
+- `network.rulesets`: none. A router gets its rulesets from the `vrouter` app
+  of the site's scenario (`scenario-site-<code>.yml`), which netcheck writes
+  (tools/netcheck, `netcheck.sitegen`).
 - `labels`: `zone` is the host's first network, as in the hand-written
   modules, and a router keeps its own label. `site` is new: the site's code.
 - `annotations`: a forwarded port of the head node moves by the site's index
@@ -70,12 +72,15 @@ HEADER: Final[str] = """\
 # with the nodes of topology-core.yml, topology-soc.yml, and
 # topology-remote-access.yml as the source of each node. Do not edit.
 #
+# The firewall rulesets are not here. They are in scenario-site-{code}.yml,
+# which netcheck writes (tools/netcheck): the rules of the conduits whose two
+# ends are hosts of this site.
+#
 # This file is not a finished site. It does not have these parts yet:
-# - Firewall rulesets. No router has one, so the routers pass every packet.
 # - The edge's WAN side: its default route, NAT, and the VPN, which the WAN
 #   generator writes (tools/wangen).
-# - The conduits between sites, and a scenario. The injected files still
-#   hold the names and addresses of the single site.
+# - The conduits between sites, with their rules, and a whole scenario. The
+#   injected files still hold the names and addresses of the single site.
 """
 
 
@@ -130,7 +135,7 @@ def site_topology(
             raise PlantError(f"no hand-written module has a node for {missing}")
         made = [_node(site, plant, doc, name, nodes[name]) for name in hosts]
         if site.sensor:
-            made.append(_sensor(site, doc))
+            made.append(sensor_node(site, doc))
     except PlantError as exc:
         raise PlantError(f"site {site.code}: topology: {exc}") from exc
     return {
@@ -195,7 +200,7 @@ def _node(
             entry["dns"] = [server for server in found if server]
         interfaces.append(entry)
     network: dict[str, Any] = {"interfaces": interfaces}
-    routes = _routes(doc, name, host, router)
+    routes = static_routes(doc, name, host, router)
     if routes:
         network["routes"] = routes
     # `rulesets` and anything else under `network` is left behind on purpose.
@@ -270,7 +275,7 @@ def _name_server(
     return doc.hosts[site.host(name)].interfaces[key].ip.split("/")[0]
 
 
-def _routes(
+def static_routes(
     doc: PlantFile, name: str, host: HostSpec, router: bool
 ) -> list[dict[str, str]]:
     """The static routes of a host, from the site's networks.
@@ -341,7 +346,7 @@ def _tunnel(site: SiteSpec, host: str, entry: str) -> str:
     return f"{int(outside) + TUNNEL_STEP * site.index}:{inside}"
 
 
-def _sensor(site: SiteSpec, doc: PlantFile) -> dict[str, Any]:
+def sensor_node(site: SiteSpec, doc: PlantFile) -> dict[str, Any]:
     """The site's network sensor (PLANS.md, sections 4.1 and 4.6).
 
     It is a stand-in until a sensor image exists. At a site with two firewalls

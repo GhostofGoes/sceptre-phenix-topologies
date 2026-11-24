@@ -3,12 +3,15 @@
 # with the nodes of topology-core.yml, topology-soc.yml, and
 # topology-remote-access.yml as the source of each node. Do not edit.
 #
+# The firewall rulesets are not here. They are in scenario-site-fc.yml,
+# which netcheck writes (tools/netcheck): the rules of the conduits whose two
+# ends are hosts of this site.
+#
 # This file is not a finished site. It does not have these parts yet:
-# - Firewall rulesets. No router has one, so the routers pass every packet.
 # - The edge's WAN side: its default route, NAT, and the VPN, which the WAN
 #   generator writes (tools/wangen).
-# - The conduits between sites, and a scenario. The injected files still
-#   hold the names and addresses of the single site.
+# - The conduits between sites, with their rules, and a whole scenario. The
+#   injected files still hold the names and addresses of the single site.
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
 metadata:

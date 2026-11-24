@@ -455,6 +455,16 @@ CONDUITS: tuple[Conduit, ...] = (
         note="Hosts in OPS reach wazuh through fw-ot like the others.",
     ),
     Conduit(
+        id="plc-peer",
+        text="plc-utilities -> plc-cellar: TCP 502 (peer interlock reads): intra-zone",
+        srcs=("plc-utilities",),
+        dsts=("plc-cellar",),
+        services=tcp(502),
+        enforced=False,
+        probes=_t("plc-utilities", "plc-cellar", 502),
+        note="Same VLAN here; no firewall. A site with a control VLAN for each cell carries it through its OT firewall (netcheck.site).",
+    ),
+    Conduit(
         id="soc-analyst",
         text="soc-analyst -> malcolm, wazuh: intra-zone",
         srcs=("soc-analyst",),

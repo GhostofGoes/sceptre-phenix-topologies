@@ -129,9 +129,9 @@ def test_a_file_says_what_it_is_and_what_it_lacks(
     for words in (
         "plant/plant.yaml and plant/sites.yaml",
         "Do not edit.",
-        "Firewall rulesets",
+        f"rulesets are not here. They are in scenario-site-{code}.yml",
         "conduits between sites",
-        "a scenario",
+        "a whole scenario",
     ):
         assert words in head, words
     doc = yaml.safe_load(texts[code])
@@ -145,15 +145,35 @@ def test_a_file_says_what_it_is_and_what_it_lacks(
     )
 
 
-def test_no_router_of_a_site_has_a_ruleset(nodes: dict[str, dict[str, Node]]) -> None:
-    """The rules of the three layouts are a later step: nobody must take a
-    site file for a finished one."""
+def test_a_firewall_gets_its_rulesets_from_the_sites_scenario(
+    nodes: dict[str, dict[str, Node]],
+) -> None:
+    """No topology file holds a ruleset. Each firewall of a site has its
+    rulesets in the `vrouter` app of scenario-site-<code>.yml, which netcheck
+    writes and checks: one for each interface, default drop."""
     for code, found in nodes.items():
-        routers = [node for node in found.values() if node["type"] == "Firewall"]
+        routers = {name for name, node in found.items() if node["type"] == "Firewall"}
         assert len(routers) == (1 if code in ("cs", "fc") else 2)
         for node in found.values():
             assert set(node["network"]) <= {"interfaces", "routes"}, node["general"]
             assert "rulesets" not in node["network"]
+        scenario = yaml.safe_load(
+            (CONFIGS / f"scenario-site-{code}.yml").read_text(encoding="utf-8")
+        )
+        assert (
+            scenario["metadata"]["annotations"]["topology"]
+            == f"cherrymountain-site-{code}"
+        )
+        (vrouter,) = (
+            app for app in scenario["spec"]["apps"] if app["name"] == "vrouter"
+        )
+        assert {host["hostname"] for host in vrouter["hosts"]} == routers
+        for host in vrouter["hosts"]:
+            acl = host["metadata"]["acl"]
+            legs = [leg["name"] for leg in _interfaces(found[host["hostname"]])]
+            assert list(acl["egress"]) == legs
+            assert {rs["name"] for rs in acl["rulesets"]} == set(acl["egress"].values())
+            assert all(rs["default"] == "drop" for rs in acl["rulesets"])
 
 
 def test_the_node_count_of_each_site(

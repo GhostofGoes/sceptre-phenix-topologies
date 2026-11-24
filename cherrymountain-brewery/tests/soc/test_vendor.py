@@ -154,7 +154,7 @@ def test_the_password_hash_is_guacamoles() -> None:
     salt = bytes.fromhex("ab" * 32)
     expected = hashlib.sha256(b"pw" + salt.hex().upper().encode()).hexdigest()
     assert cm_vendor_sql.password_hash("pw", salt.hex()) == expected
-    # The cherrymountain app writes the same value for cmadmin (apps/.../render.py).
+    # The cherrymountain app writes the same value for cmadmin (render.py of the app in sceptre-phenix-apps).
     assert cm_vendor_sql.password_hash("pw", salt.hex()) == hashlib.sha256(("pw" + salt.hex().upper()).encode()).hexdigest()
 
 

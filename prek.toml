@@ -337,12 +337,15 @@ priority = "check"
 # The SOC and remote-access checks: the Wazuh decoders and rules against sample log
 # lines, the Suricata rules and the Zeek script against the topology's addresses (and
 # against Suricata itself where it is installed), and the scripts of the vendor path
-# (WireGuard watcher, Guacamole SQL, scripted session, EWS tool).
+# (WireGuard watcher, Guacamole SQL, scripted session, EWS tool). Two tests read
+# files of the cherrymountain app (its renderer and its Wazuh boot scripts) from
+# the phenix-apps package, pinned like cm-app-tests.
 id = "cm-soc-tests"
 name = "pytest (SOC and remote access)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/soc"
 additional_dependencies = [
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@5fc983ff7886b597340370abf741a10efdf89872#subdirectory=src/python",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "pytest==9.2.0",
@@ -370,12 +373,15 @@ priority = "check"
 
 [[repos.hooks]]
 # plantgen's tests: register gaps, the three address conventions, owners,
-# rationalized alarms (and their deadbands), and the generated app blocks.
+# rationalized alarms (and their deadbands), and the generated app blocks. One
+# test compares the cherrymountain block with the app's own fixtures, which ship
+# with the phenix-apps package, pinned like cm-app-tests.
 id = "cm-plantgen-tests"
 name = "pytest (plantgen)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/plantgen"
 additional_dependencies = [
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@5fc983ff7886b597340370abf741a10efdf89872#subdirectory=src/python",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "pytest==9.2.0",
@@ -429,16 +435,22 @@ pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
-# The cherrymountain phenix app and the plantevent SCORCH component. They need
-# phenix-apps, which is not on PyPI: it comes from the fork the range runs on
-# (DESIGN.md 16), pinned by commit. The tests read plant.yaml, plantgen, the
-# FUXA builder, and the program ZIPs (Git LFS) from this repository.
+# The cherrymountain phenix app and the plantevent SCORCH component, on this
+# checkout. Both are in phenix-apps, which is not on PyPI: it comes from the
+# fork the range runs on (DESIGN.md 16), pinned by commit, and its tests ship
+# with the package. run_app_tests.py points them at this directory, where they
+# read plant.yaml, plantgen, the FUXA builder, and the program ZIPs (Git LFS).
+# The experiment fixtures they run on are recorded in the apps repository:
+# after a change here that makes them stale (a ci or full topology, scenario,
+# or workflow file), record them again there (the app's README, Tests) and
+# move this pin, and the same pin of cm-soc-tests and cm-plantgen-tests, to that
+# commit.
 id = "cm-app-tests"
 name = "pytest (cherrymountain app, plantevent)"
 language = "python"
-entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/apps"
+entry = "python cherrymountain-brewery/tools/lint/run_app_tests.py"
 additional_dependencies = [
-    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@771e8d87a64770265862468664a1368dcfcbb99d#subdirectory=src/python",
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@5fc983ff7886b597340370abf741a10efdf89872#subdirectory=src/python",
     "Mako==1.3.10",
     "pydantic==2.14.3",
     "python-box==7.2.0",
@@ -447,7 +459,7 @@ additional_dependencies = [
     "pytest==9.2.0",
     "pytest-mock==3.15.1",
 ]
-files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|recipes/|plc/|brand/|phenix-images/cm-sim\.yml|phenix-injects/(openplc|otsim|fuxa|brand|grafana)/|phenix-configs/)'
+files = '^cherrymountain-brewery/(tools/lint/run_app_tests\.py$|plant/|tools/plantgen/|fuxa/|recipes/|plc/|brand/|phenix-images/cm-sim\.yml|phenix-injects/(openplc|otsim|fuxa|brand|grafana)/|phenix-configs/)'
 pass_filenames = false
 priority = "check"
 

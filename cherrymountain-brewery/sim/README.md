@@ -141,7 +141,8 @@ weekly genset exercise from them, and distrusts them when they stop or jump
 ## Event API (sim-ctl)
 
 The weather federate serves it on `127.0.0.1:8080` (the autotunnel forwards
-from there). The contract is `apps/cherrymountain_apps/simctl.py`'s:
+from there). The contract is the one of the `cherrymountain` app's client,
+`phenix_apps/apps/cherrymountain/simctl.py` in sceptre-phenix-apps:
 
 | Request | Reply |
 |---|---|

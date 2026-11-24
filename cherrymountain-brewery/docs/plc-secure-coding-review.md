@@ -118,7 +118,7 @@ Severity is judged for a cyber range. "Recorded" means DESIGN.md already says it
   - Without a restart `[V]` (CEL-4, UTL-2):
     - Writing 0 to `%QX1.1` on plc-utilities bypasses the CO2 latch (valve command goes 0 to 1 at once).
     - Writing 0 to an `XAnn_PV` coil erases a latched Critical alarm while the vessel is still locked.
-  - The brewhouse node is read-only over OPC UA (`apps/cherrymountain_apps/cherrymountain/render.py:197-210`). BH-10 shows the erasure only on the raw image.
+  - The brewhouse node is read-only over OPC UA (`phenix_apps/apps/cherrymountain/render.py:198-211` in sceptre-phenix-apps). BH-10 shows the erasure only on the raw image.
   - Network detection does not cover these writes. `phenix-injects/malcolm/zeek/cherrymountain.zeek:135-144` watches writes to the CO2 reset coil and the permits, not the latch coils.
 - **Not recorded.**
   - DESIGN.md:4404 accepts that "a stopped PLC, or a write straight to the RIO, bypasses" the lockout. That is a different case from "a restart forgets the permit" and "a latch lives in a writable coil".
@@ -286,7 +286,7 @@ Severity is judged for a cyber range. "Recorded" means DESIGN.md already says it
   - Practices 16 to 19 have no implementation in any program or in the FUXA project.
   - OpenPLC v4 tracks scan count, scan time, cycle time, latency and overruns but only writes them to its log every 5 s (`docs/ARCHITECTURE.md`, "Performance Monitoring").
   - `/api/status` returns one word (EMPTY, INIT, RUNNING, STOPPED, ERROR). None of this is readable by a program, Modbus client or OPC UA client.
-  - The repo reads the status word only in the phenix state-of-health probe (`apps/cherrymountain_apps/cherrymountain/soh.py:77-84, 190-196`), which is not an operator view.
+  - The repo reads the status word only in the phenix state-of-health probe (`phenix_apps/apps/cherrymountain/soh.py:77-84, 190-196` in sceptre-phenix-apps), which is not an operator view.
   - A restart reaches FUXA only as the batch engine's "the brewhouse PLC lost the phase (restarted?)" while a batch runs (`batch_engine.js:409-411`, text at 60).
   - Timed steps count scans, not time (BH:346-348, CEL:167). A cycle overrun silently stretches a mash rest or diacetyl rest, which is the case cycle-time trending exists for.
 - **Smallest fix:**

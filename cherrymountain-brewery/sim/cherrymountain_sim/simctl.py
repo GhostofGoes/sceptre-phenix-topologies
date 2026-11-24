@@ -2,7 +2,8 @@
 
 A small HTTP API on sim-ctl through which the SCORCH ``plantevent`` component
 and the ``cherrymountain`` app inject scenario events and read plant KPIs.
-The contract is the one ``apps/cherrymountain_apps/simctl.py`` documents::
+The contract is the one their client documents (sceptre-phenix-apps,
+``phenix_apps/apps/cherrymountain/simctl.py``)::
 
     GET  /api/v1/health   -> 200 {"status": "ok" | "starting" | "stalled", ...}
     POST /api/v1/events   {"event": <kind>, ...parameters} -> 202 JSON

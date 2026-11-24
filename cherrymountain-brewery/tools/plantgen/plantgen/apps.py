@@ -10,7 +10,7 @@
 - SCORCH ``pcap`` capture lists per run (DESIGN.md §15.6).
 - ``cherrymountain``: the app block listing every host the app provisions or
   checks, with its type (DESIGN.md §16; the app's metadata models are in
-  ``apps/cherrymountain_apps/cherrymountain/metadata.py``).
+  ``phenix_apps/apps/cherrymountain/metadata.py`` of sceptre-phenix-apps).
 """
 
 from __future__ import annotations

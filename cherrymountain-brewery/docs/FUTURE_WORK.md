@@ -165,7 +165,12 @@ start.
   `build_zip.sh --check`, the pcap replays through Suricata and Zeek, the
   compiled-program tests (they need Node, strucpp, and g++), and cm-viz's
   browser test ([§17](DESIGN.md#17-testing-and-validation)).
-- **The derived phenix Docker image**, which has not been built.
+- **The phenix Docker image with the range's apps** (the phenix fork built with
+  `APPS_BRANCH=feat-cherrymountain-apps`), which has not been built.
+- **Lint of the app's injected files.** The `cherrymountain` app moved to
+  sceptre-phenix-apps, so this repository's shellcheck, `systemd-analyze`, and
+  `desktop-file-validate` hooks no longer check its scripts, units, and
+  `.desktop` file, and the apps repository runs none of them.
 - **Brewtarget** as a second check of the IBU model, which is compared with
   the published Tinseth formula only.
 
@@ -307,8 +312,9 @@ From [§15.10](DESIGN.md#1510-white-cell-3d-view-cm-viz):
 
 ## Upstream
 
-Until these land, the derived phenix container installs the forked
-`sceptre-phenix-apps` and the range runs on the phenix fork
+Until these land, the range's phenix image installs the forked
+`sceptre-phenix-apps` (branch `feat-cherrymountain-apps`, which also holds the
+`cherrymountain` app and `plantevent`) and the range runs on the phenix fork
 ([§16](DESIGN.md#16-new-and-extended-software) has each change in full).
 
 - **ot-sim: the BACnet module.** A version for upstream is on the fork branch

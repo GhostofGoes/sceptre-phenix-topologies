@@ -467,7 +467,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
     library only (it does not depend on the pydantic 2.11.7 that the image
     installs with pip for the range's other scripts). The script starts
     Chromium with `--remote-debugging-pipe` (no port) and signs in to FUXA as
-    `operator` for it ([HMI kiosk](../apps/cherrymountain_apps/cherrymountain/README.md#hmi-kiosk)).
+    `operator` for it ([HMI kiosk](https://github.com/GhostofGoes/sceptre-phenix-apps/blob/feat-cherrymountain-apps/src/python/phenix_apps/apps/cherrymountain/README.md#hmi-kiosk)).
     Checked with the packaged `/usr/bin/chromium`: its `exec` keeps the pipe's
     descriptors 3 and 4, `/etc/chromium.d/cm-range` adds `--no-sandbox` as the
     root session needs, and an extension's content script does not run under
@@ -583,7 +583,8 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 
 ## Apps
 
-The `cherrymountain` phenix app is in [`apps/`](../apps/README.md), with its
+The `cherrymountain` phenix app is in sceptre-phenix-apps
+([`phenix_apps/apps/cherrymountain`](https://github.com/GhostofGoes/sceptre-phenix-apps/blob/feat-cherrymountain-apps/src/python/phenix_apps/apps/cherrymountain/README.md)), with its
 own README for its metadata, stages, and tests. It injects what differs between
 hosts of one image (PLC programs, FUXA projects, kiosk scripts, passwords), so
 the images stay the same for every variant.

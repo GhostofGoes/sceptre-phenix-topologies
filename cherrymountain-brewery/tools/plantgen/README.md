@@ -274,8 +274,9 @@ dmz-jump, wazuh, the BBMD hosts), else derived from its role: `sim` →
 `sim-federate` (the HELICS broker host is `sim-ctl`), `rio`/`field`/`bas`/
 `fep`/`dnp3-master` → `rio`, `plc` → `openplc`, `scada` → `fuxa`, `historian`
 → `historian`, `ews` → `ews`. The shapes are the app's metadata models
-(`apps/cherrymountain_apps/cherrymountain/metadata.py`); the tests compare the
-block with the app's `app-<variant>.yml` fixtures.
+(`phenix_apps/apps/cherrymountain/metadata.py` in sceptre-phenix-apps); the tests
+compare the block with the app's `app-<variant>.yml` fixtures, which ship with
+the phenix-apps package, when it is installed.
 
 ### `phenix/soh.yaml`
 

@@ -3426,7 +3426,6 @@ cherrymountain-brewery/
 │   ├── bbmd/  brand/  desktop/  docker/  ews/  fuxa/  grafana/  guacamole/  inet-traffic/
 │   └── malcolm/  openplc/  ot-svc/  otsim/  sim/  vrouter/  wazuh/  wireguard/
 ├── phenix-images/                  # Image configs (cm-*.yml) and README; built with phenix image build
-├── apps/                           # cherrymountain_apps: the cherrymountain phenix app (with its script, systemd, and template files, which include the historian and federate units), the plantevent SCORCH component, simctl.py
 ├── sim/                            # cherrymountain_sim federates package and tests
 ├── viz/                            # cherrymountain_viz: cm-viz, the white cell's 3D view, and its tests
 ├── plc/<plc>/                      # the five PLC programs in Structured Text; plc/plc-cellar/ also builds the ci ZIP (phenix-injects/openplc/plc-cellar.zip, LFS)
@@ -4207,8 +4206,8 @@ title, which the open-source edition cannot change.
 
 | Item | Where | Purpose |
 |---|---|---|
-| `phenix-app-cherrymountain` | `apps/` (Python `AppBase`, `pyproject.toml`; Dockerfile `FROM ghcr.io/sandialabs/sceptre-phenix/phenix:main` by default, pinned by digest; the `PHENIX_IMAGE` build argument names the locally built fork image instead). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs and the kiosks' sign-in (the operator password, to the HMI hosts only), Guacamole connections, Wazuh enrollment, the FUXA operator password and the Malcolm and Wazuh web passwords, nftables MGMT policy, and for the ot-sim devices what the `ot-sim` app cannot render: the telnet module, and the I/O and BACnet modules (with the `helics/federate` annotation) of the BAS controllers. **post-start/running:** set `df_default=false` on the mirror's GRE ports ([§14](#14-blue-team-monitoring)); verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. The scenario runs the running stage every five minutes (`runPeriodically`); neither stage fails the experiment, and a host once seen provisioned is not asked again. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
-| `phenix-scorch-component-plantevent` | `apps/` | Drives the sim-ctl event API from SCORCH (batch, outage, genset exercise, chiller fault, CO₂ release, jam, weather step, CIP panel, CO₂ leak, gas-detection failure, refrigerant leak, BESS thermal), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
+| `phenix-app-cherrymountain` | `sceptre-phenix-apps` fork, branch `feat-cherrymountain-apps`: `src/python/phenix_apps/apps/cherrymountain/` (Python `AppBase`, with its script, systemd, and template files and `simctl.py`, the event API client). Built, all five stages | **configure:** validate `plant.yaml` against the topology; emit `sohProfile`s. **pre-start:** render and inject the OpenPLC `opcua` and `s7comm` plugin configs (derived from the compiled program's debug map; plantgen supplies the Modbus ones) and boot scripts, the FUXA project and `mysettings.json`, Telegraf/Grafana/Mosquitto/InfluxDB provisioning, HELICS federate configs for sim nodes, HMI kiosk URLs and the kiosks' sign-in (the operator password, to the HMI hosts only), Guacamole connections, Wazuh enrollment, the FUXA operator password and the Malcolm and Wazuh web passwords, nftables MGMT policy, and for the ot-sim devices what the `ot-sim` app cannot render: the telnet module, and the I/O and BACnet modules (with the `helics/federate` annotation) of the BAS controllers. **post-start/running:** set `df_default=false` on the mirror's GRE ports ([§14](#14-blue-team-monitoring)); verify provisioning; write plant KPIs (batches, bottles, kWh/bbl, demand) to `status.apps.cherrymountain`. The scenario runs the running stage every five minutes (`runPeriodically`); neither stage fails the experiment, and a host once seen provisioned is not asked again. **cleanup:** export the FUXA alarm history, DAQ data, and an InfluxDB backup to the Files directory |
+| `phenix-scorch-component-plantevent` | `sceptre-phenix-apps` fork, branch `feat-cherrymountain-apps`: `src/python/phenix_apps/apps/scorch/plantevent/` | Drives the sim-ctl event API from SCORCH (batch, outage, genset exercise, chiller fault, CO₂ release, jam, weather step, CIP panel, CO₂ leak, gas-detection failure, refrigerant leak, BESS thermal), through the autotunnel forward of sim-ctl:8080. The host port is random and phenix's forwards API does not report it, so the component looks it up with `cc tunnel list` at each stage, and opens a tunnel itself when none exists ([§15.3](#153-topology-modules-and-variants)). Built |
 | `plantgen` | `tools/plantgen/` | Offline generator, built. Inputs: `plant.yaml` and the topology. It writes the `ci`, `full`, and `lite` outputs: scenario `ot-sim` metadata (analog points with `data-type: uint16`, or `int16` where signed), register maps for all three addressing conventions, the OpenPLC `modbus_master.json` and `modbus_slave.json` (with an explicit `buffer_mapping`), FUXA tag lists for both FUXA hosts, explicit HELICS pub/sub lists and the `helics` app block, the `ntp` host list, the `soh` block, the `cherrymountain` app block, the `bacnet/<host>.json` object tables, the `dnp3/<fep>.json` point map, WireGuard key pairs and tunnel addresses (deterministic X25519 keys from a seed, checked against the RFC 7748 vectors), and SCORCH `pcap` VM/interface lists. Outputs are committed, and CI checks they are current (`cm-plantgen-tests`, `cm-sync-check`) |
 | `cherrymountain_sim` | `sim/` | Process, power, building, and weather federates plus the event API, built ([§9](#9-simulation-and-co-simulation), [§9.6](#96-implementation-status-and-validation)), tested in CI (`cm-sim-tests`) |
 | `cm-viz` | `viz/` | The white cell's 3D view of ground truth: a Python bridge from the sim-ctl snapshot to a read-only WebSocket, and a three.js page with three scenes and an SVG fallback ([§15.10](#1510-white-cell-3d-view-cm-viz)); tested in CI (`cm-viz-tests`) and in headless Chromium (`-m browser`) |
@@ -4227,10 +4226,13 @@ title, which the open-source edition cannot change.
 | Image configs | `phenix-images/` | [§15.7](#157-images) |
 | SoH protocol probes (proposal) | `sandialabs/sceptre-phenix` | Optional upstream proposal: first-class Modbus/BACnet/OPC UA SoH checks, replacing the scripted custom tests |
 
-Until the upstream changes merge, the derived phenix container installs
-forked `sceptre-phenix-apps` (the phenix Dockerfile's `APPS_REPO` and
-`APPS_BRANCH` build arguments), and the range runs on the phenix fork for the
-autotunnel loop. The upstream changes still to make are listed in
+Until the upstream changes merge, the range's phenix image installs the
+forked `sceptre-phenix-apps` through the phenix Dockerfile's build arguments,
+`APPS_REPO=github.com/GhostofGoes/sceptre-phenix-apps` and
+`APPS_BRANCH=feat-cherrymountain-apps`, and the range runs on the phenix fork
+for the autotunnel loop. That branch holds the `cherrymountain` app and
+`plantevent` next to the fork's other apps, so the image needs no second layer.
+The upstream changes still to make are listed in
 [FUTURE_WORK.md](FUTURE_WORK.md#upstream).
 
 **`cherrymountain` app metadata validation.** The app follows the pattern of
@@ -4248,8 +4250,8 @@ sceptre-phenix-apps:
   passwords.
 - **Unknown keys warn.** A key the model does not know produces a warning with
   a did-you-mean suggestion, not a failure, for shapes that allow extras.
-- **Entry point.** `pyproject.toml` has a `[project.scripts]` entry,
-  `phenix-app-cherrymountain`, as sceptre-phenix-apps does for each app.
+- **Entry point.** The `pyproject.toml` of sceptre-phenix-apps has a
+  `[project.scripts]` entry, `phenix-app-cherrymountain`, as for each app.
 - **README.** The app ships its own `README.md` next to its code, covering its
   metadata, stages, and tests, and so does `plantevent`.
 
@@ -4263,14 +4265,17 @@ sceptre-phenix-apps:
   program ZIP with `debug_map.json`, built by `plc/common/` and committed in
   `phenix-injects/openplc/full/` and `lite/`. The BBMD config is static
   topology injects, not rendered by the app.
-- **Tests.** 302 (270 of the app, 32 of `plantevent`), run on the recorded
+- **Tests.** 303 (271 of the app, 32 of `plantevent`), run on the recorded
   `ci` and `full` experiments. A test fails when a recorded experiment differs
   from what the committed topology, scenario, and workflow give
   (`build_fixtures.py` re-records them), one renders every host of the full
   variant in a single pre-start pass, and the chain tests run the real
   phenix-apps `ot-sim`, `helics`, `protonuke`, and `wireguard` apps around this
-  one in scenario order, on every variant and over two starts. The Docker image
-  was not built in the sandbox (proxy and disk); hadolint passes.
+  one in scenario order, on every variant and over two starts. The tests are in
+  sceptre-phenix-apps with the app and run there on a checkout of this
+  directory at a pinned commit; here, the `cm-app-tests` hook runs them from the
+  installed package on the commit under test ([§17](#17-testing-and-validation)).
+  The phenix image with the apps branch was not built in the sandbox.
 - **Not yet run.** Historian, Guacamole, Wazuh, the HMI kiosk, and ground
   truth render and pass their tests, and their images exist
   ([§15.7](#157-images)), but no VM has run them; `TODO(verify)` notes mark the
@@ -4344,9 +4349,16 @@ such a Forwarded-NPDU to that address on loopback and gets the unicast I-Am.
   the BBMD service, and the VyOS post-boot script. It models the rules phenix
   renders, not VyOS behavior.
 - **App tests (the `cm-app-tests` hook).** The `cherrymountain` app and
-  `plantevent` in `apps/`; [§16](#16-new-and-extended-software) says what they
-  cover. The hook installs phenix-apps from the fork the range runs on, pinned
-  by commit, because it is not on PyPI.
+  `plantevent`, which are in sceptre-phenix-apps;
+  [§16](#16-new-and-extended-software) says what they cover. The hook installs
+  phenix-apps from the fork the range runs on, pinned by commit, because it is
+  not on PyPI, and `tools/lint/run_app_tests.py` runs the tests that ship with
+  the package on this directory. The recorded experiments they run on are in
+  the apps repository: after a topology, scenario, or workflow change, record
+  them again there and move the pin. The shellcheck, `systemd-analyze`, and
+  `desktop-file-validate` hooks of this repository no longer see the app's
+  scripts, units, and `.desktop` file, and the apps repository runs none of
+  them ([FUTURE_WORK.md](FUTURE_WORK.md#checks-that-need-no-vm)).
 - **Batch engine tests (the `cm-fuxa-batch-tests` hook).** `fuxa/tests` runs
   the engine script, as the builder put it into the project, under Node against
   a stub of FUXA's script API and a port of plc-brewhouse's handshake: 25

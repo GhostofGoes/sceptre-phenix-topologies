@@ -2665,7 +2665,7 @@ variants:
         sim-process: { client: chrony }
         rio-cellar: { client: chrony }
         plc-cellar: { client: chrony, source: { hostname: scada-fuxa, interface: IF0 } }
-    # cherrymountain app metadata (apps/cherrymountain_apps/cherrymountain).
+    # cherrymountain app metadata (sceptre-phenix-apps, phenix_apps/apps/cherrymountain).
     app:
       verify: { timeout: 15 }
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import importlib.util
 import json
 from pathlib import Path
 from typing import Any
@@ -503,11 +504,18 @@ def test_cherrymountain_app_block_matches_the_app_fixtures(variant: str) -> None
     hosts = {h["hostname"]: h["metadata"]["type"] for h in app["hosts"]}
     assert hosts["sim-ctl"] == "sim-ctl" and hosts["scada-fuxa"] == "fuxa"
     assert set(hosts) <= set(plant.hosts)
+    # The app's fixtures ship with phenix-apps (sceptre-phenix-apps); without the
+    # package installed there is nothing to compare with.
+    spec = importlib.util.find_spec("phenix_apps")
+    if spec is None or not spec.submodule_search_locations:
+        return
     fixture = (
-        DEFAULT_PLANT.parents[1]
+        Path(next(iter(spec.submodule_search_locations)))
         / "apps"
-        / "cherrymountain_apps"
-        / (f"cherrymountain/tests/fixtures/app-{variant}.yml")
+        / "cherrymountain"
+        / "tests"
+        / "fixtures"
+        / f"app-{variant}.yml"
     )
     if fixture.exists():
         want = yaml.safe_load(fixture.read_text(encoding="utf-8"))

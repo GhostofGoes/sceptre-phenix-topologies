@@ -864,8 +864,8 @@ The shorter schedule also showed a gap. With the link of an uplink down, one
 packet of a tunnel left through the other uplink. It left in the moment before
 FRR installed the blackhole of the tunnel's table. A second rule to a table that
 always holds a blackhole closes the gap (finding V12 of
-[spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos)). No run
-with that rule finished yet.
+[spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos)). Run 42
+had that rule, and all three jobs passed 56 of 56 checks.
 
 Does the head office need its own AS? The other choice is that it takes
 ISP-assigned addresses on two uplinks, like `fc` and `ep`, with one hub

@@ -141,6 +141,9 @@ set vpn ipsec esp-group WAN lifetime 3600
 set vpn ipsec esp-group WAN pfs dh-group14
 set vpn ipsec esp-group WAN proposal 10 encryption aes256
 set vpn ipsec esp-group WAN proposal 10 hash sha256
+set vpn ipsec options retransmission attempts 3
+set vpn ipsec options retransmission timeout 2
+set vpn ipsec options retransmission base 1.8
 set interfaces vti vti101 description 'fc-a over ShadeCast Cable'
 set interfaces vti vti101 address 10.255.0.1/31
 set interfaces vti vti101 mtu 1400
@@ -162,6 +165,9 @@ set policy local-route rule 101 source address 203.0.113.10
 set policy local-route rule 101 set table 101
 set protocols static table 101 route 0.0.0.0/0 next-hop 203.0.113.9
 set protocols static table 101 route 0.0.0.0/0 blackhole distance 250
+set policy local-route rule 151 source address 203.0.113.10
+set policy local-route rule 151 set table 151
+set protocols static table 151 route 0.0.0.0/0 blackhole
 set protocols bgp neighbor 10.255.0.0 remote-as 64505
 set protocols bgp neighbor 10.255.0.0 description 'overlay fc-a'
 set protocols bgp neighbor 10.255.0.0 timers keepalive 3
@@ -191,6 +197,9 @@ set policy local-route rule 102 source address 198.18.101.10
 set policy local-route rule 102 set table 102
 set protocols static table 102 route 0.0.0.0/0 next-hop 198.18.101.9
 set protocols static table 102 route 0.0.0.0/0 blackhole distance 250
+set policy local-route rule 152 source address 198.18.101.10
+set policy local-route rule 152 set table 152
+set protocols static table 152 route 0.0.0.0/0 blackhole
 set protocols bgp neighbor 10.255.0.2 remote-as 64505
 set protocols bgp neighbor 10.255.0.2 description 'overlay fc-b'
 set protocols bgp neighbor 10.255.0.2 timers keepalive 3

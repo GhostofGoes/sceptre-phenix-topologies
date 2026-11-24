@@ -492,6 +492,8 @@ times a second:
     the head office.
   - Each ISP takes its default route back when the ISPs stop peering, and
     gives it again after the repair.
+- [x] Since run 40, a run also crashes the edge of the head office: a reboot
+      with no shutdown.
 
 ### Result on VyOS
 
@@ -540,7 +542,7 @@ times a second:
   [evidence/wan-bgp-vyos-vti](evidence/wan-bgp-vyos-vti), and
   [evidence/wan-bgp-vyos-vti-both](evidence/wan-bgp-vyos-vti-both) have the
   summary, the result, and the script that phenix rendered for each router.
-  The files are from run 38, with the keys removed.
+  The files are from run 42, with the keys removed.
 
 | Run | Commit | WireGuard job | IPsec job |
 |---|---|---|---|
@@ -558,6 +560,7 @@ times a second:
 | [39](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45366344077) | `177b3da`: the same lists, and the IKE log of the site from the reboot on | 53 of 53 | 53 of 53 in each of the two IPsec jobs |
 | [40](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45376693022) | `f50385c`: a crash of the edge of the head office after the clean restart | 56 of 56 | 56 of 56 in each of the two IPsec jobs |
 | [41](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45386896279) | `e80b323`: a shorter retry schedule for IKE | 56 of 56 | 55 of 56 when only the site opens the tunnels. One packet of the first tunnel left through the other uplink (finding V12). 56 of 56 when both ends open them |
+| [42](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45397506760) | `36e39eb`: the backstop rule of finding V12 | 56 of 56 | 56 of 56 in each of the two IPsec jobs |
 
 Runs 35 and 37 stopped before a router booted. The job did not check out the
 generator, so the test failed at its first line. Run 36 was canceled to make
@@ -856,7 +859,12 @@ runs 27 to 33.
 
     The fix is a second rule for the same packets, to a table that holds only
     a blackhole from the start (`pin_backstop` in
-    `tools/wangen/wangen/vyos.py`). No run with the fix finished yet.
+    `tools/wangen/wangen/vyos.py`).
+    [Run 42](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45397506760)
+    had the fix. The check counted no packet in each of the three jobs, and
+    all three passed 56 of 56 checks. With only the site opening the tunnels,
+    the site lost 59.6 s at the clean restart and 58.4 s at the crash. Each
+    tunnel had one IKE SA at each point.
 11. V11: A VyOS router takes what the generator adds to the lists.
 
     Since run 38, the job takes its lists from `tools/wangen`. The generator

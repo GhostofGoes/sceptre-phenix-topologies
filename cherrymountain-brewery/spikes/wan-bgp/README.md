@@ -556,6 +556,7 @@ times a second:
 | [34](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45342358564) | `98e6c49`: six fault rounds and a restart of the head office | 43 of 43 | 43 of 43 when only the site opens the tunnels. 40 of 40 when both ends open them, and then the job stopped. The reboot started before the test got the answer to its reboot command. The reboot now waits 10 s |
 | [38](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45354270513) | `d7733e7`: the lists of the generator, the fix of finding V9, and ten more checks | 53 of 53 | 53 of 53 in each of the two IPsec jobs |
 | [39](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45366344077) | `177b3da`: the same lists, and the IKE log of the site from the reboot on | 53 of 53 | 53 of 53 in each of the two IPsec jobs |
+| [40](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45376693022) | `f50385c`: a crash of the edge of the head office after the clean restart | 56 of 56 | 56 of 56 in each of the two IPsec jobs |
 
 Runs 35 and 37 stopped before a router booted. The job did not check out the
 generator, so the test failed at its first line. Run 36 was canceled to make
@@ -579,6 +580,7 @@ runs 27 to 33.
 | The edge of the head office restarts (run 34) | 57.2 s. The edge answered again after 46 s, and the traffic was back 15 s later | 88.8 s when only the site opens the tunnels. The edge answered again after 66 s, and the traffic was back 28 s later. Not measured when both ends open them |
 | The same fault, six rounds in run 38, with the fix of finding V9 | 2.2, 2.4, 2.6, 2.8, 2.8, and 2.2 s | Only the site opens the tunnels: 2.4, 2.2, 2.8, 2.6, 2.2, and 2.4 s. Both ends open them: 2.4, 2.2, 2.2, 2.2, 2.2, and 2.6 s |
 | The edge of the head office restarts (run 38) | 60.2 s | 88.2 s when only the site opens the tunnels. 59.2 s when both ends open them |
+| The edge of the head office crashes, with no shutdown (run 40) | 57.8 s | 168.4 s when only the site opens the tunnels. 63.4 s when both ends open them |
 | The link between the ISPs goes silent (run 38) | The head office had no default route 15 s later, and both routes 10 s after the repair | The same, with both routes 9 s after the repair |
 | The repair | None | None |
 | The ShadeCast uplink of the site is down for 20 s and more | No packet of `fc-a` left through the other uplink. The traffic was back on `fc-a` when the link was back | The same |
@@ -789,8 +791,33 @@ runs 27 to 33.
 
     Thus the 175 s of the review belongs to a different case: a head office
     that stops with no shutdown, such as a power loss. Then no DELETE reaches
-    the site, and the site must find the dead SA by itself. No run tested that
-    case. The job now reboots the edge a second time with no shutdown.
+    the site, and the site must find the dead SA by itself.
+
+    [Run 40](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45376693022)
+    made that case. After the clean restart, the edge of the head office
+    rebooted a second time with no shutdown. All three jobs passed 56 of 56
+    checks.
+
+    | Run 40 | WireGuard | IPsec, only the site opens | IPsec, both ends open |
+    |---|---|---|---|
+    | Loss at the clean restart | 59.0 s | 88.8 s | 66.0 s |
+    | Loss at the crash | 57.8 s | 168.4 s | 63.4 s |
+    | The edge answered again after the crash | 58 s | 77 s | 56 s |
+    | The traffic was back after the crash | 57 s | 170 s | 60 s |
+    | IKE SAs after the crash, for `fc-a` and for `fc-b` | Not applicable | 1 and 1 | 1 and 1 |
+
+    The review was right about the crash. When only the site opens the
+    tunnels, the site sent its message on the dead SA again and again. It gave
+    up after the fifth retry, 165 s after the first one, and then opened new
+    SAs in 2 s. When both ends open the tunnels, the head office opened new
+    SAs as soon as it was up. Its first message carried INITIAL_CONTACT, and
+    the site destroyed its old SAs. That also removed the extra SAs: each
+    tunnel had one IKE SA after the crash, where it had five and three before.
+
+    The site-only mode has a third choice. VyOS can shorten the retry schedule
+    of strongSwan (`vpn ipsec options retransmission`). With three tries from
+    2 s, IKE gives a silent peer up after about 24 s, not 165 s. `wan.yaml`
+    now sets that schedule, and the next run tests it.
 11. V11: A VyOS router takes what the generator adds to the lists.
 
     Since run 38, the job takes its lists from `tools/wangen`. The generator

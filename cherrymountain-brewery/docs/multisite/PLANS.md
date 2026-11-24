@@ -815,31 +815,45 @@ But the two-SA case after a long outage then comes back. That is decision
 D21.
 
 Both configurations ran with a head office reboot on 2026-11-24 (finding V10
-of [spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos)). The
-175 s did not show. When only the site opens the tunnels, the site lost 88.8 s
-and 88.2 s in two runs. The traffic was back about 28 s after the router was
-up, and each tunnel had one IKE SA. When both ends open the tunnels, the site
-lost 59.2 s in one run, which is the boot of the router. But each tunnel had
-two IKE SAs from the start, and `fc-a` had five after the restart. WireGuard
-lost 57.2 s and 60.2 s.
+of [spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos)). At a
+clean reboot, the 175 s did not show. When only the site opens the tunnels,
+the site lost 88.2 to 88.8 s in four runs. The traffic was back about 28 s
+after the router was up, and each tunnel had one IKE SA. When both ends open
+the tunnels, the site lost 59.2 to 66.0 s in three runs, which is the boot of
+the router. But each tunnel had two IKE SAs from the start, and `fc-a` had
+five after the restart. WireGuard lost 48.4 to 60.2 s in four runs.
 
 | | Only the site opens (today's configuration) | Both ends open |
 |---|---|---|
-| Loss when the head office restarts | 88 s, twice | 59 s, once |
+| Loss when the head office restarts | 88 s, four times | 59 to 66 s, three times |
+| Loss when the head office crashes | 168 s, once | 63 s, once |
 | Return after 200 s of silence | 27 to 62 s | 20 s and 36 s |
 | IKE SAs for each tunnel | 1, at each point of the run | 2 from the start, then 3, then 5 for `fc-a` |
 
-The recommendation is the site alone, for a clean restart. Such a restart
-costs about a minute in both modes. The other mode adds IKE SAs with each
-event, and nothing in the runs removed them. One SA for each tunnel is also
-what a defender can read.
+A clean reboot is the easy case. It stops strongSwan, which sends a DELETE for
+each IKE SA. The site then drops its SA at once and tries again after 4, 7,
+13, 23, and 42 s. The 28 s is the wait for the next try.
 
-One case is still open. A clean reboot stops strongSwan, which sends a DELETE
-for each IKE SA. The site then drops its SA at once and tries again after 4,
-7, 13, 23, and 42 s. The 28 s is the wait for the next try. A head office that
-stops with no shutdown sends no DELETE. That is the case of the 175 s, and no
-run tested it. The job now makes that case too, and its result can change the
-recommendation.
+A crash is the hard case, and run 40 made it: the edge of the head office
+rebooted with no shutdown. Then no DELETE reaches the site. When only the site
+opens the tunnels, the site lost 168.4 s. It sent its message on the dead SA
+again for 165 s, which is the retry schedule of strongSwan, and then opened
+new SAs. When both ends open the tunnels, the site lost 63.4 s. The head
+office opened new SAs as soon as it was up, and its INITIAL_CONTACT made the
+site drop the old ones. Each tunnel then had one IKE SA again. WireGuard lost
+57.8 s.
+
+There are three choices now:
+
+1. Only the site opens the tunnels, as today. Each tunnel has one IKE SA at
+   each point. A crash of the head office costs each site 168 s.
+2. Both ends open the tunnels. A crash costs 63 s. Each tunnel has two IKE SAs
+   from the start and up to five after some faults. No check failed because of
+   them in three runs, and a crash of the head office removed them.
+3. Only the site opens the tunnels, with a shorter retry schedule for IKE.
+   With three tries from 2 s, IKE gives a silent peer up after about 24 s.
+   `wan.yaml` now has this schedule, and it is the recommendation if its run
+   passes. A crash is then expected to cost about a minute plus 24 s at most.
 
 Does the head office need its own AS? The other choice is that it takes
 ISP-assigned addresses on two uplinks, like `fc` and `ep`, with one hub
@@ -1692,7 +1706,7 @@ another day. A row that says "not answered" still stands as recommended.
 | D18 | Engineering and history at `fc` | Neither on site, an `ews`, a historian, or both ([4.6](#46-what-the-head-office-does)). The question on 2026-11-23 was: what does a company regulated as breweries and a pub do? | A small historian and no `ews`. A brewpub is a brewery to TTB and the state. A brewery makes and keeps its records at the brewery, so the pub keeps its own store and sends a copy to the head office. No rule asks for an `ews`, and nobody at a pub will use one. The head office programs the PLCs through its own jump host, with multifactor sign-in and a recorded session. It uses a rule that the pub's edge keeps closed outside a maintenance window. The pub keeps a copy of each program ([REGIONS.md §7](REGIONS.md#7-breweries-and-a-pub-licences-and-records)) | Answered (2026-11-23) as recommended. This document now plans it |
 | D19 | The sensors at `cs` and `fc` | The same sensor as `ep` (4 vCPUs, 16 GB), a lighter one, or none at the pub | The same, until a sensor image exists to measure | The same (2026-11-23) |
 | D20 | How the company is licensed, which decides what `fc` is in law. Researched in depth on 2026-11-23 ([REGIONS.md §7](REGIONS.md#7-breweries-and-a-pub-licences-and-records)) | P2: every site is a brewery with a wholesaler's beer license, and each taproom is that license's sales room. With this option, `fc` adds a kitchen under a food license. P3: every site is a brew pub. P1: the pub belongs to an unrelated company, which holds a brew pub license. P4: a CherryMountain brewery with another company's restaurant next door. Colorado bars the same owners and shareholders from holding a brewery or wholesaler's license together with a brew pub, restaurant, or tavern license ([§7.1](REGIONS.md#71-one-owner-cannot-hold-both-colorado-licences)) | P2, on firmer ground. The state's data show companies with a taproom at each of several breweries. Food changes nothing, because the Code neither requires nor forbids it there. The limit is the drink: a brewery's taproom pours beer only. A full bar at the pub needs P3, P1, or P4. With P3, `ep` gains a pub and a kitchen. With P1 or P4, the VPN joins two companies, whose contract must keep them apart | Open |
-| D21 | Who opens the IPsec tunnels | The site only (the head office answers). That gives one SA for each tunnel, and about 175 s of outage at every site after a head office restart. Both ends. Then the site drops its stale SA at once, and a tunnel can have two SAs after a long outage ([4.5](#45-the-vpn)) | The site only. Both ran with a head office reboot on 2026-11-24 ([4.5](#45-the-vpn)). No tunnel stuck in either mode. The site-only mode lost 88 s and kept one IKE SA for each tunnel. The other mode lost 59 s and collected up to five IKE SAs for a tunnel. It was "test both, and the expected winner is both ends" | Tested (2026-11-24). The choice is open, and the configuration stays the site only |
+| D21 | Who opens the IPsec tunnels | The site only (the head office answers). That gives one SA for each tunnel, and about 175 s of outage at every site after a head office restart. Both ends. Then the site drops its stale SA at once, and a tunnel can have two SAs after a long outage ([4.5](#45-the-vpn)) | The site only, with a shorter retry schedule for IKE, if its run passes. All of it ran on 2026-11-24 ([4.5](#45-the-vpn)). No tunnel stuck in either mode. A clean restart cost 88 s when only the site opens the tunnels, and 59 to 66 s when both ends open them. A crash cost 168 s and 63 s. The site-only mode kept one IKE SA for each tunnel, and the other mode collected up to five. It was "test both, and the expected winner is both ends" | Tested (2026-11-24), with a crash of the head office too. The choice is open among three ([4.5](#45-the-vpn)). The configuration is the site only, with a shorter IKE retry schedule that a run still tests |
 | D22 | The rooftop unit at `ep`, which has no taproom ([4.1](#41-what-each-site-is)) | Keep it, for the office and a tasting room. Or drop it, and then the building federate, the power PLC's load shedding, and the building SCADA's screen must work without it | Keep it: no site then drops a unit inside an area (C11) | Keep it (2026-11-23) |
 | D23 | How the company's engineers reach the other sites ([4.6](#46-what-the-head-office-does)) | The vendor's `dmz-jump`, or a jump host of the company's own in `fr`'s DMZ (one more VM) | The company's own, `eng-jump`: named accounts, multifactor sign-in, recorded sessions. The vendor's host reaches no other site | The company's own (2026-11-23) |
 | D24 | The utility's peak-hour signal at `fc` ([REGIONS.md §6.2](REGIONS.md#62-electricity)) | An OpenADR client that holds the boiler off in the hour that sets the bill. That is a new flow from the internet into the pub. Or the tariff as documentation only | Later: `fc` has no power area and no revenue meter in the first build, so nothing uses the signal | Later (2026-11-23) |

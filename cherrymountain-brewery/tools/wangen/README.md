@@ -54,8 +54,8 @@ hold what the `vrouter` app does not write itself:
 - An ISP or a transit router: BGP with the customer, peer, and provider rules.
   An ISP sends the head office a default route only while the ISP holds a
   prefix of its own providers.
-- The head office: its public prefix to two ISPs, a default route from each,
-  and a tunnel to each uplink of each site. It accepts from a site only the
+- The head office: its public prefix to two ISPs, and a tunnel to each uplink
+  of each site. It takes a default route and the public routes from each ISP. It accepts from a site only the
   routes of that site. It drops and logs a packet from a tunnel whose source is
   not in the blocks of that site. Its private addresses go to the internet as
   one address of its own prefix, through either ISP.
@@ -71,7 +71,7 @@ hold what the `vrouter` app does not write itself:
 | What | Where it ran |
 |---|---|
 | The lists without the last four items (the source filter, NAT, the failover routes, and the conditional default route) | On four VyOS routers in CI, for both types of tunnel. A test makes sure that the generator writes the same lists as that spike ([spikes/wan-bgp](../../spikes/wan-bgp/README.md#the-same-wan-on-vyos-routers)) |
-| The lists with those four items | The `wan-bgp-vyos` job commits them on the same four routers. [spikes/wan-bgp/README.md](../../spikes/wan-bgp/README.md) has the result of each run |
+| The lists with those four items, and with the routes of each ISP at the head office | On the same four routers in CI. In run 38, each of the three jobs passed 53 of 53 checks ([spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos), findings V9 to V11) |
 | The ten routers of the `wan` variant | Not run. The variant needs a phenix host or the cluster ([USER_GUIDE.md](../../USER_GUIDE.md#d-the-whole-wan-as-a-phenix-variant-wan)) |
 
 The pre-shared keys in `scenario-wan.yml` come from a fixed text. They are

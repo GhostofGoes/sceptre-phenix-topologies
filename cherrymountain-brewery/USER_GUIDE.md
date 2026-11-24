@@ -896,20 +896,23 @@ two ISPs, the edge of the head office, and the Fort Collins edge. At first
 boot, each router takes its BGP, BFD, and tunnels from the `config` list of the
 phenix `vrouter` app. That list needs a change to phenix that is still a draft
 ([GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27)).
-One job builds the tunnels with WireGuard, and one job builds them with
+One job builds the tunnels with WireGuard, and two jobs build them with
 route-based IPsec.
 
 This part runs in GitHub Actions, as the `wan-bgp-vyos` job of the workflow
 [cherrymountain-spikes.yml](../.github/workflows/cherrymountain-spikes.yml).
 The job builds the VyOS image, patches phenix, and boots the routers. Then it
-runs 39 checks and four faults. It uploads `evidence-wan-bgp-vyos-wireguard`
-and `evidence-wan-bgp-vyos-vti`.
+runs 53 checks, with the faults and a restart of the head office. It has
+three parts: one for WireGuard, and two for IPsec (only the site opens the
+tunnels, or both ends open them). It uploads
+`evidence-wan-bgp-vyos-wireguard`, `evidence-wan-bgp-vyos-vti`, and
+`evidence-wan-bgp-vyos-vti-both`.
 
 - The runs so far started with a push to the branch `test-wan-bgp-vyos`. That
   branch is the feature branch, with the push trigger of the workflow extended
-  to it. The last run is
-  [run 33](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45131775836),
-  with 39 of 39 checks for each type of tunnel.
+  to it. The last run in this guide is
+  [run 38](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45354270513),
+  with 53 of 53 checks in each of the three parts.
 - The workflow also has a manual trigger with a `spikes` input. Set the input
   to `wan-bgp-vyos`. The runs above did not use this trigger.
 - No person tried a run on a different phenix host. The steps of the job are
@@ -956,9 +959,10 @@ office, and the edges of the three other sites. It also has one host behind
 each edge and one host on the internet. That is 15 VMs, 25 vCPUs, and 25 GB.
 
 Nobody ran this variant yet. Its files are generated and tested offline. The
-four routers of part B commit the same configuration lists in CI. The other
-six routers, the transit carrier, and the SoH tests are not proven on VMs. The
-first run is stage 2 of [PLANS.md §8](docs/multisite/PLANS.md#8-stages).
+four routers of part B commit the lists of the same generator in CI, and they
+pass each check there. The other six routers, the transit carrier, and the SoH
+tests are not proven on VMs. The first run is stage 2 of
+[PLANS.md §8](docs/multisite/PLANS.md#8-stages).
 
 The tool [tools/wangen](tools/wangen/README.md) writes the three files of the
 variant from `wan/wan.yaml`: `phenix-wan.yml`,

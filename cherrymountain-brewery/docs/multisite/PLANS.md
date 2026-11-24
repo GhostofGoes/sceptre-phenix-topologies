@@ -733,13 +733,28 @@ How V2 behaves: each item says which test showed it.
   takes each ISP's routes as well as the default, with the endpoint as the
   source of all of them. In the second, the default becomes conditional on a
   transit prefix.
+
+  The generator does both, for two reasons. The condition takes the default
+  route away when an ISP loses its transit. The routes of each ISP do
+  something else: they send the packets of a tunnel back through the ISP of
+  that tunnel. With the default route only, a hash selected the ISP. In one
+  run, a fault of one ISP at the head office then stopped both tunnels of the
+  site for 5 s. Finding V9 of
+  [spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos) has the
+  details.
 - The head office keeps the routes that its ISPs send
   (`soft-reconfiguration inbound`). Without this configuration, FRR took a
   default route away from the head office at first boot in three of four
   jobs. In one of those jobs, FRR took both
   ([7.4](#74-wan-bgp-on-vyos-routers)).
 
-What V2 still needs, for stage 2:
+What V2 still needed, for stage 2. The generator now writes the first and
+the third item, the source NAT of the second item, and the conditional default
+route. Four VyOS routers committed them and passed each check in run 38
+(finding V11 of
+[spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos)). The
+replies of the DNAT on `203.0.113.2` do not have their path through ShadeCast
+yet. That part waits for the services of the head office in stage 4.
 
 - Each tunnel admits only its site's sources. A firewall rule on each VTI
   drops and logs a packet whose source is not in that site's blocks. Without
@@ -796,8 +811,29 @@ without a word. Thus nothing tells the site sooner.
 
 If the head office opens tunnels too (`connection-type initiate`), its first
 IKE_AUTH carries INITIAL_CONTACT, and the site drops its stale SA at once.
-But the two-SA case after a long outage then comes back. Neither
-configuration ran with a head office reboot. That is decision D21.
+But the two-SA case after a long outage then comes back. That is decision
+D21.
+
+Both configurations ran with a head office reboot on 2026-11-24 (finding V10
+of [spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos)). The
+175 s did not show. When only the site opens the tunnels, the site lost 88.8 s
+and 88.2 s in two runs. The traffic was back about 28 s after the router was
+up, and each tunnel had one IKE SA. When both ends open the tunnels, the site
+lost 59.2 s in one run, which is the boot of the router. But each tunnel had
+two IKE SAs from the start, and `fc-a` had five after the restart. WireGuard
+lost 57.2 s and 60.2 s.
+
+| | Only the site opens (today's configuration) | Both ends open |
+|---|---|---|
+| Loss when the head office restarts | 88 s, twice | 59 s, once |
+| Return after 200 s of silence | 27 to 62 s | 20 s and 36 s |
+| IKE SAs for each tunnel | 1, at each point of the run | 2 from the start, then 3, then 5 for `fc-a` |
+
+The recommendation changed. The site alone opens the tunnels. A restart of
+the head office is rare, and it costs about a minute in both modes. The other
+mode adds IKE SAs with each event, and nothing in the runs removed them. One
+SA for each tunnel is also what a defender can read. No run shows why the
+return takes 28 s. The job now saves the site's IKE log for that.
 
 Does the head office need its own AS? The other choice is that it takes
 ISP-assigned addresses on two uplinks, like `fc` and `ep`, with one hub
@@ -1586,6 +1622,26 @@ stage 5 (measure, then grow).
 | 4 | The `fleet` variant. It has the site files, the head-office services, the cross-site conduits, and `netcheck` for the fleet. It also has the sensor image and the mirror app's VLAN for each monitor host. One site first, then all four, placed as in [4.8](#48-where-the-vms-run) | Every conduit that answers passes SoH across the VPN. `netcheck` passes the conduits that do not answer (syslog, BBMD, IKE and ESP), and every blocked path |
 | 5 | Measure each node while the fleet runs | A record of load and steal time exists for each node, and those figures set the BFD interval. Steal time is the time that a VM waits for a host CPU |
 
+State on 2026-11-24:
+
+- Stage 2: The generator `tools/wangen` writes the `wan` variant from
+  `wan/wan.yaml`. The variant has 15 VMs, SoH pings through the VPN and to the
+  internet, and one SCORCH run for each of four faults. Its lists ran on four
+  VyOS routers in CI, with the faults and a head office restart. The ten
+  routers, the transit carrier, and the SCORCH runs did not run on VMs.
+- Stage 3: `plant/sites.yaml` describes the four sites. plantgen writes each
+  site's files under `plant/generated/fleet/`, and a topology file for each
+  site. The FUXA builder writes the projects of each site. netcheck writes
+  each site's firewall rules and checks each site alone
+  (`python -m netcheck --site CODE`). All four sites pass, so `ep` and `fc`
+  do. The broker spike passed ([7.6](#76-site-brokers-a-broker-for-each-site)).
+- Stage 3 still needs five parts before one site can boot alone:
+  - The `cherrymountain` app with a broker and a project for each site.
+  - `sync.py` for the sites.
+  - The injected files with the site's names.
+  - A workflow file.
+  - A sensor image.
+
 Stage 1 ran on a GitHub runner, as the Phase 0 VM spikes did. Stage C needs
 the cluster and an hour. It is the first thing to run there, because every
 later stage depends on a full-size frame that crosses between nodes. Stage 2
@@ -1621,7 +1677,7 @@ another day. A row that says "not answered" still stands as recommended.
 | D18 | Engineering and history at `fc` | Neither on site, an `ews`, a historian, or both ([4.6](#46-what-the-head-office-does)). The question on 2026-11-23 was: what does a company regulated as breweries and a pub do? | A small historian and no `ews`. A brewpub is a brewery to TTB and the state. A brewery makes and keeps its records at the brewery, so the pub keeps its own store and sends a copy to the head office. No rule asks for an `ews`, and nobody at a pub will use one. The head office programs the PLCs through its own jump host, with multifactor sign-in and a recorded session. It uses a rule that the pub's edge keeps closed outside a maintenance window. The pub keeps a copy of each program ([REGIONS.md §7](REGIONS.md#7-breweries-and-a-pub-licences-and-records)) | Answered (2026-11-23) as recommended. This document now plans it |
 | D19 | The sensors at `cs` and `fc` | The same sensor as `ep` (4 vCPUs, 16 GB), a lighter one, or none at the pub | The same, until a sensor image exists to measure | The same (2026-11-23) |
 | D20 | How the company is licensed, which decides what `fc` is in law. Researched in depth on 2026-11-23 ([REGIONS.md §7](REGIONS.md#7-breweries-and-a-pub-licences-and-records)) | P2: every site is a brewery with a wholesaler's beer license, and each taproom is that license's sales room. With this option, `fc` adds a kitchen under a food license. P3: every site is a brew pub. P1: the pub belongs to an unrelated company, which holds a brew pub license. P4: a CherryMountain brewery with another company's restaurant next door. Colorado bars the same owners and shareholders from holding a brewery or wholesaler's license together with a brew pub, restaurant, or tavern license ([§7.1](REGIONS.md#71-one-owner-cannot-hold-both-colorado-licences)) | P2, on firmer ground. The state's data show companies with a taproom at each of several breweries. Food changes nothing, because the Code neither requires nor forbids it there. The limit is the drink: a brewery's taproom pours beer only. A full bar at the pub needs P3, P1, or P4. With P3, `ep` gains a pub and a kitchen. With P1 or P4, the VPN joins two companies, whose contract must keep them apart | Open |
-| D21 | Who opens the IPsec tunnels | The site only (the head office answers). That gives one SA for each tunnel, and about 175 s of outage at every site after a head office restart. Both ends. Then the site drops its stale SA at once, and a tunnel can have two SAs after a long outage ([4.5](#45-the-vpn)) | Test both in stage 2 with a head office reboot, a site reboot, and a long outage. Keep the one with no stuck tunnel. The expected winner is both ends | Test both in stage 2 (2026-11-23) |
+| D21 | Who opens the IPsec tunnels | The site only (the head office answers). That gives one SA for each tunnel, and about 175 s of outage at every site after a head office restart. Both ends. Then the site drops its stale SA at once, and a tunnel can have two SAs after a long outage ([4.5](#45-the-vpn)) | The site only. Both ran with a head office reboot on 2026-11-24 ([4.5](#45-the-vpn)). No tunnel stuck in either mode. The site-only mode lost 88 s and kept one IKE SA for each tunnel. The other mode lost 59 s and collected up to five IKE SAs for a tunnel. It was "test both, and the expected winner is both ends" | Tested (2026-11-24). The choice is open, and the configuration stays the site only |
 | D22 | The rooftop unit at `ep`, which has no taproom ([4.1](#41-what-each-site-is)) | Keep it, for the office and a tasting room. Or drop it, and then the building federate, the power PLC's load shedding, and the building SCADA's screen must work without it | Keep it: no site then drops a unit inside an area (C11) | Keep it (2026-11-23) |
 | D23 | How the company's engineers reach the other sites ([4.6](#46-what-the-head-office-does)) | The vendor's `dmz-jump`, or a jump host of the company's own in `fr`'s DMZ (one more VM) | The company's own, `eng-jump`: named accounts, multifactor sign-in, recorded sessions. The vendor's host reaches no other site | The company's own (2026-11-23) |
 | D24 | The utility's peak-hour signal at `fc` ([REGIONS.md §6.2](REGIONS.md#62-electricity)) | An OpenADR client that holds the boiler off in the hour that sets the bill. That is a new flow from the internet into the pub. Or the tariff as documentation only | Later: `fc` has no power area and no revenue meter in the first build, so nothing uses the signal | Later (2026-11-23) |

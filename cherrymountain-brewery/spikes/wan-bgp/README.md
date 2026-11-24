@@ -478,6 +478,20 @@ times a second:
     a log of each BGP and BFD event on the four routers.
   - A restart of the edge of the head office, with a ping from the site
     through it.
+- [x] Since run 38, the routers commit the lists of the generator of the range
+      (`tools/wangen`), and a run also has these checks:
+  - The head office drops and logs a forged source that comes out of a tunnel.
+  - A host at the site reaches a public address as the address of its uplink.
+  - A host at the head office reaches public addresses through both ISPs as
+    one address of the head office.
+  - The head office sends the packets of each tunnel through the ISP of that
+    tunnel.
+  - The default route of the site moves to the second uplink under a silent
+    fault, and returns.
+  - The BGP session of the second tunnel survives each round of the fault at
+    the head office.
+  - Each ISP takes its default route back when the ISPs stop peering, and
+    gives it again after the repair.
 
 ### Result on VyOS
 
@@ -499,6 +513,9 @@ times a second:
   added the fault rounds and the restart of the head office (findings V9 and
   V10). It has three jobs, because IPsec ran in two modes: only the site opens
   the tunnels, or both ends open them.
+  [Run 38](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45354270513)
+  took the lists from the generator of the range, with the fix of finding V9
+  and what finding V11 lists. All three jobs passed 53 of 53 checks.
   - Run 29 had the patch as it is in the pull request, a head office that
     only answers IKE, and a newer VyOS (999.202611222329).
   - Run 30 had the route filters as a list for each site, and the check of
@@ -519,10 +536,11 @@ times a second:
     The other software was FRR 10.7.1, strongSwan as VyOS ships it, phenix
     `ci-e2e-minimega` at `afbcba7` with the patch, and minimega 3.3.0 at
     `66ed1aa`.
-- Evidence: [evidence/wan-bgp-vyos-wireguard](evidence/wan-bgp-vyos-wireguard)
-  and [evidence/wan-bgp-vyos-vti](evidence/wan-bgp-vyos-vti) have the summary,
-  the result, and the script that phenix rendered for each router. The files
-  are from run 33, with the keys removed.
+- Evidence: [evidence/wan-bgp-vyos-wireguard](evidence/wan-bgp-vyos-wireguard),
+  [evidence/wan-bgp-vyos-vti](evidence/wan-bgp-vyos-vti), and
+  [evidence/wan-bgp-vyos-vti-both](evidence/wan-bgp-vyos-vti-both) have the
+  summary, the result, and the script that phenix rendered for each router.
+  The files are from run 38, with the keys removed.
 
 | Run | Commit | WireGuard job | IPsec job |
 |---|---|---|---|
@@ -536,6 +554,11 @@ times a second:
 | [32](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45126127571) | `f0ea1bc`: the changes from the review and nine more checks | 38 of 39. The BFD check counted the lines of the profile as sessions | 38 of 39, for the same cause |
 | [33](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45131775836) | `90ff41f`: with the BFD count fixed | 39 of 39 | 39 of 39 |
 | [34](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45342358564) | `98e6c49`: six fault rounds and a restart of the head office | 43 of 43 | 43 of 43 when only the site opens the tunnels. 40 of 40 when both ends open them, and then the job stopped. The reboot started before the test got the answer to its reboot command. The reboot now waits 10 s |
+| [38](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45354270513) | `d7733e7`: the lists of the generator, the fix of finding V9, and ten more checks | 53 of 53 | 53 of 53 in each of the two IPsec jobs |
+
+Runs 35 and 37 stopped before a router booted. The job did not check out the
+generator, so the test failed at its first line. Run 36 was canceled to make
+room for run 37.
 
 Run 26 was canceled to make room for run 27. Runs 22 and 23 never built the
 VyOS image (finding V7).
@@ -553,6 +576,9 @@ runs 27 to 33.
 | ShadeCast goes silent toward the head office | 2.6, 2.2, 2.2, 2.4, 2.6, 2.2, 2.8, and 2.6 s. ShadeCast then reaches the head office through Tumbleweed | 2.8, 5.4, 2.8, 2.2, 2.6, 5.0, 5.2, and 2.2 s. Three of eight values are near 5 s. Finding V9 has the cause |
 | The same fault, six rounds in run 34 | 2.2, 2.6, 2.8, 2.2, 2.0, and 2.6 s | Only the site opens the tunnels: 2.8, 2.2, 5.4, 5.0, 3.0, and 2.4 s. Both ends open them: 3.0, 2.4, 3.0, 2.8, 2.6, and 2.6 s |
 | The edge of the head office restarts (run 34) | 57.2 s. The edge answered again after 46 s, and the traffic was back 15 s later | 88.8 s when only the site opens the tunnels. The edge answered again after 66 s, and the traffic was back 28 s later. Not measured when both ends open them |
+| The same fault, six rounds in run 38, with the fix of finding V9 | 2.2, 2.4, 2.6, 2.8, 2.8, and 2.2 s | Only the site opens the tunnels: 2.4, 2.2, 2.8, 2.6, 2.2, and 2.4 s. Both ends open them: 2.4, 2.2, 2.2, 2.2, 2.2, and 2.6 s |
+| The edge of the head office restarts (run 38) | 60.2 s | 88.2 s when only the site opens the tunnels. 59.2 s when both ends open them |
+| The link between the ISPs goes silent (run 38) | The head office had no default route 15 s later, and both routes 10 s after the repair | The same, with both routes 9 s after the repair |
 | The repair | None | None |
 | The ShadeCast uplink of the site is down for 20 s and more | No packet of `fc-a` left through the other uplink. The traffic was back on `fc-a` when the link was back | The same |
 | 200 s of silence toward the site, then the repair | The traffic was back on `fc-a` 8, 8, 9, 8, 9, 8, and 9 s after the repair. The last handshake was 237 s old | The traffic was back on `fc-a` after 36 s and 20 s when both ends open tunnels. It was back after 57, 59, 62, 27, and 31 s when the head office only answers. Before the repair, IKE gave the peer up, and the VTI was down |
@@ -691,7 +717,12 @@ runs 27 to 33.
    generator writes this configuration (`internet_routes` in
    `tools/wangen/wangen/vyos.py`). The job now checks the route of each
    tunnel's packets, and it fails if the session of the second tunnel ends in
-   a round. No run with the fix finished yet.
+   a round.
+
+   Run 38 had the fix. In each of its three jobs, the packets of `fc-a` left
+   the head office through ShadeCast, and the packets of `fc-b` left through
+   Tumbleweed. The session of `fc-b` ended in no round. The 18 rounds lost 2.2
+   to 2.8 s.
 10. V10: The site comes back by itself after the head office restarts.
 
     Run 34 restarted the edge of the head office while the host of the site
@@ -716,9 +747,56 @@ runs 27 to 33.
     28 s after the edge answered. The evidence of run 34 does not show why,
     because it has no IKE log of the site. The job now saves that log.
 
-    The job where both ends open the tunnels stopped before this test, so that
-    mode has no figure yet (decision D21 of
-    [PLANS.md](../../docs/multisite/PLANS.md)).
+    The job where both ends open the tunnels stopped before this test in run
+    34. Run 38 measured all three:
+
+    | Run 38 | WireGuard | IPsec, only the site opens | IPsec, both ends open |
+    |---|---|---|---|
+    | Longest loss of pings | 60.2 s | 88.2 s | 59.2 s |
+    | The edge answered again after | 61 s | 60 s | 63 s |
+    | The BGP sessions of the head office were up after | 66 s | 95 s | 78 s |
+    | The traffic was back after | 60 s | 88 s | 61 s |
+    | IKE SAs afterward, for `fc-a` and for `fc-b` | Not applicable | 1 and 1 | 5 and 3 |
+
+    In run 38, the times count from the reboot itself. The test polls the edge
+    each 5 s, so "answered again" can be later than the return of the traffic.
+
+    The two modes of IPsec differ in the same way in both runs. When only the
+    site opens the tunnels, the traffic returns about 28 s after the router is
+    up, and each tunnel has one IKE SA. When both ends open the tunnels, the
+    traffic returns when the router is up, as with WireGuard. However, the
+    tunnels then had five and three IKE SAs at each end. In that mode, each
+    tunnel had two IKE SAs from the start, before any fault. `fc-a` had three
+    after the faults, and five after the restart. When only the site opens the
+    tunnels, each tunnel had one IKE SA at each of those points. This is the
+    choice of decision D21 of [PLANS.md](../../docs/multisite/PLANS.md).
+
+    The IKE log that the job saved in run 38 starts after the tunnels were
+    back. Thus it still does not show why the return takes 28 s and not 175 s.
+    The job now saves the lines from the reboot on.
+11. V11: A VyOS router takes what the generator adds to the lists.
+
+    Since run 38, the job takes its lists from `tools/wangen`. The generator
+    adds commands to the lists of the earlier runs. It adds 46 at the head
+    office, 17 at the site, and 5 at each ISP. Each router committed its list
+    at first boot and held every line afterward, in all three jobs.
+
+    - Source filter: The edge of the site sent pings with a source of the
+      Eastern Plains site into its tunnel. The head office logged six drops in
+      the forward chain and six in the input chain, with the rule and the
+      tunnel interface. A ping from the site's own address passed.
+    - NAT: A host at the site reached the public endpoint of the head office.
+      The replies went to the address of the first uplink of the site. A
+      host at the head office reached six ISP addresses. The replies went to
+      `198.18.105.2`, and the flows left through both uplinks.
+    - Failover: Under the silent fault of the first uplink, the default route
+      of the site moved to the second uplink. A new flow then reached a public
+      address. After the repair, the first route returned.
+    - Conditional default route: In this lab, the default route of each ISP
+      depends on the prefix of the other ISP. The link between the ISPs went
+      silent, and 15 s later the head office had no default route. The BGP hold
+      time is 9 s. Both routes were back 9 to 10 s after the repair, and the
+      site was on its first tunnel again.
 
 ### What the VyOS runs did not test
 
@@ -734,12 +812,14 @@ runs 27 to 33.
 - One vCPU: The range gives a router 1 vCPU. These routers had 2.
 - A faster return for IPsec: The 57 s of finding V6 is the retry schedule of
   the site itself, and no configuration here tunes it. That case ran twice.
-- The restart of the head office when both ends open the IPsec tunnels
-  (finding V10), and the fix of finding V9.
-- What the generator adds to these lists. The additions are the source filter
-  on each tunnel, NAT, the failover default routes of the site, and the
-  conditional default route of the ISPs. The job commits those lists since
-  commit `1cfa3b4`, and no such run finished yet.
+- Why the IPsec tunnel returns 28 s after the head office is up when only the
+  site opens the tunnels (finding V10).
+- An ISP that loses its transit carrier. The lab has no carrier, so the
+  condition of finding V11 is the prefix of the other ISP.
+- A flow that is open when the default route of the site moves. Such a flow
+  keeps its translated source and does not survive. The job tested a new flow.
+- The replies of a service that the head office publishes on its ShadeCast
+  address (DNAT). They must leave through ShadeCast, and no list does that yet.
 - phenix `main`: The patch for `main` is the draft pull request. Its tests
   pass in the CI of phenix, and it did not run a router here. The job uses
   the fork branch that the range pins.

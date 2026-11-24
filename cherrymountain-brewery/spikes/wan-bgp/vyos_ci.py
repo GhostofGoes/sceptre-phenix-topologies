@@ -945,12 +945,15 @@ def hq_restart(lab: Lab, lines: list[str]) -> None:
             lab.fact(f"{vm} IKE SAs for each tunnel after the head office's restart", f"{json.dumps(ike)}: {sas[:600]}")
         # What IKE did at the site while the head office was away: it tells why the
         # tunnel came back when it did (dead-peer detection, a new exchange, or a delete).
+        # From 30 s before the reboot, without the periodic lines: in run 38 the last 250
+        # lines of the log began after the tunnels were back.
+        noise = "sending packet|received packet|DPD request|INFORMATIONAL"
         lab.save(
             "hq-restart-ike-site.txt",
             lab.shell(
                 "fc-fw-edge",
-                f"journalctl --no-pager -o short-precise --since '-{HQ_RESTART_WINDOW_S + 120} seconds' 2>/dev/null | "
-                "grep -E 'charon|ipsec' | grep -vE 'sending packet|received packet' | tail -250",
+                f"journalctl --no-pager -o short-precise --since @{int(issued_wall) - 30} 2>/dev/null | "
+                f"grep -E 'charon|ipsec' | grep -vE '{noise}' | head -400",
                 wait_s=120,
             ),
         )

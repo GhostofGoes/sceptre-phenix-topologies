@@ -235,6 +235,7 @@ fermentation by the sugar that is left, in degrees Plato (°P). This beer starts
 near 16 °P and ends near 3 °P.
 
 ```mermaid
+%%{init: {"gantt": {"fontSize": 15, "sectionFontSize": 15, "barHeight": 26, "barGap": 6, "leftPadding": 110}}}%%
 gantt
   title One fermenter of beer, by day
   dateFormat YYYY-MM-DD
@@ -652,21 +653,22 @@ From there the technician works on the PLCs. Every step leaves evidence that
 the blue team can follow.
 
 ```mermaid
+%%{init: {"sequence": {"width": 120, "actorMargin": 25, "boxMargin": 6}}}%%
 sequenceDiagram
   participant V as vendor-ws
   participant E as fw-edge
-  participant W as dmz-vpn (WireGuard)
-  participant G as dmz-jump (Guacamole)
+  participant W as dmz-vpn<br/>(WireGuard)
+  participant G as dmz-jump<br/>(Guacamole)
   participant O as fw-ot
   participant S as ews
   participant P as PLCs
-  V->>E: UDP 51820 to the public address
+  V->>E: UDP 51820 to the<br/>public address
   E->>W: DNAT
-  W-->>V: tunnel up, dmz-jump only
-  V->>G: HTTPS sign-in, password and one-time code
-  G->>O: RDP or SSH to ews (recorded)
-  O->>S: allowed from dmz-jump only
-  S->>P: OpenPLC API, SCADA protocols
+  W-->>V: tunnel up,<br/>dmz-jump only
+  V->>G: HTTPS sign-in,<br/>password and one-time code
+  G->>O: RDP or SSH<br/>to ews (recorded)
+  O->>S: allowed from<br/>dmz-jump only
+  S->>P: OpenPLC API,<br/>SCADA protocols
 ```
 
 ### Orchestration and the plant model

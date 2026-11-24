@@ -1,0 +1,590 @@
+"""The WAN's routers as VyOS configuration commands.
+
+One list of `set` commands for each router of the loaded model, in the form the
+`config` list of phenix's `vrouter` app takes. The lists carry what the app
+does not render: BGP with its policies, BFD, the tunnels (route-based IPsec or
+WireGuard), each tunnel's tie to its uplink, and the discard routes.
+
+The base of the code is the wan-bgp spike's `vyos_sketch.py`, which wrote the
+lists that VyOS routers committed in CI (spikes/wan-bgp/README.md). A test
+compares the two for every router, with `spike_only`. Every command path was
+read in the vyos-1x source (branch `rolling`, commit `f1789c0d`, 2026-11-21)
+and its smoke tests. Interface numbers (`eth0`, `eth1`) follow the order of the
+model's links.
+
+On top of the spike's lists (PLANS.md section 4.5, "What V2 still needs"):
+
+* The head office drops and logs a packet from a tunnel whose source is not in
+  that site's blocks (`tunnel_source_filter`).
+* The head office's private addresses leave through either ISP as one address
+  of its own prefix, and a site's leave as its uplink's address (`internet_nat`).
+* A site's default route moves to its second uplink when the first one stops
+  answering (`internet_failover`).
+* An ISP sends the head office a default route only while the ISP holds a prefix
+  of its own providers (`default_condition`).
+
+The spike's VyOS job commits these lists too, with the four routers of its
+reduced lab.
+"""
+
+from __future__ import annotations
+
+import ipaddress
+from collections.abc import Callable
+
+from wangen import model as lab
+
+# (tunnel, "hub" or "site") -> (this side's private key, the other side's public key)
+Keys = Callable[[lab.Tunnel, str], tuple[str, str]]
+# tunnel -> its pre-shared key
+PreSharedKey = Callable[[lab.Tunnel], str]
+
+
+def placeholder_keys(_tunnel: lab.Tunnel, _side: str) -> tuple[str, str]:
+    return "PRIVATE-KEY-OF-THIS-ROUTER", "PUBLIC-KEY-OF-THE-PEER"
+
+
+def placeholder_psk(_tunnel: lab.Tunnel) -> str:
+    return "PRE-SHARED-KEY-OF-THIS-TUNNEL"
+
+
+def tunnel_if(kind: str, tunnel: lab.Tunnel) -> str:
+    """The name of a tunnel's interface on a VyOS router."""
+    return f"{'wg' if kind == lab.WIREGUARD else 'vti'}{tunnel.mark()}"
+
+
+def uplinks(router: lab.Router) -> list[tuple[str, lab.Link, str, str, str]]:
+    """(ethN, link, neighbor, the neighbor's address, this router's address) for each link."""
+    found = []
+    for link in lab.LINKS:
+        if router.name in (link.a, link.b):
+            other, gateway, own = lab.peer_of(link, router.name)
+            found.append((f"eth{len(found)}", link, other, gateway, own))
+    return found
+
+
+def site_blocks(router: lab.Router) -> list[str]:
+    """The private blocks of the site behind `router` (PLANS.md section 3)."""
+    return lab.SITE_BLOCKS[router.name]
+
+
+def site_code(name: str) -> str:
+    return name.split("-")[0].upper()
+
+
+def site_prefix_lists(names: list[str]) -> list[str]:
+    """`SITE-<CODE>` with the blocks of each named site, and `SITE-NETS` with all of them."""
+    lines: list[str] = []
+    rule = 10
+    for name in names:
+        for index, block in enumerate(lab.SITE_BLOCKS[name], start=1):
+            le = 0 if block.endswith("/24") else 24
+            lines += prefix_list(f"SITE-{site_code(name)}", block, le=le, rule=index * 10)
+            lines += prefix_list("SITE-NETS", block, le=le, rule=rule)
+            rule += 10
+    return lines
+
+
+def prefix_list(name: str, prefix: str, ge: int = 0, le: int = 0, rule: int = 10, action: str = "permit") -> list[str]:
+    lines = [
+        f"set policy prefix-list {name} rule {rule} action {action}",
+        f"set policy prefix-list {name} rule {rule} prefix {prefix}",
+    ]
+    if ge:
+        lines.append(f"set policy prefix-list {name} rule {rule} ge {ge}")
+    if le:
+        lines.append(f"set policy prefix-list {name} rule {rule} le {le}")
+    return lines
+
+
+def route_map(
+    name: str,
+    prefix_list_name: str = "",
+    local_preference: int = 0,
+    source: str = "",
+    community: str = "",
+    rule: int = 10,
+) -> list[str]:
+    base = f"set policy route-map {name} rule {rule}"
+    lines = [f"{base} action permit"]
+    if prefix_list_name:
+        lines.append(f"{base} match ip address prefix-list {prefix_list_name}")
+    if local_preference:
+        lines.append(f"{base} set local-preference {local_preference}")
+    if community:
+        lines.append(f"{base} set community replace {community}")
+    if source:
+        lines.append(f"{base} set src {source}")
+    return lines
+
+
+def bfd_profile() -> list[str]:
+    return [
+        f"set protocols bfd profile WAN interval transmit {lab.BFD_INTERVAL_MS}",
+        f"set protocols bfd profile WAN interval receive {lab.BFD_INTERVAL_MS}",
+        f"set protocols bfd profile WAN interval multiplier {lab.BFD_MULTIPLIER}",
+    ]
+
+
+def neighbor(
+    address: str, remote_as: int, description: str, route_in: str, route_out: str, bfd: bool = True
+) -> list[str]:
+    base = f"set protocols bgp neighbor {address}"
+    return [
+        f"{base} remote-as {remote_as}",
+        f"{base} description '{description}'",
+        # VyOS ignores one timer without the other.
+        f"{base} timers keepalive {lab.CORE_KEEPALIVE_S}",
+        f"{base} timers holdtime {lab.CORE_HOLD_S}",
+        # FRR waits 120 s before it tries a lost neighbor again; a repaired link should not.
+        f"{base} timers connect 5",
+        *([f"{base} bfd profile WAN"] if bfd else []),
+        f"{base} address-family ipv4-unicast route-map import {route_in}",
+        f"{base} address-family ipv4-unicast route-map export {route_out}",
+    ]
+
+
+def default_condition(router: lab.Router) -> list[str]:
+    """`DEFAULT-IF-TRANSIT`: matches while the ISP holds a prefix of its providers.
+
+    FRR sends `default-originate route-map` only while a route of the BGP table
+    matches the route-map. Without it, an ISP that lost its transit still offers
+    a default route, and the head office's flows that hash to that ISP reach only
+    the ISP's peer and customers. Empty for an ISP that has no provider.
+    """
+    lines: list[str] = []
+    for index, prefix in enumerate(lab.transit_prefixes(router), start=1):
+        lines += prefix_list("TRANSIT", prefix, rule=index * 10)
+    if lines:
+        lines += route_map("DEFAULT-IF-TRANSIT", "TRANSIT")
+    return lines
+
+
+def isp_sketch(router: lab.Router, spike_only: bool = False) -> list[str]:
+    """An ISP or transit router: the customer, peer, and provider rules of the lab."""
+    asn = router.asn
+    condition = [] if spike_only else default_condition(router)
+    lines: list[str] = [
+        *bfd_profile(),
+        *[
+            line
+            for rule, block in enumerate(lab.PRIVATE, start=1)
+            for line in prefix_list("PUBLIC", block, le=32, rule=rule, action="deny")
+        ],
+        *prefix_list("PUBLIC", "0.0.0.0/0", rule=10, action="deny"),
+        *prefix_list("PUBLIC", "0.0.0.0/0", le=24, rule=15),
+        "set policy community-list FROM-CUSTOMERS rule 10 action permit",
+        # Anchored: FRR's `_` matches a space or either end, so 64500:1 does not
+        # also match 64500:10 or 164500:1.
+        f"set policy community-list FROM-CUSTOMERS rule 10 regex '_{asn}:{lab.RELATION_TAG['customer']}_'",
+        # A peer or a provider hears this network's own prefixes and its
+        # customers' prefixes, never a route learned from another peer or provider.
+        "set policy route-map TO-UPSTREAM rule 10 action permit",
+        "set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS",
+        *route_map("TO-UPSTREAM", "OWN", rule=20),
+        *route_map("TO-CUSTOMER"),
+        f"set protocols bgp system-as {asn}",
+        f"set protocols bgp parameters router-id {router.router_id}",
+        "set protocols bgp parameters log-neighbor-changes",
+    ]
+    for index, prefix in enumerate(router.originates or ["0.0.0.0/32"], start=1):
+        lines += prefix_list("OWN", prefix, rule=index * 10, action="permit" if router.originates else "deny")
+    for relation in ("customer", "peer", "provider"):
+        lines += route_map(
+            f"FROM-{relation.upper()}",
+            "PUBLIC",
+            local_preference=lab.RELATION_LOCAL_PREF[relation],
+            community=f"{asn}:{lab.RELATION_TAG[relation]}",
+        )
+    for prefix in router.originates:
+        lines += [
+            f"set protocols bgp address-family ipv4-unicast network {prefix}",
+            # An originated aggregate needs a route to stand on.
+            f"set protocols static route {prefix} blackhole distance 250",
+        ]
+    for _eth, link, other, address, _own in uplinks(router):
+        relation = lab.relation_seen_by(link, router.name)
+        if relation == "static":
+            continue
+        remote_as = lab.BY_NAME[other].asn
+        title = lab.BY_NAME[other].title
+        if relation == "ibgp":
+            base = f"set protocols bgp neighbor {address}"
+            lines += [
+                f"{base} remote-as {remote_as}",
+                f"{base} description '{title}'",
+                f"{base} timers keepalive {lab.CORE_KEEPALIVE_S}",
+                f"{base} timers holdtime {lab.CORE_HOLD_S}",
+                f"{base} timers connect 5",
+                f"{base} address-family ipv4-unicast nexthop-self",
+            ]
+            continue
+        inbound = f"FROM-{relation.upper()}"
+        if relation == "customer" and link.customer_prefixes:
+            # A customer with its own prefix: accept that prefix only, and give it a default route.
+            name = other.upper()
+            for index, prefix in enumerate(link.customer_prefixes, start=1):
+                lines += prefix_list(f"CUST-{name}", prefix, rule=index * 10)
+            inbound = f"FROM-CUST-{name}"
+            lines += route_map(
+                inbound,
+                f"CUST-{name}",
+                local_preference=lab.RELATION_LOCAL_PREF["customer"],
+                community=f"{asn}:{lab.RELATION_TAG['customer']}",
+            )
+            lines.append(
+                f"set protocols bgp neighbor {address} address-family ipv4-unicast default-originate"
+                + (" route-map DEFAULT-IF-TRANSIT" if condition else "")
+            )
+        outbound = "TO-CUSTOMER" if relation == "customer" else "TO-UPSTREAM"
+        lines += neighbor(address, remote_as, title, inbound, outbound, bfd=link.bfd)
+    return lines + condition
+
+
+def ipsec_groups(at_hub: bool) -> list[str]:
+    """The IKE and ESP groups of the lab.VTI tunnels.
+
+    A site opens its tunnels and opens them again when they end. The head
+    office only answers, unless lab.HUB_OPENS is set: when both ends open tunnels,
+    a tunnel can come back from a long silence with two IKE SAs.
+    """
+    answers = at_hub and not lab.HUB_OPENS
+    return [
+        # strongSwan would otherwise install a route for each tunnel's selectors.
+        "set vpn ipsec options disable-route-autoinstall",
+        "set vpn ipsec ike-group WAN key-exchange ikev2",
+        "set vpn ipsec ike-group WAN lifetime 28800",
+        f"set vpn ipsec ike-group WAN close-action {'none' if answers else 'start'}",
+        f"set vpn ipsec ike-group WAN dead-peer-detection action {'clear' if answers else 'restart'}",
+        "set vpn ipsec ike-group WAN dead-peer-detection interval 10",
+        "set vpn ipsec ike-group WAN dead-peer-detection timeout 30",
+        # MOBIKE would let a tunnel move to another address pair, as a WireGuard endpoint roams.
+        "set vpn ipsec ike-group WAN disable-mobike",
+        "set vpn ipsec ike-group WAN proposal 10 dh-group 14",
+        "set vpn ipsec ike-group WAN proposal 10 encryption aes256",
+        "set vpn ipsec ike-group WAN proposal 10 hash sha256",
+        "set vpn ipsec esp-group WAN lifetime 3600",
+        "set vpn ipsec esp-group WAN pfs dh-group14",
+        "set vpn ipsec esp-group WAN proposal 10 encryption aes256",
+        "set vpn ipsec esp-group WAN proposal 10 hash sha256",
+    ]
+
+
+def vti_tunnel(router: lab.Router, tunnel: lab.Tunnel, psk: PreSharedKey) -> list[str]:
+    """One route-based IPsec tunnel on a site edge."""
+    at_hub = router.name == tunnel.hub
+    _isp, gateway, uplink = lab.peer_of(lab.link_of(tunnel.site, tunnel.via), tunnel.site)
+    local, remote = (lab.HUB_ENDPOINT, uplink) if at_hub else (uplink, lab.HUB_ENDPOINT)
+    own = tunnel.hub_address() if at_hub else tunnel.site_address()
+    vti = tunnel_if(lab.VTI, tunnel)
+    peer = f"set vpn ipsec site-to-site peer {tunnel.name}"
+    lines = [
+        f"set interfaces vti {vti} description '{tunnel.name} over {lab.BY_NAME[tunnel.via].title}'",
+        f"set interfaces vti {vti} address {own}/{ipaddress.ip_network(tunnel.net).prefixlen}",
+        # Room for ESP in a 1,500-byte underlay (lab.VTI_MTU), and TCP told so.
+        f"set interfaces vti {vti} mtu {lab.VTI_MTU}",
+        f"set interfaces vti {vti} ip adjust-mss clamp-mss-to-pmtu",
+        f"set vpn ipsec authentication psk {tunnel.name} id '{local}'",
+        f"set vpn ipsec authentication psk {tunnel.name} id '{remote}'",
+        f"set vpn ipsec authentication psk {tunnel.name} secret '{psk(tunnel)}'",
+        f"{peer} authentication mode pre-shared-secret",
+        f"{peer} authentication local-id '{local}'",
+        f"{peer} authentication remote-id '{remote}'",
+        # The site opens the tunnel; the head office answers (or opens it too, with lab.HUB_OPENS).
+        f"{peer} connection-type {'none' if at_hub and not lab.HUB_OPENS else 'initiate'}",
+        f"{peer} ike-group WAN",
+        f"{peer} default-esp-group WAN",
+        f"{peer} local-address {local}",
+        f"{peer} remote-address {remote}",
+        f"{peer} vti bind {vti}",
+        f"{peer} vti esp-group WAN",
+    ]
+    if not at_hub:
+        mark = tunnel.mark()
+        lines += [
+            # The pin: the tunnel's packets leave from this uplink's address, a
+            # rule sends that source to its own table, and the table holds this
+            # uplink and, behind it, a blackhole.
+            f"set policy local-route rule {mark} source address {uplink}",
+            f"set policy local-route rule {mark} set table {mark}",
+            f"set protocols static table {mark} route 0.0.0.0/0 next-hop {gateway}",
+            f"set protocols static table {mark} route 0.0.0.0/0 blackhole distance 250",
+        ]
+    return lines
+
+
+def tunnel_source_filter(router: lab.Router, kind: str) -> list[str]:
+    """The head office admits from each tunnel only the sources of that tunnel's site.
+
+    A network group for each site holds the site's blocks and the site's end of
+    its tunnels (BGP and BFD come from there). One rule for each tunnel, in the
+    forward chain and in the input chain, drops and logs every other source.
+    The chains accept by default, so a packet that passes goes on to any later
+    rule. Without the rules, a site's edge in the wrong hands can send one-way
+    UDP with the source of another site or of the head office.
+    """
+    lines: list[str] = []
+    tunnels = [tunnel for tunnel in lab.TUNNELS if tunnel.hub == router.name]
+    for name in dict.fromkeys(tunnel.site for tunnel in tunnels):
+        group = f"set firewall group network-group VPN-{site_code(name)} network"
+        lines += [f"{group} {block}" for block in lab.SITE_BLOCKS[name]]
+        lines += [f"{group} {tunnel.site_address()}/32" for tunnel in tunnels if tunnel.site == name]
+    for rule, tunnel in enumerate(tunnels, start=100):
+        for chain in ("forward", "input"):
+            base = f"set firewall ipv4 {chain} filter rule {rule}"
+            lines += [
+                f"{base} action drop",
+                f"{base} inbound-interface name {tunnel_if(kind, tunnel)}",
+                f"{base} source group network-group '!VPN-{site_code(tunnel.site)}'",
+                f"{base} log",
+            ]
+    return lines
+
+
+def internet_nat(router: lab.Router) -> list[str]:
+    """Private addresses that leave through an uplink get a public source.
+
+    The head office uses one address of its own prefix on both ISPs
+    (lab.NAT_ADDRESS), so a flow can leave through either and its reply can
+    come back through either. That address is not the VPN endpoint, so a
+    translated flow never takes the endpoint's UDP 500 or 4500. A site has only
+    the addresses that its ISPs assigned, and uses the address of the uplink.
+    The edge's own packets (IKE, ESP, BGP) have a public source and match no rule.
+    """
+    to = lab.NAT_ADDRESS if router.multipath else "masquerade"
+    lines = [f"set firewall group network-group PRIVATE network {block}" for block in lab.PRIVATE]
+    for rule, (eth, *_rest) in enumerate(uplinks(router), start=10):
+        base = f"set nat source rule {rule * 10}"
+        lines += [
+            f"{base} outbound-interface name {eth}",
+            f"{base} source group network-group PRIVATE",
+            f"{base} translation address {to}",
+        ]
+    return lines
+
+
+#: Seconds that VyOS waits after each check of a failover next hop.
+FAILOVER_CHECK_S: int = 2
+
+
+def internet_failover(router: lab.Router) -> list[str]:
+    """A site's default route for each uplink, kept only while the uplink's gateway answers.
+
+    A static default route stays installed while the link is up. Under a silent
+    fault the site's tunnel then moves in three seconds, and the site's own
+    internet traffic stops for the whole fault. VyOS's failover daemon pings
+    each gateway through its own interface (two pings, one second each), and
+    removes the route of a gateway that does not answer. The first uplink has
+    the lower metric. The routes are kernel routes that FRR does not own.
+
+    The check proves the ISP's first router only. A flow that is open when the
+    route moves keeps its translated source and does not survive.
+    """
+    lines: list[str] = []
+    for index, (eth, _link, _isp, gateway, _own) in enumerate(uplinks(router)):
+        base = f"set protocols failover route 0.0.0.0/0 next-hop {gateway}"
+        lines += [
+            f"{base} interface {eth}",
+            f"{base} metric {10 * (index + 1)}",
+            f"{base} check target {gateway} interface {eth}",
+            f"{base} check timeout {FAILOVER_CHECK_S}",
+        ]
+    return lines
+
+
+def sketch(
+    router: lab.Router,
+    keys: Keys = placeholder_keys,
+    kind: str = "",
+    psk: PreSharedKey = placeholder_psk,
+    spike_only: bool = False,
+) -> list[str]:
+    """A site edge: the head office, or a site with ISP-assigned addresses."""
+    kind = kind or lab.KIND
+    hub = router.multipath
+    # The sites this router has a tunnel with.
+    peers = sorted({t.site if router.name == t.hub else t.hub for t in lab.TUNNELS if router.name in (t.hub, t.site)})
+    lines: list[str] = [
+        *bfd_profile(),
+        # Every edge knows every site's blocks, whether or not it has a tunnel
+        # to that site: a site reaches the others through the head office.
+        *site_prefix_lists(list(lab.SITE_BLOCKS)),
+    ]
+    if hub:
+        # The head office takes from each site only that site's blocks, and
+        # gives every site the blocks of all of them.
+        for name in peers:
+            code = site_code(name)
+            lines += route_map(f"OVERLAY-PRIMARY-{code}", f"SITE-{code}", local_preference=200)
+            lines += route_map(f"OVERLAY-BACKUP-{code}", f"SITE-{code}", local_preference=100)
+        lines += route_map("OVERLAY-OUT", "SITE-NETS")
+    else:
+        # A site takes any site's blocks from the head office, and gives it only its own.
+        lines += route_map("OVERLAY-PRIMARY", "SITE-NETS", local_preference=200)
+        lines += route_map("OVERLAY-BACKUP", "SITE-NETS", local_preference=100)
+        lines += route_map("OVERLAY-OUT", f"SITE-{site_code(router.name)}")
+    lines += [
+        f"set protocols bgp system-as {router.asn}",
+        f"set protocols bgp parameters router-id {router.router_id}",
+        "set protocols bgp parameters log-neighbor-changes",
+    ]
+    for block in site_blocks(router):
+        # The lab announces the one /24 it has behind each edge. A site of the
+        # range announces its blocks (PLANS.md section 3). VyOS announces a
+        # `network` whether or not a route for it is installed.
+        lines.append(f"set protocols bgp address-family ipv4-unicast network {block}")
+
+    if hub:
+        # The head office: its own prefix to two ISPs, a default route from each.
+        lines += [
+            f"set interfaces dummy dum0 address {lab.HUB_ENDPOINT}/32",
+            *prefix_list("DEFAULT", "0.0.0.0/0"),
+            *prefix_list("OWN", lab.HQ_PREFIX),
+            *route_map("DEFAULT-ONLY", "DEFAULT"),
+            *route_map("OWN-ONLY", "OWN"),
+            # What the head office sends on a default route carries the endpoint
+            # address as its source, so a tunnel's endpoint never looks like it
+            # moved.
+            *route_map("SET-SOURCE", "DEFAULT", source=lab.HUB_ENDPOINT),
+            "set protocols bgp parameters bestpath as-path multipath-relax",
+            "set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2",
+            f"set protocols bgp address-family ipv4-unicast network {lab.HQ_PREFIX}",
+            # An originated aggregate needs a route to stand on.
+            f"set protocols static route {lab.HQ_PREFIX} blackhole distance 250",
+        ]
+        for _eth, _link, isp, gateway, _own in uplinks(router):
+            lines += neighbor(gateway, lab.BY_NAME[isp].asn, lab.BY_NAME[isp].title, "DEFAULT-ONLY", "OWN-ONLY")
+            # Keep what the ISP sent, so that a change of policy is applied to
+            # the stored routes and asks the ISP for nothing: FRR leaves the
+            # default route out of its answer to a route refresh that arrives
+            # just after a session comes up, and the head office then drops it.
+            lines.append(
+                f"set protocols bgp neighbor {gateway} address-family ipv4-unicast soft-reconfiguration inbound"
+            )
+    elif spike_only:
+        # ISP-assigned addresses: a default route for each uplink, the first preferred.
+        for index, (_eth, _link, _isp, gateway, _own) in enumerate(uplinks(router)):
+            lines.append(f"set protocols static route 0.0.0.0/0 next-hop {gateway} distance {10 * (index + 1)}")
+    else:
+        lines += internet_failover(router)
+    # What the edge itself sends into a tunnel (its syslog, NTP, and DNS)
+    # leaves from its LAN address, not from the tunnel's /31, so the far side
+    # sees an address in the site's own blocks. Rule 20 leaves every other
+    # route as it is.
+    lan = next(lan for lan in lab.LANS if lan.router == router.name)
+    lines += [
+        *route_map("SET-SOURCE", "SITE-NETS", source=lan.gateway(), rule=15),
+        "set policy route-map SET-SOURCE rule 20 action permit",
+        "set system ip protocol bgp route-map SET-SOURCE",
+    ]
+    # An unused address in the edge's own blocks, and any private address while
+    # no tunnel carries it, are dropped here instead of following the default
+    # route out of an uplink unencrypted (lab.discards). The blackholes of the
+    # own blocks also back their `network` statements.
+    lines += [
+        f"set protocols static route {block} blackhole distance {distance}"
+        for block, distance in lab.discards(router.name)
+    ]
+
+    if kind == lab.VTI:
+        lines += ipsec_groups(hub)
+    for tunnel in lab.TUNNELS:
+        if router.name not in (tunnel.hub, tunnel.site):
+            continue
+        wg = tunnel_if(lab.WIREGUARD, tunnel)
+        at_hub = router.name == tunnel.hub
+        own = tunnel.hub_address() if at_hub else tunnel.site_address()
+        peer = tunnel.site_address() if at_hub else tunnel.hub_address()
+        peer_as = lab.BY_NAME[tunnel.site if at_hub else tunnel.hub].asn
+        prefix = ipaddress.ip_network(tunnel.net).prefixlen
+        policy = "OVERLAY-PRIMARY" if tunnel.primary else "OVERLAY-BACKUP"
+        if at_hub:
+            policy += f"-{site_code(tunnel.site)}"
+        if kind == lab.VTI:
+            lines += vti_tunnel(router, tunnel, psk)
+            lines += neighbor(peer, peer_as, f"overlay {tunnel.name}", policy, "OVERLAY-OUT")
+            continue
+        private_key, public_key = keys(tunnel, "hub" if at_hub else "site")
+        lines += [
+            f"set interfaces wireguard {wg} description '{tunnel.name} over {lab.BY_NAME[tunnel.via].title}'",
+            f"set interfaces wireguard {wg} address {own}/{prefix}",
+            f"set interfaces wireguard {wg} private-key '{private_key}'",
+            f"set interfaces wireguard {wg} peer {tunnel.name} public-key '{public_key}'",
+            # BGP runs inside the tunnel, so WireGuard lets every address through.
+            # VyOS installs no route for allowed-ips.
+            f"set interfaces wireguard {wg} peer {tunnel.name} allowed-ips 0.0.0.0/0",
+        ]
+        if at_hub:
+            lines.append(f"set interfaces wireguard {wg} port {tunnel.port}")
+        else:
+            _isp, gateway, _own = lab.peer_of(lab.link_of(router.name, tunnel.via), router.name)
+            mark = tunnel.mark()
+            lines += [
+                f"set interfaces wireguard {wg} peer {tunnel.name} address {lab.HUB_ENDPOINT}",
+                f"set interfaces wireguard {wg} peer {tunnel.name} port {tunnel.port}",
+                f"set interfaces wireguard {wg} peer {tunnel.name} persistent-keepalive 5",
+                # The pin: this tunnel's packets carry a mark, the mark has its
+                # own table, and the table holds this uplink and, behind it, a
+                # blackhole, so that the tunnel never leaves by the other uplink.
+                f"set interfaces wireguard {wg} fwmark {mark}",
+                f"set policy local-route rule {mark} fwmark {mark}",
+                f"set policy local-route rule {mark} set table {mark}",
+                f"set protocols static table {mark} route 0.0.0.0/0 next-hop {gateway}",
+                f"set protocols static table {mark} route 0.0.0.0/0 blackhole distance 250",
+            ]
+        lines += neighbor(peer, peer_as, f"overlay {tunnel.name}", policy, "OVERLAY-OUT")
+    if not spike_only:
+        lines += internet_nat(router)
+        if hub:
+            lines += tunnel_source_filter(router, kind)
+    return lines
+
+
+def is_site_edge(router: lab.Router) -> bool:
+    return any(router.name in (tunnel.hub, tunnel.site) for tunnel in lab.TUNNELS)
+
+
+def commands(
+    router: lab.Router,
+    keys: Keys = placeholder_keys,
+    kind: str = "",
+    psk: PreSharedKey = placeholder_psk,
+    spike_only: bool = False,
+) -> list[str]:
+    """The `config` list of one router, checked against the patch's rule for a line.
+
+    `spike_only` leaves out what this module adds to the wan-bgp spike's lists.
+    """
+    # No kind: the one that wan.yaml names.
+    if is_site_edge(router):
+        lines = sketch(router, keys, kind or lab.KIND, psk, spike_only)
+    else:
+        lines = isp_sketch(router, spike_only)
+    for line in lines:
+        if why := refused(line):
+            raise ValueError(f"{router.name}: `{line}` {why}")
+    return lines
+
+
+def refused(line: str) -> str:
+    """Why the patched `vrouter` app would refuse a `config` line, or "" if it would not.
+
+    The same rule as `checkVyosConfigLine` in the patch: `set` or `delete`, a
+    next word that starts with a lowercase letter (VyOS hands `set -x` to the
+    shell's own `set`), no control character, and nothing the shell acts on
+    outside single quotes.
+    """
+    if not line.startswith(("set ", "delete ")):
+        return "does not start with set or delete"
+    rest = line.split(" ", 1)[1]
+    if not rest or not ("a" <= rest[0] <= "z"):
+        return "the word after the verb does not start with a lowercase letter"
+    quoted = False
+    for char in line:
+        if ord(char) < 32 or ord(char) == 127:
+            return "has a control character"
+        if char == "'":
+            quoted = not quoted
+        elif not quoted and char in '"`$;|&<>(){}[]\\#!*?~':
+            return f"has {char!r} outside single quotes"
+    return "has an unclosed single quote" if quoted else ""

@@ -391,6 +391,24 @@ pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
+# wangen: the wan variant's phenix files from wan/wan.yaml. The tests fail when
+# a committed file (topology-wan.yml, scenario-wan.yml, phenix-wan.yml) is not
+# what wan.yaml gives, and when wan.yaml or a router's configuration list
+# differs from the model and the lists that the wan-bgp spike ran on VyOS.
+id = "cm-wangen-tests"
+name = "pytest (wangen, and its generated files are current)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/wangen"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(tools/wangen/|wan/|phenix-configs/(topology|scenario)-wan\.yml$|phenix-wan\.yml$|spikes/wan-bgp/(netns_lab|vyos_sketch)\.py$)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
 # The simulation models against hand calculations and published values, the
 # federates, the event API, and the offline federation (DESIGN.md 9.6). HELICS
 # itself is not needed: the tests run the federates without a broker. The tests

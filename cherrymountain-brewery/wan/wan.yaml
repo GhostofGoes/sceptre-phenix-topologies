@@ -1,0 +1,262 @@
+# The mock internet and the company's WAN: the networks, the links between
+# them, the site LANs, and the VPN tunnels (docs/multisite/PLANS.md, section 4).
+# tools/wangen reads this file and writes the internet's topology file and the
+# `vrouter` configuration list of every router.
+#
+# The values are those of the model that the wan-bgp spike ran
+# (spikes/wan-bgp). A test compares the two.
+#
+# routers:  one VyOS router each. `asn` is its BGP AS. `originates` lists the
+#           prefixes that it announces to the internet. A site edge with
+#           `public_bgp: false` has addresses that its ISPs assigned, and runs
+#           BGP only inside the tunnels. An ISP sends the head office a
+#           default route only while it holds a prefix of its own providers
+#           (`default_requires` names other prefixes).
+# links:    point-to-point underlay links. `a` gets the first host address.
+#           `relation` says how `a` sees `b`: customer, peer, provider, ibgp, or
+#           static (no BGP on the link).
+# lans:     one site LAN with one host, for the reachability checks. `vlan` and
+#           `vlan_id` are the site's own zone (PLANS.md, section 3).
+# tunnels:  one tunnel from a site uplink (`via` names the ISP) to the head
+#           office. `net` is the /31 inside the tunnel, and the hub has its
+#           first address.
+# site_blocks: the private blocks of each site. The head office accepts from a
+#           site only what is in that site's blocks: as routes, and as the
+#           source of a packet that comes out of the site's tunnel.
+# head_office: `nat_address` is what the head office's private addresses become
+#           on the internet, on both ISPs.
+
+timers:
+  core_keepalive_s: 3
+  core_hold_s: 9
+  bfd_interval_ms: 1000
+  bfd_multiplier: 3
+vpn:
+  kind: vti
+  hub_opens: false
+  hub_endpoint: 198.18.105.1
+  vti_mtu: 1400
+head_office:
+  router: fr-fw-edge
+  prefix: 198.18.105.0/24
+  nat_address: 198.18.105.2
+private:
+- 10.0.0.0/8
+- 172.16.0.0/12
+- 192.168.0.0/16
+routers:
+- name: cb-west
+  short: cbw
+  asn: 64496
+  router_id: 198.18.0.251
+  title: Continental Backbone, Denver
+  originates:
+  - 198.18.0.0/24
+  - 198.18.110.0/24
+- name: cb-south
+  short: cbs
+  asn: 64496
+  router_id: 198.18.0.252
+  title: Continental Backbone, Colorado Springs
+- name: shadecast
+  short: sc
+  asn: 64500
+  router_id: 203.0.113.254
+  title: ShadeCast Cable
+  originates:
+  - 203.0.113.0/24
+- name: tumbleweed
+  short: tw
+  asn: 64501
+  router_id: 198.18.101.254
+  title: Tumbleweed Fiber
+  originates:
+  - 198.18.101.0/24
+- name: marmot
+  short: mm
+  asn: 64502
+  router_id: 198.18.102.254
+  title: Marmot Wireless
+  originates:
+  - 198.18.102.0/24
+- name: bristlecone
+  short: bc
+  asn: 64503
+  router_id: 198.18.103.254
+  title: Bristlecone Broadband
+  originates:
+  - 198.18.103.0/24
+- name: fr-fw-edge
+  short: fr
+  asn: 64505
+  router_id: 198.18.105.1
+  title: Head office and Front Range brewery edge
+  originates:
+  - 198.18.105.0/24
+  loopbacks:
+  - 198.18.105.1/32
+  - 198.18.105.2/32
+  multipath: true
+- name: fc-fw-edge
+  short: fc
+  asn: 65020
+  router_id: 10.255.2.1
+  title: Fort Collins brewpub edge
+  public_bgp: false
+- name: ep-fw-edge
+  short: ep
+  asn: 65030
+  router_id: 10.255.3.1
+  title: Eastern Plains brewery edge
+  public_bgp: false
+- name: cs-fw-edge
+  short: cs
+  asn: 65040
+  router_id: 10.255.4.1
+  title: Colorado Springs brewery edge
+  public_bgp: false
+links:
+- a: cb-west
+  b: cb-south
+  net: 198.18.0.0/30
+  relation: ibgp
+- a: cb-west
+  b: shadecast
+  net: 198.18.0.4/30
+  relation: customer
+- a: cb-west
+  b: tumbleweed
+  net: 198.18.0.8/30
+  relation: customer
+- a: cb-south
+  b: bristlecone
+  net: 198.18.0.12/30
+  relation: customer
+- a: shadecast
+  b: tumbleweed
+  net: 198.18.0.16/30
+  relation: peer
+- a: tumbleweed
+  b: marmot
+  net: 198.18.0.20/30
+  relation: customer
+- a: shadecast
+  b: fr-fw-edge
+  net: 203.0.113.0/30
+  relation: customer
+  customer_prefixes:
+  - 198.18.105.0/24
+  bfd: true
+- a: tumbleweed
+  b: fr-fw-edge
+  net: 198.18.101.0/30
+  relation: customer
+  customer_prefixes:
+  - 198.18.105.0/24
+  bfd: true
+- a: shadecast
+  b: fc-fw-edge
+  net: 203.0.113.8/30
+  relation: static
+- a: marmot
+  b: fc-fw-edge
+  net: 198.18.102.0/30
+  relation: static
+- a: tumbleweed
+  b: ep-fw-edge
+  net: 198.18.101.8/30
+  relation: static
+- a: shadecast
+  b: ep-fw-edge
+  net: 203.0.113.16/30
+  relation: static
+- a: bristlecone
+  b: cs-fw-edge
+  net: 198.18.103.0/30
+  relation: static
+lans:
+- router: fr-fw-edge
+  host: fr-historian
+  net: 10.20.30.0/24
+  vlan: FR-OPS
+  vlan_id: 106
+- router: fc-fw-edge
+  host: fc-historian
+  net: 10.21.10.0/24
+  vlan: FC-PLANT
+  vlan_id: 221
+- router: ep-fw-edge
+  host: ep-historian
+  net: 10.22.30.0/24
+  vlan: EP-OPS
+  vlan_id: 306
+- router: cs-fw-edge
+  host: cs-historian
+  net: 192.168.20.0/24
+  vlan: CS-PLANT
+  vlan_id: 421
+- router: cb-west
+  host: inet
+  net: 198.18.110.0/24
+  vlan: INET-LAN
+  vlan_id: 520
+  advertise_public: true
+tunnels:
+- name: fc-a
+  site: fc-fw-edge
+  hub: fr-fw-edge
+  via: shadecast
+  hub_endpoint: 198.18.105.1
+  port: 51821
+  net: 10.255.0.0/31
+  primary: true
+- name: fc-b
+  site: fc-fw-edge
+  hub: fr-fw-edge
+  via: marmot
+  hub_endpoint: 198.18.105.2
+  port: 51822
+  net: 10.255.0.2/31
+  primary: false
+- name: ep-a
+  site: ep-fw-edge
+  hub: fr-fw-edge
+  via: tumbleweed
+  hub_endpoint: 198.18.105.1
+  port: 51823
+  net: 10.255.0.4/31
+  primary: true
+- name: ep-b
+  site: ep-fw-edge
+  hub: fr-fw-edge
+  via: shadecast
+  hub_endpoint: 198.18.105.2
+  port: 51824
+  net: 10.255.0.6/31
+  primary: false
+- name: cs-a
+  site: cs-fw-edge
+  hub: fr-fw-edge
+  via: bristlecone
+  hub_endpoint: 198.18.105.1
+  port: 51825
+  net: 10.255.0.8/31
+  primary: true
+site_blocks:
+  fr-fw-edge:
+  - 10.10.0.0/16
+  - 10.20.0.0/16
+  - 10.30.0.0/16
+  - 10.40.0.0/16
+  fc-fw-edge:
+  - 10.11.0.0/16
+  - 10.21.0.0/16
+  ep-fw-edge:
+  - 10.12.0.0/16
+  - 10.22.0.0/16
+  - 10.32.0.0/16
+  - 10.42.0.0/16
+  cs-fw-edge:
+  - 192.168.10.0/24
+  - 192.168.20.0/24
+  - 192.168.30.0/24

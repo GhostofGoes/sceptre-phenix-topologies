@@ -3201,21 +3201,22 @@ segment rules. To do that, it uploads two deliberately different
 ## 13. Vendor remote access
 
 ```mermaid
+%%{init: {"sequence": {"width": 120, "actorMargin": 25, "boxMargin": 6}}}%%
 sequenceDiagram
-  participant V as vendor-ws (Ridgeline)
+  participant V as vendor-ws<br/>(Ridgeline)
   participant E as fw-edge
-  participant W as dmz-vpn (WireGuard)
-  participant G as dmz-jump (Guacamole)
+  participant W as dmz-vpn<br/>(WireGuard)
+  participant G as dmz-jump<br/>(Guacamole)
   participant O as fw-ot
   participant S as ews
   participant P as PLCs
-  V->>E: UDP 51820 to 203.0.113.2
-  E->>W: DNAT to 10.10.20.10
-  W-->>V: tunnel up (AllowedIPs = dmz-jump only)
-  V->>G: HTTPS login + TOTP (session recorded)
-  G->>O: RDP 3389 to ews
-  O->>S: allowed (dmz-jump -> ews only)
-  S->>P: OpenPLC REST 8443 / SCADA protocols
+  V->>E: UDP 51820 to<br/>203.0.113.2
+  E->>W: DNAT to<br/>10.10.20.10
+  W-->>V: tunnel up<br/>(AllowedIPs = dmz-jump only)
+  V->>G: HTTPS login + TOTP<br/>(session recorded)
+  G->>O: RDP 3389<br/>to ews
+  O->>S: allowed<br/>(dmz-jump -> ews only)
+  S->>P: OpenPLC REST 8443 /<br/>SCADA protocols
 ```
 
 The EWS-to-PLC leg is TLS (OpenPLC REST on 8443). Thus session metadata and

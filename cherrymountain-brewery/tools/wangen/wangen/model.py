@@ -143,9 +143,29 @@ class Timers(_Entry):
     bfd_multiplier: int
 
 
+class Retransmit(_Entry):
+    """How long IKE goes on sending a request that gets no answer.
+
+    strongSwan sends it again after `timeout_s`, then after `timeout_s` times
+    `base`, and so on, `tries` times, and then gives the peer up. Its own values
+    (5 tries, 4 s, 1.8) take 165 s. A site that alone opens the tunnels needs
+    that long to notice a head office that came back from a crash.
+    """
+
+    tries: int = Field(ge=1, le=10)
+    timeout_s: int = Field(ge=1, le=30)
+    base: float = Field(ge=1.0, le=5.0)
+
+    def give_up_s(self) -> float:
+        """Seconds from the first send until IKE gives the peer up."""
+        return sum(self.timeout_s * self.base**n for n in range(self.tries + 1))
+
+
 class Vpn(_Entry):
     #: `vti` (route-based IPsec) or `wireguard`.
     kind: str
+    #: None: strongSwan's own retry schedule.
+    ike_retransmit: Retransmit | None = None
     #: Whether the head office opens the IPsec tunnels too (PLANS.md, D21).
     hub_opens: bool
     hub_endpoint: str
@@ -194,6 +214,7 @@ BFD_MULTIPLIER: int = 0
 VTI_MTU: int = 0
 KIND: str = VTI
 HUB_OPENS: bool = False
+IKE_RETRANSMIT: Retransmit | None = None
 
 
 def _network(value: str, where: str) -> None:
@@ -264,7 +285,7 @@ def check(wan: Wan) -> None:
 
 def load(path: Path = DEFAULT_PATH) -> Wan:
     """Read wan.yaml, check it, and make it the loaded model."""
-    global WAN, PRIVATE, HUB, HUB_ENDPOINT, HQ_PREFIX, NAT_ADDRESS, KIND, HUB_OPENS  # noqa: PLW0603
+    global WAN, PRIVATE, HUB, HUB_ENDPOINT, HQ_PREFIX, NAT_ADDRESS, KIND, HUB_OPENS, IKE_RETRANSMIT  # noqa: PLW0603
     global CORE_KEEPALIVE_S, CORE_HOLD_S, BFD_INTERVAL_MS, BFD_MULTIPLIER, VTI_MTU  # noqa: PLW0603
     raw: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
     wan = Wan.model_validate(raw)
@@ -285,6 +306,7 @@ def load(path: Path = DEFAULT_PATH) -> Wan:
     NAT_ADDRESS = wan.head_office.nat_address
     KIND = wan.vpn.kind
     HUB_OPENS = wan.vpn.hub_opens
+    IKE_RETRANSMIT = wan.vpn.ike_retransmit
     CORE_KEEPALIVE_S = wan.timers.core_keepalive_s
     CORE_HOLD_S = wan.timers.core_hold_s
     BFD_INTERVAL_MS = wan.timers.bfd_interval_ms

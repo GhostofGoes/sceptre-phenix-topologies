@@ -192,3 +192,25 @@ def test_the_head_office_takes_each_isps_routes_and_no_private_prefix() -> None:
     assert "set policy route-map SET-SOURCE rule 10 set src 198.18.105.1" in lines
     assert "set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS" in lines
     assert not [line for line in lines if "DEFAULT-ONLY" in line]
+
+
+def test_ike_gives_a_silent_peer_up_in_the_time_that_wan_yaml_sets() -> None:
+    retry = model.IKE_RETRANSMIT
+    assert retry is not None
+    assert round(retry.give_up_s(), 1) == 23.7
+    for name in ("fr-fw-edge", "fc-fw-edge", "cs-fw-edge"):
+        lines = vyos.commands(model.BY_NAME[name], kind=model.VTI)
+        assert "set vpn ipsec options retransmission attempts 3" in lines
+        assert "set vpn ipsec options retransmission timeout 2" in lines
+        assert "set vpn ipsec options retransmission base 1.8" in lines
+    # WireGuard has no IKE, and the spike's lists stay as they ran.
+    assert not [
+        line for line in vyos.commands(model.BY_NAME["fc-fw-edge"], kind=model.WIREGUARD) if "retransmission" in line
+    ]
+    spike = vyos.commands(model.BY_NAME["fc-fw-edge"], kind=model.VTI, spike_only=True)
+    assert not [line for line in spike if "retransmission" in line]
+
+
+def test_without_a_schedule_the_lists_leave_strongswans_own() -> None:
+    model.IKE_RETRANSMIT = None
+    assert not [line for line in vyos.commands(model.BY_NAME["fc-fw-edge"], kind=model.VTI) if "retransmission" in line]

@@ -611,6 +611,9 @@ spec:
         - set vpn ipsec esp-group WAN pfs dh-group14
         - set vpn ipsec esp-group WAN proposal 10 encryption aes256
         - set vpn ipsec esp-group WAN proposal 10 hash sha256
+        - set vpn ipsec options retransmission attempts 3
+        - set vpn ipsec options retransmission timeout 2
+        - set vpn ipsec options retransmission base 1.8
         - set interfaces vti vti101 description 'fc-a over ShadeCast Cable'
         - set interfaces vti vti101 address 10.255.0.0/31
         - set interfaces vti vti101 mtu 1400
@@ -923,6 +926,9 @@ spec:
         - set vpn ipsec esp-group WAN pfs dh-group14
         - set vpn ipsec esp-group WAN proposal 10 encryption aes256
         - set vpn ipsec esp-group WAN proposal 10 hash sha256
+        - set vpn ipsec options retransmission attempts 3
+        - set vpn ipsec options retransmission timeout 2
+        - set vpn ipsec options retransmission base 1.8
         - set interfaces vti vti101 description 'fc-a over ShadeCast Cable'
         - set interfaces vti vti101 address 10.255.0.1/31
         - set interfaces vti vti101 mtu 1400
@@ -1118,6 +1124,9 @@ spec:
         - set vpn ipsec esp-group WAN pfs dh-group14
         - set vpn ipsec esp-group WAN proposal 10 encryption aes256
         - set vpn ipsec esp-group WAN proposal 10 hash sha256
+        - set vpn ipsec options retransmission attempts 3
+        - set vpn ipsec options retransmission timeout 2
+        - set vpn ipsec options retransmission base 1.8
         - set interfaces vti vti103 description 'ep-a over Tumbleweed Fiber'
         - set interfaces vti vti103 address 10.255.0.5/31
         - set interfaces vti vti103 mtu 1400
@@ -1307,6 +1316,9 @@ spec:
         - set vpn ipsec esp-group WAN pfs dh-group14
         - set vpn ipsec esp-group WAN proposal 10 encryption aes256
         - set vpn ipsec esp-group WAN proposal 10 hash sha256
+        - set vpn ipsec options retransmission attempts 3
+        - set vpn ipsec options retransmission timeout 2
+        - set vpn ipsec options retransmission base 1.8
         - set interfaces vti vti105 description 'cs-a over Bristlecone Broadband'
         - set interfaces vti vti105 address 10.255.0.9/31
         - set interfaces vti vti105 mtu 1400

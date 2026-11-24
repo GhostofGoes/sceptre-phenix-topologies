@@ -34,6 +34,13 @@ timers:
 vpn:
   kind: vti
   hub_opens: false
+  # IKE gives a silent peer up after about 24 s (2 + 3.6 + 6.5 + 11.7), not
+  # after strongSwan's 165 s. With `hub_opens: false`, this is how long a site
+  # takes to notice a head office that came back from a crash.
+  ike_retransmit:
+    tries: 3
+    timeout_s: 2
+    base: 1.8
   hub_endpoint: 198.18.105.1
   vti_mtu: 1400
 head_office:

@@ -1647,8 +1647,8 @@ State on 2026-11-24:
   - The first boot itself, after stage 0. Only the schemas read these files.
     phenix did not.
 - A site with one flat plant network has no firewall between its PLCs, its
-  operator stations, and its SCADA host. netcheck lists those pairs: 45 at
-  `fc` and 65 at `cs`. That is the layout of [4.1](#41-what-each-site-is), and
+  operator stations, and its SCADA host. The tool netcheck lists those pairs:
+  45 at `fc` and 65 at `cs`. That is the layout of [4.1](#41-what-each-site-is), and
   an exercise can use it.
 
 Stage 1 ran on a GitHub runner, as the Phase 0 VM spikes did. Stage C needs

@@ -2,8 +2,8 @@
 # cut (docs/multisite/PLANS.md, sections 2 and 4.1). Each site is the plant of
 # plant.yaml with parts left out and with its networks moved. plantgen reads
 # this file (tools/plantgen/plantgen/sites.py) and checks it against plant.yaml
-# and wan/wan.yaml. No generator writes site files from it yet: that is stage 3
-# of the plan.
+# and wan/wan.yaml. Then it writes the files of each site under
+# plant/generated/fleet/<code>/ (tools/plantgen/plantgen/fleet.py).
 #
 # The values are those that the site-profiles spike ran (spikes/site-profiles).
 # A test compares the two.

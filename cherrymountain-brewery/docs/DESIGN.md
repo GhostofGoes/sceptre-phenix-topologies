@@ -518,7 +518,7 @@ ISA-88 lets a model omit hierarchy levels that add nothing.
 ### 6.2 Process flow
 
 ```mermaid
-flowchart LR
+flowchart TB
   SILO[Grain silo] --> MILL[Roller mill] --> MLT
   RO[RO water] --> CLT --> HLT
   HLT -- strike/sparge --> MLT -- runoff --> KETTLE[Kettle/whirlpool]
@@ -1518,7 +1518,7 @@ protocol. It sends writes (operator and PLC commands) to the `updates`
 endpoint of the owning federate.
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph MGMT["MGMT plane (simulation, white cell)"]
     BRK["sim-ctl: HELICS root broker<br/>weather player, event API,<br/>ground-truth Grafana"]
     PROC["sim-process: brewhouse,<br/>cellar, utilities, packaging"]
@@ -2059,6 +2059,7 @@ flowchart TB
   subgraph L35["IT/OT DMZ"]
     VPN["dmz-vpn (WireGuard)"]
     JUMP["dmz-jump (Guacamole)"]
+    VPN ~~~ JUMP
   end
   FWOT{{"fw-ot"}}
   subgraph L3["Site operations (OPS)"]
@@ -2066,10 +2067,12 @@ flowchart TB
     HIST["historian"]
     EWS["ews"]
     SVC["ot-svc<br/>(OPS BBMD)"]
+    FUXA ~~~ HIST ~~~ EWS ~~~ SVC
   end
   subgraph L2["Supervisory (HMI)"]
     HMI1["hmi-brewhouse"]
     HMI2["hmi-packaging"]
+    HMI1 ~~~ HMI2
   end
   subgraph L1["Control (CTRL)"]
     PLCs["plc-brewhouse, plc-cellar,<br/>plc-packaging, plc-utilities, plc-power"]
@@ -2085,12 +2088,14 @@ flowchart TB
     BASFUXA["bas-fuxa"]
     BASBBMD["bas-bbmd"]
     BASD["bas-rtu-taproom, bas-coldroom, bas-vent"]
+    BASFUXA ~~~ BASBBMD ~~~ BASD
   end
   subgraph SOC["SOC"]
     MAL["malcolm"]
     WAZ["wazuh"]
     ANA["soc-analyst"]
     PUR["soc-purple"]
+    MAL ~~~ WAZ ~~~ ANA ~~~ PUR
   end
   ISP --- FWEDGE
   ISP --- TRAFFIC

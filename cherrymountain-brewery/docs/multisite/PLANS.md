@@ -136,18 +136,17 @@ ShadeCast Cable are placeholders. Nobody compared them with the names of real
 companies.
 
 ```mermaid
-flowchart TB
-  subgraph FR["fr: two firewalls, a zone for each level"]
+flowchart LR
+  subgraph FC["fc: one firewall, two zones"]
     direction TB
-    FRE{{"fr-fw-edge"}} --- FRC["CORP"]
-    FRE --- FRD["DMZ<br/>vendor gateway, jump host"]
-    FRD --- FRT{{"fr-fw-ot"}}
-    FRT --- FRP["OPS<br/>SCADA, historian, EWS"]
-    FRT --- FRH["HMI"]
-    FRT --- FRCT["CTRL<br/>5 PLCs"]
-    FRT --- FRB["BAS"]
-    FRT --- FRS["SOC"]
-    FRT --- FRL["DERLINK<br/>utility RTU"]
+    FCE{{"fc-fw-edge"}} --- FCO["OFFICE"]
+    FCE --- FCP["PLANT<br/>SCADA, historian, HMI, 3 PLCs,<br/>building controllers, sensor"]
+  end
+  subgraph CS["cs: one firewall, three zones"]
+    direction TB
+    CSE{{"cs-fw-edge"}} --- CSO["OFFICE"]
+    CSE --- CSP["PLANT<br/>SCADA, historian, EWS, ot-svc,<br/>HMIs, 4 PLCs, sensor"]
+    CSE --- CSB["BAS"]
   end
   subgraph EP["ep: the same, and a zone for each cell"]
     direction TB
@@ -160,16 +159,17 @@ flowchart TB
     EPT --- EPB["BAS"]
     EPT --- EPS["SOC<br/>sensor"]
   end
-  subgraph CS["cs: one firewall, three zones"]
+  subgraph FR["fr: two firewalls, a zone for each level"]
     direction TB
-    CSE{{"cs-fw-edge"}} --- CSO["OFFICE"]
-    CSE --- CSP["PLANT<br/>SCADA, historian, EWS, ot-svc,<br/>HMIs, 4 PLCs, sensor"]
-    CSE --- CSB["BAS"]
-  end
-  subgraph FC["fc: one firewall, two zones"]
-    direction TB
-    FCE{{"fc-fw-edge"}} --- FCO["OFFICE"]
-    FCE --- FCP["PLANT<br/>SCADA, historian, HMI, 3 PLCs,<br/>building controllers, sensor"]
+    FRE{{"fr-fw-edge"}} --- FRC["CORP"]
+    FRE --- FRD["DMZ<br/>vendor gateway, jump host"]
+    FRD --- FRT{{"fr-fw-ot"}}
+    FRT --- FRP["OPS<br/>SCADA, historian, EWS"]
+    FRT --- FRH["HMI"]
+    FRT --- FRCT["CTRL<br/>5 PLCs"]
+    FRT --- FRB["BAS"]
+    FRT --- FRS["SOC"]
+    FRT --- FRL["DERLINK<br/>utility RTU"]
   end
 ```
 

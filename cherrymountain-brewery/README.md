@@ -34,6 +34,7 @@ flowchart TB
   subgraph DMZ["DMZ 10.10.20.0/24"]
     VPN["dmz-vpn<br/>WireGuard"]
     JUMP["dmz-jump<br/>Guacamole"]
+    VPN ~~~ JUMP
   end
   FWOT{{"fw-ot<br/>default drop between the OT zones"}}
   subgraph OPS["OPS 10.20.30.0/24"]
@@ -41,6 +42,7 @@ flowchart TB
     HIST["historian"]
     EWS["ews"]
     SVC["ot-svc<br/>NTP, DNS, syslog, BBMD"]
+    FUXA ~~~ HIST ~~~ EWS ~~~ SVC
   end
   subgraph HMI["HMI 10.20.20.0/24"]
     HMIS["hmi-brewhouse<br/>hmi-packaging"]
@@ -51,6 +53,7 @@ flowchart TB
   subgraph FIELD["FIELD islands, one per PLC, not routed"]
     RIOS["rio-brewhouse, rio-cellar, rio-packaging<br/>rio-utilities, glycol-chiller<br/>10.20.11.0/24 to 10.20.14.0/24"]
     PDEVS["relay-main, pv-inverter<br/>bess-pcs, gen-ats<br/>FIELD-PWR 10.20.16.0/24"]
+    RIOS ~~~ PDEVS
   end
   subgraph DERLINK["DERLINK 10.20.15.0/24"]
     RTU["rtu-der<br/>DNP3 gateway"]
@@ -58,6 +61,7 @@ flowchart TB
   subgraph BAS["BAS 10.30.10.0/24"]
     BFX["bas-fuxa, bas-bbmd"]
     BASD["bas-rtu-taproom<br/>bas-coldroom, bas-vent"]
+    BFX ~~~ BASD
   end
   subgraph SOC["SOC 10.40.10.0/24"]
     SOCH["malcolm, wazuh<br/>soc-analyst, soc-purple"]
@@ -183,7 +187,7 @@ brewhouse, about two weeks in the cellar, and a shift on the packaging line.
 The range simulates and controls this process.
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph HOT["Brewhouse: make wort, about 5.5 hours"]
     direction LR
     MILL[Mill the malt] --> MASH[Mash and lauter]
@@ -199,9 +203,8 @@ flowchart LR
     direction LR
     BOT[Bottles] ~~~ KEG[Kegs]
   end
-  WP -- "cool to 64 °F, add oxygen and yeast" --> FV
-  BBT --> BOT
-  BBT --> KEG
+  HOT -- "cool to 64 °F, add oxygen and yeast" --> COLD
+  COLD --> PKG
 ```
 
 ### Brewhouse: make wort
@@ -371,7 +374,7 @@ that no PLC point covers. The federates are on the MGMT network, which is not
 part of the brewery.
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph CTLH["sim-ctl"]
     BRK(["HELICS broker"])
     WX["weather"]
@@ -549,7 +552,7 @@ firewall. The loads of the building feed the power model. The weather that
 drives the heating and cooling of the building feeds the power model too.
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph BAS["BAS network"]
     BFX["bas-fuxa"]
     BBMD2["bas-bbmd"]
@@ -584,7 +587,7 @@ each allowed path and each blocked path on a range that runs. `ot-svc` gives
 the plant its time, its names, and a syslog relay.
 
 ```mermaid
-flowchart LR
+flowchart TB
   HMI["HMI stations"] -- "HTTP 1881" --> SCADA["scada-fuxa"]
   SCADA -- "OPC UA 4840, Modbus 502, S7 102" --> PLC["PLCs"]
   EWS["ews"] -- "HTTPS 8443" --> PLC
@@ -683,7 +686,7 @@ variables, FUXA tags, HELICS lists, and app configuration. `sync.py` puts the
 results in place. A check fails when a copy drifts from its source.
 
 ```mermaid
-flowchart LR
+flowchart TB
   PLANT["plant/plant.yaml"] --> GEN["plantgen"]
   GEN --> REG["register maps, tags, alarms"]
   GEN --> HSET["HELICS and ot-sim settings"]

@@ -89,5 +89,14 @@ def test_soh_pings_through_the_vpn_in_both_directions() -> None:
         "vpn-to-fc-historian",
         "vpn-to-ep-historian",
         "vpn-to-cs-historian",
+        "internet-to-inet",
     ]
     assert "10.20.30.11" in tests["fc-historian"][0]["testScript"]
+
+
+def test_soh_pings_the_internet_host_from_every_site() -> None:
+    apps = {app["name"]: app for app in phenix.scenario()["spec"]["apps"]}
+    for host, tests in apps["soh"]["metadata"]["hostCustomTests"].items():
+        last = tests[-1]
+        assert last["name"] == "internet-to-inet", host
+        assert "198.18.110.11" in last["testScript"]

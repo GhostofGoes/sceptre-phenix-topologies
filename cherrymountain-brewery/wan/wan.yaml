@@ -9,7 +9,9 @@
 # routers:  one VyOS router each. `asn` is its BGP AS. `originates` lists the
 #           prefixes that it announces to the internet. A site edge with
 #           `public_bgp: false` has addresses that its ISPs assigned, and runs
-#           BGP only inside the tunnels.
+#           BGP only inside the tunnels. An ISP sends the head office a
+#           default route only while it holds a prefix of its own providers
+#           (`default_requires` names other prefixes).
 # links:    point-to-point underlay links. `a` gets the first host address.
 #           `relation` says how `a` sees `b`: customer, peer, provider, ibgp, or
 #           static (no BGP on the link).
@@ -19,7 +21,10 @@
 #           office. `net` is the /31 inside the tunnel, and the hub has its
 #           first address.
 # site_blocks: the private blocks of each site. The head office accepts from a
-#           site only what is in that site's blocks.
+#           site only what is in that site's blocks: as routes, and as the
+#           source of a packet that comes out of the site's tunnel.
+# head_office: `nat_address` is what the head office's private addresses become
+#           on the internet, on both ISPs.
 
 timers:
   core_keepalive_s: 3
@@ -34,6 +39,7 @@ vpn:
 head_office:
   router: fr-fw-edge
   prefix: 198.18.105.0/24
+  nat_address: 198.18.105.2
 private:
 - 10.0.0.0/8
 - 172.16.0.0/12

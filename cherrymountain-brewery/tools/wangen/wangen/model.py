@@ -57,6 +57,9 @@ class Router(_Entry):
     public_bgp: bool = True
     #: Install the default route of every ISP, not only the best one.
     multipath: bool = False
+    #: An ISP sends its customer a default route only while its BGP table holds
+    #: one of these prefixes. Empty: the prefixes of its providers.
+    default_requires: list[str] = Field(default_factory=list)
 
 
 class Link(_Entry):
@@ -152,6 +155,9 @@ class Vpn(_Entry):
 class HeadOffice(_Entry):
     router: str
     prefix: str
+    #: What the head office's private addresses become on the internet. An
+    #: address of `prefix` that is not the VPN endpoint.
+    nat_address: str
 
 
 class Wan(_Entry):
@@ -180,6 +186,7 @@ PRIVATE: tuple[str, ...] = ()
 HUB: str = ""
 HUB_ENDPOINT: str = ""
 HQ_PREFIX: str = ""
+NAT_ADDRESS: str = ""
 CORE_KEEPALIVE_S: int = 0
 CORE_HOLD_S: int = 0
 BFD_INTERVAL_MS: int = 0
@@ -222,6 +229,16 @@ def check(wan: Wan) -> None:
             raise WanError(f"lan of {lan.host}: it needs a vlan and a vlan_id")
     if wan.head_office.router not in known:
         raise WanError(f"head_office: {wan.head_office.router!r} is not a router")
+    office = ipaddress.ip_network(wan.head_office.prefix)
+    nat = ipaddress.ip_address(wan.head_office.nat_address)
+    if nat not in office or str(nat) == wan.vpn.hub_endpoint:
+        raise WanError(
+            f"head_office: nat_address {nat} must be in {office} and must not be the VPN endpoint, "
+            "which takes UDP 500 and 4500"
+        )
+    for router in wan.routers:
+        for prefix in router.default_requires:
+            _network(prefix, f"default_requires of {router.name}")
     if wan.vpn.kind not in {VTI, WIREGUARD}:
         raise WanError(f"vpn: kind {wan.vpn.kind!r} is not {VTI!r} or {WIREGUARD!r}")
     ports: set[int] = set()
@@ -247,7 +264,7 @@ def check(wan: Wan) -> None:
 
 def load(path: Path = DEFAULT_PATH) -> Wan:
     """Read wan.yaml, check it, and make it the loaded model."""
-    global WAN, PRIVATE, HUB, HUB_ENDPOINT, HQ_PREFIX, KIND, HUB_OPENS  # noqa: PLW0603
+    global WAN, PRIVATE, HUB, HUB_ENDPOINT, HQ_PREFIX, NAT_ADDRESS, KIND, HUB_OPENS  # noqa: PLW0603
     global CORE_KEEPALIVE_S, CORE_HOLD_S, BFD_INTERVAL_MS, BFD_MULTIPLIER, VTI_MTU  # noqa: PLW0603
     raw: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
     wan = Wan.model_validate(raw)
@@ -265,6 +282,7 @@ def load(path: Path = DEFAULT_PATH) -> Wan:
     HUB = wan.head_office.router
     HUB_ENDPOINT = wan.vpn.hub_endpoint
     HQ_PREFIX = wan.head_office.prefix
+    NAT_ADDRESS = wan.head_office.nat_address
     KIND = wan.vpn.kind
     HUB_OPENS = wan.vpn.hub_opens
     CORE_KEEPALIVE_S = wan.timers.core_keepalive_s
@@ -294,6 +312,23 @@ def peer_of(link: Link, router: str) -> tuple[str, str, str]:
     if router == link.a:
         return link.b, second, first
     return link.a, first, second
+
+
+def transit_prefixes(router: Router) -> list[str]:
+    """The prefixes that show that an ISP still reaches the rest of the internet.
+
+    `default_requires` if the router has it. Otherwise what the networks of its
+    providers originate. An ISP that has no provider gets no list, and its
+    default route has no condition.
+    """
+    if router.default_requires:
+        return list(router.default_requires)
+    providers = {
+        BY_NAME[peer_of(link, router.name)[0]].asn
+        for link in LINKS
+        if router.name in (link.a, link.b) and relation_seen_by(link, router.name) == "provider"
+    }
+    return [prefix for other in ROUTERS if other.asn in providers for prefix in other.originates]
 
 
 def discards(name: str) -> list[tuple[str, int]]:

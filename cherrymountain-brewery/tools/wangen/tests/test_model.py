@@ -33,7 +33,9 @@ def test_wan_yaml_equals_the_spikes_model() -> None:
         import vyos_sketch
     finally:
         sys.path.remove(str(SPIKE))
-    assert [r.model_dump() for r in model.ROUTERS] == [r.model_dump() for r in spike.ROUTERS]
+    # `default_requires` is the generator's own: the spike's ISPs have no condition.
+    ours = [r.model_dump(exclude={"default_requires"}) for r in model.ROUTERS]
+    assert ours == [r.model_dump() for r in spike.ROUTERS]
     assert [link.model_dump() for link in model.LINKS] == [link.model_dump() for link in spike.LINKS]
     # The spike's LANs have no VLAN: it names its own.
     assert [lan.model_dump(exclude={"vlan", "vlan_id"}) for lan in model.LANS] == [

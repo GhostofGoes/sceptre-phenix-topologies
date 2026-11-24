@@ -214,7 +214,7 @@ spec:
         - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 match ip address prefix-list CUST-FR-FW-EDGE
         - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set local-preference 200
         - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set community replace 64500:1
-        - set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast default-originate
+        - set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast default-originate route-map DEFAULT-IF-TRANSIT
         - set protocols bgp neighbor 203.0.113.2 remote-as 64505
         - set protocols bgp neighbor 203.0.113.2 description 'Head office and Front Range brewery edge'
         - set protocols bgp neighbor 203.0.113.2 timers keepalive 3
@@ -223,6 +223,12 @@ spec:
         - set protocols bgp neighbor 203.0.113.2 bfd profile WAN
         - set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast route-map import FROM-CUST-FR-FW-EDGE
         - set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast route-map export TO-CUSTOMER
+        - set policy prefix-list TRANSIT rule 10 action permit
+        - set policy prefix-list TRANSIT rule 10 prefix 198.18.0.0/24
+        - set policy prefix-list TRANSIT rule 20 action permit
+        - set policy prefix-list TRANSIT rule 20 prefix 198.18.110.0/24
+        - set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
+        - set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
     - hostname: tumbleweed
       metadata:
         config:
@@ -296,7 +302,7 @@ spec:
         - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 match ip address prefix-list CUST-FR-FW-EDGE
         - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set local-preference 200
         - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set community replace 64501:1
-        - set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast default-originate
+        - set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast default-originate route-map DEFAULT-IF-TRANSIT
         - set protocols bgp neighbor 198.18.101.2 remote-as 64505
         - set protocols bgp neighbor 198.18.101.2 description 'Head office and Front Range brewery edge'
         - set protocols bgp neighbor 198.18.101.2 timers keepalive 3
@@ -305,6 +311,12 @@ spec:
         - set protocols bgp neighbor 198.18.101.2 bfd profile WAN
         - set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast route-map import FROM-CUST-FR-FW-EDGE
         - set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast route-map export TO-CUSTOMER
+        - set policy prefix-list TRANSIT rule 10 action permit
+        - set policy prefix-list TRANSIT rule 10 prefix 198.18.0.0/24
+        - set policy prefix-list TRANSIT rule 20 action permit
+        - set policy prefix-list TRANSIT rule 20 prefix 198.18.110.0/24
+        - set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
+        - set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
     - hostname: marmot
       metadata:
         config:
@@ -358,6 +370,10 @@ spec:
         - set protocols bgp neighbor 198.18.0.21 timers connect 5
         - set protocols bgp neighbor 198.18.0.21 address-family ipv4-unicast route-map import FROM-PROVIDER
         - set protocols bgp neighbor 198.18.0.21 address-family ipv4-unicast route-map export TO-UPSTREAM
+        - set policy prefix-list TRANSIT rule 10 action permit
+        - set policy prefix-list TRANSIT rule 10 prefix 198.18.101.0/24
+        - set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
+        - set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
     - hostname: bristlecone
       metadata:
         config:
@@ -411,6 +427,12 @@ spec:
         - set protocols bgp neighbor 198.18.0.13 timers connect 5
         - set protocols bgp neighbor 198.18.0.13 address-family ipv4-unicast route-map import FROM-PROVIDER
         - set protocols bgp neighbor 198.18.0.13 address-family ipv4-unicast route-map export TO-UPSTREAM
+        - set policy prefix-list TRANSIT rule 10 action permit
+        - set policy prefix-list TRANSIT rule 10 prefix 198.18.0.0/24
+        - set policy prefix-list TRANSIT rule 20 action permit
+        - set policy prefix-list TRANSIT rule 20 prefix 198.18.110.0/24
+        - set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
+        - set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
     - hostname: fr-fw-edge
       metadata:
         config:
@@ -702,6 +724,69 @@ spec:
         - set protocols bgp neighbor 10.255.0.9 bfd profile WAN
         - set protocols bgp neighbor 10.255.0.9 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-CS
         - set protocols bgp neighbor 10.255.0.9 address-family ipv4-unicast route-map export OVERLAY-OUT
+        - set firewall group network-group PRIVATE network 10.0.0.0/8
+        - set firewall group network-group PRIVATE network 172.16.0.0/12
+        - set firewall group network-group PRIVATE network 192.168.0.0/16
+        - set nat source rule 100 outbound-interface name eth0
+        - set nat source rule 100 source group network-group PRIVATE
+        - set nat source rule 100 translation address 198.18.105.2
+        - set nat source rule 110 outbound-interface name eth1
+        - set nat source rule 110 source group network-group PRIVATE
+        - set nat source rule 110 translation address 198.18.105.2
+        - set firewall group network-group VPN-FC network 10.11.0.0/16
+        - set firewall group network-group VPN-FC network 10.21.0.0/16
+        - set firewall group network-group VPN-FC network 10.255.0.1/32
+        - set firewall group network-group VPN-FC network 10.255.0.3/32
+        - set firewall group network-group VPN-EP network 10.12.0.0/16
+        - set firewall group network-group VPN-EP network 10.22.0.0/16
+        - set firewall group network-group VPN-EP network 10.32.0.0/16
+        - set firewall group network-group VPN-EP network 10.42.0.0/16
+        - set firewall group network-group VPN-EP network 10.255.0.5/32
+        - set firewall group network-group VPN-EP network 10.255.0.7/32
+        - set firewall group network-group VPN-CS network 192.168.10.0/24
+        - set firewall group network-group VPN-CS network 192.168.20.0/24
+        - set firewall group network-group VPN-CS network 192.168.30.0/24
+        - set firewall group network-group VPN-CS network 10.255.0.9/32
+        - set firewall ipv4 forward filter rule 100 action drop
+        - set firewall ipv4 forward filter rule 100 inbound-interface name vti101
+        - set firewall ipv4 forward filter rule 100 source group network-group '!VPN-FC'
+        - set firewall ipv4 forward filter rule 100 log
+        - set firewall ipv4 input filter rule 100 action drop
+        - set firewall ipv4 input filter rule 100 inbound-interface name vti101
+        - set firewall ipv4 input filter rule 100 source group network-group '!VPN-FC'
+        - set firewall ipv4 input filter rule 100 log
+        - set firewall ipv4 forward filter rule 101 action drop
+        - set firewall ipv4 forward filter rule 101 inbound-interface name vti102
+        - set firewall ipv4 forward filter rule 101 source group network-group '!VPN-FC'
+        - set firewall ipv4 forward filter rule 101 log
+        - set firewall ipv4 input filter rule 101 action drop
+        - set firewall ipv4 input filter rule 101 inbound-interface name vti102
+        - set firewall ipv4 input filter rule 101 source group network-group '!VPN-FC'
+        - set firewall ipv4 input filter rule 101 log
+        - set firewall ipv4 forward filter rule 102 action drop
+        - set firewall ipv4 forward filter rule 102 inbound-interface name vti103
+        - set firewall ipv4 forward filter rule 102 source group network-group '!VPN-EP'
+        - set firewall ipv4 forward filter rule 102 log
+        - set firewall ipv4 input filter rule 102 action drop
+        - set firewall ipv4 input filter rule 102 inbound-interface name vti103
+        - set firewall ipv4 input filter rule 102 source group network-group '!VPN-EP'
+        - set firewall ipv4 input filter rule 102 log
+        - set firewall ipv4 forward filter rule 103 action drop
+        - set firewall ipv4 forward filter rule 103 inbound-interface name vti104
+        - set firewall ipv4 forward filter rule 103 source group network-group '!VPN-EP'
+        - set firewall ipv4 forward filter rule 103 log
+        - set firewall ipv4 input filter rule 103 action drop
+        - set firewall ipv4 input filter rule 103 inbound-interface name vti104
+        - set firewall ipv4 input filter rule 103 source group network-group '!VPN-EP'
+        - set firewall ipv4 input filter rule 103 log
+        - set firewall ipv4 forward filter rule 104 action drop
+        - set firewall ipv4 forward filter rule 104 inbound-interface name vti105
+        - set firewall ipv4 forward filter rule 104 source group network-group '!VPN-CS'
+        - set firewall ipv4 forward filter rule 104 log
+        - set firewall ipv4 input filter rule 104 action drop
+        - set firewall ipv4 input filter rule 104 inbound-interface name vti105
+        - set firewall ipv4 input filter rule 104 source group network-group '!VPN-CS'
+        - set firewall ipv4 input filter rule 104 log
     - hostname: fc-fw-edge
       metadata:
         config:
@@ -793,8 +878,14 @@ spec:
         - set protocols bgp parameters log-neighbor-changes
         - set protocols bgp address-family ipv4-unicast network 10.11.0.0/16
         - set protocols bgp address-family ipv4-unicast network 10.21.0.0/16
-        - set protocols static route 0.0.0.0/0 next-hop 203.0.113.9 distance 10
-        - set protocols static route 0.0.0.0/0 next-hop 198.18.102.1 distance 20
+        - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 interface eth0
+        - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 metric 10
+        - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 check target 203.0.113.9 interface eth0
+        - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 check timeout 2
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.102.1 interface eth1
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.102.1 metric 20
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.102.1 check target 198.18.102.1 interface eth1
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.102.1 check timeout 2
         - set policy route-map SET-SOURCE rule 15 action permit
         - set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
         - set policy route-map SET-SOURCE rule 15 set src 10.21.10.1
@@ -878,6 +969,15 @@ spec:
         - set protocols bgp neighbor 10.255.0.2 bfd profile WAN
         - set protocols bgp neighbor 10.255.0.2 address-family ipv4-unicast route-map import OVERLAY-BACKUP
         - set protocols bgp neighbor 10.255.0.2 address-family ipv4-unicast route-map export OVERLAY-OUT
+        - set firewall group network-group PRIVATE network 10.0.0.0/8
+        - set firewall group network-group PRIVATE network 172.16.0.0/12
+        - set firewall group network-group PRIVATE network 192.168.0.0/16
+        - set nat source rule 100 outbound-interface name eth0
+        - set nat source rule 100 source group network-group PRIVATE
+        - set nat source rule 100 translation address masquerade
+        - set nat source rule 110 outbound-interface name eth1
+        - set nat source rule 110 source group network-group PRIVATE
+        - set nat source rule 110 translation address masquerade
     - hostname: ep-fw-edge
       metadata:
         config:
@@ -971,8 +1071,14 @@ spec:
         - set protocols bgp address-family ipv4-unicast network 10.22.0.0/16
         - set protocols bgp address-family ipv4-unicast network 10.32.0.0/16
         - set protocols bgp address-family ipv4-unicast network 10.42.0.0/16
-        - set protocols static route 0.0.0.0/0 next-hop 198.18.101.9 distance 10
-        - set protocols static route 0.0.0.0/0 next-hop 203.0.113.17 distance 20
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 interface eth0
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 metric 10
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 check target 198.18.101.9 interface eth0
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 check timeout 2
+        - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.17 interface eth1
+        - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.17 metric 20
+        - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.17 check target 203.0.113.17 interface eth1
+        - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.17 check timeout 2
         - set policy route-map SET-SOURCE rule 15 action permit
         - set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
         - set policy route-map SET-SOURCE rule 15 set src 10.22.30.1
@@ -1058,6 +1164,15 @@ spec:
         - set protocols bgp neighbor 10.255.0.6 bfd profile WAN
         - set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map import OVERLAY-BACKUP
         - set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map export OVERLAY-OUT
+        - set firewall group network-group PRIVATE network 10.0.0.0/8
+        - set firewall group network-group PRIVATE network 172.16.0.0/12
+        - set firewall group network-group PRIVATE network 192.168.0.0/16
+        - set nat source rule 100 outbound-interface name eth0
+        - set nat source rule 100 source group network-group PRIVATE
+        - set nat source rule 100 translation address masquerade
+        - set nat source rule 110 outbound-interface name eth1
+        - set nat source rule 110 source group network-group PRIVATE
+        - set nat source rule 110 translation address masquerade
     - hostname: cs-fw-edge
       metadata:
         config:
@@ -1150,7 +1265,10 @@ spec:
         - set protocols bgp address-family ipv4-unicast network 192.168.10.0/24
         - set protocols bgp address-family ipv4-unicast network 192.168.20.0/24
         - set protocols bgp address-family ipv4-unicast network 192.168.30.0/24
-        - set protocols static route 0.0.0.0/0 next-hop 198.18.103.1 distance 10
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.103.1 interface eth0
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.103.1 metric 10
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.103.1 check target 198.18.103.1 interface eth0
+        - set protocols failover route 0.0.0.0/0 next-hop 198.18.103.1 check timeout 2
         - set policy route-map SET-SOURCE rule 15 action permit
         - set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
         - set policy route-map SET-SOURCE rule 15 set src 192.168.20.1
@@ -1206,6 +1324,12 @@ spec:
         - set protocols bgp neighbor 10.255.0.8 bfd profile WAN
         - set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
         - set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map export OVERLAY-OUT
+        - set firewall group network-group PRIVATE network 10.0.0.0/8
+        - set firewall group network-group PRIVATE network 172.16.0.0/12
+        - set firewall group network-group PRIVATE network 192.168.0.0/16
+        - set nat source rule 100 outbound-interface name eth0
+        - set nat source rule 100 source group network-group PRIVATE
+        - set nat source rule 100 translation address masquerade
   - name: soh
     metadata:
       startupDelay: 5m
@@ -1236,18 +1360,34 @@ spec:
           executor: bash
           testScript: "if ping -c 3 -W 2 192.168.20.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
           testStdout: REACHED
+        - name: internet-to-inet
+          executor: bash
+          testScript: "if ping -c 3 -W 2 198.18.110.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
+          testStdout: REACHED
         fc-historian:
         - name: vpn-to-fr-historian
           executor: bash
           testScript: "if ping -c 3 -W 2 10.20.30.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
+          testStdout: REACHED
+        - name: internet-to-inet
+          executor: bash
+          testScript: "if ping -c 3 -W 2 198.18.110.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
           testStdout: REACHED
         ep-historian:
         - name: vpn-to-fr-historian
           executor: bash
           testScript: "if ping -c 3 -W 2 10.20.30.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
           testStdout: REACHED
+        - name: internet-to-inet
+          executor: bash
+          testScript: "if ping -c 3 -W 2 198.18.110.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
+          testStdout: REACHED
         cs-historian:
         - name: vpn-to-fr-historian
           executor: bash
           testScript: "if ping -c 3 -W 2 10.20.30.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
+          testStdout: REACHED
+        - name: internet-to-inet
+          executor: bash
+          testScript: "if ping -c 3 -W 2 198.18.110.11 >/dev/null 2>&1; then\n  echo REACHED\nelse\n  echo UNREACHED\nfi\n"
           testStdout: REACHED

@@ -136,15 +136,23 @@ def _ping_test(name: str, address: str) -> dict[str, str]:
 
 
 def soh_tests() -> dict[str, list[dict[str, str]]]:
-    """For each site host, a ping through the VPN: every site to the head office, and the head office to every site."""
+    """The pings of each site host.
+
+    Through the VPN: every site to the head office, and the head office to every
+    site. Outside the VPN: every site host to the host on the internet, which
+    needs the edge's NAT and a default route.
+    """
     lans = {lan.router: lan for lan in model.LANS}
     hub = lans[model.HUB]
+    internet = next(lan for lan in model.LANS if lan.advertise_public)
     sites = sorted({tunnel.site for tunnel in model.TUNNELS}, key=[r.name for r in model.ROUTERS].index)
     tests: dict[str, list[dict[str, str]]] = {
         hub.host: [_ping_test(f"vpn-to-{lans[site].host}", lans[site].host_address()) for site in sites]
     }
     for site in sites:
         tests[lans[site].host] = [_ping_test(f"vpn-to-{hub.host}", hub.host_address())]
+    for tested in tests.values():
+        tested.append(_ping_test(f"internet-to-{internet.host}", internet.host_address()))
     return tests
 
 

@@ -35,7 +35,10 @@ def test_wan_yaml_equals_the_spikes_model() -> None:
         sys.path.remove(str(SPIKE))
     assert [r.model_dump() for r in model.ROUTERS] == [r.model_dump() for r in spike.ROUTERS]
     assert [link.model_dump() for link in model.LINKS] == [link.model_dump() for link in spike.LINKS]
-    assert [lan.model_dump() for lan in model.LANS] == [lan.model_dump() for lan in spike.LANS]
+    # The spike's LANs have no VLAN: it names its own.
+    assert [lan.model_dump(exclude={"vlan", "vlan_id"}) for lan in model.LANS] == [
+        lan.model_dump() for lan in spike.LANS
+    ]
     assert [t.model_dump() for t in model.TUNNELS] == [t.model_dump() for t in spike.TUNNELS]
     assert model.SITE_BLOCKS == spike.SITE_BLOCKS
     assert model.PRIVATE == spike.PRIVATE

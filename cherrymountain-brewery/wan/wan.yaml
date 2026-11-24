@@ -13,7 +13,8 @@
 # links:    point-to-point underlay links. `a` gets the first host address.
 #           `relation` says how `a` sees `b`: customer, peer, provider, ibgp, or
 #           static (no BGP on the link).
-# lans:     one site LAN with one host, for the reachability checks.
+# lans:     one site LAN with one host, for the reachability checks. `vlan` and
+#           `vlan_id` are the site's own zone (PLANS.md, section 3).
 # tunnels:  one tunnel from a site uplink (`via` names the ISP) to the head
 #           office. `net` is the /31 inside the tunnel, and the hub has its
 #           first address.
@@ -171,18 +172,28 @@ lans:
 - router: fr-fw-edge
   host: fr-historian
   net: 10.20.30.0/24
+  vlan: FR-OPS
+  vlan_id: 106
 - router: fc-fw-edge
   host: fc-historian
   net: 10.21.10.0/24
+  vlan: FC-PLANT
+  vlan_id: 221
 - router: ep-fw-edge
   host: ep-historian
   net: 10.22.30.0/24
+  vlan: EP-OPS
+  vlan_id: 306
 - router: cs-fw-edge
   host: cs-historian
   net: 192.168.20.0/24
+  vlan: CS-PLANT
+  vlan_id: 421
 - router: cb-west
   host: inet
   net: 198.18.110.0/24
+  vlan: INET-LAN
+  vlan_id: 520
   advertise_public: true
 tunnels:
 - name: fc-a

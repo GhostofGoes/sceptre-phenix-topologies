@@ -87,6 +87,9 @@ class Lan(_Entry):
     host: str
     net: str
     advertise_public: bool = False
+    #: The VLAN alias and ID of the LAN in the phenix topology: the site's own zone.
+    vlan: str = ""
+    vlan_id: int = 0
 
     def gateway(self) -> str:
         return str(next(ipaddress.ip_network(self.net).hosts()))
@@ -215,6 +218,8 @@ def check(wan: Wan) -> None:
         if lan.router not in known:
             raise WanError(f"lan of {lan.host}: {lan.router!r} is not a router")
         _network(lan.net, f"lan of {lan.host}")
+        if not lan.vlan or not lan.vlan_id:
+            raise WanError(f"lan of {lan.host}: it needs a vlan and a vlan_id")
     if wan.head_office.router not in known:
         raise WanError(f"head_office: {wan.head_office.router!r} is not a router")
     if wan.vpn.kind not in {VTI, WIREGUARD}:

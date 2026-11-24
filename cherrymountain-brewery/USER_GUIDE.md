@@ -43,6 +43,11 @@ simulation of the physics behind them.
 Run **one variant at a time**. They use the same VLAN numbers, and minimega
 refuses the second one. A stopped experiment of another variant may stay.
 
+A fourth variant, `fleet`, is planned and not built: four breweries and a head
+office on a cluster of three nodes, joined by a VPN over a mock internet.
+[The multi-site variant](#the-multi-site-variant-fleet) shows how to run the
+parts of it that exist.
+
 ## 2. Prepare the host
 
 You need one machine with:
@@ -725,6 +730,163 @@ phenix host are out of bounds for players. Anyone who can reach the phenix
 host can reach every forward, the event API included, so keep it on a network
 you trust.
 
+## The multi-site variant (`fleet`)
+
+> **Not built yet.** The `fleet` variant is four breweries and a head office,
+> joined by a site-to-site VPN over a mock internet of five BGP networks. It is
+> a plan with tested parts, not a range you can start:
+> [docs/multisite/PLANS.md](docs/multisite/PLANS.md) has the design and its
+> decisions, and [docs/multisite/REGIONS.md](docs/multisite/REGIONS.md) has
+> the four places. There is no `phenix-fleet.yml` in this directory. This
+> section shows how to run the three parts that exist, and then how the fleet
+> is planned to start.
+
+| Part | What it runs | You need | Time |
+|---|---|---|---|
+| [A](#a-the-whole-wan-on-one-linux-host) | The whole WAN, ten routers and a host at each site, as network namespaces | One Linux host and root. No phenix and no VMs | 10 min |
+| [B](#b-the-wans-core-on-vyos-routers-under-phenix) | The WAN's core on four VyOS routers under phenix and minimega | GitHub Actions on this repository | 20 to 45 min |
+| [C](#c-the-four-sites-as-phenix-topology-files) | The four sites as phenix topology files, with their sizes | Python and a phenix checkout | 1 min |
+
+### A. The whole WAN on one Linux host
+
+This is the lab of [spikes/wan-bgp](spikes/wan-bgp/README.md): the transit
+carrier, four ISPs, the head office on two of them, three site edges, the five
+tunnels with BGP and BFD inside, and one host behind each edge. Each router is
+a network namespace with its own FRR. The tunnels are WireGuard here; the plan
+for the range is route-based IPsec, which the next part runs.
+
+The lab works inside its own namespaces. It also writes each router's FRR
+files under `/etc/frr/<router>` and `/var/run/frr/<router>`, and removes them
+when it tears down, so use a host or a container whose own FRR you do not
+need.
+
+1. Install what it needs (Debian or Ubuntu):
+
+   ```shell
+   sudo apt-get install iproute2 frr wireguard-tools wireguard-go nftables traceroute iputils-ping
+   python3 -m pip install pydantic     # Python 3.12 or later
+   ```
+
+2. Build the lab, run its checks and its faults, and tear it down. It takes
+   about six minutes and prints `PASS` or `FAIL` for each of its 30 checks:
+
+   ```shell
+   cd cherrymountain-brewery/spikes/wan-bgp
+   sudo -E python3 netns_lab.py
+   ```
+
+3. To look around, leave it up:
+
+   ```shell
+   sudo -E python3 netns_lab.py --keep          # with the checks
+   sudo -E python3 netns_lab.py --up-only       # without them
+   ```
+
+   | To see | Run |
+   |---|---|
+   | The routers and hosts | `sudo ip netns list` |
+   | The head office's BGP sessions | `sudo ip netns exec fr-fw-edge vtysh -N fr-fw-edge -c 'show bgp ipv4 unicast summary'` |
+   | A site's routes through its tunnels | `sudo ip netns exec fc-fw-edge vtysh -N fc-fw-edge -c 'show ip route bgp'` |
+   | A site's tunnels | `sudo ip netns exec fc-fw-edge wg show` |
+   | A host at Fort Collins reaching the head office | `sudo ip netns exec fc-historian ping -c 3 10.20.30.11` |
+   | The path between two sites, through the head office | `sudo ip netns exec fc-historian traceroute -n 192.168.20.11` |
+
+4. Remove it:
+
+   ```shell
+   sudo -E python3 netns_lab.py --down
+   ```
+
+The run writes `summary.md` and each router's configuration and final tables
+under `evidence/wan-bgp-netns` (set `CM_EVIDENCE_DIR` to write somewhere
+else). `python3 vyos_sketch.py` writes the same WAN as VyOS commands, one file
+for each router, in `vyos-sketch/`.
+
+### B. The WAN's core on VyOS routers under phenix
+
+Four VyOS routers and two hosts boot under phenix and minimega: two ISPs, the
+head office's edge, and the Fort Collins edge. Each router takes its BGP, BFD,
+and tunnels at first boot from the `config` list of phenix's `vrouter` app,
+which needs a change to phenix that is still a draft
+([GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27)).
+One job builds the tunnels with WireGuard and one with route-based IPsec.
+
+It runs in GitHub Actions, as the `wan-bgp-vyos` job of the workflow
+[cherrymountain-spikes.yml](../.github/workflows/cherrymountain-spikes.yml).
+The job builds the VyOS image, patches phenix, boots the routers, runs 39
+checks and four faults, and uploads `evidence-wan-bgp-vyos-wireguard` and
+`evidence-wan-bgp-vyos-vti`.
+
+- **How the runs so far started:** by a push to the branch
+  `test-wan-bgp-vyos`, which is the feature branch with the workflow's push
+  trigger widened to that branch. The last one is
+  [run 33](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45131775836):
+  39 of 39 with each kind of tunnel.
+- **By hand:** the workflow has a manual trigger with a `spikes` input; set it
+  to `wan-bgp-vyos`. This route was not used for the runs above.
+- **On your own phenix host:** not tried. The job's steps are the recipe: the
+  action [.github/actions/cm-lab](../.github/actions/cm-lab) prepares the
+  host, the patch in `spikes/wan-bgp/patches/` goes onto phenix, and
+  `sudo -E python vyos_ci.py` in `spikes/wan-bgp` runs the experiment
+  `spike-wan-bgp`.
+
+A run takes about 20 minutes when the month's VyOS image is cached and about
+45 when it is built. [spikes/wan-bgp/README.md](spikes/wan-bgp/README.md#the-same-wan-on-vyos-routers)
+has what each run found.
+
+### C. The four sites as phenix topology files
+
+The kit in [spikes/site-profiles](spikes/site-profiles/README.md) builds each
+site's nodes from the single-site plant and a short description of the site,
+and sizes the range for a cluster of three nodes.
+
+```shell
+cd cherrymountain-brewery/spikes/site-profiles
+python3 profiles.py --schema /phenix/schemas --out /tmp/fleet
+```
+
+`--schema` is the `schemas/` directory of a sceptre-phenix checkout; the kit
+also needs `pyyaml`, `pydantic`, and `check-jsonschema` on `PATH`. It writes:
+
+| File | What it is |
+|---|---|
+| `topology-site-fr.yml`, `-ep.yml`, `-cs.yml`, `-fc.yml` | The nodes of each site: 39, 35, 26, and 19 with the sensors |
+| `phenix-fleet.yml` | A workflow with a VLAN ID for each of the 54 aliases and a cluster node for each site VM |
+
+**Do not apply that workflow.** The files are for counting and for checking
+names and addresses. They have no routes, no firewall rules, no internet, and
+no scenario, and the workflow names a topology that does not exist.
+
+### How the fleet is planned to start
+
+None of this works yet. It is here so that you know what a start will need;
+[PLANS.md §8](docs/multisite/PLANS.md#8-stages) has the stages.
+
+| Before the fleet can start | State |
+|---|---|
+| The single site's first run on a phenix host (stage 0) | Not done. Start with `ci`, as [step 6](#6-start-the-range) says |
+| A cluster of three minimega nodes, with a full-size packet crossing between two nodes on the fleet's own bridge (stage C) | Not run. The check is a ping of 1472 bytes that may not be fragmented, after `phenix doctor` passes its bridge-trunk check on every node |
+| A phenix that takes the `vrouter` `config` list | A draft pull request |
+| A `wan` variant: the mock internet and the four site edges, about 20 VMs (stage 2) | Not built. Parts A and B are its proof |
+| The site files, the cross-site firewall rules, and a sensor image (stages 3 and 4) | Not built. Part C is the start |
+
+When those exist, the start is planned to be one command, like the other
+variants, on the head node of the cluster:
+
+```shell
+# Planned. These files do not exist yet.
+T=/phenix/topologies/cherrymountain-brewery
+docker exec phenix phenix workflow apply -n -b cherrymountain-fleet -c phenix-fleet.yml $T     # check only
+docker exec phenix phenix workflow apply    -b cherrymountain-fleet -c phenix-fleet.yml $T
+```
+
+- The experiment will be `cherrymountain-fleet`, on the bridge
+  `cherrymtn-fleet`: 136 VMs, 195 vCPUs, and 394 GB over three nodes of 48
+  cores and 512 GB.
+- The workflow will name a node for every VM and set `deployMode: all`, so
+  that the head node runs VMs too.
+- It will use VLAN IDs 100 to 599, so no other variant can run beside it.
+
 ## Stop, reset, and clean up
 
 ```shell
@@ -801,3 +963,6 @@ the full list.
 - [apps/README.md](apps/README.md): the range's phenix app and its status.
 - After a change to `plant/plant.yaml`: "Regenerate and test" in
   [README.md](README.md#regenerate-and-test).
+- [docs/multisite/PLANS.md](docs/multisite/PLANS.md): the plans for the
+  multi-site `fleet` variant, and [REGIONS.md](docs/multisite/REGIONS.md): the
+  utilities and rules of its four places.

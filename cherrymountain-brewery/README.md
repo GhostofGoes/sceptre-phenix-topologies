@@ -4,6 +4,13 @@ An open-source OT cyber range for [phenix](https://github.com/sandialabs/sceptre
 a notional Colorado microbrewery with its process, PLCs, SCADA, power and
 building systems, a SOC, and a vendor's way in.
 
+**To run it,** follow [USER_GUIDE.md](USER_GUIDE.md), from an empty host to a
+running range. A multi-site variant, four breweries and a head office joined
+by a VPN over a mock internet, is planned and not built:
+[The multi-site variant](USER_GUIDE.md#the-multi-site-variant-fleet) in the
+guide shows how to run the parts of it that exist, and
+[docs/multisite/PLANS.md](docs/multisite/PLANS.md) has the plan.
+
 ```mermaid
 flowchart TB
   subgraph EXT["Outside the brewery"]

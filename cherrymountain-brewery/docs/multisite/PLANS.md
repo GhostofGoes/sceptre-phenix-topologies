@@ -829,11 +829,17 @@ lost 57.2 s and 60.2 s.
 | Return after 200 s of silence | 27 to 62 s | 20 s and 36 s |
 | IKE SAs for each tunnel | 1, at each point of the run | 2 from the start, then 3, then 5 for `fc-a` |
 
-The recommendation changed. The site alone opens the tunnels. A restart of
-the head office is rare, and it costs about a minute in both modes. The other
-mode adds IKE SAs with each event, and nothing in the runs removed them. One
-SA for each tunnel is also what a defender can read. No run shows why the
-return takes 28 s. The job now saves the site's IKE log for that.
+The recommendation is the site alone, for a clean restart. Such a restart
+costs about a minute in both modes. The other mode adds IKE SAs with each
+event, and nothing in the runs removed them. One SA for each tunnel is also
+what a defender can read.
+
+One case is still open. A clean reboot stops strongSwan, which sends a DELETE
+for each IKE SA. The site then drops its SA at once and tries again after 4,
+7, 13, 23, and 42 s. The 28 s is the wait for the next try. A head office that
+stops with no shutdown sends no DELETE. That is the case of the 175 s, and no
+run tested it. The job now makes that case too, and its result can change the
+recommendation.
 
 Does the head office need its own AS? The other choice is that it takes
 ISP-assigned addresses on two uplinks, like `fc` and `ep`, with one hub

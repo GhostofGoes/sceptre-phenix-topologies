@@ -33,6 +33,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import ipaddress
+import itertools
 import json
 import os
 import re
@@ -73,6 +74,8 @@ def redact(text: str) -> str:
 
 # The tunnels: `wireguard`, or `vti` for route-based IPsec.
 KIND: str = os.environ.get("CM_TUNNEL", vyos_sketch.WIREGUARD)
+# Who opens the IPsec tunnels: `site` (the head office only answers) or `both`.
+OPEN: str = os.environ.get("CM_IPSEC_OPEN", "site")
 
 
 def tunnel_named(name: str) -> model.Tunnel:
@@ -258,6 +261,14 @@ def expected_sessions(router: model.Router) -> int:
 
 PING_INTERVAL_S: float = 0.2
 LONG_SILENCE_S: int = 200
+# How often the fault on the head office's uplink runs: enough to see an outage
+# that only some rounds have (three of eight IPsec runs had one near 5 s).
+HQ_UPLINK_ROUNDS: int = 6
+# An outage this long is more than BFD's detection time explains.
+LONG_OUTAGE_S: float = 4.0
+# How long the ping runs through a reboot of the head office's edge.
+HQ_RESTART_WINDOW_S: int = 600
+EVENT_LOG: str = "/tmp/frr-events.log"
 
 HQ: str = "fr-fw-edge"
 JOURNAL: str = (
@@ -364,7 +375,7 @@ def start_ping(lab: Lab, tag: str, seconds: float) -> int:
     count = int(seconds / PING_INTERVAL_S)
     lab.shell(
         "fc-historian",
-        f"setsid nohup ping -i {PING_INTERVAL_S} -W 1 -c {count} 10.20.30.11 >/tmp/ping-{tag}.log 2>&1 </dev/null & "
+        f"setsid nohup ping -D -i {PING_INTERVAL_S} -W 1 -c {count} 10.20.30.11 >/tmp/ping-{tag}.log 2>&1 </dev/null & "
         "sleep 1; echo started",
     )
     return count
@@ -386,6 +397,60 @@ def ping_result(lab: Lab, tag: str, count: int) -> tuple[int, float, str]:
     for seq in [*seen, count + 1]:
         longest, previous = max(longest, seq - previous - 1), seq
     return count - len(seen), round(longest * PING_INTERVAL_S, 1), " ".join(tail.split())
+
+
+def gap_window(lab: Lab, tag: str) -> tuple[float, float]:
+    """When the longest gap of a finished ping began and ended (the replies on each side of it), in epoch seconds.
+
+    (0, 0) when the ping has fewer than two replies. The clock is the pinging host's.
+    """
+    out = lab.shell(
+        "fc-historian",
+        f"sed -n 's/^\\[\\([0-9.]*\\)\\].*icmp_seq=\\([0-9]*\\) ttl.*/\\2 \\1/p' /tmp/ping-{tag}.log",
+        wait_s=120,
+    )
+    replies = sorted((int(seq), float(at)) for seq, at in (line.split() for line in out.splitlines() if line.strip()))
+    widest: tuple[int, float, float] = (0, 0.0, 0.0)
+    for (seq_a, at_a), (seq_b, at_b) in itertools.pairwise(replies):
+        if seq_b - seq_a > widest[0]:
+            widest = (seq_b - seq_a, at_a, at_b)
+    return widest[1], widest[2]
+
+
+def event_log(lab: Lab, routers: tuple[str, ...], on: bool) -> None:
+    """Have FRR write BFD and BGP session events, with milliseconds, to a file on each router."""
+    for vm in routers:
+        if on:
+            commands = (
+                f"vtysh -c 'configure terminal' -c 'log file {EVENT_LOG} debugging' -c 'log timestamp precision 3'",
+                "vtysh -c 'debug bfd peer'",
+                "vtysh -c 'debug bgp neighbor-events'",
+                "vtysh -c 'debug bgp bfd'",
+            )
+        else:
+            commands = (
+                "vtysh -c 'no debug bfd peer'",
+                "vtysh -c 'no debug bgp neighbor-events'",
+                "vtysh -c 'no debug bgp bfd'",
+            )
+        lab.shell(vm, "; ".join(f"{command} 2>&1" for command in commands) + "; echo set", wait_s=120)
+
+
+def events_between(lab: Lab, vm: str, start: float, end: float) -> str:
+    """The session events a router logged between two epoch times (its clock is the host's, to about a second)."""
+    first, last = (time.strftime("%Y/%m/%d %H:%M:%S", time.gmtime(at)) for at in (start, end))
+    return lab.shell(
+        vm,
+        f"awk -v a='{first}' -v b='{last}.999' '($1 \" \" $2) >= a && ($1 \" \" $2) <= b' {EVENT_LOG} 2>&1 "
+        "| grep -E 'ADJCHANGE|state-change|BFD|Established|went from|nexthop' | tail -80",
+        wait_s=120,
+    )
+
+
+def sessions_down(events: str) -> list[str]:
+    """The neighbors whose BGP session a router's events show going down, each with the reason FRR gave."""
+    found = re.findall(r"ADJCHANGE: neighbor (\S+?)\(\S*\) in vrf \S+ Down (.+)", events)
+    return sorted({f"{neighbor}: {reason.strip()}" for neighbor, reason in found})
 
 
 def site_tunnel(lab: Lab) -> str:
@@ -562,6 +627,101 @@ def best_path(lab: Lab, vm: str, prefix: str) -> str:
     return "(none)"
 
 
+EVENT_ROUTERS: tuple[str, ...] = (HQ, "fc-fw-edge", "shadecast", "tumbleweed")
+
+
+def sessions_settled(lab: Lab) -> bool:
+    """Wait until every BFD session of both edges is up again, so that one round does not disturb the next."""
+
+    def probe() -> tuple[bool, str]:
+        states = {vm: bfd_sessions(lab, vm) for vm in (HQ, "fc-fw-edge")}
+        return all(ok for ok, _detail in states.values()), json.dumps({vm: d for vm, (_ok, d) in states.items()})
+
+    try:
+        wait_for("every BFD session up again", 90, 3, probe)
+    except TimeoutError:
+        return False
+    return True
+
+
+def hq_uplink_events(lab: Lab, tag: str, number: int, gap: float, faulted: float) -> dict[str, Any]:
+    """Save what each router logged around one round's outage; return the round's summary."""
+    start, end = gap_window(lab, tag)
+    if not start:
+        start, end = faulted, faulted + 10
+    events = {vm: events_between(lab, vm, start - 4, end + 6) for vm in EVENT_ROUTERS}
+    lab.save(
+        f"{tag}-events.txt",
+        f"outage {gap} s; replies stopped at {start:.3f} and came back at {end:.3f} (the site host's clock); "
+        f"the fault was set at {faulted:.3f} (the runner's clock)\n"
+        + "\n".join(f"== {vm}\n{text}" for vm, text in events.items()),
+    )
+    return {
+        "round": number,
+        "outage_s": gap,
+        "sessions down": {vm: downs for vm, text in events.items() if (downs := sessions_down(text))},
+    }
+
+
+def hq_restart(lab: Lab, lines: list[str]) -> None:
+    """The head office's edge reboots, with a ping from the site's host to the head office's running through it."""
+    primary = tif("fc-a")
+    want = expected_sessions(model.BY_NAME[HQ])
+    boot_id = "cat /proc/sys/kernel/random/boot_id"
+    before = lab.shell(HQ, boot_id).strip()
+    count = start_ping(lab, "hq-restart", HQ_RESTART_WINDOW_S)
+    issued, issued_wall = time.monotonic(), time.time()
+    lab.shell(HQ, "(sleep 2; systemctl reboot) >/dev/null 2>&1 </dev/null & echo rebooting")
+
+    def rebooted() -> tuple[bool, str]:
+        now = lab.shell(HQ, boot_id, wait_s=20).strip()
+        return bool(now) and now != before, now
+
+    def established() -> tuple[bool, str]:
+        states = bgp_states(lab, HQ)
+        return len(states) == want and set(states.values()) == {"Established"}, json.dumps(states)
+
+    times: dict[str, float] = {}
+    try:
+        wait_for("the head office's edge after its reboot", 420, 5, rebooted)
+        times["edge answers"] = round(time.monotonic() - issued)
+        wait_for("BGP at the head office after its reboot", 420, 5, established)
+        times["its BGP sessions are up"] = round(time.monotonic() - issued)
+    except TimeoutError as exc:
+        lab.check("the head office's edge comes back from a reboot with its configuration", False, str(exc)[-300:])
+        ping_result(lab, "hq-restart", count)
+        return
+    missing = config_missing(lab, HQ, lines)
+    lab.check(
+        "the head office's edge comes back from a reboot with its configuration",
+        not missing,
+        f"seconds after the reboot command: {json.dumps(times)}; "
+        f"{len(missing)} of {len(lines)} config lines missing: {redact(json.dumps(missing[:6]))}",
+    )
+    back, detail = wait_tunnel(lab, primary, 420)
+    times["the site routes through its primary tunnel"] = round(time.monotonic() - issued)
+    lost, gap, tail = ping_result(lab, "hq-restart", count)
+    _start, end = gap_window(lab, "hq-restart")
+    if end:
+        times["traffic is back"] = round(end - issued_wall)
+    after_bgp = times.get("traffic is back", 0) - times["its BGP sessions are up"]
+    lab.check(
+        "after the head office's edge restarts, the site reaches the head office again by itself",
+        back and 0 < gap < HQ_RESTART_WINDOW_S - 20,
+        f"outage {gap} s ({lost} of {count} pings lost); seconds after the reboot command: {json.dumps(times)}; "
+        f"traffic came back {after_bgp} s after the head office's BGP sessions were up (negative: before); "
+        f"now on {detail}; {tail}",
+    )
+    lab.fact("head office restart", json.dumps({"outage_s": gap, "tunnels opened by": OPEN, **times}))
+    intact, detail = tunnels_intact(lab)
+    lab.check("both tunnels are as configured after the head office's restart", intact, detail)
+    if KIND == vyos_sketch.VTI:
+        for vm in (HQ, "fc-fw-edge"):
+            sas = lab.shell(vm, "swanctl --list-sas 2>&1 | grep -E '^[a-z]|INSTALLED'")
+            ike = {t.name: len(re.findall(rf"^{re.escape(t.name)}: #", sas, flags=re.M)) for t in model.TUNNELS}
+            lab.fact(f"{vm} IKE SAs for each tunnel after the head office's restart", f"{json.dumps(ike)}: {sas[:600]}")
+
+
 def faults(lab: Lab) -> None:
     """Silent faults on ShadeCast, and one link set down, with a ping running through each."""
     isp = model.BY_NAME["shadecast"]
@@ -602,9 +762,12 @@ def faults(lab: Lab) -> None:
     lab.check("both tunnels are as configured after the site's uplink failed and came back", intact, detail)
 
     # The head office's ShadeCast uplink goes silent.
+    event_log(lab, EVENT_ROUTERS, on=True)
     count = start_ping(lab, "hq-uplink", 60)
+    faulted = time.time()
     blackhole(lab, "shadecast", eth["fr-fw-edge"])
     lost, gap, tail = ping_result(lab, "hq-uplink", count)
+    rounds = [hq_uplink_events(lab, "hq-uplink", 1, gap, faulted)]
     best = best_path(lab, "shadecast", model.HQ_PREFIX)
     on = site_tunnel(lab)
     lab.check(
@@ -623,6 +786,31 @@ def faults(lab: Lab) -> None:
         "the repair costs nothing, and the site is on its primary tunnel",
         back and gap <= 2.0,
         f"the fault dropped {drops} packets; outage {gap} s ({lost} lost); now on {detail}",
+    )
+
+    # The same fault again and again: some IPsec runs lost 5 s to it, not 3.
+    for number in range(2, HQ_UPLINK_ROUNDS + 1):
+        settled = sessions_settled(lab)
+        tag = f"hq-uplink-{number}"
+        count = start_ping(lab, tag, 30)
+        faulted = time.time()
+        blackhole(lab, "shadecast", eth["fr-fw-edge"])
+        lost, gap, tail = ping_result(lab, tag, count)
+        entry = hq_uplink_events(lab, tag, number, gap, faulted)
+        entry["sessions up before the fault"] = settled
+        entry["site on"] = site_tunnel(lab)
+        heal(lab, "shadecast")
+        wait_tunnel(lab, primary, 50)
+        rounds.append(entry)
+    event_log(lab, EVENT_ROUTERS, on=False)
+    gaps = [entry["outage_s"] for entry in rounds]
+    long_rounds = [entry for entry in rounds if entry["outage_s"] >= LONG_OUTAGE_S]
+    lab.fact("head office uplink fault, every round", json.dumps(rounds))
+    lab.check(
+        f"in {HQ_UPLINK_ROUNDS} rounds of the head office's uplink fault, every outage is shorter than the hold time",
+        all(0 < value < hold_bound for value in gaps),
+        f"outages {gaps} s; {len(long_rounds)} of {len(rounds)} rounds reached {LONG_OUTAGE_S} s: "
+        + json.dumps([{key: entry[key] for key in ("round", "outage_s", "sessions down")} for entry in long_rounds]),
     )
 
     # A loud fault: the link of the site's ShadeCast uplink goes down.
@@ -691,10 +879,14 @@ def faults(lab: Lab) -> None:
 
 
 def run() -> int:
-    lab = Lab(f"wan-bgp-vyos-{KIND}", EXP)
+    opened_by_both = KIND == vyos_sketch.VTI and OPEN == "both"
+    lab = Lab(f"wan-bgp-vyos-{KIND}{'-both' if opened_by_both else ''}", EXP)
     lab.redact = redact
     lab.versions()
     lab.fact("tunnels", KIND)
+    if KIND == vyos_sketch.VTI:
+        lab.fact("the IPsec tunnels are opened by", "both ends" if opened_by_both else "the site only")
+    vyos_sketch.HUB_OPENS = opened_by_both
     vyos_sketch.reduce_lab()
     model.PIN = model.PIN_MARK
     wgkeys = load_wgkeys()
@@ -875,6 +1067,7 @@ def run() -> int:
         failed = [check.name for check in lab.evidence.checks if not check.passed]
         if not failed or (recovered and not both_defaults and len(failed) == 1):
             faults(lab)
+            hq_restart(lab, configs[HQ])
         else:
             lab.check("the faults ran", False, "skipped: a check before them failed")
 

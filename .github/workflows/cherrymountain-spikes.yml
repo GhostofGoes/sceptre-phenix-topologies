@@ -356,23 +356,32 @@ jobs:
           overwrite: true
 
   wan-bgp-vyos:
-    name: Spike wan-bgp (VyOS routers, ${{ matrix.tunnel }})
+    name: Spike wan-bgp (VyOS routers, ${{ matrix.tunnel }}${{ matrix.open == 'both' && ', both ends open tunnels' || '' }})
     needs: [plan, image-cm-spike, image-vyos]
     if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' wan-bgp-vyos ') && needs.image-cm-spike.result == 'success' && needs.image-vyos.result == 'success' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 75
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
       fail-fast: false
       matrix:
-        # The tunnels between the site and the head office: WireGuard, or route-based IPsec.
-        tunnel: [wireguard, vti]
+        # The tunnels between the site and the head office: WireGuard, or route-based
+        # IPsec. IPsec runs twice: with the site only opening the tunnels, and with
+        # both ends opening them (multisite/PLANS.md, D21).
+        include:
+          - tunnel: wireguard
+            open: site
+          - tunnel: vti
+            open: site
+          - tunnel: vti
+            open: both
     env:
       CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
       CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
       CM_IMAGES_REF: ${{ needs.plan.outputs.images-ref }}
       CM_TUNNEL: ${{ matrix.tunnel }}
+      CM_IPSEC_OPEN: ${{ matrix.open }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -407,7 +416,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: evidence-wan-bgp-vyos-${{ matrix.tunnel }}
+          name: evidence-wan-bgp-vyos-${{ matrix.tunnel }}${{ matrix.open == 'both' && '-both' || '' }}
           path: evidence
           retention-days: 14
           if-no-files-found: ignore

@@ -239,20 +239,26 @@ def isp_sketch(router: lab.Router) -> list[str]:
     return lines
 
 
+#: Whether the head office opens the IPsec tunnels too. False: it only answers.
+#: The CI job runs both, to decide (multisite/PLANS.md, D21).
+HUB_OPENS: bool = False
+
+
 def ipsec_groups(at_hub: bool) -> list[str]:
     """The IKE and ESP groups of the VTI tunnels.
 
     A site opens its tunnels and opens them again when they end. The head
-    office only answers: when both ends open tunnels, a tunnel can come back
-    from a long silence with two IKE SAs.
+    office only answers, unless HUB_OPENS is set: when both ends open tunnels,
+    a tunnel can come back from a long silence with two IKE SAs.
     """
+    answers = at_hub and not HUB_OPENS
     return [
         # strongSwan would otherwise install a route for each tunnel's selectors.
         "set vpn ipsec options disable-route-autoinstall",
         "set vpn ipsec ike-group WAN key-exchange ikev2",
         "set vpn ipsec ike-group WAN lifetime 28800",
-        f"set vpn ipsec ike-group WAN close-action {'none' if at_hub else 'start'}",
-        f"set vpn ipsec ike-group WAN dead-peer-detection action {'clear' if at_hub else 'restart'}",
+        f"set vpn ipsec ike-group WAN close-action {'none' if answers else 'start'}",
+        f"set vpn ipsec ike-group WAN dead-peer-detection action {'clear' if answers else 'restart'}",
         "set vpn ipsec ike-group WAN dead-peer-detection interval 10",
         "set vpn ipsec ike-group WAN dead-peer-detection timeout 30",
         # MOBIKE would let a tunnel move to another address pair, as a WireGuard endpoint roams.
@@ -287,8 +293,8 @@ def vti_tunnel(router: lab.Router, tunnel: lab.Tunnel, psk: PreSharedKey) -> lis
         f"{peer} authentication mode pre-shared-secret",
         f"{peer} authentication local-id '{local}'",
         f"{peer} authentication remote-id '{remote}'",
-        # The site opens the tunnel; the head office answers.
-        f"{peer} connection-type {'none' if at_hub else 'initiate'}",
+        # The site opens the tunnel; the head office answers (or opens it too, with HUB_OPENS).
+        f"{peer} connection-type {'none' if at_hub and not HUB_OPENS else 'initiate'}",
         f"{peer} ike-group WAN",
         f"{peer} default-esp-group WAN",
         f"{peer} local-address {local}",

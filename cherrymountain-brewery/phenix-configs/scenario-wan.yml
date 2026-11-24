@@ -1,9 +1,10 @@
 # cherrymountain-wan scenario (docs/multisite/PLANS.md, stage 2). The `vrouter`
 # app gets a `config` list for each router: BGP and its policies, BFD, the
-# tunnels to the head office, each tunnel's tie to its uplink, and the discard
-# routes. The list needs the `config` option of the vrouter app
-# (GhostofGoes/sceptre-phenix#27). The soh app pings through the VPN from each
-# site's host.
+# tunnels to the head office, each tunnel's tie to its uplink, the discard
+# routes, NAT, a site's failover default routes, and the head office's source
+# filter on each tunnel. The list needs the `config` option of the vrouter app
+# (GhostofGoes/sceptre-phenix#27). The soh app pings from each site's host:
+# through the VPN, and to the host on the internet.
 #
 # The pre-shared keys are placeholders derived from a fixed text, for a closed
 # range. They are not secrets.

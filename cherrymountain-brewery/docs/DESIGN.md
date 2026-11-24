@@ -2676,7 +2676,7 @@ Variants ([§15.3](#153-topology-modules-and-variants)):
 - `ci` (the cellar slice: sim-ctl, sim-process, rio-cellar,
   plc-cellar, scada-fuxa): 5 VMs, 7 vCPUs, about 8 GB.
   - Its sizes are its own: sim-ctl 1/2 with no ground-truth OpenSearch (2/6
-    in full), sim-process 2/2 (1/1 in full), and scada-fuxa 2/2 as in full.
+    in full), sim-process 2/2 (1/2 in full), and scada-fuxa 2/2 (2/4 in full).
   - The scada-fuxa and plc-cellar nodes share one flat CTRL VLAN, with no
     firewall.
   - FUXA DAQ goes to its built-in SQLite, because there is no historian.

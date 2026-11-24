@@ -787,7 +787,7 @@ need.
    | The routers and hosts | `sudo ip netns list` |
    | The head office's BGP sessions | `sudo ip netns exec fr-fw-edge vtysh -N fr-fw-edge -c 'show bgp ipv4 unicast summary'` |
    | A site's routes through its tunnels | `sudo ip netns exec fc-fw-edge vtysh -N fc-fw-edge -c 'show ip route bgp'` |
-   | A site's tunnels | `sudo ip netns exec fc-fw-edge wg show` |
+   | One of a site's tunnels (`wgs-fc-a` is the primary, `wgs-fc-b` the backup). With `wireguard-go`, `wg show` alone lists every tunnel of the lab | `sudo ip netns exec fc-fw-edge wg show wgs-fc-a` |
    | A host at Fort Collins reaching the head office | `sudo ip netns exec fc-historian ping -c 3 10.20.30.11` |
    | The path between two sites, through the head office | `sudo ip netns exec fc-historian traceroute -n 192.168.20.11` |
 

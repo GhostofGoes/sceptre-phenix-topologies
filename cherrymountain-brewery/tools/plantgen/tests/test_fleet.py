@@ -662,6 +662,97 @@ def test_a_sites_snapshot_asks_only_for_federates_that_the_site_runs(
         render_all(plant, allocate(plant))
 
 
+# -- a site without a building front end ----------------------------------------
+
+
+def test_the_one_scada_host_of_the_pub_reads_and_operates_its_building(
+    plant_file: PlantFile,
+    specs: dict[str, sites.SiteSpec],
+    plants: dict[str, Plant],
+    site_files: dict[str, dict[str, str]],
+) -> None:
+    """`fc` has no bas-fuxa, and its building controllers are still there. So
+    its SCADA host takes the front end's devices: every point, with the right
+    to write. The rule looks at the site's hosts, not at its code."""
+    whole = plant_file.hosts["bas-fuxa"]
+    assert whole.fuxa is not None
+    pub = plants["fc"].hosts["fc-scada-fuxa"]
+    assert pub.fuxa is not None
+    sources = {source.host: (source.tags, source.write) for source in pub.fuxa}
+    assert list(sources) == [
+        "fc-plc-brewhouse",
+        "fc-plc-cellar",
+        "fc-plc-utilities",
+        *(f"fc-{source.host}" for source in whole.fuxa),
+    ]
+    for source in whole.fuxa:
+        assert sources[f"fc-{source.host}"] == (["*"], True)
+    assert sources["fc-plc-cellar"] == (["*"], False)
+    # A site with its own front end changes nothing: the SCADA host reads the
+    # CO2 detection from one controller, and writes none of it.
+    for code in ("fr", "ep", "cs"):
+        kept = plants[code].hosts[f"{code}-scada-fuxa"].fuxa
+        assert kept is not None
+        assert [source.host for source in kept if source.write] == []
+        assert kept[-1].host == f"{code}-bas-vent" and kept[-1].tags != ["*"]
+    pub_tags = json.loads(site_files["fc"]["fuxa/fc-scada-fuxa-tags.json"])
+    front_end = json.loads(site_files["ep"]["fuxa/ep-bas-fuxa-tags.json"])
+    (ours,) = (d for d in pub_tags["devices"] if d["type"] == "BACnet")
+    (theirs,) = front_end["devices"]
+    assert [(t["name"], t["access"]) for t in ours["tags"]] == [
+        (t["name"], t["access"]) for t in theirs["tags"]
+    ]
+    assert len(ours["tags"]) == 39
+    assert sum(tag["access"] == "read-write" for tag in ours["tags"]) == 16
+    # Every tag of the pub has a FUXA host that reads it, as at the other sites.
+    for code, files in site_files.items():
+        read = {
+            tag["name"]
+            for name, text in files.items()
+            if name.startswith("fuxa/")
+            for device in json.loads(text)["devices"]
+            for tag in device["tags"]
+        }
+        every = {tag["name"] for tag in json.loads(files["tags.json"])["tags"]}
+        assert every == read, code
+    soh = yaml.safe_load(site_files["fc"]["phenix/soh.yaml"])["metadata"]
+    flows = {(flow["src"], flow["dst"]) for flow in soh["testCustomReachability"]}
+    assert ("fc-scada-fuxa", "fc-bas-coldroom|IF0") in flows
+
+
+def test_an_alarm_that_fuxa_evaluates_needs_a_fuxa_host_that_reads_its_tag(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], wan: dict[str, Any]
+) -> None:
+    """The check that the pub failed before its SCADA host took the building's
+    points: two alarms of the building had no FUXA host to raise them."""
+    doc = fleet.site_plant(specs["fc"], plant_file, wan)
+    scada = doc.hosts["fc-scada-fuxa"]
+    assert scada.fuxa is not None
+    gone = ("fc-bas-rtu-taproom", "fc-bas-coldroom")
+    scada.fuxa = [source for source in scada.fuxa if source.host not in gone]
+    plant = expand(doc, "fc")
+    alloc = allocate(plant)
+    assert checks.file_checks(plant, alloc, render_all(plant, alloc)) == [
+        "alarm FAC.RTU1.TT01.ALM_HIGH: FUXA evaluates it, and no FUXA instance "
+        "reads FAC.RTU1.TT01.PV",
+        "alarm FAC.CR.TT01.ALM_HIGH: FUXA evaluates it, and no FUXA instance "
+        "reads FAC.CR.TT01.PV",
+    ]
+
+
+def test_a_front_end_that_is_gone_needs_one_scada_host_for_its_devices(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], wan: dict[str, Any]
+) -> None:
+    site = specs["fc"].model_copy(
+        update={"drop_hosts": [*specs["fc"].drop_hosts, "scada-fuxa"]}
+    )
+    with pytest.raises(
+        PlantError,
+        match=r"site fc: scada-fuxa is not at the site, and its devices .* has \[\]",
+    ):
+        fleet.site_plant(site, plant_file, wan)
+
+
 # -- a description that does not fit --------------------------------------------
 
 

@@ -182,6 +182,12 @@ def check(
     ):
         if len(set(values)) != len(values):
             raise PlantError(f"sites: a site {label} is used twice: {values}")
+    # The FUXA builder and the app name a site as they name a variant.
+    for site in sites:
+        if site.code in plant.variants:
+            raise PlantError(
+                f"site {site.code}: its code is the name of a variant of plant.yaml"
+            )
     areas = {area.id for area in plant.areas}
     vlans = {
         interface.vlan

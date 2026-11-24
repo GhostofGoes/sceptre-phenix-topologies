@@ -32,6 +32,7 @@ from pydantic import ValidationError
 
 from plantgen import sites
 from plantgen.model import (
+    FuxaSource,
     Interface,
     Network,
     NtpSource,
@@ -41,6 +42,7 @@ from plantgen.model import (
     VariantSpec,
     expand,
 )
+from plantgen.render import is_bas_front_end
 from plantgen.sites import Move, SiteSpec
 
 #: The variant of plant.yaml that is the whole plant. A site is this variant
@@ -134,6 +136,7 @@ def _variant(site: SiteSpec, doc: PlantFile) -> VariantSpec:
 def _leave_out(doc: PlantFile, variant: VariantSpec) -> None:
     """Take out what the site does not have, and every reference to it."""
     hosts = set(variant.hosts)
+    _inherit_fuxa_sources(doc, hosts)
     doc.hosts = {name: host for name, host in doc.hosts.items() if name in hosts}
     for host in doc.hosts.values():
         if host.fuxa is not None:
@@ -195,6 +198,47 @@ def _leave_out(doc: PlantFile, variant: VariantSpec) -> None:
         del variant.app[WAZUH]
     elif wazuh is not None:
         wazuh["agents"] = [name for name in wazuh.get("agents", []) if name in hosts]
+
+
+def _inherit_fuxa_sources(doc: PlantFile, hosts: set[str]) -> None:
+    """The site's one SCADA host takes the devices of a FUXA host that is gone.
+
+    The pub has no BAS front end. Its building controllers are still there, and
+    FUXA evaluates their alarms, so the SCADA host reads all of their points.
+    It also operates them, as the front end did (`FuxaSource.write`). The rule
+    looks at the site's hosts: a FUXA host that the site left out, with a
+    device that the site kept.
+    """
+    scadas = [name for name, host in doc.hosts.items() if host.role == "scada"]
+    kept = [name for name in scadas if name in hosts]
+    for name in scadas:
+        gone = doc.hosts[name]
+        left = [source for source in gone.fuxa or [] if source.host in hosts]
+        if name in hosts or not left:
+            continue
+        if len(kept) != 1:
+            raise PlantError(
+                f"{name} is not at the site, and its devices "
+                f"{[source.host for source in left]} need one SCADA host to read "
+                f"them; the site has {kept}"
+            )
+        heir = doc.hosts[kept[0]]
+        if heir.fuxa is None:
+            # No list means every PLC of the site.
+            heir.fuxa = [
+                FuxaSource(host=plc)
+                for plc, host in doc.hosts.items()
+                if host.role == "plc" and plc in hosts
+            ]
+        mine = {source.host: source for source in heir.fuxa}
+        heir.fuxa = [s for s in heir.fuxa if s.host not in {x.host for x in left}]
+        for source in left:
+            narrow = mine.get(source.host)
+            tags = list(source.tags)
+            if narrow is not None and "*" not in tags:
+                tags = list(dict.fromkeys([*narrow.tags, *tags]))
+            write = source.write or is_bas_front_end(gone)
+            heir.fuxa.append(FuxaSource(host=source.host, tags=tags, write=write))
 
 
 def _clocks(site: SiteSpec, doc: PlantFile, variant: VariantSpec) -> None:

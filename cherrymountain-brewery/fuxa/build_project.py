@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
 """Build the FUXA project JSON of a FUXA host from plantgen output.
 
-Reads ``plant/generated/<variant>/fuxa/<host>-tags.json`` and ``alarms.json``.
+Reads ``fuxa/<host>-tags.json``, ``alarms.json``, and ``tags.json`` of one
+directory of plantgen output: ``plant/generated/<variant>/`` for a variant, and
+``plant/generated/fleet/<code>/`` for a site of the fleet.
 
-* ``ci`` (scada-fuxa only): one Modbus TCP device (``plc-cellar``), one Cellar
+* ``ci`` (one FUXA host): one Modbus TCP device (the cellar PLC), one Cellar
   view for FV-101 to FV-104, and one FUXA alarm per PLC alarm bit, written to
-  ``fuxa/scada-fuxa-project.json`` (the ci topology injects it).
-* ``full`` and ``lite``, for ``scada-fuxa`` and ``bas-fuxa``: every device of
-  the tag list (Modbus TCP, OPC UA, S7, BACnet), a generated view per device
-  (plus the Cellar view where its tags exist), and every alarm whose tag is in
-  the project: PLC alarm bits (active at 1) and the alarms FUXA evaluates itself
-  on BACnet values (DESIGN.md 6.5). Written to ``fuxa/<variant>/<host>-project.json``;
+  ``fuxa/<host>-project.json`` (the ci topology injects it).
+* ``full``, ``lite``, and each site, for every FUXA host that has a tag list:
+  every device of the tag list (Modbus TCP, OPC UA, S7, BACnet), the process
+  graphics of the areas that the tags cover, a generated view per device, and
+  every alarm whose tag is in the project: PLC alarm bits (active at 1) and the
+  alarms FUXA evaluates itself on BACnet values (DESIGN.md 6.5). Written to
+  ``fuxa/<variant>/<host>-project.json`` or ``fuxa/fleet/<code>/<host>-project.json``;
   the cherrymountain app builds the same project at pre-start.
+
+The builder knows no hostname. A host is a tag list in the directory, a device
+is what the tag list says it is, and a caption that names a controller takes
+the name from ``tags.json``. So a site's hosts (``fc-scada-fuxa``,
+``fc-plc-cellar``) need nothing of their own.
 
 Tag IDs come from plantgen, so they stay stable across regenerations; device,
 view, and gauge IDs are derived from names with UUIDv5 for the same reason. The
@@ -20,8 +28,9 @@ project schema follows frangoteam/FUXA ``client/src/app/_models`` and
 
 Usage:
     python build_project.py [--variant ci] [--host scada-fuxa] [--out FILE]
+    python build_project.py --site fc [--host fc-scada-fuxa] [--out FILE]
     python build_project.py --check            # the ci project is current
-    python build_project.py --all [--check]    # every variant and FUXA host
+    python build_project.py --all [--check]    # every variant, site, and FUXA host
 """
 
 from __future__ import annotations
@@ -382,8 +391,11 @@ S7_DATA_BLOCKS: dict[str, tuple[int, bool]] = {
 #: The OPC UA namespace index of the plugin's ``urn:cherrymountain:opcua``
 #: (the first one it registers). TODO(verify): on a running plc-brewhouse.
 OPCUA_NAMESPACE: int = 2
-FUXA_HOSTS: tuple[str, ...] = ("scada-fuxa", "bas-fuxa")
 VARIANTS: tuple[str, ...] = ("full", "lite")
+#: The directory of the sites under plant/generated and under fuxa/.
+FLEET: str = "fleet"
+#: The device types of a PLC (a BACnet device is the building's controllers).
+PLC_TYPES: frozenset[str] = frozenset({"ModbusTCP", "OPCUA", "SiemensS7"})
 #: Gauges per generated device view: columns of label, value, and (for a tag
 #: the operator may write) an input box. An HMI station's screen is 1440x900
 #: and the menu takes 200 px of it, so a view is at most three columns across
@@ -495,11 +507,32 @@ def convert_plant_device(dev: PlantDevice, trended: frozenset[str] = frozenset()
     )
 
 
-def view_name(device: str) -> str:
-    """plc-brewhouse -> Brewhouse; bas-fuxa-bacnet -> Building."""
-    if device.endswith("-bacnet"):
-        return "Building" if device.startswith("bas-") else "Cellar CO2"
-    return device.removeprefix("plc-").capitalize()
+#: The name of a PLC's view, by the area of the plant that its tags are in.
+AREA_VIEWS: dict[str, str] = {
+    "BH": "Brewhouse",
+    "CEL": "Cellar",
+    "PKG": "Packaging",
+    "UTL": "Utilities",
+    "PWR": "Power",
+}
+#: The tags of the cellar's CO2 detection, which a process SCADA reads from the
+#: building's controllers: a BACnet device with only these is "Cellar CO2".
+CO2_TAGS: str = "FAC.VENT."
+
+
+def view_name(dev: PlantDevice) -> str:
+    """The name of a device's generated view, from the device's own tags: the
+    brewhouse PLC -> Brewhouse; the building's controllers -> Building, or
+    Cellar CO2 for a host that reads only the CO2 detection from them."""
+    if dev.type == "BACnet":
+        return "Cellar CO2" if all(t.name.startswith(CO2_TAGS) for t in dev.tags) else "Building"
+    areas: list[str] = [t.name.split(".")[0] for t in dev.tags]
+    if not areas:
+        raise SystemExit(f"{dev.name}: a device with no tag has no view")
+    area: str = max(dict.fromkeys(areas), key=areas.count)
+    if area not in AREA_VIEWS:
+        raise SystemExit(f"{dev.name}: no view name for the area {area}")
+    return AREA_VIEWS[area]
 
 
 def build_device_view(
@@ -520,7 +553,7 @@ def build_device_view(
     last_rows: int = min(len(shown) - (bands - 1) * VIEW_COLUMNS * VIEW_ROWS, VIEW_ROWS)
     width: int = LEFT * 2 + VIEW_COLUMN * min(columns, VIEW_COLUMNS)
     height: int = 70 + (bands - 1) * band_height + VIEW_ROW_HEIGHT * last_rows
-    title: str = view_name(dev.name)
+    title: str = view_name(dev)
     if title in taken:
         title = f"{title} points"
     vb: ViewBuilder = ViewBuilder(tags, width=width, height=height)
@@ -687,7 +720,7 @@ class BatchRecipe(BaseModel):
 
 
 class PhaseSpec(BaseModel):
-    """An ISA-88 phase of plc-brewhouse and how long to wait for it: ``base_s``
+    """An ISA-88 phase of the brewhouse PLC and how long to wait for it: ``base_s``
     plus ``per_unit_s`` for each unit of its parameter (kg or minutes)."""
 
     number: int
@@ -697,7 +730,7 @@ class PhaseSpec(BaseModel):
 
 
 PHASES: tuple[PhaseSpec, ...] = (
-    # Milling takes 2 s per kg at 0.5 kg/s (50 Hz), as plc-brewhouse counts it; the
+    # Milling takes 2 s per kg at 0.5 kg/s (50 Hz), as the brewhouse PLC counts it; the
     # base is the margin.
     PhaseSpec(number=1, name="MILL", base_s=600, per_unit_s=2),
     PhaseSpec(number=2, name="HLT_HEAT", base_s=7200),
@@ -804,7 +837,7 @@ BATCH_PLANT_TAGS: dict[str, str] = {
     "sp_mlt": "BH.MLT.TT01.SP",
     "sp_ko": "BH.KO.TT02.SP",
 }
-#: What plc-cellar reports of each fermenter: the extract meter (0 when empty),
+#: What the cellar PLC reports of each fermenter: the extract meter (0 when empty),
 #: the entry lockout, and the CIP permit (withdrawn during entry).
 BATCH_FV_TAGS: dict[str, str] = {
     "fv{n}_extract": "CEL.FV10{n}.DT01.PV",
@@ -1016,21 +1049,24 @@ def batch_server_device(recipe: BatchRecipe) -> ServerDevice:
 
 #: The engine's own alarms: (tag key, FUXA severity, text). ISA-18.2 priority:
 #: High for what holds a batch, Medium for wort waiting, Low for a refused start.
+#: ``{plc}`` is the brewhouse PLC, by its name at this plant.
 BATCH_ALARMS: tuple[tuple[str, str, str], ...] = (
     ("alm_timeout", "high", "A batch phase did not complete in time and the batch is held: check the phase's equipment, then Restart or Abort"),
-    ("alm_plc", "high", "The brewhouse PLC did not answer, lost, or aborted a batch phase: check plc-brewhouse, then Restart or Abort"),
+    ("alm_plc", "high", "The brewhouse PLC did not answer, lost, or aborted a batch phase: check {plc}, then Restart or Abort"),
     ("alm_engine", "high", "The batch engine script is failing: see the FUXA log"),
     ("alm_nofv", "low", "Knockout is waiting for a fermenter that is empty and lined up: the wort stays in the kettle"),
     ("alm_refused", "info", "A batch start is refused (brewhouse not Idle, a vessel in entry, or no fermenter empty and lined up): clear the cause, or Reset to drop the queue"),
 )
 
 
-def build_batch_alarms() -> list[dict[str, Any]]:
-    """One FUXA alarm per engine alarm tag, active while the tag is 1."""
+def build_batch_alarms(plc: str) -> list[dict[str, Any]]:
+    """One FUXA alarm per engine alarm tag, active while the tag is 1. ``plc``
+    is the name of the brewhouse PLC (the device that the engine's tags are on)."""
     ids: dict[str, str] = batch_tag_ids()
     names: dict[str, str] = {t.key: t.name for t in BATCH_TAGS}
     alarms: list[dict[str, Any]] = []
-    for key, severity, text in BATCH_ALARMS:
+    for key, severity, template in BATCH_ALARMS:
+        text: str = template.replace("{plc}", plc)
         alarm: dict[str, Any] = build_alarm(
             PlantAlarm(name=names[key], fuxa_severity=severity, fuxa_tag_id=ids[names[key]], text=text)
         )
@@ -1045,7 +1081,7 @@ def _lb(kg: float) -> str:
 
 
 def build_batch_view(recipe: BatchRecipe) -> dict[str, Any]:
-    """The Batch view of scada-fuxa: the operator's Start, Hold, Restart, Abort,
+    """The Batch view of the process SCADA: the operator's Start, Hold, Restart, Abort,
     and Reset, the batch's state and phase, the queue, the reserved fermenter,
     the engine's alarms, and the recipe the batch follows."""
     ids: dict[str, str] = batch_tag_ids()
@@ -1124,19 +1160,63 @@ def check_batch_tags(tags: dict[str, PlantTag]) -> None:
 
 def graphics_plant(plant: PlantTags, gen: Path) -> hmi_views.Plant:
     """What the process graphics are drawn from: the tags by name, the alarm
-    records of ``alarms.json`` by the tag they watch, and each tag's device."""
+    records of ``alarms.json`` by the tag they watch, each tag's device, and
+    the controller of every tag of the plant (``tags.json``: a tag's PLC, or
+    the building controller that serves it)."""
     by_source: dict[str, list[dict[str, Any]]] = {}
     for alarm in json.loads((gen / "alarms.json").read_text(encoding="utf-8"))["alarms"]:
         by_source.setdefault(alarm["source"], []).append(alarm)
+    owners: dict[str, str] = {}
+    for tag in json.loads((gen / "tags.json").read_text(encoding="utf-8"))["tags"]:
+        owner: str | None = tag.get("plc") or tag.get("owner")
+        if owner:
+            owners[tag["name"]] = owner
     return hmi_views.Plant(
         tags={t.name: t for d in plant.devices for t in d.tags},
         alarms=by_source,
         devices={t.name: d.name for d in plant.devices for t in d.tags},
+        owners=owners,
     )
 
 
+def site_codes() -> list[str]:
+    """The sites of the fleet that plantgen wrote files for."""
+    fleet: Path = PLANT_GENERATED / FLEET
+    return sorted(p.name for p in fleet.iterdir() if p.is_dir()) if fleet.is_dir() else []
+
+
+def generated_dir(name: str) -> Path:
+    """The plantgen output of a variant, or of a site by its code. plantgen lets
+    no site take the name of a variant, and no variant the name ``fleet``."""
+    for path in (PLANT_GENERATED / name, PLANT_GENERATED / FLEET / name):
+        if name != FLEET and (path / "tags.json").is_file():
+            return path
+    raise SystemExit(f"no plantgen output for a variant or a site named {name!r}")
+
+
+def fuxa_hosts(name: str) -> list[str]:
+    """The FUXA hosts of a variant or a site: each has a tag list. A host that
+    reads a PLC (a process SCADA) comes before one that does not (a building
+    front end), and each kind is in name order."""
+    lists: list[Path] = sorted((generated_dir(name) / "fuxa").glob("*-tags.json"))
+    hosts: list[tuple[bool, str]] = []
+    for path in lists:
+        plant: PlantTags = PlantTags.model_validate_json(path.read_text(encoding="utf-8"))
+        process: bool = any(d.type in PLC_TYPES for d in plant.devices)
+        hosts.append((not process, path.name.removesuffix("-tags.json")))
+    return [host for _, host in sorted(hosts)]
+
+
+def default_host(name: str) -> str:
+    """The process SCADA of a variant or a site: the first host that reads a PLC."""
+    hosts: list[str] = fuxa_hosts(name)
+    if not hosts:
+        raise SystemExit(f"{name} has no FUXA host")
+    return hosts[0]
+
+
 def build_plant_project(variant: str, host: str) -> Project:
-    gen: Path = PLANT_GENERATED / variant
+    gen: Path = generated_dir(variant)
     path: Path = gen / "fuxa" / f"{host}-tags.json"
     if not path.is_file():
         raise SystemExit(f"no tag list for {host} in variant {variant}")
@@ -1157,15 +1237,17 @@ def build_plant_project(variant: str, host: str) -> Project:
         build_plant_alarm(a) for a in alarms.alarms if a.fuxa_tag_id in ids
     ]
     scripts: list[dict[str, Any]] = []
-    if host == "scada-fuxa" and BATCH_PLC_STATE_TAG in tags:
-        # The brewhouse PLC is here, so the ISA-88 batch engine sequences it:
-        # its script, its FUXA Server tags and alarms, and the Batch view.
+    if BATCH_PLC_STATE_TAG in tags:
+        # This host reads the brewhouse PLC, so the ISA-88 batch engine
+        # sequences it: its script, its FUXA Server tags and alarms, and the
+        # Batch view. A building front end has no such tag.
         check_batch_tags(tags)
         recipe: BatchRecipe = load_batch_recipe()
         brewhouse: int = next((i for i, v in enumerate(views) if v["name"] == "Brewhouse"), -1)
         views.insert(brewhouse + 1, build_batch_view(recipe))
         devices[FUXA_SERVER_ID] = batch_server_device(recipe)
-        project_alarms += build_batch_alarms()
+        plc: str = next(d.name for d in plant.devices if any(t.name == BATCH_PLC_STATE_TAG for t in d.tags))
+        project_alarms += build_batch_alarms(plc)
         scripts.append(batch_script(recipe))
     names: list[str] = [v["name"] for v in views]
     if len(set(names)) != len(names):
@@ -1182,18 +1264,21 @@ def build_plant_project(variant: str, host: str) -> Project:
     )
 
 
-def build_project(variant: str, host: str = "scada-fuxa") -> Project:
+def build_project(variant: str, host: str | None = None) -> Project:
+    """The project of a FUXA host of a variant, or of a site (``variant`` is
+    then the site's code). Without ``host``, the process SCADA's."""
+    if host is None:
+        host = default_host(variant)
     if variant != "ci":
         return build_plant_project(variant, host)
-    if host != "scada-fuxa":
-        raise SystemExit("the ci variant has only scada-fuxa")
-    gen: Path = PLANT_GENERATED / variant
-    plant: PlantTags = PlantTags.model_validate_json(
-        (gen / "fuxa" / "scada-fuxa-tags.json").read_text(encoding="utf-8")
-    )
+    gen: Path = generated_dir(variant)
+    path: Path = gen / "fuxa" / f"{host}-tags.json"
+    if not path.is_file():
+        raise SystemExit(f"the ci variant has only {default_host(variant)}")
+    plant: PlantTags = PlantTags.model_validate_json(path.read_text(encoding="utf-8"))
     alarms: PlantAlarms = PlantAlarms.model_validate_json((gen / "alarms.json").read_text(encoding="utf-8"))
-    if len(plant.devices) != 1 or plant.devices[0].name != "plc-cellar":
-        raise SystemExit("expected exactly one device, plc-cellar, in the tag list")
+    if len(plant.devices) != 1 or plant.devices[0].type not in PLC_TYPES:
+        raise SystemExit("expected exactly one device, the cellar PLC, in the tag list")
 
     by_id: dict[str, PlantTag] = {t.id: t for t in plant.devices[0].tags}
     missing: list[str] = [a.name for a in alarms.alarms if a.fuxa_tag_id not in by_id]
@@ -1217,7 +1302,9 @@ def render(project: Project) -> str:
 
 def output(variant: str, host: str) -> Path:
     if variant == "ci":
-        return HERE / "scada-fuxa-project.json"
+        return HERE / f"{host}-project.json"
+    if variant in site_codes():
+        return HERE / FLEET / variant / f"{host}-project.json"
     return HERE / variant / f"{host}-project.json"
 
 
@@ -1235,20 +1322,44 @@ def write_or_check(variant: str, host: str, out: Path, check: bool) -> bool:
     return True
 
 
+def clear_or_check(wanted: set[Path], check: bool) -> bool:
+    """A project under ``fuxa/fleet`` that belongs to no FUXA host of a site:
+    remove it, or with ``check`` report it."""
+    ok: bool = True
+    for path in sorted((HERE / FLEET).glob("*/*-project.json")):
+        if path in wanted:
+            continue
+        if check:
+            print(f"{path} belongs to no FUXA host of a site; run build_project.py", file=sys.stderr)
+            ok = False
+        else:
+            path.unlink()
+            print(f"removed {path}")
+    return ok
+
+
 def main(argv: list[str] | None = None) -> int:
     ap: argparse.ArgumentParser = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--variant", default="ci")
-    ap.add_argument("--host", default="scada-fuxa", choices=FUXA_HOSTS)
+    ap.add_argument("--site", default=None, help="a site's code, in place of --variant")
+    ap.add_argument("--host", default=None, help="a FUXA host (default: the process SCADA)")
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--check", action="store_true", help="fail if the output is stale")
-    ap.add_argument("--all", action="store_true", help="every variant and FUXA host")
+    ap.add_argument("--all", action="store_true", help="every variant, site, and FUXA host")
     args: argparse.Namespace = ap.parse_args(argv)
     if args.all:
-        jobs: list[tuple[str, str]] = [("ci", "scada-fuxa")] + [(v, h) for v in VARIANTS for h in FUXA_HOSTS]
+        jobs: list[tuple[str, str]] = [
+            (name, host) for name in ("ci", *VARIANTS, *site_codes()) for host in fuxa_hosts(name)
+        ]
         ok: bool = all([write_or_check(v, h, output(v, h), args.check) for v, h in jobs])
+        ok = clear_or_check({output(v, h) for v, h in jobs}, args.check) and ok
         return 0 if ok else 1
-    out: Path = args.out or output(args.variant, args.host)
-    return 0 if write_or_check(args.variant, args.host, out, args.check) else 1
+    if args.site is not None and args.site not in site_codes():
+        raise SystemExit(f"no plantgen output for the site {args.site!r}; the sites are {site_codes()}")
+    name: str = args.site or args.variant
+    host: str = args.host or default_host(name)
+    out: Path = args.out or output(name, host)
+    return 0 if write_or_check(name, host, out, args.check) else 1
 
 
 if __name__ == "__main__":

@@ -27,6 +27,9 @@ from fuxa_test_support import FUXA_DIR, NODE, build_project, require_node
 HARNESS: Path = FUXA_DIR / "tests" / "batch_scenarios.mjs"
 #: The lite variant has the same brewhouse chain; a smoke test of it is enough.
 LITE_SCENARIOS: tuple[str, ...] = ("full_unattended_sequence", "operator_start_runs_a_brew")
+#: The sites of the fleet: the same chain under the site's hostnames. The pub
+#: (fc) has no packaging and no power, and the engine needs neither.
+SITES: tuple[str, ...] = ("fr", "ep", "cs", "fc")
 
 _projects: Path = Path(tempfile.mkdtemp(prefix="cm-batch-engine-"))
 atexit.register(shutil.rmtree, _projects, True)
@@ -72,6 +75,14 @@ def test_scenario_full(scenario: str) -> None:
 def test_scenario_lite(scenario: str) -> None:
     done = run_node("lite", scenario)
     assert done.returncode == 0, f"{done.stdout}\n{done.stderr}"
+
+
+@pytest.mark.parametrize("site", SITES)
+@pytest.mark.parametrize("scenario", LITE_SCENARIOS)
+def test_scenario_site(site: str, scenario: str) -> None:
+    done = run_node(site, scenario)
+    assert done.returncode == 0, f"{done.stdout}\n{done.stderr}"
+    assert done.stdout.startswith(f"PASS {scenario}")
 
 
 def test_the_harness_covers_what_the_task_names() -> None:

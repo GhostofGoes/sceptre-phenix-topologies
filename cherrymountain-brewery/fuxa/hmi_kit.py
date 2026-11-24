@@ -128,7 +128,8 @@ class Canvas(ViewBuilder):
     def __init__(self, name: str, tags: dict[str, PlantTag], width: int, height: int,
                  alarms: dict[str, list[Alarm]] | None = None,
                  internal: dict[str, str] | None = None,
-                 devices: dict[str, str] | None = None) -> None:
+                 devices: dict[str, str] | None = None,
+                 owners: dict[str, str] | None = None) -> None:
         super().__init__(tags, width, height, internal)
         #: The view's name: part of every element id, so two views that are on
         #: screen together (a card over a view) never share one.
@@ -137,6 +138,9 @@ class Canvas(ViewBuilder):
         self.alarms: dict[str, list[Alarm]] = alarms or {}
         #: Tag name -> the name of the device it is read from (a trend's legend).
         self.devices: dict[str, str] = devices or {}
+        #: Tag name -> the controller that owns it, for every tag of the plant
+        #: (a caption names the PLC behind a tag that this host does not read).
+        self.owners: dict[str, str] = owners or {}
         self.defs: list[str] = []
         self.charts: list[Json] = []
         #: Items that start hidden (FUXA's ``hide`` flag of an item).
@@ -158,6 +162,13 @@ class Canvas(ViewBuilder):
     def has(self, *tag_names: str) -> bool:
         """True when the project has every one of these tags (a variant may not)."""
         return all(n in self.tags or n in self.internal for n in tag_names)
+
+    def owner(self, tag_name: str) -> str:
+        """The name of the controller that owns a tag, as this plant names it
+        (``plc-cellar``, or ``fc-plc-cellar`` at a site), for a caption."""
+        if tag_name not in self.owners:
+            raise SystemExit(f"{self.name}: a caption names the controller of {tag_name}, which the plant does not have")
+        return self.owners[tag_name]
 
     def tid(self, tag_name: str) -> str:
         return self._tag_id(tag_name)

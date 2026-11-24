@@ -57,12 +57,14 @@ function init(msg) {
   writable = new Set(msg.writable);
   const devices = Object.values(project.devices);
   const byName = (n) => devices.find((d) => d.name === n);
+  // A PLC is the device that holds one of its tags, whatever its name is.
+  const byTag = (tag) => devices.find((d) => Object.values(d.tags).some((t) => t.name === tag));
   server = new ServerDevice(Object.values(byName('FUXA Server').tags).map((t) => ({
     id: t.id, name: t.name, type: t.type, init: t.init, restored: t.daq.restored,
   })));
   fuxa.add(server);
-  fuxa.add(device(byName('plc-brewhouse'), plcValues, (n) => writable.has(n), true));
-  fuxa.add(device(byName('plc-cellar'), cellarValues, () => false, false));
+  fuxa.add(device(byTag('BH.BATCH.XS01.STATE'), plcValues, (n) => writable.has(n), true));
+  fuxa.add(device(byTag('CEL.FV101.DT01.PV'), cellarValues, () => false, false));
   fuxa.install();
   script = project.scripts.find((s) => s.name === 'cmBatchEngine');
   engine = compileScript(script);

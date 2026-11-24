@@ -52,7 +52,7 @@ entry does not fit.
 
 | Check | What it refuses |
 |---|---|
-| Names | An area, a host, a VLAN, or a PLC that `plant.yaml` does not have. A time source or a gateway that the site left out |
+| Names | An area, a host, a VLAN, or a PLC that `plant.yaml` does not have. A time source or a gateway that the site left out. A site code that is the name of a variant |
 | Addresses | Two hosts with one address after two VLANs merge. The message tells you to give a move a `shift` |
 | `wan/wan.yaml` | Uplinks that are not the links of the site's edge there, in the same order. A routed network outside the blocks of the site. A different subnet for the LAN that `wan.yaml` puts a host on |
 
@@ -82,6 +82,7 @@ files.
 |---|---|
 | Variant | It starts from the `full` variant. It keeps the hosts and the areas of the site, and the federates of those areas |
 | References | It removes each reference to a host that the site does not have. Examples are a FUXA source, a conduit, and a Wazuh agent |
+| FUXA sources | A site can leave out a FUXA host and keep the devices of that host. The one SCADA host of the site then takes those devices |
 | Clocks | The clocks follow the `time_server` of the site. The edge firewall and the office PC keep `inet-traffic` as their source |
 | Snapshot | The snapshot keeps the key patterns of the federates that the site runs |
 | Zones | Each interface goes to the VLAN and the subnet that `moves` and `cells` give. A router gets a leg in each new network that it routes. A network with no host goes away |
@@ -100,6 +101,12 @@ files.
   source.
 - `fr` is the `full` variant with the names of the site. Only the entries of
   the hosts of the internet are absent. A test compares the two.
+- `fc` has no `bas-fuxa`, and it keeps the building controllers. Thus
+  `fc-scada-fuxa` reads all of their points and writes them. The source has
+  `write: true`. plantgen applies this rule from the hosts of the site, not
+  from its code.
+- `fuxa/build_project.py` builds the FUXA projects of each site from these
+  files ([FUXA README](../../fuxa/README.md#the-projects-of-the-sites)).
 
 A site does not have these parts yet. Later steps of the plan add them:
 
@@ -533,6 +540,9 @@ ci slice, the file has:
   `bas`, `fep`, and `dnp3-master`. Further roles are `plc` (with `northbound`
   `modbus`, `opcua`, or `s7comm`) and `scada` (FUXA, with a `fuxa` source
   list). There are also infrastructure roles, which NTP and SoH use.
+- A `fuxa` source can say `write: true`. That FUXA host can then write the
+  BACnet objects of the device. The BAS front end (`app.role: bas`) writes all
+  of its devices without this key.
 - An alarm can name `suppress`. This is a bit in the same unit
   (`XS01.ACTIVE`), a bit in the same area (`LINE.XS01.RUN`), or a bit by its
   full name.
@@ -573,7 +583,8 @@ every variant
 - No block has register gaps. The ot-sim, modbus_master, modbus_slave, and
   FUXA addresses agree. The check derives each address again from the rendered
   files. BACnet instances agree between the app block, the FUXA tags, and the
-  object table.
+  object table. An alarm that FUXA evaluates has a FUXA host that reads its
+  tag.
 - Interface addresses are inside their VLAN, and they are unique. NTP sources
   are servers that the client can reach. A client of an `external` server
   needs a routed network. HELICS lists are closed: every

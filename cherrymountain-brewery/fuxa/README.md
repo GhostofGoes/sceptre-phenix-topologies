@@ -87,6 +87,65 @@ projects at pre-start, so these files are for review and for the `--check`.
   bit carries its own on-delay; an alarm FUXA evaluates on a BACnet value gets
   the rationalized on-delay as `timedelay`. FUXA has no deadband.
 
+## The projects of the sites
+
+`build_project.py --all` also writes `fleet/<code>/`. This directory holds one
+project for each FUXA host of each site of the fleet. A site is the plant with
+parts left out and with its own hostnames
+([plantgen README](../tools/plantgen/README.md#sites)). `--check` covers these
+projects, too.
+
+```shell
+python3 -I build_project.py --site fc          # the SCADA host of one site
+python3 -I build_project.py --site cs --host cs-bas-fuxa
+```
+
+| Site | FUXA hosts | Screens of the SCADA host |
+|---|---|---|
+| `fr` | `fr-scada-fuxa`, `fr-bas-fuxa` | The screens of the whole plant |
+| `ep` | `ep-scada-fuxa`, `ep-bas-fuxa` | The screens of the whole plant |
+| `cs` | `cs-scada-fuxa`, `cs-bas-fuxa` | No Power screen |
+| `fc` | `fc-scada-fuxa` | No Packaging screen and no Power screen. It has the Building screen |
+
+The builder reads the plantgen output of the site,
+`plant/generated/fleet/<code>/`. It knows no hostname:
+
+- A FUXA host is a tag list in that directory. The default host is the first
+  host that reads a PLC.
+- A device is a PLC or the BACnet client by its type. The name of its points
+  table comes from the area of its tags (`BH` gives "Brewhouse points").
+- A caption or an alarm text that names a controller takes the name from
+  `tags.json`. At `cs`, a caption says `cs-plc-cellar`.
+- The batch engine goes to the host that reads the state tag of the brewhouse
+  PLC.
+
+The screens follow the tags of the host:
+
+- A host that reads the brewhouse gets the Overview and one screen for each
+  area that its tags cover. The Overview has one panel for each such area.
+- A host that reads the building controllers gets the Building screen.
+- `fc` has no building front end. Its one SCADA host reads all of the points
+  of the building and writes them, so it has both sets of screens. On its
+  Overview, a Building panel has the place of the Power panel.
+- At `fc`, the BACnet device has a `broadcastAddress`, as the device of
+  `bas-fuxa` has. The controllers are on the network of the SCADA host, and
+  the site has no BBMD. plantgen sets this value (`render.py`, `fuxa_doc`).
+
+The batch engine reads and writes tags of the brewhouse PLC and of the cellar
+PLC only. Thus a site without packaging or power runs the same script. The
+tests run two engine scenarios on the project of each site.
+
+A test walks every project. It makes sure that each tag, view, chart, and
+device that the project uses is in the project.
+
+These parts are not done:
+
+- The cherrymountain app and `sync.py` do not use the projects of the sites.
+- The comments in `batch_engine.js` still say `scada-fuxa` and `plc-cellar`.
+  A change there changes the bytes of the full and lite projects.
+- The CO2 screen of `fc` shows a sensor at the filler, and `fc` has no
+  filler. The building controller still has that point.
+
 ## The process graphics
 
 `hmi_views.py` draws the screens an operator works from, with the kit in

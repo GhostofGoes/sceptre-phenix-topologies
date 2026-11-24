@@ -170,6 +170,7 @@ def _cell_of_absent_plc(doc: dict[str, Any]) -> None:
     [
         (lambda doc: _site(doc, "ep").update(code="fr"), "code is used twice"),
         (lambda doc: _site(doc, "ep").update(index=0), "index is used twice"),
+        (lambda doc: _site(doc, "ep").update(code="ci"), "the name of a variant"),
         (lambda doc: _site(doc, "cs").update(drop_areas=["XYZ"]), "drop_areas names"),
         (lambda doc: _site(doc, "cs")["drop_hosts"].append("plc-x"), "drop_hosts"),
         (lambda doc: _site(doc, "fc").update(time_server="ot-svc"), "time_server"),

@@ -28,6 +28,7 @@ from plantgen.model import (
     BacnetEndpoint,
     Dnp3Endpoint,
     Host,
+    HostSpec,
     ModbusEndpoint,
     Plant,
     PlantError,
@@ -917,15 +918,22 @@ FUXA_BACNET_WRITABLE: frozenset[str] = frozenset(
 )
 
 
-def bacnet_access(t: Tag, scada: Host, object_type: str) -> str:
+def is_bas_front_end(host: HostSpec) -> bool:
+    """A FUXA host that operates the building (``app.role: bas``)."""
+    return (host.app or {}).get("role") == "bas"
+
+
+def bacnet_access(t: Tag, scada: Host, object_type: str, write: bool = False) -> str:
     """Access of one FUXA instance to a BACnet object.
 
     Only the BAS front end (``app.role: bas``) writes BACnet: the process
     SCADA reads the CO2 objects for its displays and never writes them
-    (DESIGN.md §10.3; a WriteProperty from it alerts). A type FUXA's driver
-    cannot write is read-only everywhere.
+    (DESIGN.md §10.3; a WriteProperty from it alerts). ``write`` is the
+    source's own permission (``FuxaSource.write``), for a site whose one SCADA
+    host is also its building's front end. A type FUXA's driver cannot write
+    is read-only everywhere.
     """
-    front_end: bool = (scada.app or {}).get("role") == "bas"
+    front_end: bool = is_bas_front_end(scada) or write
     if not front_end or object_type not in FUXA_BACNET_WRITABLE:
         return "read"
     return access(t)
@@ -956,6 +964,7 @@ def fuxa_doc(plant: Plant, alloc: Allocation, scada: Host) -> dict[str, Any]:
     for t in plant.tags:
         if t.owner:
             by_owner.setdefault(t.owner, []).append(t)
+    writes = {source.host for source in scada.fuxa or [] if source.write}
     for host_name, patterns in fuxa_sources(plant, scada):
         host = plant.hosts[host_name]
         tags = _selected(by_owner.get(host_name, []), patterns)
@@ -974,7 +983,9 @@ def fuxa_doc(plant: Plant, alloc: Allocation, scada: Host) -> dict[str, Any]:
                     "type": "Real" if is_analog(t.type) else "Bool",
                     "memaddress": str(ep.instance if ep else ""),
                     "address": o.fuxa_address,
-                    "access": bacnet_access(t, scada, o.object_type),
+                    "access": bacnet_access(
+                        t, scada, o.object_type, host_name in writes
+                    ),
                     "object_type": o.object_type,
                     "remote_device": host_name,
                 }

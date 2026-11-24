@@ -25,11 +25,16 @@ class Rig {
     this.plant = new Plant(options);
     const devices = Object.values(project.devices);
     const byName = (name) => devices.find((d) => d.name === name);
+    // A PLC is the device that holds one of its tags: its name has the site's
+    // prefix in a site's project (fc-plc-brewhouse).
+    const byTag = (tag) => devices.find((d) => Object.values(d.tags).some((t) => t.name === tag));
+    const plcDev = byTag('BH.BATCH.XS01.STATE');
+    const cellarDev = byTag('CEL.FV101.DT01.PV');
     const tagMap = (dev) => new Map(Object.entries(dev.tags).map(([id, t]) => [id, {
       name: t.name, scale: t.scale, format: t.format,
     }]));
-    const plcTags = tagMap(byName('plc-brewhouse'));
-    const cellarTags = tagMap(byName('plc-cellar'));
+    const plcTags = tagMap(plcDev);
+    const cellarTags = tagMap(cellarDev);
     this.names = {
       plc: [...plcTags.values()].map((t) => t.name),
       cellar: [...cellarTags.values()].map((t) => t.name),
@@ -38,8 +43,8 @@ class Rig {
       id: t.id, name: t.name, type: t.type, init: t.init, restored: t.daq.restored,
     })));
     this.fuxa.add(this.server);
-    this.fuxa.add(this.plant.plcDevice(plcTags));
-    this.fuxa.add(this.plant.cellarDevice(cellarTags));
+    this.fuxa.add(this.plant.plcDevice(plcTags, plcDev.name));
+    this.fuxa.add(this.plant.cellarDevice(cellarTags, cellarDev.name));
     this.fuxa.install();
     // The knockout valves are lined to the fermenter the engine reserved.
     this.plant.routeTo = () => this.tag('BATCH.FV');

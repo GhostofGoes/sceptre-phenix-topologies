@@ -23,6 +23,18 @@ metadata:
     port: 502
     wait: 5m
   - src: fc-scada-fuxa
+    dst: fc-bas-rtu-taproom|IF0
+    proto: udp
+    port: 47808
+    wait: 5m
+    udpPacketBase64: gQoAEQEEAAUBDAwCAAu5GU0=
+  - src: fc-scada-fuxa
+    dst: fc-bas-coldroom|IF0
+    proto: udp
+    port: 47808
+    wait: 5m
+    udpPacketBase64: gQoAEQEEAAUBDAwCAAu6GU0=
+  - src: fc-scada-fuxa
     dst: fc-bas-vent|IF0
     proto: udp
     port: 47808

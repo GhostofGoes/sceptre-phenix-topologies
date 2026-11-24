@@ -290,10 +290,17 @@ class Dnp3Endpoint(Strict):
 
 
 class FuxaSource(Strict):
-    """A device a FUXA instance polls, and which of its tags (fnmatch)."""
+    """A device a FUXA instance polls, and which of its tags (fnmatch).
+
+    ``write`` lets the instance write the BACnet objects of the device. The
+    BAS front end (``app.role: bas``) writes all of its devices without it. A
+    process SCADA needs it where a site has no BAS front end and the one SCADA
+    host operates the building, too.
+    """
 
     host: str
     tags: list[str] = Field(default_factory=lambda: ["*"])
+    write: bool = False
 
 
 class HostSpec(Strict):

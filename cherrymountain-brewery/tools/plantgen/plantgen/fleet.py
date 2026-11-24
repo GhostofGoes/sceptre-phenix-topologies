@@ -16,7 +16,7 @@ the federates that it runs (`_snapshot`).
 The edits are on fields, not on text. A hostname, a VLAN alias, or an address
 changes where the schema says that the field holds one. So a name that is also
 a kind keeps its meaning: the role `ews`, the device type `pv-inverter`, and
-the HELICS device `bas-vent` do not change. `_prose` is the one place that
+the HELICS device `bas-vent` do not change. `prose` is the one place that
 rewrites text.
 """
 
@@ -25,7 +25,6 @@ from __future__ import annotations
 import fnmatch
 import ipaddress
 import re
-import string
 from collections.abc import Callable, Iterable
 from typing import Any, Final
 
@@ -60,8 +59,12 @@ MIRROR_VLAN: Final[str] = "MIRROR"
 WAZUH: Final[str] = "wazuh"
 
 
-def site_plant(site: SiteSpec, plant: PlantFile) -> PlantFile:
-    """The plant description of `site`, with one variant that has the site's code."""
+def site_plant(site: SiteSpec, plant: PlantFile, wan: dict[str, Any]) -> PlantFile:
+    """The plant description of `site`, with one variant that has the site's code.
+
+    `plant` is plant.yaml and `wan` is wan/wan.yaml (`sites.load_wan`), which
+    names the site's access links.
+    """
     try:
         doc = plant.model_copy(deep=True)
         variant = _variant(site, doc)
@@ -69,18 +72,18 @@ def site_plant(site: SiteSpec, plant: PlantFile) -> PlantFile:
         _clocks(site, doc, variant)
         _snapshot(doc, variant)
         _zones(site, doc)
-        _uplinks(site, doc)
         doc.variants = {site.code: variant}
         _names(site, doc, plant.hosts)
+        _uplinks(site, doc, wan)
         # The edits above assign to fields, which pydantic does not validate.
         return PlantFile.model_validate(doc.model_dump())
     except (PlantError, ValidationError) as exc:
         raise PlantError(f"site {site.code}: {exc}") from exc
 
 
-def expand_site(site: SiteSpec, plant: PlantFile) -> Plant:
-    """`site_plant`, expanded as a variant is."""
-    doc = site_plant(site, plant)
+def expand_site(site: SiteSpec, plant: PlantFile, wan: dict[str, Any]) -> Plant:
+    """`site_plant`, expanded as a variant is. Its `file` is the description."""
+    doc = site_plant(site, plant, wan)
     try:
         expanded = expand(doc, site.code)
     except PlantError as exc:
@@ -315,33 +318,46 @@ def _zones(site: SiteSpec, doc: PlantFile) -> None:
         )
 
 
-def _uplinks(site: SiteSpec, doc: PlantFile) -> None:
+def _uplinks(site: SiteSpec, doc: PlantFile, wan: dict[str, Any]) -> None:
     """The edge gets a link to each ISP of the site, the primary link first.
 
     A link is a network of its own with the edge's address from sites.yaml.
-    The ISP's router is in wan/wan.yaml and not here, so the network has no
-    gateway. The generator of the fleet's topology gives the two ends of a
-    link one alias.
+    Its alias and its subnet are those that the WAN generator gives the link,
+    because the ISP's router is on the same VLAN (`sites.uplink_links`). So
+    the alias has no site prefix, and this step runs after `_names`. The
+    ISP's router is in wan/wan.yaml and not here, so the network has no
+    gateway. The uplinks are the edge's first interfaces: the WAN generator's
+    configuration lists name them eth0 and eth1.
     """
-    if sites.EDGE not in doc.hosts:
-        raise PlantError(f"the site has no {sites.EDGE} to connect its uplinks to")
-    edge = doc.hosts[sites.EDGE]
+    name = site.host(sites.EDGE)
+    if name not in doc.hosts:
+        raise PlantError(f"the site has no {name} to connect its uplinks to")
+    edge = doc.hosts[name]
     links: list[Interface] = []
-    for letter, uplink in zip(string.ascii_uppercase, site.uplinks, strict=False):
-        alias = f"WAN-{letter}"
-        subnet = ipaddress.ip_interface(uplink.address).network
-        doc.networks[alias] = Network(subnet=str(subnet))
-        links.append(Interface(vlan=alias, ip=uplink.address))
+    found = sites.uplink_links(site, wan)
+    for (alias, net), uplink in zip(found, site.uplinks, strict=True):
+        if alias in doc.networks:
+            raise PlantError(f"the uplink alias {alias} is a network of the site")
+        subnet = ipaddress.ip_network(net)
+        address = uplink.address.split("/")[0]
+        if ipaddress.ip_address(address) not in subnet:
+            raise PlantError(
+                f"the uplink address {address} is not in {net}, the network of "
+                f"{alias} in wan.yaml"
+            )
+        doc.networks[alias] = Network(subnet=net)
+        links.append(Interface(vlan=alias, ip=f"{address}/{subnet.prefixlen}"))
     edge.interfaces = _legs([*links, *edge.interfaces.values()])
 
 
-def _prose(site: SiteSpec, hosts: Iterable[str]) -> Callable[[str], str]:
+def prose(site: SiteSpec, hosts: Iterable[str]) -> Callable[[str], str]:
     """A function that gives the hostnames in a description the site's prefix.
 
     This is the one place that rewrites text, because a description is prose
     and has no fields: "peer read from plc-cellar" becomes "peer read from
     ep-plc-cellar". It is for the fields that people read (`desc`, the name of
-    a unit, the cause of an alarm) and for nothing that a program reads.
+    a unit, the cause of an alarm, the description of a node) and for nothing
+    that a program reads.
     """
     # A name must stand alone. It does not match inside a longer word, or
     # after the `/` of a HELICS key (`building/bas-vent.co2_ppm`).
@@ -368,7 +384,7 @@ def _names(site: SiteSpec, doc: PlantFile, plant_hosts: Iterable[str]) -> None:
     site has its own federation (PLANS.md, section 4.7).
     """
     host, vlan, address = site.host, site.vlan, site.address
-    prose = _prose(site, plant_hosts)
+    stamp = prose(site, plant_hosts)
 
     def optional(name: str | None) -> str | None:
         return host(name) if name is not None else None
@@ -382,11 +398,11 @@ def _names(site: SiteSpec, doc: PlantFile, plant_hosts: Iterable[str]) -> None:
     for federate in doc.federates.values():
         federate.host = host(federate.host)
         for output in federate.outputs:
-            output.desc = prose(output.desc)
+            output.desc = stamp(output.desc)
         for truth in federate.unit_outputs:
-            truth.desc = prose(truth.desc)
+            truth.desc = stamp(truth.desc)
     for load in doc.loads:
-        load.desc = prose(load.desc)
+        load.desc = stamp(load.desc)
     for points in doc.device_types.values():
         for point in points.values():
             point.written_by = optional(point.written_by)
@@ -411,16 +427,16 @@ def _names(site: SiteSpec, doc: PlantFile, plant_hosts: Iterable[str]) -> None:
         for field in ("cause", "consequence", "action"):
             text: str | None = getattr(rationale, field)
             if text is not None:
-                setattr(rationale, field, prose(text))
+                setattr(rationale, field, stamp(text))
     for area in doc.areas:
-        area.name = prose(area.name)
+        area.name = stamp(area.name)
         area.plc = optional(area.plc)
         area.rio = optional(area.rio)
         for unit in area.units:
-            unit.name = prose(unit.name)
+            unit.name = stamp(unit.name)
             unit.rio = optional(unit.rio)
             for tag in unit.tags:
-                tag.desc = prose(tag.desc)
+                tag.desc = stamp(tag.desc)
     if doc.soh is not None:
         soh = doc.soh
         soh.skip_hosts = [host(name) for name in soh.skip_hosts]
@@ -429,7 +445,7 @@ def _names(site: SiteSpec, doc: PlantFile, plant_hosts: Iterable[str]) -> None:
         }
         for conduit in soh.conduits:
             conduit.src, conduit.dst = host(conduit.src), host(conduit.dst)
-            conduit.desc = prose(conduit.desc)
+            conduit.desc = stamp(conduit.desc)
     if doc.wireguard is not None:
         tunnel = doc.wireguard
         tunnel.server, tunnel.client = host(tunnel.server), host(tunnel.client)

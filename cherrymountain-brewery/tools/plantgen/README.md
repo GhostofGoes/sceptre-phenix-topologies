@@ -6,7 +6,8 @@ named value of the plant. The tool uses Pydantic to make sure that the database
 is valid. Then it assigns every address and writes the derived files for each
 topology variant under `plant/generated/<variant>/`. A variant is one version
 of the topology. It also writes the files of each site of the fleet under
-`plant/generated/fleet/<code>/` (see [Sites](#sites)).
+`plant/generated/fleet/<code>/`, and the phenix topology file of each site
+(see [Sites](#sites)).
 
 The outputs are committed files, and `--check` fails when they are stale. An
 output is stale when a new generation gives a different file.
@@ -21,7 +22,8 @@ python -m pytest                      # unit and consistency tests
 ```
 
 `--out DIR` writes one variant or one site to a different directory. This
-option needs `--variant` or `--site`, and not both.
+option needs `--variant` or `--site`, and not both. With `--site`, the
+topology file of the site goes to `DIR`, too.
 
 ## Variants
 
@@ -83,8 +85,8 @@ files.
 | Clocks | The clocks follow the `time_server` of the site. The edge firewall and the office PC keep `inet-traffic` as their source |
 | Snapshot | The snapshot keeps the key patterns of the federates that the site runs |
 | Zones | Each interface goes to the VLAN and the subnet that `moves` and `cells` give. A router gets a leg in each new network that it routes. A network with no host goes away |
-| Uplinks | The edge gets one network for each uplink (`WAN-A`, `WAN-B`), with its address from `sites.yaml` |
 | Names | A hostname gets the prefix of the site, and a VLAN alias gets the prefix in capitals. The `10.` blocks of the company and MGMT move by the index of the site |
+| Uplinks | The edge gets one network for each uplink, with its address from `sites.yaml`. The alias and the subnet are those of `wan/wan.yaml`, for example `WAN-SC-FC` |
 
 - The steps change fields, not text. A name that is also a kind keeps its
   meaning. Examples are the role `ews`, the device type `pv-inverter`, and the
@@ -107,10 +109,57 @@ A site does not have these parts yet. Later steps of the plan add them:
   the DNP3 client `utility-derms` and each SoH flow that crosses the internet.
 - The flows between sites. An example is the Wazuh agents of `ep`, which
   report to `fr-wazuh`.
-- The alias that the two ends of an uplink share. `wan/wan.yaml` holds the
-  side of the ISP.
 - The values that differ between sites in the simulation. Examples are the
   elevation, the weather file, and the tariff.
+
+### The topology file of a site
+
+plantgen writes `phenix-configs/topology-site-<code>.yml` for each site
+(`plantgen/topology.py`). The file has one node for each host of the site. A
+site with `sensor: true` has one more node, the network sensor.
+
+| Site | Nodes | Sensor |
+|---|---:|---|
+| `fr` | 39 | None. The SOC is at this site |
+| `ep` | 35 | In the SOC zone, behind both firewalls |
+| `cs` | 26 | In the plant network |
+| `fc` | 19 | In the plant network |
+
+The source of a node is the node of the same host in `topology-core.yml`,
+`topology-soc.yml`, or `topology-remote-access.yml`. The fields that name a
+host or an address follow the plant description of the site.
+
+| Field of a node | What it becomes |
+|---|---|
+| `general.hostname`, `delay.c2` | The name of the host at the site. A node does not wait for a host that the site does not have |
+| `general.description`, the `description` of an injection | The same text, with the prefix of the site on each hostname |
+| `network.interfaces` | The interfaces of the plant description. A router names them `eth0`, `eth1`, and so on. The gateway is the address of the router of the VLAN |
+| `dns` of an interface | The address of `ot-svc` at the site. At `fc`, which has no `ot-svc`, it is the gateway. The office PC gets none, because its name server is a host of the internet |
+| `network.routes` | The edge firewall and the DMZ hosts get a route to each network behind the OT firewall. The OT firewall gets a default route through the edge. At `fr`, the jump host gets a route to the WireGuard network |
+| `labels` | `zone` is the first network of the host, and a router keeps its label. `site` is the code of the site |
+| `phenix/startup-autotunnel` | The port of the head node moves by 100 for each step of the index of the site. `fr` keeps 11881, and `ep` gets 12081 |
+| `hardware`, `type`, `commands`, the paths of an injection | No change |
+
+- The uplinks of the edge are its first interfaces. They have the VLAN alias,
+  the address, and the mask that `topology-wan.yml` gives the same router. A
+  test compares the two files.
+- The sensor is a stand-in. It has the image name `cm-sensor.qc2`, 4 vCPUs,
+  16 GB, and host number 60, as in the site-profiles spike. No such image
+  exists.
+- `fr` gets the interfaces, the labels, and the routes that the three modules
+  have today. A test compares them, apart from the WAN side of the edge.
+- Across the four files, no hostname and no address occurs twice. Each VLAN
+  alias has one subnet.
+
+A topology file is not a finished site. The header of each file says so.
+
+- No router has a firewall ruleset. A test makes sure of this, so that nobody
+  takes the file for a finished one.
+- The edge has no default route and no route to a different site. The WAN
+  generator writes the WAN side of the edge.
+- The injected files still hold the names and the addresses of the single
+  site. Examples are `plant.hosts` and the BBMD tables.
+- No scenario and no workflow use these files.
 
 ## Outputs
 

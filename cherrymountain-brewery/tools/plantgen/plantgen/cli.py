@@ -9,8 +9,9 @@ import sys
 import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any
 
-from plantgen import fleet, sites
+from plantgen import fleet, sites, topology
 from plantgen.allocate import allocate
 from plantgen.checks import file_checks, plant_checks
 from plantgen.model import Plant, PlantError, PlantFile, expand, load, load_file
@@ -27,17 +28,38 @@ def generate(plant_path: Path, variant: str) -> dict[str, str]:
     return render_checked(load(plant_path, variant))
 
 
-def generate_site(site: SiteSpec, plant: PlantFile) -> dict[str, str]:
+def generate_site(
+    site: SiteSpec, plant: PlantFile, wan: dict[str, Any]
+) -> dict[str, str]:
     """The files of one site of the fleet; raises PlantError on any problem.
 
-    `plant` is plant.yaml. The site's own plant description goes through the
-    steps that a variant goes through.
+    `plant` is plant.yaml and `wan` is wan/wan.yaml. The site's own plant
+    description goes through the steps that a variant goes through.
     """
-    expanded = fleet.expand_site(site, plant)
+    expanded = fleet.expand_site(site, plant, wan)
     try:
         return render_checked(expanded)
     except PlantError as exc:
         raise PlantError(f"site {site.code}: {exc}") from exc
+
+
+def generate_site_and_topology(
+    site: SiteSpec,
+    plant: PlantFile,
+    wan: dict[str, Any],
+    nodes: dict[str, dict[str, Any]],
+) -> tuple[dict[str, str], str]:
+    """The files of one site, and the text of its phenix topology file.
+
+    `nodes` are today's nodes (`topology.load_nodes`). Both come from one
+    plant description of the site.
+    """
+    expanded = fleet.expand_site(site, plant, wan)
+    try:
+        files = render_checked(expanded)
+    except PlantError as exc:
+        raise PlantError(f"site {site.code}: {exc}") from exc
+    return files, topology.render(site, plant, expanded.file, nodes)
 
 
 def _variant_files(plant: PlantFile, variant: str) -> dict[str, str]:
@@ -113,7 +135,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--out",
         type=Path,
         help="output directory for one variant or one site (default: "
-        "<plant dir>/generated/<variant>, <plant dir>/generated/fleet/<site>)",
+        "<plant dir>/generated/<variant>, <plant dir>/generated/fleet/<site>). "
+        "A site's topology file goes there too (default: phenix-configs/)",
     )
     ap.add_argument(
         "--check",
@@ -171,20 +194,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+    # A site also needs the names of its access links and today's nodes.
+    root: Path = plant_path.parent.parent
+    configs: Path = root / "phenix-configs"
+    try:
+        wan = sites.load_wan(root / "wan" / "wan.yaml")
+        nodes = topology.load_nodes(configs)
+    except PlantError as exc:
+        print(f"plantgen: {exc}", file=sys.stderr)
+        return 1
     for site in chosen:
         status = max(
             status,
-            _run(
-                f"site {site.code}",
-                functools.partial(generate_site, site, plant),
+            _run_site(
+                site,
+                functools.partial(generate_site_and_topology, site, plant, wan, nodes),
                 args.out or generated / fleet.DIRECTORY / site.code,
+                args.out or configs,
                 check=args.check,
             ),
         )
     if every:
-        status = max(
-            status, _other_sites(generated / fleet.DIRECTORY, found, args.check)
-        )
+        leftovers = _other_sites(generated / fleet.DIRECTORY, configs, found)
+        status = max(status, _clear(leftovers, check=args.check))
     return status
 
 
@@ -207,18 +239,27 @@ def _sites(plant_path: Path, plant: PlantFile) -> tuple[int, list[SiteSpec] | No
     return 0, found
 
 
-def _other_sites(directory: Path, found: list[SiteSpec], check: bool) -> int:
-    """Remove, or with `check` report, what sites.yaml no longer has a site for."""
+def _other_sites(directory: Path, configs: Path, found: list[SiteSpec]) -> list[Path]:
+    """The directories and topology files of sites that sites.yaml does not have."""
     codes = {site.code for site in found}
-    if not directory.is_dir():
-        return 0
-    others = sorted(path for path in directory.iterdir() if path.name not in codes)
+    names = {topology.file_name(site) for site in found}
+    others: list[Path] = []
+    if directory.is_dir():
+        others += sorted(path for path in directory.iterdir() if path.name not in codes)
+    if configs.is_dir():
+        files = configs.glob(topology.FILE_NAME.format(code="*"))
+        others += sorted(path for path in files if path.name not in names)
+    return others
+
+
+def _clear(others: list[Path], *, check: bool) -> int:
+    """Remove, or with `check` report, what belongs to no site of sites.yaml."""
     if not others:
         return 0
     if check:
-        print(f"plantgen: {directory} is out of date:", file=sys.stderr)
         for path in others:
-            print(f"  unexpected: {path.name}", file=sys.stderr)
+            print(f"plantgen: {path} is out of date:", file=sys.stderr)
+            print("  unexpected: sites.yaml has no site for it", file=sys.stderr)
         print("run `python -m plantgen` and commit the result", file=sys.stderr)
         return 1
     for path in others:
@@ -233,14 +274,40 @@ def _other_sites(directory: Path, found: list[SiteSpec], check: bool) -> int:
 def _run(
     label: str, make: Callable[[], dict[str, str]], out_dir: Path, *, check: bool
 ) -> int:
-    """Generate one variant or one site, and write or compare its files."""
+    """Generate one variant, and write or compare its files."""
     try:
         files = make()
     except PlantError as exc:
-        # A site's message names the site already.
-        text = str(exc) if str(exc).startswith(label) else f"{label}: {exc}"
-        print(f"plantgen: {text}", file=sys.stderr)
+        print(f"plantgen: {label}: {exc}", file=sys.stderr)
         return 1
+    return _put(files, out_dir, check=check)
+
+
+def _run_site(
+    site: SiteSpec,
+    make: Callable[[], tuple[dict[str, str], str]],
+    out_dir: Path,
+    topology_dir: Path,
+    *,
+    check: bool,
+) -> int:
+    """Generate one site, and write or compare its files and its topology file."""
+    try:
+        files, text = make()
+    except PlantError as exc:
+        # The message names the site already.
+        print(f"plantgen: {exc}", file=sys.stderr)
+        return 1
+    name = topology.file_name(site)
+    if topology_dir == out_dir:
+        # `--out`: one directory holds both.
+        return _put({**files, name: text}, out_dir, check=check)
+    status = _put(files, out_dir, check=check)
+    return max(status, _put_file(topology_dir / name, text, check=check))
+
+
+def _put(files: dict[str, str], out_dir: Path, *, check: bool) -> int:
+    """Write the files of one directory, or with `check` compare them."""
     if check:
         with tempfile.TemporaryDirectory() as tmp:
             tmp_dir = Path(tmp)
@@ -256,4 +323,24 @@ def _run(
         return 0
     write(files, out_dir)
     print(f"plantgen: wrote {len(files)} files to {out_dir}")
+    return 0
+
+
+def _put_file(path: Path, text: str, *, check: bool) -> int:
+    """Write one file in a directory that holds other files, or compare it."""
+    if check:
+        if not path.is_file():
+            problem = "missing"
+        elif path.read_text(encoding="utf-8") != text:
+            problem = "stale"
+        else:
+            print(f"plantgen: {path} is up to date")
+            return 0
+        print(f"plantgen: {path} is out of date:", file=sys.stderr)
+        print(f"  {problem}: {path.name}", file=sys.stderr)
+        print("run `python -m plantgen` and commit the result", file=sys.stderr)
+        return 1
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8", newline="\n")
+    print(f"plantgen: wrote {path}")
     return 0

@@ -33,7 +33,7 @@ Checked, in order:
      goes, how long it takes, whether a tunnel endpoint moves, whether a
      tunnel that was given up comes back, and whether the site's default
      route moves;
-  8. the head office restarts;
+  8. the head office restarts, and then it crashes (a reboot with no shutdown);
   9. the ISPs stop peering, and each takes its default route back.
 """
 
@@ -881,17 +881,24 @@ def hq_uplink_events(lab: Lab, tag: str, number: int, gap: float, faulted: float
     }
 
 
-def hq_restart(lab: Lab, lines: list[str]) -> None:
-    """The head office's edge reboots, with a ping from the site's host to the head office's running through it."""
+def hq_restart(lab: Lab, lines: list[str], crash: bool = False) -> None:
+    """The head office's edge reboots, with a ping from the site's host to the head office's running through it.
+
+    A clean reboot stops strongSwan, which sends a DELETE for each IKE SA, so the
+    site knows at once. With `crash`, the kernel reboots with no shutdown, as
+    after a power loss: nothing tells the site, and it must find the dead SA itself.
+    """
+    word, tag = ("crash", "hq-crash") if crash else ("restart", "hq-restart")
+    how = "echo 1 > /proc/sys/kernel/sysrq; echo b > /proc/sysrq-trigger" if crash else "systemctl reboot"
     primary = tif("fc-a")
     want = expected_sessions(model.BY_NAME[HQ])
     boot_id = "cat /proc/sys/kernel/random/boot_id"
     before = lab.shell(HQ, boot_id).strip()
-    count = start_ping(lab, "hq-restart", HQ_RESTART_WINDOW_S)
+    count = start_ping(lab, tag, HQ_RESTART_WINDOW_S)
     # The reboot waits, so that the command's answer gets back first. In one run
     # with 2 s it did not, and the job stopped there. The times count from the reboot.
     try:
-        lab.shell(HQ, f"(sleep {REBOOT_DELAY_S}; systemctl reboot) >/dev/null 2>&1 </dev/null & echo rebooting")
+        lab.shell(HQ, f"(sleep {REBOOT_DELAY_S}; {how}) >/dev/null 2>&1 </dev/null & echo rebooting")
     except TimeoutError as exc:
         lab.fact("the reboot command's answer", f"none: {str(exc)[-160:]}")
     issued, issued_wall = time.monotonic() + REBOOT_DELAY_S, time.time() + REBOOT_DELAY_S
@@ -911,45 +918,50 @@ def hq_restart(lab: Lab, lines: list[str]) -> None:
         wait_for("BGP at the head office after its reboot", 420, 5, established)
         times["its BGP sessions are up"] = round(time.monotonic() - issued)
     except TimeoutError as exc:
-        lab.check("the head office's edge comes back from a reboot with its configuration", False, str(exc)[-300:])
-        ping_result(lab, "hq-restart", count)
+        lab.check(
+            f"the head office's edge comes back from a {'crash' if crash else 'reboot'} with its configuration",
+            False,
+            str(exc)[-300:],
+        )
+        ping_result(lab, tag, count)
         return
     missing = config_missing(lab, HQ, lines)
     lab.check(
-        "the head office's edge comes back from a reboot with its configuration",
+        f"the head office's edge comes back from a {'crash' if crash else 'reboot'} with its configuration",
         not missing,
         f"seconds after the reboot command: {json.dumps(times)}; "
         f"{len(missing)} of {len(lines)} config lines missing: {redact(json.dumps(missing[:6]))}",
     )
     back, detail = wait_tunnel(lab, primary, 420)
     times["the site routes through its primary tunnel"] = round(time.monotonic() - issued)
-    lost, gap, tail = ping_result(lab, "hq-restart", count)
-    _start, end = gap_window(lab, "hq-restart")
+    lost, gap, tail = ping_result(lab, tag, count)
+    _start, end = gap_window(lab, tag)
     if end:
         times["traffic is back"] = round(end - issued_wall)
     after_bgp = times.get("traffic is back", 0) - times["its BGP sessions are up"]
     lab.check(
-        "after the head office's edge restarts, the site reaches the head office again by itself",
+        f"after the head office's edge {'crashes' if crash else 'restarts'}, "
+        "the site reaches the head office again by itself",
         back and 0 < gap < HQ_RESTART_WINDOW_S - 20,
         f"outage {gap} s ({lost} of {count} pings lost); seconds after the reboot command: {json.dumps(times)}; "
         f"traffic came back {after_bgp} s after the head office's BGP sessions were up (negative: before); "
         f"now on {detail}; {tail}",
     )
-    lab.fact("head office restart", json.dumps({"outage_s": gap, "tunnels opened by": OPEN, **times}))
+    lab.fact(f"head office {word}", json.dumps({"outage_s": gap, "tunnels opened by": OPEN, **times}))
     intact, detail = tunnels_intact(lab)
-    lab.check("both tunnels are as configured after the head office's restart", intact, detail)
+    lab.check(f"both tunnels are as configured after the head office's {word}", intact, detail)
     if KIND == vyos_sketch.VTI:
         for vm in (HQ, "fc-fw-edge"):
             sas = lab.shell(vm, "swanctl --list-sas 2>&1 | grep -E '^[a-z]|INSTALLED'")
             ike = {t.name: len(re.findall(rf"^{re.escape(t.name)}: #", sas, flags=re.M)) for t in model.TUNNELS}
-            lab.fact(f"{vm} IKE SAs for each tunnel after the head office's restart", f"{json.dumps(ike)}: {sas[:600]}")
+            lab.fact(f"{vm} IKE SAs for each tunnel after the head office's {word}", f"{json.dumps(ike)}: {sas[:600]}")
         # What IKE did at the site while the head office was away: it tells why the
         # tunnel came back when it did (dead-peer detection, a new exchange, or a delete).
         # From 30 s before the reboot, without the periodic lines: in run 38 the last 250
         # lines of the log began after the tunnels were back.
         noise = "sending packet|received packet|DPD request|INFORMATIONAL"
         lab.save(
-            "hq-restart-ike-site.txt",
+            f"{tag}-ike-site.txt",
             lab.shell(
                 "fc-fw-edge",
                 f"journalctl --no-pager -o short-precise --since @{int(issued_wall) - 30} 2>/dev/null | "
@@ -1354,6 +1366,7 @@ def run() -> int:
         if not failed or (recovered and not both_defaults and len(failed) == 1):
             faults(lab)
             hq_restart(lab, configs[HQ])
+            hq_restart(lab, configs[HQ], crash=True)
             default_condition(lab)
         else:
             lab.check("the faults ran", False, "skipped: a check before them failed")

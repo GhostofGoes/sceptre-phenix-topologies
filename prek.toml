@@ -483,7 +483,7 @@ priority = "check"
 # projects), run under Node against a stub of FUXA's script API and a simulator
 # of plc-brewhouse's handshake and the cellar's status, plus the builder's tests
 # for the Batch view, its tags, and its alarms. Node 18 or newer must be on PATH:
-# the CI runners have it, and with CI set a missing Node fails the tests instead of
+# the dev container has it, and with CI set a missing Node fails the tests instead of
 # skipping them. The check that the simulator follows the compiled program also
 # needs strucpp and g++, and skips without them.
 id = "cm-fuxa-batch-tests"
@@ -600,7 +600,9 @@ priority = "check"
 
 [[repos.hooks]]
 id = "check-shebang-scripts-are-executable"
-exclude = '(?:^renewables/wind/plant/phenix-injects/wind-test-harness/|\.mako$)'
+# The .boot files under a spike's evidence are VyOS boot scripts that a CI run
+# recorded. They are records, and nothing runs them from this repository.
+exclude = '(?:^renewables/wind/plant/phenix-injects/wind-test-harness/|^cherrymountain-brewery/spikes/.*/evidence/.*\.boot$|\.mako$)'
 priority = "check"
 
 [[repos.hooks]]

@@ -81,25 +81,51 @@ cp -a phenix-injects/* /phenix/injects/wind-plant
 ```
 
 The phēnix topology configs in this repository include VM disk references to
-`powerworld.qc2`, `wireguard.qc2`, `windows-7.qc2`, and `zeek.qc2`, as well as
-more common images like `vyos.qc2`, `miniccc.qc2`, `protonuke.qc2`, and
-`kali.qc2`. phēnix image configs for `wireguard` and `zeek` are included in this
-repository in the `phenix-images` directory and can be built with the `phenix
-image build` command. A Packer configuration is also included in the
-`phenix-images` directory and can be be built with ... wait for it ... Packer.
-phēnix comes with image configs for `miniccc`, `protonuke`, and `kali` by
-default and thus they can also be built with the `phenix image build` command.
-To build a VyOS image, clone the phēnix images repo and build from these
+`vyos.qc2`, `kali.qc2`, `protonuke.qc2`, `wireguard.qc2`, `miniccc.qc2`,
+`zeek.qc2`, `wazuh-manager.qc2`, `powerworld.qc2`, and `windows-7.qc2`. Recipes
+for all of them except `powerworld.qc2` and `windows-7.qc2` are in the
+[sceptre-phenix-images](https://github.com/sandialabs/sceptre-phenix-images)
+repository. Its Makefile runs `phenix` in the phēnix Docker container and gives
+it paths in the clone, so the clone must be under `/phenix`, which the container
+sees at the same path. The Packer configuration in `phenix-images/workstation`
+builds `windows-7.qc2`.
+
+If you added the `wireguard` and `zeek` image configs from this repository's
+former `phenix-images` directory, delete them first, because the Makefile stops
+when an image config with the same name exists.
+
+```
+docker exec phenix phenix image delete wireguard
+docker exec phenix phenix image delete zeek
+```
+
+To build the images, run the following commands on the server where the phēnix
+Docker container is running. The `protonuke` recipe also needs a statically
+linked `protonuke` binary (minimega's `cmd/protonuke`, built with
+`CGO_ENABLED=0`) at the top of the clone, and the `vyos` recipe has its own
 [instructions](https://github.com/sandialabs/sceptre-phenix-images/blob/main/scripts/vyos/README.md).
 
-> **NOTE:** the `hids`, `nids`, and `soar` experiments described above include
-> VM disk references to `wazuh-manager.qc2`, but we currently do not include a
-> phēnix image config for `wazuh-manager`. One will be added in a future commit.
+```
+git clone https://github.com/sandialabs/sceptre-phenix-images.git /phenix/sceptre-phenix-images
+cd /phenix/sceptre-phenix-images
+make kali protonuke wireguard miniccc zeek wazuh-manager vyos
+```
+
+After each build, the Makefile injects minimega's `miniccc` agent into the
+image. It takes the binary from `/phenix/miniccc`, or from `miniccc` at the top
+of the clone. The `protonuke` app injects each Linux VM's `protonuke` arguments
+into `/etc/default/protonuke`.
+
+Then, move the image files to the `/phenix/images` directory so phenix and
+minimega know where to grab them from.
 
 To create an experiment, add a topology and scenario file from `phenix-configs`
-to the phēnix store either via the command line or the UI. Next, create an
-experiment in the phēnix UI by referring to the appropriate topology and
-scenario for the given network above.
+to the phēnix store either via the command line or the UI. The `hids`, `nids`,
+and `soar` scenarios take app settings from other scenarios (`fromScenario`), so
+also add the `base` scenario (and, for `soar`, the `nids` scenario) to the store
+before you create one of these experiments. Next, create an experiment in the
+phēnix UI by referring to the appropriate topology and scenario for the given
+network above.
 
 Once you start the experiment, you can verify it is operating as expected by
 checking the workstations on each network (e.g., `ws-ot`). They should all be

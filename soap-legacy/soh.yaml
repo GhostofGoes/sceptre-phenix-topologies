@@ -3,12 +3,11 @@ kind: Scenario
 metadata:
   name: soap-soh
   annotations:
-    topology: soap
+    topology: soap-legacy
 spec:
   apps:
     - name: soh
       metadata:
-        c2Timeout: 2m
         hostListeners:
           provider:
           - :5555
@@ -60,4 +59,5 @@ spec:
             - exp
             controlthings-elk:
             - exp
+        startupDelay: 3m
         testReachability: full # can be off, sample, or full

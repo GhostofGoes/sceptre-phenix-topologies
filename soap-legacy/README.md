@@ -15,13 +15,14 @@ The model uses the following backing images:
 - `bennu.qc2`
 - `ignitionhmi.qc2`
 - `controlthingsplatform.qc2`
+- `elasticsearch.qc2` and `packetbeat.qc2` - the soh app boots these for its packet capture.
 
-The bennu image can be built using `phenix image`. See here for more details.
-The hmi and control things images are included in this distribution in the images folder.
+The bennu, elasticsearch and packetbeat images are built from [sceptre-phenix-images](https://github.com/sandialabs/sceptre-phenix-images), for example with `make bennu`. A pre-built bennu image can also be downloaded with `oras pull ghcr.io/sandialabs/sceptre-phenix-images/bennu.qc2:latest`.
+The hmi and control things images are not included in this repository; you must provide them yourself.
 
 # Deploying SOAP
-1. Copy the entire contents of this topology to `/phenix/topologies/soap`. Phenix topologies can technically be located anywhere, but the SOAP topology looks for injects from this location.
-2. Move the images located in the `images` folder to `/phenix/images`.
+1. Copy the entire contents of this topology to `/phenix/topologies/soap-legacy`. Phenix topologies can technically be located anywhere, but the SOAP topology looks for injects from this location.
+2. Put the images listed above in `/phenix/images`.
 3. Add the SOAP configs to the data store using the following commands:
 ```
 phenix config create <path_to_topos>/soap-topology.yaml
@@ -31,14 +32,15 @@ phenix config create <path_to_topos>/soap-scenario.yaml
 ```
 4. Run the SOAP model using the following commands:
 ```
-phenix exp create soap -t soap -s soap
-phenix exp start soap
+phenix exp create soap-legacy -t soap-legacy -s soap-legacy
+phenix exp start soap-legacy
 ```
 5. Stop and delete the model using the following commands:
 ```
-phenix exp stop soap
-phenix exp delete soap
+phenix exp stop soap-legacy
+phenix exp delete soap-legacy
 ```
 
 For more information on the SOAP topology see the `SOAP_User_Guide__UUR__20200817.pdf`
+The guide calls the ControlThings VM `controlthings_elk`; it is now `controlthings-elk`, because phenix host names cannot contain underscores.
 For more information on installing and running phenix see the Phenix Quick Start Guide.

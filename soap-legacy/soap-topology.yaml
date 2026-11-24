@@ -1,7 +1,7 @@
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
 metadata:
-  name: soap
+  name: soap-legacy
 spec:
   nodes:
   - general:

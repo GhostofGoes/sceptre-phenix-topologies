@@ -33,6 +33,28 @@ A variant lists its areas and, as an option, the allowed units of each area
 (`units`). It also lists its federates and hosts, and it has switches for the
 `soh`, `wireguard`, and `scorch` outputs.
 
+## Sites
+
+`plant/sites.yaml` describes the four breweries of the fleet
+([PLANS.md §4.1](../../docs/multisite/PLANS.md#41-what-each-site-is)). A site
+is the plant of `plant.yaml` with parts left out and with its networks moved.
+For each site, the file gives the areas and the hosts that the site does not
+have. It also gives where the hosts of each VLAN go, the uplinks, and the time
+source.
+
+plantgen reads the file on each run (`plantgen/sites.py`) and stops when an
+entry does not fit. No output comes from the file yet. The generation of the
+files of each site is stage 3 of the plan.
+
+| Check | What it refuses |
+|---|---|
+| Names | An area, a host, a VLAN, or a PLC that `plant.yaml` does not have. A time source or a gateway that the site left out |
+| Addresses | Two hosts with one address after two VLANs merge. The message tells you to give a move a `shift` |
+| `wan/wan.yaml` | Uplinks that are not the links of the site's edge there, in the same order. A routed network outside the blocks of the site. A different subnet for the LAN that `wan.yaml` puts a host on |
+
+A test makes sure that the file equals the profiles that the
+[site-profiles spike](../../spikes/site-profiles/README.md) ran.
+
 ## Outputs
 
 Paths are relative to `plant/generated/<variant>/`. Files that the Kind column

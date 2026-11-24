@@ -25,12 +25,13 @@ from typing import Any
 import pytest
 import yaml
 
-from soc_paths import CONFIGS, INJECTS, ROOT
+from soc_paths import CONFIGS, INJECTS, ROOT, app_dir
 
 MALCOLM: Path = INJECTS / "malcolm"
 WAZUH: Path = INJECTS / "wazuh"
 IMAGES: Path = ROOT / "phenix-images"
-AGENT_SCRIPT: Path = ROOT / "apps/cherrymountain_apps/cherrymountain/templates/scripts/80-cm-wazuh-agent.sh"
+#: A boot script of the cherrymountain app, in the installed phenix-apps package.
+AGENT_SCRIPT: Path = app_dir() / "templates" / "scripts" / "80-cm-wazuh-agent.sh"
 
 #: The env file of Malcolm 26.10.0 that defines each variable cm-malcolm-provision
 #: sets on top of the configurator's output (config/<file>.env.example). Compose reads

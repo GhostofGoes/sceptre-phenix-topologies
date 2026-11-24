@@ -297,7 +297,7 @@ def test_a_bad_event_or_message_does_not_stop_the_federate(
 
 def test_event_api_contract(full: HelicsConfig) -> None:
     """GET /api/v1/health, POST /api/v1/events and /events, GET /api/v1/kpis,
-    and 400 for a bad event (apps/cherrymountain_apps/simctl.py contract)."""
+    and 400 for a bad event (the contract of the cherrymountain app's simctl.py, in sceptre-phenix-apps)."""
     fed = build(full, "weather")
     assert isinstance(fed, WeatherFederate)
     fed.settings = fed.settings.model_copy(update={"event_api_port": 0})

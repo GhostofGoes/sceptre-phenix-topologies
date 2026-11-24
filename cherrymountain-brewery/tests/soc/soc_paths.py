@@ -7,6 +7,7 @@ pytest session. The tests import the fixtures from here.
 
 from __future__ import annotations
 
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -20,6 +21,27 @@ CONFIGS: Path = ROOT / "phenix-configs"
 # The injected Python scripts are plain modules; tests import them from here.
 for _directory in ("wireguard", "desktop", "ews", "malcolm", "guacamole"):
     sys.path.insert(0, str(INJECTS / _directory))
+
+
+def app_dir() -> Path:
+    """The ``cherrymountain`` phenix app's directory in the installed phenix-apps
+    package. The app is in sceptre-phenix-apps (``phenix_apps.apps.cherrymountain``),
+    not in this repository; the tests that read its files need the package the
+    range's phenix image is built with. Only ``phenix_apps`` itself is imported."""
+    spec = importlib.util.find_spec("phenix_apps")
+    if spec is None or not spec.submodule_search_locations:
+        raise ModuleNotFoundError(
+            "phenix-apps is not installed: these tests read the cherrymountain app's "
+            "files from it (GhostofGoes/sceptre-phenix-apps, branch "
+            "feat-cherrymountain-apps, src/python)"
+        )
+    path: Path = Path(next(iter(spec.submodule_search_locations))) / "apps" / "cherrymountain"
+    if not (path / "render.py").is_file():
+        raise ModuleNotFoundError(
+            f"the installed phenix-apps ({path.parents[1]}) has no cherrymountain app: "
+            "install the feat-cherrymountain-apps branch of GhostofGoes/sceptre-phenix-apps"
+        )
+    return path
 
 
 def node_ip(nodes: dict[str, dict], hostname: str, interface: str = "IF0") -> str:

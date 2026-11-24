@@ -4,14 +4,17 @@
 # topology-remote-access.yml as the source of each node. Do not edit.
 #
 # The firewall rulesets are not here. They are in scenario-site-fr.yml,
-# which netcheck writes (tools/netcheck): the rules of the conduits whose two
-# ends are hosts of this site.
+# which sync.py writes: the rules of the conduits whose two ends are hosts of
+# this site, as netcheck computes them (tools/netcheck).
+#
+# An injected file that holds a name or an address of the plant is the site's
+# own copy, under phenix-injects/fleet/fr/ (plantgen renders it, and sync.py
+# puts it there).
 #
 # This file is not a finished site. It does not have these parts yet:
 # - The edge's WAN side: its default route, NAT, and the VPN, which the WAN
 #   generator writes (tools/wangen).
-# - The conduits between sites, with their rules, and a whole scenario. The
-#   injected files still hold the names and addresses of the single site.
+# - The conduits between sites, with their rules.
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
 metadata:
@@ -34,7 +37,7 @@ spec:
     - description: VyOS logging, Wazuh syslog, IKEv2, and NTP settings the vrouter app cannot render
       dst: /boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
       permissions: '0755'
-      src: /phenix/injects/${BRANCH_NAME}/vrouter/cm-vyos-config.sh
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/vrouter/cm-vyos-config.sh
     labels:
       site: fr
       zone: edge
@@ -94,7 +97,7 @@ spec:
     - description: VyOS logging, Wazuh syslog, IKEv2, and NTP settings the vrouter app cannot render
       dst: /boot/vyos/rw/config/scripts/custom/cm-vyos-config.sh
       permissions: '0755'
-      src: /phenix/injects/${BRANCH_NAME}/vrouter/cm-vyos-config.sh
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/vrouter/cm-vyos-config.sh
     labels:
       site: fr
       zone: ot-edge
@@ -160,15 +163,15 @@ spec:
     - description: BBMD settings for the OPS BBMD (listens on a /0 prefix for FUXA's limited broadcast)
       dst: /etc/default/cm-bbmd
       permissions: '0644'
-      src: /phenix/injects/${BRANCH_NAME}/bbmd/ot-svc.env
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/bbmd/ot-svc.env
     - description: 'dnsmasq: authoritative plant zone, no upstream'
       dst: /etc/dnsmasq.d/10-plant.conf
       permissions: '0644'
-      src: /phenix/injects/${BRANCH_NAME}/ot-svc/dnsmasq-plant.conf
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/ot-svc/dnsmasq-plant.conf
     - description: plant host names and addresses
       dst: /etc/cherrymountain/plant.hosts
       permissions: '0644'
-      src: /phenix/injects/${BRANCH_NAME}/ot-svc/plant.hosts
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/ot-svc/plant.hosts
     - description: 'rsyslog: receive UDP 514 and relay to Wazuh'
       dst: /etc/rsyslog.d/30-cm-relay.conf
       permissions: '0644'
@@ -176,7 +179,7 @@ spec:
     - description: restrict chrony clients, start DNS and syslog
       dst: /etc/phenix/startup/60-ot-svc.sh
       permissions: '0755'
-      src: /phenix/injects/${BRANCH_NAME}/ot-svc/60-ot-svc.sh
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/ot-svc/60-ot-svc.sh
     - description: BACpypes3 BBMD service
       dst: /usr/local/lib/cm-bbmd/cm_bbmd.py
       permissions: '0644'
@@ -218,7 +221,7 @@ spec:
     - description: BBMD settings for the BAS BBMD
       dst: /etc/default/cm-bbmd
       permissions: '0644'
-      src: /phenix/injects/${BRANCH_NAME}/bbmd/bas-bbmd.env
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/bbmd/bas-bbmd.env
     - description: BACpypes3 BBMD service
       dst: /usr/local/lib/cm-bbmd/cm_bbmd.py
       permissions: '0644'
@@ -1653,7 +1656,7 @@ spec:
     - description: TLS front end of the Guacamole stack
       dst: /opt/cherrymountain/guacamole/nginx.conf
       permissions: '0644'
-      src: /phenix/injects/${BRANCH_NAME}/guacamole/nginx.conf
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/guacamole/nginx.conf
     - description: SQL for the vendor account with TOTP
       dst: /usr/local/lib/cm-guacamole/cm_vendor_sql.py
       permissions: '0644'
@@ -1665,7 +1668,7 @@ spec:
     - description: start the Guacamole stack
       dst: /usr/local/sbin/cm-guacamole-start
       permissions: '0755'
-      src: /phenix/injects/${BRANCH_NAME}/guacamole/cm-guacamole-start
+      src: /phenix/injects/${BRANCH_NAME}/fleet/fr/guacamole/cm-guacamole-start
     - description: load the pre-pulled container images into Docker
       dst: /usr/local/sbin/cm-load-images
       permissions: '0755'

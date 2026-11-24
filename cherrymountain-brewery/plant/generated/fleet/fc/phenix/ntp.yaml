@@ -92,3 +92,6 @@ hosts:
     source:
       hostname: fc-sim-ctl
       interface: mgmt
+- hostname: fc-sensor
+  metadata:
+    client: chrony

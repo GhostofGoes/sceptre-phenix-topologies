@@ -310,7 +310,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/netcheck/|tools/plantgen/plantgen/|plant/(plant|sites)\.yaml$|wan/wan\.yaml$|sync\.py$|brand/|phenix-injects/(bbmd|vrouter|guacamole)/)'
+files = '^cherrymountain-brewery/(tools/netcheck/|tools/plantgen/plantgen/|plant/(plant|sites)\.yaml$|wan/wan\.yaml$|sync\.py$|brand/|phenix-configs/|phenix-site-[^/]*\.ya?ml$|phenix-injects/(bbmd|vrouter|guacamole|fleet)/)'
 pass_filenames = false
 priority = "check"
 
@@ -529,7 +529,7 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole)/)'
+files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|tools/netcheck/|wan/wan\.yaml$|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole|fleet)/)'
 pass_filenames = false
 priority = "check"
 

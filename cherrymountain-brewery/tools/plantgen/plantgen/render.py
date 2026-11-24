@@ -746,6 +746,10 @@ def ntp_app(plant: Plant) -> dict[str, Any]:
             raise PlantError(f"ntp: no entry for {name}")
         md = entry.model_dump(exclude_none=True)
         hosts.append({"hostname": name, "metadata": md})
+    for name, entry in ntp.other_nodes.items():
+        hosts.append(
+            {"hostname": name, "metadata": entry.model_dump(exclude_none=True)}
+        )
     return {
         "name": "ntp",
         "metadata": {"defaultSource": ntp.default_source.model_dump()},

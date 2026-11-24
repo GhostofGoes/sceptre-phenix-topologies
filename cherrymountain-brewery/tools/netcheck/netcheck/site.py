@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import ipaddress
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -100,7 +101,7 @@ def codes(root: Path = ROOT) -> list[str]:
 def load(code: str, root: Path = ROOT) -> Site:
     """Derive the reference of the site ``code``."""
     _plantgen()
-    from plantgen import fleet, sites, topology  # noqa: PLC0415
+    from plantgen import fleet, sites, topology, workflow  # noqa: PLC0415
     from plantgen.model import PlantError, load_file  # noqa: PLC0415
 
     try:
@@ -111,12 +112,24 @@ def load(code: str, root: Path = ROOT) -> Site:
         if spec is None:
             raise SiteError(f"sites.yaml has no site {code!r}; it has {[s.code for s in found]}")
         doc = fleet.site_plant(spec, plant_file, wan)
+        # The fleet's ID rule is plantgen's. The single-site IDs that it starts
+        # from are this tool's own plan, not the workflow file that plantgen reads.
+        single: dict[str, int] = {name: vlan.vid for name, vlan in plan.VLANS.items()}
+        bridge: str = workflow.bridge(spec)
+        return _derive(
+            spec, doc, topology, lambda used: workflow.vlan_ids(spec, used, single, wan), bridge
+        )
     except (PlantError, OSError) as exc:
         raise SiteError(str(exc)) from exc
-    return _derive(spec, doc, topology)
 
 
-def _derive(spec: Any, doc: Any, topology: Any) -> Site:
+def _derive(
+    spec: Any,
+    doc: Any,
+    topology: Any,
+    vlan_ids: Callable[[set[str]], dict[str, int]],
+    bridge: str,
+) -> Site:
     code: str = spec.code
     here: dict[str, str] = {
         node.name: spec.host(node.name) for node in plan.NODES if spec.host(node.name) in doc.hosts
@@ -262,11 +275,15 @@ def _derive(spec: Any, doc: Any, topology: Any) -> Site:
         reference=Reference(
             name=code,
             nodes=tuple(nodes),
-            vlans=_vlans(doc, addresses),
+            # Every VLAN that a node is on, the routers and the sensor too.
+            vlans=_vlans(
+                doc, addresses, vlan_ids({vlan for legs in addresses.values() for vlan in legs})
+            ),
             conduits=tuple(site_conduits),
             blocked=tuple(blocked),
             external_vlans=frozenset(a for a, _ in _uplinks(spec, doc)),
             site=True,
+            bridge=bridge,
         ),
         pairs=tuple(pairs),
         left_out={why: tuple(ids) for why, ids in left_out.items()},
@@ -293,18 +310,20 @@ def _uplinks(spec: Any, doc: Any) -> list[tuple[str, str]]:
     return [(leg.vlan, leg.ip) for leg in list(edge.interfaces.values())[: len(spec.uplinks)]]
 
 
-def _vlans(doc: Any, addresses: dict[str, dict[str, str]]) -> dict[str, plan.Vlan]:
-    """The networks of the plant description as rows of the VLAN table.
-
-    A site has no workflow yet, so no row has a VLAN ID."""
+def _vlans(
+    doc: Any, addresses: dict[str, dict[str, str]], ids: dict[str, int]
+) -> dict[str, plan.Vlan]:
+    """The networks that a node of the site is on, as rows of the VLAN table,
+    each with its ID in the fleet's plan."""
     return {
         alias: plan.Vlan(
             name=alias,
-            vid=0,
+            vid=ids[alias],
             subnet=network.subnet,
             gateway=addresses[network.gateway][alias] if network.gateway else None,
         )
         for alias, network in doc.networks.items()
+        if alias in ids
     }
 
 

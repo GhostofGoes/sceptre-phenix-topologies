@@ -273,3 +273,50 @@ def test_bad_arguments(tmp_path: Path, arg: str) -> None:
     router = Router(tmp_path, "fw-edge", FW_EDGE_TREE)
     rc, cmds = router.run(arg)
     assert (rc, cmds) == (2, [])
+
+
+# --- a site's own copy (plantgen renders it, sync.py puts it under fleet/<code>/) ---
+
+SITE_COPIES: Path = SCRIPT.parents[1] / "fleet"
+
+
+def test_a_sites_copy_knows_the_sites_firewalls(tmp_path: Path) -> None:
+    """The copy of `ep` waits for the site's names, drops the site's prefix,
+    and then does what the script does for fw-ot, with the site's time server."""
+    router = Router(tmp_path, "ep-fw-ot", FW_EDGE_TREE)
+    rc, cmds = router.run(script=SITE_COPIES / "ep" / "vrouter" / SCRIPT.name)
+    assert rc == 0, router.stderr
+    assert "delete service ntp server 203.0.113.10" in cmds
+    assert "set service ntp server 10.22.30.13 prefer" in cmds
+    assert "set firewall ipv4 name FROM-INET default-log" in cmds
+    assert not any("ike-group" in c or "ipsec match" in c for c in cmds)
+    assert cmds[-3:] == ["commit", "save", "teardown"]
+
+
+def test_the_pubs_copy_does_the_edge_steps_on_its_one_firewall(tmp_path: Path) -> None:
+    router = Router(tmp_path, "fc-fw-edge", FW_EDGE_TREE)
+    rc, cmds = router.run(script=SITE_COPIES / "fc" / "vrouter" / SCRIPT.name)
+    assert rc == 0, router.stderr
+    assert "set system syslog remote 10.40.10.11 facility all level warning" in cmds
+    assert "set vpn ipsec ike-group IKE-1W key-exchange ikev2" in cmds
+    assert not any(c.startswith("set service ntp") for c in cmds)
+
+
+@pytest.mark.parametrize(
+    ("host", "script"),
+    [
+        ("fc-fw-edge", SCRIPT),
+        ("ep-fw-edge", SITE_COPIES / "fc" / "vrouter" / SCRIPT.name),
+        ("fw-edge", SITE_COPIES / "fc" / "vrouter" / SCRIPT.name),
+    ],
+    ids=["single-site-script", "another-sites-copy", "plain-name"],
+)
+def test_a_script_does_nothing_on_a_router_that_is_not_its_own(
+    tmp_path: Path, host: str, script: Path
+) -> None:
+    """This is why a site needs its own copy: the single site's script waits
+    for the plain names, and never sees them on a site's router."""
+    router = Router(tmp_path, host, FW_EDGE_TREE)
+    rc, cmds = router.run(script=script)
+    assert (rc, cmds) == (1, [])
+    assert "the router never got its host name" in router.stderr

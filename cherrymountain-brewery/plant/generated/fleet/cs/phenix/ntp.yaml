@@ -116,3 +116,6 @@ hosts:
     source:
       hostname: cs-sim-ctl
       interface: mgmt
+- hostname: cs-sensor
+  metadata:
+    client: chrony

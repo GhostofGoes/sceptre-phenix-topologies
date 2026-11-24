@@ -50,16 +50,26 @@ the matrix together with the `vrouter` rulesets in `scenario-full.yml`. Then
 ## A site of the fleet
 
 netcheck also checks one site of the fleet alone
-([PLANS.md](../../docs/multisite/PLANS.md), sections 4.1 and 6). A site's
-files are `phenix-configs/topology-site-<code>.yml`, which plantgen writes,
-and `phenix-configs/scenario-site-<code>.yml`, which netcheck writes.
+([PLANS.md](../../docs/multisite/PLANS.md), sections 4.1 and 6). A site has
+three files that `phenix workflow apply` takes.
+
+| File | Who writes it |
+|---|---|
+| `phenix-site-<code>.yml`, the workflow | plantgen |
+| `phenix-configs/topology-site-<code>.yml` | plantgen |
+| `phenix-configs/scenario-site-<code>.yml` | `sync.py` |
 
 ```shell
 python tools/netcheck/run_netcheck.py --site ep        # one site
 python tools/netcheck/run_netcheck.py --site all       # the four sites
-python tools/netcheck/run_netcheck.py --write-sites    # write the site scenarios, then check
 python tools/netcheck/run_netcheck.py                  # full, lite, ci, and the four sites
 ```
+
+netcheck writes no file. It computes two apps of the scenario, `vrouter` and
+the network tests of `soh` (`netcheck/sitegen.py`). `sync.py` puts them into
+the scenario with the app blocks that plantgen writes for the site. Thus one
+tool writes the scenario. Run `python sync.py` after a change to the conduits
+or to `plant/sites.yaml`.
 
 A site has no table of its own. `netcheck/site.py` derives its plan and its
 conduits from two sources. The first source is the Front Range tables in
@@ -74,11 +84,11 @@ site, which plantgen builds from `plant/sites.yaml`.
   Front Range, the two PLCs share a network. At `ep`, each cell has its own
   control network, and the read crosses the OT firewall.
 
-`netcheck/sitegen.py` writes the rulesets from these conduits. Each pair of an
-enforced row gets one accept rule at each firewall on its path. A row from a
-whole zone gets one rule with the subnet of the zone. Every ruleset drops by
-default and starts with the stateful accept. The scenario also holds the SoH
-probes of the conduits and the tests of the blocked paths.
+`netcheck/sitegen.py` computes the rulesets from these conduits. Each pair of
+an enforced row gets one accept rule at each firewall on its path. A row from
+a whole zone gets one rule with the subnet of the zone. Every ruleset drops by
+default and starts with the stateful accept. The `soh` app gets the SoH probes
+of the conduits and the tests of the blocked paths.
 
 | Site | Layout | Flows across a firewall | Rules |
 |---|---|---:|---|
@@ -88,21 +98,33 @@ probes of the conduits and the tests of the blocked paths.
 | `fc` | One firewall, two zones | 0 | `fc-fw-edge` 0 |
 
 A site's run uses the check functions of a variant with the data of the site.
-These checks run: `plan`, `addresses`, `boot-order`, `injects`,
-`router-commands`, `rulesets`, `flows`, `rule-coverage`, and `soh`. One more
-check, `generated`, fails when the committed scenario is not what the
-generator writes.
+These checks run: `plan`, `addresses`, `workflow`, `boot-order`, `injects`,
+`router-commands`, `rulesets`, `flows`, `rule-coverage`, `soh`, `apps`, and
+`services`. One more check, `generated`, reads the committed scenario. It
+fails when the `vrouter` app is not the computed one, or when the `soh` app
+lacks a computed test.
+
+Some checks have a part that is only for a site:
+
+| Check | What it does for a site |
+|---|---|
+| `workflow` | It compares each VLAN ID with the plan of the fleet. The rule is the rule of plantgen (`plantgen/workflow.py`). The single-site IDs under it are those of `plan.py`, not those of `phenix.yml`. The bridge must be the bridge of the site |
+| `injects` | Each injected file exists, also each copy under `phenix-injects/fleet/<code>/` |
+| `apps` | A time source can be `inet-traffic`, which no site has. The run prints a note, because the ntp app of phenix then uses the default source |
+| `services` | It compares the `plant.hosts` copy of the site with the nodes of the site. A site with no `ot-svc` has no such file |
 
 A site's run leaves out these checks:
 
 | Check | Why |
 |---|---|
-| `workflow` | A site has no workflow file yet |
 | `nat-ipsec` | The WAN side of the edge is a later stage |
 | `scorch` | The scenario of a site has no scorch app |
-| `apps` | `sync.py` does not embed the app blocks of a site yet |
 | `app-hosts` | WireGuard and the mirror are a later stage |
-| `services` | `plant.hosts` is the file of the single site |
+
+`tests/test_site_set.py` walks the whole set of a site: the workflow, the
+topology file, the scenario, and each injected file. At `ep`, `cs`, and `fc`,
+no file holds a Front Range address or the plain name of a host. The test has
+a list of the exceptions, each with its reason.
 
 The rules cover only the conduits inside one site. A row with an end on the
 internet, at the vendor, at the utility, or at a different site has no rule
@@ -145,7 +167,7 @@ network, and six such paths are open. These notes are not errors.
 - `netcheck/reference.py`: the data that the checks compare a variant or a
   site with.
 - `netcheck/site.py`: the plan and the conduits of a site, derived.
-- `netcheck/sitegen.py`: the rulesets and the scenario of a site.
+- `netcheck/sitegen.py`: the rulesets and the SoH tests of a site.
 - `tests/`: the committed files must pass. Each test breaks a copy of the
   files and expects the finding. Examples of a break are a deleted rule, an
   extra rule, a missing route, and a duplicate address. `test_sync.py` and

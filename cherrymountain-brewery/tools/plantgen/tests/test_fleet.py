@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 import yaml
 
-from plantgen import checks, fleet, render, sites, topology
+from plantgen import checks, fleet, injects, render, sites, topology
 from plantgen.allocate import allocate
 from plantgen.cli import DEFAULT_PLANT, generate_site, main, render_checked
 from plantgen.model import (
@@ -119,10 +119,17 @@ def test_committed_site_files_are_current(
     specs: dict[str, sites.SiteSpec],
     wan: dict[str, Any],
 ) -> None:
-    """generated/fleet/<code> holds exactly what plantgen renders now."""
+    """generated/fleet/<code> holds exactly what plantgen renders now.
+
+    The site's copies of injected files, under `injects/`, are another test's
+    (test_site_set.py)."""
     files = generate_site(specs[code], plant_file, wan)
     root = FLEET / code
-    have = {p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()}
+    have = {
+        p.relative_to(root).as_posix()
+        for p in root.rglob("*")
+        if p.is_file() and injects.DIRECTORY not in p.relative_to(root).parts
+    }
     assert have == set(files)
     for rel, text in files.items():
         assert (root / rel).read_text(encoding="utf-8") == text, rel
@@ -809,8 +816,11 @@ def test_the_command_writes_and_checks_one_site(
     assert main(["--site", "fc", "--out", str(out)]) == 0
     printed = capsys.readouterr().out
     assert "sites.yaml fits plant.yaml and wan.yaml (4 sites)" in printed
-    assert f"wrote 23 files to {out}" in printed
+    # 22 plant files, one copy of an injected file, the topology, the workflow.
+    assert f"wrote 25 files to {out}" in printed
     assert (out / "topology-site-fc.yml").is_file()
+    assert (out / "phenix-site-fc.yml").is_file()
+    assert (out / "injects" / "vrouter" / "cm-vyos-config.sh").is_file()
     # One site, and no variant.
     assert printed.count("wrote") == 1
     assert main(["--check", "--site", "fc", "--out", str(out)]) == 0
@@ -853,9 +863,11 @@ def _tree(tmp_path: Path) -> Path:
         "plant/plant.yaml",
         "plant/sites.yaml",
         "wan/wan.yaml",
+        "phenix.yml",
         *(f"phenix-configs/topology-{module}.yml" for module in topology.MODULES),
+        *(f"phenix-injects/{path}" for path in injects.RENDERERS),
     ):
-        (tmp_path / rel).parent.mkdir(exist_ok=True)
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(root / rel, tmp_path / rel)
     return tmp_path / "plant" / "plant.yaml"
 
@@ -876,6 +888,7 @@ def test_the_command_writes_every_site_and_check_fails_on_a_stale_one(
         assert f"files to {made / name}\n" in printed
     for code in CODES:
         assert f"wrote {configs / f'topology-site-{code}.yml'}\n" in printed
+        assert f"wrote {tmp_path / f'phenix-site-{code}.yml'}\n" in printed
     assert sorted(path.name for path in (made / "fleet").iterdir()) == sorted(CODES)
     assert len(list(configs.iterdir())) == len(topology.MODULES) + len(CODES)
     stale = made / "fleet" / "ep" / "phenix" / "ntp.yaml"
@@ -887,13 +900,18 @@ def test_the_command_writes_every_site_and_check_fails_on_a_stale_one(
     (configs / "topology-site-fc.yml").unlink()
     shutil.copytree(made / "fleet" / "fc", made / "fleet" / "xx")
     shutil.copy(edited, configs / "topology-site-xx.yml")
+    shutil.copy(tmp_path / "phenix-site-fc.yml", tmp_path / "phenix-site-xx.yml")
     assert main([*args, "--check"]) == 1
     captured = capsys.readouterr()
     assert f"{made / 'fleet' / 'ep'} is out of date" in captured.err
     assert "stale: phenix/ntp.yaml" in captured.err
     assert "stale: topology-site-cs.yml" in captured.err
     assert "missing: topology-site-fc.yml" in captured.err
-    for left in (made / "fleet" / "xx", configs / "topology-site-xx.yml"):
+    for left in (
+        made / "fleet" / "xx",
+        configs / "topology-site-xx.yml",
+        tmp_path / "phenix-site-xx.yml",
+    ):
         assert f"{left} is out of date" in captured.err
     for name in ("ci", "full", "lite", "fleet/fr", "fleet/cs", "fleet/fc"):
         assert f"{made / name} is up to date" in captured.out
@@ -901,6 +919,7 @@ def test_the_command_writes_every_site_and_check_fails_on_a_stale_one(
     assert main(args) == 0
     assert not (made / "fleet" / "xx").exists()
     assert not (configs / "topology-site-xx.yml").exists()
+    assert not (tmp_path / "phenix-site-xx.yml").exists()
     assert stale.read_text(encoding="utf-8") == text
     assert edited.read_text(encoding="utf-8") == nodes
     assert main([*args, "--check", "--site", "fc"]) == 0

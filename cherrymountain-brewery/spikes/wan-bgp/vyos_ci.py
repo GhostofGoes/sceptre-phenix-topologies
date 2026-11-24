@@ -943,6 +943,17 @@ def hq_restart(lab: Lab, lines: list[str]) -> None:
             sas = lab.shell(vm, "swanctl --list-sas 2>&1 | grep -E '^[a-z]|INSTALLED'")
             ike = {t.name: len(re.findall(rf"^{re.escape(t.name)}: #", sas, flags=re.M)) for t in model.TUNNELS}
             lab.fact(f"{vm} IKE SAs for each tunnel after the head office's restart", f"{json.dumps(ike)}: {sas[:600]}")
+        # What IKE did at the site while the head office was away: it tells why the
+        # tunnel came back when it did (dead-peer detection, a new exchange, or a delete).
+        lab.save(
+            "hq-restart-ike-site.txt",
+            lab.shell(
+                "fc-fw-edge",
+                f"journalctl --no-pager -o short-precise --since '-{HQ_RESTART_WINDOW_S + 120} seconds' 2>/dev/null | "
+                "grep -E 'charon|ipsec' | grep -vE 'sending packet|received packet' | tail -250",
+                wait_s=120,
+            ),
+        )
 
 
 def faults(lab: Lab) -> None:

@@ -285,7 +285,29 @@ def ipsec_groups(at_hub: bool) -> list[str]:
     ]
 
 
-def vti_tunnel(router: lab.Router, tunnel: lab.Tunnel, psk: PreSharedKey) -> list[str]:
+#: Added to a tunnel's mark for the rule and table of its backstop. VyOS takes tables 1 to 200.
+BACKSTOP_OFFSET: int = 50
+
+
+def pin_backstop(tunnel: lab.Tunnel, match: str) -> list[str]:
+    """A second rule for a tunnel's own packets, to a table that holds only a blackhole.
+
+    The first rule sends the packets to the tunnel's table: its uplink, and a
+    blackhole behind it. FRR installs that blackhole only after the uplink's
+    route is gone. Between the two, the table is empty, the lookup goes on to
+    the main table, and a packet can leave through the other uplink with this
+    uplink's address. In run 41, one IKE packet did. The second rule comes
+    next for the same packets, and its table always has its blackhole.
+    """
+    number = tunnel.mark() + BACKSTOP_OFFSET
+    return [
+        f"set policy local-route rule {number} {match}",
+        f"set policy local-route rule {number} set table {number}",
+        f"set protocols static table {number} route 0.0.0.0/0 blackhole",
+    ]
+
+
+def vti_tunnel(router: lab.Router, tunnel: lab.Tunnel, psk: PreSharedKey, backstop: bool = False) -> list[str]:
     """One route-based IPsec tunnel on a site edge."""
     at_hub = router.name == tunnel.hub
     _isp, gateway, uplink = lab.peer_of(lab.link_of(tunnel.site, tunnel.via), tunnel.site)
@@ -325,6 +347,8 @@ def vti_tunnel(router: lab.Router, tunnel: lab.Tunnel, psk: PreSharedKey) -> lis
             f"set protocols static table {mark} route 0.0.0.0/0 next-hop {gateway}",
             f"set protocols static table {mark} route 0.0.0.0/0 blackhole distance 250",
         ]
+        if backstop:
+            lines += pin_backstop(tunnel, f"source address {uplink}")
     return lines
 
 
@@ -541,7 +565,7 @@ def sketch(
         if at_hub:
             policy += f"-{site_code(tunnel.site)}"
         if kind == lab.VTI:
-            lines += vti_tunnel(router, tunnel, psk)
+            lines += vti_tunnel(router, tunnel, psk, backstop=not spike_only)
             lines += neighbor(peer, peer_as, f"overlay {tunnel.name}", policy, "OVERLAY-OUT")
             continue
         private_key, public_key = keys(tunnel, "hub" if at_hub else "site")
@@ -572,6 +596,8 @@ def sketch(
                 f"set protocols static table {mark} route 0.0.0.0/0 next-hop {gateway}",
                 f"set protocols static table {mark} route 0.0.0.0/0 blackhole distance 250",
             ]
+            if not spike_only:
+                lines += pin_backstop(tunnel, f"fwmark {mark}")
         lines += neighbor(peer, peer_as, f"overlay {tunnel.name}", policy, "OVERLAY-OUT")
     if not spike_only:
         lines += internet_nat(router)

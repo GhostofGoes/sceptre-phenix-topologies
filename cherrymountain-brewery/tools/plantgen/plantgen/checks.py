@@ -288,6 +288,11 @@ def ntp_hosts(plant: Plant, alloc: Allocation) -> list[str]:
             continue
         src = md.source or ntp.default_source
         if src.hostname in ntp.external and src.hostname not in plant.hosts:
+            if src.address is None:
+                errs.append(
+                    f"ntp: {h} names {src.hostname}, which is outside the variant, "
+                    "with no address: phenix would give the host the default source"
+                )
             if not any(routed(plant, v) for v in plant.hosts[h].vlans()):
                 errs.append(
                     f"ntp: {h} cannot reach {src.hostname}, which is outside the "

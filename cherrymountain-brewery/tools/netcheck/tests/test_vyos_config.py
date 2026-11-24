@@ -298,8 +298,21 @@ def test_the_pubs_copy_does_the_edge_steps_on_its_one_firewall(tmp_path: Path) -
     rc, cmds = router.run(script=SITE_COPIES / "fc" / "vrouter" / SCRIPT.name)
     assert rc == 0, router.stderr
     assert "set system syslog remote 10.40.10.11 facility all level warning" in cmds
-    assert "set vpn ipsec ike-group IKE-1W key-exchange ikev2" in cmds
+    assert "set firewall ipv4 name FROM-INET default-log" in cmds
     assert not any(c.startswith("set service ntp") for c in cmds)
+    # The steps of the utility's IPsec are the edge's WAN side: not in a site's copy.
+    assert not any("ike-group" in c or "ipsec" in c for c in cmds)
+
+
+@pytest.mark.parametrize("code", ["fr", "ep", "cs", "fc"])
+def test_a_sites_copy_sets_nothing_of_the_utilitys_ipsec(tmp_path: Path, code: str) -> None:
+    """The tree of the stand-in has the rule that the single site's script
+    gives the IPsec match. A site's copy leaves that rule and the IKE group alone."""
+    router = Router(tmp_path, f"{code}-fw-edge", FW_EDGE_TREE)
+    rc, cmds = router.run(script=SITE_COPIES / code / "vrouter" / SCRIPT.name)
+    assert rc == 0, router.stderr
+    assert not any("ipsec" in c or "ike" in c for c in cmds)
+    assert cmds[-3:] == ["commit", "save", "teardown"]
 
 
 @pytest.mark.parametrize(

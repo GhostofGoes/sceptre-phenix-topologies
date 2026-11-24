@@ -27,6 +27,8 @@ What each field of a node becomes:
   (see `_tunnel`).
 - `hardware`, `type`, `commands`, and the `dst` and `permissions` of an
   injection: as they are.
+- `injections`: the injections that the site may have (`injects.SCOPES`).
+  The files of the vendor's access and of the SOC stay at the head office.
 - The `src` of an injection: the site's own copy of the file, when the file
   holds a name or an address of the plant (`injects.site_source`). Any other
   file is the one that every site injects.
@@ -86,6 +88,13 @@ HEADER: Final[str] = """\
 #   generator writes (tools/wangen).
 # - The conduits between sites, with their rules.
 """
+#: Added to the header of a site that has a jump host and not the vendor's access.
+JUMP_HOST_NOTE: Final[str] = """\
+# - The accounts of the site's own jump host. The vendor's accounts are not
+#   injected here: the vendor reaches the head office and no other site. The
+#   company's own accounts are still to be designed.
+"""
+JUMP_HOST: Final[str] = "dmz-jump"
 
 
 def file_name(site: SiteSpec) -> str:
@@ -120,7 +129,11 @@ def dump(site: SiteSpec, config: dict[str, Any]) -> str:
     """The text of the site's topology file, from its config (`site_topology`)."""
     # Block style only, as for the app blocks: prek enforces it with yamllint.
     body = yaml.safe_dump(config, sort_keys=True, default_flow_style=False, width=1000)
-    return HEADER.format(code=site.code, title=site.title) + body
+    header = HEADER.format(code=site.code, title=site.title)
+    names = {node["general"]["hostname"] for node in config["spec"]["nodes"]}
+    if site.host(JUMP_HOST) in names and injects.REMOTE not in site.modules:
+        header += JUMP_HOST_NOTE
+    return header + body
 
 
 def site_topology(
@@ -164,7 +177,16 @@ def _node(
     for described in (general, *node.get("injections", [])):
         if "description" in described:
             described["description"] = stamp(described["description"])
-    for injection in node.get("injections", []):
+    # An injection of a part that only the head office has stays there.
+    kept = [
+        injection
+        for injection in node.get("injections", [])
+        if injects.at_site(site, injection["src"])
+    ]
+    node.pop("injections", None)
+    if kept:
+        node["injections"] = kept
+    for injection in kept:
         injection["src"] = injects.site_source(site, injection["src"])
     waits = [
         {**wait, "hostname": site.host(wait["hostname"])}

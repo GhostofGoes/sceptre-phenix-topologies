@@ -7,7 +7,7 @@
 # - vrouter: the rulesets that netcheck computes from the conduit matrix
 #   (tools/netcheck, netcheck.sitegen) and plant/sites.yaml. They carry the
 #   conduits whose two ends are hosts of this site, and nothing else:
-#   82 rules on ep-fw-edge (0) and ep-fw-ot (82).
+#   86 rules on ep-fw-edge (0) and ep-fw-ot (86).
 # - soh: the network tests that netcheck computes from the same conduits, and
 #   plantgen's soh block merged into them.
 #
@@ -1411,12 +1411,14 @@ spec:
         source:
           hostname: inet-traffic
           interface: IF0
+          address: 198.18.110.11
     - hostname: ep-fw-edge
       metadata:
         client: ntp
         source:
           hostname: inet-traffic
           interface: IF0
+          address: 198.18.110.11
     - hostname: ep-dmz-jump
       metadata:
         client: chrony
@@ -2228,6 +2230,42 @@ spec:
               description: Established and related connections
               protocol: all
               stateful: true
+            - id: 10
+              action: accept
+              description: 'ot-svc-services: EP-SOC to ep-ot-svc udp/123'
+              protocol: udp
+              source:
+                address: 10.42.10.0/24
+              destination:
+                address: 10.22.30.13
+                port: 123
+            - id: 20
+              action: accept
+              description: 'ot-svc-services: EP-SOC to ep-ot-svc udp/53'
+              protocol: udp
+              source:
+                address: 10.42.10.0/24
+              destination:
+                address: 10.22.30.13
+                port: 53
+            - id: 30
+              action: accept
+              description: 'ot-svc-services: EP-SOC to ep-ot-svc udp/514'
+              protocol: udp
+              source:
+                address: 10.42.10.0/24
+              destination:
+                address: 10.22.30.13
+                port: 514
+            - id: 40
+              action: accept
+              description: 'ot-svc-services: EP-SOC to ep-ot-svc tcp/53'
+              protocol: tcp
+              source:
+                address: 10.42.10.0/24
+              destination:
+                address: 10.22.30.13
+                port: 53
           - name: FROM-EP-CTRL-BH
             default: drop
             description: 'Traffic entering ep-fw-ot from EP-CTRL-BH: stateful, default deny'
@@ -2666,7 +2704,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWVwLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: ep-plc-cellar
         dst: ep-ot-svc|IF0
         proto: tcp
@@ -2683,7 +2721,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWVwLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: ep-rtu-der
         dst: ep-ot-svc|IF0
         proto: tcp
@@ -2700,7 +2738,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWVwLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: ep-bas-fuxa
         dst: ep-ot-svc|IF0
         proto: tcp
@@ -2717,7 +2755,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWVwLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: ep-plc-utilities
         dst: ep-plc-cellar|IF0
         proto: tcp

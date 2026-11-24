@@ -41,6 +41,27 @@ def _plantgen() -> None:
         sys.path.insert(0, path)
 
 
+#: The Front Range zone of a host that only a site has, by its plain name. The
+#: sensor is a device of the SOC wherever its leg is (PLANS.md 4.6): at a site
+#: with no SOC zone it stands in the plant network. So the rows from `zone:SOC`
+#: carry it (time, names, and syslog at the site's ot-svc), and the rows from
+#: the zone of the network that it stands in do not: it is no HMI and no PLC.
+SITE_ONLY_ZONES: dict[str, str] = {"sensor": "SOC"}
+
+
+#: The Front Range VLAN whose hosts are the office.
+OFFICE_VLAN: str = "CORP"
+#: (VMs, vCPUs, GB) of each site with its sensor, as PLANS.md 4.1 states them
+#: ("The size of the range"). A site that is not in this table has no totals
+#: to compare, and its run says so.
+TOTALS: dict[str, tuple[int, int, int]] = {
+    "fr": (39, 62, 151),
+    "ep": (35, 47, 82),
+    "cs": (26, 37, 69),
+    "fc": (19, 27, 55),
+}
+
+
 class SiteError(Exception):
     """A site's reference could not be derived."""
 
@@ -87,6 +108,9 @@ class Site(BaseModel):
     #: VLAN alias -> hosts on it that are not routers (the sensor included).
     members: dict[str, tuple[str, ...]]
     routers: tuple[str, ...]
+    #: The hosts of the office, and the PLCs (see ``checks.check_layout``).
+    office: tuple[str, ...] = ()
+    plcs: tuple[str, ...] = ()
     doc: Any = None
 
 
@@ -94,8 +118,12 @@ def codes(root: Path = ROOT) -> list[str]:
     """The codes of the sites in plant/sites.yaml."""
     _plantgen()
     from plantgen import sites  # noqa: PLC0415
+    from plantgen.model import PlantError  # noqa: PLC0415
 
-    return [site.code for site in sites.load_file(root / "plant" / "sites.yaml")]
+    try:
+        return [site.code for site in sites.load_file(root / "plant" / "sites.yaml")]
+    except PlantError as exc:
+        raise SiteError(f"plant/{exc}") from exc
 
 
 def load(code: str, root: Path = ROOT) -> Site:
@@ -140,9 +168,13 @@ def _derive(
         for name, host in doc.hosts.items()
     }
     sensor: dict[str, Any] | None = topology.sensor_node(spec, doc) if spec.sensor else None
+    # A host that only a site has (the sensor) has no Front Range name. A row
+    # of the matrix carries it through its zone (`SITE_ONLY_ZONES`).
+    site_only: dict[str, list[str]] = {}
     if sensor is not None:
         leg: dict[str, Any] = sensor["network"]["interfaces"][0]
         addresses[sensor["general"]["hostname"]] = {leg["vlan"]: leg["address"]}
+        site_only[SITE_ONLY_ZONES["sensor"]] = [sensor["general"]["hostname"]]
     members: dict[str, list[str]] = {}
     for name, legs in addresses.items():
         if name not in routers:
@@ -175,6 +207,20 @@ def _derive(
                         queue.append(onward)
         return None
 
+    def members_here(selector: str) -> list[str]:
+        """The hosts of the site that a selector of the matrix stands for."""
+        names: list[str] = [
+            here[name] for name in conduits.expand_selector(selector, "full") if name in here
+        ]
+        if selector.startswith("zone:"):
+            names += site_only.get(selector.removeprefix("zone:"), [])
+        return names
+
+    # The name that a DNS probe asks for: the site's zone has the site's names.
+    front_query: str = conduits.dns_query(conduits.DNS_PROBE_NAME)
+    front_name, _, domain = conduits.DNS_PROBE_NAME.partition(".")
+    site_query: str = conduits.dns_query(f"{spec.host(front_name)}.{domain}")
+
     pairs: list[Pair] = []
     left_out: dict[str, list[str]] = {"outside": [], "absent": []}
     full: set[str] = {n.name for n in plan.nodes_for("full")}
@@ -183,21 +229,25 @@ def _derive(
         ends: set[str] = set()
         for selector in cd.srcs:
             for dst_selector in cd.dsts:
-                for src in conduits.expand_selector(selector, "full"):
-                    for dst in conduits.expand_selector(dst_selector, "full"):
-                        ends |= {src, dst}
-                        if src == dst or src not in here or dst not in here or cd.dst_ip:
+                for front_src in conduits.expand_selector(selector, "full"):
+                    for front_dst in conduits.expand_selector(dst_selector, "full"):
+                        ends |= {front_src, front_dst}
+                if cd.dst_ip:
+                    continue
+                for src in members_here(selector):
+                    for dst in members_here(dst_selector):
+                        if src == dst:
                             continue
-                        hops = route(here[src], here[dst])
+                        hops = route(src, dst)
                         if hops is None:
                             raise SiteError(
-                                f"site {code}: {cd.id}: no router joins {here[src]} and {here[dst]}"
+                                f"site {code}: {cd.id}: no router joins {src} and {dst}"
                             )
                         found.append(
                             Pair(
                                 conduit=cd.id,
-                                src=here[src],
-                                dst=here[dst],
+                                src=src,
+                                dst=dst,
                                 hops=hops,
                                 zone_src=selector.startswith("zone:"),
                             )
@@ -223,7 +273,11 @@ def _derive(
         for (firewalls, dsts), srcs in parts.items():
             probes: list[conduits.Probe] = [
                 conduits.Probe(
-                    src=here[p.src], dst=here[p.dst], proto=p.proto, port=p.port, packet=p.packet
+                    src=here[p.src],
+                    dst=here[p.dst],
+                    proto=p.proto,
+                    port=p.port,
+                    packet=site_query if p.packet == front_query else p.packet,
                 )
                 for p in cd.probes
                 if here.get(p.src) in srcs and here.get(p.dst) in dsts
@@ -284,6 +338,7 @@ def _derive(
             external_vlans=frozenset(a for a, _ in _uplinks(spec, doc)),
             site=True,
             bridge=bridge,
+            totals=TOTALS.get(code),
         ),
         pairs=tuple(pairs),
         left_out={why: tuple(ids) for why, ids in left_out.items()},
@@ -294,6 +349,12 @@ def _derive(
         addresses=addresses,
         members={vlan: tuple(hosts) for vlan, hosts in members.items()},
         routers=tuple(sorted(routers)),
+        office=tuple(
+            here[n.name]
+            for n in plan.nodes_for("full")
+            if n.name in here and not n.is_router and n.nics[0].vlan == OFFICE_VLAN
+        ),
+        plcs=tuple(here[name] for name in plan.PLCS if name in here),
         doc=doc,
     )
 

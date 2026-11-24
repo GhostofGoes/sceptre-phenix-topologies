@@ -244,6 +244,18 @@ def isp_sketch(router: lab.Router, spike_only: bool = False) -> list[str]:
     return lines + condition
 
 
+def ike_retransmission() -> list[str]:
+    """strongSwan's retry schedule for an IKE request, when wan.yaml sets one (lab.Retransmit)."""
+    retry = lab.IKE_RETRANSMIT
+    if retry is None:
+        return []
+    return [
+        f"set vpn ipsec options retransmission attempts {retry.tries}",
+        f"set vpn ipsec options retransmission timeout {retry.timeout_s}",
+        f"set vpn ipsec options retransmission base {retry.base:g}",
+    ]
+
+
 def ipsec_groups(at_hub: bool) -> list[str]:
     """The IKE and ESP groups of the lab.VTI tunnels.
 
@@ -514,6 +526,8 @@ def sketch(
 
     if kind == lab.VTI:
         lines += ipsec_groups(hub)
+        if not spike_only:
+            lines += ike_retransmission()
     for tunnel in lab.TUNNELS:
         if router.name not in (tunnel.hub, tunnel.site):
             continue

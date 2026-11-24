@@ -79,9 +79,12 @@ def check_plan(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
         sum(n.memory_mb for n in v.topology.nodes) // 1024,
     )
     if ref.totals is not None and totals != ref.totals:
+        source: str = "PLANS.md 4.1" if ref.site else "DESIGN.md"
         out.append(
-            _err(c, f"totals (VMs, vCPUs, GB) {totals} differ from DESIGN.md {ref.totals}")
+            _err(c, f"totals (VMs, vCPUs, GB) {totals} differ from {source} {ref.totals}")
         )
+    if ref.site and ref.totals is None:
+        out.append(_err(c, f"no stated totals for the site {ref.name} (netcheck/site.py, TOTALS)"))
     for p in want:
         n: m.TNode | None = have.get(p.name)
         if n is None:
@@ -850,7 +853,9 @@ GENERATED_APPS: tuple[str, ...] = ("ot-sim", "helics", "cherrymountain", "ntp")
 APP_ORDER: tuple[str, ...] = ("ot-sim", "cherrymountain", "helics")
 
 
-def check_apps(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
+def check_apps(
+    v: m.Variant, ref: Reference | None = None, root: Path = m.ROOT
+) -> list[Finding]:
     ref = reference(v, ref)
     out: list[Finding] = []
     c: str = f"{v.name}/apps"
@@ -880,9 +885,8 @@ def check_apps(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
             )
     ntp: m.App | None = sc.app("ntp")
     if ntp is not None:
-        # At a site, a source may be a host of the internet, which no site has.
-        outside: set[str] = set(plan.NODE_BY_NAME) - names if ref.site else set()
-        out += _check_ntp(c, v, ntp, names, outside)
+        # At a site, a source may be a server of the internet, which no site has.
+        out += _check_ntp(c, v, ntp, names, internet_servers(root) if ref.site else {})
     for want in ("startup", "vrouter", "soh"):
         if sc.app(want) is None:
             out.append(_err(c, f"scenario has no {want} app"))
@@ -894,11 +898,41 @@ def check_apps(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
     return out
 
 
+#: The server of the internet that a site's host may follow for its time.
+INTERNET_TIME_SERVER: str = "inet-traffic"
+#: The network of the fleet's internet that holds its one host (wan/wan.yaml).
+INTERNET_LAN: str = "INET-LAN"
+WAN_TOPOLOGY: str = "phenix-configs/topology-wan.yml"
+
+
+def internet_servers(root: Path) -> dict[str, str]:
+    """Name -> address in the fleet of the server that a site's host may follow.
+
+    In the fleet, ``inet-traffic`` is on the transit carrier's hosted network,
+    and its single-site address is an uplink of another site (PLANS.md,
+    section 3). The address here is the one that the committed WAN topology
+    gives the host of that network. An empty value: the file does not say."""
+    path: Path = root / WAN_TOPOLOGY
+    address: str = ""
+    if path.is_file():
+        for node in m.read_yaml(path)["spec"]["nodes"]:
+            legs: list[dict[str, Any]] = node.get("network", {}).get("interfaces", [])
+            if node.get("type") == "VirtualMachine" and legs and legs[0]["vlan"] == INTERNET_LAN:
+                address = str(legs[0]["address"])
+    return {INTERNET_TIME_SERVER: address}
+
+
 def _check_ntp(
-    c: str, v: m.Variant, ntp: m.App, names: set[str], outside: set[str]
+    c: str, v: m.Variant, ntp: m.App, names: set[str], outside: dict[str, str]
 ) -> list[Finding]:
-    """``outside`` are hosts that a source may name although the topology does
-    not have them. phenix's ntp app then gives the client the default source."""
+    """``outside`` are the servers that a source may name although the topology
+    does not have them, each with its address.
+
+    phenix's ntp app looks a source up by its hostname. When the topology has
+    no such node, it gives the client the default source without a word
+    (sceptre-phenix, src/go/app/ntp.go, lines 41 to 44 and 138 to 145). When
+    the source has an ``address``, the app takes it as it is (lines 33 to 35).
+    So a source outside the topology must carry the address of its server."""
     out: list[Finding] = []
     listed: dict[str, dict[str, Any]] = {h["hostname"]: h.get("metadata") or {} for h in ntp.hosts}
     node_by: dict[str, m.TNode] = {n.hostname: n for n in v.topology.nodes}
@@ -917,13 +951,26 @@ def _check_ntp(
             out.append(_err(c, f"ntp: {hn} has neither client nor server"))
         src: dict[str, Any] = md.get("source") or {}
         if src.get("hostname") in outside:
-            out.append(
-                _note(
-                    c,
-                    f"ntp: {hn} names {src['hostname']}, a host of the internet. This topology "
-                    "does not have it, so phenix gives the host the default source",
+            want: str = outside[src["hostname"]]
+            if not want:
+                out.append(_err(c, f"ntp: {WAN_TOPOLOGY} has no host on {INTERNET_LAN}"))
+            elif src.get("address") != want:
+                out.append(
+                    _err(
+                        c,
+                        f"ntp: {hn} names {src['hostname']}, a host of the internet, without "
+                        f"its address {want}: phenix would give {hn} the default source",
+                    )
                 )
-            )
+            else:
+                out.append(
+                    _note(
+                        c,
+                        f"ntp: {hn} follows {src['hostname']} at {want}, a host of the "
+                        "internet. phenix takes the address as it is. In this topology "
+                        "alone, nothing answers there",
+                    )
+                )
         elif src.get("hostname"):
             tgt: m.TNode | None = node_by.get(src["hostname"])
             if tgt is None or tgt.iface(src.get("interface", "")) is None:
@@ -1052,9 +1099,24 @@ def check_services(root: Path, v: m.Variant, ref: Reference | None = None) -> li
     if ref is not None and ref.site:
         hosts_file = inj / "fleet" / v.name / "ot-svc" / "plant.hosts"
         nodes = list(ref.nodes)
-        suffix: str = f"/fleet/{v.name}/ot-svc/plant.hosts"
-        if not any(i.src.endswith(suffix) for n in v.topology.nodes for i in n.injections):
+        own: str = f"/phenix/injects/${{BRANCH_NAME}}/fleet/{v.name}/ot-svc/plant.hosts"
+        zone_files: list[tuple[str, str]] = [
+            (n.hostname, i.src)
+            for n in v.topology.nodes
+            for i in n.injections
+            if i.src.endswith("/plant.hosts")
+        ]
+        if not zone_files:
             return [_note(c, "no node of the site injects a plant.hosts (it has no ot-svc)")]
+        for hostname, src in zone_files:
+            if src != own:
+                out.append(
+                    _err(
+                        c,
+                        f"{hostname} injects {src}, which is not the zone file of this "
+                        f"site ({own})",
+                    )
+                )
     if hosts_file.is_file():
         entries: dict[str, str] = {}
         for raw in hosts_file.read_text().splitlines():
@@ -1072,6 +1134,195 @@ def check_services(root: Path, v: m.Variant, ref: Reference | None = None) -> li
                     )
     else:
         out.append(_note(c, f"{hosts_file.relative_to(root).as_posix()} not present"))
+    return out
+
+
+# --- the floor of a site's layout ----------------------------------------------
+
+
+def check_layout(v: m.Variant, office: tuple[str, ...], plcs: tuple[str, ...]) -> list[Finding]:
+    """The floor that every site keeps, however it merges its networks: the
+    office and a PLC are on different networks, and a firewall is between them
+    (PLANS.md 4.1). ``flows`` then proves that only a conduit of the matrix
+    crosses that firewall.
+
+    ``office`` and ``plcs`` are the site's names of the office hosts and the PLCs."""
+    out: list[Finding] = []
+    c: str = f"{v.name}/layout"
+    net: Net = Net(v.topology)
+    for host in office:
+        for plc in plcs:
+            if host not in net.nodes or plc not in net.nodes:
+                continue
+            if _same_l2(net, host, plc):
+                out.append(
+                    _err(
+                        c,
+                        f"the office host {host} and the PLC {plc} share a network: no "
+                        "firewall can separate the office from the plant",
+                    )
+                )
+                continue
+            fwd: Verdict = trace(net, host, net.nodes[plc].interfaces[0].address, "tcp", 502)
+            crossed: list[str] = [hop for hop in fwd.path if net.nodes[hop].is_router]
+            if fwd.result not in BLOCKED_RESULTS or not crossed:
+                out.append(
+                    _err(
+                        c,
+                        f"no firewall stops {host} on its way to the PLC {plc}: tcp/502 is "
+                        f"{fwd.result} ({' > '.join(fwd.path)})",
+                    )
+                )
+    if not office or not plcs:
+        out.append(_err(c, "the site has no office host or no PLC to tell its floor by"))
+    return out
+
+
+# --- the VLAN IDs of the fleet -------------------------------------------------
+
+FLEET_VLAN_RANGE: tuple[int, int] = (100, 599)
+WAN_WORKFLOW: str = "phenix-wan.yml"
+
+
+def check_fleet_vlans(root: Path, codes: list[str]) -> list[Finding]:
+    """The sites and the WAN become one experiment, so their workflows share
+    one set of VLAN IDs (PLANS.md, section 3): an ID has one alias in all of
+    the files, an alias has one ID, and every ID is in the fleet's range.
+
+    This reads the committed workflow files and nothing of a generator."""
+    c: str = "fleet/vlan-ids"
+    out: list[Finding] = []
+    files: list[str] = [m.site_workflow_file(code) for code in codes]
+    if (root / WAN_WORKFLOW).is_file():
+        files.append(WAN_WORKFLOW)
+    else:
+        out.append(_note(c, f"{WAN_WORKFLOW} is not there, so only the sites are compared"))
+    low, high = FLEET_VLAN_RANGE
+    alias_of: dict[int, tuple[str, str]] = {}
+    id_of: dict[str, tuple[int, str]] = {}
+    for name in files:
+        try:
+            vlans: dict[str, int] = m.read_yaml(root / name)["spec"].get("vlans") or {}
+        except (m.LoadError, KeyError, AttributeError) as exc:
+            out.append(_err(c, f"{name}: {exc}"))
+            continue
+        for alias, vid in vlans.items():
+            if not low <= vid <= high:
+                out.append(_err(c, f"{alias} is {vid} in {name}, outside {low} to {high}"))
+            other, where = alias_of.setdefault(vid, (alias, name))
+            if other != alias:
+                out.append(_err(c, f"the ID {vid} is {other} in {where} and {alias} in {name}"))
+            first, at = id_of.setdefault(alias, (vid, name))
+            if first != vid:
+                out.append(_err(c, f"{alias} is {first} in {at} and {vid} in {name}"))
+    return out
+
+
+# --- the servers that a node's configuration names ----------------------------
+
+#: Where an injected file names a syslog target: the end of the file's path,
+#: and the pattern whose first group is the target's address.
+SYSLOG_TARGETS: tuple[tuple[str, re.Pattern[str]], ...] = (
+    ("/vrouter/cm-vyos-config.sh", re.compile(r"^WAZUH=(\S+)$", re.MULTILINE)),
+    ("/ot-svc/rsyslog-relay.conf", re.compile(r'^\s*target="([^"]+)"', re.MULTILINE)),
+)
+NTP_PORT: int = 123
+DNS_PORT: int = 53
+SYSLOG_PORT: int = 514
+
+
+def named_servers(v: m.Variant, root: Path) -> list[tuple[str, str, str, int]]:
+    """(node, kind, address, UDP port) of each server that a node's files name.
+
+    Time: the node's entry in the ntp app, as phenix resolves it. Names: the
+    ``dns`` of an interface. Syslog: the target in an injected file."""
+    found: list[tuple[str, str, str, int]] = []
+    node_by: dict[str, m.TNode] = {n.hostname: n for n in v.topology.nodes}
+
+    def address(source: dict[str, Any]) -> str:
+        if source.get("address"):
+            return str(source["address"])
+        node: m.TNode | None = node_by.get(str(source.get("hostname", "")))
+        leg: m.Iface | None = node.iface(str(source.get("interface", ""))) if node else None
+        return leg.address if leg else ""
+
+    ntp: m.App | None = v.scenario.app("ntp") if v.scenario else None
+    if ntp is not None:
+        default: str = address((ntp.metadata or {}).get("defaultSource") or {})
+        for host in ntp.hosts:
+            md: dict[str, Any] = host.get("metadata") or {}
+            if md.get("client") and host["hostname"] in node_by:
+                source: str = address(md.get("source") or {}) or default
+                if source:
+                    found.append((host["hostname"], "time server", source, NTP_PORT))
+    prefix: str = "/phenix/injects/${BRANCH_NAME}/"
+    for n in v.topology.nodes:
+        for leg in n.interfaces:
+            found += [(n.hostname, "name server", server, DNS_PORT) for server in leg.dns]
+        for inj in n.injections:
+            for ending, pattern in SYSLOG_TARGETS:
+                path: Path = root / "phenix-injects" / inj.src.removeprefix(prefix)
+                if inj.src.endswith(ending) and path.is_file():
+                    for target in pattern.findall(path.read_text(encoding="utf-8")):
+                        found.append((n.hostname, "syslog server", target, SYSLOG_PORT))
+    return found
+
+
+def check_servers(v: m.Variant, root: Path) -> list[Finding]:
+    """Every node reaches the time, name, and syslog server that its files name.
+
+    A server on a node of this topology must be on the node's network or pass
+    the firewall rules, there and back. A server that no node of this topology
+    has is outside it: a note says so, because nothing here can answer."""
+    out: list[Finding] = []
+    c: str = f"{v.name}/servers"
+    net: Net = Net(v.topology)
+    owner: dict[str, str] = {
+        leg.address: n.hostname for n in v.topology.nodes for leg in n.interfaces
+    }
+    outside: dict[tuple[str, str], list[str]] = {}
+    on_router: dict[tuple[str, str], list[str]] = {}
+    for src, kind, address, port in named_servers(v, root):
+        dst: str | None = owner.get(address)
+        if dst is None:
+            outside.setdefault((kind, address), []).append(src)
+            continue
+        if dst == src or _same_l2(net, src, dst):
+            if net.nodes[dst].is_router and kind == "name server":
+                on_router.setdefault((dst, address), []).append(src)
+            continue
+        fwd, rev = flow(net, src, dst, "udp", port, dst_ip=address)
+        bad: Verdict | None = fwd if fwd.result != "allowed" else rev
+        if bad is not None and bad.result == "local":
+            # A router's own address: no forward filter sees the packet.
+            to_router: m.TNode = net.nodes[dst if bad is fwd else src]
+            if to_router.is_router:
+                continue
+        if bad is not None and bad.result != "allowed":
+            way: str = "" if bad is fwd else "the reply of "
+            out.append(
+                _err(
+                    c,
+                    f"{src}: its {kind} {dst} ({address}) is not reachable: {way}udp/{port} "
+                    f"is {bad.result} ({bad.detail})",
+                )
+            )
+    for (kind, address), srcs in outside.items():
+        out.append(
+            _note(
+                c,
+                f"{len(srcs)} node(s) name {address} as {kind}, and no node of this topology "
+                f"has that address: {', '.join(srcs)}",
+            )
+        )
+    for (router, address), srcs in on_router.items():
+        out.append(
+            _note(
+                c,
+                f"{len(srcs)} node(s) name the router {router} ({address}) as name server, "
+                "and these files start no name service on a router",
+            )
+        )
     return out
 
 
@@ -1161,8 +1412,10 @@ def run_site(code: str, root: Path = m.ROOT) -> list[Finding]:
     out += check_flows(v, ref)
     out += check_rule_coverage(v, ref)
     out += check_soh(v, ref)
-    out += check_apps(v, ref)
+    out += check_apps(v, ref, root)
     out += check_services(root, v, ref)
+    out += check_servers(v, root)
+    out += check_layout(v, derived.office, derived.plcs)
     out += site_notes(derived)
     return out
 

@@ -555,6 +555,7 @@ times a second:
 | [33](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45131775836) | `90ff41f`: with the BFD count fixed | 39 of 39 | 39 of 39 |
 | [34](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45342358564) | `98e6c49`: six fault rounds and a restart of the head office | 43 of 43 | 43 of 43 when only the site opens the tunnels. 40 of 40 when both ends open them, and then the job stopped. The reboot started before the test got the answer to its reboot command. The reboot now waits 10 s |
 | [38](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45354270513) | `d7733e7`: the lists of the generator, the fix of finding V9, and ten more checks | 53 of 53 | 53 of 53 in each of the two IPsec jobs |
+| [39](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45366344077) | `177b3da`: the same lists, and the IKE log of the site from the reboot on | 53 of 53 | 53 of 53 in each of the two IPsec jobs |
 
 Runs 35 and 37 stopped before a router booted. The job did not check out the
 generator, so the test failed at its first line. Run 36 was canceled to make
@@ -771,9 +772,25 @@ runs 27 to 33.
     tunnels, each tunnel had one IKE SA at each of those points. This is the
     choice of decision D21 of [PLANS.md](../../docs/multisite/PLANS.md).
 
-    The IKE log that the job saved in run 38 starts after the tunnels were
-    back. Thus it still does not show why the return takes 28 s and not 175 s.
-    The job now saves the lines from the reboot on.
+    [Run 39](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45366344077)
+    repeated the test and saved the IKE log of the site from the reboot on.
+    All three jobs passed 53 of 53 checks again. The site lost 48.4 s with
+    WireGuard, 88.2 s when only the site opens the IPsec tunnels, and 65.8 s
+    when both ends open them. The IKE SAs afterward were 1 and 1, and 5 and 3,
+    as in run 38.
+
+    The log explains the 28 s. A clean reboot stops strongSwan at the head
+    office, and strongSwan sends a DELETE for each IKE SA. The site deleted its
+    SA in the same second and started a new exchange. It sent that first
+    message again after 4, 7, 13, 23, and 42 s, which is the retry schedule of
+    strongSwan. The head office was up between the fourth and the fifth try, so
+    the tunnel returned at the fifth try, 90 s after the reboot. The 28 s is
+    the wait for that try. It is not dead-peer detection.
+
+    Thus the 175 s of the review belongs to a different case: a head office
+    that stops with no shutdown, such as a power loss. Then no DELETE reaches
+    the site, and the site must find the dead SA by itself. No run tested that
+    case. The job now reboots the edge a second time with no shutdown.
 11. V11: A VyOS router takes what the generator adds to the lists.
 
     Since run 38, the job takes its lists from `tools/wangen`. The generator

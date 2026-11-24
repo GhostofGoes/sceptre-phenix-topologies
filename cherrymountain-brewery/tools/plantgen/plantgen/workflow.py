@@ -10,8 +10,10 @@ site keeps its IDs when the four sites and the internet become one experiment:
 - A site has a hundred of its own: 100 for the first site, 200 for the next.
 - A zone that the single-site plan has keeps that plan's last two digits
   (`OPS` is 106 there, so `EP-OPS` is 306).
-- A zone that the single-site plan does not have takes the next ID from 20 up
-  in the site's hundred, in the order of the aliases (`EP-CTRL-BH` is 320).
+- A zone that the single-site plan does not have takes its number from the
+  table `OWN_ZONES`, from 20 up in the site's hundred (`EP-CTRL-BH` is 320).
+  The number belongs to the zone's name, so it stays when a site gains or
+  loses another zone.
 - An access link to an ISP takes 500 and up, in the order of the links in
   wan/wan.yaml.
 
@@ -34,12 +36,26 @@ from plantgen.sites import SiteSpec
 FILE_NAME: Final[str] = "phenix-site-{code}.yml"
 #: The single-site workflow, whose VLAN IDs a site's zones follow.
 SINGLE_SITE: Final[str] = "phenix.yml"
+#: The workflow of the internet and the WAN, which shares IDs with the sites.
+WAN_FILE: Final[str] = "phenix-wan.yml"
 #: The fleet's range (PLANS.md, section 3; tools/wangen has the same).
 VLAN_RANGE: Final[tuple[int, int]] = (100, 599)
 #: The number of IDs of one site.
 SITE_SPAN: Final[int] = 100
-#: Where the zones start that the single-site plan does not have.
-OWN_ZONES: Final[int] = 20
+#: The last two digits of the ID of each zone that the single-site plan does
+#: not have, by the zone's name without the site's prefix. They start at 20.
+#: The number is the zone's own, so no ID moves when a site gains or loses
+#: another zone. Two zones of one site need two numbers: `EP-CTRL-BH` and an
+#: `EP-OFFICE` would both be 320, and `vlan_ids` refuses that.
+OWN_ZONES: Final[dict[str, int]] = {
+    "OFFICE": 20,
+    "PLANT": 21,
+    "CTRL-BH": 20,
+    "CTRL-CEL": 21,
+    "CTRL-PKG": 22,
+    "CTRL-PWR": 23,
+    "CTRL-UTL": 24,
+}
 #: The first ID of the access links (a site's edge to an ISP).
 ACCESS_BASE: Final[int] = 500
 #: phenix lets one stored experiment use a bridge other than `phenix`, so each
@@ -118,9 +134,13 @@ def vlan_ids(
     """
     links = access_links(wan)
     base = SITE_SPAN * (site.index + 1)
+    if base + SITE_SPAN > ACCESS_BASE:
+        raise PlantError(
+            f"site {site.code}: index {site.index} has no hundred of VLAN IDs: "
+            f"the access links and the internet take {ACCESS_BASE} and up"
+        )
     prefix = f"{site.code.upper()}-"
     ids: dict[str, int] = {}
-    own: list[str] = []
     for alias in sorted(aliases):
         if alias in links:
             ids[alias] = links[alias]
@@ -131,10 +151,13 @@ def vlan_ids(
             )
         elif alias.removeprefix(prefix) in single:
             ids[alias] = base + single[alias.removeprefix(prefix)] % SITE_SPAN
+        elif alias.removeprefix(prefix) in OWN_ZONES:
+            ids[alias] = base + OWN_ZONES[alias.removeprefix(prefix)]
         else:
-            own.append(alias)
-    for number, alias in enumerate(own):
-        ids[alias] = base + OWN_ZONES + number
+            raise PlantError(
+                f"site {site.code}: the zone {alias} is not in {SINGLE_SITE} and "
+                "has no number in OWN_ZONES (plantgen/workflow.py); give it one"
+            )
     low, high = VLAN_RANGE
     for alias, number in ids.items():
         if alias not in links and not base < number < base + SITE_SPAN:
@@ -156,6 +179,48 @@ def vlan_ids(
             )
         by_id[number] = alias
     return dict(sorted(ids.items(), key=lambda item: item[1]))
+
+
+def fleet_problems(
+    by_site: dict[str, dict[str, int]], wan_ids: dict[str, int]
+) -> list[str]:
+    """What is wrong with the VLAN IDs of the fleet as a whole.
+
+    `by_site` are the IDs of each site's workflow, by the site's code, and
+    `wan_ids` are those of `phenix-wan.yml`. The fleet is one experiment, so
+    an ID has one alias in all of these files, an alias has one ID, and every
+    ID is in the fleet's range.
+    """
+    files = {FILE_NAME.format(code=code): ids for code, ids in by_site.items()}
+    files[WAN_FILE] = wan_ids
+    low, high = VLAN_RANGE
+    problems: list[str] = []
+    owner: dict[int, tuple[str, str]] = {}
+    number_of: dict[str, tuple[int, str]] = {}
+    for name, ids in files.items():
+        for alias, number in ids.items():
+            if not low <= number <= high:
+                problems.append(
+                    f"{alias} is {number} in {name}, outside the fleet's {low} "
+                    f"to {high}"
+                )
+            other, where = owner.setdefault(number, (alias, name))
+            if other != alias:
+                problems.append(
+                    f"the ID {number} is {other} in {where} and {alias} in {name}"
+                )
+            first, at = number_of.setdefault(alias, (number, name))
+            if first != number:
+                problems.append(f"{alias} is {first} in {at} and {number} in {name}")
+    return problems
+
+
+def load_wan_ids(path: Path) -> dict[str, int]:
+    """The VLAN IDs of the WAN workflow, which the WAN generator writes."""
+    if not path.is_file():
+        raise PlantError(f"{path} does not exist; the fleet's VLAN IDs include it")
+    doc: dict[str, Any] = yaml.safe_load(path.read_text(encoding="utf-8"))
+    return dict((doc.get("spec") or {}).get("vlans") or {})
 
 
 def site_workflow(

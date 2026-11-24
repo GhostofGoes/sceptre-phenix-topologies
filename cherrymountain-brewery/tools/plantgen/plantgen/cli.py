@@ -54,6 +54,8 @@ class SiteSources(NamedTuple):
     vlan_ids: dict[str, int]
     #: phenix-injects, the hand-written injected files.
     injects: Path
+    #: The VLAN IDs of the WAN workflow (`workflow.load_wan_ids`).
+    wan_ids: dict[str, int]
 
 
 class SiteSet(NamedTuple):
@@ -92,6 +94,11 @@ def generate_site_set(
         for node in nodes
         for interface in node["network"]["interfaces"]
     }
+    # The fleet is one experiment: the site's IDs must fit those of the WAN.
+    ids = workflow.vlan_ids(site, aliases, sources.vlan_ids, sources.wan)
+    clashes = workflow.fleet_problems({site.code: ids}, sources.wan_ids)
+    if clashes:
+        raise PlantError(f"site {site.code}: VLAN IDs: " + "; ".join(clashes))
     return SiteSet(
         files=files,
         topology=topology.dump(site, config),
@@ -202,9 +209,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         variants = list(plant.variants)
     else:
         variants = [] if args.variant == "all" else [args.variant]
-    status, found = _sites(plant_path, plant)
+    # A run for one variant does not read sites.yaml: a variant does not
+    # depend on the sites, and a bad sites.yaml must not stop it.
+    status, found = _sites(plant_path, plant) if every or args.site else (0, None)
     generated: Path = plant_path.parent / "generated"
-    if found is not None and fleet.DIRECTORY in plant.variants:
+    # The file's presence decides, also in a run that does not read it.
+    has_sites = (plant_path.parent / "sites.yaml").is_file()
+    if has_sites and fleet.DIRECTORY in plant.variants:
         print(
             f"plantgen: the variant name {fleet.DIRECTORY!r} is the directory of "
             "the sites under generated/; give the variant another name",
@@ -246,6 +257,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             nodes=topology.load_nodes(configs),
             vlan_ids=workflow.load_single_site(root / workflow.SINGLE_SITE),
             injects=root / "phenix-injects",
+            wan_ids=workflow.load_wan_ids(root / workflow.WAN_FILE),
         )
     except PlantError as exc:
         print(f"plantgen: {exc}", file=sys.stderr)

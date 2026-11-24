@@ -6,6 +6,11 @@ address or a hostname of the plant, and a site needs its own copy of those.
 This module renders the copies. `RENDERERS` names the files, and every other
 file is injected as it is.
 
+Some files belong to a part that only the head office has: the vendor's
+access, or the SOC. `SCOPES` holds a decision for every injected file, each
+with its reason, and a node of a site injects a file only where the decision
+allows it.
+
 A copy is the hand-written file with a few lines set again from the site's
 plant description (`edit`). Each such line is found by how it starts, and it
 must be there exactly once: when the hand-written file changes its shape, the
@@ -21,7 +26,7 @@ phenix-injects. The site's topology file names the copy there.
 from __future__ import annotations
 
 import ipaddress
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final, NamedTuple
@@ -51,11 +56,116 @@ NOTE: Final[str] = (
 )
 
 
+class Scope(NamedTuple):
+    """Which sites inject the files of one path of phenix-injects, and why."""
+
+    #: A file, or a directory with `/` at its end.
+    path: str
+    #: The module of the head office that a site needs for the files
+    #: (`sites.MODULES`). None: every site whose node injects them today.
+    module: str | None
+    why: str
+
+
+REMOTE: Final[str] = "remote"
+SOC: Final[str] = "soc"
+#: Not a module of a site: the files of a host of the internet.
+INTERNET: Final[str] = "internet"
+#: A decision for every injection of the hand-written modules. The first entry
+#: that fits a path decides, so a file stands before its directory. A path
+#: with no entry stops the generator: a new injection needs a decision.
+SCOPES: Final[tuple[Scope, ...]] = (
+    Scope(
+        "guacamole/ridgeline.env",
+        REMOTE,
+        "the accounts of the vendor's technicians: their names, passwords, and "
+        "TOTP keys. The vendor reaches the head office and no other site",
+    ),
+    Scope(
+        "guacamole/cm_vendor_sql.py",
+        REMOTE,
+        "creates the Guacamole accounts of the vendor's technicians on the jump host",
+    ),
+    Scope(
+        "ews/70-ews-vendor.sh",
+        REMOTE,
+        "creates the local accounts of the vendor's technicians on the workstation",
+    ),
+    Scope("wireguard/", REMOTE, "the vendor's tunnel ends at the head office"),
+    Scope("malcolm/", SOC, "the fleet has one SOC, at the head office"),
+    Scope("wazuh/", SOC, "the fleet has one SOC, at the head office"),
+    Scope("desktop/cm-analyst-console", SOC, "the console of the SOC's analyst"),
+    Scope("desktop/cm-analyst.desktop", SOC, "the console of the SOC's analyst"),
+    Scope(
+        "guacamole/",
+        None,
+        "the jump host itself. A site with a jump host of its own runs the same "
+        "Guacamole, with no account of the vendor",
+    ),
+    Scope("ews/", None, "the engineering tools and the login screen of a workstation"),
+    Scope("bbmd/", None, "the BBMD service. A site's copy has its addresses"),
+    Scope("brand/", None, "the brewery's mark and colors, the same at every site"),
+    Scope("desktop/", None, "the wallpaper of a desktop"),
+    Scope("docker/", None, "loads the container images that a host brings along"),
+    Scope(
+        "openplc/",
+        None,
+        "the engineer's copy of a PLC program. It still holds the Front Range "
+        "field addresses",
+    ),
+    Scope(
+        "ot-svc/",
+        None,
+        "time, names, and the syslog relay of a site. The relay sends to the "
+        "one Wazuh, at the head office",
+    ),
+    Scope("vrouter/", None, "the VyOS steps of a site's own routers"),
+    Scope(
+        "inet-traffic/",
+        INTERNET,
+        "the services of a host of the internet, which no site has",
+    ),
+)
+
+
+def scope(source: str) -> Scope:
+    """The decision for the `src` of an injection."""
+    path = source.removeprefix(PREFIX)
+    for entry in SCOPES:
+        if path == entry.path or (
+            entry.path.endswith("/") and path.startswith(entry.path)
+        ):
+            return entry
+    raise PlantError(
+        f"injects: no entry of SCOPES decides which sites inject {source}; "
+        "add one with its reason"
+    )
+
+
+def at_site(site: SiteSpec, source: str) -> bool:
+    """Whether a node of the site injects the file `source`."""
+    module = scope(source).module
+    return module is None or module in site.modules
+
+
 class Line(NamedTuple):
-    """One line of a hand-written file: how it starts, and its text at a site."""
+    """One line of a hand-written file: how it starts, and its text at a site.
+
+    Without a text, the site's copy does not have the line."""
 
     start: str
-    text: str
+    text: str | None
+
+
+class Cut(NamedTuple):
+    """One step of a hand-written script that a site's copy leaves out."""
+
+    name: str
+    #: How one line inside the step starts. No other line of the file starts so.
+    inside: str
+    #: The step's last line, which has no indentation (`esac`, `fi`).
+    last: str
+    why: str
 
 
 @dataclass(frozen=True)
@@ -96,13 +206,16 @@ class Context:
         return self.targets[0]
 
 
-def edit(context: Context, lines: list[Line]) -> str:
-    """The hand-written file with each of `lines` set, and a note on who wrote it.
+def edit(context: Context, lines: list[Line], cuts: Sequence[Cut] = ()) -> str:
+    """The hand-written file with each of `lines` set, without each of `cuts`,
+    and with a note on who wrote it.
 
     A line keeps its indentation. The note goes under the `#!` line of a
-    script, and at the top of any other file.
+    script, and at the top of any other file. A line for each cut follows it.
     """
     out = context.text.splitlines()
+    for cut in cuts:
+        out = _without(context, out, cut)
     for line in lines:
         hits = [n for n, old in enumerate(out) if old.lstrip().startswith(line.start)]
         if len(hits) != 1:
@@ -111,10 +224,41 @@ def edit(context: Context, lines: list[Line]) -> str:
                 f"{line.start!r}, and the site's copy sets exactly one"
             )
         old = out[hits[0]]
-        out[hits[0]] = old[: len(old) - len(old.lstrip())] + line.text
-    note = NOTE.format(code=context.site.code, path=context.path)
-    out.insert(1 if out and out[0].startswith("#!") else 0, note)
+        if line.text is None:
+            del out[hits[0]]
+        else:
+            out[hits[0]] = old[: len(old) - len(old.lstrip())] + line.text
+    notes = [NOTE.format(code=context.site.code, path=context.path)]
+    notes += [f"# Left out of this copy: {cut.name}. {cut.why}" for cut in cuts]
+    first = 1 if out and out[0].startswith("#!") else 0
+    out[first:first] = notes
     return "\n".join(out) + "\n"
+
+
+def _without(context: Context, lines: list[str], cut: Cut) -> list[str]:
+    """`lines` without one step: its comment, its lines, and one empty line.
+
+    The step starts at the last line with no indentation before `cut.inside`,
+    and its comment is the comment lines right above that line.
+    """
+    where = f"phenix-injects/{context.path}: {cut.name}"
+    hits = [n for n, line in enumerate(lines) if line.lstrip().startswith(cut.inside)]
+    if len(hits) != 1:
+        raise PlantError(
+            f"{where}: {len(hits)} lines start with {cut.inside!r}, and the step "
+            "has exactly one"
+        )
+    start = hits[0]
+    while start > 0 and lines[start][:1] in (" ", "\t"):
+        start -= 1
+    while start > 0 and lines[start - 1].startswith("#"):
+        start -= 1
+    end = next((n for n in range(hits[0], len(lines)) if lines[n] == cut.last), None)
+    if end is None:
+        raise PlantError(f"{where}: no line {cut.last!r} ends the step")
+    if end + 1 < len(lines) and not lines[end + 1].strip():
+        end += 1
+    return lines[:start] + lines[end + 1 :]
 
 
 def _vyos_script(context: Context) -> str:
@@ -122,7 +266,8 @@ def _vyos_script(context: Context) -> str:
 
     The script knows a router by its plain name (`fw-edge`), so the copy waits
     for the site's names and then drops the site's prefix. The syslog target
-    stays: the fleet has one Wazuh, at the head office.
+    stays: the fleet has one Wazuh, at the head office. The steps of the
+    edge's WAN side are left out (`WAN_SIDE_STEPS`).
     """
     prefix = context.site.host(EDGE).removesuffix(EDGE)
     return edit(
@@ -134,8 +279,31 @@ def _vyos_script(context: Context) -> str:
                 " | ".join(context.targets) + ")",
             ),
             Line("host=$(hostname)", f"host=$(hostname) && host=${{host#{prefix}}}"),
+            # Only the step of the IPsec match reads this address.
+            Line("UTILITY_DERMS=", None),
         ],
+        WAN_SIDE_STEPS,
     )
+
+
+_WAN_SIDE: Final[str] = (
+    "It is a step of the edge's WAN side, which the files of a site do not have yet."
+)
+#: The steps of vrouter/cm-vyos-config.sh that change the utility's IPsec at
+#: the edge. No site's scenario gives its edge that IPsec: the WAN generator
+#: writes the WAN side (tools/wangen), and the utility's tunnel is a later
+#: stage. On a router with no such IKE group, the step would fail. When a
+#: site with a utility link (`fr`, `ep`) gets its tunnel, these steps return
+#: for that site.
+WAN_SIDE_STEPS: Final[tuple[Cut, ...]] = (
+    Cut("IKEv2 for the utility's IPsec", "fw-edge | util-rtr)", "esac", _WAN_SIDE),
+    Cut(
+        "the IPsec match on the utility's DNP3 rule",
+        '[ "$src" = "$UTILITY_DERMS" ] || continue',
+        "fi",
+        _WAN_SIDE,
+    ),
+)
 
 
 def _time_server(context: Context) -> str:
@@ -204,7 +372,8 @@ def time_clients(context: Context, server: str) -> list[str]:
     """The networks of the hosts that take their time from `server`.
 
     A client asks from the network that it shares with the server, or else
-    from its first routed network.
+    from its first routed network. A node that the plant does not describe
+    (the sensor) asks from the network of its first interface.
     """
     plant = context.plant
     near = plant.hosts[server].vlans()
@@ -223,6 +392,15 @@ def time_clients(context: Context, server: str) -> list[str]:
             network = plant.network(vlan)
             if network is not None:
                 found.add(ipaddress.IPv4Network(network.subnet))
+    if plant.spec.ntp.default_source.hostname == server:
+        for node in context.nodes:
+            if node["general"]["hostname"] in plant.spec.ntp.other_nodes:
+                leg = node["network"]["interfaces"][0]
+                found.add(
+                    ipaddress.IPv4Network(
+                        f"{leg['address']}/{leg['mask']}", strict=False
+                    )
+                )
     return [str(network) for network in sorted(found)]
 
 

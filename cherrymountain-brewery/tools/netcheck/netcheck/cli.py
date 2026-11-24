@@ -42,8 +42,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("-q", "--quiet", action="store_true", help="hide notes")
     args: argparse.Namespace = ap.parse_args(argv)
 
-    known: list[str] = _site_codes(args.root)
     variant: str | None = args.variant
+    findings: list[checks.Finding] = []
+    # A run for one variant does not read plant/sites.yaml. A run that needs
+    # the sites reports a bad file as one error.
+    known: list[str] = []
+    if args.site is not None or variant is None:
+        from netcheck.site import SiteError  # noqa: PLC0415
+
+        try:
+            known = _site_codes(args.root)
+        except SiteError as exc:
+            findings.append(
+                checks.Finding(check="sites/load", severity="error", message=str(exc))
+            )
+            args.site = None if args.site is None else "all"
     sites: list[str] = []
     if args.site is not None:
         sites = known if args.site in (None, "all") else [args.site]
@@ -53,7 +66,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     elif variant is None:
         variant, sites = "all", known
 
-    findings: list[checks.Finding] = []
     if variant == "all":
         findings += checks.run_all(args.root)
     elif variant == "ci":
@@ -62,6 +74,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         findings += checks.run_variant(variant, args.root)
     for code in sites:
         findings += checks.run_site(code, args.root)
+    if sites:
+        # The sites and the WAN share one set of VLAN IDs.
+        findings += checks.check_fleet_vlans(args.root, known)
 
     errors: list[checks.Finding] = [f for f in findings if f.severity == "error"]
     for f in findings:

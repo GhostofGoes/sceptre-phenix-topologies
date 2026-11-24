@@ -15,6 +15,9 @@
 # - The edge's WAN side: its default route, NAT, and the VPN, which the WAN
 #   generator writes (tools/wangen).
 # - The conduits between sites, with their rules.
+# - The accounts of the site's own jump host. The vendor's accounts are not
+#   injected here: the vendor reaches the head office and no other site. The
+#   company's own accounts are still to be designed.
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
 metadata:
@@ -1109,14 +1112,6 @@ spec:
       dst: /etc/phenix/startup/68-xrdp-brand.sh
       permissions: '0755'
       src: /phenix/injects/${BRANCH_NAME}/ews/68-xrdp-brand.sh
-    - description: range-only vendor persona (the local account the Guacamole session logs in as)
-      dst: /etc/cherrymountain/ridgeline.env
-      permissions: '0600'
-      src: /phenix/injects/${BRANCH_NAME}/guacamole/ridgeline.env
-    - description: create the vendor's local account
-      dst: /etc/phenix/startup/70-ews-vendor.sh
-      permissions: '0755'
-      src: /phenix/injects/${BRANCH_NAME}/ews/70-ews-vendor.sh
     - description: the engineer's OpenPLC REST helper (program upload, start, stop)
       dst: /usr/local/lib/cm-ews/cm_plc_tool.py
       permissions: '0644'
@@ -1331,14 +1326,6 @@ spec:
       dst: /opt/cherrymountain/guacamole/nginx.conf
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/fleet/ep/guacamole/nginx.conf
-    - description: SQL for the vendor account with TOTP
-      dst: /usr/local/lib/cm-guacamole/cm_vendor_sql.py
-      permissions: '0644'
-      src: /phenix/injects/${BRANCH_NAME}/guacamole/cm_vendor_sql.py
-    - description: range-only vendor persona (Guacamole account, TOTP seed, EWS account)
-      dst: /etc/cherrymountain/ridgeline.env
-      permissions: '0600'
-      src: /phenix/injects/${BRANCH_NAME}/guacamole/ridgeline.env
     - description: start the Guacamole stack
       dst: /usr/local/sbin/cm-guacamole-start
       permissions: '0755'

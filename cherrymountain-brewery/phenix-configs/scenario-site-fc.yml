@@ -959,12 +959,14 @@ spec:
         source:
           hostname: inet-traffic
           interface: IF0
+          address: 198.18.110.11
     - hostname: fc-fw-edge
       metadata:
         client: ntp
         source:
           hostname: inet-traffic
           interface: IF0
+          address: 198.18.110.11
     - hostname: fc-scada-fuxa
       metadata:
         server: chronyd

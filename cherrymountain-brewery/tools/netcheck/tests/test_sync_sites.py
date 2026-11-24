@@ -159,3 +159,21 @@ def test_the_command_checks_the_sites() -> None:
     assert sync.main(["--check"]) == 0
     assert sync.main(["--check", "--site", "fc"]) == 0
     assert sync.main(["--check", "--site", "zz"]) == 1
+
+
+@pytest.mark.parametrize("bad", ["sites: [\n", "sites:\n- code: fc\n  index: 99\n  colour: red\n"])
+def test_a_variant_run_does_not_read_sites_yaml_and_a_bad_file_is_one_line(
+    fleet: Path, bad: str
+) -> None:
+    (fleet / "plant" / "sites.yaml").write_text(bad, encoding="utf-8")
+    assert sync.select_sites(everything=False, codes=[]) == ({}, {}, [])
+    found, chosen, problems = sync.select_sites(everything=True, codes=[])
+    assert (found, chosen) == ({}, {})
+    assert len(problems) == 1 and "\n" not in problems[0]
+    assert problems[0].startswith("plant/sites.yaml: ")
+
+
+def test_a_site_that_sites_yaml_does_not_have_is_named(fleet: Path) -> None:
+    _, chosen, problems = sync.select_sites(everything=False, codes=["fc", "zz"])
+    assert list(chosen) == ["fc"]
+    assert problems == ["plant/sites.yaml has no site ['zz']; it has ['fr', 'ep', 'cs', 'fc']"]

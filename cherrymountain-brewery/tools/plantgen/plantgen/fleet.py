@@ -33,6 +33,7 @@ from pydantic import ValidationError
 from plantgen import sites
 from plantgen.model import (
     FuxaSource,
+    HostSpec,
     Interface,
     Network,
     NtpHost,
@@ -56,6 +57,14 @@ CONTROL_VLAN: Final[str] = "CTRL"
 #: The zone of the network sensor at a site that has the zone's router. A
 #: site with one firewall has no such zone, and its sensor is in the plant's.
 SENSOR_VLAN: Final[str] = "SOC"
+#: The floor of every site's layout, whatever else the site merges.
+FLOOR: Final[str] = (
+    "At every site, the office and a network with a PLC are different networks "
+    "with a firewall between them (PLANS.md 4.1)."
+)
+#: The VLAN of plant.yaml whose hosts are the office, and the role of a PLC.
+OFFICE_VLAN: Final[str] = "CORP"
+PLC_ROLE: Final[str] = "plc"
 #: The plain name of a site's sensor, a node that the topology file adds.
 SENSOR_NAME: Final[str] = "sensor"
 #: The NTP client of the sensor, a Linux host like the other servers.
@@ -76,9 +85,10 @@ def site_plant(site: SiteSpec, plant: PlantFile, wan: dict[str, Any]) -> PlantFi
         doc = plant.model_copy(deep=True)
         variant = _variant(site, doc)
         _leave_out(doc, variant)
-        _clocks(site, doc, variant)
+        _clocks(site, doc, variant, wan)
         _snapshot(doc, variant)
         _zones(site, doc)
+        _floor(site, doc, variant, plant.hosts)
         doc.variants = {site.code: variant}
         _names(site, doc, plant.hosts)
         _uplinks(site, doc, wan)
@@ -246,12 +256,19 @@ def _inherit_fuxa_sources(doc: PlantFile, hosts: set[str]) -> None:
             heir.fuxa.append(FuxaSource(host=source.host, tags=tags, write=write))
 
 
-def _clocks(site: SiteSpec, doc: PlantFile, variant: VariantSpec) -> None:
+def _clocks(
+    site: SiteSpec, doc: PlantFile, variant: VariantSpec, wan: dict[str, Any]
+) -> None:
     """The site's clocks follow the site's time server.
 
     A host that follows a server of the internet keeps that source (the edge
     and the office PC follow `inet-traffic`). The server is not a host of the
-    site, so the variant names it under `external`.
+    site, so the variant names it under `external`, and the source carries the
+    server's address in the fleet (`sites.internet_host_address`). Without the
+    address, phenix's ntp app would give such a host the site's default
+    source: the office PC would then ask a plant host, which the firewall
+    drops. With it, the host asks the internet's server at a site alone and in
+    the fleet. At a site alone, nothing answers.
     """
     ntp = variant.ntp
     hosts = set(variant.hosts)
@@ -281,10 +298,50 @@ def _clocks(site: SiteSpec, doc: PlantFile, variant: VariantSpec) -> None:
         if entry.source is not None
     }
     ntp.external = sorted(sources & servers & sites.SHARED_HOSTS)
+    # The address is the fleet's, not plant.yaml's: `inet-traffic` leaves the
+    # single site's INET segment, and its old address is an uplink of `fc`.
+    for entry in (*ntp.hosts.values(), *ntp.roles.values()):
+        source = entry.source
+        if source is not None and source.hostname in ntp.external:
+            source.address = sites.internet_host_address(wan)
     # The sensor is a node of the site's topology file and no host of the plant.
     # It follows the site's server.
     if site.sensor:
         ntp.other_nodes = {SENSOR_NAME: NtpHost(client=SENSOR_NTP_CLIENT)}
+
+
+def _floor(
+    site: SiteSpec, doc: PlantFile, variant: VariantSpec, today: dict[str, HostSpec]
+) -> None:
+    """Refuse a layout below the floor that every site keeps (`FLOOR`).
+
+    `today` are the hosts of plant.yaml, which say who is an office host: a
+    host of the office VLAN there. A site may merge and split its networks as
+    it likes above this floor.
+    """
+    office = [
+        name
+        for name in variant.hosts
+        if name not in sites.ROUTERS
+        and any(leg.vlan == OFFICE_VLAN for leg in today[name].interfaces.values())
+    ]
+    plcs = [name for name in variant.hosts if doc.hosts[name].role == PLC_ROLE]
+    of_plc = {
+        leg.vlan: name for name in plcs for leg in doc.hosts[name].interfaces.values()
+    }
+    for name in office:
+        for leg in doc.hosts[name].interfaces.values():
+            if leg.vlan in of_plc:
+                raise PlantError(
+                    f"the office host {name} and the PLC {of_plc[leg.vlan]} share "
+                    f"the network {leg.vlan}. {FLOOR}"
+                )
+            network = doc.networks.get(leg.vlan)
+            if network is None or network.gateway not in sites.ROUTERS:
+                raise PlantError(
+                    f"the office network {leg.vlan} of {name} has no firewall as "
+                    f"its gateway. {FLOOR}"
+                )
 
 
 def _snapshot(doc: PlantFile, variant: VariantSpec) -> None:

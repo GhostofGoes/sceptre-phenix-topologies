@@ -752,7 +752,7 @@ def ntp_app(plant: Plant) -> dict[str, Any]:
         )
     return {
         "name": "ntp",
-        "metadata": {"defaultSource": ntp.default_source.model_dump()},
+        "metadata": {"defaultSource": ntp.default_source.model_dump(exclude_none=True)},
         "hosts": hosts,
     }
 

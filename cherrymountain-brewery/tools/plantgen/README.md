@@ -86,7 +86,8 @@ files.
 | Variant | It starts from the `full` variant. It keeps the hosts and the areas of the site, and the federates of those areas |
 | References | It removes each reference to a host that the site does not have. Examples are a FUXA source, a conduit, and a Wazuh agent |
 | FUXA sources | A site can leave out a FUXA host and keep the devices of that host. The one SCADA host of the site then takes those devices |
-| Clocks | The clocks follow the `time_server` of the site. The edge firewall and the office PC keep `inet-traffic` as their source. The NTP block also lists the sensor, because the app needs every node |
+| Clocks | The clocks follow the `time_server` of the site. The edge firewall and the office PC keep `inet-traffic` as their source, with its address in the fleet. The NTP block also lists the sensor, because the app needs every node |
+| Floor | The office and each network with a PLC stay different networks. The gateway of the office network is a firewall. A site description that breaks this rule stops the run |
 | Snapshot | The snapshot keeps the key patterns of the federates that the site runs |
 | Zones | Each interface goes to the VLAN and the subnet that `moves` and `cells` give. A router gets a leg in each new network that it routes. A network with no host goes away |
 | Names | A hostname gets the prefix of the site, and a VLAN alias gets the prefix in capitals. The `10.` blocks of the company and MGMT move by the index of the site |
@@ -102,6 +103,15 @@ files.
 - `inet-traffic` is a host of the internet, not of a site. The variant of a
   site names it under `ntp.external`, and the NTP check then accepts it as a
   source.
+- A source outside the site carries the address of its server. The ntp app of
+  phenix looks a source up by its hostname. When the topology has no such
+  node, the app gives the client the default source and prints nothing. The
+  code is `src/go/app/ntp.go`, lines 41 to 44 and 138 to 145. The office PC
+  then asks a plant host, and the firewall drops the request. With an
+  address, the app uses the address as it is.
+- The address is `198.18.110.11`, the host of the internet in `wan/wan.yaml`.
+  It is not the `203.0.113.10` of `plant.yaml`. In the fleet, that address is
+  the uplink of `fc`. At a site alone, no host answers at the new address.
 - `fr` is the `full` variant with the names of the site. Only the entries of
   the hosts of the internet are absent. A test compares the two.
 - `fc` has no `bas-fuxa`, and it keeps the building controllers. Thus
@@ -148,6 +158,7 @@ host or an address follow the plant description of the site.
 | `network.routes` | The edge firewall and the DMZ hosts get a route to each network behind the OT firewall. The OT firewall gets a default route through the edge. At `fr`, the jump host gets a route to the WireGuard network |
 | `labels` | `zone` is the first network of the host, and a router keeps its label. `site` is the code of the site |
 | `phenix/startup-autotunnel` | The port of the head node moves by 100 for each step of the index of the site. `fr` keeps 11881, and `ep` gets 12081 |
+| `injections` | The injections that the site can have. The files of the vendor's access and of the SOC stay at the head office ([The injected files of a site](#the-injected-files-of-a-site)) |
 | `src` of an injection | The copy of the site, when the file holds a name or an address of the plant. For each other file, no change |
 | `hardware`, `type`, `commands`, the `dst` of an injection | No change |
 
@@ -185,7 +196,7 @@ keeps its IDs when the four sites become one experiment.
 | VLAN | Its ID | Example |
 |---|---|---|
 | A zone that `phenix.yml` has | The hundred of the site, and the last two digits from `phenix.yml` | `OPS` is 106 there, and `EP-OPS` is 306 |
-| A zone that `phenix.yml` does not have | The next ID from 20 up in the hundred of the site, in the order of the aliases | `EP-CTRL-BH` is 320, and `FC-PLANT` is 221 |
+| A zone that `phenix.yml` does not have | The hundred of the site, and the number of the zone in the table `OWN_ZONES` (20 and up) | `EP-CTRL-BH` is 320, and `FC-PLANT` is 221 |
 | An access link to an ISP | 500 and up, in the order of the links in `wan/wan.yaml` | `WAN-SC-FR` is 500 |
 
 - The hundred of the first site is 100. Thus `fr` keeps the IDs of
@@ -196,6 +207,13 @@ keeps its IDs when the four sites become one experiment.
   one stored experiment use a bridge that is not `phenix`.
 - plantgen stops when two aliases get one ID, or when an alias is not a zone
   of the site and not an access link.
+- The number of a zone in `OWN_ZONES` belongs to the name of the zone. Thus
+  no ID changes when a site gets a zone or loses one. A new zone needs a new
+  entry in the table.
+- The plan of the IDs holds four sites. The index of a site is 0 to 3,
+  because the WAN takes the IDs from 500 up.
+- plantgen compares the IDs of each site with `phenix-wan.yml`. It stops when
+  an ID has two aliases, or when an alias has two IDs.
 
 ### The injected files of a site
 
@@ -203,7 +221,23 @@ A node of a site injects the files that the node of the single site injects.
 Most of these files are the same at each site. Some hold an address or a
 hostname of the plant, and a site needs its own copy of them.
 
-`plantgen/injects.py` renders the copies. A copy is the hand-written file
+Some files belong to a part that only the head office has. `SCOPES` in
+`plantgen/injects.py` holds a decision for each injected file, with its
+reason. plantgen stops at an injection that has no decision.
+
+| Files | Which site injects them | Why |
+|---|---|---|
+| `guacamole/ridgeline.env`, `guacamole/cm_vendor_sql.py`, `ews/70-ews-vendor.sh` | A site with the `remote` module: `fr` | They hold and create the accounts of the technicians of the vendor. The vendor reaches the head office and no other site |
+| `wireguard/` | A site with the `remote` module | The tunnel of the vendor ends at the head office |
+| `malcolm/`, `wazuh/`, the console of the analyst | A site with the `soc` module: `fr` | The fleet has one SOC |
+| `inet-traffic/` | No site | They are the files of a host of the internet |
+| All other files | Each site whose node injects them today | They hold no account and no part of the head office |
+
+`ep` has its own jump host. That host runs the same Guacamole and gets no
+account of the vendor. The accounts of the company for that host are not
+designed yet, and the header of `topology-site-ep.yml` says so.
+
+`plantgen/injects.py` also renders the copies. A copy is the hand-written file
 with a small number of lines set again from the plant description of the
 site. The generator finds each line by its first characters. When the
 hand-written file does not have the line exactly one time, the generator
@@ -211,11 +245,11 @@ stops and names the line.
 
 | File under `phenix-injects/` | What the copy of a site sets |
 |---|---|
-| `vrouter/cm-vyos-config.sh` | The names of the routers of the site, and the address of the time server. The script drops the prefix of the site from the hostname. Then its steps for `fw-edge` and `fw-ot` apply |
+| `vrouter/cm-vyos-config.sh` | The names of the routers of the site, and the address of the time server. The script drops the prefix of the site from the hostname. Then its steps for `fw-edge` and `fw-ot` apply. The copy does not have the two steps for the IPsec of the utility |
 | `bbmd/ot-svc.env`, `bbmd/bas-bbmd.env` | The address of the BBMD, and the table with the addresses of both BBMDs |
 | `ot-svc/dnsmasq-plant.conf` | The address that the name server listens on |
 | `ot-svc/plant.hosts` | The whole file: each address of each node of the site |
-| `ot-svc/60-ot-svc.sh` | The networks of the hosts that take their time from `ot-svc` |
+| `ot-svc/60-ot-svc.sh` | The networks of the hosts that take their time from `ot-svc`, and the network of the sensor |
 | `guacamole/cm-guacamole-start`, `guacamole/nginx.conf` | The name and the address of the jump host in its certificate, and the name that its web server answers to |
 
 - plantgen writes a copy only when a node of the site injects the file. `fc`
@@ -227,6 +261,10 @@ stops and names the line.
   keeps its permission to run.
 - The syslog target stays `10.40.10.11`, because the fleet has one Wazuh, at
   `fr`.
+- The two steps for the IPsec of the utility belong to the WAN side of the
+  edge. No scenario of a site gives its edge that IPsec yet, and the step
+  fails on a router that has no such IKE group. The steps come back for `fr`
+  and `ep` when those sites get the tunnel to the utility.
 - At `fr`, the files of the SOC and of the vendor's tunnel are not rendered
   yet. They still hold the names of the single site. A test in
   `tools/netcheck/tests/test_site_set.py` lists them.

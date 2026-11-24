@@ -10,11 +10,15 @@
 #
 # code:        the site's prefix on hostnames (`ep-historian`) and, in capitals,
 #              on VLAN aliases (`EP-OPS`).
-# index:       the site's number. A `10.` block of the Front Range plan moves by
-#              it: 10.20.0.0/16 is 10.22.0.0/16 at site 2. MGMT moves the same way.
+# index:       the site's number, 0 to 3. A `10.` block of the Front Range plan
+#              moves by it: 10.20.0.0/16 is 10.22.0.0/16 at site 2. MGMT moves the
+#              same way. The VLAN IDs of a site are the hundred of its index plus
+#              one, and 500 and up belong to the WAN, so the plan holds four sites.
 # modules:     the parts of the single-site range that only the head office has
 #              (`soc`: malcolm, wazuh, soc-analyst, soc-purple. `remote`:
-#              dmz-vpn, dmz-jump).
+#              dmz-vpn, dmz-jump). The files of the vendor's access go only to a
+#              site with `remote`, also when another site has a jump host of its
+#              own (tools/plantgen/plantgen/injects.py, SCOPES).
 # extra_hosts: single hosts of a module that the site has all the same.
 # drop_areas:  the process areas of plant.yaml that the site does not have.
 # drop_hosts:  the hosts of plant.yaml that the site does not have.

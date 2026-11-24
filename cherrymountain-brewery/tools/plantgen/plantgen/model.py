@@ -468,10 +468,17 @@ class SimSpec(Strict):
 
 
 class NtpSource(Strict):
-    """An NTP source host and interface."""
+    """An NTP source host and interface.
+
+    ``address`` is for a server that is not a host of the variant. phenix's
+    ntp app looks a source up by its hostname, and gives the client the
+    default source when the topology has no such node. With an address, it
+    takes the address as it is (sceptre-phenix, src/go/app/ntp.go).
+    """
 
     hostname: str
     interface: str
+    address: str | None = None
 
 
 class NtpHost(Strict):

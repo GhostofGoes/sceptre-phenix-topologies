@@ -89,11 +89,6 @@ KEPT: tuple[Kept, ...] = (
         "the docstring's usage examples: the tool takes the PLC and its address as arguments",
     ),
     Kept(
-        "guacamole/cm_vendor_sql.py",
-        frozenset({"dmz-jump"}),
-        "the docstring says where the script is installed",
-    ),
-    Kept(
         "openplc/full/plc-cellar.zip",
         frozenset({"10.20.12.10", "rio-cellar"}),
         "not right yet, and left for a later slice: conf/modbus_master.json in the ZIP names "
@@ -109,8 +104,8 @@ KEPT: tuple[Kept, ...] = (
 )
 #: A time source that a site names although its topology does not have the host.
 OUTSIDE_SOURCES: dict[str, str] = {
-    "inet-traffic": "the edge and the office PC follow the internet's time server. While "
-    "the topology has no such host, phenix's ntp app gives them the default source",
+    "inet-traffic": "the edge and the office PC follow the internet's time server. The "
+    "source carries the server's address in the fleet, which phenix's ntp app takes as it is",
 }
 #: The files that `fr` injects as they are, with the plain names of its hosts.
 #: `fr` keeps the Front Range addresses, so only the names are wrong there.
@@ -120,6 +115,7 @@ FRONT_RANGE_LATER: dict[str, str] = {
     "wazuh/": "the agent groups, decoders, and rules match on plain hostnames; they need "
     "the fleet's names of every site, not only fr's",
     "wireguard/": "the vendor's tunnel ends at dmz-vpn; its scripts name dmz-vpn and dmz-jump",
+    "guacamole/cm_vendor_sql.py": "the docstring says where the script is installed",
 }
 #: What the scenario of `fr` keeps besides `KEPT`, and why.
 FRONT_RANGE_KEPT: dict[str, str] = {
@@ -283,8 +279,8 @@ def test_the_sets_of_the_four_sites_differ_in_size() -> None:
     """Injected files: the pub has five, and the head office has them all."""
     assert {code: len(injected(code)) for code in CODES} == {
         "fr": 76,
-        "ep": 32,
-        "cs": 22,
+        "ep": 29,
+        "cs": 20,
         "fc": 5,
     }
     own: dict[str, int] = {
@@ -384,3 +380,88 @@ def test_the_walk_finds_a_file_that_is_not_the_sites_own(tree: Path) -> None:
     zone: Path = tree / "phenix-injects" / "fleet" / "ep" / "ot-svc" / "plant.hosts"
     zone.write_text(zone.read_text(encoding="utf-8") + "10.22.30.13 ot-svc\n", encoding="utf-8")
     assert findings("ep", tree)["ot-svc/plant.hosts"] == {"ot-svc"}
+
+
+# --- the vendor's access ---------------------------------------------------------
+
+#: The sites with the `remote` module of plant/sites.yaml: where the vendor's
+#: tunnel ends, and where the vendor's technicians have accounts.
+VENDOR_SITES: list[str] = ["fr"]
+#: The file with the technicians' accounts, passwords, and TOTP keys.
+VENDOR_SECRETS: Path = ROOT / "phenix-injects" / "guacamole" / "ridgeline.env"
+#: What makes an injection the vendor's: a word in its source, its target, or
+#: its description.
+VENDOR_WORDS: re.Pattern[str] = re.compile(r"vendor|ridgeline|wireguard", re.IGNORECASE)
+
+
+def vendor_values() -> set[str]:
+    """Every account name, password, and key of the vendor's technicians."""
+    values: set[str] = set()
+    for line in VENDOR_SECRETS.read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition("=")
+        if sep and not key.startswith("#") and not value.isdigit():
+            values.add(value.strip())
+    return values
+
+
+@pytest.mark.parametrize("code", [c for c in CODES if c not in VENDOR_SITES])
+def test_no_vendor_file_account_or_secret_reaches_a_site_without_the_vendors_access(
+    code: str,
+) -> None:
+    """PLANS.md 4.1 and 4.6: the vendor reaches the head office and no other
+    site. A jump host at another site is the company's own."""
+    values: set[str] = vendor_values()
+    assert len(values) >= 8
+    for node in topology(code)["spec"]["nodes"]:
+        for injection in node.get("injections", []):
+            words: str = " ".join(
+                (injection["src"], injection["dst"], injection.get("description", ""))
+            )
+            assert not VENDOR_WORDS.search(words), (node["general"]["hostname"], words)
+    for name, path in site_files(code).items():
+        for text in texts(path).values():
+            assert not [value for value in values if value in text], name
+
+
+def test_the_head_office_keeps_the_vendors_access() -> None:
+    sources: dict[str, list[str]] = injected("fr")
+    assert sources["guacamole/ridgeline.env"] == ["fr-ews", "fr-dmz-jump"]
+    assert sources["guacamole/cm_vendor_sql.py"] == ["fr-dmz-jump"]
+    assert sources["ews/70-ews-vendor.sh"] == ["fr-ews"]
+    # A site's own jump host is still a jump host: Guacamole, without the vendor.
+    assert "guacamole/docker-compose.yml" in injected("ep")
+    assert "ews/cm_plc_tool.py" in injected("ep") and "ews/cm_plc_tool.py" in injected("cs")
+
+
+# --- the address that inet-traffic leaves -----------------------------------------
+
+#: The single site's address of inet-traffic. In the fleet it is the uplink of
+#: the pub's edge (PLANS.md, section 3): a reference that is left would send
+#: traffic for the internet's server to the pub.
+OLD_INTERNET_SERVER: re.Pattern[str] = re.compile(r"(?<![\d.])203\.0\.113\.10(?![\d])")
+#: Where the address may stand: as the pub's own uplink.
+PUB_UPLINK: dict[str, str] = {
+    "topology": "the address of fc-fw-edge on its access link to ShadeCast",
+    "scenario": "the same address, in the rulesets and tests of fc-fw-edge",
+}
+
+
+@pytest.mark.parametrize("code", CODES)
+def test_no_file_keeps_the_old_address_of_the_internets_server(code: str) -> None:
+    found: set[str] = set()
+    for name, path in site_files(code).items():
+        for text in texts(path).values():
+            lines: list[str] = [ln for ln in text.splitlines() if not ln.lstrip().startswith("#")]
+            if any(OLD_INTERNET_SERVER.search(line) for line in lines):
+                found.add(name)
+    later: set[str] = {name for name in found if name.startswith(tuple(FRONT_RANGE_LATER))}
+    allowed: set[str] = set(PUB_UPLINK) if code == "fc" else set()
+    assert found - later - allowed == set()
+    if code == "fc":
+        legs: list[str] = [
+            leg["address"]
+            for node in topology("fc")["spec"]["nodes"]
+            for leg in node["network"]["interfaces"]
+            if OLD_INTERNET_SERVER.fullmatch(leg["address"])
+        ]
+        assert legs == ["203.0.113.10"]

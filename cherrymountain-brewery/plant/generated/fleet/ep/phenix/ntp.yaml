@@ -11,12 +11,14 @@ hosts:
     source:
       hostname: inet-traffic
       interface: IF0
+      address: 198.18.110.11
 - hostname: ep-fw-edge
   metadata:
     client: ntp
     source:
       hostname: inet-traffic
       interface: IF0
+      address: 198.18.110.11
 - hostname: ep-dmz-jump
   metadata:
     client: chrony

@@ -1184,12 +1184,14 @@ spec:
         source:
           hostname: inet-traffic
           interface: IF0
+          address: 198.18.110.11
     - hostname: cs-fw-edge
       metadata:
         client: ntp
         source:
           hostname: inet-traffic
           interface: IF0
+          address: 198.18.110.11
     - hostname: cs-scada-fuxa
       metadata:
         client: chrony
@@ -1711,7 +1713,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWNzLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: cs-plc-cellar
         dst: cs-ot-svc|IF0
         proto: tcp
@@ -1728,7 +1730,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWNzLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: cs-bas-fuxa
         dst: cs-ot-svc|IF0
         proto: tcp
@@ -1745,7 +1747,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWNzLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: cs-plc-utilities
         dst: cs-plc-cellar|IF0
         proto: tcp

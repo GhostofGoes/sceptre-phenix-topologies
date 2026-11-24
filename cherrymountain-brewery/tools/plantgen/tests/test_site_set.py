@@ -3,6 +3,7 @@ of the injected files that hold a name or an address of the plant."""
 
 from __future__ import annotations
 
+import copy
 import ipaddress
 import re
 import shutil
@@ -12,7 +13,8 @@ from typing import Any
 import pytest
 import yaml
 
-from plantgen import injects, sites, topology, workflow
+from plantgen import checks, fleet, injects, sites, topology, workflow
+from plantgen.allocate import allocate
 from plantgen.cli import (
     DEFAULT_PLANT,
     TOPOLOGY_DIR,
@@ -69,6 +71,7 @@ def sources() -> SiteSources:
         nodes=topology.load_nodes(CONFIGS),
         vlan_ids=workflow.load_single_site(TOPOLOGY_DIR / workflow.SINGLE_SITE),
         injects=INJECTS,
+        wan_ids=workflow.load_wan_ids(TOPOLOGY_DIR / workflow.WAN_FILE),
     )
 
 
@@ -186,12 +189,71 @@ def test_a_vlan_that_is_no_zone_of_the_site_and_no_access_link_is_refused(
         workflow.vlan_ids(specs["fc"], {"EP-OPS"}, sources.vlan_ids, sources.wan)
 
 
-def test_a_site_with_more_zones_of_its_own_than_ids_is_refused(
+def test_a_zone_keeps_its_id_when_another_zone_comes_or_goes(
+    specs: dict[str, sites.SiteSpec], sources: SiteSources, sets: dict[str, SiteSet]
+) -> None:
+    """The ID of a zone that the single site does not have comes from a table
+    by the zone's name, not from its place among the site's aliases."""
+    for code, made in sets.items():
+        today = _vlans(made)
+        for gone in today:
+            fewer = set(today) - {gone}
+            ids = workflow.vlan_ids(specs[code], fewer, sources.vlan_ids, sources.wan)
+            assert ids == {a: n for a, n in today.items() if a != gone}, (code, gone)
+    # The reviewer's case: the pub's office moves into the plant network.
+    alone = workflow.vlan_ids(specs["fc"], {"FC-PLANT"}, sources.vlan_ids, sources.wan)
+    assert alone == {"FC-PLANT": 221}
+    # A zone that comes: `cs` gets a control network for one cell.
+    more = {*_vlans(sets["cs"]), "CS-CTRL-PKG"}
+    ids = workflow.vlan_ids(specs["cs"], more, sources.vlan_ids, sources.wan)
+    assert ids == dict(
+        sorted({**_vlans(sets["cs"]), "CS-CTRL-PKG": 422}.items(), key=lambda i: i[1])
+    )
+
+
+def test_a_new_zone_needs_a_number_of_its_own(
     specs: dict[str, sites.SiteSpec], sources: SiteSources
 ) -> None:
-    many = {f"FC-NEW{n}" for n in range(81)}
-    with pytest.raises(PlantError, match="outside the site's 201 to 299"):
-        workflow.vlan_ids(specs["fc"], many, sources.vlan_ids, sources.wan)
+    with pytest.raises(PlantError, match=r"FC-GUEST .* OWN_ZONES"):
+        workflow.vlan_ids(specs["fc"], {"FC-GUEST"}, sources.vlan_ids, sources.wan)
+
+
+def test_the_id_plan_holds_four_sites(
+    specs: dict[str, sites.SiteSpec], sources: SiteSources
+) -> None:
+    """The hundreds of the sites end where the access links start. A fifth
+    site would get the IDs of the internet's own links (510 and up)."""
+    assert sites.MAX_INDEX == 3 == max(site.index for site in specs.values())
+    fifth = specs["cs"].model_copy(update={"index": 4})
+    with pytest.raises(PlantError, match=r"index 4.*500"):
+        workflow.vlan_ids(fifth, {"CS-PLANT"}, sources.vlan_ids, sources.wan)
+    data = specs["cs"].model_dump()
+    with pytest.raises(ValueError, match="less than or equal to 3"):
+        sites.SiteSpec.model_validate({**data, "index": 4})
+
+
+def test_the_fleet_has_no_id_twice_with_the_wan(sets: dict[str, SiteSet]) -> None:
+    wan_ids: dict[str, int] = yaml.safe_load(
+        (TOPOLOGY_DIR / "phenix-wan.yml").read_text(encoding="utf-8")
+    )["spec"]["vlans"]
+    by_site = {code: _vlans(made) for code, made in sets.items()}
+    assert workflow.fleet_problems(by_site, wan_ids) == []
+    # An ID of the internet's own links, given to a zone of a site.
+    clash = {**by_site, "cs": {**by_site["cs"], "CS-PLANT": wan_ids["INET-CBW-CBS"]}}
+    found = workflow.fleet_problems(clash, wan_ids)
+    assert sorted(found) == [
+        "CS-PLANT is 510 in phenix-site-cs.yml and 421 in phenix-wan.yml",
+        "the ID 510 is CS-PLANT in phenix-site-cs.yml and INET-CBW-CBS in "
+        "phenix-wan.yml",
+    ]
+    twice = {**by_site, "fc": {**by_site["fc"], "FC-OFFICE": by_site["ep"]["EP-OPS"]}}
+    assert workflow.fleet_problems(twice, wan_ids) == [
+        "the ID 306 is EP-OPS in phenix-site-ep.yml and FC-OFFICE in phenix-site-fc.yml"
+    ]
+    outside = {**by_site, "fc": {**by_site["fc"], "FC-OFFICE": 600}}
+    assert workflow.fleet_problems(outside, wan_ids) == [
+        "FC-OFFICE is 600 in phenix-site-fc.yml, outside the fleet's 100 to 599"
+    ]
 
 
 def test_two_zones_with_one_id_are_refused(
@@ -400,3 +462,269 @@ def test_check_fails_on_a_changed_copy_and_on_a_changed_workflow(
     flow.write_text(flow.read_text(encoding="utf-8").replace("221", "222"))
     assert main(["--site", "fc", "--out", str(out), "--check"]) == 1
     assert "stale: phenix-site-fc.yml" in capsys.readouterr().err
+
+
+# --- which site injects what ---
+
+
+def _sources(made: SiteSet) -> dict[str, set[str]]:
+    """Plain hostname -> the paths under phenix-injects that its node injects."""
+    code = yaml.safe_load(made.topology)["metadata"]["name"].rsplit("-", 1)[1]
+    own = f"{injects.SITE_DIRECTORY.format(code=code)}/"
+    found: dict[str, set[str]] = {}
+    for node in yaml.safe_load(made.topology)["spec"]["nodes"]:
+        name = node["general"]["hostname"].removeprefix(f"{code}-")
+        found[name] = {
+            injection["src"].removeprefix(injects.PREFIX).removeprefix(own)
+            for injection in node.get("injections", [])
+        }
+    return found
+
+
+def test_every_injection_of_todays_nodes_has_a_decision(sources: SiteSources) -> None:
+    """`SCOPES` decides each one, with a reason, and no entry is left unused."""
+    used = set()
+    for node in sources.nodes.values():
+        for injection in node.get("injections", []):
+            entry = injects.scope(injection["src"])
+            assert entry.why
+            used.add(entry.path)
+    assert used == {entry.path for entry in injects.SCOPES}
+    modules = {entry.module for entry in injects.SCOPES}
+    assert modules == {None, injects.INTERNET, *sites.MODULES}
+
+
+def test_the_vendors_accounts_stay_at_the_site_with_the_remote_module(
+    sets: dict[str, SiteSet], specs: dict[str, sites.SiteSpec], sources: SiteSources
+) -> None:
+    """`ep` has a jump host of its own and a workstation, and `cs` has a
+    workstation. Neither gets the files that create the vendor's accounts."""
+    vendor = {entry.path for entry in injects.SCOPES if entry.module == injects.REMOTE}
+    assert {
+        "guacamole/ridgeline.env",
+        "guacamole/cm_vendor_sql.py",
+        "ews/70-ews-vendor.sh",
+    } < vendor
+    today = {
+        name: {i["src"].removeprefix(injects.PREFIX) for i in node["injections"]}
+        for name, node in sources.nodes.items()
+        if "injections" in node
+    }
+    for code, made in sets.items():
+        found = _sources(made)
+        if injects.REMOTE in specs[code].modules:
+            assert found["dmz-jump"] == today["dmz-jump"]
+            assert found["ews"] == today["ews"]
+            continue
+        for name, paths in found.items():
+            assert not paths & vendor, (code, name)
+            assert not [p for p in paths if p.startswith("wireguard/")], (code, name)
+            # Nothing else is lost: only the vendor's files are gone.
+            assert paths == {p for p in today.get(name, set()) if p not in vendor}
+    assert "guacamole/cm-guacamole-start" in _sources(sets["ep"])["dmz-jump"]
+    assert "ews/cm_plc_tool.py" in _sources(sets["cs"])["ews"]
+
+
+def test_the_header_says_that_the_jump_hosts_accounts_are_not_designed(
+    sets: dict[str, SiteSet],
+) -> None:
+    said = "company's own accounts are still to be designed."
+    assert {code: said in made.topology for code, made in sets.items()} == {
+        "fr": False,
+        "ep": True,
+        "cs": False,
+        "fc": False,
+    }
+
+
+def test_an_injection_without_a_decision_stops_the_generator(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], sources: SiteSources
+) -> None:
+    nodes = copy.deepcopy(sources.nodes)
+    nodes["ews"]["injections"].append(
+        {"src": f"{injects.PREFIX}tools/new-tool.sh", "dst": "/usr/local/bin/new-tool"}
+    )
+    with pytest.raises(PlantError, match=r"no entry of SCOPES decides .*new-tool\.sh"):
+        generate_site_set(specs["cs"], plant_file, sources._replace(nodes=nodes))
+
+
+# --- the steps of the VyOS script that a site's copy leaves out ---
+
+#: What the two steps of the utility's IPsec look like in the script.
+UTILITY_STEPS: tuple[str, ...] = (
+    "ike-group",
+    "ikev2",
+    "match-ipsec-in",
+    "UTILITY_DERMS",
+    "fw-edge | util-rtr)",
+)
+
+
+@pytest.mark.parametrize("code", CODES)
+def test_a_sites_script_has_no_step_of_the_edges_wan_side(
+    code: str, sets: dict[str, SiteSet]
+) -> None:
+    """No site's files give the edge the utility's IPsec yet, so a step that
+    changes its IKE group would fail on the router. The other steps stay."""
+    script = _copies(sets[code])["vrouter/cm-vyos-config.sh"]
+    program = [ln for ln in script.splitlines() if not ln.lstrip().startswith("#")]
+    for words in UTILITY_STEPS:
+        assert not [ln for ln in program if words in ln], words
+    hand_written = (INJECTS / "vrouter" / "cm-vyos-config.sh").read_text("utf-8")
+    assert all(words in hand_written for words in UTILITY_STEPS)
+    assert 'try set firewall ipv4 name "$ruleset" default-log' in script
+    assert 'try set system syslog remote "$WAZUH" facility all level warning' in script
+    assert 'try set service ntp server "$OT_SVC" prefer' in script
+    assert script.count("# Left out of this copy: ") == 2
+    assert "leave 0\n" in script and script.rstrip().endswith("leave 0")
+
+
+def test_a_cut_takes_one_whole_step_and_its_comment(
+    specs: dict[str, sites.SiteSpec],
+) -> None:
+    text = "\n".join(
+        [
+            "#!/bin/sh",
+            "A=1",
+            "",
+            "# About the step.",
+            'case "$host" in',
+            "  one | two)",
+            "    run it",
+            "    ;;",
+            "esac",
+            "",
+            "last",
+            "",
+        ]
+    )
+    cut = injects.Cut("the step", "one | two)", "esac", "the site has no such part")
+    made = injects.edit(_context(text, specs), [], [cut])
+    assert made.splitlines()[2:] == [
+        "# Left out of this copy: the step. the site has no such part",
+        "A=1",
+        "",
+        "last",
+    ]
+    for inside, last in (("three)", "esac"), ("one | two)", "done")):
+        with pytest.raises(PlantError, match="some/file.sh: the step"):
+            injects.edit(
+                _context(text, specs), [], [injects.Cut("the step", inside, last, "")]
+            )
+
+
+# --- time: the internet's server, and the sensor ---
+
+
+def test_an_outside_time_source_carries_the_address_that_the_fleet_gives_it(
+    sets: dict[str, SiteSet], sources: SiteSources
+) -> None:
+    """phenix's ntp app takes an address as it is, and falls back to the
+    default source for a hostname that the topology does not have. The
+    address is the one that the WAN topology gives the internet's host."""
+    wan_nodes = yaml.safe_load(
+        (CONFIGS / "topology-wan.yml").read_text(encoding="utf-8")
+    )["spec"]["nodes"]
+    on_internet = [
+        node["network"]["interfaces"][0]["address"]
+        for node in wan_nodes
+        if node["type"] == "VirtualMachine"
+        and node["network"]["interfaces"][0]["vlan"] == "INET-LAN"
+    ]
+    assert (
+        on_internet == [sites.internet_host_address(sources.wan)] == ["198.18.110.11"]
+    )
+    for code, made in sets.items():
+        block = yaml.safe_load(made.files["phenix/ntp.yaml"])
+        outside = {
+            host["hostname"]: host["metadata"]["source"]
+            for host in block["hosts"]
+            if host["metadata"].get("source", {}).get("hostname") == "inet-traffic"
+        }
+        assert set(outside) == {f"{code}-corp-ws", f"{code}-fw-edge"}
+        for source in outside.values():
+            assert source == {
+                "hostname": "inet-traffic",
+                "interface": "IF0",
+                "address": "198.18.110.11",
+            }
+        assert "address" not in block["metadata"]["defaultSource"]
+
+
+def test_a_variant_keeps_its_time_sources_as_they_are() -> None:
+    for name in ("ci", "full", "lite"):
+        path = DEFAULT_PLANT.parent / "generated" / name / "phenix" / "ntp.yaml"
+        assert "address" not in path.read_text(encoding="utf-8")
+
+
+def test_an_outside_source_without_an_address_is_refused(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], sources: SiteSources
+) -> None:
+    expanded = fleet.expand_site(specs["fc"], plant_file, sources.wan)
+    entry = expanded.spec.ntp.hosts["fc-corp-ws"]
+    assert entry.source is not None and entry.source.address == "198.18.110.11"
+    entry.source.address = None
+    found = checks.ntp_hosts(expanded, allocate(expanded))
+    assert found == [
+        "ntp: fc-corp-ws names inet-traffic, which is outside the variant, with "
+        "no address: phenix would give the host the default source"
+    ]
+    two = {"lans": [{"net": "198.18.110.0/24", "advertise_public": True}] * 2}
+    with pytest.raises(PlantError, match="2 LANs with advertise_public"):
+        sites.internet_host_address(two)
+
+
+def test_chrony_serves_the_network_of_the_sensor(sets: dict[str, SiteSet]) -> None:
+    """The sensor is no host of the plant. At `ep` it stands in the SOC zone,
+    which no other client of ep-ot-svc is on."""
+    nodes = yaml.safe_load(sets["ep"].topology)["spec"]["nodes"]
+    leg = next(n for n in nodes if n["general"]["hostname"] == "ep-sensor")["network"][
+        "interfaces"
+    ][0]
+    assert (leg["vlan"], leg["address"]) == ("EP-SOC", "10.42.10.60")
+    hook = _copies(sets["ep"])["ot-svc/60-ot-svc.sh"]
+    allowed = re.search(r"for net in (.*); do", hook)
+    assert allowed is not None and "10.42.10.0/24" in allowed.group(1).split()
+    # At `cs` the sensor stands in the plant network, which is served already.
+    cs = re.search(r"for net in (.*); do", _copies(sets["cs"])["ot-svc/60-ot-svc.sh"])
+    assert cs is not None
+    assert cs.group(1).split() == ["192.168.20.0/24", "192.168.30.0/24"]
+
+
+# --- the floor of a layout ---
+
+
+def test_the_office_cannot_move_into_a_network_with_a_plc(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], sources: SiteSources
+) -> None:
+    """The reviewer's case: the pub's office in its plant network. A site may
+    merge its networks, but not the office with a PLC's."""
+    pub = specs["fc"]
+    plant_move = pub.moves["CTRL"]
+    merged = pub.model_copy(
+        update={
+            "moves": {
+                **pub.moves,
+                "CORP": plant_move.model_copy(update={"shift": 100}),
+            }
+        }
+    )
+    with pytest.raises(PlantError) as caught:
+        fleet.site_plant(merged, plant_file, sources.wan)
+    said = str(caught.value)
+    assert "site fc: the office host corp-ws and the PLC plc-" in said
+    assert "share the network PLANT" in said and "PLANS.md 4.1" in said
+    for site in specs.values():
+        fleet.site_plant(site, plant_file, sources.wan)
+
+
+def test_the_office_network_needs_a_firewall(
+    plant_file: PlantFile, specs: dict[str, sites.SiteSpec], sources: SiteSources
+) -> None:
+    pub = specs["cs"]
+    office = pub.moves["CORP"].model_copy(update={"gateway": None})
+    unrouted = pub.model_copy(update={"moves": {**pub.moves, "CORP": office}})
+    with pytest.raises(
+        PlantError, match="office network OFFICE of corp-ws has no firewall"
+    ):
+        fleet.site_plant(unrouted, plant_file, sources.wan)

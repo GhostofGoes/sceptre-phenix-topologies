@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Final
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from plantgen.model import PlantError, PlantFile
 from plantgen.model import load_file as load_plant
@@ -41,6 +41,12 @@ MODULES: Final[dict[str, tuple[str, ...]]] = {
     "soc": ("malcolm", "wazuh", "soc-analyst", "soc-purple"),
     "remote": ("dmz-vpn", "dmz-jump"),
 }
+#: The highest index of a site. The VLAN IDs of a site are the hundred of its
+#: index plus one, and the access links and the internet take 500 and up
+#: (plantgen/workflow.py). So the plan of the IDs holds four sites.
+MAX_INDEX: Final[int] = 3
+#: Which address of a LAN of wan.yaml its one host has (tools/wangen).
+WAN_HOST_INDEX: Final[int] = 10
 #: The name of a site's edge router without the site's prefix.
 EDGE: Final[str] = "fw-edge"
 #: The routers of plant.yaml. A network that only routers are on is not a network
@@ -83,7 +89,7 @@ class SiteSpec(_Entry):
     """One brewery site: what it runs, and how its network is cut."""
 
     code: str = Field(pattern=r"^[a-z]{2}$")
-    index: int = Field(ge=0, le=9)
+    index: int = Field(ge=0, le=MAX_INDEX)
     title: str
     origin: str
     network: str
@@ -165,9 +171,20 @@ class SitesFile(_Entry):
 
 
 def load_file(path: Path = DEFAULT_PATH) -> list[SiteSpec]:
-    raw: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
+    """The sites of sites.yaml. A file that is not YAML, or not a list of
+    sites, is a PlantError of one line."""
+    try:
+        raw: Any = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, yaml.YAMLError) as ex:
+        raise PlantError(f"{path.name}: {' '.join(str(ex).split())}") from ex
     try:
         return SitesFile.model_validate(raw).sites
+    except ValidationError as ex:
+        found = "; ".join(
+            f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
+            for error in ex.errors()
+        )
+        raise PlantError(f"{path.name}: {found}") from ex
     except ValueError as ex:
         raise PlantError(f"{path.name}: {ex}") from ex
 
@@ -337,6 +354,23 @@ def uplink_links(site: SiteSpec, wan: dict[str, Any]) -> list[tuple[str, str]]:
         alias = f"WAN-{short[link['a']]}-{short[link['b']]}".upper()
         links.append((alias, str(link["net"])))
     return links
+
+
+def internet_host_address(wan: dict[str, Any]) -> str:
+    """The address of the fleet's host on the internet.
+
+    In the fleet, `inet-traffic` leaves the single site's INET segment for the
+    transit carrier's hosted network (PLANS.md, section 3). wan.yaml has that
+    network as the one LAN with `advertise_public`. The host's address in it
+    is the WAN generator's (tools/wangen, `Lan.host_address`).
+    """
+    public = [lan for lan in wan.get("lans", []) if lan.get("advertise_public")]
+    if len(public) != 1:
+        raise PlantError(
+            f"wan.yaml has {len(public)} LANs with advertise_public, and the "
+            "internet's host is on exactly one"
+        )
+    return str(list(ipaddress.ip_network(public[0]["net"]).hosts())[WAN_HOST_INDEX])
 
 
 def load_wan(path: Path = WAN_PATH) -> dict[str, Any]:

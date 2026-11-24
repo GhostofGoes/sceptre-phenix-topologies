@@ -422,6 +422,10 @@ def sites() -> dict[str, Site]:
     if not (ROOT / "plant" / "sites.yaml").is_file():
         return {}
     site_model, _ = _netcheck()
+    try:
+        codes: list[str] = site_model.codes(ROOT)
+    except site_model.SiteError as exc:
+        raise ValueError(str(exc)) from exc
     return {
         code: Site(
             code=code,
@@ -429,8 +433,30 @@ def sites() -> dict[str, Site]:
             generated=ROOT / "plant" / "generated" / "fleet" / code,
             injects=ROOT / "phenix-injects" / SITE_INJECTS / code,
         )
-        for code in site_model.codes(ROOT)
+        for code in codes
     }
+
+
+def select_sites(
+    everything: bool, codes: list[str]
+) -> tuple[dict[str, Site], dict[str, Site], list[str]]:
+    """Every site, the sites of this run, and what is wrong with the choice.
+
+    A run for variants only (``everything`` false, no ``codes``) does not read
+    ``plant/sites.yaml``. A file that cannot be read is one problem line."""
+    if not everything and not codes:
+        return {}, {}, []
+    try:
+        found: dict[str, Site] = sites()
+    except (OSError, KeyError, TypeError, ValueError, ImportError) as exc:
+        text: str = " ".join(str(exc).split())
+        named: bool = text.startswith("plant/sites.yaml")
+        return {}, {}, [text if named else f"plant/sites.yaml: {type(exc).__name__}: {text}"]
+    unknown: list[str] = [code for code in codes if code not in found]
+    problems: list[str] = (
+        [f"plant/sites.yaml has no site {unknown}; it has {list(found)}"] if unknown else []
+    )
+    return found, {c: s for c, s in found.items() if everything or c in codes}, problems
 
 
 def site_scenario(s: Site) -> str:
@@ -890,23 +916,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     args: argparse.Namespace = ap.parse_args(argv)
 
-    problems: list[str] = []
     # Without a choice, everything is synced. With one, only what was chosen.
     everything: bool = not args.variant and not args.site
     chosen: dict[str, Variant] = {
         n: v for n, v in variants().items() if everything or n in (args.variant or [])
     }
-    found: dict[str, Site] = {}
-    try:
-        found = sites()
-    except (OSError, KeyError, TypeError, ValueError, ImportError) as exc:
-        problems.append(f"sites: {type(exc).__name__}: {exc}")
-    unknown: list[str] = [code for code in args.site or [] if code not in found]
-    if unknown and not problems:
-        problems.append(f"plant/sites.yaml has no site {unknown}; it has {list(found)}")
-    chosen_sites: dict[str, Site] = {
-        code: s for code, s in found.items() if everything or code in (args.site or [])
-    }
+    found, chosen_sites, problems = select_sites(everything, args.site or [])
     for v in chosen.values():
         # A missing or malformed input (plantgen not run, a scenario without
         # spec.apps, ...) is reported as a FAIL line, not a traceback.

@@ -203,7 +203,11 @@ def test_a_wrong_entry_is_refused_by_name(
 
 
 def test_the_command_checks_sites_yaml(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["--check", "--variant", "ci"]) == 0
+    """A run that writes a site checks sites.yaml. A run for one variant does
+    not read the file: a variant does not depend on the sites."""
+    assert main(["--check", "--site", "fc"]) == 0
     assert (
         "sites.yaml fits plant.yaml and wan.yaml (4 sites)" in capsys.readouterr().out
     )
+    assert main(["--check", "--variant", "ci"]) == 0
+    assert "sites.yaml" not in capsys.readouterr().out

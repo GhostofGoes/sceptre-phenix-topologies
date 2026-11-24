@@ -300,6 +300,22 @@ def test_the_description_agrees_with_the_model_of_sites_yaml(
     assert routed == expected
 
 
+def _without_fleet_addresses(node: Any) -> Any:
+    """An app block of a site without the address that a time source outside
+    the site carries. The full variant has that server as a node, so its
+    sources need no address."""
+    if isinstance(node, dict):
+        outside = node.get("hostname") in sites.SHARED_HOSTS
+        return {
+            key: _without_fleet_addresses(value)
+            for key, value in node.items()
+            if not (outside and key == "address")
+        }
+    if isinstance(node, list):
+        return [_without_fleet_addresses(item) for item in node]
+    return node
+
+
 def _without_the_internet(node: Any) -> Any:
     """An app block without the entries of the hosts that the fleet has once.
 
@@ -354,7 +370,7 @@ def test_front_range_is_the_full_variant_under_its_own_names(
         assert plain != full[name], rel
         assert plain.splitlines()[0] == full[name].splitlines()[0]
         whole = _without_the_internet(yaml.safe_load(full[name]))
-        assert yaml.safe_load(plain) == whole, rel
+        assert _without_fleet_addresses(yaml.safe_load(plain)) == whole, rel
     assert set(full) - seen == {"phenix/wireguard.yaml", "scorch/pcap.yaml"}
 
 
@@ -542,9 +558,11 @@ def test_the_edge_and_the_office_pc_follow_a_server_of_the_internet(
         entries = {host["hostname"]: host["metadata"] for host in app["hosts"]}
         assert "inet-traffic" not in entries
         for name in ("fw-edge", "corp-ws"):
+            # The address is the server's in the fleet (test_site_set.py).
             assert entries[f"{code}-{name}"]["source"] == {
                 "hostname": "inet-traffic",
                 "interface": "IF0",
+                "address": "198.18.110.11",
             }
     # The pub has no ot-svc: its SCADA host serves the site, as it does in ci.
     pub = yaml.safe_load(site_files["fc"]["phenix/ntp.yaml"])
@@ -571,7 +589,9 @@ def test_a_time_source_outside_the_variant_must_be_named_and_in_reach(
     ntp = doc.variants["fc"].ntp
     assert _ntp_errors(doc) == []
     # A field device has no routed network, so it cannot reach the internet.
-    outside = NtpSource(hostname="inet-traffic", interface="IF0")
+    outside = NtpSource(
+        hostname="inet-traffic", interface="IF0", address="198.18.110.11"
+    )
     assert "fc-rio-cellar" not in ntp.hosts
     ntp.hosts["fc-rio-cellar"] = NtpHost(client="chrony", source=outside)
     assert _ntp_errors(doc) == [
@@ -864,6 +884,7 @@ def _tree(tmp_path: Path) -> Path:
         "plant/sites.yaml",
         "wan/wan.yaml",
         "phenix.yml",
+        "phenix-wan.yml",
         *(f"phenix-configs/topology-{module}.yml" for module in topology.MODULES),
         *(f"phenix-injects/{path}" for path in injects.RENDERERS),
     ):
@@ -944,3 +965,30 @@ def test_a_variant_cannot_take_the_name_of_the_sites_directory(
     assert main(["--plant", str(plant), "--variant", "fleet"]) == 1
     assert "variant name 'fleet'" in capsys.readouterr().err
     assert not (plant.parent / "generated").exists()
+
+
+#: A sites.yaml that is not YAML, and one that is not a list of sites.
+BAD_SITES: dict[str, str] = {
+    "not-yaml": "sites: [\n",
+    "not-sites": "sites:\n- code: fc\n  index: 99\n  colour: red\n",
+}
+
+
+@pytest.mark.parametrize("bad", list(BAD_SITES.values()), ids=list(BAD_SITES))
+def test_a_run_for_one_variant_does_not_read_sites_yaml(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], bad: str
+) -> None:
+    """A variant does not depend on the sites. A run for everything reports a
+    bad sites.yaml in one line, and still writes the variants."""
+    plant = _tree(tmp_path)
+    (plant.parent / "sites.yaml").write_text(bad, encoding="utf-8")
+    one = ["--plant", str(plant), "--variant", "ci", "--out", str(tmp_path / "ci")]
+    assert main(one) == 0
+    assert main([*one, "--check"]) == 0
+    captured = capsys.readouterr()
+    assert "sites.yaml" not in captured.out + captured.err
+    assert main(["--plant", str(plant)]) == 1
+    captured = capsys.readouterr()
+    said = [line for line in captured.err.splitlines() if line.strip()]
+    assert len(said) == 1 and said[0].startswith("plantgen: sites.yaml: "), said
+    assert f"files to {plant.parent / 'generated' / 'ci'}\n" in captured.out

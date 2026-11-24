@@ -104,14 +104,27 @@ These checks run: `plan`, `addresses`, `workflow`, `boot-order`, `injects`,
 fails when the `vrouter` app is not the computed one, or when the `soh` app
 lacks a computed test.
 
+Three checks are only for a site:
+
+| Check | What it does |
+|---|---|
+| `servers` | Each node reaches the time server, the name server, and the syslog server that its files name. A server on a node of the site must pass the rules, there and back. For a server that the site does not have, the run prints a note |
+| `layout` | The office host and each PLC are on different networks, and a firewall stops the office host on its way to a PLC. This is the floor of each site (PLANS.md 4.1) |
+| `fleet/vlan-ids` | The workflows of the four sites and `phenix-wan.yml` are one set of IDs. An ID has one alias, an alias has one ID, and each ID is in 100 to 599 |
+
+The sensor is a host that only a site has. It is a device of the SOC, so the
+row from `zone:SOC` to `ot-svc` carries it (`SITE_ONLY_ZONES` in `site.py`).
+At `ep`, the sensor then reaches its time server through `ep-fw-ot`.
+
 Some checks have a part that is only for a site:
 
 | Check | What it does for a site |
 |---|---|
 | `workflow` | It compares each VLAN ID with the plan of the fleet. The rule is the rule of plantgen (`plantgen/workflow.py`). The single-site IDs under it are those of `plan.py`, not those of `phenix.yml`. The bridge must be the bridge of the site |
 | `injects` | Each injected file exists, also each copy under `phenix-injects/fleet/<code>/` |
-| `apps` | A time source can be `inet-traffic`, which no site has. The run prints a note, because the ntp app of phenix then uses the default source |
-| `services` | It compares the `plant.hosts` copy of the site with the nodes of the site. A site with no `ot-svc` has no such file |
+| `plan` | It compares the VMs, the vCPUs, and the memory of the site with the table `TOTALS` in `site.py`. The source of that table is PLANS.md 4.1 |
+| `apps` | A time source can be `inet-traffic`, which no site has. The source must then carry the address that `topology-wan.yml` gives the host of the internet. Without the address, the ntp app of phenix uses the default source. Each other source must be a node of the site, with the name of the site |
+| `services` | It compares the `plant.hosts` copy of the site with the nodes of the site. A node that injects a `plant.hosts` of a different plant is an error. A site with no `ot-svc` has no such file |
 
 A site's run leaves out these checks:
 
@@ -124,7 +137,15 @@ A site's run leaves out these checks:
 `tests/test_site_set.py` walks the whole set of a site: the workflow, the
 topology file, the scenario, and each injected file. At `ep`, `cs`, and `fc`,
 no file holds a Front Range address or the plain name of a host. The test has
-a list of the exceptions, each with its reason.
+a list of the exceptions, each with its reason. The walk also fails when a
+file, an account, or a secret of the vendor reaches a site with no `remote`
+module.
+
+`generated`, `plan`, and `workflow` compare the files with what the generators
+compute. A wrong rule in a generator passes them. Thus `tests/test_sites.py`
+has a table that a person wrote, `EXPECTED_RULES`. For some destinations at
+`ep` and `cs`, it lists each rule that opens the destination: the firewall,
+the ruleset, and the source.
 
 The rules cover only the conduits inside one site. A row with an end on the
 internet, at the vendor, at the utility, or at a different site has no rule

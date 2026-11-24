@@ -13,7 +13,7 @@ if [ -f "$conf" ] && ! grep -qF "$marker" "$conf"; then
   sed -i '/^allow all$/d' "$conf"
   {
     echo "# Clients: the networks that take their time here (${marker})."
-    for net in 10.12.20.0/24 10.22.15.0/24 10.22.20.0/24 10.22.30.0/24 10.22.41.0/24 10.22.42.0/24 10.22.43.0/24 10.22.44.0/24 10.22.46.0/24 10.32.10.0/24; do
+    for net in 10.12.20.0/24 10.22.15.0/24 10.22.20.0/24 10.22.30.0/24 10.22.41.0/24 10.22.42.0/24 10.22.43.0/24 10.22.44.0/24 10.22.46.0/24 10.32.10.0/24 10.42.10.0/24; do
       echo "allow $net"
     done
     echo "ratelimit interval 1 burst 16"

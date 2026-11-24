@@ -764,14 +764,6 @@ spec:
       dst: /etc/phenix/startup/68-xrdp-brand.sh
       permissions: '0755'
       src: /phenix/injects/${BRANCH_NAME}/ews/68-xrdp-brand.sh
-    - description: range-only vendor persona (the local account the Guacamole session logs in as)
-      dst: /etc/cherrymountain/ridgeline.env
-      permissions: '0600'
-      src: /phenix/injects/${BRANCH_NAME}/guacamole/ridgeline.env
-    - description: create the vendor's local account
-      dst: /etc/phenix/startup/70-ews-vendor.sh
-      permissions: '0755'
-      src: /phenix/injects/${BRANCH_NAME}/ews/70-ews-vendor.sh
     - description: the engineer's OpenPLC REST helper (program upload, start, stop)
       dst: /usr/local/lib/cm-ews/cm_plc_tool.py
       permissions: '0644'

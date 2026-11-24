@@ -1428,12 +1428,14 @@ spec:
         source:
           hostname: inet-traffic
           interface: IF0
+          address: 198.18.110.11
     - hostname: fr-fw-edge
       metadata:
         client: ntp
         source:
           hostname: inet-traffic
           interface: IF0
+          address: 198.18.110.11
     - hostname: fr-dmz-vpn
       metadata:
         client: chrony
@@ -2527,7 +2529,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWZyLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: fr-dmz-jump
         dst: fr-ews|IF0
         proto: tcp
@@ -2717,7 +2719,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWZyLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: fr-plc-cellar
         dst: fr-ot-svc|IF0
         proto: tcp
@@ -2734,7 +2736,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWZyLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: fr-rtu-der
         dst: fr-ot-svc|IF0
         proto: tcp
@@ -2751,7 +2753,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWZyLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: fr-bas-fuxa
         dst: fr-ot-svc|IF0
         proto: tcp
@@ -2768,7 +2770,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWZyLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: fr-wazuh
         dst: fr-ot-svc|IF0
         proto: tcp
@@ -2785,7 +2787,7 @@ spec:
         proto: udp
         port: 53
         wait: 5m
-        udpPacketBase64: TkMBAAABAAAAAAAABm90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
+        udpPacketBase64: TkMBAAABAAAAAAAACWZyLW90LXN2Yw5jaGVycnltb3VudGFpbgR0ZXN0AAABAAE=
       - src: fr-dmz-vpn
         dst: fr-wazuh|IF0
         proto: tcp

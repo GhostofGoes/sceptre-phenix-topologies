@@ -19,6 +19,7 @@ from __future__ import annotations
 import ipaddress
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import netns_lab as lab
 
@@ -53,22 +54,23 @@ def tunnel_if(kind: str, tunnel: lab.Tunnel) -> str:
     return f"{'wg' if kind == WIREGUARD else 'vti'}{tunnel.mark()}"
 
 
-def reduce_lab() -> None:
-    """Shrink the lab's model to what a GitHub runner boots as VMs.
+def reduce_lab(target: Any = lab) -> None:
+    """Shrink a model to what a GitHub runner boots as VMs.
 
     Two ISPs that peer, the head office on both, and the Fort Collins site on
     both. Tumbleweed stands in for Marmot as the site's second ISP, so there is
-    no transit carrier and no third ISP.
+    no transit carrier and no third ISP. `target` is the module that holds the
+    model: this lab's, or the generator's (tools/wangen), which has the same names.
     """
     keep = ("shadecast", "tumbleweed", "fr-fw-edge", "fc-fw-edge")
-    lab.ROUTERS[:] = [router for router in lab.ROUTERS if router.name in keep]
-    lab.BY_NAME.clear()
-    lab.BY_NAME.update({router.name: router for router in lab.ROUTERS})
-    lab.LINKS[:] = [link for link in lab.LINKS if link.a in keep and link.b in keep]
-    lab.LINKS.append(lab.Link(a="tumbleweed", b="fc-fw-edge", net="198.18.101.8/30", relation="static"))
-    tunnels = {tunnel.name: tunnel for tunnel in lab.TUNNELS}
-    lab.TUNNELS[:] = [tunnels["fc-a"], tunnels["fc-b"].model_copy(update={"via": "tumbleweed"})]
-    lab.LANS[:] = [lan for lan in lab.LANS if lan.router in keep]
+    target.ROUTERS[:] = [router for router in target.ROUTERS if router.name in keep]
+    target.BY_NAME.clear()
+    target.BY_NAME.update({router.name: router for router in target.ROUTERS})
+    target.LINKS[:] = [link for link in target.LINKS if link.a in keep and link.b in keep]
+    target.LINKS.append(target.Link(a="tumbleweed", b="fc-fw-edge", net="198.18.101.8/30", relation="static"))
+    tunnels = {tunnel.name: tunnel for tunnel in target.TUNNELS}
+    target.TUNNELS[:] = [tunnels["fc-a"], tunnels["fc-b"].model_copy(update={"via": "tumbleweed"})]
+    target.LANS[:] = [lan for lan in target.LANS if lan.router in keep]
 
 
 def uplinks(router: lab.Router) -> list[tuple[str, lab.Link, str, str, str]]:

@@ -102,7 +102,7 @@ runs:
         sudo apt-get update -q
         sudo apt-get install -y -q --no-install-recommends tcpdump ethtool
         sudo python3 -m venv /opt/cm-spike-venv
-        sudo /opt/cm-spike-venv/bin/pip install --quiet pydantic==2.11.7
+        sudo /opt/cm-spike-venv/bin/pip install --quiet pydantic==2.11.7 pyyaml==6.0.2
         sudo modprobe ip_gre || true
 
     - name: Check out the phenix apps

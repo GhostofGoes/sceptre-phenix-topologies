@@ -8,8 +8,12 @@ patched by patches/vrouter-config-passthrough.ci-e2e-minimega.patch:
 Four VyOS routers and two hosts boot under phenix and minimega: two ISPs that
 peer (shadecast, tumbleweed), the head office's edge on both (fr-fw-edge), and
 the Fort Collins edge on both (fc-fw-edge). Every router gets the commands of
-vyos_sketch.py as the `config` list of the vrouter app, so phenix writes them
-into the script the image runs at first boot.
+the range's generator (tools/wangen) as the `config` list of the vrouter app,
+so phenix writes them into the script the image runs at first boot. The lists
+are those of vyos_sketch.py and what the generator adds: a source filter on
+each tunnel, NAT at both edges, the site's failover default routes, and the
+ISPs' conditional default route. Here each ISP's default route depends on the
+other ISP's prefix, because the reduced lab has no transit carrier.
 
 Checked, in order:
   1. phenix renders the list after its own configuration, before the commit;
@@ -22,10 +26,15 @@ Checked, in order:
   5. a host at the site reaches a host at the head office through the tunnel,
      and the head office refuses a network of another site when the site's
      edge announces it;
-  6. silent faults on ShadeCast (the site's uplink, then the head office's),
+  6. the head office drops a forged source that comes out of a tunnel, and a
+     host at each edge reaches public addresses through NAT;
+  7. silent faults on ShadeCast (the site's uplink, then the head office's),
      the site's uplink set down, and a silence of 200 s: where the traffic
-     goes, how long it takes, whether a tunnel endpoint moves, and whether a
-     tunnel that was given up comes back.
+     goes, how long it takes, whether a tunnel endpoint moves, whether a
+     tunnel that was given up comes back, and whether the site's default
+     route moves;
+  8. the head office restarts;
+  9. the ISPs stop peering, and each takes its default route back.
 """
 
 from __future__ import annotations
@@ -46,8 +55,11 @@ from typing import Any
 HERE: Path = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "ci"))
 sys.path.insert(0, str(HERE))
+sys.path.insert(0, str(HERE.parents[1] / "tools" / "wangen"))
 
 from vmlab import Lab, log, main_guard, wait_for  # noqa: E402
+from wangen import model as generator_model  # noqa: E402
+from wangen import vyos as generator  # noqa: E402
 
 import netns_lab as model  # noqa: E402
 import vyos_sketch  # noqa: E402
@@ -628,6 +640,187 @@ def best_path(lab: Lab, vm: str, prefix: str) -> str:
 
 
 EVENT_ROUTERS: tuple[str, ...] = (HQ, "fc-fw-edge", "shadecast", "tumbleweed")
+# How long an ISP may take to withdraw or to send its conditional default route.
+DEFAULT_CONDITION_WINDOW_S: int = 180
+
+
+def lan_if(router: str) -> str:
+    """The LAN interface of an edge: the one after its uplinks."""
+    return f"eth{len(vyos_sketch.uplinks(model.BY_NAME[router]))}"
+
+
+def source_filter(lab: Lab, site: str) -> None:
+    """The head office drops and logs what comes out of a tunnel with a source that is not the site's.
+
+    The site's edge sends pings from an address of another site's block, to a
+    host at the head office (the forward chain) and to the head office's edge
+    (the input chain). No reply would come back in any case, so the proof is
+    the head office's log, which names the rule and the source.
+    """
+    lans = {lan.router: lan for lan in model.LANS}
+    other = next(name for name in model.SITE_BLOCKS if name not in (HQ, site))
+    forged = str(ipaddress.ip_network(model.SITE_BLOCKS[other][0])[99])
+    honest = lab.shell(
+        site, f"ping -c 3 -i 0.2 -W 2 -I {lans[site].gateway()} {lans[HQ].host_address()} 2>&1 | tail -2"
+    )
+    lab.shell(
+        site,
+        f"ip addr add {forged}/32 dev lo; "
+        f"ping -c 3 -i 0.2 -W 1 -I {forged} {lans[HQ].host_address()} >/dev/null 2>&1; "
+        f"ping -c 3 -i 0.2 -W 1 -I {forged} {lans[HQ].gateway()} >/dev/null 2>&1; "
+        f"ip addr del {forged}/32 dev lo; echo sent",
+    )
+    logged = lab.shell(
+        HQ,
+        "(journalctl -k --no-pager 2>/dev/null; dmesg 2>/dev/null) | "
+        f"grep -E 'ipv4-(FWD|INP)-filter-1[0-9][0-9]-D' | grep 'SRC={forged} ' | "
+        "grep -oE 'ipv4-(FWD|INP)-filter-[0-9]+-D\\]? ?IN=[a-z0-9]+' | sort | uniq -c",
+    )
+    lab.fact(
+        "the head office's tunnel filter rules",
+        lab.shell(HQ, "nft list table ip vyos_filter 2>&1 | grep -E 'VPN-|filter-1[0-9][0-9]' | head -20"),
+    )
+    lab.check(
+        "the head office drops and logs a source that is not the site's when it comes out of the site's tunnel",
+        "FWD-filter" in logged and "INP-filter" in logged and " 0% packet loss" in honest,
+        f"forged source {forged} (a block of {other}); logged at the head office: {' '.join(logged.split())}; "
+        f"from the site's own address: {' '.join(honest.split())}",
+    )
+
+
+def nat_sources(lab: Lab, vm: str, host: str) -> dict[str, str]:
+    """For the pings of `host` in an edge's connection table: the destination -> where its replies go."""
+    table = lab.shell(vm, "conntrack -L -p icmp 2>/dev/null")
+    return dict(re.findall(rf"src={re.escape(host)} dst=(\S+) type=8 code=0 id=\d+ src=\S+ dst=(\S+) type=0", table))
+
+
+def internet_access(lab: Lab, site: str) -> None:
+    """A host at each edge reaches public addresses, with the edge's NAT.
+
+    The site's host reaches the head office's public endpoint outside the VPN,
+    as its uplink's address. The head office's host reaches the ISPs' addresses
+    on every link, so both of its uplinks carry a flow, as one address of the
+    head office's prefix.
+    """
+    lans = {lan.router: lan for lan in model.LANS}
+    site_uplinks = vyos_sketch.uplinks(model.BY_NAME[site])
+    ping = lab.shell(lans[site].host, f"ping -c 5 -i 0.2 -W 2 {model.HUB_ENDPOINT} 2>&1 | tail -2")
+    seen = nat_sources(lab, site, lans[site].host_address())
+    routes = lab.shell(site, "ip -4 route show default 2>&1")
+    lab.check(
+        "a host at the site reaches a public address as the address of the site's first uplink",
+        " 0% packet loss" in ping and seen.get(model.HUB_ENDPOINT) == site_uplinks[0][4],
+        f"{' '.join(ping.split())}; replies go to {seen.get(model.HUB_ENDPOINT)} (the uplink is {site_uplinks[0][4]})",
+    )
+    lab.check(
+        "the site holds a failover default route for each uplink",
+        routes.count("proto failover") == len(site_uplinks)
+        and all(f"via {gateway} " in routes for _eth, _link, _isp, gateway, _own in site_uplinks),
+        " | ".join(routes.splitlines()),
+    )
+
+    # Every ISP address in the lab. The two on the head office's own links leave by different uplinks.
+    isps = [router.name for router in model.ROUTERS if router.public_bgp and router.name != HQ]
+    targets = [
+        address
+        for link in model.LINKS
+        for name, address in zip((link.a, link.b), link.addresses(), strict=True)
+        if name in isps
+    ]
+    address = lans[HQ].host_address()
+    # One command, so that the connection table still holds every ping when it is read.
+    pinged = lab.shell(
+        lans[HQ].host,
+        f"for t in {' '.join(targets)}; do ping -c 2 -i 0.2 -W 2 $t >/dev/null 2>&1 && echo reached $t; done; echo end",
+        wait_s=120,
+    )
+    reached = set(re.findall(r"reached (\S+)", pinged))
+    seen = nat_sources(lab, HQ, address)
+    looked = lab.shell(
+        HQ, f"for t in {' '.join(targets)}; do ip route get $t from {address} iif {lan_if(HQ)} 2>&1 | head -1; done"
+    )
+    out_by = dict(re.findall(r"^(\S+) from .* dev (\S+)", looked, flags=re.M))
+    lab.fact("the head office's uplink for each public address", json.dumps(out_by))
+    lab.check(
+        "a host at the head office reaches public addresses through both ISPs as the head office's NAT address",
+        reached == set(targets)
+        and {seen.get(target) for target in targets} == {generator_model.NAT_ADDRESS}
+        and len(set(out_by.values())) == len(vyos_sketch.uplinks(model.BY_NAME[HQ])),
+        f"reached {len(reached)} of {len(targets)} ISP addresses; replies go to "
+        f"{sorted({str(seen.get(target)) for target in targets})}; uplinks used: {sorted(set(out_by.values()))}",
+    )
+
+
+def site_default_route(lab: Lab, site: str, want: str, timeout_s: float) -> tuple[bool, str]:
+    """Wait until the site's best default route is through `want`; return (whether it is, the routes)."""
+
+    def best() -> tuple[bool, str]:
+        routes = lab.shell(site, "ip -4 route show default 2>&1")
+        first = routes.splitlines()[0] if routes.strip() else ""
+        return f"via {want} " in first + " ", " | ".join(routes.split("\n"))
+
+    try:
+        return True, wait_for(f"the default route of {site} through {want}", timeout_s, 2, best)
+    except TimeoutError as exc:
+        return False, str(exc)[-300:]
+
+
+def default_condition(lab: Lab) -> None:
+    """Each ISP takes its default route back when it loses the prefix that the route depends on.
+
+    In this lab the prefix is the other ISP's, so a silent fault on the link
+    between the ISPs ends both conditions, and the head office loses both
+    default routes. The repair brings them back, and the tunnels with them.
+    """
+    isp = model.BY_NAME["shadecast"]
+    eth = {other: name for name, _link, other, _gateway, _own in vyos_sketch.uplinks(isp)}
+
+    def defaults(count: int) -> tuple[bool, str]:
+        route, missing = hq_defaults(lab)
+        return 2 - len(missing) == count, " ".join(route.split()) or "(no default route)"
+
+    before = defaults(2)
+    started = time.monotonic()
+    blackhole(lab, "shadecast", eth["tumbleweed"])
+    try:
+        detail, gone = (
+            wait_for("no default route at the head office", DEFAULT_CONDITION_WINDOW_S, 3, lambda: defaults(0)),
+            True,
+        )
+    except TimeoutError as exc:
+        detail, gone = str(exc)[-300:], False
+    took = time.monotonic() - started
+    customer = vyos_sketch.uplinks(model.BY_NAME[HQ])[0][4]
+    lab.fact(
+        "the ISPs without their peering",
+        lab.shell(
+            "shadecast",
+            "vtysh -c 'show bgp ipv4 unicast summary' 2>&1 | tail -6; "
+            f"vtysh -c 'show bgp ipv4 unicast neighbors {customer} advertised-routes' 2>&1 | tail -8",
+        ),
+    )
+    lab.check(
+        "each ISP takes its default route back when it loses the prefix that the route depends on",
+        before[0] and gone,
+        f"both default routes before: {before[0]}; none {took:.0f} s after the ISPs lost each other "
+        f"(the BGP hold time is {model.CORE_HOLD_S} s): {detail}",
+    )
+    heal(lab, "shadecast")
+    started = time.monotonic()
+    try:
+        detail, back = (
+            wait_for("both default routes at the head office", DEFAULT_CONDITION_WINDOW_S, 3, lambda: defaults(2)),
+            True,
+        )
+    except TimeoutError as exc:
+        detail, back = str(exc)[-300:], False
+    took = time.monotonic() - started
+    on_primary, tunnel = wait_tunnel(lab, tif("fc-a"), 300)
+    lab.check(
+        "both default routes and the site's primary tunnel return when the ISPs peer again",
+        back and on_primary,
+        f"both default routes {took:.0f} s after the repair: {detail}; the site is on {tunnel}",
+    )
 
 
 def sessions_settled(lab: Lab) -> bool:
@@ -749,9 +942,20 @@ def faults(lab: Lab) -> None:
         moved and 0 < gap < hold_bound,
         f"outage {gap} s ({lost} of {count} pings lost; BFD detects in {detect_s:.0f} s); now on {detail}; {tail}",
     )
+    # The site's own internet access moves too: the failover route of the silent uplink goes.
+    site_uplinks = vyos_sketch.uplinks(model.BY_NAME["fc-fw-edge"])
+    on_second, routes = site_default_route(lab, "fc-fw-edge", site_uplinks[1][3], 30)
+    fresh = lab.shell("fc-historian", f"ping -c 5 -i 0.2 -W 2 {model.HUB_ENDPOINT} 2>&1 | tail -2")
+    lab.check(
+        "the site's default route moves to its second uplink, and a new flow reaches a public address",
+        on_second and " 0% packet loss" in fresh,
+        f"default routes: {routes}; {' '.join(fresh.split())}",
+    )
     count = start_ping(lab, "site-uplink-repair", 60)
     drops = heal(lab, "shadecast")
     back, detail = wait_tunnel(lab, primary, 50)
+    on_first, routes = site_default_route(lab, "fc-fw-edge", site_uplinks[0][3], 30)
+    lab.check("the site's default route returns to its first uplink after the repair", on_first, routes)
     lost, gap, tail = ping_result(lab, "site-uplink-repair", count)
     lab.check(
         "the site returns to its primary tunnel after the repair",
@@ -889,6 +1093,13 @@ def run() -> int:
     vyos_sketch.HUB_OPENS = opened_by_both
     vyos_sketch.reduce_lab()
     model.PIN = model.PIN_MARK
+    # The generator's model, reduced the same way. With no transit carrier, each
+    # ISP's default route depends on the prefix of the ISP that it peers with.
+    generator_model.load()
+    generator_model.HUB_OPENS = opened_by_both
+    vyos_sketch.reduce_lab(generator_model)
+    for isp, peer in (("shadecast", "tumbleweed"), ("tumbleweed", "shadecast")):
+        generator_model.BY_NAME[isp].default_requires = list(generator_model.BY_NAME[peer].originates)
     wgkeys = load_wgkeys()
 
     def keys(tunnel: model.Tunnel, side: str) -> tuple[str, str]:
@@ -903,7 +1114,14 @@ def run() -> int:
 
     routers = [router.name for router in model.ROUTERS]
     hosts = [lan.host for lan in model.LANS]
-    configs = {router.name: vyos_sketch.commands(router, keys, KIND, psk) for router in model.ROUTERS}
+    configs = {router.name: generator.commands(router, keys, KIND, psk) for router in generator_model.ROUTERS}
+    spike_only = {router.name: vyos_sketch.commands(router, keys, KIND, psk) for router in model.ROUTERS}
+    lab.fact(
+        "commands that the generator adds to the spike's lists",
+        json.dumps(
+            {name: len([line for line in lines if line not in spike_only[name]]) for name, lines in configs.items()}
+        ),
+    )
     WORK.mkdir(parents=True, exist_ok=True)
     topology_file, scenario_file = WORK / "topology.yml", WORK / "scenario.yml"
     topology_file.write_text(emit(topology()) + "\n")
@@ -995,6 +1213,11 @@ def run() -> int:
                 detail, ok = str(exc), False
             lab.check(f"all {want} BGP sessions of {router.name} are Established", ok, detail[:900])
 
+        # An ISP sends its default route once it holds the other ISP's prefix.
+        try:
+            wait_for("both default routes at the head office", 120, 5, lambda: (not hq_defaults(lab)[1], ""))
+        except TimeoutError:
+            pass
         default, missing = hq_defaults(lab)
         both_defaults = lab.check(
             "the head office installs a default route through each ISP, with its endpoint as the source",
@@ -1063,11 +1286,16 @@ def run() -> int:
         private_exits(lab, (HQ, site))
         foreign_prefix(lab, site)
 
-        # 6. Faults, when the baseline works (a default route that had to be asked for again counts).
+        # 6. The tunnel's source filter, and NAT at both edges.
+        source_filter(lab, site)
+        internet_access(lab, site)
+
+        # 7 to 9. Faults, when the baseline works (a default route that had to be asked for again counts).
         failed = [check.name for check in lab.evidence.checks if not check.passed]
         if not failed or (recovered and not both_defaults and len(failed) == 1):
             faults(lab)
             hq_restart(lab, configs[HQ])
+            default_condition(lab)
         else:
             lab.check("the faults ran", False, "skipped: a check before them failed")
 

@@ -353,7 +353,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-)'
+files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-|phenix-images/cm-(malcolm|sensor)\.yml$)'
 pass_filenames = false
 priority = "check"
 

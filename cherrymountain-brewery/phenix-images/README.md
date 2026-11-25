@@ -317,7 +317,8 @@ runtime (a PLC's own), and the web interface of InfluxDB.
 ## Wazuh agent
 
 These images carry the Wazuh agent: `cm-svc`, `cm-fuxa`, `cm-wireguard`,
-`cm-guacamole`, `cm-malcolm`, `cm-desktop`, `cm-ews`, and `cm-historian`.
+`cm-guacamole`, `cm-malcolm`, `cm-sensor`, `cm-desktop`, `cm-ews`, and
+`cm-historian`.
 DESIGN.md 14 lists the Linux hosts in OPS, HMI, BAS, the DMZ, and the SOC. All
 of the images install the agent the same way, and none enables it:
 
@@ -491,6 +492,34 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   `5.7.0-1~ubuntu.24.04~noble`. In the venv, it pins `kubernetes==37.0.2`,
   `python-dotenv==1.2.4`, `pyyaml==6.0.3`, `requests==2.34.2`, and
   `ruamel.yaml==0.19.1`.
+
+## cm-sensor
+
+- Purpose: This image is the network sensor of a site (`<code>-sensor`) in
+  the multi-site range ([docs/multisite/PLANS.md](../docs/multisite/PLANS.md),
+  section 4.6). It is Malcolm in its `hedgehog` run profile. Hedgehog Linux,
+  the sensor distribution of Malcolm, runs that same profile since Malcolm
+  v25.12.0. The profile has Zeek with the ICSNPP parsers, Suricata, Arkime
+  capture, and the forwarders. It has no OpenSearch, no Logstash, and no
+  dashboards. The sensor sends what it records to `malcolm` at the head
+  office.
+- Base: The base is that of `cm-malcolm`. The disk is 32 GB. The disk holds
+  the pcap files that the sensor keeps.
+- Contents: The recipe is `cm-malcolm.yml` with a shorter image list and a
+  smaller disk. `tests/soc/test_sensor_image.py` makes sure that the two files
+  differ in nothing else.
+  - The image has the 11 Malcolm images of the `hedgehog` profile as
+    compressed copies on disk under `/var/lib/cm-malcolm/images` (2.6 GB).
+    Each of them is also in `cm-malcolm`.
+  - The paths are those of `cm-malcolm`, so that the same injected scripts
+    load the images and start the capture.
+- Build: Use the commands above, with `<name>` set to `cm-sensor`. The build
+  downloads 2.6 GB from `ghcr.io`.
+- Used by: `ep-sensor`, `cs-sensor`, and `fc-sensor`.
+- Pinned versions: The versions are those of `cm-malcolm`.
+- Limits: No build of this image ran yet. The injected files that configure
+  the `hedgehog` profile at the first boot do not exist yet. The same is true
+  for the files that let `malcolm` accept the sensors.
 
 ## cm-wazuh
 

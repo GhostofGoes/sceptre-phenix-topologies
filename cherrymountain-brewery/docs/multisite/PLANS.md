@@ -941,6 +941,34 @@ What crosses the VPN, by site:
 | Time and names | `ot-svc` asks `fr`'s | The same | The firewall and the SCADA server ask `fr`'s |
 | Engineering, from the head office | `eng-jump` over HTTPS to the site's jump host, then RDP to its `ews` | `eng-jump` by RDP to its `ews` | `fr`'s `ews` to the PLCs, in a maintenance window |
 
+The sensor image is `cm-sensor` (decided on 2026-11-25). It is Malcolm in its
+`hedgehog` run profile, on the base of `cm-malcolm`. Hedgehog Linux, the sensor
+distribution of Malcolm, runs that same profile since Malcolm v25.12.0. The
+installer of Hedgehog Linux asks questions and has no documented unattended
+mode, so the range does not use its ISO. The profile has Zeek, Suricata,
+Arkime capture, and the forwarders. It has no OpenSearch of its own.
+
+A sensor needs three conduits through the VPN and both firewalls:
+
+- From the sensor to `malcolm` on 5044/tcp. Filebeat sends the logs to
+  Logstash, with a client certificate.
+- From the sensor to `malcolm` on 9200/tcp. Arkime writes its sessions to
+  OpenSearch.
+- From `malcolm` to the sensor on 8005/tcp. An analyst who opens a session in
+  Arkime gets its packets from the sensor, which keeps the pcap files.
+
+The image exists as a recipe. Its first build started in CI on 2026-11-25.
+These parts do not exist yet:
+
+- The injected files that configure the `hedgehog` profile at the first boot.
+- The settings that let `malcolm` accept the sensors: the two open ports, the
+  certificates, a service account, and the shared Arkime secret.
+- The three conduits in the matrix.
+- More index space at `malcolm`, which has 24 GB for one site today.
+
+The memory that the profile needs is not measured. The estimate is 5 to 7 GB
+without file scanning, so the 16 GB of D19 is enough.
+
 At `fr`, `ep`, and `cs` no conduit reaches a PLC from outside its site. A
 conduit is a permitted path between two zones. At `fc` one conduit does, on
 purpose. The pub has no engineer, so an engineer programs it from where that

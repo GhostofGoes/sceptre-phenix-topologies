@@ -1,0 +1,24 @@
+# Sketch of a CI job for the cm_world mod (not wired into any repo yet).
+# It needs no Minecraft-style accounts, no GPU and no display: the server runs
+# the mod headless and tools/smoke_test.py reads the status file the mod writes.
+name: cm-world smoke
+on: [pull_request]
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        engine: [local, docker]   # Debian minetestserver 5.6.1, and Luanti 5.18 from linuxserver/luanti
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Luanti server and the default game
+        run: sudo apt-get update && sudo apt-get install -y minetest-server minetest-data
+      - name: Install the cm-viz offline harness
+        run: |
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install -e 'cherrymountain-brewery/viz[local]' -e cherrymountain-brewery/sim pyyaml
+      - name: Pull Luanti 5.18
+        if: matrix.engine == 'docker'
+        run: docker pull linuxserver/luanti:latest
+      - name: Smoke test
+        run: /tmp/venv/bin/python cherrymountain-brewery/spikes/luanti-world/tools/smoke_test.py --engine ${{ matrix.engine }}

@@ -1,0 +1,10 @@
+engine: minetestserver 5.6.1; work dir /tmp/cm-smoke-kw8ahki8
+  ok   scenes built and first frame applied after 2 s (seq 5.0)
+  ok   frames keep arriving after 1 s (seq 16.0)
+  ok   co2-attack reaches tier 1 in the world after 19 s (seq 206.0)
+       avg 5245 ppm, layer 1.0 blocks, 1084.0 gas cells, apply 4.8 ms
+  ok   console press fans-on reaches the plant (fans run) after 39 s (seq 597.0)
+  ok   relay log holds only fans-on, by autopress
+  ok   off-list action refused and logged by the mod
+  info static scenes built in 1347 ms; total 61 s
+PASSED

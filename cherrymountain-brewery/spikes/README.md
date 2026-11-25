@@ -34,6 +34,7 @@ still runs it. The other kits are under [Retired kits](#retired-kits).
 | [serial](serial/README.md) (stretch) | Does ot-sim Modbus RTU work over the phenix serial app (and over phenix PR 130's QEMU-socket serial app)? | `serial` app scope (§15.2) | 2-3 h | pass (ot-sim's own RTU works on the current app, and PR 130 works until you redeploy a VM) |
 | [bbmd](bbmd/README.md) | Do BACpypes3 BBMDs let a real FUXA's broadcast Who-Is find BAS device 3003 across the VyOS OT firewall? Does the design need the BAS-to-OPS BBMD rule? | BACnet conduit rules and BBMD nodes (§10.3, §11) | 2-3 h | pass (real FUXA reads 3003, rule 3 is only for unsolicited I-Ams, and `broadcastAddress` removes the BBMDs) |
 | [thehive](thehive/README.md) | Does the SOC need a case-management tool next to Wazuh and Malcolm, and is it TheHive? | A fourth SOC VM and the Wazuh-to-cases path (§11, §14, §20) | 1 day | no to TheHive (its license fails §2/§20). Conditional go for DFIR-IRIS 2.4 as optional `soc-ir` in `full`, deferred to future work (§18) |
+| [luanti-world](luanti-world/README.md) | Can Luanti render cm-viz's frames as a walkable world, take white-cell actions through an allowlisted relay, show the topology as a city, and be tested headless in CI? | A voxel view for the white cell and for demos, beside cm-viz (§15.10) | 1 day | go (live cellar, fermenters and power scenes, a console through the relay, a topology city; the smoke test passes on 5.6.1 and 5.18.0) |
 
 ## Round 2 (real FUXA, broadcast I-Am, Malcolm hand-off, CLI autotunnel, ot-sim RTU)
 

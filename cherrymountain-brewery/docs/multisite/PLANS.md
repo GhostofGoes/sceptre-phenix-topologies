@@ -961,7 +961,7 @@ The image exists as a recipe. Its first build started in CI on 2026-11-25.
 These parts do not exist yet:
 
 - The injected files that configure the `hedgehog` profile at the first boot.
-- The settings that let `malcolm` accept the sensors: the two open ports, the
+- The configuration that lets `malcolm` accept the sensors: the two open ports, the
   certificates, a service account, and the shared Arkime secret.
 - The three conduits in the matrix.
 - More index space at `malcolm`, which has 24 GB for one site today.
@@ -1722,7 +1722,7 @@ State on 2026-11-25:
 - A site's scenario has no `helics` app. That app starts one root broker for
   an experiment, and two brokers on one host fail without a message. The
   tool netcheck refuses a site scenario that has the app.
-- The hosts that may write BACnet are data for each site
+- The hosts that have permission to write BACnet are data for each site
   (`plant/generated/fleet/<code>/bacnet-writers.json`). At `fr`, `ep`, and
   `cs` they are `bas-fuxa` and `ews`. At `fc` the list has the pub's one SCADA
   host only (decided on 2026-11-25). The Suricata rules and the Zeek script
@@ -1733,7 +1733,7 @@ State on 2026-11-25:
   images repository fails when a copy there differs (decided on 2026-11-25).
 - One site still lacks these parts before it can boot alone:
   - The WAN side of its edge: a peer, a default route, and NAT (stage 4).
-  - The sensor's first-boot files, and the settings of `malcolm` for sensors.
+  - The sensor's first-boot files, and the configuration of `malcolm` for sensors.
   - A way to restart one site. Today a person restarts its broker, its
     federates, and its field devices by hand.
   - The first boot itself, after stage 0.

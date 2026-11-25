@@ -538,13 +538,21 @@ City Code chapter 26, article IV [FC3], [FC12], [FC13].
 | CO₂, the local rule | None. The research searched Ordinances 051 and 201 of 2025 in full. Neither touches IFC §5307 (carbon dioxide), §916 (gas detection), or §105 (permits). The 2021 adoption had no CO₂ rule either. The 2024 IFC applies as written | [FC17], [FC16] |
 | CO₂, permit | An operational permit above 100 lb of CO₂ in an insulated liquid system (Table 105.5.9). Construction permits for the gas system (105.6.3) and the detection system (105.6.11) | [FC37], a copy of the code |
 | CO₂, detection | Mechanical ventilation at 1 cfm per sq ft with the room at negative pressure, or gas detection in its place. Gas detection has sensors within 12 in of the floor. It gives "an audible and visible supervisory alarm at a normally attended location" at 5,000 ppm. It gives "an audible and visible alarm within the room" at 30,000 ppm (5307.3.1, 5307.3.2). The code also asks for a trouble signal or standby power on loss of power, and a yearly test (916.5, 916.11) | [FC37], a copy of the code |
-| CO₂, shutoff | No automatic shutoff. Section 5307.3 has no shutoff sentence. The only "stop the flow of carbon dioxide" in the code is for plant-growing enrichment systems (5307.4.3.1). The code asks for "manual valves or automatic remotely activated fail-safe emergency shutoff valves" at the source and the point of use (5003.2.2.1). A manual valve meets that rule | [FC37], a copy of the code |
-| CO₂, PFA's own documents | PFA lists a "CO2 Beverage Systems Guide 2024", a checklist, and a limited-scope permit under gas detection systems. The research was not able to read any of them, so a permit condition beyond the code is possible. The January 2024 guideline of Loveland, the neighboring city, repeats the code and asks only for marked manual shutoffs | [FC18], from a search excerpt, and [FC38] |
+| CO₂, shutoff | No automatic shutoff. Section 5307.3 has no shutoff sentence. The only "stop the flow of carbon dioxide" in the code is for plant-growing enrichment systems (5307.4.3.1). The code asks for "manual valves or automatic remotely activated fail-safe emergency shutoff valves" at the source and the point of use (5003.2.2.1). A manual valve meets that rule | [FC37], a copy of the code. [FC43] is a second copy of the enrichment rule, in the 2021 text |
+| CO₂, PFA's own documents | PFA has four CO₂ documents. It lists a "CO2 Beverage Systems Guide 2024" with its operational permits. Under gas detection systems, it lists a "CO2 Beverage Dispensing System Checklist", a "CO2 Beverage Dispensing Limited Scope Permit", and a "CO2 Enrichment System" permit. The research knows these names from search excerpts of PFA's pages, which is a source of medium reliability. It was not able to read the documents, because PFA's site refuses automated reading, and no other site has a copy. So a permit condition beyond the code is possible. Three other fire authorities show the range. Loveland, the neighboring city, repeats the code and asks only for marked manual shutoffs (its guideline of January 2024, read in full). Denver asks for a sensor at each point of use and an automatic shutoff at 30,000 ppm. Colorado Springs accepts an automatic shutoff in place of ventilation. These rules show what PFA can ask for. They do not show what PFA does ask for | [FC18], from search excerpts, [FC38], [FC39], and [CS28] |
 | Building energy | Building Energy and Water Scoring (BEWS): "most commercial and multi-family buildings 5,000 square feet or larger" report energy by June 1. The same page also says 50,000 sq ft. So on one reading, BEWS covers a pub of 8,000 to 12,000 sq ft. A performance standard failed to pass on 2025-12-02 | [FC19], [FC20] |
 | Liquor | The Fort Collins Liquor Licensing Authority licenses a brew pub, with a hearing. The taproom of a brewery needs only notice to the city ([7.6](#76-fort-collins-a-brew-pub-licence-against-a-sales-room)) | [FC21], [L29] |
 | Food | Larimer County's environmental health department licenses the kitchen: $481 to $581 a year by the number of seats | [FC22] |
 | Sales tax | 8.30 % combined: city 4.35 %, Larimer County 1.05 %, state 2.90 % | [FC23] |
 | Stormwater | Each month: lot area × $0.00541 × a runoff factor (0.95 for a lot that is nearly all roof and paving). That is about $51 for 10,000 sq ft | [FC1]. This document computed the example |
+
+The CO₂ rules came from accidents in other states. A leak in a Phoenix
+restaurant in 2011 is the one that sources name most often [FC44]. A Colorado
+gas supplier wrote that Colorado had no recorded accident as of 2016 [FC45].
+Both sources are trade publications, so their reliability is medium to low. In
+Fort Collins, PFA's hazmat team answered a dry ice spill at the Downtown
+Transit Center on 2025-08-22, and no one was hurt [FC46]. That report is
+reliable.
 
 ### 6.7 What the place offers the network
 
@@ -563,15 +571,28 @@ internet can add.
 - City Code chapters 12 and 26 on Municode, which refused the request. The
   open points there are the E300 metering interval, the pretreatment limits
   for pH and temperature, and the category of sewer user for a brewpub.
-- PFA's CO₂ guide, checklist, and permit. The open point is whether they add
-  an automatic shutoff, or a sensor at each point of use, as a condition of
-  the permit. Nothing that the research found suggests it. PFA's site does
-  not allow automated reading. A person can open its "Operational Permits"
-  page and read the guide, or ask PFA's fire prevention office one question.
-  Does PFA require an automatic shutoff valve on a bulk CO₂ beverage system,
-  and at what concentration?
+- PFA's CO₂ guide, checklist, and permit. A second search on 2026-11-25 used
+  sources that are less reliable: search excerpts, other fire authorities,
+  vendors, and news. It found the names of the documents, and no copy of their
+  text. Two points stay open. Does PFA require an automatic shutoff valve, and
+  at what concentration? Does PFA require a sensor at each point of use?
+  - The best estimate is that PFA follows the code as written, with no
+    automatic shutoff. The reliability of this estimate is low.
+  - Two facts support the estimate. The city's ordinances have no CO₂
+    amendment (high reliability: the research read Ordinance 201 again
+    [FC16]). Loveland follows the code as written (high reliability for
+    Loveland [FC38]).
+  - One fact is against it. Denver and Colorado Springs each add a shutoff
+    rule [FC39], [CS28].
+  - The Internet Archive has a copy of PFA's permit page from 2026-08-13
+    [FC41]. The tools of the research were not able to open it. A person can
+    open it and read the guide, or ask PFA's fire prevention office.
+- PFA's "Notice 2026-03" on dry ice (solid CO₂) in freezers and walk-in
+  coolers [FC42]. The research knows only its title, from a search excerpt.
+  The notice can matter for a walk-in cooler that holds kegs.
 - Whether PFA treats the process CO₂ of a brewery (for purging and
-  carbonating) as "beverage dispensing". If it does not, the general rule
+  carbonating) as "beverage dispensing". The second search found no source on
+  this point, not even an unreliable one. If it does not, the general rule
   applies (5307.2 and 916.8). That rule asks for ventilation, or for
   detection. The detection alarms at half of the 40,000 ppm IDLH, unless the
   fire official sets another value. IDLH is the level that is immediately
@@ -904,7 +925,7 @@ network, or the company, and so they belong in the range.
 
 | # | Difference | `fr` | `ep` | `cs` | `fc` | What the range does with it |
 |---|---|---|---|---|---|---|
-| R1 | Bulk CO₂ shutoff | Fail-closed at 30,000 ppm (Denver's policy) | Not required (the 2021 IFC as written) | At 5,000 ppm, or on loss of power (the city's amendment) | Not required: the 2024 IFC as written, with no local amendment. The research did not read PFA's own guide | The shutoff point becomes a configuration value of each site, not a constant in `plc-utilities`. The generator writes the value. `ep` and `fc` keep the company's standard, which is the 30,000 ppm of `fr`. A company applies one standard where the code asks for less, and 30,000 ppm is also the room alarm of the code. At `cs`, the shutoff trips at the first alarm tier, so a CO₂ alarm there stops carbonation and the draft system at once |
+| R1 | Bulk CO₂ shutoff | Fail-closed at 30,000 ppm (Denver's policy) | Not required (the 2021 IFC as written) | At 5,000 ppm, or on loss of power (the city's amendment) | Not required: the 2024 IFC as written, with no local amendment. This is an estimate of low reliability, because the research did not read PFA's own guide ([6.8](#68-not-verified)) | The shutoff point becomes a configuration value of each site, not a constant in `plc-utilities`. The generator writes the value. `ep` and `fc` keep the company's standard, which is the 30,000 ppm of `fr`. A company applies one standard where the code asks for less, and 30,000 ppm is also the room alarm of the code. At `cs`, the shutoff trips at the first alarm tier, so a CO₂ alarm there stops carbonation and the draft system at once |
 | R2 | What the electric bill rewards | SV-SGT: demand at all hours, energy by time of day | Xcel SG: demand at all hours, and by time of day from the April after Xcel fits the meter | CSU EIS: almost all demand, by the day. A 68 % ratchet on off-peak demand | FCU E300: the load of the pub in the one peak hour of the month for PRPA, at $15.72 to $19.18 per kW. FCU flags the hour by email and an OpenADR signal. Energy at one price at every hour. A 70 % ratchet on facility demand | The tariff becomes a configuration value of the power federate (one program of the co-simulation) of each site. Only `fr` and `ep` have a power area, so the range simulates only their bills. At `cs` and `fc`, the tariff is documentation until the design adds a revenue meter. At `fc`, the peak-hour signal is the one utility message that can reach the plant. An OpenADR client that holds the boiler off is a new flow from the internet into the pub. The design leaves that client for later |
 | R3 | A utility link for the DER (distributed energy resource) | DNP3 over IPsec (the design's teaching device) | The same. Xcel "may require" monitoring at this size | None: CSU asks for telemetry only from 500 kW, and the site has no generation | None | Unchanged. The link stays at `fr` and `ep`. The documents say that it is an assumption at this size, not a rule |
 | R4 | Water in a shortage | Denver Water (this document did not research it) | Stage 1 since 2026-04-06. The utility "may require" large non-recoverable users to cut use. An allocation, and a higher price above it | A "preparation" stage since 2026-03-18. At Stage III, the utility sets a cut in indoor industrial use. At Stage IV, the cut is up to 20 % | An annual allotment and $15.59 per 1,000 gal above it. A voluntary Watch since 2026-05-01, and Levels II and III raise rates | A scenario event: the utility orders a cut, and the plant must show its water use and what it deferred. The utilities federate already counts water. The KPIs (key performance indicators) gain one for use against allocation |
@@ -1038,6 +1059,12 @@ The research read each entry on 2026-11-23 unless the entry says otherwise. *Sec
 - [FC38] Loveland Fire Rescue Authority, *Carbon Dioxide Systems for Beverage Dispensing: Plan Review and Reporting Requirements*, January 2024, <https://lfra.org/DocumentCenter/View/330/Carbon-Dioxide-System-for-Beverage-Dispensing-Requirements-PDF>.
 - [FC39] Denver Fire Department, policy "IFC 5307", carbon dioxide systems used in beverage dispensing, revised 2017-10-01 (for the comparison), <https://www.denvergov.org/files/assets/public/v/1/fire-department/documents/carbon-dioxide-co2-systems-used-in-beverage-dispensing-applications-policy.pdf>.
 - [FC40] NIOSH, *Pocket Guide to Chemical Hazards*, carbon dioxide (TWA 5,000 ppm, short-term 30,000 ppm, IDLH 40,000 ppm), <https://www.cdc.gov/niosh/npg/npgd0103.html>; 29 CFR 1910.1000, Table Z-1 (5,000 ppm), <https://www.govinfo.gov/content/pkg/CFR-2024-title29-vol6/xml/CFR-2024-title29-vol6-sec1910-1000.xml>.
+- [FC41] Internet Archive, a copy of PFA's "Operational Permits" page from 2026-08-13, <http://web.archive.org/web/20260813104011/https://www.poudre-fire.org/online-services/apply-for-permits>. The research made sure that the copy exists. It did not read it.
+- [FC42] Poudre Fire Authority, Inspection Services Division, "Notice 2026-03", <https://www.poudre-fire.org/programs-services/fire-prevention-and-community-risk-reduction/inspection-services-division>. The research saw only the title, in a search excerpt.
+- [FC43] Thornton Fire Department, *General Requirements Regarding Carbon Dioxide Dispensing Systems*, TFD-FPD#054, June 2024 (secondary for the text of the 2021 IFC), <https://www.thorntonco.gov/sites/default/files/2024-06/TFD-FPD%20%23054%20CO2%20System%20Requirement%20REVISED_0.pdf>.
+- [FC44] S. Clary, "CO2 standards: Do you know the dangers of carbon dioxide?", ICC Building Safety Journal, 2021-01-25 (secondary), <https://www.iccsafe.org/building-safety-journal/bsj-technical/co2-standards-do-you-know-the-dangers-of-carbon-dioxide/>.
+- [FC45] Rocky Mountain Air Solutions, "New Carbon Dioxide Code Regulations for Denver Restaurants" (a vendor's page, secondary), <https://rockymountainair.com/blog/new-carbon-dioxide-code-regulations-denver/>.
+- [FC46] Denver7, "Carbon dioxide spill temporarily closes Downtown Transit Center in Fort Collins", 2025-08-22, <https://www.denver7.com/news/front-range/fort-collins/carbon-dioxide-spill-temporarily-closes-downtown-transit-center-in-fort-collins-friday-morning>.
 
 ### Licences, records, and remote access
 

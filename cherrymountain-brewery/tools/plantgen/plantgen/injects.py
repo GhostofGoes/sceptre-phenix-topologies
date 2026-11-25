@@ -33,6 +33,7 @@ from typing import Any, Final, NamedTuple
 
 from plantgen.checks import routed
 from plantgen.model import Plant, PlantError
+from plantgen.render import bacnet_writers
 from plantgen.sites import EDGE, SiteSpec
 
 #: How a topology names a file under phenix-injects.
@@ -445,12 +446,59 @@ def _jump_server_name(context: Context) -> str:
     )
 
 
+def _writer_addresses(context: Context) -> list[str]:
+    """The addresses that may write a BACnet object at the site
+    (`render.bacnet_writers`): the detection content alerts on any other."""
+    writers = bacnet_writers(context.plant)
+    if not writers:
+        raise PlantError(f"{context.path}: the site has no host that writes BACnet")
+    return [writer["address"] for writer in writers]
+
+
+def _the_line_with(context: Context, words: str) -> str:
+    """The one line of the hand-written file that holds `words`."""
+    hits = [line for line in context.text.splitlines() if words in line]
+    if len(hits) != 1:
+        raise PlantError(
+            f"phenix-injects/{context.path}: {len(hits)} lines hold {words!r}, and "
+            "the site's copy sets exactly one"
+        )
+    return hits[0]
+
+
+def _suricata_rules(context: Context) -> str:
+    """malcolm/cherrymountain.rules: who may write BACnet (sids 9000113 and
+    9000114). The rule's source is every address but the writers."""
+    writers = ",".join(_writer_addresses(context))
+    lines: list[Line] = []
+    for service in ("WriteProperty", "WritePropertyMultiple"):
+        old = _the_line_with(context, f'(msg:"CM BACnet {service} from a host other')
+        head, sep, rest = old.partition("] any -> any ")
+        if not head.startswith("alert udp ![") or not sep:
+            raise PlantError(
+                f"phenix-injects/{context.path}: the {service} rule does not start "
+                "with `alert udp ![<writers>] any -> any`"
+            )
+        lines.append(Line(old, f"alert udp ![{writers}{sep}{rest}"))
+    return edit(context, lines)
+
+
+def _zeek_script(context: Context) -> str:
+    """malcolm/zeek/cherrymountain.zeek: who may write BACnet
+    (`BACnet_Write_Unexpected`)."""
+    writers = ", ".join(_writer_addresses(context))
+    start = "const bacnet_writers: set[addr] = "
+    return edit(context, [Line(start, f"{start}{{ {writers} }} &redef;")])
+
+
 #: The files that a site has its own copy of, by their path under phenix-injects.
 RENDERERS: Final[dict[str, Callable[[Context], str]]] = {
     "bbmd/bas-bbmd.env": _bbmd_bas,
     "bbmd/ot-svc.env": _bbmd_ops,
     "guacamole/cm-guacamole-start": _jump_certificate,
     "guacamole/nginx.conf": _jump_server_name,
+    "malcolm/cherrymountain.rules": _suricata_rules,
+    "malcolm/zeek/cherrymountain.zeek": _zeek_script,
     "ot-svc/60-ot-svc.sh": _time_hook,
     "ot-svc/dnsmasq-plant.conf": _resolver,
     "ot-svc/plant.hosts": _hosts_file,

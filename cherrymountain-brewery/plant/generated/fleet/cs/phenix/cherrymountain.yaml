@@ -3,6 +3,7 @@ name: cherrymountain
 runPeriodically: 5m
 metadata:
   variant: cs
+  site: cs
 hosts:
 - hostname: cs-sim-ctl
   metadata:

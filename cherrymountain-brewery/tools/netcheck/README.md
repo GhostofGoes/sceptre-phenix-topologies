@@ -123,7 +123,7 @@ Some checks have a part that is only for a site:
 | `workflow` | It compares each VLAN ID with the plan of the fleet. The rule is the rule of plantgen (`plantgen/workflow.py`). The single-site IDs under it are those of `plan.py`, not those of `phenix.yml`. The bridge must be the bridge of the site |
 | `injects` | Each injected file exists, also each copy under `phenix-injects/fleet/<code>/` |
 | `plan` | It compares the VMs, the vCPUs, and the memory of the site with the table `TOTALS` in `site.py`. The source of that table is PLANS.md 4.1 |
-| `apps` | A time source can be `inet-traffic`, which no site has. The source must then carry the address that `topology-wan.yml` gives the host of the internet. Without the address, the ntp app of phenix uses the default source. Each other source must be a node of the site, with the name of the site |
+| `apps` | The `cherrymountain` app names the site in `metadata.site`, and the scenario has no `helics` app. With that app, two brokers start on one host, and one of them fails. A time source can be `inet-traffic`, which no site has. The source must then carry the address that `topology-wan.yml` gives the host of the internet. Without the address, the ntp app of phenix uses the default source. Each other source must be a node of the site, with the name of the site |
 | `services` | It compares the `plant.hosts` copy of the site with the nodes of the site. A node that injects a `plant.hosts` of a different plant is an error. A site with no `ot-svc` has no such file |
 
 A site's run leaves out these checks:

@@ -11,6 +11,7 @@ last rule leaves alone, each with its reason.
 from __future__ import annotations
 
 import io
+import json
 import re
 import zipfile
 from pathlib import Path
@@ -287,7 +288,8 @@ def test_the_sets_of_the_four_sites_differ_in_size() -> None:
         code: sum(1 for path in injected(code) if path.startswith(f"fleet/{code}/"))
         for code in CODES
     }
-    assert own == {"fr": 8, "ep": 8, "cs": 6, "fc": 1}
+    # `fr` has the SOC: two of its copies are the detection content.
+    assert own == {"fr": 10, "ep": 8, "cs": 6, "fc": 1}
 
 
 @pytest.mark.parametrize("code", CODES)
@@ -299,7 +301,6 @@ def test_the_scenario_names_only_hosts_of_the_topology(code: str) -> None:
         "startup",
         "ot-sim",
         "cherrymountain",
-        "helics",
         "ntp",
         "vrouter",
         "soh",
@@ -311,7 +312,10 @@ def test_the_scenario_names_only_hosts_of_the_topology(code: str) -> None:
         named |= set(soh.get(key, {}))
     for probe in soh["testCustomReachability"]:
         named |= {probe["src"], probe["dst"].split("|")[0]}
-    named.add(apps["helics"]["metadata"]["broker"]["root"].split("|")[0])
+    # A site has no helics app. The cherrymountain app, which its `site` key
+    # tells so, starts the HELICS broker of the site on the site's sim-ctl.
+    assert apps["cherrymountain"]["metadata"]["site"] == code
+    assert f"{code}-sim-ctl" in nodes
     assert len(named) > 10
     assert named - nodes == set(OUTSIDE_SOURCES)
     # The ntp app runs in app mode, so it lists every node.
@@ -465,3 +469,46 @@ def test_no_file_keeps_the_old_address_of_the_internets_server(code: str) -> Non
             if OLD_INTERNET_SERVER.fullmatch(leg["address"])
         ]
         assert legs == ["203.0.113.10"]
+
+
+# --- who may write BACnet ----------------------------------------------------------
+
+
+@pytest.mark.parametrize("code", CODES)
+def test_the_bacnet_writers_of_a_site_are_hosts_of_the_site(code: str) -> None:
+    """plantgen lists who may write BACnet at a site (decision K4a). Each
+    writer is a node of the site, with the address that the topology gives it."""
+    listed: dict[str, Any] = json.loads(
+        (ROOT / "plant" / "generated" / "fleet" / code / "bacnet-writers.json").read_text()
+    )
+    assert listed["site"] == code and listed["writers"]
+    first: dict[str, str] = {
+        node["general"]["hostname"]: node["network"]["interfaces"][0]["address"]
+        for node in topology(code)["spec"]["nodes"]
+    }
+    for writer in listed["writers"]:
+        assert first[writer["host"]] == writer["address"]
+    hosts: list[str] = [writer["host"] for writer in listed["writers"]]
+    if f"{code}-bas-fuxa" in first:
+        assert hosts == [f"{code}-bas-fuxa", f"{code}-ews"]
+    else:
+        # The pub has no building front end: its one SCADA host writes.
+        assert hosts == [f"{code}-scada-fuxa"]
+
+
+def test_the_socs_detection_content_lists_the_writers_of_its_site() -> None:
+    """`fr` has the fleet's SOC. Its copies of the Suricata rules and the Zeek
+    script hold the writers of `fr` from the list, not by hand."""
+    listed: dict[str, Any] = json.loads(
+        (ROOT / "plant" / "generated" / "fleet" / "fr" / "bacnet-writers.json").read_text()
+    )
+    addresses: list[str] = [writer["address"] for writer in listed["writers"]]
+    copies: Path = ROOT / "phenix-injects" / "fleet" / "fr" / "malcolm"
+    rules: str = (copies / "cherrymountain.rules").read_text(encoding="utf-8")
+    assert rules.count(f"alert udp ![{','.join(addresses)}] any -> any 47808 (msg:") == 2
+    zeek: str = (copies / "zeek" / "cherrymountain.zeek").read_text(encoding="utf-8")
+    assert f"const bacnet_writers: set[addr] = {{ {', '.join(addresses)} }} &redef;" in zeek
+    assert "fleet/fr/malcolm/cherrymountain.rules" in injected("fr")
+    assert "fleet/fr/malcolm/zeek/cherrymountain.zeek" in injected("fr")
+    for code in OTHER_SITES:
+        assert not [path for path in injected(code) if "malcolm" in path]

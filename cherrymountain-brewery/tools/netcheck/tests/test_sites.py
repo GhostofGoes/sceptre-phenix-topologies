@@ -879,3 +879,38 @@ def test_the_totals_of_a_site_are_those_of_the_plan(site_tree: Path) -> None:
 
     edit_yaml(topology(site_tree, "fc"), edit)
     assert has(run(site_tree, "fc"), "fc/plan", "totals", "(19, 27, 57) differ from PLANS.md 4.1")
+
+
+# --- the app's site key, and the broker of a site -------------------------------
+
+
+def test_the_scenario_of_a_site_names_its_site_and_has_no_helics_app(site_tree: Path) -> None:
+    """The cherrymountain app starts the broker of a site when its metadata
+    names the site (decision K3a). The phenix helics app has one root broker
+    for an experiment, and it would start a second broker on the site's sim-ctl."""
+    for code in CODES:
+        doc: dict[str, Any] = m.read_yaml(ROOT / "phenix-configs" / sitegen.file_name(code))
+        names: list[str] = [app["name"] for app in doc["spec"]["apps"]]
+        assert "helics" not in names
+        assert _app(doc, "cherrymountain")["metadata"]["site"] == code
+
+    def no_site(doc: dict[str, Any]) -> None:
+        del _app(doc, "cherrymountain")["metadata"]["site"]
+        doc["spec"]["apps"].append(
+            {"name": "helics", "metadata": {"broker": {"root": "fc-sim-ctl|mgmt"}}}
+        )
+
+    edit_yaml(scenario(site_tree, "fc"), no_site)
+    found: list[str] = run(site_tree, "fc")
+    assert has(found, "fc/apps", "metadata.site is None, not 'fc'")
+    assert has(found, "fc/apps", "the scenario of a site has the helics app")
+
+    def another_site(doc: dict[str, Any]) -> None:
+        _app(doc, "cherrymountain")["metadata"]["site"] = "fc"
+
+    edit_yaml(scenario(site_tree, "ep"), another_site)
+    assert has(run(site_tree, "ep"), "ep/apps", "metadata.site is 'fc', not 'ep'")
+
+
+def test_a_variant_is_not_asked_for_a_site_key() -> None:
+    assert not [f for f in checks.run_variant("full") if "metadata.site" in f.message]

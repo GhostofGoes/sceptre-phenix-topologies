@@ -875,7 +875,11 @@ def check_apps(
                 out.append(
                     _err(c, f"app {app.name}: host {host.get('hostname')} is not in the topology")
                 )
+    if ref.site:
+        out += _check_site_apps(c, v, sc)
     for gen in GENERATED_APPS:
+        if ref.site and gen == "helics":
+            continue  # a site has none (`_check_site_apps`)
         if sc.app(gen) is None:
             out.append(
                 _note(
@@ -903,6 +907,32 @@ INTERNET_TIME_SERVER: str = "inet-traffic"
 #: The network of the fleet's internet that holds its one host (wan/wan.yaml).
 INTERNET_LAN: str = "INET-LAN"
 WAN_TOPOLOGY: str = "phenix-configs/topology-wan.yml"
+
+
+def _check_site_apps(c: str, v: m.Variant, sc: m.Scenario) -> list[Finding]:
+    """A site has a HELICS broker of its own (PLANS.md, decision D8). The
+    cherrymountain app starts it when its metadata names the site, and the
+    phenix helics app would start a second broker on the same host."""
+    out: list[Finding] = []
+    app: m.App | None = sc.app("cherrymountain")
+    named: Any = (app.metadata or {}).get("site") if app is not None else None
+    if app is not None and named != v.name:
+        out.append(
+            _err(
+                c,
+                f"the cherrymountain app's metadata.site is {named!r}, not {v.name!r}: "
+                "the app would not read the site's files or start the site's broker",
+            )
+        )
+    if sc.app("helics") is not None:
+        out.append(
+            _err(
+                c,
+                "the scenario of a site has the helics app: it and the cherrymountain "
+                "app would both start a broker on the site's sim-ctl",
+            )
+        )
+    return out
 
 
 def internet_servers(root: Path) -> dict[str, str]:

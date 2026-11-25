@@ -355,7 +355,12 @@ def test_front_range_is_the_full_variant_under_its_own_names(
     with_internet = {
         f"phenix/{app}.yaml" for app in ("cherrymountain", "ntp", "ot-sim", "soh")
     }
+    # A file that only a site has: who may write its BACnet objects.
+    assert render.BACNET_WRITERS_FILE in site_files["fr"]
+    assert render.BACNET_WRITERS_FILE not in full
     for rel, text in site_files["fr"].items():
+        if rel == render.BACNET_WRITERS_FILE:
+            continue
         plain = re.sub(r"(?<![A-Za-z0-9_-])fr-", "", text)
         plain = plain.replace(
             render.SITE_HEADER.format(site="fr"), render.HEADER.format(variant="full")
@@ -370,8 +375,17 @@ def test_front_range_is_the_full_variant_under_its_own_names(
         assert plain != full[name], rel
         assert plain.splitlines()[0] == full[name].splitlines()[0]
         whole = _without_the_internet(yaml.safe_load(full[name]))
-        assert _without_fleet_addresses(yaml.safe_load(plain)) == whole, rel
-    assert set(full) - seen == {"phenix/wireguard.yaml", "scorch/pcap.yaml"}
+        ours = _without_fleet_addresses(yaml.safe_load(plain))
+        if name == "phenix/cherrymountain.yaml":
+            # The app's block of a site names the site.
+            assert ours["metadata"].pop("site") == "fr"
+        assert ours == whole, rel
+    # A site has no helics app block: the cherrymountain app starts its broker.
+    assert set(full) - seen == {
+        "phenix/helics.yaml",
+        "phenix/wireguard.yaml",
+        "scorch/pcap.yaml",
+    }
 
 
 # -- no name and no address of another site -------------------------------------

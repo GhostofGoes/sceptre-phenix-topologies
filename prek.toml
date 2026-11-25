@@ -537,6 +537,22 @@ pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
+# Mermaid blocks in Markdown parse (mermaid.parse() under jsdom, no browser).
+# This is a syntax check. It does not render, so it does not find a diagram
+# that parses and then draws badly on GitHub. prek installs the two packages
+# in the hook's own Node environment.
+id = "cm-mermaid"
+name = "mermaid (syntax of the blocks in Markdown)"
+language = "node"
+entry = "node cherrymountain-brewery/tools/lint/check_mermaid.mjs"
+additional_dependencies = [
+    "jsdom@25.0.1",
+    "mermaid@11.17.2",
+]
+files = '\.md$'
+priority = "check"
+
+[[repos.hooks]]
 # .desktop files (the analyst console and the kiosk launcher today).
 # desktop-file-validate is a system tool (package `desktop-file-utils`).
 id = "desktop-file-validate"

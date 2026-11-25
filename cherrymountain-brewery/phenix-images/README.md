@@ -517,9 +517,11 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   downloads 2.6 GB from `ghcr.io`.
 - Used by: `ep-sensor`, `cs-sensor`, and `fc-sensor`.
 - Pinned versions: The versions are those of `cm-malcolm`.
-- Limits: No build of this image ran yet. The injected files that configure
-  the `hedgehog` profile at the first boot do not exist yet. The same is true
-  for the files that let `malcolm` accept the sensors.
+- Limits: The image built in CI on 2026-11-25 (3.8 GiB as a compressed
+  qcow2). It booted there, and miniccc registered after 52 s. Malcolm did not
+  run in that test. The injected files that configure the `hedgehog` profile
+  at the first boot do not exist yet. The same is true for the files that let
+  `malcolm` accept the sensors.
 
 ## cm-wazuh
 

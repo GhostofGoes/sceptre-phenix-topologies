@@ -957,8 +957,9 @@ A sensor needs three conduits through the VPN and both firewalls:
 - From `malcolm` to the sensor on 8005/tcp. An analyst who opens a session in
   Arkime gets its packets from the sensor, which keeps the pcap files.
 
-The image exists as a recipe. Its first build started in CI on 2026-11-25.
-These parts do not exist yet:
+The image built in CI on 2026-11-25, and it is 3.8 GiB as a compressed qcow2.
+It booted there, and miniccc registered after 52 s. Malcolm did not run in
+that test. These parts do not exist yet:
 
 - The injected files that configure the `hedgehog` profile at the first boot.
 - The configuration that lets `malcolm` accept the sensors: the two open ports, the

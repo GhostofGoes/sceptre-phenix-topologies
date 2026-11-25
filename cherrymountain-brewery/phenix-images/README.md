@@ -626,7 +626,7 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - Build: Use the commands above, with `<name>` set to `cm-ews`.
 - Used by: `ews`.
 - Pinned versions: The image pins OpenPLC Editor `4.3.4` (SHA-256
-  `b8186372...ec75fa0`), `BAC0==2026.7.25`, `pymodbus==3.16.2`,
+  `27718205...124cdd2`), `BAC0==2026.7.25`, `pymodbus==3.16.2`,
   `asyncua==2.1.0`, and the Wazuh agent `4.14.10-1`. Chromium is as in
   `cm-desktop`. The image does not use `opcua-client`, because its current
   release needs Python 3.14, and noble has 3.12.

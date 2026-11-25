@@ -1,0 +1,6576 @@
+{
+  "generator": "plantgen",
+  "variant": "lite",
+  "broker": {
+    "host": "sim-ctl",
+    "interface": "mgmt",
+    "address": "172.16.10.1",
+    "core_type": "zmq"
+  },
+  "end_time_s": 604800,
+  "clock": {
+    "start": "2026-07-15T04:30:00-06:00",
+    "timezone": "America/Denver",
+    "speedup": 1.0
+  },
+  "ground_truth": {
+    "endpoint": "http://172.16.10.1:9200",
+    "index_base": "cherrymountain-truth"
+  },
+  "federates": {
+    "cellar": {
+      "host": "sim-process",
+      "period_s": 1.0,
+      "endpoint": "cellar/updates",
+      "accepted_updates": [
+        "fv101-side.valve",
+        "fv101-cone.valve",
+        "fv101.spund_sp_psia",
+        "fv102-side.valve",
+        "fv102-cone.valve",
+        "fv102.spund_sp_psia",
+        "fv103-side.valve",
+        "fv103-cone.valve",
+        "fv103.spund_sp_psia",
+        "fv104-side.valve",
+        "fv104-cone.valve",
+        "fv104.spund_sp_psia",
+        "bbt201.valve",
+        "bbt201.outlet_valve",
+        "bbt201.co2_valve_pct",
+        "bbt202.valve",
+        "bbt202.outlet_valve",
+        "bbt202.co2_valve_pct",
+        "hopdoser.purge_valve",
+        "hopdoser.dose_valve",
+        "transfer.pump_run"
+      ],
+      "publications": [
+        {
+          "key": "cellar/clock.sim_hours",
+          "type": "double",
+          "units": "h",
+          "tag": "CEL.CLK.KI01.PV",
+          "unit": "CLK",
+          "device": "clock",
+          "device_type": "sim-clock",
+          "zone": null,
+          "point": "sim_hours"
+        },
+        {
+          "key": "cellar/fv101-side.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV101.TT01.PV",
+          "unit": "FV101",
+          "device": "fv101-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv101-side.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV101.TV01.CMD",
+          "unit": "FV101",
+          "device": "fv101-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv101-cone.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV101.TT02.PV",
+          "unit": "FV101",
+          "device": "fv101-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv101-cone.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV101.TV02.CMD",
+          "unit": "FV101",
+          "device": "fv101-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv101.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV101.PT01.PV",
+          "unit": "FV101",
+          "device": "fv101",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/fv101.gravity_plato",
+          "type": "double",
+          "units": "degP",
+          "tag": "CEL.FV101.DT01.PV",
+          "unit": "FV101",
+          "device": "fv101",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "gravity_plato"
+        },
+        {
+          "key": "cellar/fv101.spund_sp_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV101.PCV01.SP",
+          "unit": "FV101",
+          "device": "fv101",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_sp_psia"
+        },
+        {
+          "key": "cellar/fv101.spund_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV101.ZSO01.PV",
+          "unit": "FV101",
+          "device": "fv101",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_open"
+        },
+        {
+          "key": "cellar/fv102-side.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV102.TT01.PV",
+          "unit": "FV102",
+          "device": "fv102-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv102-side.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV102.TV01.CMD",
+          "unit": "FV102",
+          "device": "fv102-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv102-cone.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV102.TT02.PV",
+          "unit": "FV102",
+          "device": "fv102-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv102-cone.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV102.TV02.CMD",
+          "unit": "FV102",
+          "device": "fv102-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv102.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV102.PT01.PV",
+          "unit": "FV102",
+          "device": "fv102",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/fv102.gravity_plato",
+          "type": "double",
+          "units": "degP",
+          "tag": "CEL.FV102.DT01.PV",
+          "unit": "FV102",
+          "device": "fv102",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "gravity_plato"
+        },
+        {
+          "key": "cellar/fv102.spund_sp_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV102.PCV01.SP",
+          "unit": "FV102",
+          "device": "fv102",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_sp_psia"
+        },
+        {
+          "key": "cellar/fv102.spund_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV102.ZSO01.PV",
+          "unit": "FV102",
+          "device": "fv102",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_open"
+        },
+        {
+          "key": "cellar/fv103-side.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV103.TT01.PV",
+          "unit": "FV103",
+          "device": "fv103-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv103-side.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV103.TV01.CMD",
+          "unit": "FV103",
+          "device": "fv103-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv103-cone.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV103.TT02.PV",
+          "unit": "FV103",
+          "device": "fv103-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv103-cone.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV103.TV02.CMD",
+          "unit": "FV103",
+          "device": "fv103-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv103.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV103.PT01.PV",
+          "unit": "FV103",
+          "device": "fv103",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/fv103.gravity_plato",
+          "type": "double",
+          "units": "degP",
+          "tag": "CEL.FV103.DT01.PV",
+          "unit": "FV103",
+          "device": "fv103",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "gravity_plato"
+        },
+        {
+          "key": "cellar/fv103.spund_sp_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV103.PCV01.SP",
+          "unit": "FV103",
+          "device": "fv103",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_sp_psia"
+        },
+        {
+          "key": "cellar/fv103.spund_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV103.ZSO01.PV",
+          "unit": "FV103",
+          "device": "fv103",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_open"
+        },
+        {
+          "key": "cellar/fv104-side.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV104.TT01.PV",
+          "unit": "FV104",
+          "device": "fv104-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv104-side.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV104.TV01.CMD",
+          "unit": "FV104",
+          "device": "fv104-side",
+          "device_type": "fv-zone",
+          "zone": "side",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv104-cone.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.FV104.TT02.PV",
+          "unit": "FV104",
+          "device": "fv104-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/fv104-cone.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV104.TV02.CMD",
+          "unit": "FV104",
+          "device": "fv104-cone",
+          "device_type": "fv-zone",
+          "zone": "cone",
+          "point": "valve"
+        },
+        {
+          "key": "cellar/fv104.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV104.PT01.PV",
+          "unit": "FV104",
+          "device": "fv104",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/fv104.gravity_plato",
+          "type": "double",
+          "units": "degP",
+          "tag": "CEL.FV104.DT01.PV",
+          "unit": "FV104",
+          "device": "fv104",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "gravity_plato"
+        },
+        {
+          "key": "cellar/fv104.spund_sp_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.FV104.PCV01.SP",
+          "unit": "FV104",
+          "device": "fv104",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_sp_psia"
+        },
+        {
+          "key": "cellar/fv104.spund_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.FV104.ZSO01.PV",
+          "unit": "FV104",
+          "device": "fv104",
+          "device_type": "fv-vessel",
+          "zone": null,
+          "point": "spund_open"
+        },
+        {
+          "key": "cellar/bbt201.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.BBT201.TT01.PV",
+          "unit": "BBT201",
+          "device": "bbt201",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/bbt201.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.BBT201.PT01.PV",
+          "unit": "BBT201",
+          "device": "bbt201",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/bbt201.level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "CEL.BBT201.LT01.PV",
+          "unit": "BBT201",
+          "device": "bbt201",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "level_pct"
+        },
+        {
+          "key": "cellar/bbt201.co2_vol",
+          "type": "double",
+          "units": "vol",
+          "tag": "CEL.BBT201.AT01.PV",
+          "unit": "BBT201",
+          "device": "bbt201",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "co2_vol"
+        },
+        {
+          "key": "cellar/bbt201.co2_slpm",
+          "type": "double",
+          "units": "L/min",
+          "tag": "CEL.BBT201.FT01.PV",
+          "unit": "BBT201",
+          "device": "bbt201",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "co2_slpm"
+        },
+        {
+          "key": "cellar/bbt201.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.BBT201.TV01.CMD",
+          "unit": "BBT201",
+          "device": "bbt201",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "valve"
+        },
+        {
+          "key": "cellar/bbt201.outlet_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.BBT201.XV01.CMD",
+          "unit": "BBT201",
+          "device": "bbt201",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "outlet_valve"
+        },
+        {
+          "key": "cellar/bbt201.co2_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "CEL.BBT201.FCV01.OUT",
+          "unit": "BBT201",
+          "device": "bbt201",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "co2_valve_pct"
+        },
+        {
+          "key": "cellar/bbt202.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "CEL.BBT202.TT01.PV",
+          "unit": "BBT202",
+          "device": "bbt202",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "temp_f"
+        },
+        {
+          "key": "cellar/bbt202.pressure_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "CEL.BBT202.PT01.PV",
+          "unit": "BBT202",
+          "device": "bbt202",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "pressure_psia"
+        },
+        {
+          "key": "cellar/bbt202.level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "CEL.BBT202.LT01.PV",
+          "unit": "BBT202",
+          "device": "bbt202",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "level_pct"
+        },
+        {
+          "key": "cellar/bbt202.co2_vol",
+          "type": "double",
+          "units": "vol",
+          "tag": "CEL.BBT202.AT01.PV",
+          "unit": "BBT202",
+          "device": "bbt202",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "co2_vol"
+        },
+        {
+          "key": "cellar/bbt202.co2_slpm",
+          "type": "double",
+          "units": "L/min",
+          "tag": "CEL.BBT202.FT01.PV",
+          "unit": "BBT202",
+          "device": "bbt202",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "co2_slpm"
+        },
+        {
+          "key": "cellar/bbt202.valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.BBT202.TV01.CMD",
+          "unit": "BBT202",
+          "device": "bbt202",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "valve"
+        },
+        {
+          "key": "cellar/bbt202.outlet_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.BBT202.XV01.CMD",
+          "unit": "BBT202",
+          "device": "bbt202",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "outlet_valve"
+        },
+        {
+          "key": "cellar/bbt202.co2_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "CEL.BBT202.FCV01.OUT",
+          "unit": "BBT202",
+          "device": "bbt202",
+          "device_type": "bbt",
+          "zone": null,
+          "point": "co2_valve_pct"
+        },
+        {
+          "key": "cellar/hopdoser.port_closed",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.DH.ZSC01.PV",
+          "unit": "DH",
+          "device": "hopdoser",
+          "device_type": "hop-doser",
+          "zone": null,
+          "point": "port_closed"
+        },
+        {
+          "key": "cellar/hopdoser.purge_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.DH.XV01.CMD",
+          "unit": "DH",
+          "device": "hopdoser",
+          "device_type": "hop-doser",
+          "zone": null,
+          "point": "purge_valve"
+        },
+        {
+          "key": "cellar/hopdoser.dose_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.DH.XV02.CMD",
+          "unit": "DH",
+          "device": "hopdoser",
+          "device_type": "hop-doser",
+          "zone": null,
+          "point": "dose_valve"
+        },
+        {
+          "key": "cellar/transfer.route_ok",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.XFER.ZS01.PV",
+          "unit": "XFER",
+          "device": "transfer",
+          "device_type": "transfer-panel",
+          "zone": null,
+          "point": "route_ok"
+        },
+        {
+          "key": "cellar/transfer.pump_running",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.XFER.YS01.PV",
+          "unit": "XFER",
+          "device": "transfer",
+          "device_type": "transfer-panel",
+          "zone": null,
+          "point": "pump_running"
+        },
+        {
+          "key": "cellar/transfer.flow_gpm",
+          "type": "double",
+          "units": "gal/min",
+          "tag": "CEL.XFER.FT01.PV",
+          "unit": "XFER",
+          "device": "transfer",
+          "device_type": "transfer-panel",
+          "zone": null,
+          "point": "flow_gpm"
+        },
+        {
+          "key": "cellar/transfer.pump_run",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.XFER.HS01.CMD",
+          "unit": "XFER",
+          "device": "transfer",
+          "device_type": "transfer-panel",
+          "zone": null,
+          "point": "pump_run"
+        },
+        {
+          "key": "cellar/gasrelay.co2_ok",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.SYS.XS01.CO2_OK",
+          "unit": "SYS",
+          "device": "gasrelay",
+          "device_type": "gas-relay",
+          "zone": null,
+          "point": "co2_ok"
+        },
+        {
+          "key": "cellar/fv101-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH01.PV",
+          "unit": "PSV",
+          "device": "fv101-psv",
+          "device_type": "psv",
+          "zone": "FV101",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/fv102-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH02.PV",
+          "unit": "PSV",
+          "device": "fv102-psv",
+          "device_type": "psv",
+          "zone": "FV102",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/fv103-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH03.PV",
+          "unit": "PSV",
+          "device": "fv103-psv",
+          "device_type": "psv",
+          "zone": "FV103",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/fv104-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH04.PV",
+          "unit": "PSV",
+          "device": "fv104-psv",
+          "device_type": "psv",
+          "zone": "FV104",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/bbt201-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH05.PV",
+          "unit": "PSV",
+          "device": "bbt201-psv",
+          "device_type": "psv",
+          "zone": "BBT201",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/bbt202-psv.lifted",
+          "type": "boolean",
+          "units": null,
+          "tag": "CEL.PSV.ZSH06.PV",
+          "unit": "PSV",
+          "device": "bbt202-psv",
+          "device_type": "psv",
+          "zone": "BBT202",
+          "point": "lifted"
+        },
+        {
+          "key": "cellar/co2.vent_gps",
+          "type": "double",
+          "units": "g/s",
+          "output": "co2.vent_gps"
+        },
+        {
+          "key": "cellar/glycol.load_kw",
+          "type": "double",
+          "units": "kW",
+          "output": "glycol.load_kw"
+        },
+        {
+          "key": "cellar/co2.draw_slpm",
+          "type": "double",
+          "units": "L/min",
+          "output": "co2.draw_slpm"
+        },
+        {
+          "key": "cellar/beer.supply_psia",
+          "type": "double",
+          "units": "psia",
+          "output": "beer.supply_psia"
+        },
+        {
+          "key": "cellar/fv101.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV101",
+          "output": "fv101.level_pct"
+        },
+        {
+          "key": "cellar/fv101.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.spund_gps"
+        },
+        {
+          "key": "cellar/fv101.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.psv_gps"
+        },
+        {
+          "key": "cellar/fv101.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV101",
+          "output": "fv101.leak_gps"
+        },
+        {
+          "key": "cellar/fv102.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV102",
+          "output": "fv102.level_pct"
+        },
+        {
+          "key": "cellar/fv102.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.spund_gps"
+        },
+        {
+          "key": "cellar/fv102.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.psv_gps"
+        },
+        {
+          "key": "cellar/fv102.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV102",
+          "output": "fv102.leak_gps"
+        },
+        {
+          "key": "cellar/fv103.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV103",
+          "output": "fv103.level_pct"
+        },
+        {
+          "key": "cellar/fv103.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.spund_gps"
+        },
+        {
+          "key": "cellar/fv103.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.psv_gps"
+        },
+        {
+          "key": "cellar/fv103.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV103",
+          "output": "fv103.leak_gps"
+        },
+        {
+          "key": "cellar/fv104.level_pct",
+          "type": "double",
+          "units": "%",
+          "unit": "FV104",
+          "output": "fv104.level_pct"
+        },
+        {
+          "key": "cellar/fv104.spund_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.spund_gps"
+        },
+        {
+          "key": "cellar/fv104.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.psv_gps"
+        },
+        {
+          "key": "cellar/fv104.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "FV104",
+          "output": "fv104.leak_gps"
+        },
+        {
+          "key": "cellar/bbt201.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "BBT201",
+          "output": "bbt201.psv_gps"
+        },
+        {
+          "key": "cellar/bbt201.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "BBT201",
+          "output": "bbt201.leak_gps"
+        },
+        {
+          "key": "cellar/bbt202.psv_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "BBT202",
+          "output": "bbt202.psv_gps"
+        },
+        {
+          "key": "cellar/bbt202.leak_gps",
+          "type": "double",
+          "units": "g/s",
+          "unit": "BBT202",
+          "output": "bbt202.leak_gps"
+        }
+      ],
+      "subscriptions": [
+        {
+          "key": "utilities/glycol.supply_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "building/cellar.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "weather/pressure.kpa",
+          "type": "double",
+          "units": "kPa"
+        },
+        {
+          "key": "brewhouse/knockout.gpm",
+          "type": "double",
+          "units": "gal/min"
+        },
+        {
+          "key": "building/vent.co2_relay_ok",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "packaging/beer.draw_gpm",
+          "type": "double",
+          "units": "gal/min"
+        }
+      ],
+      "input_defaults": {},
+      "ambient_psia": 12.1,
+      "sim": {
+        "compression": 48.0,
+        "noise": true,
+        "seed": 2026,
+        "initial_state": {
+          "FV101": {
+            "phase": "empty",
+            "sim_hours": 0.0,
+            "temp_f": 64.0,
+            "dry_hop_lb_per_bbl": 0.0
+          },
+          "FV102": {
+            "phase": "fermenting",
+            "sim_hours": 48.0,
+            "temp_f": 66.0,
+            "dry_hop_lb_per_bbl": 0.0,
+            "spund_sp_psig": 1.0
+          },
+          "FV103": {
+            "phase": "fermenting",
+            "sim_hours": 120.0,
+            "temp_f": 68.0,
+            "dry_hop_lb_per_bbl": 2.0,
+            "spund_sp_psig": 12.0
+          },
+          "FV104": {
+            "phase": "fermenting",
+            "sim_hours": 264.0,
+            "temp_f": 50.0,
+            "dry_hop_lb_per_bbl": 0.0,
+            "spund_sp_psig": 12.0
+          },
+          "BBT201": {
+            "phase": "carbonating",
+            "sim_hours": 0.0,
+            "temp_f": 34.0,
+            "dry_hop_lb_per_bbl": 0.0,
+            "level_pct": 90.0,
+            "co2_vol": 1.8
+          },
+          "BBT202": {
+            "phase": "serving",
+            "sim_hours": 0.0,
+            "temp_f": 34.0,
+            "dry_hop_lb_per_bbl": 0.0,
+            "level_pct": 70.0,
+            "co2_vol": 2.6
+          }
+        }
+      }
+    },
+    "weather": {
+      "host": "sim-ctl",
+      "period_s": 1.0,
+      "endpoint": "weather/updates",
+      "accepted_updates": [],
+      "publications": [
+        {
+          "key": "weather/ambient.temp_f",
+          "type": "double",
+          "units": "degF",
+          "output": "ambient.temp_f"
+        },
+        {
+          "key": "weather/rh.pct",
+          "type": "double",
+          "units": "%",
+          "output": "rh.pct"
+        },
+        {
+          "key": "weather/ghi.wm2",
+          "type": "double",
+          "units": "W/m2",
+          "output": "ghi.wm2"
+        },
+        {
+          "key": "weather/pressure.kpa",
+          "type": "double",
+          "units": "kPa",
+          "output": "pressure.kpa"
+        },
+        {
+          "key": "weather/groundwater.temp_f",
+          "type": "double",
+          "units": "degF",
+          "output": "groundwater.temp_f"
+        },
+        {
+          "key": "weather/clock.epoch_s",
+          "type": "double",
+          "units": "s",
+          "output": "clock.epoch_s"
+        },
+        {
+          "key": "weather/event",
+          "type": "string",
+          "units": null,
+          "output": "event"
+        }
+      ],
+      "subscriptions": [
+        {
+          "key": "cellar/clock.sim_hours",
+          "type": "double",
+          "units": "h"
+        },
+        {
+          "key": "cellar/fv101-side.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv101-side.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv101-cone.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv101-cone.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv101.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv101.gravity_plato",
+          "type": "double",
+          "units": "degP"
+        },
+        {
+          "key": "cellar/fv101.spund_sp_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv101.spund_open",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv102-side.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv102-side.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv102-cone.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv102-cone.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv102.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv102.gravity_plato",
+          "type": "double",
+          "units": "degP"
+        },
+        {
+          "key": "cellar/fv102.spund_sp_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv102.spund_open",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv103-side.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv103-side.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv103-cone.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv103-cone.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv103.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv103.gravity_plato",
+          "type": "double",
+          "units": "degP"
+        },
+        {
+          "key": "cellar/fv103.spund_sp_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv103.spund_open",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv104-side.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv104-side.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv104-cone.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/fv104-cone.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv104.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv104.gravity_plato",
+          "type": "double",
+          "units": "degP"
+        },
+        {
+          "key": "cellar/fv104.spund_sp_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/fv104.spund_open",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt201.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/bbt201.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/bbt201.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/bbt201.co2_vol",
+          "type": "double",
+          "units": "vol"
+        },
+        {
+          "key": "cellar/bbt201.co2_slpm",
+          "type": "double",
+          "units": "L/min"
+        },
+        {
+          "key": "cellar/bbt201.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt201.outlet_valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt201.co2_valve_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/bbt202.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/bbt202.pressure_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "cellar/bbt202.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/bbt202.co2_vol",
+          "type": "double",
+          "units": "vol"
+        },
+        {
+          "key": "cellar/bbt202.co2_slpm",
+          "type": "double",
+          "units": "L/min"
+        },
+        {
+          "key": "cellar/bbt202.valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt202.outlet_valve",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt202.co2_valve_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/gasrelay.co2_ok",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv101-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv102-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv103-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/fv104-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt201-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/bbt202-psv.lifted",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "cellar/co2.vent_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv101.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/fv101.spund_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv101.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv101.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv102.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/fv102.spund_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv102.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv102.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv103.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/fv103.spund_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv103.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv103.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv104.level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "cellar/fv104.spund_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv104.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/fv104.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/bbt201.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/bbt201.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/bbt202.psv_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "cellar/bbt202.leak_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "brewhouse/batch.completed",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "brewhouse/batch.active",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "brewhouse/load.mcc1.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/cip.supply_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "utilities/cip.return_cond_ms",
+          "type": "double",
+          "units": "mS/cm"
+        },
+        {
+          "key": "utilities/cip.return_gpm",
+          "type": "double",
+          "units": "gal/min"
+        },
+        {
+          "key": "utilities/cip.caustic_level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "utilities/cip.acid_level_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "utilities/cip.return_flow",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.supply_pump",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.return_pump",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.caustic_dose",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.acid_dose",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.steam_valve_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "utilities/glycol.supply_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "utilities/wastewater.inhibit_events",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.verified",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "utilities/cip.unverified",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "utilities/load.boiler.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.chiller.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.air.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.ro.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "packaging/bottles.total",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "packaging/kegs.total",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "packaging/ttb.bbl",
+          "type": "double",
+          "units": "bbl"
+        },
+        {
+          "key": "packaging/fill.mean_floz",
+          "type": "double",
+          "units": "fl oz"
+        },
+        {
+          "key": "packaging/fill.under_mav",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "packaging/load.line.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "packaging/load.kegwasher.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/relay-main.p_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/relay-main.q_kvar",
+          "type": "double",
+          "units": "kvar"
+        },
+        {
+          "key": "power/relay-main.v_ll",
+          "type": "double",
+          "units": "V"
+        },
+        {
+          "key": "power/relay-main.i_a",
+          "type": "double",
+          "units": "A"
+        },
+        {
+          "key": "power/relay-main.freq_hz",
+          "type": "double",
+          "units": "Hz"
+        },
+        {
+          "key": "power/relay-main.demand_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/relay-main.breaker_closed",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/relay-main.tripped",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/relay-main.close",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.boiler_closed",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.pkg_closed",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.rtu_closed",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.boiler_close",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.pkg_close",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/msb.rtu_close",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/pv-inverter.p_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/pv-inverter.limit_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/pv-inverter.connected",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/pv-inverter.enable",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/pv-inverter.site_limit_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/pv-inverter.utility_limit_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/bess-pcs.p_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/bess-pcs.soc_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/bess-pcs.connected",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bess-pcs.fault",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bess-pcs.enable",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bess-pcs.p_sp_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/bess-pcs.utility_p_sp_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/bess-pcs.cell_temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "power/bess-pcs.offgas_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "power/gen-ats.gen_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/gen-ats.ep1_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/gen-ats.fuel_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "power/gen-ats.gen_running",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/gen-ats.on_emergency",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/gen-ats.utility_ok",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/gen-ats.gen_start",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/gen-ats.clock_min",
+          "type": "double",
+          "units": "min"
+        },
+        {
+          "key": "power/gen-ats.clock_day",
+          "type": "double",
+          "units": "d"
+        },
+        {
+          "key": "power/gen-ats.clock_month",
+          "type": "double",
+          "units": "mo"
+        },
+        {
+          "key": "power/grid.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/demand.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/tariff.cost_usd",
+          "type": "double",
+          "units": "USD"
+        },
+        {
+          "key": "power/energy.kwh",
+          "type": "double",
+          "units": "kWh"
+        },
+        {
+          "key": "power/demand.peak_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "power/tariff.onpeak",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/tariff.rate_usd_kwh",
+          "type": "double",
+          "units": "USD/kWh"
+        },
+        {
+          "key": "power/genset.hours_year",
+          "type": "double",
+          "units": "h"
+        },
+        {
+          "key": "power/genset.test_hours_year",
+          "type": "double",
+          "units": "h"
+        },
+        {
+          "key": "power/bus.boiler.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.ep1.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.msb.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.mcc1.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.pkg.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.rtu.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.lp1.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_1_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_2_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_3_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_4_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.mua_discharge_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "building/bas-vent.exhaust_pct",
+          "type": "double",
+          "units": "%"
+        },
+        {
+          "key": "building/bas-vent.purge_fan_1_status",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.purge_fan_2_status",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_tier_1",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_tier_2",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_tier_3",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.purge_fan_1",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.purge_fan_2",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.mua_enable",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_5_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_6_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_7_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_area_tier_1",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.co2_shutoff_ok",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.horn_strobe",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/bas-vent.area_exhaust",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "building/cellar.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "building/cellar.co2_ppm",
+          "type": "double",
+          "units": "ppm"
+        },
+        {
+          "key": "building/vent.co2_relay_ok",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "building/load.rtu.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.coldroom.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.fans.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.lighting.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.otracks.kw",
+          "type": "double",
+          "units": "kW"
+        }
+      ],
+      "input_defaults": {},
+      "ambient_psia": 12.1,
+      "sim": {
+        "epw": "/opt/cherrymountain/weather/USA_CO_Golden-NREL.724666_TMY3.epw",
+        "station_elevation_m": 1829,
+        "site_elevation_m": 1585
+      }
+    },
+    "brewhouse": {
+      "host": "sim-process",
+      "period_s": 1.0,
+      "endpoint": "brewhouse/updates",
+      "accepted_updates": [
+        "mill.run",
+        "mill.auger_run",
+        "mill.speed_sp_hz",
+        "clt.fill_valve",
+        "hlt.fill_valve",
+        "hlt.steam_valve_pct",
+        "mlt.strike_valve",
+        "mlt.rake_run",
+        "mlt.steam_valve_pct",
+        "mlt.runoff_valve_pct",
+        "mlt.sparge_valve_pct",
+        "mlt.rake_speed_pct",
+        "kettle.whirlpool_valve",
+        "kettle.hop_doser",
+        "kettle.steam_valve_pct",
+        "knockout.pump_run",
+        "knockout.to_fv_valve",
+        "knockout.pump_speed_pct",
+        "knockout.glycol_valve_pct",
+        "knockout.o2_sp_slpm",
+        "panel.accepted"
+      ],
+      "publications": [
+        {
+          "key": "brewhouse/mill.silo_level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.MILL.LT01.PV",
+          "unit": "MILL",
+          "device": "mill",
+          "device_type": "mill",
+          "zone": null,
+          "point": "silo_level_pct"
+        },
+        {
+          "key": "brewhouse/mill.speed_hz",
+          "type": "double",
+          "units": "Hz",
+          "tag": "BH.MILL.SI01.PV",
+          "unit": "MILL",
+          "device": "mill",
+          "device_type": "mill",
+          "zone": null,
+          "point": "speed_hz"
+        },
+        {
+          "key": "brewhouse/mill.running",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.MILL.YS01.PV",
+          "unit": "MILL",
+          "device": "mill",
+          "device_type": "mill",
+          "zone": null,
+          "point": "running"
+        },
+        {
+          "key": "brewhouse/mill.run",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.MILL.HS01.CMD",
+          "unit": "MILL",
+          "device": "mill",
+          "device_type": "mill",
+          "zone": null,
+          "point": "run"
+        },
+        {
+          "key": "brewhouse/mill.auger_run",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.MILL.HS02.CMD",
+          "unit": "MILL",
+          "device": "mill",
+          "device_type": "mill",
+          "zone": null,
+          "point": "auger_run"
+        },
+        {
+          "key": "brewhouse/mill.speed_sp_hz",
+          "type": "double",
+          "units": "Hz",
+          "tag": "BH.MILL.SC01.SP",
+          "unit": "MILL",
+          "device": "mill",
+          "device_type": "mill",
+          "zone": null,
+          "point": "speed_sp_hz"
+        },
+        {
+          "key": "brewhouse/clt.level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.CLT.LT01.PV",
+          "unit": "CLT",
+          "device": "clt",
+          "device_type": "liquor-tank",
+          "zone": null,
+          "point": "level_pct"
+        },
+        {
+          "key": "brewhouse/clt.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "BH.CLT.TT01.PV",
+          "unit": "CLT",
+          "device": "clt",
+          "device_type": "liquor-tank",
+          "zone": null,
+          "point": "temp_f"
+        },
+        {
+          "key": "brewhouse/clt.high_level",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.CLT.LSH01.PV",
+          "unit": "CLT",
+          "device": "clt",
+          "device_type": "liquor-tank",
+          "zone": null,
+          "point": "high_level"
+        },
+        {
+          "key": "brewhouse/clt.fill_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.CLT.XV01.CMD",
+          "unit": "CLT",
+          "device": "clt",
+          "device_type": "liquor-tank",
+          "zone": null,
+          "point": "fill_valve"
+        },
+        {
+          "key": "brewhouse/hlt.level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.HLT.LT01.PV",
+          "unit": "HLT",
+          "device": "hlt",
+          "device_type": "hot-liquor-tank",
+          "zone": null,
+          "point": "level_pct"
+        },
+        {
+          "key": "brewhouse/hlt.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "BH.HLT.TT01.PV",
+          "unit": "HLT",
+          "device": "hlt",
+          "device_type": "hot-liquor-tank",
+          "zone": null,
+          "point": "temp_f"
+        },
+        {
+          "key": "brewhouse/hlt.low_level",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.HLT.LSL01.PV",
+          "unit": "HLT",
+          "device": "hlt",
+          "device_type": "hot-liquor-tank",
+          "zone": null,
+          "point": "low_level"
+        },
+        {
+          "key": "brewhouse/hlt.fill_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.HLT.XV01.CMD",
+          "unit": "HLT",
+          "device": "hlt",
+          "device_type": "hot-liquor-tank",
+          "zone": null,
+          "point": "fill_valve"
+        },
+        {
+          "key": "brewhouse/hlt.steam_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.HLT.TV01.OUT",
+          "unit": "HLT",
+          "device": "hlt",
+          "device_type": "hot-liquor-tank",
+          "zone": null,
+          "point": "steam_valve_pct"
+        },
+        {
+          "key": "brewhouse/mlt.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "BH.MLT.TT01.PV",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "temp_f"
+        },
+        {
+          "key": "brewhouse/mlt.level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.MLT.LT01.PV",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "level_pct"
+        },
+        {
+          "key": "brewhouse/mlt.bed_dp_psi",
+          "type": "double",
+          "units": "psi",
+          "tag": "BH.MLT.PDT01.PV",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "bed_dp_psi"
+        },
+        {
+          "key": "brewhouse/mlt.runoff_gpm",
+          "type": "double",
+          "units": "gal/min",
+          "tag": "BH.MLT.FT01.PV",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "runoff_gpm"
+        },
+        {
+          "key": "brewhouse/mlt.sparge_gpm",
+          "type": "double",
+          "units": "gal/min",
+          "tag": "BH.MLT.FT02.PV",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "sparge_gpm"
+        },
+        {
+          "key": "brewhouse/mlt.rake_height_in",
+          "type": "double",
+          "units": "in",
+          "tag": "BH.MLT.ZT01.PV",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "rake_height_in"
+        },
+        {
+          "key": "brewhouse/mlt.rake_running",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.MLT.YS01.PV",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "rake_running"
+        },
+        {
+          "key": "brewhouse/mlt.strike_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.MLT.XV01.CMD",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "strike_valve"
+        },
+        {
+          "key": "brewhouse/mlt.rake_run",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.MLT.HS01.CMD",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "rake_run"
+        },
+        {
+          "key": "brewhouse/mlt.steam_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.MLT.TV01.OUT",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "steam_valve_pct"
+        },
+        {
+          "key": "brewhouse/mlt.runoff_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.MLT.FV01.OUT",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "runoff_valve_pct"
+        },
+        {
+          "key": "brewhouse/mlt.sparge_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.MLT.FV02.OUT",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "sparge_valve_pct"
+        },
+        {
+          "key": "brewhouse/mlt.rake_speed_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.MLT.SC01.OUT",
+          "unit": "MLT",
+          "device": "mlt",
+          "device_type": "mash-tun",
+          "zone": null,
+          "point": "rake_speed_pct"
+        },
+        {
+          "key": "brewhouse/kettle.temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "BH.KTL.TT01.PV",
+          "unit": "KTL",
+          "device": "kettle",
+          "device_type": "kettle",
+          "zone": null,
+          "point": "temp_f"
+        },
+        {
+          "key": "brewhouse/kettle.level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.KTL.LT01.PV",
+          "unit": "KTL",
+          "device": "kettle",
+          "device_type": "kettle",
+          "zone": null,
+          "point": "level_pct"
+        },
+        {
+          "key": "brewhouse/kettle.ambient_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "BH.KTL.PT01.PV",
+          "unit": "KTL",
+          "device": "kettle",
+          "device_type": "kettle",
+          "zone": null,
+          "point": "ambient_psia"
+        },
+        {
+          "key": "brewhouse/kettle.high_level",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.KTL.LSH01.PV",
+          "unit": "KTL",
+          "device": "kettle",
+          "device_type": "kettle",
+          "zone": null,
+          "point": "high_level"
+        },
+        {
+          "key": "brewhouse/kettle.whirlpool_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.KTL.XV01.CMD",
+          "unit": "KTL",
+          "device": "kettle",
+          "device_type": "kettle",
+          "zone": null,
+          "point": "whirlpool_valve"
+        },
+        {
+          "key": "brewhouse/kettle.hop_doser",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.KTL.XV02.CMD",
+          "unit": "KTL",
+          "device": "kettle",
+          "device_type": "kettle",
+          "zone": null,
+          "point": "hop_doser"
+        },
+        {
+          "key": "brewhouse/kettle.steam_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.KTL.TV01.OUT",
+          "unit": "KTL",
+          "device": "kettle",
+          "device_type": "kettle",
+          "zone": null,
+          "point": "steam_valve_pct"
+        },
+        {
+          "key": "brewhouse/knockout.wort_gpm",
+          "type": "double",
+          "units": "gal/min",
+          "tag": "BH.KO.FT01.PV",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "wort_gpm"
+        },
+        {
+          "key": "brewhouse/knockout.stage1_out_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "BH.KO.TT01.PV",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "stage1_out_f"
+        },
+        {
+          "key": "brewhouse/knockout.wort_out_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "BH.KO.TT02.PV",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "wort_out_f"
+        },
+        {
+          "key": "brewhouse/knockout.o2_slpm",
+          "type": "double",
+          "units": "L/min",
+          "tag": "BH.KO.FT02.PV",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "o2_slpm"
+        },
+        {
+          "key": "brewhouse/knockout.do_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "BH.KO.AT01.PV",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "do_ppm"
+        },
+        {
+          "key": "brewhouse/knockout.pump_running",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.KO.YS01.PV",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "pump_running"
+        },
+        {
+          "key": "brewhouse/knockout.pump_run",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.KO.HS01.CMD",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "pump_run"
+        },
+        {
+          "key": "brewhouse/knockout.to_fv_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "BH.KO.XV01.CMD",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "to_fv_valve"
+        },
+        {
+          "key": "brewhouse/knockout.pump_speed_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.KO.SC01.OUT",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "pump_speed_pct"
+        },
+        {
+          "key": "brewhouse/knockout.glycol_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "BH.KO.TV01.OUT",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "glycol_valve_pct"
+        },
+        {
+          "key": "brewhouse/knockout.o2_sp_slpm",
+          "type": "double",
+          "units": "L/min",
+          "tag": "BH.KO.FC01.SP",
+          "unit": "KO",
+          "device": "knockout",
+          "device_type": "knockout",
+          "zone": null,
+          "point": "o2_sp_slpm"
+        },
+        {
+          "key": "brewhouse/panel.requests",
+          "type": "double",
+          "units": null,
+          "tag": "BH.BATCH.XI02.REQUESTS",
+          "unit": "BATCH",
+          "device": "panel",
+          "device_type": "batch-panel",
+          "zone": null,
+          "point": "requests"
+        },
+        {
+          "key": "brewhouse/panel.accepted",
+          "type": "double",
+          "units": null,
+          "tag": "BH.BATCH.XI03.ACCEPTED",
+          "unit": "BATCH",
+          "device": "panel",
+          "device_type": "batch-panel",
+          "zone": null,
+          "point": "accepted"
+        },
+        {
+          "key": "brewhouse/steam.demand_kw",
+          "type": "double",
+          "units": "kW",
+          "output": "steam.demand_kw"
+        },
+        {
+          "key": "brewhouse/glycol.load_kw",
+          "type": "double",
+          "units": "kW",
+          "output": "glycol.load_kw"
+        },
+        {
+          "key": "brewhouse/drain.gpm",
+          "type": "double",
+          "units": "gal/min",
+          "output": "drain.gpm"
+        },
+        {
+          "key": "brewhouse/hood.heat_kw",
+          "type": "double",
+          "units": "kW",
+          "output": "hood.heat_kw"
+        },
+        {
+          "key": "brewhouse/knockout.gpm",
+          "type": "double",
+          "units": "gal/min",
+          "output": "knockout.gpm"
+        },
+        {
+          "key": "brewhouse/batch.phase",
+          "type": "double",
+          "units": null,
+          "output": "batch.phase"
+        },
+        {
+          "key": "brewhouse/batch.completed",
+          "type": "double",
+          "units": null,
+          "output": "batch.completed"
+        },
+        {
+          "key": "brewhouse/batch.active",
+          "type": "double",
+          "units": null,
+          "output": "batch.active"
+        },
+        {
+          "key": "brewhouse/load.mcc1.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.mcc1.kw"
+        }
+      ],
+      "subscriptions": [
+        {
+          "key": "weather/pressure.kpa",
+          "type": "double",
+          "units": "kPa"
+        },
+        {
+          "key": "weather/groundwater.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "weather/ambient.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "utilities/steam.psig",
+          "type": "double",
+          "units": "psig"
+        },
+        {
+          "key": "utilities/glycol.supply_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "power/bus.mcc1.energized",
+          "type": "boolean",
+          "units": null
+        }
+      ],
+      "input_defaults": {},
+      "ambient_psia": 12.1,
+      "sim": {
+        "recipe": "fire-of-the-phenix",
+        "auto_start": "05:00"
+      }
+    },
+    "utilities": {
+      "host": "sim-process",
+      "period_s": 1.0,
+      "endpoint": "utilities/updates",
+      "accepted_updates": [
+        "chiller.enable",
+        "chiller.supply_sp_f",
+        "glycol.pump_run",
+        "glycol.pump_speed_pct",
+        "boiler.enable",
+        "boiler.pressure_sp_psig",
+        "aircomp.enable",
+        "co2.main_valve",
+        "ro.run",
+        "wwn.caustic_pump",
+        "wwn.acid_pump",
+        "wwn.discharge_valve",
+        "cip.supply_pump",
+        "cip.return_pump",
+        "cip.caustic_dose",
+        "cip.acid_dose",
+        "cip.steam_valve_pct"
+      ],
+      "publications": [
+        {
+          "key": "utilities/chiller.supply_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "UTL.CHL.TT01.PV",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "supply_f"
+        },
+        {
+          "key": "utilities/chiller.return_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "UTL.CHL.TT02.PV",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "return_f"
+        },
+        {
+          "key": "utilities/chiller.power_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "UTL.CHL.JT01.PV",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "power_kw"
+        },
+        {
+          "key": "utilities/chiller.stage1_on",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CHL.YS01.PV",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "stage1_on"
+        },
+        {
+          "key": "utilities/chiller.stage2_on",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CHL.YS02.PV",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "stage2_on"
+        },
+        {
+          "key": "utilities/chiller.fault",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CHL.YA01.PV",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "fault"
+        },
+        {
+          "key": "utilities/chiller.enable",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CHL.HS01.CMD",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "enable"
+        },
+        {
+          "key": "utilities/chiller.supply_sp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "UTL.CHL.TIC01.SP",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "supply_sp_f"
+        },
+        {
+          "key": "utilities/chiller.refrig_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "UTL.CHL.AT01.PV",
+          "unit": "CHL",
+          "device": "chiller",
+          "device_type": "chiller",
+          "zone": null,
+          "point": "refrig_ppm"
+        },
+        {
+          "key": "utilities/glycol.reservoir_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "UTL.GLY.LT01.PV",
+          "unit": "GLY",
+          "device": "glycol",
+          "device_type": "glycol-loop",
+          "zone": null,
+          "point": "reservoir_pct"
+        },
+        {
+          "key": "utilities/glycol.pump_psig",
+          "type": "double",
+          "units": "psig",
+          "tag": "UTL.GLY.PT01.PV",
+          "unit": "GLY",
+          "device": "glycol",
+          "device_type": "glycol-loop",
+          "zone": null,
+          "point": "pump_psig"
+        },
+        {
+          "key": "utilities/glycol.pump_running",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.GLY.YS01.PV",
+          "unit": "GLY",
+          "device": "glycol",
+          "device_type": "glycol-loop",
+          "zone": null,
+          "point": "pump_running"
+        },
+        {
+          "key": "utilities/glycol.pump_run",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.GLY.HS01.CMD",
+          "unit": "GLY",
+          "device": "glycol",
+          "device_type": "glycol-loop",
+          "zone": null,
+          "point": "pump_run"
+        },
+        {
+          "key": "utilities/glycol.pump_speed_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "UTL.GLY.SC01.OUT",
+          "unit": "GLY",
+          "device": "glycol",
+          "device_type": "glycol-loop",
+          "zone": null,
+          "point": "pump_speed_pct"
+        },
+        {
+          "key": "utilities/boiler.pressure_psig",
+          "type": "double",
+          "units": "psig",
+          "tag": "UTL.STM.PT01.PV",
+          "unit": "STM",
+          "device": "boiler",
+          "device_type": "boiler",
+          "zone": null,
+          "point": "pressure_psig"
+        },
+        {
+          "key": "utilities/boiler.power_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "UTL.STM.JT01.PV",
+          "unit": "STM",
+          "device": "boiler",
+          "device_type": "boiler",
+          "zone": null,
+          "point": "power_kw"
+        },
+        {
+          "key": "utilities/boiler.running",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.STM.YS01.PV",
+          "unit": "STM",
+          "device": "boiler",
+          "device_type": "boiler",
+          "zone": null,
+          "point": "running"
+        },
+        {
+          "key": "utilities/boiler.low_water",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.STM.LSL01.PV",
+          "unit": "STM",
+          "device": "boiler",
+          "device_type": "boiler",
+          "zone": null,
+          "point": "low_water"
+        },
+        {
+          "key": "utilities/boiler.enable",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.STM.HS01.CMD",
+          "unit": "STM",
+          "device": "boiler",
+          "device_type": "boiler",
+          "zone": null,
+          "point": "enable"
+        },
+        {
+          "key": "utilities/boiler.pressure_sp_psig",
+          "type": "double",
+          "units": "psig",
+          "tag": "UTL.STM.PC01.SP",
+          "unit": "STM",
+          "device": "boiler",
+          "device_type": "boiler",
+          "zone": null,
+          "point": "pressure_sp_psig"
+        },
+        {
+          "key": "utilities/aircomp.header_psig",
+          "type": "double",
+          "units": "psig",
+          "tag": "UTL.AIR.PT01.PV",
+          "unit": "AIR",
+          "device": "aircomp",
+          "device_type": "air-compressor",
+          "zone": null,
+          "point": "header_psig"
+        },
+        {
+          "key": "utilities/aircomp.running",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.AIR.YS01.PV",
+          "unit": "AIR",
+          "device": "aircomp",
+          "device_type": "air-compressor",
+          "zone": null,
+          "point": "running"
+        },
+        {
+          "key": "utilities/aircomp.dryer_fault",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.AIR.YA01.PV",
+          "unit": "AIR",
+          "device": "aircomp",
+          "device_type": "air-compressor",
+          "zone": null,
+          "point": "dryer_fault"
+        },
+        {
+          "key": "utilities/aircomp.enable",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.AIR.HS01.CMD",
+          "unit": "AIR",
+          "device": "aircomp",
+          "device_type": "air-compressor",
+          "zone": null,
+          "point": "enable"
+        },
+        {
+          "key": "utilities/co2.tank_psig",
+          "type": "double",
+          "units": "psig",
+          "tag": "UTL.CO2.PT01.PV",
+          "unit": "CO2",
+          "device": "co2",
+          "device_type": "co2-supply",
+          "zone": null,
+          "point": "tank_psig"
+        },
+        {
+          "key": "utilities/co2.tank_level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "UTL.CO2.LT01.PV",
+          "unit": "CO2",
+          "device": "co2",
+          "device_type": "co2-supply",
+          "zone": null,
+          "point": "tank_level_pct"
+        },
+        {
+          "key": "utilities/co2.supply_psig",
+          "type": "double",
+          "units": "psig",
+          "tag": "UTL.CO2.PT02.PV",
+          "unit": "CO2",
+          "device": "co2",
+          "device_type": "co2-supply",
+          "zone": null,
+          "point": "supply_psig"
+        },
+        {
+          "key": "utilities/co2.main_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CO2.XV01.CMD",
+          "unit": "CO2",
+          "device": "co2",
+          "device_type": "co2-supply",
+          "zone": null,
+          "point": "main_valve"
+        },
+        {
+          "key": "utilities/co2.valve_open",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CO2.ZSO01.PV",
+          "unit": "CO2",
+          "device": "co2",
+          "device_type": "co2-supply",
+          "zone": null,
+          "point": "valve_open"
+        },
+        {
+          "key": "utilities/co2relay.co2_ok",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CO2.XS01.CO2_OK",
+          "unit": "CO2",
+          "device": "co2relay",
+          "device_type": "gas-relay",
+          "zone": null,
+          "point": "co2_ok"
+        },
+        {
+          "key": "utilities/ro.permeate_gpm",
+          "type": "double",
+          "units": "gal/min",
+          "tag": "UTL.RO.FT01.PV",
+          "unit": "RO",
+          "device": "ro",
+          "device_type": "ro-skid",
+          "zone": null,
+          "point": "permeate_gpm"
+        },
+        {
+          "key": "utilities/ro.conductivity_us",
+          "type": "double",
+          "units": "uS/cm",
+          "tag": "UTL.RO.AT01.PV",
+          "unit": "RO",
+          "device": "ro",
+          "device_type": "ro-skid",
+          "zone": null,
+          "point": "conductivity_us"
+        },
+        {
+          "key": "utilities/ro.running",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.RO.YS01.PV",
+          "unit": "RO",
+          "device": "ro",
+          "device_type": "ro-skid",
+          "zone": null,
+          "point": "running"
+        },
+        {
+          "key": "utilities/ro.run",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.RO.HS01.CMD",
+          "unit": "RO",
+          "device": "ro",
+          "device_type": "ro-skid",
+          "zone": null,
+          "point": "run"
+        },
+        {
+          "key": "utilities/wwn.level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "UTL.WWN.LT01.PV",
+          "unit": "WWN",
+          "device": "wwn",
+          "device_type": "wastewater",
+          "zone": null,
+          "point": "level_pct"
+        },
+        {
+          "key": "utilities/wwn.ph",
+          "type": "double",
+          "units": "pH",
+          "tag": "UTL.WWN.AT01.PV",
+          "unit": "WWN",
+          "device": "wwn",
+          "device_type": "wastewater",
+          "zone": null,
+          "point": "ph"
+        },
+        {
+          "key": "utilities/wwn.high_level",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.WWN.LSH01.PV",
+          "unit": "WWN",
+          "device": "wwn",
+          "device_type": "wastewater",
+          "zone": null,
+          "point": "high_level"
+        },
+        {
+          "key": "utilities/wwn.caustic_pump",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.WWN.XV01.CMD",
+          "unit": "WWN",
+          "device": "wwn",
+          "device_type": "wastewater",
+          "zone": null,
+          "point": "caustic_pump"
+        },
+        {
+          "key": "utilities/wwn.acid_pump",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.WWN.XV02.CMD",
+          "unit": "WWN",
+          "device": "wwn",
+          "device_type": "wastewater",
+          "zone": null,
+          "point": "acid_pump"
+        },
+        {
+          "key": "utilities/wwn.discharge_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.WWN.XV03.CMD",
+          "unit": "WWN",
+          "device": "wwn",
+          "device_type": "wastewater",
+          "zone": null,
+          "point": "discharge_valve"
+        },
+        {
+          "key": "utilities/cip.supply_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "UTL.CIP.TT01.PV",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "supply_f"
+        },
+        {
+          "key": "utilities/cip.return_cond_ms",
+          "type": "double",
+          "units": "mS/cm",
+          "tag": "UTL.CIP.AT01.PV",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "return_cond_ms"
+        },
+        {
+          "key": "utilities/cip.return_gpm",
+          "type": "double",
+          "units": "gal/min",
+          "tag": "UTL.CIP.FT01.PV",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "return_gpm"
+        },
+        {
+          "key": "utilities/cip.caustic_level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "UTL.CIP.LT01.PV",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "caustic_level_pct"
+        },
+        {
+          "key": "utilities/cip.acid_level_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "UTL.CIP.LT02.PV",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "acid_level_pct"
+        },
+        {
+          "key": "utilities/cip.return_flow",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.FS01.PV",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "return_flow"
+        },
+        {
+          "key": "utilities/cip.supply_pump",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.HS01.CMD",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "supply_pump"
+        },
+        {
+          "key": "utilities/cip.return_pump",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.HS02.CMD",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "return_pump"
+        },
+        {
+          "key": "utilities/cip.caustic_dose",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.XV01.CMD",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "caustic_dose"
+        },
+        {
+          "key": "utilities/cip.acid_dose",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.XV02.CMD",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "acid_dose"
+        },
+        {
+          "key": "utilities/cip.steam_valve_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "UTL.CIP.TV01.OUT",
+          "unit": "CIP",
+          "device": "cip",
+          "device_type": "cip-skid",
+          "zone": null,
+          "point": "steam_valve_pct"
+        },
+        {
+          "key": "utilities/cippanel.route_bh",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.ZS01.PV",
+          "unit": "CIP",
+          "device": "cippanel",
+          "device_type": "cip-panel",
+          "zone": null,
+          "point": "route_bh"
+        },
+        {
+          "key": "utilities/cippanel.route_fv101",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.ZS02.PV",
+          "unit": "CIP",
+          "device": "cippanel",
+          "device_type": "cip-panel",
+          "zone": null,
+          "point": "route_fv101"
+        },
+        {
+          "key": "utilities/cippanel.route_fv102",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.ZS03.PV",
+          "unit": "CIP",
+          "device": "cippanel",
+          "device_type": "cip-panel",
+          "zone": null,
+          "point": "route_fv102"
+        },
+        {
+          "key": "utilities/cippanel.route_fv103",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.ZS04.PV",
+          "unit": "CIP",
+          "device": "cippanel",
+          "device_type": "cip-panel",
+          "zone": null,
+          "point": "route_fv103"
+        },
+        {
+          "key": "utilities/cippanel.route_fv104",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.ZS05.PV",
+          "unit": "CIP",
+          "device": "cippanel",
+          "device_type": "cip-panel",
+          "zone": null,
+          "point": "route_fv104"
+        },
+        {
+          "key": "utilities/cippanel.route_bbt201",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.ZS06.PV",
+          "unit": "CIP",
+          "device": "cippanel",
+          "device_type": "cip-panel",
+          "zone": null,
+          "point": "route_bbt201"
+        },
+        {
+          "key": "utilities/cippanel.route_bbt202",
+          "type": "boolean",
+          "units": null,
+          "tag": "UTL.CIP.ZS07.PV",
+          "unit": "CIP",
+          "device": "cippanel",
+          "device_type": "cip-panel",
+          "zone": null,
+          "point": "route_bbt202"
+        },
+        {
+          "key": "utilities/glycol.supply_f",
+          "type": "double",
+          "units": "degF",
+          "output": "glycol.supply_f"
+        },
+        {
+          "key": "utilities/steam.psig",
+          "type": "double",
+          "units": "psig",
+          "output": "steam.psig"
+        },
+        {
+          "key": "utilities/air.psig",
+          "type": "double",
+          "units": "psig",
+          "output": "air.psig"
+        },
+        {
+          "key": "utilities/wastewater.inhibit_events",
+          "type": "double",
+          "units": null,
+          "output": "wastewater.inhibit_events"
+        },
+        {
+          "key": "utilities/cip.verified",
+          "type": "double",
+          "units": null,
+          "output": "cip.verified"
+        },
+        {
+          "key": "utilities/cip.unverified",
+          "type": "double",
+          "units": null,
+          "output": "cip.unverified"
+        },
+        {
+          "key": "utilities/load.boiler.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.boiler.kw"
+        },
+        {
+          "key": "utilities/load.chiller.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.chiller.kw"
+        },
+        {
+          "key": "utilities/load.air.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.air.kw"
+        },
+        {
+          "key": "utilities/load.ro.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.ro.kw"
+        }
+      ],
+      "subscriptions": [
+        {
+          "key": "weather/ambient.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "weather/groundwater.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "cellar/glycol.load_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "cellar/co2.draw_slpm",
+          "type": "double",
+          "units": "L/min"
+        },
+        {
+          "key": "brewhouse/glycol.load_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "brewhouse/steam.demand_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "brewhouse/drain.gpm",
+          "type": "double",
+          "units": "gal/min"
+        },
+        {
+          "key": "packaging/co2.draw_slpm",
+          "type": "double",
+          "units": "L/min"
+        },
+        {
+          "key": "packaging/air.demand_scfm",
+          "type": "double",
+          "units": "scfm"
+        },
+        {
+          "key": "building/vent.co2_shutoff_ok",
+          "type": "double",
+          "units": null
+        },
+        {
+          "key": "power/bus.boiler.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.ep1.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.msb.energized",
+          "type": "boolean",
+          "units": null
+        }
+      ],
+      "input_defaults": {},
+      "ambient_psia": 12.1,
+      "sim": {
+        "seed": 11
+      }
+    },
+    "packaging": {
+      "host": "sim-process",
+      "period_s": 1.0,
+      "endpoint": "packaging/updates",
+      "accepted_updates": [
+        "filler.product_valve",
+        "filler.cmd",
+        "filler.mode_cmd",
+        "filler.speed_sp_bpm",
+        "rinser.cmd",
+        "rinser.mode_cmd",
+        "rinser.speed_sp_bpm",
+        "coder.cmd",
+        "coder.mode_cmd",
+        "coder.speed_sp_bpm",
+        "labeler.cmd",
+        "labeler.mode_cmd",
+        "labeler.speed_sp_bpm",
+        "packer.cmd",
+        "packer.mode_cmd",
+        "packer.speed_sp_bpm",
+        "kegger.heater",
+        "kegger.cmd",
+        "kegger.mode_cmd",
+        "conv1.run",
+        "conv2.run",
+        "conv3.run",
+        "conv4.run"
+      ],
+      "publications": [
+        {
+          "key": "packaging/filler.state",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.FILLER.PACKML.STATE",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "state"
+        },
+        {
+          "key": "packaging/filler.mode",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.FILLER.PACKML.MODE",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "mode"
+        },
+        {
+          "key": "packaging/filler.speed_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.FILLER.PACKML.SPEED",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "speed_bpm"
+        },
+        {
+          "key": "packaging/filler.processed",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.FILLER.PACKML.PROCESSED",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "processed"
+        },
+        {
+          "key": "packaging/filler.defective",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.FILLER.PACKML.DEFECTIVE",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "defective"
+        },
+        {
+          "key": "packaging/filler.stop_reason",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.FILLER.PACKML.STOP_REASON",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "stop_reason"
+        },
+        {
+          "key": "packaging/filler.bowl_psia",
+          "type": "double",
+          "units": "psia",
+          "tag": "PKG.FILLER.PT01.PV",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "bowl_psia"
+        },
+        {
+          "key": "packaging/filler.jammed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.FILLER.YA01.PV",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "jammed"
+        },
+        {
+          "key": "packaging/filler.low_bowl",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.FILLER.LSL01.PV",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "low_bowl"
+        },
+        {
+          "key": "packaging/filler.product_valve",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.FILLER.XV01.CMD",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "product_valve"
+        },
+        {
+          "key": "packaging/filler.cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.FILLER.PACKML.CMD",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "cmd"
+        },
+        {
+          "key": "packaging/filler.mode_cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.FILLER.PACKML.MODE_CMD",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "mode_cmd"
+        },
+        {
+          "key": "packaging/filler.speed_sp_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.FILLER.PACKML.SPEED_SP",
+          "unit": "FILLER",
+          "device": "filler",
+          "device_type": "filler",
+          "zone": null,
+          "point": "speed_sp_bpm"
+        },
+        {
+          "key": "packaging/rinser.state",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.RINSER.PACKML.STATE",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "state"
+        },
+        {
+          "key": "packaging/rinser.mode",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.RINSER.PACKML.MODE",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "mode"
+        },
+        {
+          "key": "packaging/rinser.speed_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.RINSER.PACKML.SPEED",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "speed_bpm"
+        },
+        {
+          "key": "packaging/rinser.processed",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.RINSER.PACKML.PROCESSED",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "processed"
+        },
+        {
+          "key": "packaging/rinser.defective",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.RINSER.PACKML.DEFECTIVE",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "defective"
+        },
+        {
+          "key": "packaging/rinser.stop_reason",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.RINSER.PACKML.STOP_REASON",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "stop_reason"
+        },
+        {
+          "key": "packaging/rinser.jammed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.RINSER.YA01.PV",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "jammed"
+        },
+        {
+          "key": "packaging/rinser.cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.RINSER.PACKML.CMD",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "cmd"
+        },
+        {
+          "key": "packaging/rinser.mode_cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.RINSER.PACKML.MODE_CMD",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "mode_cmd"
+        },
+        {
+          "key": "packaging/rinser.speed_sp_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.RINSER.PACKML.SPEED_SP",
+          "unit": "RINSER",
+          "device": "rinser",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "speed_sp_bpm"
+        },
+        {
+          "key": "packaging/coder.state",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.CODER.PACKML.STATE",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "state"
+        },
+        {
+          "key": "packaging/coder.mode",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.CODER.PACKML.MODE",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "mode"
+        },
+        {
+          "key": "packaging/coder.speed_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.CODER.PACKML.SPEED",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "speed_bpm"
+        },
+        {
+          "key": "packaging/coder.processed",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.CODER.PACKML.PROCESSED",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "processed"
+        },
+        {
+          "key": "packaging/coder.defective",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.CODER.PACKML.DEFECTIVE",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "defective"
+        },
+        {
+          "key": "packaging/coder.stop_reason",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.CODER.PACKML.STOP_REASON",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "stop_reason"
+        },
+        {
+          "key": "packaging/coder.jammed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CODER.YA01.PV",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "jammed"
+        },
+        {
+          "key": "packaging/coder.cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.CODER.PACKML.CMD",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "cmd"
+        },
+        {
+          "key": "packaging/coder.mode_cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.CODER.PACKML.MODE_CMD",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "mode_cmd"
+        },
+        {
+          "key": "packaging/coder.speed_sp_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.CODER.PACKML.SPEED_SP",
+          "unit": "CODER",
+          "device": "coder",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "speed_sp_bpm"
+        },
+        {
+          "key": "packaging/labeler.state",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.LABELER.PACKML.STATE",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "state"
+        },
+        {
+          "key": "packaging/labeler.mode",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.LABELER.PACKML.MODE",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "mode"
+        },
+        {
+          "key": "packaging/labeler.speed_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.LABELER.PACKML.SPEED",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "speed_bpm"
+        },
+        {
+          "key": "packaging/labeler.processed",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.LABELER.PACKML.PROCESSED",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "processed"
+        },
+        {
+          "key": "packaging/labeler.defective",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.LABELER.PACKML.DEFECTIVE",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "defective"
+        },
+        {
+          "key": "packaging/labeler.stop_reason",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.LABELER.PACKML.STOP_REASON",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "stop_reason"
+        },
+        {
+          "key": "packaging/labeler.jammed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.LABELER.YA01.PV",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "jammed"
+        },
+        {
+          "key": "packaging/labeler.cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.LABELER.PACKML.CMD",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "cmd"
+        },
+        {
+          "key": "packaging/labeler.mode_cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.LABELER.PACKML.MODE_CMD",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "mode_cmd"
+        },
+        {
+          "key": "packaging/labeler.speed_sp_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.LABELER.PACKML.SPEED_SP",
+          "unit": "LABELER",
+          "device": "labeler",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "speed_sp_bpm"
+        },
+        {
+          "key": "packaging/packer.state",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PACKER.PACKML.STATE",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "state"
+        },
+        {
+          "key": "packaging/packer.mode",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PACKER.PACKML.MODE",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "mode"
+        },
+        {
+          "key": "packaging/packer.speed_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.PACKER.PACKML.SPEED",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "speed_bpm"
+        },
+        {
+          "key": "packaging/packer.processed",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PACKER.PACKML.PROCESSED",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "processed"
+        },
+        {
+          "key": "packaging/packer.defective",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PACKER.PACKML.DEFECTIVE",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "defective"
+        },
+        {
+          "key": "packaging/packer.stop_reason",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PACKER.PACKML.STOP_REASON",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "stop_reason"
+        },
+        {
+          "key": "packaging/packer.jammed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.PACKER.YA01.PV",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "jammed"
+        },
+        {
+          "key": "packaging/packer.cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PACKER.PACKML.CMD",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "cmd"
+        },
+        {
+          "key": "packaging/packer.mode_cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PACKER.PACKML.MODE_CMD",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "mode_cmd"
+        },
+        {
+          "key": "packaging/packer.speed_sp_bpm",
+          "type": "double",
+          "units": "bottles/min",
+          "tag": "PKG.PACKER.PACKML.SPEED_SP",
+          "unit": "PACKER",
+          "device": "packer",
+          "device_type": "packml-machine",
+          "zone": null,
+          "point": "speed_sp_bpm"
+        },
+        {
+          "key": "packaging/kegger.state",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.KEG.PACKML.STATE",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "state"
+        },
+        {
+          "key": "packaging/kegger.mode",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.KEG.PACKML.MODE",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "mode"
+        },
+        {
+          "key": "packaging/kegger.processed",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.KEG.PACKML.PROCESSED",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "processed"
+        },
+        {
+          "key": "packaging/kegger.defective",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.KEG.PACKML.DEFECTIVE",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "defective"
+        },
+        {
+          "key": "packaging/kegger.stop_reason",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.KEG.PACKML.STOP_REASON",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "stop_reason"
+        },
+        {
+          "key": "packaging/kegger.wash_temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "PKG.KEG.TT01.PV",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "wash_temp_f"
+        },
+        {
+          "key": "packaging/kegger.jammed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.KEG.YA01.PV",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "jammed"
+        },
+        {
+          "key": "packaging/kegger.heater",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.KEG.HS01.CMD",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "heater"
+        },
+        {
+          "key": "packaging/kegger.cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.KEG.PACKML.CMD",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "cmd"
+        },
+        {
+          "key": "packaging/kegger.mode_cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.KEG.PACKML.MODE_CMD",
+          "unit": "KEG",
+          "device": "kegger",
+          "device_type": "keg-machine",
+          "zone": null,
+          "point": "mode_cmd"
+        },
+        {
+          "key": "packaging/conv1.accum_eye",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.LS01.PV",
+          "unit": "CONV",
+          "device": "conv1",
+          "device_type": "conveyor",
+          "zone": "depal-rinser",
+          "point": "accum_eye"
+        },
+        {
+          "key": "packaging/conv1.jam_eye",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.YA01.PV",
+          "unit": "CONV",
+          "device": "conv1",
+          "device_type": "conveyor",
+          "zone": "depal-rinser",
+          "point": "jam_eye"
+        },
+        {
+          "key": "packaging/conv1.run",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.HS01.CMD",
+          "unit": "CONV",
+          "device": "conv1",
+          "device_type": "conveyor",
+          "zone": "depal-rinser",
+          "point": "run"
+        },
+        {
+          "key": "packaging/conv2.accum_eye",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.LS02.PV",
+          "unit": "CONV",
+          "device": "conv2",
+          "device_type": "conveyor",
+          "zone": "filler-coder",
+          "point": "accum_eye"
+        },
+        {
+          "key": "packaging/conv2.jam_eye",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.YA02.PV",
+          "unit": "CONV",
+          "device": "conv2",
+          "device_type": "conveyor",
+          "zone": "filler-coder",
+          "point": "jam_eye"
+        },
+        {
+          "key": "packaging/conv2.run",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.HS02.CMD",
+          "unit": "CONV",
+          "device": "conv2",
+          "device_type": "conveyor",
+          "zone": "filler-coder",
+          "point": "run"
+        },
+        {
+          "key": "packaging/conv3.accum_eye",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.LS03.PV",
+          "unit": "CONV",
+          "device": "conv3",
+          "device_type": "conveyor",
+          "zone": "labeler-packer",
+          "point": "accum_eye"
+        },
+        {
+          "key": "packaging/conv3.jam_eye",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.YA03.PV",
+          "unit": "CONV",
+          "device": "conv3",
+          "device_type": "conveyor",
+          "zone": "labeler-packer",
+          "point": "jam_eye"
+        },
+        {
+          "key": "packaging/conv3.run",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.HS03.CMD",
+          "unit": "CONV",
+          "device": "conv3",
+          "device_type": "conveyor",
+          "zone": "labeler-packer",
+          "point": "run"
+        },
+        {
+          "key": "packaging/conv4.accum_eye",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.LS04.PV",
+          "unit": "CONV",
+          "device": "conv4",
+          "device_type": "conveyor",
+          "zone": "packer-pallet",
+          "point": "accum_eye"
+        },
+        {
+          "key": "packaging/conv4.jam_eye",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.YA04.PV",
+          "unit": "CONV",
+          "device": "conv4",
+          "device_type": "conveyor",
+          "zone": "packer-pallet",
+          "point": "jam_eye"
+        },
+        {
+          "key": "packaging/conv4.run",
+          "type": "boolean",
+          "units": null,
+          "tag": "PKG.CONV.HS04.CMD",
+          "unit": "CONV",
+          "device": "conv4",
+          "device_type": "conveyor",
+          "zone": "packer-pallet",
+          "point": "run"
+        },
+        {
+          "key": "packaging/linepanel.cmd",
+          "type": "double",
+          "units": null,
+          "tag": "PKG.PANEL.HS01.PV",
+          "unit": "PANEL",
+          "device": "linepanel",
+          "device_type": "line-panel",
+          "zone": null,
+          "point": "cmd"
+        },
+        {
+          "key": "packaging/co2.draw_slpm",
+          "type": "double",
+          "units": "L/min",
+          "output": "co2.draw_slpm"
+        },
+        {
+          "key": "packaging/air.demand_scfm",
+          "type": "double",
+          "units": "scfm",
+          "output": "air.demand_scfm"
+        },
+        {
+          "key": "packaging/beer.draw_gpm",
+          "type": "double",
+          "units": "gal/min",
+          "output": "beer.draw_gpm"
+        },
+        {
+          "key": "packaging/line.state",
+          "type": "double",
+          "units": null,
+          "output": "line.state"
+        },
+        {
+          "key": "packaging/line.bottles",
+          "type": "double",
+          "units": null,
+          "output": "line.bottles"
+        },
+        {
+          "key": "packaging/bottles.total",
+          "type": "double",
+          "units": null,
+          "output": "bottles.total"
+        },
+        {
+          "key": "packaging/kegs.total",
+          "type": "double",
+          "units": null,
+          "output": "kegs.total"
+        },
+        {
+          "key": "packaging/ttb.bbl",
+          "type": "double",
+          "units": "bbl",
+          "output": "ttb.bbl"
+        },
+        {
+          "key": "packaging/fill.mean_floz",
+          "type": "double",
+          "units": "fl oz",
+          "output": "fill.mean_floz"
+        },
+        {
+          "key": "packaging/fill.under_mav",
+          "type": "double",
+          "units": null,
+          "output": "fill.under_mav"
+        },
+        {
+          "key": "packaging/load.line.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.line.kw"
+        },
+        {
+          "key": "packaging/load.kegwasher.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.kegwasher.kw"
+        }
+      ],
+      "subscriptions": [
+        {
+          "key": "cellar/beer.supply_psia",
+          "type": "double",
+          "units": "psia"
+        },
+        {
+          "key": "utilities/air.psig",
+          "type": "double",
+          "units": "psig"
+        },
+        {
+          "key": "utilities/co2.supply_psig",
+          "type": "double",
+          "units": "psig"
+        },
+        {
+          "key": "power/bus.pkg.energized",
+          "type": "boolean",
+          "units": null
+        }
+      ],
+      "input_defaults": {},
+      "ambient_psia": 12.1,
+      "sim": {
+        "seed": 7,
+        "shift_start": "06:00",
+        "shift_end": "14:30"
+      }
+    },
+    "power": {
+      "host": "sim-power",
+      "period_s": 1.0,
+      "endpoint": "power/updates",
+      "accepted_updates": [
+        "relay-main.close",
+        "msb.boiler_close",
+        "msb.pkg_close",
+        "msb.rtu_close",
+        "pv-inverter.enable",
+        "pv-inverter.site_limit_pct",
+        "pv-inverter.utility_limit_pct",
+        "bess-pcs.enable",
+        "bess-pcs.p_sp_kw",
+        "bess-pcs.utility_p_sp_kw",
+        "gen-ats.gen_start"
+      ],
+      "publications": [
+        {
+          "key": "power/relay-main.p_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "PWR.MAIN.JT01.PV",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "p_kw"
+        },
+        {
+          "key": "power/relay-main.q_kvar",
+          "type": "double",
+          "units": "kvar",
+          "tag": "PWR.MAIN.JT02.PV",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "q_kvar"
+        },
+        {
+          "key": "power/relay-main.v_ll",
+          "type": "double",
+          "units": "V",
+          "tag": "PWR.MAIN.ET01.PV",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "v_ll"
+        },
+        {
+          "key": "power/relay-main.i_a",
+          "type": "double",
+          "units": "A",
+          "tag": "PWR.MAIN.IT01.PV",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "i_a"
+        },
+        {
+          "key": "power/relay-main.freq_hz",
+          "type": "double",
+          "units": "Hz",
+          "tag": "PWR.MAIN.ST01.PV",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "freq_hz"
+        },
+        {
+          "key": "power/relay-main.demand_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "PWR.MAIN.JQ01.PV",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "demand_kw"
+        },
+        {
+          "key": "power/relay-main.breaker_closed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.ZS01.PV",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "breaker_closed"
+        },
+        {
+          "key": "power/relay-main.tripped",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.YA01.PV",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "tripped"
+        },
+        {
+          "key": "power/relay-main.close",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.HS01.CMD",
+          "unit": "MAIN",
+          "device": "relay-main",
+          "device_type": "relay-meter",
+          "zone": null,
+          "point": "close"
+        },
+        {
+          "key": "power/msb.boiler_closed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.ZS02.PV",
+          "unit": "MAIN",
+          "device": "msb",
+          "device_type": "msb-feeders",
+          "zone": null,
+          "point": "boiler_closed"
+        },
+        {
+          "key": "power/msb.pkg_closed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.ZS03.PV",
+          "unit": "MAIN",
+          "device": "msb",
+          "device_type": "msb-feeders",
+          "zone": null,
+          "point": "pkg_closed"
+        },
+        {
+          "key": "power/msb.rtu_closed",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.ZS04.PV",
+          "unit": "MAIN",
+          "device": "msb",
+          "device_type": "msb-feeders",
+          "zone": null,
+          "point": "rtu_closed"
+        },
+        {
+          "key": "power/msb.boiler_close",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.HS02.CMD",
+          "unit": "MAIN",
+          "device": "msb",
+          "device_type": "msb-feeders",
+          "zone": null,
+          "point": "boiler_close"
+        },
+        {
+          "key": "power/msb.pkg_close",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.HS03.CMD",
+          "unit": "MAIN",
+          "device": "msb",
+          "device_type": "msb-feeders",
+          "zone": null,
+          "point": "pkg_close"
+        },
+        {
+          "key": "power/msb.rtu_close",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.MAIN.HS04.CMD",
+          "unit": "MAIN",
+          "device": "msb",
+          "device_type": "msb-feeders",
+          "zone": null,
+          "point": "rtu_close"
+        },
+        {
+          "key": "power/pv-inverter.p_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "PWR.PV.JT01.PV",
+          "unit": "PV",
+          "device": "pv-inverter",
+          "device_type": "pv-inverter",
+          "zone": null,
+          "point": "p_kw"
+        },
+        {
+          "key": "power/pv-inverter.limit_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "PWR.PV.JY01.PV",
+          "unit": "PV",
+          "device": "pv-inverter",
+          "device_type": "pv-inverter",
+          "zone": null,
+          "point": "limit_pct"
+        },
+        {
+          "key": "power/pv-inverter.connected",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.PV.ZS01.PV",
+          "unit": "PV",
+          "device": "pv-inverter",
+          "device_type": "pv-inverter",
+          "zone": null,
+          "point": "connected"
+        },
+        {
+          "key": "power/pv-inverter.enable",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.PV.HS01.CMD",
+          "unit": "PV",
+          "device": "pv-inverter",
+          "device_type": "pv-inverter",
+          "zone": null,
+          "point": "enable"
+        },
+        {
+          "key": "power/pv-inverter.site_limit_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "PWR.PV.JC01.SP",
+          "unit": "PV",
+          "device": "pv-inverter",
+          "device_type": "pv-inverter",
+          "zone": null,
+          "point": "site_limit_pct"
+        },
+        {
+          "key": "power/pv-inverter.utility_limit_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "PWR.PV.JC02.SP",
+          "unit": "PV",
+          "device": "pv-inverter",
+          "device_type": "pv-inverter",
+          "zone": null,
+          "point": "utility_limit_pct"
+        },
+        {
+          "key": "power/bess-pcs.p_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "PWR.BESS.JT01.PV",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "p_kw"
+        },
+        {
+          "key": "power/bess-pcs.soc_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "PWR.BESS.EY01.PV",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "soc_pct"
+        },
+        {
+          "key": "power/bess-pcs.connected",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.BESS.ZS01.PV",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "connected"
+        },
+        {
+          "key": "power/bess-pcs.fault",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.BESS.YA01.PV",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "fault"
+        },
+        {
+          "key": "power/bess-pcs.enable",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.BESS.HS01.CMD",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "enable"
+        },
+        {
+          "key": "power/bess-pcs.p_sp_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "PWR.BESS.JC01.SP",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "p_sp_kw"
+        },
+        {
+          "key": "power/bess-pcs.utility_p_sp_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "PWR.BESS.JC02.SP",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "utility_p_sp_kw"
+        },
+        {
+          "key": "power/bess-pcs.cell_temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "PWR.BESS.TT01.PV",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "cell_temp_f"
+        },
+        {
+          "key": "power/bess-pcs.offgas_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "PWR.BESS.AT01.PV",
+          "unit": "BESS",
+          "device": "bess-pcs",
+          "device_type": "bess-pcs",
+          "zone": null,
+          "point": "offgas_ppm"
+        },
+        {
+          "key": "power/gen-ats.gen_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "PWR.GEN.JT01.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "gen_kw"
+        },
+        {
+          "key": "power/gen-ats.ep1_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "PWR.GEN.JT02.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "ep1_kw"
+        },
+        {
+          "key": "power/gen-ats.fuel_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "PWR.GEN.LT01.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "fuel_pct"
+        },
+        {
+          "key": "power/gen-ats.gen_running",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.GEN.YS01.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "gen_running"
+        },
+        {
+          "key": "power/gen-ats.on_emergency",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.GEN.ZS01.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "on_emergency"
+        },
+        {
+          "key": "power/gen-ats.utility_ok",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.GEN.ZS02.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "utility_ok"
+        },
+        {
+          "key": "power/gen-ats.gen_start",
+          "type": "boolean",
+          "units": null,
+          "tag": "PWR.GEN.HS01.CMD",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "gen_start"
+        },
+        {
+          "key": "power/gen-ats.clock_min",
+          "type": "double",
+          "units": "min",
+          "tag": "PWR.GEN.KI01.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "clock_min"
+        },
+        {
+          "key": "power/gen-ats.clock_day",
+          "type": "double",
+          "units": "d",
+          "tag": "PWR.GEN.KI02.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "clock_day"
+        },
+        {
+          "key": "power/gen-ats.clock_month",
+          "type": "double",
+          "units": "mo",
+          "tag": "PWR.GEN.KI03.PV",
+          "unit": "GEN",
+          "device": "gen-ats",
+          "device_type": "gen-ats",
+          "zone": null,
+          "point": "clock_month"
+        },
+        {
+          "key": "power/grid.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "grid.kw"
+        },
+        {
+          "key": "power/demand.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "demand.kw"
+        },
+        {
+          "key": "power/tariff.cost_usd",
+          "type": "double",
+          "units": "USD",
+          "output": "tariff.cost_usd"
+        },
+        {
+          "key": "power/energy.kwh",
+          "type": "double",
+          "units": "kWh",
+          "output": "energy.kwh"
+        },
+        {
+          "key": "power/demand.peak_kw",
+          "type": "double",
+          "units": "kW",
+          "output": "demand.peak_kw"
+        },
+        {
+          "key": "power/tariff.onpeak",
+          "type": "boolean",
+          "units": null,
+          "output": "tariff.onpeak"
+        },
+        {
+          "key": "power/tariff.rate_usd_kwh",
+          "type": "double",
+          "units": "USD/kWh",
+          "output": "tariff.rate_usd_kwh"
+        },
+        {
+          "key": "power/genset.hours_year",
+          "type": "double",
+          "units": "h",
+          "output": "genset.hours_year"
+        },
+        {
+          "key": "power/genset.test_hours_year",
+          "type": "double",
+          "units": "h",
+          "output": "genset.test_hours_year"
+        },
+        {
+          "key": "power/bus.boiler.energized",
+          "type": "boolean",
+          "units": null,
+          "output": "bus.boiler.energized"
+        },
+        {
+          "key": "power/bus.ep1.energized",
+          "type": "boolean",
+          "units": null,
+          "output": "bus.ep1.energized"
+        },
+        {
+          "key": "power/bus.msb.energized",
+          "type": "boolean",
+          "units": null,
+          "output": "bus.msb.energized"
+        },
+        {
+          "key": "power/bus.mcc1.energized",
+          "type": "boolean",
+          "units": null,
+          "output": "bus.mcc1.energized"
+        },
+        {
+          "key": "power/bus.pkg.energized",
+          "type": "boolean",
+          "units": null,
+          "output": "bus.pkg.energized"
+        },
+        {
+          "key": "power/bus.rtu.energized",
+          "type": "boolean",
+          "units": null,
+          "output": "bus.rtu.energized"
+        },
+        {
+          "key": "power/bus.lp1.energized",
+          "type": "boolean",
+          "units": null,
+          "output": "bus.lp1.energized"
+        }
+      ],
+      "subscriptions": [
+        {
+          "key": "weather/ghi.wm2",
+          "type": "double",
+          "units": "W/m2"
+        },
+        {
+          "key": "weather/ambient.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "weather/clock.epoch_s",
+          "type": "double",
+          "units": "s"
+        },
+        {
+          "key": "utilities/load.boiler.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.chiller.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.air.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "utilities/load.ro.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "brewhouse/load.mcc1.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "packaging/load.line.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "packaging/load.kegwasher.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.rtu.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.coldroom.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.fans.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.lighting.kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "building/load.otracks.kw",
+          "type": "double",
+          "units": "kW"
+        }
+      ],
+      "input_defaults": {},
+      "ambient_psia": 12.1,
+      "loads": [
+        {
+          "name": "boiler",
+          "bus": "boiler",
+          "rated_kw": 200.0,
+          "key": "utilities/load.boiler.kw",
+          "desc": "Electric steam boiler"
+        },
+        {
+          "name": "chiller",
+          "bus": "ep1",
+          "rated_kw": 22.0,
+          "key": "utilities/load.chiller.kw",
+          "desc": "Glycol chiller (2 stages) and glycol pumps"
+        },
+        {
+          "name": "air",
+          "bus": "msb",
+          "rated_kw": 12.0,
+          "key": "utilities/load.air.kw",
+          "desc": "Air compressor (15 hp)"
+        },
+        {
+          "name": "ro",
+          "bus": "msb",
+          "rated_kw": 4.0,
+          "key": "utilities/load.ro.kw",
+          "desc": "RO skid, dosing, misc."
+        },
+        {
+          "name": "mcc1",
+          "bus": "mcc1",
+          "rated_kw": 15.0,
+          "key": "brewhouse/load.mcc1.kw",
+          "desc": "Mill, rake, wort and CIP pumps"
+        },
+        {
+          "name": "line",
+          "bus": "pkg",
+          "rated_kw": 25.0,
+          "key": "packaging/load.line.kw",
+          "desc": "Bottling line and conveyors"
+        },
+        {
+          "name": "kegwasher",
+          "bus": "pkg",
+          "rated_kw": 12.0,
+          "key": "packaging/load.kegwasher.kw",
+          "desc": "Keg washer heater"
+        },
+        {
+          "name": "rtu",
+          "bus": "rtu",
+          "rated_kw": 12.0,
+          "key": "building/load.rtu.kw",
+          "desc": "Taproom RTU-1 (DX cooling, fan)"
+        },
+        {
+          "name": "coldroom",
+          "bus": "ep1",
+          "rated_kw": 3.0,
+          "key": "building/load.coldroom.kw",
+          "desc": "Cold room condensing unit"
+        },
+        {
+          "name": "fans",
+          "bus": "ep1",
+          "rated_kw": 6.0,
+          "key": "building/load.fans.kw",
+          "desc": "Kettle exhaust, makeup air, and cellar purge fans"
+        },
+        {
+          "name": "lighting",
+          "bus": "lp1",
+          "rated_kw": 16.0,
+          "key": "building/load.lighting.kw",
+          "desc": "Lighting, plugs, office IT"
+        },
+        {
+          "name": "otracks",
+          "bus": "ep1",
+          "rated_kw": 2.0,
+          "key": "building/load.otracks.kw",
+          "desc": "OT and network racks"
+        }
+      ],
+      "sim": {
+        "demand_target_kw": 250,
+        "bess_min_soc_pct": 50
+      }
+    },
+    "building": {
+      "host": "sim-building",
+      "period_s": 10.0,
+      "endpoint": "building/updates",
+      "accepted_updates": [
+        "bas-rtu-taproom.econ_pct",
+        "bas-rtu-taproom.cool_sp_f",
+        "bas-rtu-taproom.heat_sp_f",
+        "bas-rtu-taproom.supply_fan",
+        "bas-rtu-taproom.cool_stage1",
+        "bas-rtu-taproom.cool_stage2",
+        "bas-rtu-taproom.heat",
+        "bas-rtu-taproom.occ_mode",
+        "bas-coldroom.setpoint_f",
+        "bas-coldroom.compressor",
+        "bas-coldroom.defrost",
+        "bas-vent.exhaust_pct",
+        "bas-vent.purge_fan_1",
+        "bas-vent.purge_fan_2",
+        "bas-vent.mua_enable",
+        "bas-vent.horn_strobe",
+        "bas-vent.area_exhaust"
+      ],
+      "publications": [
+        {
+          "key": "building/bas-rtu-taproom.zone_temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "FAC.RTU1.TT01.PV",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "zone_temp_f"
+        },
+        {
+          "key": "building/bas-rtu-taproom.zone_co2_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.RTU1.AT01.PV",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "zone_co2_ppm"
+        },
+        {
+          "key": "building/bas-rtu-taproom.supply_air_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "FAC.RTU1.TT02.PV",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "supply_air_f"
+        },
+        {
+          "key": "building/bas-rtu-taproom.power_kw",
+          "type": "double",
+          "units": "kW",
+          "tag": "FAC.RTU1.JT01.PV",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "power_kw"
+        },
+        {
+          "key": "building/bas-rtu-taproom.econ_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "FAC.RTU1.DMP01.CMD",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "econ_pct"
+        },
+        {
+          "key": "building/bas-rtu-taproom.cool_sp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "FAC.RTU1.TIC01.SP",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "cool_sp_f"
+        },
+        {
+          "key": "building/bas-rtu-taproom.heat_sp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "FAC.RTU1.TIC02.SP",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "heat_sp_f"
+        },
+        {
+          "key": "building/bas-rtu-taproom.supply_fan",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.RTU1.FAN01.CMD",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "supply_fan"
+        },
+        {
+          "key": "building/bas-rtu-taproom.cool_stage1",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.RTU1.CMP01.CMD",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "cool_stage1"
+        },
+        {
+          "key": "building/bas-rtu-taproom.cool_stage2",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.RTU1.CMP02.CMD",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "cool_stage2"
+        },
+        {
+          "key": "building/bas-rtu-taproom.heat",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.RTU1.HTR01.CMD",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "heat"
+        },
+        {
+          "key": "building/bas-rtu-taproom.occ_mode",
+          "type": "double",
+          "units": null,
+          "tag": "FAC.RTU1.HS01.MODE",
+          "unit": "RTU1",
+          "device": "bas-rtu-taproom",
+          "device_type": "rtu-1",
+          "zone": null,
+          "point": "occ_mode"
+        },
+        {
+          "key": "building/bas-coldroom.room_temp_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "FAC.CR.TT01.PV",
+          "unit": "CR",
+          "device": "bas-coldroom",
+          "device_type": "coldroom",
+          "zone": null,
+          "point": "room_temp_f"
+        },
+        {
+          "key": "building/bas-coldroom.door_open_min",
+          "type": "double",
+          "units": "min",
+          "tag": "FAC.CR.KQ01.PV",
+          "unit": "CR",
+          "device": "bas-coldroom",
+          "device_type": "coldroom",
+          "zone": null,
+          "point": "door_open_min"
+        },
+        {
+          "key": "building/bas-coldroom.setpoint_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "FAC.CR.TT01.SP",
+          "unit": "CR",
+          "device": "bas-coldroom",
+          "device_type": "coldroom",
+          "zone": null,
+          "point": "setpoint_f"
+        },
+        {
+          "key": "building/bas-coldroom.door",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.CR.ZS01.PV",
+          "unit": "CR",
+          "device": "bas-coldroom",
+          "device_type": "coldroom",
+          "zone": null,
+          "point": "door"
+        },
+        {
+          "key": "building/bas-coldroom.compressor",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.CR.CMP01.CMD",
+          "unit": "CR",
+          "device": "bas-coldroom",
+          "device_type": "coldroom",
+          "zone": null,
+          "point": "compressor"
+        },
+        {
+          "key": "building/bas-coldroom.defrost",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.CR.DEF01.CMD",
+          "unit": "CR",
+          "device": "bas-coldroom",
+          "device_type": "coldroom",
+          "zone": null,
+          "point": "defrost"
+        },
+        {
+          "key": "building/bas-vent.co2_1_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT01.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_1_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_2_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT02.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_2_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_3_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT03.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_3_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_4_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT04.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_4_ppm"
+        },
+        {
+          "key": "building/bas-vent.mua_discharge_f",
+          "type": "double",
+          "units": "degF",
+          "tag": "FAC.VENT.TT01.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "mua_discharge_f"
+        },
+        {
+          "key": "building/bas-vent.exhaust_pct",
+          "type": "double",
+          "units": "%",
+          "tag": "FAC.VENT.SC01.CMD",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "exhaust_pct"
+        },
+        {
+          "key": "building/bas-vent.purge_fan_1_status",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.FAN01.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "purge_fan_1_status"
+        },
+        {
+          "key": "building/bas-vent.purge_fan_2_status",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.FAN02.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "purge_fan_2_status"
+        },
+        {
+          "key": "building/bas-vent.co2_tier_1",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.AY01.TIER1",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_tier_1"
+        },
+        {
+          "key": "building/bas-vent.co2_tier_2",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.AY01.TIER2",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_tier_2"
+        },
+        {
+          "key": "building/bas-vent.co2_tier_3",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.AY01.TIER3",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_tier_3"
+        },
+        {
+          "key": "building/bas-vent.purge_fan_1",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.FAN01.CMD",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "purge_fan_1"
+        },
+        {
+          "key": "building/bas-vent.purge_fan_2",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.FAN02.CMD",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "purge_fan_2"
+        },
+        {
+          "key": "building/bas-vent.mua_enable",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.MUA01.CMD",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "mua_enable"
+        },
+        {
+          "key": "building/bas-vent.co2_5_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT05.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_5_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_6_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT06.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_6_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_7_ppm",
+          "type": "double",
+          "units": "ppm",
+          "tag": "FAC.VENT.AT07.PV",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_7_ppm"
+        },
+        {
+          "key": "building/bas-vent.co2_area_tier_1",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.AY02.TIER1",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_area_tier_1"
+        },
+        {
+          "key": "building/bas-vent.co2_shutoff_ok",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.XS01.SHUTOFF_OK",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "co2_shutoff_ok"
+        },
+        {
+          "key": "building/bas-vent.horn_strobe",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.XA01.CMD",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "horn_strobe"
+        },
+        {
+          "key": "building/bas-vent.area_exhaust",
+          "type": "boolean",
+          "units": null,
+          "tag": "FAC.VENT.FAN03.CMD",
+          "unit": "VENT",
+          "device": "bas-vent",
+          "device_type": "vent",
+          "zone": null,
+          "point": "area_exhaust"
+        },
+        {
+          "key": "building/cellar.temp_f",
+          "type": "double",
+          "units": "degF",
+          "output": "cellar.temp_f"
+        },
+        {
+          "key": "building/cellar.co2_ppm",
+          "type": "double",
+          "units": "ppm",
+          "output": "cellar.co2_ppm"
+        },
+        {
+          "key": "building/vent.co2_relay_ok",
+          "type": "double",
+          "units": null,
+          "output": "vent.co2_relay_ok"
+        },
+        {
+          "key": "building/vent.co2_shutoff_ok",
+          "type": "double",
+          "units": null,
+          "output": "vent.co2_shutoff_ok"
+        },
+        {
+          "key": "building/load.rtu.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.rtu.kw"
+        },
+        {
+          "key": "building/load.coldroom.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.coldroom.kw"
+        },
+        {
+          "key": "building/load.fans.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.fans.kw"
+        },
+        {
+          "key": "building/load.lighting.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.lighting.kw"
+        },
+        {
+          "key": "building/load.otracks.kw",
+          "type": "double",
+          "units": "kW",
+          "output": "load.otracks.kw"
+        }
+      ],
+      "subscriptions": [
+        {
+          "key": "weather/ambient.temp_f",
+          "type": "double",
+          "units": "degF"
+        },
+        {
+          "key": "weather/ghi.wm2",
+          "type": "double",
+          "units": "W/m2"
+        },
+        {
+          "key": "weather/clock.epoch_s",
+          "type": "double",
+          "units": "s"
+        },
+        {
+          "key": "cellar/co2.vent_gps",
+          "type": "double",
+          "units": "g/s"
+        },
+        {
+          "key": "brewhouse/hood.heat_kw",
+          "type": "double",
+          "units": "kW"
+        },
+        {
+          "key": "packaging/co2.draw_slpm",
+          "type": "double",
+          "units": "L/min"
+        },
+        {
+          "key": "utilities/co2.supply_psig",
+          "type": "double",
+          "units": "psig"
+        },
+        {
+          "key": "power/bus.rtu.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.ep1.energized",
+          "type": "boolean",
+          "units": null
+        },
+        {
+          "key": "power/bus.lp1.energized",
+          "type": "boolean",
+          "units": null
+        }
+      ],
+      "input_defaults": {},
+      "ambient_psia": 12.1,
+      "sim": {
+        "seed": 13
+      }
+    }
+  },
+  "io_federates": {
+    "rio-brewhouse": {
+      "federate_name": "rio-brewhouse",
+      "subscriptions": [
+        "brewhouse/mill.silo_level_pct",
+        "brewhouse/mill.speed_hz",
+        "brewhouse/mill.running",
+        "brewhouse/mill.run",
+        "brewhouse/mill.auger_run",
+        "brewhouse/mill.speed_sp_hz",
+        "brewhouse/clt.level_pct",
+        "brewhouse/clt.temp_f",
+        "brewhouse/clt.high_level",
+        "brewhouse/clt.fill_valve",
+        "brewhouse/hlt.level_pct",
+        "brewhouse/hlt.temp_f",
+        "brewhouse/hlt.low_level",
+        "brewhouse/hlt.fill_valve",
+        "brewhouse/hlt.steam_valve_pct",
+        "brewhouse/mlt.temp_f",
+        "brewhouse/mlt.level_pct",
+        "brewhouse/mlt.bed_dp_psi",
+        "brewhouse/mlt.runoff_gpm",
+        "brewhouse/mlt.sparge_gpm",
+        "brewhouse/mlt.rake_height_in",
+        "brewhouse/mlt.rake_running",
+        "brewhouse/mlt.strike_valve",
+        "brewhouse/mlt.rake_run",
+        "brewhouse/mlt.steam_valve_pct",
+        "brewhouse/mlt.runoff_valve_pct",
+        "brewhouse/mlt.sparge_valve_pct",
+        "brewhouse/mlt.rake_speed_pct",
+        "brewhouse/kettle.temp_f",
+        "brewhouse/kettle.level_pct",
+        "brewhouse/kettle.ambient_psia",
+        "brewhouse/kettle.high_level",
+        "brewhouse/kettle.whirlpool_valve",
+        "brewhouse/kettle.hop_doser",
+        "brewhouse/kettle.steam_valve_pct",
+        "brewhouse/knockout.wort_gpm",
+        "brewhouse/knockout.stage1_out_f",
+        "brewhouse/knockout.wort_out_f",
+        "brewhouse/knockout.o2_slpm",
+        "brewhouse/knockout.do_ppm",
+        "brewhouse/knockout.pump_running",
+        "brewhouse/knockout.pump_run",
+        "brewhouse/knockout.to_fv_valve",
+        "brewhouse/knockout.pump_speed_pct",
+        "brewhouse/knockout.glycol_valve_pct",
+        "brewhouse/knockout.o2_sp_slpm",
+        "brewhouse/panel.requests",
+        "brewhouse/panel.accepted"
+      ],
+      "endpoint": "rio-brewhouse/updates",
+      "sends": [
+        {
+          "tag": "mill.run",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "mill.auger_run",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "mill.speed_sp_hz",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "clt.fill_valve",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "hlt.fill_valve",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "hlt.steam_valve_pct",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "mlt.strike_valve",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "mlt.rake_run",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "mlt.steam_valve_pct",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "mlt.runoff_valve_pct",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "mlt.sparge_valve_pct",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "mlt.rake_speed_pct",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "kettle.whirlpool_valve",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "kettle.hop_doser",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "kettle.steam_valve_pct",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "knockout.pump_run",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "knockout.to_fv_valve",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "knockout.pump_speed_pct",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "knockout.glycol_valve_pct",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "knockout.o2_sp_slpm",
+          "endpoint": "brewhouse/updates"
+        },
+        {
+          "tag": "panel.accepted",
+          "endpoint": "brewhouse/updates"
+        }
+      ]
+    },
+    "rio-cellar": {
+      "federate_name": "rio-cellar",
+      "subscriptions": [
+        "cellar/clock.sim_hours",
+        "cellar/fv101-side.temp_f",
+        "cellar/fv101-side.valve",
+        "cellar/fv101-cone.temp_f",
+        "cellar/fv101-cone.valve",
+        "cellar/fv101.pressure_psia",
+        "cellar/fv101.gravity_plato",
+        "cellar/fv101.spund_sp_psia",
+        "cellar/fv101.spund_open",
+        "cellar/fv102-side.temp_f",
+        "cellar/fv102-side.valve",
+        "cellar/fv102-cone.temp_f",
+        "cellar/fv102-cone.valve",
+        "cellar/fv102.pressure_psia",
+        "cellar/fv102.gravity_plato",
+        "cellar/fv102.spund_sp_psia",
+        "cellar/fv102.spund_open",
+        "cellar/fv103-side.temp_f",
+        "cellar/fv103-side.valve",
+        "cellar/fv103-cone.temp_f",
+        "cellar/fv103-cone.valve",
+        "cellar/fv103.pressure_psia",
+        "cellar/fv103.gravity_plato",
+        "cellar/fv103.spund_sp_psia",
+        "cellar/fv103.spund_open",
+        "cellar/fv104-side.temp_f",
+        "cellar/fv104-side.valve",
+        "cellar/fv104-cone.temp_f",
+        "cellar/fv104-cone.valve",
+        "cellar/fv104.pressure_psia",
+        "cellar/fv104.gravity_plato",
+        "cellar/fv104.spund_sp_psia",
+        "cellar/fv104.spund_open",
+        "cellar/bbt201.temp_f",
+        "cellar/bbt201.pressure_psia",
+        "cellar/bbt201.level_pct",
+        "cellar/bbt201.co2_vol",
+        "cellar/bbt201.co2_slpm",
+        "cellar/bbt201.valve",
+        "cellar/bbt201.outlet_valve",
+        "cellar/bbt201.co2_valve_pct",
+        "cellar/bbt202.temp_f",
+        "cellar/bbt202.pressure_psia",
+        "cellar/bbt202.level_pct",
+        "cellar/bbt202.co2_vol",
+        "cellar/bbt202.co2_slpm",
+        "cellar/bbt202.valve",
+        "cellar/bbt202.outlet_valve",
+        "cellar/bbt202.co2_valve_pct",
+        "cellar/hopdoser.port_closed",
+        "cellar/hopdoser.purge_valve",
+        "cellar/hopdoser.dose_valve",
+        "cellar/transfer.route_ok",
+        "cellar/transfer.pump_running",
+        "cellar/transfer.flow_gpm",
+        "cellar/transfer.pump_run",
+        "cellar/gasrelay.co2_ok",
+        "cellar/fv101-psv.lifted",
+        "cellar/fv102-psv.lifted",
+        "cellar/fv103-psv.lifted",
+        "cellar/fv104-psv.lifted",
+        "cellar/bbt201-psv.lifted",
+        "cellar/bbt202-psv.lifted"
+      ],
+      "endpoint": "rio-cellar/updates",
+      "sends": [
+        {
+          "tag": "fv101-side.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv101-cone.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv101.spund_sp_psia",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv102-side.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv102-cone.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv102.spund_sp_psia",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv103-side.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv103-cone.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv103.spund_sp_psia",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv104-side.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv104-cone.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "fv104.spund_sp_psia",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "bbt201.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "bbt201.outlet_valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "bbt201.co2_valve_pct",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "bbt202.valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "bbt202.outlet_valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "bbt202.co2_valve_pct",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "hopdoser.purge_valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "hopdoser.dose_valve",
+          "endpoint": "cellar/updates"
+        },
+        {
+          "tag": "transfer.pump_run",
+          "endpoint": "cellar/updates"
+        }
+      ]
+    },
+    "rio-packaging": {
+      "federate_name": "rio-packaging",
+      "subscriptions": [
+        "packaging/filler.state",
+        "packaging/filler.mode",
+        "packaging/filler.speed_bpm",
+        "packaging/filler.processed",
+        "packaging/filler.defective",
+        "packaging/filler.stop_reason",
+        "packaging/filler.bowl_psia",
+        "packaging/filler.jammed",
+        "packaging/filler.low_bowl",
+        "packaging/filler.product_valve",
+        "packaging/filler.cmd",
+        "packaging/filler.mode_cmd",
+        "packaging/filler.speed_sp_bpm",
+        "packaging/rinser.state",
+        "packaging/rinser.mode",
+        "packaging/rinser.speed_bpm",
+        "packaging/rinser.processed",
+        "packaging/rinser.defective",
+        "packaging/rinser.stop_reason",
+        "packaging/rinser.jammed",
+        "packaging/rinser.cmd",
+        "packaging/rinser.mode_cmd",
+        "packaging/rinser.speed_sp_bpm",
+        "packaging/coder.state",
+        "packaging/coder.mode",
+        "packaging/coder.speed_bpm",
+        "packaging/coder.processed",
+        "packaging/coder.defective",
+        "packaging/coder.stop_reason",
+        "packaging/coder.jammed",
+        "packaging/coder.cmd",
+        "packaging/coder.mode_cmd",
+        "packaging/coder.speed_sp_bpm",
+        "packaging/labeler.state",
+        "packaging/labeler.mode",
+        "packaging/labeler.speed_bpm",
+        "packaging/labeler.processed",
+        "packaging/labeler.defective",
+        "packaging/labeler.stop_reason",
+        "packaging/labeler.jammed",
+        "packaging/labeler.cmd",
+        "packaging/labeler.mode_cmd",
+        "packaging/labeler.speed_sp_bpm",
+        "packaging/packer.state",
+        "packaging/packer.mode",
+        "packaging/packer.speed_bpm",
+        "packaging/packer.processed",
+        "packaging/packer.defective",
+        "packaging/packer.stop_reason",
+        "packaging/packer.jammed",
+        "packaging/packer.cmd",
+        "packaging/packer.mode_cmd",
+        "packaging/packer.speed_sp_bpm",
+        "packaging/kegger.state",
+        "packaging/kegger.mode",
+        "packaging/kegger.processed",
+        "packaging/kegger.defective",
+        "packaging/kegger.stop_reason",
+        "packaging/kegger.wash_temp_f",
+        "packaging/kegger.jammed",
+        "packaging/kegger.heater",
+        "packaging/kegger.cmd",
+        "packaging/kegger.mode_cmd",
+        "packaging/conv1.accum_eye",
+        "packaging/conv1.jam_eye",
+        "packaging/conv1.run",
+        "packaging/conv2.accum_eye",
+        "packaging/conv2.jam_eye",
+        "packaging/conv2.run",
+        "packaging/conv3.accum_eye",
+        "packaging/conv3.jam_eye",
+        "packaging/conv3.run",
+        "packaging/conv4.accum_eye",
+        "packaging/conv4.jam_eye",
+        "packaging/conv4.run",
+        "packaging/linepanel.cmd"
+      ],
+      "endpoint": "rio-packaging/updates",
+      "sends": [
+        {
+          "tag": "filler.product_valve",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "filler.cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "filler.mode_cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "filler.speed_sp_bpm",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "rinser.cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "rinser.mode_cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "rinser.speed_sp_bpm",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "coder.cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "coder.mode_cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "coder.speed_sp_bpm",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "labeler.cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "labeler.mode_cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "labeler.speed_sp_bpm",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "packer.cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "packer.mode_cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "packer.speed_sp_bpm",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "kegger.heater",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "kegger.cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "kegger.mode_cmd",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "conv1.run",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "conv2.run",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "conv3.run",
+          "endpoint": "packaging/updates"
+        },
+        {
+          "tag": "conv4.run",
+          "endpoint": "packaging/updates"
+        }
+      ]
+    },
+    "rio-utilities": {
+      "federate_name": "rio-utilities",
+      "subscriptions": [
+        "utilities/glycol.reservoir_pct",
+        "utilities/glycol.pump_psig",
+        "utilities/glycol.pump_running",
+        "utilities/glycol.pump_run",
+        "utilities/glycol.pump_speed_pct",
+        "utilities/boiler.pressure_psig",
+        "utilities/boiler.power_kw",
+        "utilities/boiler.running",
+        "utilities/boiler.low_water",
+        "utilities/boiler.enable",
+        "utilities/boiler.pressure_sp_psig",
+        "utilities/aircomp.header_psig",
+        "utilities/aircomp.running",
+        "utilities/aircomp.dryer_fault",
+        "utilities/aircomp.enable",
+        "utilities/co2.tank_psig",
+        "utilities/co2.tank_level_pct",
+        "utilities/co2.supply_psig",
+        "utilities/co2.main_valve",
+        "utilities/co2.valve_open",
+        "utilities/co2relay.co2_ok",
+        "utilities/ro.permeate_gpm",
+        "utilities/ro.conductivity_us",
+        "utilities/ro.running",
+        "utilities/ro.run",
+        "utilities/wwn.level_pct",
+        "utilities/wwn.ph",
+        "utilities/wwn.high_level",
+        "utilities/wwn.caustic_pump",
+        "utilities/wwn.acid_pump",
+        "utilities/wwn.discharge_valve",
+        "utilities/cip.supply_f",
+        "utilities/cip.return_cond_ms",
+        "utilities/cip.return_gpm",
+        "utilities/cip.caustic_level_pct",
+        "utilities/cip.acid_level_pct",
+        "utilities/cip.return_flow",
+        "utilities/cip.supply_pump",
+        "utilities/cip.return_pump",
+        "utilities/cip.caustic_dose",
+        "utilities/cip.acid_dose",
+        "utilities/cip.steam_valve_pct",
+        "utilities/cippanel.route_bh",
+        "utilities/cippanel.route_fv101",
+        "utilities/cippanel.route_fv102",
+        "utilities/cippanel.route_fv103",
+        "utilities/cippanel.route_fv104",
+        "utilities/cippanel.route_bbt201",
+        "utilities/cippanel.route_bbt202"
+      ],
+      "endpoint": "rio-utilities/updates",
+      "sends": [
+        {
+          "tag": "glycol.pump_run",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "glycol.pump_speed_pct",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "boiler.enable",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "boiler.pressure_sp_psig",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "aircomp.enable",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "co2.main_valve",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "ro.run",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "wwn.caustic_pump",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "wwn.acid_pump",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "wwn.discharge_valve",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "cip.supply_pump",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "cip.return_pump",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "cip.caustic_dose",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "cip.acid_dose",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "cip.steam_valve_pct",
+          "endpoint": "utilities/updates"
+        }
+      ]
+    },
+    "glycol-chiller": {
+      "federate_name": "glycol-chiller",
+      "subscriptions": [
+        "utilities/chiller.supply_f",
+        "utilities/chiller.return_f",
+        "utilities/chiller.power_kw",
+        "utilities/chiller.stage1_on",
+        "utilities/chiller.stage2_on",
+        "utilities/chiller.fault",
+        "utilities/chiller.enable",
+        "utilities/chiller.supply_sp_f",
+        "utilities/chiller.refrig_ppm"
+      ],
+      "endpoint": "glycol-chiller/updates",
+      "sends": [
+        {
+          "tag": "chiller.enable",
+          "endpoint": "utilities/updates"
+        },
+        {
+          "tag": "chiller.supply_sp_f",
+          "endpoint": "utilities/updates"
+        }
+      ]
+    },
+    "relay-main": {
+      "federate_name": "relay-main",
+      "subscriptions": [
+        "power/relay-main.p_kw",
+        "power/relay-main.q_kvar",
+        "power/relay-main.v_ll",
+        "power/relay-main.i_a",
+        "power/relay-main.freq_hz",
+        "power/relay-main.demand_kw",
+        "power/relay-main.breaker_closed",
+        "power/relay-main.tripped",
+        "power/relay-main.close",
+        "power/msb.boiler_closed",
+        "power/msb.pkg_closed",
+        "power/msb.rtu_closed",
+        "power/msb.boiler_close",
+        "power/msb.pkg_close",
+        "power/msb.rtu_close"
+      ],
+      "endpoint": "relay-main/updates",
+      "sends": [
+        {
+          "tag": "relay-main.close",
+          "endpoint": "power/updates"
+        },
+        {
+          "tag": "msb.boiler_close",
+          "endpoint": "power/updates"
+        },
+        {
+          "tag": "msb.pkg_close",
+          "endpoint": "power/updates"
+        },
+        {
+          "tag": "msb.rtu_close",
+          "endpoint": "power/updates"
+        }
+      ]
+    },
+    "pv-inverter": {
+      "federate_name": "pv-inverter",
+      "subscriptions": [
+        "power/pv-inverter.p_kw",
+        "power/pv-inverter.limit_pct",
+        "power/pv-inverter.connected",
+        "power/pv-inverter.enable",
+        "power/pv-inverter.site_limit_pct",
+        "power/pv-inverter.utility_limit_pct"
+      ],
+      "endpoint": "pv-inverter/updates",
+      "sends": [
+        {
+          "tag": "pv-inverter.enable",
+          "endpoint": "power/updates"
+        },
+        {
+          "tag": "pv-inverter.site_limit_pct",
+          "endpoint": "power/updates"
+        },
+        {
+          "tag": "pv-inverter.utility_limit_pct",
+          "endpoint": "power/updates"
+        }
+      ]
+    },
+    "bess-pcs": {
+      "federate_name": "bess-pcs",
+      "subscriptions": [
+        "power/bess-pcs.p_kw",
+        "power/bess-pcs.soc_pct",
+        "power/bess-pcs.connected",
+        "power/bess-pcs.fault",
+        "power/bess-pcs.enable",
+        "power/bess-pcs.p_sp_kw",
+        "power/bess-pcs.utility_p_sp_kw",
+        "power/bess-pcs.cell_temp_f",
+        "power/bess-pcs.offgas_ppm"
+      ],
+      "endpoint": "bess-pcs/updates",
+      "sends": [
+        {
+          "tag": "bess-pcs.enable",
+          "endpoint": "power/updates"
+        },
+        {
+          "tag": "bess-pcs.p_sp_kw",
+          "endpoint": "power/updates"
+        },
+        {
+          "tag": "bess-pcs.utility_p_sp_kw",
+          "endpoint": "power/updates"
+        }
+      ]
+    },
+    "gen-ats": {
+      "federate_name": "gen-ats",
+      "subscriptions": [
+        "power/gen-ats.gen_kw",
+        "power/gen-ats.ep1_kw",
+        "power/gen-ats.fuel_pct",
+        "power/gen-ats.gen_running",
+        "power/gen-ats.on_emergency",
+        "power/gen-ats.utility_ok",
+        "power/gen-ats.gen_start",
+        "power/gen-ats.clock_min",
+        "power/gen-ats.clock_day",
+        "power/gen-ats.clock_month"
+      ],
+      "endpoint": "gen-ats/updates",
+      "sends": [
+        {
+          "tag": "gen-ats.gen_start",
+          "endpoint": "power/updates"
+        }
+      ]
+    },
+    "bas-rtu-taproom": {
+      "federate_name": "bas-rtu-taproom",
+      "subscriptions": [
+        "building/bas-rtu-taproom.zone_temp_f",
+        "building/bas-rtu-taproom.zone_co2_ppm",
+        "building/bas-rtu-taproom.supply_air_f",
+        "building/bas-rtu-taproom.power_kw",
+        "building/bas-rtu-taproom.econ_pct",
+        "building/bas-rtu-taproom.cool_sp_f",
+        "building/bas-rtu-taproom.heat_sp_f",
+        "building/bas-rtu-taproom.supply_fan",
+        "building/bas-rtu-taproom.cool_stage1",
+        "building/bas-rtu-taproom.cool_stage2",
+        "building/bas-rtu-taproom.heat",
+        "building/bas-rtu-taproom.occ_mode"
+      ],
+      "endpoint": "bas-rtu-taproom/updates",
+      "sends": [
+        {
+          "tag": "bas-rtu-taproom.econ_pct",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-rtu-taproom.cool_sp_f",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-rtu-taproom.heat_sp_f",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-rtu-taproom.supply_fan",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-rtu-taproom.cool_stage1",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-rtu-taproom.cool_stage2",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-rtu-taproom.heat",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-rtu-taproom.occ_mode",
+          "endpoint": "building/updates"
+        }
+      ]
+    },
+    "bas-coldroom": {
+      "federate_name": "bas-coldroom",
+      "subscriptions": [
+        "building/bas-coldroom.room_temp_f",
+        "building/bas-coldroom.door_open_min",
+        "building/bas-coldroom.setpoint_f",
+        "building/bas-coldroom.door",
+        "building/bas-coldroom.compressor",
+        "building/bas-coldroom.defrost"
+      ],
+      "endpoint": "bas-coldroom/updates",
+      "sends": [
+        {
+          "tag": "bas-coldroom.setpoint_f",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-coldroom.compressor",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-coldroom.defrost",
+          "endpoint": "building/updates"
+        }
+      ]
+    },
+    "bas-vent": {
+      "federate_name": "bas-vent",
+      "subscriptions": [
+        "building/bas-vent.co2_1_ppm",
+        "building/bas-vent.co2_2_ppm",
+        "building/bas-vent.co2_3_ppm",
+        "building/bas-vent.co2_4_ppm",
+        "building/bas-vent.mua_discharge_f",
+        "building/bas-vent.exhaust_pct",
+        "building/bas-vent.purge_fan_1_status",
+        "building/bas-vent.purge_fan_2_status",
+        "building/bas-vent.co2_tier_1",
+        "building/bas-vent.co2_tier_2",
+        "building/bas-vent.co2_tier_3",
+        "building/bas-vent.purge_fan_1",
+        "building/bas-vent.purge_fan_2",
+        "building/bas-vent.mua_enable",
+        "building/bas-vent.co2_5_ppm",
+        "building/bas-vent.co2_6_ppm",
+        "building/bas-vent.co2_7_ppm",
+        "building/bas-vent.co2_area_tier_1",
+        "building/bas-vent.co2_shutoff_ok",
+        "building/bas-vent.horn_strobe",
+        "building/bas-vent.area_exhaust"
+      ],
+      "endpoint": "bas-vent/updates",
+      "sends": [
+        {
+          "tag": "bas-vent.exhaust_pct",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-vent.purge_fan_1",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-vent.purge_fan_2",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-vent.mua_enable",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-vent.horn_strobe",
+          "endpoint": "building/updates"
+        },
+        {
+          "tag": "bas-vent.area_exhaust",
+          "endpoint": "building/updates"
+        }
+      ]
+    }
+  },
+  "federate_count": 19
+}

@@ -1,0 +1,74 @@
+#!/bin/bash
+# Check that expected detections reached Malcolm's OpenSearch in a time window
+# (DESIGN.md 15.6: the `vendor-maintenance` run). Installed as
+# /usr/local/sbin/cm-malcolm-expect; run it as root on malcolm, for example through a
+# SCORCH `cc` step after the run's actions.
+#
+# Usage: cm-malcolm-expect [--since MINUTES] PHRASE...
+#   PHRASE   text of a Suricata alert (its signature, for example
+#            "CM WireGuard handshake initiation") or of a Zeek notice (for example
+#            CherryMountain::PLC_Program_Upload_Suspected). It is matched as a phrase
+#            against every field of the records, and as the start of rule.name and
+#            zeek.notice.note (keyword fields, where a phrase is the whole value).
+#   --since  how far back to look (default 30)
+# Prints one PASS or FAIL line per phrase and exits 1 if any fails, 2 on a usage
+# error, and 3 when OpenSearch does not answer (an ERROR, not a missed detection).
+# On the slim profile, which runs no Suricata, a signature (a phrase that starts with
+# "CM ", as every rule of cherrymountain.rules does) prints a SKIP line and does not
+# count. CM_MALCOLM_STATE is for the tests.
+set -uo pipefail
+
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+profile=$(cat "${STATE}/profile" 2> /dev/null || echo full)
+
+since=30
+if [ "${1:-}" = --since ]; then
+  since="${2:?--since needs a number of minutes}"
+  shift 2
+fi
+[[ "$since" =~ ^[0-9]+$ ]] || {
+  echo "cm-malcolm-expect: --since needs a whole number of minutes, not ${since}" >&2
+  exit 2
+}
+[ $# -gt 0 ] || {
+  echo "usage: cm-malcolm-expect [--since MINUTES] PHRASE..." >&2
+  exit 2
+}
+
+status=0
+for phrase in "$@"; do
+  if [ "$profile" != full ] && [[ "$phrase" == "CM "* ]]; then
+    echo "SKIP: \"${phrase}\" (the ${profile} profile does not run Suricata)"
+    continue
+  fi
+  escaped=$(printf '%s' "$phrase" | jq -Rs '.')
+  # The body is built with jq, because the phrase may hold characters that need
+  # escaping; inside the query_string phrase, \ and " are escaped as well. Malcolm
+  # maps the alert's signature (rule.name) and the notice's name (zeek.notice.note)
+  # as keyword fields, which a quoted phrase matches only as the whole value, so the
+  # phrase may also be the start of either: "CM WireGuard handshake initiation" finds
+  # "CM WireGuard handshake initiation to dmz-vpn (vendor tunnel)".
+  query=$(jq -nc --argjson phrase "$escaped" --arg since "now-${since}m" \
+    '($phrase | gsub("\\\\"; "\\\\") | gsub("\""; "\\\"")) as $p
+     | {query: {bool: {
+         filter: [{range: {"@timestamp": {gte: $since}}}],
+         should: [
+           {query_string: {query: ("\"" + $p + "\"")}},
+           {prefix: {"rule.name": $phrase}},
+           {prefix: {"zeek.notice.note": $phrase}}
+         ],
+         minimum_should_match: 1}}}')
+  count=$(docker exec -i malcolm-opensearch-1 sh -c \
+    "curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc -H 'Content-Type: application/json' 'https://localhost:9200/arkime_sessions3-*/_count' -d @-" <<< "$query" 2> /dev/null \
+    | python3 -c 'import json, sys; print(int(json.load(sys.stdin)["count"]))' 2> /dev/null) || {
+    echo "ERROR: OpenSearch did not answer a count for \"${phrase}\"" >&2
+    exit 3
+  }
+  if [ "${count:-0}" -gt 0 ]; then
+    echo "PASS: \"${phrase}\" found ${count} time(s) in the last ${since} minutes"
+  else
+    echo "FAIL: \"${phrase}\" not found in the last ${since} minutes"
+    status=1
+  fi
+done
+exit "$status"

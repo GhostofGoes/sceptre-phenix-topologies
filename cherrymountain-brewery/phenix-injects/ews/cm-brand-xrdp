@@ -1,0 +1,79 @@
+#!/bin/bash
+# The brewery's name, colors, and mark on xrdp's login screen (ews).
+# Installed as /usr/local/bin/cm-brand-xrdp and run by 68-xrdp-brand.sh at boot.
+#
+# xrdp draws its login screen from the [Globals] section of /etc/xrdp/xrdp.ini. This
+# script sets the keys listed in /etc/xrdp/cherrymountain.conf there (sync.py makes that
+# file from brand/tokens.json: the title, the screen and box colors, the accent, and the
+# logo). A key the section has, set or commented out, is replaced where it stands; one it
+# does not have is added at the section's end. Nothing outside [Globals] is touched.
+# Checked against the xrdp.ini of noble's package (0.9.24), not on a running xrdp.
+#
+# The vendor's Guacamole session signs in with its stored credentials and goes straight to
+# the desktop, so this screen shows only to someone who connects with an RDP client and no
+# password.
+#
+# Env (optional, for tests): XRDP_INI (default /etc/xrdp/xrdp.ini) and XRDP_BRAND_CONF
+# (default /etc/xrdp/cherrymountain.conf). Safe to run again.
+set -euo pipefail
+
+INI="${XRDP_INI:-/etc/xrdp/xrdp.ini}"
+CONF="${XRDP_BRAND_CONF:-/etc/xrdp/cherrymountain.conf}"
+
+log() { echo "cm-brand-xrdp: $*"; }
+die() {
+  log "$*" >&2
+  exit 1
+}
+
+[ -f "$INI" ] || die "no ${INI}: xrdp is not installed here"
+[ -f "$CONF" ] || die "no ${CONF}: the brand settings were not injected"
+grep -q '^\[Globals\]' "$INI" || die "${INI} has no [Globals] section"
+
+logo=$(sed -n 's/^ls_logo_filename=//p' "$CONF")
+if [ -n "$logo" ] && [ ! -f "$logo" ]; then
+  die "the logo ${logo} is not there; ${INI} is unchanged"
+fi
+
+new=$(mktemp "${INI}.XXXXXX")
+trap 'rm -f "$new"' EXIT
+awk '
+  function flush(   i, k) {            # the keys [Globals] did not have, then its blank end
+    for (i = 1; i <= n; i++) { k = order[i]; if (!(k in done)) print k "=" want[k] }
+    for (; blank > 0; blank--) print ""
+  }
+  FNR == NR {                           # first file: the brand settings
+    if ($0 ~ /^[A-Za-z_]+=/) { k = $0; sub(/=.*/, "", k); v = $0; sub(/^[^=]*=/, "", v); want[k] = v; order[++n] = k }
+    next
+  }
+  /^\[/ {                               # a section header
+    if (inside) flush()
+    inside = ($0 == "[Globals]")
+    print; next
+  }
+  inside && $0 == "" { blank++; next }  # held back: a new key goes above the blank end of the section
+  inside {
+    for (; blank > 0; blank--) print ""
+    k = $0; sub(/^[#;]/, "", k)
+    if (k ~ /^[A-Za-z_]+=/) {
+      sub(/=.*/, "", k)
+      if (k in want) {
+        active = ($0 !~ /^[#;]/)
+        if (!(k in done)) { print k "=" want[k]; done[k] = 1; next }
+        if (active) next                # a second, set copy of the key would win
+      }
+    }
+  }
+  { print }
+  END { if (inside) flush() }
+' "$CONF" "$INI" > "$new"
+
+if cmp -s "$new" "$INI"; then
+  log "${INI} already has the brand"
+  exit 0
+fi
+chmod --reference="$INI" "$new"
+chown --reference="$INI" "$new" 2> /dev/null || true
+mv "$new" "$INI"
+trap - EXIT
+log "set $(grep -c '^[A-Za-z_]\+=' "$CONF") login screen settings in ${INI}"

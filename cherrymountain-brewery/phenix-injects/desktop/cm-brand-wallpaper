@@ -1,0 +1,75 @@
+#!/bin/bash
+# The brewery's wallpaper on the Xfce desktop this runs in (cm-desktop and cm-ews images).
+# Installed as /usr/local/bin/cm-brand-wallpaper and started at login by
+# /etc/xdg/autostart/cm-brand-wallpaper.desktop on every workstation (the HMI kiosks,
+# corp-ws, vendor-ws, soc-analyst, and ews, for the root console and for the vendor's xrdp
+# session alike). The image is /usr/share/backgrounds/cherrymountain.png, the 1920x1080
+# wallpaper of brand/ (the desktops run 1440x900, so nothing is scaled up).
+#
+# The images' own start-up script (/root/.init.sh, a phenix default: POSTBUILD_GUI) sets
+# the stock wallpaper ten seconds after login, on monitorVirtual-1, and would undo this.
+# So the script sets every monitor's last-image that xfdesktop has, then goes on checking
+# every few seconds and sets it again when something else changed it, until it has stayed
+# ours for a while (or the time is up). It touches the xfce4-desktop channel of this
+# session only, and does nothing where xfdesktop has no wallpaper setting to change.
+#
+# Env (all optional, for tests): CM_WALLPAPER (the image), CM_WALLPAPER_INTERVAL (seconds
+# between passes, default 3), CM_WALLPAPER_PASSES (most passes, default 60), and
+# CM_WALLPAPER_STABLE (passes with no change that end the run, default 8).
+set -euo pipefail
+
+IMG="${CM_WALLPAPER:-/usr/share/backgrounds/cherrymountain.png}"
+INTERVAL="${CM_WALLPAPER_INTERVAL:-3}"
+PASSES="${CM_WALLPAPER_PASSES:-60}"
+STABLE="${CM_WALLPAPER_STABLE:-8}"
+#: xfdesktop's image-style 5 is "zoomed": fill the screen, crop what does not fit.
+ZOOMED=5
+
+log() { echo "cm-brand-wallpaper: $*"; }
+
+if [ ! -f "$IMG" ]; then
+  log "no ${IMG}: nothing to set"
+  exit 0
+fi
+
+xq() { xfconf-query -c xfce4-desktop "$@"; }
+
+# Set last-image (and image-style) of every monitor and workspace xfdesktop has; print
+# how many there are and how many had to be changed.
+set_all() {
+  local found=0 changed=0 prop base current
+  while read -r prop; do
+    found=$((found + 1))
+    base="${prop%/last-image}"
+    current=$(xq -p "$prop" 2> /dev/null || true)
+    if [ "$current" != "$IMG" ]; then
+      xq -p "$prop" -s "$IMG" 2> /dev/null || continue
+      changed=$((changed + 1))
+    fi
+    if [ "$(xq -p "${base}/image-style" 2> /dev/null || true)" != "$ZOOMED" ]; then
+      xq -n -t int -p "${base}/image-style" -s "$ZOOMED" 2> /dev/null || true
+    fi
+  done < <(xq -l 2> /dev/null | grep '/last-image$' || true)
+  echo "$found $changed"
+}
+
+# Until xfdesktop has published a last-image there is nothing to set and nothing to wait
+# out, so the quiet passes only count once it has.
+seen=0
+quiet=0
+for _ in $(seq 1 "$PASSES"); do
+  read -r found changed <<< "$(set_all)"
+  if [ "$changed" -gt 0 ]; then
+    log "set the wallpaper on ${changed} workspace(s)"
+    quiet=0
+  elif [ "$found" -gt 0 ]; then
+    quiet=$((quiet + 1))
+  fi
+  [ "$found" -eq 0 ] || seen=1
+  [ "$quiet" -lt "$STABLE" ] || break
+  sleep "$INTERVAL"
+done
+if [ "$seen" = 0 ]; then
+  log "xfdesktop never showed a wallpaper setting; nothing was set"
+fi
+log "done"

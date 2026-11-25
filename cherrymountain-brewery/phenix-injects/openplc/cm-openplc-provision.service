@@ -1,0 +1,51 @@
+[Unit]
+Description=CherryMountain OpenPLC v4 program provisioning
+# Wants= (not Requires=) so a runtime restart does not stop the provisioning
+# run; the script waits for the runtime API itself.
+After=openplc-runtime.service network.target
+Wants=openplc-runtime.service
+# Retry forever: Restart=on-failure below is the only retry loop.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cm-openplc
+ExecStart=/usr/local/bin/cm-openplc-provision
+# The runtime compiles the uploaded program on the VM.
+TimeoutStartSec=30min
+Restart=on-failure
+RestartSec=20
+
+# Hardening. The script talks to the runtime on 127.0.0.1 with curl, repacks
+# the program ZIP in a private /tmp, and keeps its "provisioned" marker in
+# /var/lib/cm-openplc (StateDirectory= creates it and gives it to the user).
+DynamicUser=yes
+StateDirectory=cm-openplc
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cherrymountain-sim"
+version = "0.1.0"
+description = "CherryMountain Brewery HELICS federates, models, and sim-ctl event API"
+requires-python = ">=3.12"
+license = "GPL-3.0-only"
+dependencies = ["pydantic>=2.7", "simpy>=4.1"]
+
+[project.optional-dependencies]
+helics = ["helics>=3.5"]
+# 0.9.x fails with "Invalid terminal index (0)" (DESIGN.md §12.3).
+power = ["opendssdirect.py~=0.8.4"]
+test = ["pytest>=8", "scipy>=1.11", "opendssdirect.py~=0.8.4", "packmlpy>=1.0", "ht>=1.0"]
+
+[project.scripts]
+cherrymountain-sim = "cherrymountain_sim.federate:main"
+cherrymountain-cellar = "cherrymountain_sim.federate:main"
+cherrymountain-local = "cherrymountain_sim.local:main"
+
+[tool.setuptools]
+packages = ["cherrymountain_sim"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "PL"]
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "ANN401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cherrymountain_sim"]

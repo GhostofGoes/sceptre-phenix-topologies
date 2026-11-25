@@ -1,0 +1,49 @@
+[Unit]
+Description=CherryMountain InfluxDB 2 provisioning
+# Wants= (not Requires=) so an InfluxDB restart does not stop the provisioning
+# run; the script waits for the API itself.
+After=influxdb.service network.target
+Wants=influxdb.service
+# Retry forever: Restart=on-failure below is the only retry loop.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/default/cm-historian
+ExecStart=/usr/local/bin/cm-historian-provision
+TimeoutStartSec=15min
+Restart=on-failure
+RestartSec=20
+
+# Hardening. The script talks to InfluxDB on 127.0.0.1 and keeps its
+# "provisioned" marker in /var/lib/cm-historian (StateDirectory= creates it).
+DynamicUser=yes
+StateDirectory=cm-historian
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

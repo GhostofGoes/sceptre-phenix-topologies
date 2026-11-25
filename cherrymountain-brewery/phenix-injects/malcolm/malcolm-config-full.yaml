@@ -1,0 +1,65 @@
+# Malcolm settings of the full profile (DESIGN.md 14), in the format of Malcolm's own
+# configurator: `scripts/configure --non-interactive --import-malcolm-config-file`
+# reads it and writes config/*.env and the compose file (cm-malcolm-provision runs
+# it). Only what the range decides is here; the configurator fills in the rest from
+# its defaults and derives what depends on these (for example, live Zeek and
+# Suricata mean their copies of the rotated pcap files are skipped).
+#
+# Checked against Malcolm 26.10.0: every key below is one that release exports
+# (`scripts/configure --defaults --export-malcolm-config-file`).
+---
+configuration:
+  malcolmProfile: malcolm
+  runtimeBin: docker
+  # The containers run as the user malcolm (uid 1000), which owns /opt/malcolm.
+  processUserId: 1000
+  processGroupId: 1000
+  # Docker brings a container that dies back up, and after a power-off brings the
+  # whole stack back; Malcolm's installation examples choose this policy.
+  malcolmRestartPolicy: unless-stopped
+  pcapNodeName: malcolm
+
+  # Live capture on the in-guest OVS port, where the mirror app delivers the
+  # monitored VLANs. Zeek and Suricata read the port themselves. Arkime does not:
+  # with a local OpenSearch, Malcolm writes rotating pcap files (the pcap-capture
+  # container) and Arkime indexes each file once it is closed. Arkime's own live
+  # capture is for a sensor that forwards to another host: its container is on the
+  # host network and cannot reach the local `opensearch` container.
+  # tcpdump, not netsniff-ng: Open vSwitch hands the 802.1Q tag of a mirrored frame
+  # to the capture socket beside the frame, libpcap (tcpdump) puts it back, and
+  # netsniff-ng writes the frame without it.
+  captureLiveNetworkTraffic: true
+  pcapIface:
+    - phenix
+  pcapTcpDump: true
+  pcapNetSniff: false
+  liveZeek: true
+  liveSuricata: true
+
+  # No internet: the Suricata rules in the image are all there is.
+  suricataRuleUpdate: false
+
+  # Zeek extracts the file types attacks arrive as, and the scanners (Strelka) scan
+  # them. Flagged files are kept, at most 2 GB of them, and analysts download them
+  # from /extracted-files/ as ZIP files with the usual password for malware samples.
+  fileCarveMode: interesting
+  filePreserveMode: quarantined
+  fileCarveHttpServer: true
+  fileCarveHttpServerZip: true
+  fileCarveHttpServeEncryptKey: infected
+  extractedFileMaxSizeThreshold: 2G
+
+  # NetBox builds the asset inventory from what the sensor sees.
+  netboxMode: local
+  netboxLogstashEnrich: true
+  netboxAutoPopulate: true
+  netboxSiteName: CherryMountain
+
+  # Retention (DESIGN.md 14): the 64 GB disk holds the indexes and the pcap together.
+  # OpenSearch prunes the oldest indexes past 24 GB, and Arkime deletes its oldest
+  # pcap once free space falls under 10 %.
+  cleanUpOldArtifacts: true
+  arkimeManagePCAP: true
+  arkimeFreeSpaceG: 10%
+  cleanUpOldIndices: true
+  indexPruneThreshold: 24G

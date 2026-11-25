@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<ot-sim>
+  <!--
+    Minimal ot-sim device for the noble spike: message bus plus a DNP3
+    outstation (no HELICS, no Modbus). Adapted from config/single-device/device.xml
+    and testing/e2e/configs/device-1.xml at ot-sim 9dc3304. Link addresses:
+    outstation (local) 1024, master (remote) 1. Run:
+      ot-sim-cpu-module fixture/dnp3-outstation.xml
+  Keep comments inside <ot-sim>: a comment before the root element makes the
+  C++ DNP3 module fail with "missing root 'ot-sim' element in XML config".
+  -->
+  <message-bus>
+    <pull-endpoint>tcp://127.0.0.1:1234</pull-endpoint>
+    <pub-endpoint>tcp://127.0.0.1:5678</pub-endpoint>
+  </message-bus>
+  <cpu>
+    <module name="backplane">ot-sim-message-bus {{config_file}}</module>
+    <module name="dnp3">ot-sim-dnp3-module {{config_file}}</module>
+  </cpu>
+  <dnp3 name="dnp3-outstation" mode="server">
+    <endpoint>0.0.0.0:20000</endpoint>
+    <cold-restart-delay>15</cold-restart-delay>
+    <outstation name="dnp3-outstation">
+      <local-address>1024</local-address>
+      <remote-address>1</remote-address>
+      <warm-restart-delay>5</warm-restart-delay>
+      <input type="binary">
+        <address>0</address>
+        <tag>line-650632.closed</tag>
+        <svar>Group1Var1</svar>
+        <evar>Group2Var1</evar>
+        <class>Class1</class>
+      </input>
+      <output type="binary">
+        <address>10</address>
+        <tag>line-650632.closed</tag>
+        <svar>Group10Var2</svar>
+        <evar>Group11Var2</evar>
+        <class>Class1</class>
+        <sbo>false</sbo>
+      </output>
+      <input type="analog">
+        <address>0</address>
+        <tag>line-650632.kW</tag>
+        <svar>Group30Var6</svar>
+        <evar>Group32Var6</evar>
+        <class>Class1</class>
+      </input>
+    </outstation>
+  </dnp3>
+</ot-sim>

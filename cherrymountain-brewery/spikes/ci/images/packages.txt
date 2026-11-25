@@ -1,0 +1,1 @@
+openvswitch-switch,tcpdump,socat,python3,iperf3,netcat-openbsd,iproute2,iputils-ping,procps,isc-dhcp-client,curl,ca-certificates,nftables,python3-venv,python3-pip,ethtool

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CherryMountain Brewery 3D view</title>
+  <link rel="icon" href="brand/favicon.ico" sizes="any">
+  <link rel="icon" href="brand/icon-small.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="brand/tokens.css">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">{"imports": {"three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/"}}</script>
+</head>
+<body>
+  <canvas id="scene" aria-label="3D view of the plant"></canvas>
+  <header class="panel top">
+    <div class="brand">
+      <img class="mark" src="brand/icon-small.svg" alt="" width="32" height="32">
+      <div>
+        <h1>CherryMountain Brewery: ground truth</h1>
+        <p>White-cell view. Not part of the plant; never show trainees without a white-cell decision.</p>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Scene">
+      <button data-scene="cellar">Cellar CO₂</button>
+      <button data-scene="fermenters">Fermenters</button>
+      <button data-scene="power">Plant power</button>
+    </nav>
+    <div class="toggle" role="group" aria-label="View">
+      <button data-view="truth">Ground truth</button>
+      <button data-view="operator">Operator view</button>
+    </div>
+    <a class="fallback" href="svg.html">2.5D view</a>
+  </header>
+  <section class="panel clock" aria-label="Clock and data age">
+    <div><span class="k">Sim</span> <span id="simtime">waiting for data</span></div>
+    <div><span class="k">Cellar kinetics</span> <span id="kinetic">–</span></div>
+    <div><span class="k">Data</span> <span id="age" class="pill">no frame</span> <span id="source" class="muted"></span></div>
+  </section>
+  <section class="panel side" aria-label="Truth beside the operator view">
+    <h2 id="side-title">Truth and the operator's view</h2>
+    <table>
+      <thead><tr><th></th><th>Simulation truth</th><th id="op-head">HMI shows</th></tr></thead>
+      <tbody id="compare"></tbody>
+    </table>
+    <ul id="findings" class="findings"></ul>
+    <p id="notes" class="muted"></p>
+  </section>
+  <div id="banner" class="banner" hidden></div>
+  <footer class="panel status"><span id="status">connecting</span></footer>
+  <div id="stale" class="alert-banner" role="alert" hidden>NO DATA: the view is stale</div>
+  <div id="nogl" class="alert-banner" hidden>WebGL is not available in this browser. <a href="svg.html">Open the 2.5D view.</a></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

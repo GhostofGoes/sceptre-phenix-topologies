@@ -1,0 +1,251 @@
+{
+  "generator": "plantgen",
+  "variant": "full",
+  "host": "bas-vent",
+  "endpoint": {
+    "interface": "IF0",
+    "address": "10.30.10.22",
+    "prefix": 24,
+    "port": 47808
+  },
+  "device": {
+    "instance": 3003,
+    "name": "BAS-VENT-1"
+  },
+  "objects": [
+    {
+      "object_type": "analog-input",
+      "instance": 1,
+      "name": "FAC.VENT.AT01.PV",
+      "description": "Cellar CO2 sensor 1 (low-mounted)",
+      "tag": "bas-vent.co2_1_ppm",
+      "helics_key": "building/bas-vent.co2_1_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 2,
+      "name": "FAC.VENT.AT02.PV",
+      "description": "Cellar CO2 sensor 2 (low-mounted)",
+      "tag": "bas-vent.co2_2_ppm",
+      "helics_key": "building/bas-vent.co2_2_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 3,
+      "name": "FAC.VENT.AT03.PV",
+      "description": "Cellar CO2 sensor 3 (low-mounted)",
+      "tag": "bas-vent.co2_3_ppm",
+      "helics_key": "building/bas-vent.co2_3_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 4,
+      "name": "FAC.VENT.AT04.PV",
+      "description": "Cellar CO2 sensor 4 (low-mounted)",
+      "tag": "bas-vent.co2_4_ppm",
+      "helics_key": "building/bas-vent.co2_4_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 5,
+      "name": "FAC.VENT.TT01.PV",
+      "description": "Makeup-air unit discharge temperature",
+      "tag": "bas-vent.mua_discharge_f",
+      "helics_key": "building/bas-vent.mua_discharge_f",
+      "commandable": false,
+      "units": "degreesFahrenheit",
+      "range": [
+        0.0,
+        150.0
+      ]
+    },
+    {
+      "object_type": "analog-output",
+      "instance": 1,
+      "name": "FAC.VENT.SC01.CMD",
+      "description": "Kettle hood exhaust fan speed",
+      "tag": "bas-vent.exhaust_pct",
+      "helics_key": "building/bas-vent.exhaust_pct",
+      "commandable": true,
+      "units": "percent",
+      "range": [
+        0.0,
+        100.0
+      ]
+    },
+    {
+      "object_type": "binary-input",
+      "instance": 1,
+      "name": "FAC.VENT.FAN01.PV",
+      "description": "Cellar purge fan 1 running (current switch)",
+      "tag": "bas-vent.purge_fan_1_status",
+      "helics_key": "building/bas-vent.purge_fan_1_status",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-input",
+      "instance": 2,
+      "name": "FAC.VENT.FAN02.PV",
+      "description": "Cellar purge fan 2 running (current switch)",
+      "tag": "bas-vent.purge_fan_2_status",
+      "helics_key": "building/bas-vent.purge_fan_2_status",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-value",
+      "instance": 1,
+      "name": "FAC.VENT.AY01.TIER1",
+      "description": "Cellar CO2 tier 1 (5,000 ppm, purge fans on)",
+      "tag": "bas-vent.co2_tier_1",
+      "helics_key": "building/bas-vent.co2_tier_1",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-value",
+      "instance": 2,
+      "name": "FAC.VENT.AY01.TIER2",
+      "description": "Cellar CO2 tier 2 (15,000 ppm, carbonation inhibited)",
+      "tag": "bas-vent.co2_tier_2",
+      "helics_key": "building/bas-vent.co2_tier_2",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-value",
+      "instance": 3,
+      "name": "FAC.VENT.AY01.TIER3",
+      "description": "Cellar CO2 tier 3 (30,000 ppm, evacuate)",
+      "tag": "bas-vent.co2_tier_3",
+      "helics_key": "building/bas-vent.co2_tier_3",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 1,
+      "name": "FAC.VENT.FAN01.CMD",
+      "description": "Cellar purge fan 1",
+      "tag": "bas-vent.purge_fan_1",
+      "helics_key": "building/bas-vent.purge_fan_1",
+      "commandable": true
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 2,
+      "name": "FAC.VENT.FAN02.CMD",
+      "description": "Cellar purge fan 2",
+      "tag": "bas-vent.purge_fan_2",
+      "helics_key": "building/bas-vent.purge_fan_2",
+      "commandable": true
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 3,
+      "name": "FAC.VENT.MUA01.CMD",
+      "description": "Makeup-air unit enable",
+      "tag": "bas-vent.mua_enable",
+      "helics_key": "building/bas-vent.mua_enable",
+      "commandable": true
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 6,
+      "name": "FAC.VENT.AT05.PV",
+      "description": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)",
+      "tag": "bas-vent.co2_5_ppm",
+      "helics_key": "building/bas-vent.co2_5_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 7,
+      "name": "FAC.VENT.AT06.PV",
+      "description": "Filler (packaging) area CO2 sensor (low-mounted)",
+      "tag": "bas-vent.co2_6_ppm",
+      "helics_key": "building/bas-vent.co2_6_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 8,
+      "name": "FAC.VENT.AT07.PV",
+      "description": "Cold room and draft system CO2 sensor (low-mounted)",
+      "tag": "bas-vent.co2_7_ppm",
+      "helics_key": "building/bas-vent.co2_7_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        50000.0
+      ]
+    },
+    {
+      "object_type": "binary-value",
+      "instance": 4,
+      "name": "FAC.VENT.AY02.TIER1",
+      "description": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on",
+      "tag": "bas-vent.co2_area_tier_1",
+      "helics_key": "building/bas-vent.co2_area_tier_1",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-value",
+      "instance": 5,
+      "name": "FAC.VENT.XS01.SHUTOFF_OK",
+      "description": "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)",
+      "tag": "bas-vent.co2_shutoff_ok",
+      "helics_key": "building/bas-vent.co2_shutoff_ok",
+      "commandable": false
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 4,
+      "name": "FAC.VENT.XA01.CMD",
+      "description": "CO2 horns and strobes (tier 3 in any area)",
+      "tag": "bas-vent.horn_strobe",
+      "helics_key": "building/bas-vent.horn_strobe",
+      "commandable": true
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 5,
+      "name": "FAC.VENT.FAN03.CMD",
+      "description": "CO2 area exhaust fans (bulk tank, filler, cold room)",
+      "tag": "bas-vent.area_exhaust",
+      "helics_key": "building/bas-vent.area_exhaust",
+      "commandable": true
+    }
+  ]
+}

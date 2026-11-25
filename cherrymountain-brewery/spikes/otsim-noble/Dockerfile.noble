@@ -1,0 +1,19 @@
+# Repeatable noble build of ot-sim for the spike. Verified on 2026-11-08 at
+# ot-sim 9dc33047ff9fb474e61c8931c7dac7bf98df38ef. It is a noble port of
+# upstream's Bookworm Dockerfile, but runs build_check.sh as one stage so the
+# build FAILS when any step fails (build_check.sh exits non-zero then).
+#   docker build -f Dockerfile.noble -t otsim-noble --build-arg OTSIM_REF=<sha> .
+# BASE can point at a derived image that trusts an HTTPS-inspecting proxy CA.
+ARG BASE=ubuntu:24.04
+FROM ${BASE}
+ARG OTSIM_REF=main
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+COPY build_check.sh /usr/local/bin/build_check.sh
+RUN OTSIM_REF=${OTSIM_REF} bash /usr/local/bin/build_check.sh
+COPY e2e_check.sh dnp3_link_probe.py helics_federate.py /opt/spike/
+COPY fixture /opt/spike/fixture
+ENV PATH=/opt/otsim-venv/bin:${PATH}
+WORKDIR /opt/spike
+CMD ["bash"]

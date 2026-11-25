@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cherrymountain-viz"
+version = "0.1.0"
+description = "cm-viz: the CherryMountain white cell's 3D view (three.js) and its WebSocket bridge"
+requires-python = ">=3.12"
+license = "GPL-3.0-only"
+dependencies = ["pydantic>=2.7", "websockets>=15,<16"]
+
+[project.optional-dependencies]
+# The offline harness (--source local) runs the federates in-process.
+local = ["cherrymountain-sim[power]"]
+test = ["pytest>=8"]
+
+[project.scripts]
+cm-viz = "cherrymountain_viz.cli:main"
+
+[tool.setuptools]
+packages = ["cherrymountain_viz"]
+
+[tool.setuptools.package-data]
+# The page and the vendored three.js (MIT, web/vendor/three/LICENSE).
+cherrymountain_viz = ["web/*", "web/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# ../sim for the offline harness and the event API in the tests.
+pythonpath = [".", "../sim"]
+markers = [
+    "browser: headless Chromium through Playwright (Node); slow, run with -m browser",
+]
+addopts = "-m 'not browser'"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["cherrymountain_viz/web"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "PL"]
+ignore = ["PLR2004", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR0917", "ANN401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["cherrymountain_viz"]

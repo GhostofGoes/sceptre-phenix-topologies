@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cherrymountain-netcheck"
+version = "0.1.0"
+description = "Statically check the CherryMountain Brewery topology, scenario, and workflow against the DESIGN.md IP plan and conduit matrix"
+requires-python = ">=3.12"
+license = "GPL-3.0-only"
+dependencies = [
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+netcheck = "netcheck.cli:main"
+
+[tool.setuptools]
+packages = ["netcheck"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "ANN", "PL"]
+ignore = ["PLR2004", "PLR0917", "PLR0914", "PLR1702", "PLR0904", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "ANN401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["netcheck"]
+
+[tool.ruff.lint.per-file-ignores]
+# The node and conduit tables are one row per line, like the DESIGN.md tables.
+"netcheck/plan.py" = ["E501"]
+"netcheck/conduits.py" = ["E501"]
+# Finding messages are single f-strings.
+"netcheck/checks.py" = ["E501"]

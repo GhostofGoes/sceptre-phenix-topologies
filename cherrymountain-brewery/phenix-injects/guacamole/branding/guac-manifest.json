@@ -1,0 +1,12 @@
+{
+  "guacamoleVersion": "1.6.0",
+  "name": "CherryMountain Brewery branding",
+  "namespace": "cherrymountain-brand",
+  "smallIcon": "icon-64.png",
+  "largeIcon": "icon-256.png",
+  "css": ["tokens.css", "brand.css"],
+  "translations": ["translations/en.json"],
+  "resources": {
+    "icon.svg": "image/svg+xml"
+  }
+}

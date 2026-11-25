@@ -1,0 +1,42 @@
+# Malcolm settings of the slim profile (DESIGN.md 11), for a sensor VM below the
+# full profile's memory: the same capture, without Suricata, NetBox, file scanning,
+# and the freq lookup. See malcolm-config-full.yaml for the format and the reasons
+# behind the shared settings.
+---
+configuration:
+  malcolmProfile: malcolm
+  runtimeBin: docker
+  processUserId: 1000
+  processGroupId: 1000
+  malcolmRestartPolicy: unless-stopped
+  pcapNodeName: malcolm
+
+  captureLiveNetworkTraffic: true
+  pcapIface:
+    - phenix
+  pcapTcpDump: true
+  pcapNetSniff: false
+  liveZeek: true
+  # No Suricata containers on this profile, live or for uploaded pcap.
+  liveSuricata: false
+  autoSuricata: false
+
+  suricataRuleUpdate: false
+
+  # Nothing is extracted, and the scan pipeline is off. (nginx still needs the
+  # filescan container to start: it is one of its fixed upstreams.)
+  fileCarveMode: none
+  pipelineEnabled: false
+
+  # No freq container, which Logstash would ask about every DNS and TLS name.
+  autoFreq: false
+
+  netboxMode: disabled
+  netboxLogstashEnrich: false
+  netboxAutoPopulate: false
+
+  cleanUpOldArtifacts: true
+  arkimeManagePCAP: true
+  arkimeFreeSpaceG: 10%
+  cleanUpOldIndices: true
+  indexPruneThreshold: 24G

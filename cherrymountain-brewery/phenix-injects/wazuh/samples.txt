@@ -1,0 +1,30 @@
+# One sample log line per baseline detection of rules cherrymountain_rules.xml
+# (DESIGN.md 14). Each line is `RULE[,RULE...]|log line`: the rule id that must
+# fire, and (after a comma) the ones that are also fine, because a rule with a
+# <time> or <weekday> option replaces its parent when the test runs outside the
+# approved window. cm-wazuh-selftest feeds the lines to wazuh-logtest on the
+# manager, and tests/soc/test_wazuh.py runs them through the decoders' patterns.
+100101|Nov  9 12:00:00 fw-ot kernel: [  123.456789] [ipv4-FROM-DMZ-default-D]IN=eth2 OUT=eth4 MAC=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:08:00 SRC=10.10.20.11 DST=10.20.10.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4242 DF PROTO=TCP SPT=40000 DPT=502 WINDOW=64240 RES=0x00 SYN URGP=0
+100102|Nov  9 12:00:01 fw-ot kernel: [  124.000000] [ipv4-FROM-OPS-default-D]IN=eth1 OUT=eth5 MAC=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:08:00 SRC=10.20.30.13 DST=10.30.10.5 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4243 PROTO=UDP SPT=47808 DPT=47808 LEN=40
+100103|Nov  9 12:00:02 fw-edge kernel: [  125.000000] [ipv4-FROM-INET-default-D]IN=eth0 OUT=eth1 MAC=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:08:00 SRC=203.0.113.10 DST=10.10.10.10 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4244 DF PROTO=TCP SPT=40001 DPT=22 WINDOW=64240 RES=0x00 SYN URGP=0
+100105|Nov  9 12:00:02 dmz-vpn kernel: [   55.100000] [cm-wg-drop]IN=wg0 OUT=eth0 MAC= SRC=10.99.0.2 DST=10.20.30.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4245 DF PROTO=TCP SPT=40002 DPT=3389 WINDOW=64240 RES=0x00 SYN URGP=0
+# The same lines after a day of uptime: the kernel's timestamp has no leading blank then,
+# which is when Wazuh's own iptables decoder would take a prefix that ends in a space.
+100105|Nov  9 12:00:03 dmz-vpn kernel: [86455.100000] [cm-wg-drop]IN=wg0 OUT=eth0 MAC= SRC=10.99.0.2 DST=10.20.30.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4245 DF PROTO=TCP SPT=40002 DPT=3389 WINDOW=64240 RES=0x00 SYN URGP=0
+100101|Nov  9 12:00:00 fw-ot kernel: [90123.456789] [ipv4-FROM-DMZ-default-D]IN=eth2 OUT=eth4 MAC=aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:08:00 SRC=10.10.20.11 DST=10.20.10.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=4242 DF PROTO=TCP SPT=40000 DPT=502 WINDOW=64240 RES=0x00 SYN URGP=0
+100201,100204,100205|Nov  9 12:00:03 dmz-vpn cm-wg-watch: event=peer_up interface=wg0 peer=7bqjO1NU endpoint=198.51.100.10:51820
+100202|Nov  9 12:00:04 dmz-vpn cm-wg-watch: event=peer_down interface=wg0 peer=7bqjO1NU endpoint=198.51.100.10:51820
+100203|Nov  9 12:00:05 dmz-vpn cm-wg-watch: event=peer_roam interface=wg0 peer=7bqjO1NU endpoint=198.51.100.99:51820
+100301,100305,100306|Nov  9 12:00:06 phenix guacamole[1234]: 12:00:06.123 [http-nio-8080-exec-3] INFO  o.a.g.event.EventLoggingListener - User "ridgeline-akim" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5].
+100301,100305,100306|Nov  9 12:00:06 phenix guacamole[1234]: 12:00:06.895 [http-nio-8080-exec-3] INFO  o.a.g.event.EventLoggingListener - User "ridgeline-akim" (authenticated by "postgresql") successfully authenticated from 10.99.0.2
+100302,100307,100308|Nov  9 12:00:07 phenix guacamole[1234]: 12:00:07.123 [http-nio-8080-exec-4] INFO  o.a.g.event.EventLoggingListener - User "cmadmin" (authenticated by "postgresql") successfully authenticated from [10.99.0.2, 172.18.0.5].
+100303|Nov  9 12:00:08 phenix guacamole[1234]: 12:00:08.123 [http-nio-8080-exec-5] WARN  o.a.g.event.EventLoggingListener - Authentication attempt from [10.99.0.2, 172.18.0.5] for user "ridgeline-akim" failed: Permission denied. (rejected by "totp")
+100303|Nov  9 12:00:08 phenix guacamole[1234]: 12:00:08.408 [http-nio-8080-exec-1] WARN  o.a.g.event.EventLoggingListener - Authentication attempt from 10.99.0.2 for user "ridgeline-akim" failed: Provided TOTP code is not valid. (rejected by "totp")
+100311|Nov  9 12:00:09 phenix guacd[1]: guacd[1]: INFO:	Creating new client for protocol "rdp"
+100400|Nov  9 12:00:10 ews sshd[2222]: Accepted password for ridgeline-akim from 10.10.20.11 port 51234 ssh2
+100401|Nov  9 12:00:11 ews sshd[2223]: Accepted password for ridgeline-jdiaz from 10.99.0.2 port 51235 ssh2
+100402|Nov  9 12:00:12 ews xrdp-sesman[512]: pam_unix(xrdp-sesman:session): session opened for user ridgeline-akim(uid=1001) by (uid=0)
+100403|Nov  9 12:00:12 ews sshd[2224]: Accepted password for ridgeline from 10.10.20.11 port 51236 ssh2
+100411|Nov  9 12:00:13 ews cm-plc-tool: event=plc_upload plc=plc-cellar host=10.20.10.12 user=ridgeline-akim
+100412|Nov  9 12:00:14 ews cm-plc-tool: event=plc_start plc=plc-cellar host=10.20.10.12 user=ridgeline-akim
+100413|Nov  9 12:00:15 ews cm-plc-tool: event=plc_failed plc=plc-cellar host=10.20.10.12 user=ridgeline-akim

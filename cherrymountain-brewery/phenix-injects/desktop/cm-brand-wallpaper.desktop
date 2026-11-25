@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=CherryMountain wallpaper
+Comment=Sets the brewery's wallpaper on the desktop
+Exec=/usr/local/bin/cm-brand-wallpaper
+Icon=cherrymountain
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

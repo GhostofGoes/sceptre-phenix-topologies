@@ -1,0 +1,6 @@
+{
+  "secureEnabled": true,
+  "secretCode": "spike-secret-change-me",
+  "nodeRedEnabled": false,
+  "uiPort": 1881
+}

@@ -1,0 +1,55 @@
+[Unit]
+Description=CherryMountain cm-viz (white-cell 3D view of ground truth)
+Documentation=file:///etc/default/cm-viz
+# It reads the event API's snapshot on 127.0.0.1 and retries until the weather
+# federate serves it.
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+# Rendered by the cherrymountain app: CM_VIZ_SIMCTL_URL, CM_VIZ_PORT,
+# CM_HELICS_CONFIG.
+EnvironmentFile=/etc/default/cm-viz
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/cherrymountain/venv/bin/python -m cherrymountain_viz --source simctl --simctl-url ${CM_VIZ_SIMCTL_URL} --helics ${CM_HELICS_CONFIG} --host 127.0.0.1 --port ${CM_VIZ_PORT}
+Restart=always
+RestartSec=5
+
+# Ground truth must not reach the range: loopback only, enforced by the
+# kernel as well as by the bind address (DESIGN.md 15.10). The white cell
+# reaches it through the autotunnel's cc tunnel, which arrives on 127.0.0.1.
+IPAddressDeny=any
+IPAddressAllow=localhost
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+DynamicUser=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+UMask=0077
+# A small server: cap it so a runaway client count cannot crowd sim-ctl.
+MemoryMax=256M
+CPUQuota=50%
+
+[Install]
+WantedBy=multi-user.target

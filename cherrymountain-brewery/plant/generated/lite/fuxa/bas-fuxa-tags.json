@@ -1,0 +1,547 @@
+{
+  "generator": "plantgen",
+  "variant": "lite",
+  "notes": "address is 1-based (FUXA subtracts 1); value = raw / divisor",
+  "devices": [
+    {
+      "name": "bas-fuxa-bacnet",
+      "type": "BACnet",
+      "property": {
+        "address": "10.30.10.10",
+        "broadcastAddress": "10.30.10.255"
+      },
+      "polling": 1000,
+      "tags": [
+        {
+          "id": "t_324f05c9-22c8-5bc4-a02f-db56a7ff0b85",
+          "name": "FAC.RTU1.TT01.PV",
+          "label": "Taproom zone temperature",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "0-1",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-rtu-taproom",
+          "units": "degF",
+          "range": [
+            40.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_88eefb47-159e-54e2-8141-8fab27b5acfa",
+          "name": "FAC.RTU1.AT01.PV",
+          "label": "Taproom zone CO2",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "0-2",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-rtu-taproom",
+          "units": "ppm",
+          "range": [
+            0.0,
+            5000.0
+          ]
+        },
+        {
+          "id": "t_eb61c002-b230-5fbd-955f-5afb65598072",
+          "name": "FAC.RTU1.TT02.PV",
+          "label": "RTU-1 supply air temperature",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "0-3",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-rtu-taproom",
+          "units": "degF",
+          "range": [
+            30.0,
+            150.0
+          ]
+        },
+        {
+          "id": "t_f8988d2b-f0c0-5591-bf45-59d27773bc34",
+          "name": "FAC.RTU1.JT01.PV",
+          "label": "RTU-1 electrical input",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "0-4",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-rtu-taproom",
+          "units": "kW",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_04193e7b-7572-5c1f-aa7b-1ee129488d10",
+          "name": "FAC.RTU1.DMP01.CMD",
+          "label": "RTU-1 economizer damper",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "1-1",
+          "access": "read-write",
+          "object_type": "analog-output",
+          "remote_device": "bas-rtu-taproom",
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_69baabef-a184-5bb1-a186-32940d7c400b",
+          "name": "FAC.RTU1.TIC01.SP",
+          "label": "Occupied cooling setpoint",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "2-1",
+          "access": "read-write",
+          "object_type": "analog-value",
+          "remote_device": "bas-rtu-taproom",
+          "units": "degF",
+          "range": [
+            60.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_8cb7398c-ac93-5830-9418-214a9a0d8439",
+          "name": "FAC.RTU1.TIC02.SP",
+          "label": "Occupied heating setpoint",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "2-2",
+          "access": "read-write",
+          "object_type": "analog-value",
+          "remote_device": "bas-rtu-taproom",
+          "units": "degF",
+          "range": [
+            50.0,
+            80.0
+          ]
+        },
+        {
+          "id": "t_eac5c051-01b5-5dca-819c-e9a99b35d239",
+          "name": "FAC.RTU1.FAN01.CMD",
+          "label": "RTU-1 supply fan",
+          "type": "Bool",
+          "memaddress": "3001",
+          "address": "4-1",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-rtu-taproom"
+        },
+        {
+          "id": "t_cc7103b0-3d49-57e4-acb0-d7536d5d3bdd",
+          "name": "FAC.RTU1.CMP01.CMD",
+          "label": "RTU-1 cooling stage 1",
+          "type": "Bool",
+          "memaddress": "3001",
+          "address": "4-2",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-rtu-taproom"
+        },
+        {
+          "id": "t_d573faf6-99b1-54a9-bb9c-0617ef8a0852",
+          "name": "FAC.RTU1.CMP02.CMD",
+          "label": "RTU-1 cooling stage 2",
+          "type": "Bool",
+          "memaddress": "3001",
+          "address": "4-3",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-rtu-taproom"
+        },
+        {
+          "id": "t_820ab9f7-34e1-53b5-9678-aa88890a21d9",
+          "name": "FAC.RTU1.HTR01.CMD",
+          "label": "RTU-1 gas heat",
+          "type": "Bool",
+          "memaddress": "3001",
+          "address": "4-4",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-rtu-taproom"
+        },
+        {
+          "id": "t_de2cafa9-3832-5d21-b1cd-7149147669fd",
+          "name": "FAC.RTU1.HS01.MODE",
+          "label": "Occupancy mode (1 occupied, 2 unoccupied, 3 standby)",
+          "type": "Real",
+          "memaddress": "3001",
+          "address": "19-1",
+          "access": "read",
+          "object_type": "multi-state-value",
+          "remote_device": "bas-rtu-taproom",
+          "units": null,
+          "range": [
+            1.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_a37769c9-59cd-5637-9558-e2056ce008db",
+          "name": "FAC.CR.TT01.PV",
+          "label": "Cold room temperature",
+          "type": "Real",
+          "memaddress": "3002",
+          "address": "0-1",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-coldroom",
+          "units": "degF",
+          "range": [
+            0.0,
+            80.0
+          ]
+        },
+        {
+          "id": "t_fa320566-6b58-5941-aaf2-ffc1a76d53a7",
+          "name": "FAC.CR.KQ01.PV",
+          "label": "Cold room door open time today",
+          "type": "Real",
+          "memaddress": "3002",
+          "address": "2-1",
+          "access": "read",
+          "object_type": "analog-value",
+          "remote_device": "bas-coldroom",
+          "units": "min",
+          "range": [
+            0.0,
+            1440.0
+          ]
+        },
+        {
+          "id": "t_65c5c5f4-8f62-5137-a5a8-93d5c2d5b201",
+          "name": "FAC.CR.TT01.SP",
+          "label": "Cold room setpoint",
+          "type": "Real",
+          "memaddress": "3002",
+          "address": "2-2",
+          "access": "read-write",
+          "object_type": "analog-value",
+          "remote_device": "bas-coldroom",
+          "units": "degF",
+          "range": [
+            28.0,
+            50.0
+          ]
+        },
+        {
+          "id": "t_4fc10386-0df1-5196-95ac-574e8fe263d7",
+          "name": "FAC.CR.ZS01.PV",
+          "label": "Cold room door open",
+          "type": "Bool",
+          "memaddress": "3002",
+          "address": "3-1",
+          "access": "read",
+          "object_type": "binary-input",
+          "remote_device": "bas-coldroom"
+        },
+        {
+          "id": "t_0f9f3225-eca7-570e-9bbe-a5ee3804d656",
+          "name": "FAC.CR.CMP01.CMD",
+          "label": "Condensing unit compressor",
+          "type": "Bool",
+          "memaddress": "3002",
+          "address": "4-1",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-coldroom"
+        },
+        {
+          "id": "t_9df49321-34c3-5764-b9b3-ffe76fcae41e",
+          "name": "FAC.CR.DEF01.CMD",
+          "label": "Evaporator defrost",
+          "type": "Bool",
+          "memaddress": "3002",
+          "address": "4-2",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-coldroom"
+        },
+        {
+          "id": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86",
+          "name": "FAC.VENT.AT01.PV",
+          "label": "Cellar CO2 sensor 1 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-1",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566",
+          "name": "FAC.VENT.AT02.PV",
+          "label": "Cellar CO2 sensor 2 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-2",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865",
+          "name": "FAC.VENT.AT03.PV",
+          "label": "Cellar CO2 sensor 3 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-3",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_70b4581a-43d8-5578-83cc-a137de2e05a1",
+          "name": "FAC.VENT.AT04.PV",
+          "label": "Cellar CO2 sensor 4 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-4",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_dce48ce9-2f37-558b-8df2-04a4cb10fcdc",
+          "name": "FAC.VENT.TT01.PV",
+          "label": "Makeup-air unit discharge temperature",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-5",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "degF",
+          "range": [
+            0.0,
+            150.0
+          ]
+        },
+        {
+          "id": "t_cb487e38-79d5-5b7b-9cb0-f90288ee885d",
+          "name": "FAC.VENT.SC01.CMD",
+          "label": "Kettle hood exhaust fan speed",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "1-1",
+          "access": "read-write",
+          "object_type": "analog-output",
+          "remote_device": "bas-vent",
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_38d6ffb6-5d6c-5763-8f98-444312331a94",
+          "name": "FAC.VENT.FAN01.PV",
+          "label": "Cellar purge fan 1 running (current switch)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "3-1",
+          "access": "read",
+          "object_type": "binary-input",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_1197242d-e278-5ca9-9cab-7877448dc71e",
+          "name": "FAC.VENT.FAN02.PV",
+          "label": "Cellar purge fan 2 running (current switch)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "3-2",
+          "access": "read",
+          "object_type": "binary-input",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_deae6144-0d85-5e19-ac9f-9f758f13c6f8",
+          "name": "FAC.VENT.AY01.TIER1",
+          "label": "Cellar CO2 tier 1 (5,000 ppm, purge fans on)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-1",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_c24db5d5-0259-581a-a53e-6c5e81bc4c26",
+          "name": "FAC.VENT.AY01.TIER2",
+          "label": "Cellar CO2 tier 2 (15,000 ppm, carbonation inhibited)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-2",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_fae7bec3-4596-5031-961e-8e39c2225dd4",
+          "name": "FAC.VENT.AY01.TIER3",
+          "label": "Cellar CO2 tier 3 (30,000 ppm, evacuate)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-3",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_77303b80-3b12-5394-b8de-7722b1971ef2",
+          "name": "FAC.VENT.FAN01.CMD",
+          "label": "Cellar purge fan 1",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-1",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_d883a76c-849c-5d99-be72-ba1d2df1b1ae",
+          "name": "FAC.VENT.FAN02.CMD",
+          "label": "Cellar purge fan 2",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-2",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_e5bf0987-4cd0-5e28-ae10-4f6acc87caa1",
+          "name": "FAC.VENT.MUA01.CMD",
+          "label": "Makeup-air unit enable",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-3",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+          "name": "FAC.VENT.AT05.PV",
+          "label": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-6",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+          "name": "FAC.VENT.AT06.PV",
+          "label": "Filler (packaging) area CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-7",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+          "name": "FAC.VENT.AT07.PV",
+          "label": "Cold room and draft system CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-8",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
+          "name": "FAC.VENT.AY02.TIER1",
+          "label": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-4",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_f0285b70-2c03-5312-9cb9-d0490368f1d9",
+          "name": "FAC.VENT.XS01.SHUTOFF_OK",
+          "label": "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-5",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_9dbd8ff8-f6dc-552c-bd10-aa059249f760",
+          "name": "FAC.VENT.XA01.CMD",
+          "label": "CO2 horns and strobes (tier 3 in any area)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-4",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_5ed3b286-b721-5a41-978c-c2e77aebf4a6",
+          "name": "FAC.VENT.FAN03.CMD",
+          "label": "CO2 area exhaust fans (bulk tank, filler, cold room)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-5",
+          "access": "read-write",
+          "object_type": "binary-output",
+          "remote_device": "bas-vent"
+        }
+      ]
+    }
+  ]
+}

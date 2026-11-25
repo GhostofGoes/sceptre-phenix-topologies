@@ -1,0 +1,70 @@
+{
+  "beerjson": {
+    "version": 1.0,
+    "recipes": [
+      {
+        "name": "Fire of the Phenix",
+        "type": "all grain",
+        "author": "CherryMountain Brewing Co. (notional)",
+        "notes": "West Coast IPA brewed at 5,200 ft. Bittering is sized with the altitude-derated utilization (DESIGN.md 3.2, 9.3): wort boils at about 202.9 degF, so the same schedule computed at sea level would overshoot 68 IBU by about 10%. The whirlpool additions are a hop stand at 180 degF (boil step 2).",
+        "batch_size": { "unit": "l", "value": 1760.2 },
+        "efficiency": { "brewhouse": { "unit": "%", "value": 75 } },
+        "style": {
+          "name": "West Coast IPA",
+          "category": "IPA",
+          "style_guide": "BJCP 2021",
+          "type": "beer"
+        },
+        "ingredients": {
+          "fermentable_additions": [
+            { "name": "2-Row Pale", "type": "grain", "color": { "unit": "Lovi", "value": 1.8 }, "amount": { "unit": "kg", "value": 442.6 } },
+            { "name": "Munich", "type": "grain", "color": { "unit": "Lovi", "value": 9 }, "amount": { "unit": "kg", "value": 30.2 } },
+            { "name": "Crystal 40L", "type": "grain", "color": { "unit": "Lovi", "value": 40 }, "amount": { "unit": "kg", "value": 15.1 } },
+            { "name": "Carapils", "type": "grain", "color": { "unit": "Lovi", "value": 1.5 }, "amount": { "unit": "kg", "value": 15.1 } }
+          ],
+          "hop_additions": [
+            { "name": "Columbus", "form": "pellet", "alpha_acid": { "unit": "%", "value": 15 }, "amount": { "unit": "kg", "value": 2.72 }, "timing": { "use": "add_to_boil", "step": 1, "duration": { "unit": "min", "value": 60 } } },
+            { "name": "Centennial", "form": "pellet", "alpha_acid": { "unit": "%", "value": 10 }, "amount": { "unit": "kg", "value": 1.36 }, "timing": { "use": "add_to_boil", "step": 1, "duration": { "unit": "min", "value": 10 } } },
+            { "name": "Citra", "form": "pellet", "alpha_acid": { "unit": "%", "value": 12 }, "amount": { "unit": "kg", "value": 3.4 }, "timing": { "use": "add_to_boil", "step": 2, "duration": { "unit": "min", "value": 20 } } },
+            { "name": "Simcoe", "form": "pellet", "alpha_acid": { "unit": "%", "value": 13 }, "amount": { "unit": "kg", "value": 3.4 }, "timing": { "use": "add_to_boil", "step": 2, "duration": { "unit": "min", "value": 20 } } },
+            { "name": "Citra", "form": "pellet", "alpha_acid": { "unit": "%", "value": 12 }, "amount": { "unit": "kg", "value": 9.07 }, "timing": { "use": "add_to_fermentation", "time": { "unit": "day", "value": 5 } } },
+            { "name": "Mosaic", "form": "pellet", "alpha_acid": { "unit": "%", "value": 12 }, "amount": { "unit": "kg", "value": 9.07 }, "timing": { "use": "add_to_fermentation", "time": { "unit": "day", "value": 5 } } },
+            { "name": "Simcoe", "form": "pellet", "alpha_acid": { "unit": "%", "value": 13 }, "amount": { "unit": "kg", "value": 9.07 }, "timing": { "use": "add_to_fermentation", "time": { "unit": "day", "value": 5 } } }
+          ],
+          "culture_additions": [
+            { "name": "American Ale (Chico)", "type": "ale", "form": "liquid", "attenuation": { "unit": "%", "value": 81 } }
+          ]
+        },
+        "mash": {
+          "name": "Single infusion with mash-out",
+          "grain_temperature": { "unit": "F", "value": 65 },
+          "mash_steps": [
+            { "name": "Saccharification", "type": "infusion", "amount": { "unit": "l", "value": 1310 }, "step_temperature": { "unit": "F", "value": 152 }, "step_time": { "unit": "min", "value": 60 } },
+            { "name": "Mash out", "type": "temperature", "step_temperature": { "unit": "F", "value": 168 }, "step_time": { "unit": "min", "value": 10 } }
+          ]
+        },
+        "boil": {
+          "pre_boil_size": { "unit": "l", "value": 2050 },
+          "boil_time": { "unit": "min", "value": 60 },
+          "boil_steps": [
+            { "name": "Boil", "start_temperature": { "unit": "F", "value": 202.9 }, "step_time": { "unit": "min", "value": 60 } },
+            { "name": "Whirlpool hop stand", "start_temperature": { "unit": "F", "value": 180 }, "end_temperature": { "unit": "F", "value": 180 }, "step_time": { "unit": "min", "value": 20 } }
+          ]
+        },
+        "fermentation": {
+          "name": "Ale with free rise and cold crash",
+          "fermentation_steps": [
+            { "name": "Primary", "start_temperature": { "unit": "F", "value": 64 }, "end_temperature": { "unit": "F", "value": 66 }, "step_time": { "unit": "day", "value": 4 } },
+            { "name": "Diacetyl rest (free rise)", "start_temperature": { "unit": "F", "value": 66 }, "end_temperature": { "unit": "F", "value": 70 }, "step_time": { "unit": "day", "value": 3 } },
+            { "name": "Cold crash", "start_temperature": { "unit": "F", "value": 70 }, "end_temperature": { "unit": "F", "value": 34 }, "step_time": { "unit": "day", "value": 2 } }
+          ]
+        },
+        "original_gravity": { "unit": "sg", "value": 1.066 },
+        "final_gravity": { "unit": "sg", "value": 1.012 },
+        "alcohol_by_volume": { "unit": "%", "value": 7.1 },
+        "ibu_estimate": { "method": "Tinseth", "value": 68 },
+        "color_estimate": { "unit": "SRM", "value": 7 }
+      }
+    ]
+  }
+}

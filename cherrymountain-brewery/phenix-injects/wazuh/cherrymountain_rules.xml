@@ -1,0 +1,291 @@
+<!--
+  CherryMountain Brewery baseline detections for Wazuh (DESIGN.md 14). The
+  topology injects this file into /var/ossec/etc/rules/ on the manager. Rule ids
+  100100 to 100499 are ours (Wazuh reserves 100000 to 120000 for custom rules).
+
+  What Wazuh sees (DESIGN.md 14): host logs from the Linux agents in OPS, HMI, BAS,
+  the DMZ, and the SOC; syslog from the VyOS firewalls and from ot-svc; and the
+  agents' file integrity events. Malcolm cannot see a flow the firewalls drop, so a
+  blocked conduit attempt is visible only here, through the fw-ot and fw-edge logs.
+  The network-side detections (Modbus, S7, BACnet, BBMD and BDT, DNP3, new field hosts)
+  are Suricata rules and Zeek notices in Malcolm (phenix-injects/malcolm/).
+
+  The vendor-maintenance run (DESIGN.md 15.6) fires, in order:
+    100201  the vendor's WireGuard tunnel comes up (dmz-vpn)
+    100301  the vendor signs in to Guacamole with TOTP (dmz-jump)
+    100311  Guacamole opens an RDP session; 100313 the session recording is written
+    100400/100402  the vendor's SSH or RDP login lands on the EWS
+    100411  the OpenPLC program re-upload from the EWS
+  The same events outside the approved window (06:00 to 19:00 on weekdays, manager
+  time) are the "vendor session outside an approved window" detection: 100204,
+  100205, 100305, 100306, and for the cmadmin account 100307 and 100308. Change the window by editing the <time> and <weekday>
+  options below.
+
+  Wazuh built-in rules used as parents: 553 and 554 (file deleted, file added),
+  5501 (PAM session opened), 5715 (sshd authentication success).
+-->
+
+<group name="cherrymountain,">
+
+  <!-- ===== Firewalls: blocked conduit attempts ===== -->
+
+  <!-- The cm-fw-drop decoders are children of Wazuh's kernel decoder, so the event
+       is decoded as `kernel`; the regex keeps other kernel lines out. -->
+  <rule id="100100" level="3">
+    <decoded_as>kernel</decoded_as>
+    <regex type="pcre2">IN=\S* OUT=\S* (?:MAC=\S* )?SRC=</regex>
+    <description>CherryMountain firewall: default deny dropped $(srcip) to $(dstip) $(protocol)/$(dstport).</description>
+    <group>cm_firewall,</group>
+  </rule>
+
+  <rule id="100101" level="10">
+    <if_sid>100100</if_sid>
+    <hostname>^fw-ot$</hostname>
+    <dstport>^502$|^102$|^4840$|^8443$|^20000$</dstport>
+    <description>CherryMountain fw-ot blocked an attempt to reach a control-system service ($(srcip) to $(dstip) port $(dstport)).</description>
+    <group>cm_firewall,cm_blocked_conduit,</group>
+  </rule>
+
+  <rule id="100102" level="10">
+    <if_sid>100100</if_sid>
+    <protocol>^UDP$</protocol>
+    <dstport>^47808$</dstport>
+    <description>CherryMountain firewall blocked BACnet/IP outside the BACnet conduits ($(srcip) to $(dstip)): a BBMD rule is missing, or this is a rogue BBMD or foreign device.</description>
+    <group>cm_firewall,cm_blocked_conduit,cm_bacnet,</group>
+  </rule>
+
+  <rule id="100103" level="5">
+    <if_sid>100100</if_sid>
+    <hostname>^fw-edge$</hostname>
+    <description>CherryMountain fw-edge denied traffic from $(srcip) to $(dstip) $(protocol)/$(dstport).</description>
+    <group>cm_firewall,</group>
+  </rule>
+
+  <!-- Counts every firewall drop, whichever rule above it ended at: if_matched_sid
+       100100 would count only the drops that end at 100100 itself, and a drop at
+       fw-edge (100103) or on a control-system port (100101) never does. With no if_sid,
+       Wazuh makes this rule a child of every rule of the group that is defined above
+       it, so it must stay below them. ignore: one alert a minute; the packets in
+       between alert as their own rule. -->
+  <rule id="100104" level="10" frequency="10" timeframe="60" ignore="60">
+    <if_matched_group>cm_firewall</if_matched_group>
+    <same_source_ip />
+    <description>CherryMountain firewall: ten denied packets from $(srcip) in a minute (a scan or lateral movement).</description>
+    <group>cm_firewall,cm_scan,</group>
+  </rule>
+
+  <!-- dmz-vpn logs what its forward policy refuses (nftables-wireguard.nft, prefix [cm-wg-drop]). -->
+  <rule id="100105" level="12">
+    <if_sid>100100</if_sid>
+    <hostname>^dmz-vpn$</hostname>
+    <description>dmz-vpn refused to forward vendor tunnel traffic ($(srcip) to $(dstip) $(protocol)/$(dstport)): the vendor peer may reach dmz-jump on TCP 443 only.</description>
+    <group>cm_vendor,cm_wireguard,cm_blocked_conduit,</group>
+  </rule>
+
+  <!-- ===== Vendor WireGuard tunnel (dmz-vpn) ===== -->
+
+  <rule id="100200" level="3">
+    <decoded_as>cm-wg-watch</decoded_as>
+    <description>CherryMountain WireGuard watcher on dmz-vpn: $(action) for peer $(peer).</description>
+    <group>cm_vendor,cm_wireguard,</group>
+  </rule>
+
+  <rule id="100201" level="6">
+    <if_sid>100200</if_sid>
+    <action>peer_up</action>
+    <description>Vendor WireGuard tunnel is up: peer $(peer) from $(srcip).</description>
+    <group>cm_vendor,cm_wireguard,cm_vendor_session,</group>
+  </rule>
+
+  <rule id="100202" level="4">
+    <if_sid>100200</if_sid>
+    <action>peer_down</action>
+    <description>Vendor WireGuard tunnel is down: peer $(peer) had no handshake for three minutes.</description>
+    <group>cm_vendor,cm_wireguard,</group>
+  </rule>
+
+  <rule id="100203" level="8">
+    <if_sid>100200</if_sid>
+    <action>peer_roam</action>
+    <description>Vendor WireGuard peer $(peer) changed its endpoint to $(srcip).</description>
+    <group>cm_vendor,cm_wireguard,</group>
+  </rule>
+
+  <rule id="100204" level="10">
+    <if_sid>100201</if_sid>
+    <time>7 pm - 6 am</time>
+    <description>Vendor WireGuard tunnel came up outside the approved window (evening or night).</description>
+    <group>cm_vendor,cm_wireguard,cm_vendor_outside_window,</group>
+  </rule>
+
+  <rule id="100205" level="10">
+    <if_sid>100201</if_sid>
+    <weekday>weekends</weekday>
+    <description>Vendor WireGuard tunnel came up outside the approved window (weekend).</description>
+    <group>cm_vendor,cm_wireguard,cm_vendor_outside_window,</group>
+  </rule>
+
+  <!-- ===== Guacamole jump host (dmz-jump) ===== -->
+
+  <rule id="100300" level="3">
+    <decoded_as>cm-guacamole</decoded_as>
+    <description>CherryMountain Guacamole web application event.</description>
+    <group>cm_vendor,cm_guacamole,</group>
+  </rule>
+
+  <rule id="100301" level="6">
+    <if_sid>100300</if_sid>
+    <regex type="pcre2">successfully authenticated from</regex>
+    <description>Guacamole login: $(dstuser) from $(srcip) (TOTP passed).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_session,authentication_success,</group>
+  </rule>
+
+  <rule id="100302" level="12">
+    <if_sid>100301</if_sid>
+    <user>^cmadmin$</user>
+    <srcip>10.99.0.0/24</srcip>
+    <description>The Guacamole admin account cmadmin signed in from the vendor tunnel ($(srcip)).</description>
+    <group>cm_vendor,cm_guacamole,authentication_success,</group>
+  </rule>
+
+  <rule id="100303" level="8">
+    <if_sid>100300</if_sid>
+    <regex type="pcre2">Authentication attempt from .* failed</regex>
+    <description>Guacamole login failed for $(dstuser) from $(srcip): $(extra_data).</description>
+    <group>cm_vendor,cm_guacamole,authentication_failed,</group>
+  </rule>
+
+  <rule id="100304" level="12" frequency="5" timeframe="120">
+    <if_matched_sid>100303</if_matched_sid>
+    <same_source_ip />
+    <description>Guacamole: five failed logins from $(srcip) in two minutes (password or TOTP guessing).</description>
+    <group>cm_vendor,cm_guacamole,authentication_failures,</group>
+  </rule>
+
+  <rule id="100305" level="10">
+    <if_sid>100301</if_sid>
+    <time>7 pm - 6 am</time>
+    <description>Guacamole login by $(dstuser) outside the approved window (evening or night).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_outside_window,</group>
+  </rule>
+
+  <rule id="100306" level="10">
+    <if_sid>100301</if_sid>
+    <weekday>weekends</weekday>
+    <description>Guacamole login by $(dstuser) outside the approved window (weekend).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_outside_window,</group>
+  </rule>
+
+  <!-- Wazuh tries the children of one rule highest level first and stops at the first
+       that matches (checked with wazuh-logtest on 4.14.1), so 100302 (level 12) hides
+       100305 and 100306 for a cmadmin login from the tunnel. These two carry the
+       window under 100302 instead. -->
+  <rule id="100307" level="13">
+    <if_sid>100302</if_sid>
+    <time>7 pm - 6 am</time>
+    <description>The Guacamole admin account cmadmin signed in from the vendor tunnel ($(srcip)) outside the approved window (evening or night).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_outside_window,authentication_success,</group>
+  </rule>
+
+  <rule id="100308" level="13">
+    <if_sid>100302</if_sid>
+    <weekday>weekends</weekday>
+    <description>The Guacamole admin account cmadmin signed in from the vendor tunnel ($(srcip)) outside the approved window (weekend).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_outside_window,authentication_success,</group>
+  </rule>
+
+  <rule id="100310" level="3">
+    <decoded_as>cm-guacd</decoded_as>
+    <description>CherryMountain guacd event.</description>
+    <group>cm_vendor,cm_guacamole,</group>
+  </rule>
+
+  <rule id="100311" level="6">
+    <if_sid>100310</if_sid>
+    <regex type="pcre2">Creating new client for protocol</regex>
+    <description>Guacamole opened a $(protocol) session to the engineering workstation (recorded).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_session,</group>
+  </rule>
+
+  <!-- A new file in the recordings directory is a session recording (the agent watches it in real time). -->
+  <rule id="100313" level="7">
+    <if_sid>554</if_sid>
+    <field name="file">^/var/lib/cm-guacamole/recordings/</field>
+    <description>Guacamole session recording written: $(file).</description>
+    <group>cm_vendor,cm_guacamole,cm_vendor_session,</group>
+  </rule>
+
+  <!-- A recording is written while its session runs, so a modification is normal; deleting one destroys evidence. -->
+  <rule id="100314" level="12">
+    <if_sid>553</if_sid>
+    <field name="file">^/var/lib/cm-guacamole/recordings/</field>
+    <description>Guacamole session recording was deleted: $(file).</description>
+    <group>cm_vendor,cm_guacamole,cm_tamper,</group>
+  </rule>
+
+  <!-- ===== Engineering workstation (ews): the one choke point into L1 ===== -->
+
+  <rule id="100400" level="8">
+    <if_sid>5715</if_sid>
+    <srcip>10.10.20.11</srcip>
+    <user>^ridgeline-</user>
+    <description>Vendor SSH login to the EWS through the jump host (dmz-jump): $(dstuser).</description>
+    <group>cm_vendor,cm_vendor_session,cm_ews,</group>
+  </rule>
+
+  <rule id="100401" level="12">
+    <if_sid>5715</if_sid>
+    <srcip negate="yes">10.10.20.11</srcip>
+    <user>^ridgeline-</user>
+    <description>A vendor technician's account ($(dstuser)) signed in to the EWS over SSH from $(srcip), not from the jump host.</description>
+    <group>cm_vendor,cm_ews,</group>
+  </rule>
+
+  <rule id="100402" level="8">
+    <if_sid>5501</if_sid>
+    <program_name>^xrdp-sesman$</program_name>
+    <user>^ridgeline-</user>
+    <description>Vendor RDP desktop session opened on the EWS for $(dstuser).</description>
+    <group>cm_vendor,cm_vendor_session,cm_ews,</group>
+  </rule>
+
+  <!-- Every Ridgeline technician has a named account (ridgeline-<name>, DESIGN.md 13);
+       70-ews-vendor.sh locks the shared one of earlier versions. A login as it means
+       the lock was undone or the account was recreated. -->
+  <rule id="100403" level="12">
+    <if_sid>5715</if_sid>
+    <user>^ridgeline$</user>
+    <description>The shared vendor account signed in to the EWS from $(srcip); technicians have named accounts.</description>
+    <group>cm_vendor,cm_ews,</group>
+  </rule>
+
+  <!-- ===== OpenPLC program upload and start or stop from the EWS ===== -->
+
+  <rule id="100410" level="3">
+    <decoded_as>cm-plc-tool</decoded_as>
+    <description>CherryMountain engineering tool on the EWS: $(action) on $(plc).</description>
+    <group>cm_plc,</group>
+  </rule>
+
+  <rule id="100411" level="8">
+    <if_sid>100410</if_sid>
+    <action>plc_upload</action>
+    <description>OpenPLC program upload from the EWS to $(plc) ($(dstip)) by $(srcuser).</description>
+    <group>cm_plc,cm_vendor_session,cm_program_change,</group>
+  </rule>
+
+  <rule id="100412" level="8">
+    <if_sid>100410</if_sid>
+    <action type="pcre2">^plc_(?:start|stop)$</action>
+    <description>OpenPLC runtime $(action) on $(plc) ($(dstip)) from the EWS by $(srcuser).</description>
+    <group>cm_plc,cm_program_change,</group>
+  </rule>
+
+  <rule id="100413" level="10">
+    <if_sid>100410</if_sid>
+    <action>plc_failed</action>
+    <description>OpenPLC action from the EWS failed on $(plc) ($(dstip)).</description>
+    <group>cm_plc,</group>
+  </rule>
+
+</group>

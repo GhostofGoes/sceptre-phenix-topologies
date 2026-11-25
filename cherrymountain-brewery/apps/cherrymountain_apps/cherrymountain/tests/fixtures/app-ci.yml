@@ -1,0 +1,27 @@
+# The cherrymountain app block for the ci variant (DESIGN.md 16). The
+# experiment fixtures embed it between ot-sim and helics, the order the
+# scenario needs: ot-sim annotates rio-cellar, this app annotates sim-process,
+# and helics counts both. It holds what plantgen emits into scenario-ci.yml
+# (test_fixtures.py compares the two).
+name: cherrymountain
+runPeriodically: 5m
+metadata:
+  variant: ci
+  verify:
+    timeout: 15
+hosts:
+  - hostname: sim-ctl
+    metadata:
+      type: sim-ctl
+  - hostname: sim-process
+    metadata:
+      type: sim-federate
+  - hostname: rio-cellar
+    metadata:
+      type: rio
+  - hostname: plc-cellar
+    metadata:
+      type: openplc
+  - hostname: scada-fuxa
+    metadata:
+      type: fuxa

@@ -1,0 +1,49 @@
+[Unit]
+Description=CherryMountain Malcolm capture port (OpenFlow flow from the GRE port)
+# The mirror app's setupOVS script creates the bridge and its GRE port during
+# phenix.service. The script waits for them, and PartOf= makes the flow come
+# back when Open vSwitch restarts, which empties the flow table.
+After=openvswitch-switch.service
+PartOf=openvswitch-switch.service
+# Never give up: the bridge appears when the mirror app's script has run.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/cm-malcolm
+ExecStart=/usr/local/sbin/cm-malcolm-capture
+TimeoutStartSec=5min
+Restart=on-failure
+RestartSec=10
+
+# Hardening. ovs-vsctl and ovs-ofctl talk to Open vSwitch through unix sockets;
+# `ip link set ... up promisc on` needs CAP_NET_ADMIN and a netlink socket.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ReadWritePaths=-/var/run/openvswitch
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

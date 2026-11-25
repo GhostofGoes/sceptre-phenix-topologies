@@ -1,0 +1,991 @@
+{
+  "generator": "plantgen",
+  "variant": "ci",
+  "tags": [
+    {
+      "name": "CEL.CLK.KI01.PV",
+      "desc": "Cellar simulation clock (compressed fermentation time)",
+      "type": "analog-read",
+      "units": "h",
+      "range": [
+        0.0,
+        6553.0
+      ],
+      "scaling": 1,
+      "area": "CEL",
+      "unit": "CLK",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "clock",
+      "device_type": "sim-clock",
+      "point": "sim_hours",
+      "helics_key": "cellar/clock.sim_hours"
+    },
+    {
+      "name": "CEL.FV101.TT01.PV",
+      "desc": "FV-101 side temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-side",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv101-side.temp_f",
+      "alarms": [
+        "CEL.FV101.TT01.ALM_DEVIATION",
+        "CEL.FV101.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.FV101.TT01.ALM_DEVIATION",
+      "desc": "FV-101 side temperature: deviation alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.TT01.ALM_HIGH",
+      "desc": "FV-101 side temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.TV01.CMD",
+      "desc": "FV-101 side glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-side",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv101-side.valve"
+    },
+    {
+      "name": "CEL.FV101.TT02.PV",
+      "desc": "FV-101 cone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-cone",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv101-cone.temp_f",
+      "alarms": [
+        "CEL.FV101.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.FV101.TT02.ALM_DEVIATION",
+      "desc": "FV-101 cone temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.TV02.CMD",
+      "desc": "FV-101 cone glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101-cone",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv101-cone.valve"
+    },
+    {
+      "name": "CEL.FV101.PT01.PV",
+      "desc": "FV-101 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101",
+      "device_type": "fv-vessel",
+      "point": "pressure_psia",
+      "helics_key": "cellar/fv101.pressure_psia",
+      "alarms": [
+        "CEL.FV101.PT01.ALM_HIGH",
+        "CEL.FV101.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "CEL.FV101.PT01.ALM_HIGH",
+      "desc": "FV-101 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.PT01.ALM_LOW",
+      "desc": "FV-101 head pressure (absolute): low alarm (low)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV101.DT01.PV",
+      "desc": "FV-101 apparent extract (sample-port density meter)",
+      "type": "analog-read",
+      "units": "degP",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101",
+      "device_type": "fv-vessel",
+      "point": "gravity_plato",
+      "helics_key": "cellar/fv101.gravity_plato"
+    },
+    {
+      "name": "CEL.FV101.PCV01.SP",
+      "desc": "FV-101 spunding valve setpoint (absolute)",
+      "type": "analog-read-write",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101",
+      "device_type": "fv-vessel",
+      "point": "spund_sp_psia",
+      "helics_key": "cellar/fv101.spund_sp_psia"
+    },
+    {
+      "name": "CEL.FV101.ZSO01.PV",
+      "desc": "FV-101 spunding valve open (venting)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv101",
+      "device_type": "fv-vessel",
+      "point": "spund_open",
+      "helics_key": "cellar/fv101.spund_open"
+    },
+    {
+      "name": "CEL.FV101.TT01.SP",
+      "desc": "FV-101 side temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV101.TT02.SP",
+      "desc": "FV-101 cone temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV101",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV102.TT01.PV",
+      "desc": "FV-102 side temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-side",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv102-side.temp_f",
+      "alarms": [
+        "CEL.FV102.TT01.ALM_DEVIATION",
+        "CEL.FV102.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.FV102.TT01.ALM_DEVIATION",
+      "desc": "FV-102 side temperature: deviation alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.TT01.ALM_HIGH",
+      "desc": "FV-102 side temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.TV01.CMD",
+      "desc": "FV-102 side glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-side",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv102-side.valve"
+    },
+    {
+      "name": "CEL.FV102.TT02.PV",
+      "desc": "FV-102 cone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-cone",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv102-cone.temp_f",
+      "alarms": [
+        "CEL.FV102.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.FV102.TT02.ALM_DEVIATION",
+      "desc": "FV-102 cone temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.TV02.CMD",
+      "desc": "FV-102 cone glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102-cone",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv102-cone.valve"
+    },
+    {
+      "name": "CEL.FV102.PT01.PV",
+      "desc": "FV-102 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102",
+      "device_type": "fv-vessel",
+      "point": "pressure_psia",
+      "helics_key": "cellar/fv102.pressure_psia",
+      "alarms": [
+        "CEL.FV102.PT01.ALM_HIGH",
+        "CEL.FV102.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "CEL.FV102.PT01.ALM_HIGH",
+      "desc": "FV-102 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.PT01.ALM_LOW",
+      "desc": "FV-102 head pressure (absolute): low alarm (low)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV102.DT01.PV",
+      "desc": "FV-102 apparent extract (sample-port density meter)",
+      "type": "analog-read",
+      "units": "degP",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102",
+      "device_type": "fv-vessel",
+      "point": "gravity_plato",
+      "helics_key": "cellar/fv102.gravity_plato"
+    },
+    {
+      "name": "CEL.FV102.PCV01.SP",
+      "desc": "FV-102 spunding valve setpoint (absolute)",
+      "type": "analog-read-write",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102",
+      "device_type": "fv-vessel",
+      "point": "spund_sp_psia",
+      "helics_key": "cellar/fv102.spund_sp_psia"
+    },
+    {
+      "name": "CEL.FV102.ZSO01.PV",
+      "desc": "FV-102 spunding valve open (venting)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv102",
+      "device_type": "fv-vessel",
+      "point": "spund_open",
+      "helics_key": "cellar/fv102.spund_open"
+    },
+    {
+      "name": "CEL.FV102.TT01.SP",
+      "desc": "FV-102 side temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV102.TT02.SP",
+      "desc": "FV-102 cone temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV102",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV103.TT01.PV",
+      "desc": "FV-103 side temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-side",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv103-side.temp_f",
+      "alarms": [
+        "CEL.FV103.TT01.ALM_DEVIATION",
+        "CEL.FV103.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.FV103.TT01.ALM_DEVIATION",
+      "desc": "FV-103 side temperature: deviation alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.TT01.ALM_HIGH",
+      "desc": "FV-103 side temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.TV01.CMD",
+      "desc": "FV-103 side glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-side",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv103-side.valve"
+    },
+    {
+      "name": "CEL.FV103.TT02.PV",
+      "desc": "FV-103 cone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-cone",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv103-cone.temp_f",
+      "alarms": [
+        "CEL.FV103.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.FV103.TT02.ALM_DEVIATION",
+      "desc": "FV-103 cone temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.TV02.CMD",
+      "desc": "FV-103 cone glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103-cone",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv103-cone.valve"
+    },
+    {
+      "name": "CEL.FV103.PT01.PV",
+      "desc": "FV-103 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103",
+      "device_type": "fv-vessel",
+      "point": "pressure_psia",
+      "helics_key": "cellar/fv103.pressure_psia",
+      "alarms": [
+        "CEL.FV103.PT01.ALM_HIGH",
+        "CEL.FV103.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "CEL.FV103.PT01.ALM_HIGH",
+      "desc": "FV-103 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.PT01.ALM_LOW",
+      "desc": "FV-103 head pressure (absolute): low alarm (low)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV103.DT01.PV",
+      "desc": "FV-103 apparent extract (sample-port density meter)",
+      "type": "analog-read",
+      "units": "degP",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103",
+      "device_type": "fv-vessel",
+      "point": "gravity_plato",
+      "helics_key": "cellar/fv103.gravity_plato"
+    },
+    {
+      "name": "CEL.FV103.PCV01.SP",
+      "desc": "FV-103 spunding valve setpoint (absolute)",
+      "type": "analog-read-write",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103",
+      "device_type": "fv-vessel",
+      "point": "spund_sp_psia",
+      "helics_key": "cellar/fv103.spund_sp_psia"
+    },
+    {
+      "name": "CEL.FV103.ZSO01.PV",
+      "desc": "FV-103 spunding valve open (venting)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv103",
+      "device_type": "fv-vessel",
+      "point": "spund_open",
+      "helics_key": "cellar/fv103.spund_open"
+    },
+    {
+      "name": "CEL.FV103.TT01.SP",
+      "desc": "FV-103 side temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV103.TT02.SP",
+      "desc": "FV-103 cone temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV103",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV104.TT01.PV",
+      "desc": "FV-104 side temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-side",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv104-side.temp_f",
+      "alarms": [
+        "CEL.FV104.TT01.ALM_DEVIATION",
+        "CEL.FV104.TT01.ALM_HIGH"
+      ]
+    },
+    {
+      "name": "CEL.FV104.TT01.ALM_DEVIATION",
+      "desc": "FV-104 side temperature: deviation alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.TT01.ALM_HIGH",
+      "desc": "FV-104 side temperature: high alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.TV01.CMD",
+      "desc": "FV-104 side glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-side",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv104-side.valve"
+    },
+    {
+      "name": "CEL.FV104.TT02.PV",
+      "desc": "FV-104 cone temperature",
+      "type": "analog-read",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-cone",
+      "device_type": "fv-zone",
+      "point": "temp_f",
+      "helics_key": "cellar/fv104-cone.temp_f",
+      "alarms": [
+        "CEL.FV104.TT02.ALM_DEVIATION"
+      ]
+    },
+    {
+      "name": "CEL.FV104.TT02.ALM_DEVIATION",
+      "desc": "FV-104 cone temperature: deviation alarm (medium)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.TV02.CMD",
+      "desc": "FV-104 cone glycol valve command",
+      "type": "binary-read-write",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104-cone",
+      "device_type": "fv-zone",
+      "point": "valve",
+      "helics_key": "cellar/fv104-cone.valve"
+    },
+    {
+      "name": "CEL.FV104.PT01.PV",
+      "desc": "FV-104 head pressure (absolute)",
+      "type": "analog-read",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104",
+      "device_type": "fv-vessel",
+      "point": "pressure_psia",
+      "helics_key": "cellar/fv104.pressure_psia",
+      "alarms": [
+        "CEL.FV104.PT01.ALM_HIGH",
+        "CEL.FV104.PT01.ALM_LOW"
+      ]
+    },
+    {
+      "name": "CEL.FV104.PT01.ALM_HIGH",
+      "desc": "FV-104 head pressure (absolute): high alarm (high)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.PT01.ALM_LOW",
+      "desc": "FV-104 head pressure (absolute): low alarm (low)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar",
+      "generated": true
+    },
+    {
+      "name": "CEL.FV104.DT01.PV",
+      "desc": "FV-104 apparent extract (sample-port density meter)",
+      "type": "analog-read",
+      "units": "degP",
+      "range": [
+        0.0,
+        30.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104",
+      "device_type": "fv-vessel",
+      "point": "gravity_plato",
+      "helics_key": "cellar/fv104.gravity_plato"
+    },
+    {
+      "name": "CEL.FV104.PCV01.SP",
+      "desc": "FV-104 spunding valve setpoint (absolute)",
+      "type": "analog-read-write",
+      "units": "psia",
+      "range": [
+        0.0,
+        40.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104",
+      "device_type": "fv-vessel",
+      "point": "spund_sp_psia",
+      "helics_key": "cellar/fv104.spund_sp_psia"
+    },
+    {
+      "name": "CEL.FV104.ZSO01.PV",
+      "desc": "FV-104 spunding valve open (venting)",
+      "type": "binary-read",
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "io",
+      "plc": "plc-cellar",
+      "rio": "rio-cellar",
+      "federate": "cellar",
+      "device": "fv104",
+      "device_type": "fv-vessel",
+      "point": "spund_open",
+      "helics_key": "cellar/fv104.spund_open"
+    },
+    {
+      "name": "CEL.FV104.TT01.SP",
+      "desc": "FV-104 side temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar"
+    },
+    {
+      "name": "CEL.FV104.TT02.SP",
+      "desc": "FV-104 cone temperature setpoint",
+      "type": "analog-read-write",
+      "units": "degF",
+      "range": [
+        20.0,
+        90.0
+      ],
+      "scaling": 2,
+      "area": "CEL",
+      "unit": "FV104",
+      "source": "plc",
+      "plc": "plc-cellar"
+    }
+  ]
+}

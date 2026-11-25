@@ -1,0 +1,6065 @@
+{
+  "generator": "plantgen",
+  "variant": "full",
+  "notes": "address is 1-based (FUXA subtracts 1); value = raw / divisor",
+  "devices": [
+    {
+      "name": "plc-brewhouse",
+      "type": "OPCUA",
+      "property": {
+        "address": "opc.tcp://10.20.10.11:4840/openplc/opcua"
+      },
+      "polling": 1000,
+      "tags": [
+        {
+          "id": "t_20a2e463-7a77-56bc-a353-ff2cbd918a23",
+          "name": "BH.MILL.LT01.PV",
+          "label": "Grain silo level",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MILL_LT01_PV",
+          "plc_iec": "%IW100",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_7193ac13-ce38-56ed-8e6e-2f9693c5edb9",
+          "name": "BH.MILL.SI01.PV",
+          "label": "Mill VFD speed",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MILL_SI01_PV",
+          "plc_iec": "%IW101",
+          "access": "read",
+          "divisor": 10,
+          "units": "Hz",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_943cc484-1739-5b92-9662-08aa329dec22",
+          "name": "BH.MILL.YS01.PV",
+          "label": "Mill running",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MILL_YS01_PV",
+          "plc_iec": "%IX100.0",
+          "access": "read"
+        },
+        {
+          "id": "t_5796b120-1a4c-5ca6-b51c-9f4927bcc6e6",
+          "name": "BH.MILL.HS01.CMD",
+          "label": "Mill run command",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MILL_HS01_CMD",
+          "plc_iec": "%QX100.0",
+          "access": "read"
+        },
+        {
+          "id": "t_38e6e70d-4427-5fe2-801d-b4b98b9a1f82",
+          "name": "BH.MILL.HS02.CMD",
+          "label": "Grain auger run command",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MILL_HS02_CMD",
+          "plc_iec": "%QX100.1",
+          "access": "read"
+        },
+        {
+          "id": "t_07ae7220-a5e6-5b77-afb5-050b003140ba",
+          "name": "BH.MILL.SC01.SP",
+          "label": "Mill VFD speed reference",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MILL_SC01_SP",
+          "plc_iec": "%QW100",
+          "access": "read",
+          "divisor": 10,
+          "units": "Hz",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_914ce7e2-560d-5a92-9daa-9986f1f14ae9",
+          "name": "BH.CLT.LT01.PV",
+          "label": "CLT level",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_CLT_LT01_PV",
+          "plc_iec": "%IW102",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_744d9466-1d9b-51e8-bdb2-ba9f38806c4d",
+          "name": "BH.CLT.TT01.PV",
+          "label": "CLT temperature",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_CLT_TT01_PV",
+          "plc_iec": "%IW103",
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            212.0
+          ]
+        },
+        {
+          "id": "t_0ca889ae-e1d5-5971-bed2-9558b3d2a14f",
+          "name": "BH.CLT.LSH01.PV",
+          "label": "CLT high-level switch",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_CLT_LSH01_PV",
+          "plc_iec": "%IX100.1",
+          "access": "read"
+        },
+        {
+          "id": "t_c0f1326f-507e-5dbf-821f-b8aaeddb17f7",
+          "name": "BH.CLT.XV01.CMD",
+          "label": "CLT fill valve (RO permeate)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_CLT_XV01_CMD",
+          "plc_iec": "%QX100.2",
+          "access": "read"
+        },
+        {
+          "id": "t_ceb53a65-736c-509c-9d33-3fe073e06c5c",
+          "name": "BH.HLT.LT01.PV",
+          "label": "HLT level",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_HLT_LT01_PV",
+          "plc_iec": "%IW104",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_b3e38524-8c45-5930-b53f-1f9d0cc33b29",
+          "name": "BH.HLT.LT01.ALM_LOW",
+          "label": "HLT level: low alarm (low)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_HLT_LT01_ALM_LOW",
+          "plc_iec": "%QX0.0",
+          "access": "read"
+        },
+        {
+          "id": "t_a4e2bba7-352f-5bd3-a1e4-6d547e360bb4",
+          "name": "BH.HLT.TT01.PV",
+          "label": "HLT temperature",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_HLT_TT01_PV",
+          "plc_iec": "%IW105",
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            212.0
+          ]
+        },
+        {
+          "id": "t_1abfbdde-e500-5e58-89a2-6df54026ba94",
+          "name": "BH.HLT.TT01.ALM_HIGH",
+          "label": "HLT temperature: high alarm (medium)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_HLT_TT01_ALM_HIGH",
+          "plc_iec": "%QX0.1",
+          "access": "read"
+        },
+        {
+          "id": "t_6e0d3c2c-27a0-50d0-bed0-9e75e35cbc38",
+          "name": "BH.HLT.LSL01.PV",
+          "label": "HLT low-level switch (made while the steam jacket is covered; drops below 15 %)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_HLT_LSL01_PV",
+          "plc_iec": "%IX100.2",
+          "access": "read"
+        },
+        {
+          "id": "t_5c0372c1-b3d1-5e7a-8126-50623dd28184",
+          "name": "BH.HLT.XV01.CMD",
+          "label": "HLT fill valve (from the CLT)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_HLT_XV01_CMD",
+          "plc_iec": "%QX100.3",
+          "access": "read"
+        },
+        {
+          "id": "t_7d044d4b-e1f0-536d-b5c4-7b36bfaf9a7c",
+          "name": "BH.HLT.TV01.OUT",
+          "label": "HLT steam valve position",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_HLT_TV01_OUT",
+          "plc_iec": "%QW101",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_4888e456-867a-584f-b1db-d3c88f733c83",
+          "name": "BH.HLT.TT01.SP",
+          "label": "HLT temperature setpoint",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_HLT_TT01_SP",
+          "plc_iec": "%MW0",
+          "access": "read-write",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            212.0
+          ]
+        },
+        {
+          "id": "t_dc82cb38-a1a1-5347-99d5-e53d33ff4a27",
+          "name": "BH.MLT.TT01.PV",
+          "label": "MLT mash temperature",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_TT01_PV",
+          "plc_iec": "%IW106",
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            212.0
+          ]
+        },
+        {
+          "id": "t_8e00c3cc-8bd6-5c7d-9a5f-0dcf9dd8e6b7",
+          "name": "BH.MLT.TT01.ALM_DEVIATION",
+          "label": "MLT mash temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MLT_TT01_ALM_DEVIATION",
+          "plc_iec": "%QX0.2",
+          "access": "read"
+        },
+        {
+          "id": "t_bbc4c756-3292-5978-a7a6-dc8355cd8afd",
+          "name": "BH.MLT.LT01.PV",
+          "label": "MLT level",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_LT01_PV",
+          "plc_iec": "%IW107",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_4050b9e3-2b88-544f-8272-b9f6ddbddab1",
+          "name": "BH.MLT.PDT01.PV",
+          "label": "MLT false-bottom differential pressure",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_PDT01_PV",
+          "plc_iec": "%IW108",
+          "access": "read",
+          "divisor": 100,
+          "units": "psi",
+          "range": [
+            0.0,
+            10.0
+          ]
+        },
+        {
+          "id": "t_f1637f7d-1883-5862-8a21-b15e3e2ced7d",
+          "name": "BH.MLT.PDT01.ALM_HIGH",
+          "label": "MLT false-bottom differential pressure: high alarm (medium)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MLT_PDT01_ALM_HIGH",
+          "plc_iec": "%QX0.3",
+          "access": "read"
+        },
+        {
+          "id": "t_50fdafbb-2e64-5477-9d89-4e31b53f1fea",
+          "name": "BH.MLT.FT01.PV",
+          "label": "Lauter runoff flow",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_FT01_PV",
+          "plc_iec": "%IW109",
+          "access": "read",
+          "divisor": 10,
+          "units": "gal/min",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_9c0f571c-6441-5ac6-8a50-bd74905dae9d",
+          "name": "BH.MLT.FT02.PV",
+          "label": "Sparge flow",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_FT02_PV",
+          "plc_iec": "%IW110",
+          "access": "read",
+          "divisor": 10,
+          "units": "gal/min",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_98418612-093b-5d27-b282-5ec5c49e89b9",
+          "name": "BH.MLT.ZT01.PV",
+          "label": "Rake height above the false bottom",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_ZT01_PV",
+          "plc_iec": "%IW111",
+          "access": "read",
+          "divisor": 10,
+          "units": "in",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_bf8d10d3-6ca4-5b3f-b111-fbeebfd3f628",
+          "name": "BH.MLT.YS01.PV",
+          "label": "Rake running",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MLT_YS01_PV",
+          "plc_iec": "%IX100.3",
+          "access": "read"
+        },
+        {
+          "id": "t_594abbc2-8628-5252-a116-fd62aaaa2192",
+          "name": "BH.MLT.XV01.CMD",
+          "label": "Strike water valve (from the HLT)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MLT_XV01_CMD",
+          "plc_iec": "%QX100.4",
+          "access": "read"
+        },
+        {
+          "id": "t_9b3a5408-474e-5d6d-ad18-4a7ff36cdb1c",
+          "name": "BH.MLT.HS01.CMD",
+          "label": "Rake run command",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MLT_HS01_CMD",
+          "plc_iec": "%QX100.5",
+          "access": "read"
+        },
+        {
+          "id": "t_f7e98e25-c3f5-5cf8-afb1-e0f1668bb857",
+          "name": "BH.MLT.TV01.OUT",
+          "label": "MLT jacket steam valve position",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_TV01_OUT",
+          "plc_iec": "%QW102",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_165f646f-ee39-5f88-9118-89dbe4bbc338",
+          "name": "BH.MLT.FV01.OUT",
+          "label": "Runoff valve position",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_FV01_OUT",
+          "plc_iec": "%QW103",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_b772453d-f9bd-5d83-9c7f-af4ae78a24cb",
+          "name": "BH.MLT.FV02.OUT",
+          "label": "Sparge valve position",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_FV02_OUT",
+          "plc_iec": "%QW104",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_be4b8372-fdd4-510c-b31b-544ad049eac0",
+          "name": "BH.MLT.SC01.OUT",
+          "label": "Rake speed reference",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_SC01_OUT",
+          "plc_iec": "%QW105",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_bcbde36a-8f4e-5649-a45c-0364c8e97d2d",
+          "name": "BH.MLT.TT01.SP",
+          "label": "Mash step temperature setpoint",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_MLT_TT01_SP",
+          "plc_iec": "%MW1",
+          "access": "read-write",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            212.0
+          ]
+        },
+        {
+          "id": "t_13d41df9-e19e-54d0-b76f-f5628072f61f",
+          "name": "BH.MLT.XS01.ACTIVE",
+          "label": "Mash step at temperature, or 15 min into it (deviation alarm enabled)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_MLT_XS01_ACTIVE",
+          "plc_iec": "%QX0.4",
+          "access": "read"
+        },
+        {
+          "id": "t_8b36ae46-eec4-5f63-bd82-d95991f67720",
+          "name": "BH.KTL.TT01.PV",
+          "label": "Kettle temperature",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KTL_TT01_PV",
+          "plc_iec": "%IW112",
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            230.0
+          ]
+        },
+        {
+          "id": "t_fce1639b-ef98-51bd-93a0-35320d781297",
+          "name": "BH.KTL.LT01.PV",
+          "label": "Kettle level",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KTL_LT01_PV",
+          "plc_iec": "%IW113",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_8a96fe32-545d-516a-bbf2-949344815d41",
+          "name": "BH.KTL.LT01.ALM_HIGH",
+          "label": "Kettle level: high alarm (high)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KTL_LT01_ALM_HIGH",
+          "plc_iec": "%QX0.5",
+          "access": "read"
+        },
+        {
+          "id": "t_f7c7cd20-3c49-5207-b719-f254ffbf6967",
+          "name": "BH.KTL.PT01.PV",
+          "label": "Ambient (barometric) pressure for boil detection",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KTL_PT01_PV",
+          "plc_iec": "%IW114",
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            20.0
+          ]
+        },
+        {
+          "id": "t_23bdb552-4383-5fcb-b2f1-031b0cc2f286",
+          "name": "BH.KTL.LSH01.PV",
+          "label": "Kettle high-level switch (boil-over)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KTL_LSH01_PV",
+          "plc_iec": "%IX100.4",
+          "access": "read"
+        },
+        {
+          "id": "t_b8633ecc-4617-5d3b-b717-13eed5421a44",
+          "name": "BH.KTL.XV01.CMD",
+          "label": "Whirlpool tangential inlet valve",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KTL_XV01_CMD",
+          "plc_iec": "%QX100.6",
+          "access": "read"
+        },
+        {
+          "id": "t_0bbf32d3-a2b3-5aab-ad38-25c446fdc1e1",
+          "name": "BH.KTL.XV02.CMD",
+          "label": "Whirlpool hop doser",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KTL_XV02_CMD",
+          "plc_iec": "%QX100.7",
+          "access": "read"
+        },
+        {
+          "id": "t_de36dfaf-154d-531d-9896-e05a87cc352b",
+          "name": "BH.KTL.TV01.OUT",
+          "label": "Kettle jacket steam valve position",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KTL_TV01_OUT",
+          "plc_iec": "%QW106",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_4b402557-50f5-5405-9b6f-c82eb237fe33",
+          "name": "BH.KTL.TB01.PV",
+          "label": "Computed local wort boiling point",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KTL_TB01_PV",
+          "plc_iec": "%MW2",
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            180.0,
+            230.0
+          ]
+        },
+        {
+          "id": "t_7e3b81a4-c1f5-5a53-8646-10129865b473",
+          "name": "BH.KTL.KI01.PV",
+          "label": "Boil time elapsed",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KTL_KI01_PV",
+          "plc_iec": "%MW3",
+          "access": "read",
+          "divisor": 10,
+          "units": "min",
+          "range": [
+            0.0,
+            600.0
+          ]
+        },
+        {
+          "id": "t_de039e64-e995-57f1-8787-b0e82a604d9d",
+          "name": "BH.KTL.XS01.BOIL",
+          "label": "Boil detected (within 0.5 degF of the boiling point)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KTL_XS01_BOIL",
+          "plc_iec": "%QX0.6",
+          "access": "read"
+        },
+        {
+          "id": "t_5f25c754-7559-5246-a676-7cd8b5fc3c8d",
+          "name": "BH.KO.FT01.PV",
+          "label": "Wort flow to the fermenter",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_FT01_PV",
+          "plc_iec": "%IW115",
+          "access": "read",
+          "divisor": 10,
+          "units": "gal/min",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_f562d25e-1c2d-5c66-b2b1-544edbb382b9",
+          "name": "BH.KO.TT01.PV",
+          "label": "HX stage-1 wort outlet temperature (CLT water side)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_TT01_PV",
+          "plc_iec": "%IW116",
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            230.0
+          ]
+        },
+        {
+          "id": "t_5e34c986-c111-59f7-beea-5e736010a519",
+          "name": "BH.KO.TT02.PV",
+          "label": "Knockout wort temperature (after stage 2)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_TT02_PV",
+          "plc_iec": "%IW117",
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            230.0
+          ]
+        },
+        {
+          "id": "t_e86e89c2-7ea2-56e6-9473-bbc7e72d6675",
+          "name": "BH.KO.TT02.ALM_DEVIATION",
+          "label": "Knockout wort temperature (after stage 2): deviation alarm (high)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KO_TT02_ALM_DEVIATION",
+          "plc_iec": "%QX0.7",
+          "access": "read"
+        },
+        {
+          "id": "t_68530ddd-5f8d-5820-9e46-1ac5a70891b2",
+          "name": "BH.KO.FT02.PV",
+          "label": "Inline O2 flow",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_FT02_PV",
+          "plc_iec": "%IW118",
+          "access": "read",
+          "divisor": 100,
+          "units": "L/min",
+          "range": [
+            0.0,
+            20.0
+          ]
+        },
+        {
+          "id": "t_e70df5b0-ee55-5e6d-bd73-c92fa2e652d9",
+          "name": "BH.KO.AT01.PV",
+          "label": "Wort dissolved oxygen",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_AT01_PV",
+          "plc_iec": "%IW119",
+          "access": "read",
+          "divisor": 100,
+          "units": "ppm",
+          "range": [
+            0.0,
+            20.0
+          ]
+        },
+        {
+          "id": "t_9b7bda19-b9d1-5192-8490-32186533b94a",
+          "name": "BH.KO.AT01.ALM_LOW",
+          "label": "Wort dissolved oxygen: low alarm (low)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KO_AT01_ALM_LOW",
+          "plc_iec": "%QX1.0",
+          "access": "read"
+        },
+        {
+          "id": "t_fff3f77e-f6a3-5edb-b942-e193d8031cbf",
+          "name": "BH.KO.YS01.PV",
+          "label": "Wort pump running",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KO_YS01_PV",
+          "plc_iec": "%IX100.5",
+          "access": "read"
+        },
+        {
+          "id": "t_2184a1b8-1349-59b2-ad29-59aa73a10610",
+          "name": "BH.KO.HS01.CMD",
+          "label": "Wort pump run command",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KO_HS01_CMD",
+          "plc_iec": "%QX101.0",
+          "access": "read"
+        },
+        {
+          "id": "t_cb486d2d-f21f-519c-84f7-81f27e17c05b",
+          "name": "BH.KO.XV01.CMD",
+          "label": "Knockout valve to the fermenter header",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_KO_XV01_CMD",
+          "plc_iec": "%QX101.1",
+          "access": "read"
+        },
+        {
+          "id": "t_d5bbc92b-17b7-55dc-be3b-2208502e39ea",
+          "name": "BH.KO.SC01.OUT",
+          "label": "Wort pump VFD speed reference",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_SC01_OUT",
+          "plc_iec": "%QW107",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_65f89daa-1d08-5138-a579-1a25098c85e0",
+          "name": "BH.KO.TV01.OUT",
+          "label": "HX stage-2 glycol valve position",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_TV01_OUT",
+          "plc_iec": "%QW108",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_5d48de63-dd90-51d6-aec0-35988b9096b5",
+          "name": "BH.KO.FC01.SP",
+          "label": "Inline O2 mass-flow setpoint",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_FC01_SP",
+          "plc_iec": "%QW109",
+          "access": "read",
+          "divisor": 100,
+          "units": "L/min",
+          "range": [
+            0.0,
+            20.0
+          ]
+        },
+        {
+          "id": "t_1e5b9dd6-d7de-5180-9150-d9ab5252e9cf",
+          "name": "BH.KO.TT02.SP",
+          "label": "Knockout temperature setpoint",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_KO_TT02_SP",
+          "plc_iec": "%MW4",
+          "access": "read-write",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_5d6088b8-6ec6-5423-918e-ab0eb41a1326",
+          "name": "BH.BATCH.XC01.PHASE",
+          "label": "Phase selected by the batch engine",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XC01_PHASE",
+          "plc_iec": "%MW5",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            10.0
+          ]
+        },
+        {
+          "id": "t_5db10b27-9947-5d09-822c-014eb6221a1c",
+          "name": "BH.BATCH.XC01.CMD",
+          "label": "Phase command",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XC01_CMD",
+          "plc_iec": "%MW6",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "id": "t_22edadce-4e3f-5aeb-8cd8-800c7aeb57a7",
+          "name": "BH.BATCH.XS01.STATE",
+          "label": "Phase state",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XS01_STATE",
+          "plc_iec": "%MW7",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            6.0
+          ]
+        },
+        {
+          "id": "t_e0fd139a-8169-5952-ac74-b787452a8b84",
+          "name": "BH.BATCH.XS01.STEP",
+          "label": "Phase step number",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XS01_STEP",
+          "plc_iec": "%MW8",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_353a3a62-024c-526e-a5d6-92db2879f8fb",
+          "name": "BH.BATCH.XI01.BATCH",
+          "label": "Batch number (low 16 bits)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XI01_BATCH",
+          "plc_iec": "%MW9",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_049363c1-6864-5b51-9cd7-3dda74026cab",
+          "name": "BH.BATCH.XC03.PARAM",
+          "label": "Phase parameter (MILL kg, MASH_IN liters, MASH_STEP, BOIL, and WHIRLPOOL minutes; 0 = program default)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XC03_PARAM",
+          "plc_iec": "%MW10",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_7413bfeb-8f1f-549a-8310-703177bea722",
+          "name": "BH.BATCH.XI02.REQUESTS",
+          "label": "Brews requested at the brewhouse panel since the start (16-bit counter)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XI02_REQUESTS",
+          "plc_iec": "%IW120",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_4a5cfb2b-7caa-5c5a-91ce-01e3ec92141e",
+          "name": "BH.BATCH.XC02.ACCEPTED",
+          "label": "Brew requests the batch engine has accepted (16-bit counter; the engine writes it)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XC02_ACCEPTED",
+          "plc_iec": "%MW11",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_b21cc90c-221c-55c7-9827-4552de39a6c9",
+          "name": "BH.BATCH.XI03.ACCEPTED",
+          "label": "Accepted-request counter sent to the panel (the program forwards XC02)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "BH_BATCH_XI03_ACCEPTED",
+          "plc_iec": "%QW110",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_73cdddb2-5edd-56d7-b8ab-3850b35e3d04",
+          "name": "BH.ENTRY.HS01.ENTRY",
+          "label": "MLT entry permit issued (entry supervisor; locks the vessel out)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_ENTRY_HS01_ENTRY",
+          "plc_iec": "%QX1.1",
+          "access": "read-write"
+        },
+        {
+          "id": "t_aaf92757-add3-529f-ab25-ac86e803bbfa",
+          "name": "BH.ENTRY.HS02.ENTRY",
+          "label": "Kettle entry permit issued (entry supervisor; locks the vessel out)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_ENTRY_HS02_ENTRY",
+          "plc_iec": "%QX1.2",
+          "access": "read-write"
+        },
+        {
+          "id": "t_f9259123-935e-5500-9b4b-dc14d2ffd562",
+          "name": "BH.ENTRY.XS01.LOCKED",
+          "label": "MLT locked out for entry (steam, strike and sparge water, runoff, rake)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_ENTRY_XS01_LOCKED",
+          "plc_iec": "%QX1.3",
+          "access": "read"
+        },
+        {
+          "id": "t_3f6db3c0-bfa8-51f1-ba3c-94ceb221d2ea",
+          "name": "BH.ENTRY.XS02.LOCKED",
+          "label": "Kettle locked out for entry (steam, whirlpool, hop doser)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_ENTRY_XS02_LOCKED",
+          "plc_iec": "%QX1.4",
+          "access": "read"
+        },
+        {
+          "id": "t_68bd7b7c-447b-5767-b7ef-464bb72398d1",
+          "name": "BH.ENTRY.XA01.PV",
+          "label": "MLT write or phase start against a locked-out output during entry",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_ENTRY_XA01_PV",
+          "plc_iec": "%QX1.5",
+          "access": "read"
+        },
+        {
+          "id": "t_f6dd608d-4faa-529b-9807-b7fc645438dd",
+          "name": "BH.ENTRY.XA01.ALM_STATE",
+          "label": "MLT write or phase start against a locked-out output during entry: state alarm (critical)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_ENTRY_XA01_ALM_STATE",
+          "plc_iec": "%QX1.6",
+          "access": "read"
+        },
+        {
+          "id": "t_8d2636bd-37c8-5beb-b7ca-5724b396fd1a",
+          "name": "BH.ENTRY.XA02.PV",
+          "label": "Kettle write or phase start against a locked-out output during entry",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_ENTRY_XA02_PV",
+          "plc_iec": "%QX1.7",
+          "access": "read"
+        },
+        {
+          "id": "t_58f79715-93f3-5039-913a-a351cef5f54f",
+          "name": "BH.ENTRY.XA02.ALM_STATE",
+          "label": "Kettle write or phase start against a locked-out output during entry: state alarm (critical)",
+          "type": "Bool",
+          "address": null,
+          "variable": "BH_ENTRY_XA02_ALM_STATE",
+          "plc_iec": "%QX2.0",
+          "access": "read"
+        }
+      ]
+    },
+    {
+      "name": "plc-cellar",
+      "type": "ModbusTCP",
+      "property": {
+        "address": "10.20.10.12",
+        "port": 502,
+        "slaveid": 1
+      },
+      "polling": 1000,
+      "tags": [
+        {
+          "id": "t_bccbf9fb-016d-59d9-b2a1-f8623d492141",
+          "name": "CEL.CLK.KI01.PV",
+          "label": "Cellar simulation clock (compressed fermentation time)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 101,
+          "access": "read",
+          "divisor": 10,
+          "units": "h",
+          "range": [
+            0.0,
+            6553.0
+          ]
+        },
+        {
+          "id": "t_f11a7b18-f7a0-561e-89b9-2ddd6536c4c9",
+          "name": "CEL.FV101.TT01.PV",
+          "label": "FV-101 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 102,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_06d386c1-7243-5904-b17d-6a16d7f430e6",
+          "name": "CEL.FV101.TT01.ALM_DEVIATION",
+          "label": "FV-101 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 1,
+          "access": "read"
+        },
+        {
+          "id": "t_f05bed6f-8270-56c0-8eb4-d1d5729dd4f5",
+          "name": "CEL.FV101.TT01.ALM_HIGH",
+          "label": "FV-101 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 2,
+          "access": "read"
+        },
+        {
+          "id": "t_405231fd-f204-5f0a-8f84-6283ca1982ee",
+          "name": "CEL.FV101.TV01.CMD",
+          "label": "FV-101 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 801,
+          "access": "read"
+        },
+        {
+          "id": "t_6d2cbb97-a9f8-5030-903d-9c68263e3a07",
+          "name": "CEL.FV101.TT02.PV",
+          "label": "FV-101 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 103,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_1c0aaf17-bee5-52e7-92a7-b0e1e70cde42",
+          "name": "CEL.FV101.TT02.ALM_DEVIATION",
+          "label": "FV-101 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 3,
+          "access": "read"
+        },
+        {
+          "id": "t_2a88202b-0e60-5b95-b113-4a80f9e3be97",
+          "name": "CEL.FV101.TV02.CMD",
+          "label": "FV-101 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 802,
+          "access": "read"
+        },
+        {
+          "id": "t_11abdb24-9350-5e24-99d4-51bc89259280",
+          "name": "CEL.FV101.PT01.PV",
+          "label": "FV-101 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 104,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_24c196a0-4d70-5e08-afc2-5bd2f61b7f1b",
+          "name": "CEL.FV101.PT01.ALM_HIGH",
+          "label": "FV-101 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 4,
+          "access": "read"
+        },
+        {
+          "id": "t_75dde3f9-65de-54b4-9ef6-81911886989a",
+          "name": "CEL.FV101.PT01.ALM_LOW",
+          "label": "FV-101 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 5,
+          "access": "read"
+        },
+        {
+          "id": "t_840dcd8c-e529-5cd5-a92b-5920bcadff67",
+          "name": "CEL.FV101.DT01.PV",
+          "label": "FV-101 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 105,
+          "access": "read",
+          "divisor": 100,
+          "units": "degP",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_2ff2e71c-9875-5d1c-9e99-ec99ae11f322",
+          "name": "CEL.FV101.PCV01.SP",
+          "label": "FV-101 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 101,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_5edfba0d-5473-5fb0-bc83-624f090b0e91",
+          "name": "CEL.FV101.ZSO01.PV",
+          "label": "FV-101 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 801,
+          "access": "read"
+        },
+        {
+          "id": "t_03c403ce-14c3-56fe-96d0-683ad9a6a058",
+          "name": "CEL.FV101.TT01.SP",
+          "label": "FV-101 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 107,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_48a1fc09-be30-5676-b6ce-e8ab6c3f57b5",
+          "name": "CEL.FV101.TT02.SP",
+          "label": "FV-101 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 108,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_4885454f-4f16-52dd-9dd9-fb9969d3d0ec",
+          "name": "CEL.FV102.TT01.PV",
+          "label": "FV-102 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 106,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_1ba55e87-8d14-50fd-af3f-17c60dc657ff",
+          "name": "CEL.FV102.TT01.ALM_DEVIATION",
+          "label": "FV-102 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 6,
+          "access": "read"
+        },
+        {
+          "id": "t_679e34a0-1691-5b69-907e-30caca9450cf",
+          "name": "CEL.FV102.TT01.ALM_HIGH",
+          "label": "FV-102 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 7,
+          "access": "read"
+        },
+        {
+          "id": "t_967e58e2-ae86-5d95-9e8e-1525be4362bf",
+          "name": "CEL.FV102.TV01.CMD",
+          "label": "FV-102 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 803,
+          "access": "read"
+        },
+        {
+          "id": "t_afbf7ff6-7e31-5de2-8648-377e7e96c454",
+          "name": "CEL.FV102.TT02.PV",
+          "label": "FV-102 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 107,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_13e092ad-55ac-5abf-bf4e-04be6d3476d2",
+          "name": "CEL.FV102.TT02.ALM_DEVIATION",
+          "label": "FV-102 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 8,
+          "access": "read"
+        },
+        {
+          "id": "t_e4b1fe44-4a32-5ba6-a91d-bab5d51e21a7",
+          "name": "CEL.FV102.TV02.CMD",
+          "label": "FV-102 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 804,
+          "access": "read"
+        },
+        {
+          "id": "t_dc30aa44-6532-5d50-8b21-e562fa548fcb",
+          "name": "CEL.FV102.PT01.PV",
+          "label": "FV-102 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 108,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_7f4defcc-3edf-56ca-9a37-860b148e43a4",
+          "name": "CEL.FV102.PT01.ALM_HIGH",
+          "label": "FV-102 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 9,
+          "access": "read"
+        },
+        {
+          "id": "t_c8f76873-944f-56b2-aa8a-714ac3110b3f",
+          "name": "CEL.FV102.PT01.ALM_LOW",
+          "label": "FV-102 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 10,
+          "access": "read"
+        },
+        {
+          "id": "t_20ee248d-00d5-5554-94e8-2d1b0842cb3d",
+          "name": "CEL.FV102.DT01.PV",
+          "label": "FV-102 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 109,
+          "access": "read",
+          "divisor": 100,
+          "units": "degP",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_975901ba-39cf-5f6b-80a9-7f3ec7412e49",
+          "name": "CEL.FV102.PCV01.SP",
+          "label": "FV-102 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 102,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_5b2a06cb-f673-52e0-b6bf-5b8d9ebbbfe1",
+          "name": "CEL.FV102.ZSO01.PV",
+          "label": "FV-102 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 802,
+          "access": "read"
+        },
+        {
+          "id": "t_d3d604c2-0d3b-5432-94a9-94ec4582ad75",
+          "name": "CEL.FV102.TT01.SP",
+          "label": "FV-102 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 109,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_e38007e2-894e-50eb-ac7c-ec60bced8a3e",
+          "name": "CEL.FV102.TT02.SP",
+          "label": "FV-102 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 110,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_f526c104-dbda-50d1-af7d-0cf946fa59fd",
+          "name": "CEL.FV103.TT01.PV",
+          "label": "FV-103 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 110,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_abea36b0-be2d-5076-ae06-853abed2ceee",
+          "name": "CEL.FV103.TT01.ALM_DEVIATION",
+          "label": "FV-103 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 11,
+          "access": "read"
+        },
+        {
+          "id": "t_3d332fe3-fc1c-5b85-93de-43331933cbed",
+          "name": "CEL.FV103.TT01.ALM_HIGH",
+          "label": "FV-103 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 12,
+          "access": "read"
+        },
+        {
+          "id": "t_49c778df-fc78-50b7-9050-afb7e5b1ba4b",
+          "name": "CEL.FV103.TV01.CMD",
+          "label": "FV-103 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 805,
+          "access": "read"
+        },
+        {
+          "id": "t_90f4a6eb-d527-5093-b6f9-d0bf754e5936",
+          "name": "CEL.FV103.TT02.PV",
+          "label": "FV-103 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 111,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_9a427b72-20cf-5c5d-8574-b2ad24614690",
+          "name": "CEL.FV103.TT02.ALM_DEVIATION",
+          "label": "FV-103 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 13,
+          "access": "read"
+        },
+        {
+          "id": "t_98c02d78-ccd9-5047-bffa-4a4d0ea17e4e",
+          "name": "CEL.FV103.TV02.CMD",
+          "label": "FV-103 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 806,
+          "access": "read"
+        },
+        {
+          "id": "t_a335c9bb-a3d3-52b0-bc58-515a68f2b351",
+          "name": "CEL.FV103.PT01.PV",
+          "label": "FV-103 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 112,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_2a874350-1266-5ec1-a130-1bf0a3c4d8b9",
+          "name": "CEL.FV103.PT01.ALM_HIGH",
+          "label": "FV-103 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 14,
+          "access": "read"
+        },
+        {
+          "id": "t_33894645-6f87-5032-b164-aaa23c512aa6",
+          "name": "CEL.FV103.PT01.ALM_LOW",
+          "label": "FV-103 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 15,
+          "access": "read"
+        },
+        {
+          "id": "t_de55ff3f-6b65-515e-98e1-1225ede5af63",
+          "name": "CEL.FV103.DT01.PV",
+          "label": "FV-103 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 113,
+          "access": "read",
+          "divisor": 100,
+          "units": "degP",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_daf55f5b-2d3b-5ac0-97e1-91c5611e8d51",
+          "name": "CEL.FV103.PCV01.SP",
+          "label": "FV-103 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 103,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_899ac09c-c53e-5a9d-8623-aa7c4b32db3c",
+          "name": "CEL.FV103.ZSO01.PV",
+          "label": "FV-103 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 803,
+          "access": "read"
+        },
+        {
+          "id": "t_8f4bddc5-3645-57fd-8476-7e8108e3bcd0",
+          "name": "CEL.FV103.TT01.SP",
+          "label": "FV-103 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 111,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_b9ed331f-ff69-5222-a86f-1bf2f0aca173",
+          "name": "CEL.FV103.TT02.SP",
+          "label": "FV-103 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 112,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_057efc8e-9943-5520-a0b1-3947daf25adb",
+          "name": "CEL.FV104.TT01.PV",
+          "label": "FV-104 side temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 114,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_1ba3ee07-91ef-595f-bd9f-cf28cc4b2a65",
+          "name": "CEL.FV104.TT01.ALM_DEVIATION",
+          "label": "FV-104 side temperature: deviation alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 16,
+          "access": "read"
+        },
+        {
+          "id": "t_935f7db6-0243-590b-a97c-a4ae07a51462",
+          "name": "CEL.FV104.TT01.ALM_HIGH",
+          "label": "FV-104 side temperature: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 17,
+          "access": "read"
+        },
+        {
+          "id": "t_827404cf-61d7-5eb2-a1bd-81eec2e2ca83",
+          "name": "CEL.FV104.TV01.CMD",
+          "label": "FV-104 side glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 807,
+          "access": "read"
+        },
+        {
+          "id": "t_6954ca9e-4192-524b-8762-73ea90d76c90",
+          "name": "CEL.FV104.TT02.PV",
+          "label": "FV-104 cone temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 115,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_42cc2b63-8617-5e2a-b6a4-e716dbaa65bf",
+          "name": "CEL.FV104.TT02.ALM_DEVIATION",
+          "label": "FV-104 cone temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 18,
+          "access": "read"
+        },
+        {
+          "id": "t_22e8571c-b08d-59fc-8e34-eab6c1f3fdc1",
+          "name": "CEL.FV104.TV02.CMD",
+          "label": "FV-104 cone glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 808,
+          "access": "read"
+        },
+        {
+          "id": "t_34bc64d0-fa91-58a9-985d-ff3acf7ea758",
+          "name": "CEL.FV104.PT01.PV",
+          "label": "FV-104 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 116,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_88d6a3c3-aaf3-5746-9ec1-8c77428d7cea",
+          "name": "CEL.FV104.PT01.ALM_HIGH",
+          "label": "FV-104 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 19,
+          "access": "read"
+        },
+        {
+          "id": "t_2f3ded00-73f3-5eb1-aee0-c8ac91ba3819",
+          "name": "CEL.FV104.PT01.ALM_LOW",
+          "label": "FV-104 head pressure (absolute): low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 20,
+          "access": "read"
+        },
+        {
+          "id": "t_1d99b1e3-53c6-59d8-90f2-2ba5a24c28f6",
+          "name": "CEL.FV104.DT01.PV",
+          "label": "FV-104 apparent extract (sample-port density meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 117,
+          "access": "read",
+          "divisor": 100,
+          "units": "degP",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_489ba25a-4a4e-50f3-bf54-41f432d0fb34",
+          "name": "CEL.FV104.PCV01.SP",
+          "label": "FV-104 spunding valve setpoint (absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 104,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_384e8f9f-9be7-55b4-b9b3-84ccc6475b6e",
+          "name": "CEL.FV104.ZSO01.PV",
+          "label": "FV-104 spunding valve open (venting)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 804,
+          "access": "read"
+        },
+        {
+          "id": "t_709e04a8-ee55-564a-b23c-065e0f4ad007",
+          "name": "CEL.FV104.TT01.SP",
+          "label": "FV-104 side temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 113,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_6a882ccb-49f8-5857-8c3c-95e9d2e5aa21",
+          "name": "CEL.FV104.TT02.SP",
+          "label": "FV-104 cone temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 114,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_0245749f-520a-58b6-9782-a8baeabc5927",
+          "name": "CEL.BBT201.TT01.PV",
+          "label": "BBT-201 temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 118,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_921345b6-80b1-5225-84a7-f4b0573d0f00",
+          "name": "CEL.BBT201.TT01.ALM_DEVIATION",
+          "label": "BBT-201 temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 21,
+          "access": "read"
+        },
+        {
+          "id": "t_23d85d0e-2529-5a7e-9a0e-73888ffc873a",
+          "name": "CEL.BBT201.PT01.PV",
+          "label": "BBT-201 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 119,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_2ba58e58-c6ca-531a-93ef-7582d1da716d",
+          "name": "CEL.BBT201.PT01.ALM_HIGH",
+          "label": "BBT-201 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 22,
+          "access": "read"
+        },
+        {
+          "id": "t_653026ad-1662-5d48-a42d-0ed6bc3236b5",
+          "name": "CEL.BBT201.LT01.PV",
+          "label": "BBT-201 level",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 120,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_12c8866c-08d1-52de-87f8-7783ca98076d",
+          "name": "CEL.BBT201.AT01.PV",
+          "label": "BBT-201 dissolved CO2 (inline meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 121,
+          "access": "read",
+          "divisor": 100,
+          "units": "vol",
+          "range": [
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "id": "t_e6419121-8f57-519d-94ba-5da5a0399b84",
+          "name": "CEL.BBT201.FT01.PV",
+          "label": "BBT-201 carbonation stone CO2 flow",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 122,
+          "access": "read",
+          "divisor": 10,
+          "units": "L/min",
+          "range": [
+            0.0,
+            200.0
+          ]
+        },
+        {
+          "id": "t_567282b5-1924-5a24-9908-66ee182f7bde",
+          "name": "CEL.BBT201.TV01.CMD",
+          "label": "BBT-201 jacket glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 809,
+          "access": "read"
+        },
+        {
+          "id": "t_2ee7dd4d-3521-5516-a8c6-4add62971a11",
+          "name": "CEL.BBT201.XV01.CMD",
+          "label": "BBT-201 outlet valve (to packaging)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 810,
+          "access": "read"
+        },
+        {
+          "id": "t_713087d0-6d85-51df-9433-e99e792272bb",
+          "name": "CEL.BBT201.FCV01.OUT",
+          "label": "BBT-201 carbonation CO2 flow valve position",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 105,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_b484b376-e67e-56c2-9a48-b39b86b06f9b",
+          "name": "CEL.BBT201.TT01.SP",
+          "label": "BBT-201 temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 115,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_d319d272-26eb-5437-abf0-e10cd6994b35",
+          "name": "CEL.BBT201.AT01.SP",
+          "label": "BBT-201 carbonation target",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 116,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "vol",
+          "range": [
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "id": "t_b0376c9d-997a-5614-bb1e-e7924532c065",
+          "name": "CEL.BBT201.PT01.SP",
+          "label": "BBT-201 equilibrium head pressure for the target (computed, absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 117,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_fedf38d7-2ca6-5c87-9e68-95e9cba66e3d",
+          "name": "CEL.BBT202.TT01.PV",
+          "label": "BBT-202 temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 123,
+          "access": "read",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_e601d963-8d43-5c2d-8cd8-0acd922ce6ae",
+          "name": "CEL.BBT202.TT01.ALM_DEVIATION",
+          "label": "BBT-202 temperature: deviation alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 23,
+          "access": "read"
+        },
+        {
+          "id": "t_f1f9fbfa-786c-5e82-b9ee-7398661786ef",
+          "name": "CEL.BBT202.PT01.PV",
+          "label": "BBT-202 head pressure (absolute)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 124,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_27f4bcd5-6d17-5c66-8fbb-b1da7491231f",
+          "name": "CEL.BBT202.PT01.ALM_HIGH",
+          "label": "BBT-202 head pressure (absolute): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 24,
+          "access": "read"
+        },
+        {
+          "id": "t_9be40e43-2f62-5174-b4b2-5150cb8d72bc",
+          "name": "CEL.BBT202.LT01.PV",
+          "label": "BBT-202 level",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 125,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_49406fb2-d07f-5337-a3a1-36e801aad445",
+          "name": "CEL.BBT202.AT01.PV",
+          "label": "BBT-202 dissolved CO2 (inline meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 126,
+          "access": "read",
+          "divisor": 100,
+          "units": "vol",
+          "range": [
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "id": "t_8fca01c4-df82-5569-8e63-7d3b270ca6ec",
+          "name": "CEL.BBT202.FT01.PV",
+          "label": "BBT-202 carbonation stone CO2 flow",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 127,
+          "access": "read",
+          "divisor": 10,
+          "units": "L/min",
+          "range": [
+            0.0,
+            200.0
+          ]
+        },
+        {
+          "id": "t_1d1c1ad7-c115-561e-8419-41fa8fb877a8",
+          "name": "CEL.BBT202.TV01.CMD",
+          "label": "BBT-202 jacket glycol valve command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 811,
+          "access": "read"
+        },
+        {
+          "id": "t_7df40a67-7899-554a-afc9-850b06fa7eb0",
+          "name": "CEL.BBT202.XV01.CMD",
+          "label": "BBT-202 outlet valve (to packaging)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 812,
+          "access": "read"
+        },
+        {
+          "id": "t_b24326fb-05e8-541f-b645-52c83ad7819c",
+          "name": "CEL.BBT202.FCV01.OUT",
+          "label": "BBT-202 carbonation CO2 flow valve position",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 106,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_900cb89d-d17f-5780-a67d-2dbcf966a8a3",
+          "name": "CEL.BBT202.TT01.SP",
+          "label": "BBT-202 temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 118,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_51e1e5d2-c94e-5ca3-adf1-33a0d3d039c3",
+          "name": "CEL.BBT202.AT01.SP",
+          "label": "BBT-202 carbonation target",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 119,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "vol",
+          "range": [
+            0.0,
+            5.0
+          ]
+        },
+        {
+          "id": "t_52cae75d-3cdf-5705-879b-e34f7199a85b",
+          "name": "CEL.BBT202.PT01.SP",
+          "label": "BBT-202 equilibrium head pressure for the target (computed, absolute)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 120,
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            40.0
+          ]
+        },
+        {
+          "id": "t_b0cd14d7-85af-51b1-bb5b-dccb4397ea87",
+          "name": "CEL.DH.ZSC01.PV",
+          "label": "Hop port closed",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 805,
+          "access": "read"
+        },
+        {
+          "id": "t_40fc0bc7-87c8-5e2c-92da-28918c519ca9",
+          "name": "CEL.DH.XV01.CMD",
+          "label": "Hop port CO2 purge valve",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 813,
+          "access": "read"
+        },
+        {
+          "id": "t_44d41ccd-c055-5b80-b0a3-bfb381772501",
+          "name": "CEL.DH.XV02.CMD",
+          "label": "Hop dose valve",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 814,
+          "access": "read"
+        },
+        {
+          "id": "t_26b5b0f8-2d27-59a9-b9fd-973f98f9d511",
+          "name": "CEL.DH.XC01.CMD",
+          "label": "Dry-hop dose request (operator; plc-cellar purges, doses, and clears it)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 25,
+          "access": "read-write"
+        },
+        {
+          "id": "t_06141e21-836c-5605-887a-5ad22f3475a6",
+          "name": "CEL.DH.XS01.STEP",
+          "label": "Dry-hop sequence step (0 idle, 1 CO2 purge, 2 dose)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 121,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            2.0
+          ]
+        },
+        {
+          "id": "t_0b080582-0c07-5415-8af4-0f753ff16e15",
+          "name": "CEL.XFER.ZS01.PV",
+          "label": "Transfer route verified (swing-panel proximity)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 806,
+          "access": "read"
+        },
+        {
+          "id": "t_23d647fb-0306-5ea7-952c-27ef91d8cb0f",
+          "name": "CEL.XFER.YS01.PV",
+          "label": "Transfer pump running",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 807,
+          "access": "read"
+        },
+        {
+          "id": "t_835362a0-795f-5692-84e9-7e2281482688",
+          "name": "CEL.XFER.FT01.PV",
+          "label": "Transfer flow",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 128,
+          "access": "read",
+          "divisor": 10,
+          "units": "gal/min",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_a9a1280f-47fd-541a-819b-3cc4cbd09e01",
+          "name": "CEL.XFER.HS01.CMD",
+          "label": "Transfer pump run command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 815,
+          "access": "read"
+        },
+        {
+          "id": "t_5da087ff-6d72-51f5-bcf1-d1ed32ba1e8a",
+          "name": "CEL.XFER.XS01.ACTIVE",
+          "label": "Transfer in progress (peer status for plc-utilities)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 26,
+          "access": "read"
+        },
+        {
+          "id": "t_9f0e857e-5323-5cb6-8d05-c714c9200d27",
+          "name": "CEL.XFER.XS02.CIP_PERMIT",
+          "label": "CIP permitted on the cellar circuits (peer status for plc-utilities)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 27,
+          "access": "read"
+        },
+        {
+          "id": "t_985df04b-21a3-573a-a03a-560e4012b040",
+          "name": "CEL.SYS.XS01.CO2_OK",
+          "label": "Cellar CO2 relay healthy (below 15,000 ppm, detection powered)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 808,
+          "access": "read"
+        },
+        {
+          "id": "t_942b8b3f-c52b-5cea-a337-30f479ac1373",
+          "name": "CEL.SYS.XS01.CO2_INHIBIT",
+          "label": "Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 28,
+          "access": "read"
+        },
+        {
+          "id": "t_a4fbf2b9-20c3-5af0-8e4e-54df4c3a42aa",
+          "name": "CEL.SYS.XS01.ALM_STATE",
+          "label": "Carbonation inhibited by the cellar CO2 relay (plc-cellar interlock): state alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 29,
+          "access": "read"
+        },
+        {
+          "id": "t_15bb98f2-d6ce-5e16-8fea-52bdb6d70f85",
+          "name": "CEL.PSV.ZSH01.PV",
+          "label": "FV-101 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 809,
+          "access": "read"
+        },
+        {
+          "id": "t_eee85865-76e3-5df2-9f41-11daacf22cb6",
+          "name": "CEL.PSV.ZSH01.ALM_STATE",
+          "label": "FV-101 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 30,
+          "access": "read"
+        },
+        {
+          "id": "t_98639886-1c55-50ab-90d2-10ba1664d441",
+          "name": "CEL.PSV.ZSH02.PV",
+          "label": "FV-102 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 810,
+          "access": "read"
+        },
+        {
+          "id": "t_646fe8f5-cc45-5e24-8716-089e106eea98",
+          "name": "CEL.PSV.ZSH02.ALM_STATE",
+          "label": "FV-102 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 31,
+          "access": "read"
+        },
+        {
+          "id": "t_b6902e0d-96ae-56c7-9072-191cffe809d0",
+          "name": "CEL.PSV.ZSH03.PV",
+          "label": "FV-103 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 811,
+          "access": "read"
+        },
+        {
+          "id": "t_30f82dd2-3b2e-594d-9625-d74c3a60fb1e",
+          "name": "CEL.PSV.ZSH03.ALM_STATE",
+          "label": "FV-103 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 32,
+          "access": "read"
+        },
+        {
+          "id": "t_275cd7a7-abff-50b4-904d-d25d4df399b3",
+          "name": "CEL.PSV.ZSH04.PV",
+          "label": "FV-104 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 812,
+          "access": "read"
+        },
+        {
+          "id": "t_15bb29ef-33e7-5f08-89d6-2b8204b663df",
+          "name": "CEL.PSV.ZSH04.ALM_STATE",
+          "label": "FV-104 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 33,
+          "access": "read"
+        },
+        {
+          "id": "t_a278835b-2915-57b1-b0df-3f039ba12611",
+          "name": "CEL.PSV.ZSH05.PV",
+          "label": "BBT-201 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 813,
+          "access": "read"
+        },
+        {
+          "id": "t_b6200819-4157-51e7-8b07-9e166d1ea4ba",
+          "name": "CEL.PSV.ZSH05.ALM_STATE",
+          "label": "BBT-201 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 34,
+          "access": "read"
+        },
+        {
+          "id": "t_0203d7bd-117d-5b19-bfe8-00cdbf71fc3b",
+          "name": "CEL.PSV.ZSH06.PV",
+          "label": "BBT-202 relief valve (PSV) lifted",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 814,
+          "access": "read"
+        },
+        {
+          "id": "t_387410e1-079e-565f-973b-8f5f5e18f016",
+          "name": "CEL.PSV.ZSH06.ALM_STATE",
+          "label": "BBT-202 relief valve (PSV) lifted: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 35,
+          "access": "read"
+        },
+        {
+          "id": "t_58f37e41-b9e7-5fc4-bbec-a9d3c02d173b",
+          "name": "CEL.ENTRY.HS01.ENTRY",
+          "label": "FV-101 entry permit issued (entry supervisor; locks the vessel out)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 36,
+          "access": "read-write"
+        },
+        {
+          "id": "t_0a5a4030-ceda-5ad4-9e9b-9743daa8226f",
+          "name": "CEL.ENTRY.HS02.ENTRY",
+          "label": "FV-102 entry permit issued (entry supervisor; locks the vessel out)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 37,
+          "access": "read-write"
+        },
+        {
+          "id": "t_cee1a8e4-3448-5467-934b-37520aba1d46",
+          "name": "CEL.ENTRY.HS03.ENTRY",
+          "label": "FV-103 entry permit issued (entry supervisor; locks the vessel out)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 38,
+          "access": "read-write"
+        },
+        {
+          "id": "t_15aeaf94-f312-5e87-a60f-638fc83c3d54",
+          "name": "CEL.ENTRY.HS04.ENTRY",
+          "label": "FV-104 entry permit issued (entry supervisor; locks the vessel out)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 39,
+          "access": "read-write"
+        },
+        {
+          "id": "t_a4b46191-9d67-52be-8379-ac015f1dfee1",
+          "name": "CEL.ENTRY.HS05.ENTRY",
+          "label": "BBT-201 entry permit issued (entry supervisor; locks the vessel out)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 40,
+          "access": "read-write"
+        },
+        {
+          "id": "t_281903f6-e996-5514-853b-2c4f7eba168d",
+          "name": "CEL.ENTRY.HS06.ENTRY",
+          "label": "BBT-202 entry permit issued (entry supervisor; locks the vessel out)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 41,
+          "access": "read-write"
+        },
+        {
+          "id": "t_ec5fac47-0447-5bc7-b870-a6919303c440",
+          "name": "CEL.ENTRY.XS01.LOCKED",
+          "label": "FV-101 locked out for entry (glycol, CO2, outlet, and CIP)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 42,
+          "access": "read"
+        },
+        {
+          "id": "t_8b3e03d9-c2d8-5f4b-b823-d2d07de427bb",
+          "name": "CEL.ENTRY.XS02.LOCKED",
+          "label": "FV-102 locked out for entry (glycol, CO2, outlet, and CIP)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 43,
+          "access": "read"
+        },
+        {
+          "id": "t_f4de2041-0a97-5fe7-a20b-c8d5fe1ecac4",
+          "name": "CEL.ENTRY.XS03.LOCKED",
+          "label": "FV-103 locked out for entry (glycol, CO2, outlet, and CIP)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 44,
+          "access": "read"
+        },
+        {
+          "id": "t_a9cf7175-63ab-5191-ad46-9409a6547e02",
+          "name": "CEL.ENTRY.XS04.LOCKED",
+          "label": "FV-104 locked out for entry (glycol, CO2, outlet, and CIP)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 45,
+          "access": "read"
+        },
+        {
+          "id": "t_d0321189-b587-5e48-b8c6-df3011b0f308",
+          "name": "CEL.ENTRY.XS05.LOCKED",
+          "label": "BBT-201 locked out for entry (glycol, CO2, outlet, and CIP)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 46,
+          "access": "read"
+        },
+        {
+          "id": "t_1bdf4877-eb1e-5103-afa3-f70701793d81",
+          "name": "CEL.ENTRY.XS06.LOCKED",
+          "label": "BBT-202 locked out for entry (glycol, CO2, outlet, and CIP)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 47,
+          "access": "read"
+        },
+        {
+          "id": "t_5400ad86-dd62-58b6-8767-888b12e199ee",
+          "name": "CEL.ENTRY.XS11.CIP_OK",
+          "label": "FV-101 CIP permitted, not in entry (peer status for plc-utilities)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 48,
+          "access": "read"
+        },
+        {
+          "id": "t_a71afe80-b0e4-57b2-9de2-daa33a242790",
+          "name": "CEL.ENTRY.XS12.CIP_OK",
+          "label": "FV-102 CIP permitted, not in entry (peer status for plc-utilities)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 49,
+          "access": "read"
+        },
+        {
+          "id": "t_5588551a-582c-59f9-94c2-5f04f3f08de5",
+          "name": "CEL.ENTRY.XS13.CIP_OK",
+          "label": "FV-103 CIP permitted, not in entry (peer status for plc-utilities)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 50,
+          "access": "read"
+        },
+        {
+          "id": "t_e7e71593-5d8a-5397-81a9-32a5eee01ddc",
+          "name": "CEL.ENTRY.XS14.CIP_OK",
+          "label": "FV-104 CIP permitted, not in entry (peer status for plc-utilities)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 51,
+          "access": "read"
+        },
+        {
+          "id": "t_42489712-58ca-5f78-990b-804937d6fa94",
+          "name": "CEL.ENTRY.XS15.CIP_OK",
+          "label": "BBT-201 CIP permitted, not in entry (peer status for plc-utilities)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 52,
+          "access": "read"
+        },
+        {
+          "id": "t_931f2419-0b9a-5f2d-b699-01850ae666c8",
+          "name": "CEL.ENTRY.XS16.CIP_OK",
+          "label": "BBT-202 CIP permitted, not in entry (peer status for plc-utilities)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 53,
+          "access": "read"
+        },
+        {
+          "id": "t_39e25b39-c918-5154-83e1-1efa19fa319e",
+          "name": "CEL.ENTRY.XA01.PV",
+          "label": "FV-101 write to a locked-out valve during entry",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 54,
+          "access": "read"
+        },
+        {
+          "id": "t_e7035cd1-3af6-5c06-916b-7dd3071270e4",
+          "name": "CEL.ENTRY.XA01.ALM_STATE",
+          "label": "FV-101 write to a locked-out valve during entry: state alarm (critical)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 55,
+          "access": "read"
+        },
+        {
+          "id": "t_bff46a44-fbac-5a60-8186-e93defde5798",
+          "name": "CEL.ENTRY.XA02.PV",
+          "label": "FV-102 write to a locked-out valve during entry",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 56,
+          "access": "read"
+        },
+        {
+          "id": "t_b32ae540-130a-546e-aed7-6682cfc9da53",
+          "name": "CEL.ENTRY.XA02.ALM_STATE",
+          "label": "FV-102 write to a locked-out valve during entry: state alarm (critical)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 57,
+          "access": "read"
+        },
+        {
+          "id": "t_296536ad-14f8-5587-a56a-746975aa5f5c",
+          "name": "CEL.ENTRY.XA03.PV",
+          "label": "FV-103 write to a locked-out valve during entry",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 58,
+          "access": "read"
+        },
+        {
+          "id": "t_73325185-fad6-5f50-9886-a47cbacab726",
+          "name": "CEL.ENTRY.XA03.ALM_STATE",
+          "label": "FV-103 write to a locked-out valve during entry: state alarm (critical)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 59,
+          "access": "read"
+        },
+        {
+          "id": "t_31838a06-8701-5a94-a63e-c0f24709584c",
+          "name": "CEL.ENTRY.XA04.PV",
+          "label": "FV-104 write to a locked-out valve during entry",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 60,
+          "access": "read"
+        },
+        {
+          "id": "t_fdc47329-f0f3-581f-9335-4518cb47e271",
+          "name": "CEL.ENTRY.XA04.ALM_STATE",
+          "label": "FV-104 write to a locked-out valve during entry: state alarm (critical)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 61,
+          "access": "read"
+        },
+        {
+          "id": "t_d977affa-94a5-5870-90cb-24e0f5112cc1",
+          "name": "CEL.ENTRY.XA05.PV",
+          "label": "BBT-201 write to a locked-out valve during entry",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 62,
+          "access": "read"
+        },
+        {
+          "id": "t_8e5c1287-29cc-59ee-a3f0-7f652d636e8a",
+          "name": "CEL.ENTRY.XA05.ALM_STATE",
+          "label": "BBT-201 write to a locked-out valve during entry: state alarm (critical)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 63,
+          "access": "read"
+        },
+        {
+          "id": "t_08b21108-1e18-5a23-bd7d-a183fc76c866",
+          "name": "CEL.ENTRY.XA06.PV",
+          "label": "BBT-202 write to a locked-out valve during entry",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 64,
+          "access": "read"
+        },
+        {
+          "id": "t_ed415cf8-212d-535f-a7ba-f669acc2ec00",
+          "name": "CEL.ENTRY.XA06.ALM_STATE",
+          "label": "BBT-202 write to a locked-out valve during entry: state alarm (critical)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 65,
+          "access": "read"
+        },
+        {
+          "id": "t_ba23f755-c38d-5648-9d82-1077442a8b8f",
+          "name": "CEL.PROFILE.HS01.AUTO",
+          "label": "FV-101 fermentation profile on (plc-cellar sets its temperature setpoints)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 66,
+          "access": "read-write"
+        },
+        {
+          "id": "t_92dd2a85-12c1-54ca-aaca-bcdf7c37e339",
+          "name": "CEL.PROFILE.HS02.AUTO",
+          "label": "FV-102 fermentation profile on (plc-cellar sets its temperature setpoints)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 67,
+          "access": "read-write"
+        },
+        {
+          "id": "t_3279b385-6a9e-59ef-a791-791e591085b9",
+          "name": "CEL.PROFILE.HS03.AUTO",
+          "label": "FV-103 fermentation profile on (plc-cellar sets its temperature setpoints)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 68,
+          "access": "read-write"
+        },
+        {
+          "id": "t_b294e6fb-5eb9-57d5-b70e-55762453f95e",
+          "name": "CEL.PROFILE.HS04.AUTO",
+          "label": "FV-104 fermentation profile on (plc-cellar sets its temperature setpoints)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 69,
+          "access": "read-write"
+        },
+        {
+          "id": "t_4431eafa-9c80-5cd3-8b34-5cc96467536d",
+          "name": "CEL.PROFILE.KS01.STAGE",
+          "label": "FV-101 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 122,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_15ba2679-7b75-59fe-bdf9-57469f2fec60",
+          "name": "CEL.PROFILE.KS02.STAGE",
+          "label": "FV-102 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 123,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_6035d204-09f5-5dcb-8cdc-ac3a286a810d",
+          "name": "CEL.PROFILE.KS03.STAGE",
+          "label": "FV-103 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 124,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_a2f6b5de-f0f6-5e98-b11b-098da2974c36",
+          "name": "CEL.PROFILE.KS04.STAGE",
+          "label": "FV-104 profile stage (0 empty, 1 fermenting, 2 diacetyl rest, 3 crash)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 125,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_4e74448a-03ad-55fa-b58f-4b09bd20e87f",
+          "name": "CEL.PROFILE.TC01.SP",
+          "label": "Profile temperature while the beer ferments",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 126,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_a2ea1634-ba50-5984-8689-8471c9dc22b6",
+          "name": "CEL.PROFILE.TC02.SP",
+          "label": "Profile temperature of the diacetyl rest",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 127,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_8f3d9ba5-3e49-54d5-a983-b964c65d85fa",
+          "name": "CEL.PROFILE.TC03.SP",
+          "label": "Profile temperature of the crash",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 128,
+          "access": "read-write",
+          "divisor": 100,
+          "units": "degF",
+          "range": [
+            20.0,
+            90.0
+          ]
+        },
+        {
+          "id": "t_62fe7739-076f-54b8-82fd-9d275fcab3a4",
+          "name": "CEL.PROFILE.KC01.SP",
+          "label": "Diacetyl rest length in plant minutes (180 is 144 h of fermentation on the range's 48x clock)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 129,
+          "access": "read-write",
+          "divisor": 1,
+          "units": "min",
+          "range": [
+            0.0,
+            6000.0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "plc-packaging",
+      "type": "SiemensS7",
+      "property": {
+        "address": "10.20.10.13",
+        "port": 102,
+        "rack": 0,
+        "slot": 1
+      },
+      "polling": 1000,
+      "tags": [
+        {
+          "id": "t_ddd08a74-5b3e-5c58-a2f6-ffd94f5cbf12",
+          "name": "PKG.LINE.PACKML.STATE",
+          "label": "Bottling line PackML state (StateCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_STATE",
+          "plc_iec": "%MW0",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            17.0
+          ]
+        },
+        {
+          "id": "t_b7e14489-fe2e-5d05-b313-a273b08f0290",
+          "name": "PKG.LINE.PACKML.ALM_STATE",
+          "label": "Bottling line PackML state (StateCurrent): state alarm (low)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_ALM_STATE",
+          "plc_iec": "%QX0.0",
+          "access": "read"
+        },
+        {
+          "id": "t_102301cd-e0a2-5587-894c-a859ec131be6",
+          "name": "PKG.LINE.PACKML.MODE",
+          "label": "Bottling line PackML mode (UnitModeCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_MODE",
+          "plc_iec": "%MW1",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_6055f192-4a0f-5509-b77f-e0cc6add8c4d",
+          "name": "PKG.LINE.PACKML.CMD",
+          "label": "Bottling line PackML command (CntrlCmd)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_CMD",
+          "plc_iec": "%MW2",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
+        },
+        {
+          "id": "t_a4a41402-9c01-5116-92df-521191849bf3",
+          "name": "PKG.LINE.PACKML.MODE_CMD",
+          "label": "Bottling line mode command",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_MODE_CMD",
+          "plc_iec": "%MW3",
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_06367f76-1710-5e45-a63d-a73a80e7d2c5",
+          "name": "PKG.LINE.PACKML.SPEED_SP",
+          "label": "Bottling line speed setpoint (MachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_SPEED_SP",
+          "plc_iec": "%MW4",
+          "access": "read-write",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_237d9e0e-0ac2-574a-bbfc-6232c0755444",
+          "name": "PKG.LINE.PACKML.PROCESSED",
+          "label": "Bottles filled this shift (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_PROCESSED",
+          "plc_iec": "%MW5",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_cba5844e-f876-5271-99fd-ab116d759686",
+          "name": "PKG.LINE.PACKML.DEFECTIVE",
+          "label": "Bottles rejected this shift (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_DEFECTIVE",
+          "plc_iec": "%MW6",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_bc6fba87-ba9e-5710-9582-d0b784bfae65",
+          "name": "PKG.LINE.PACKML.STOP_REASON",
+          "label": "Line stop reason (first-out machine)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_PACKML_STOP_REASON",
+          "plc_iec": "%MW7",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            99.0
+          ]
+        },
+        {
+          "id": "t_71764ac0-37c5-5e20-aee6-ea9fbd3cbf90",
+          "name": "PKG.LINE.KQ01.OEE",
+          "label": "Shift OEE",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LINE_KQ01_OEE",
+          "plc_iec": "%MW8",
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_858424af-7da7-5c1f-85b1-6f0da7d9b3ee",
+          "name": "PKG.LINE.XS01.RUN",
+          "label": "Line not Stopped or Aborted (alarm suppression)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_LINE_XS01_RUN",
+          "plc_iec": "%QX0.1",
+          "access": "read"
+        },
+        {
+          "id": "t_5c6aa699-ad78-569e-813d-11e5611fa116",
+          "name": "PKG.FILLER.PACKML.STATE",
+          "label": "Filler PackML state (StateCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_STATE",
+          "plc_iec": "%IW100",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            17.0
+          ]
+        },
+        {
+          "id": "t_8a2f9554-a937-5777-a575-9d6656a11c98",
+          "name": "PKG.FILLER.PACKML.MODE",
+          "label": "Filler PackML mode (UnitModeCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_MODE",
+          "plc_iec": "%IW101",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_05ebe69c-b1fc-57d8-98a8-2022ed82d047",
+          "name": "PKG.FILLER.PACKML.SPEED",
+          "label": "Filler current speed (CurMachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_SPEED",
+          "plc_iec": "%IW102",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_1a7e15af-5513-5af9-bf7c-a65e6f7605b0",
+          "name": "PKG.FILLER.PACKML.PROCESSED",
+          "label": "Filler ProdProcessedCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_PROCESSED",
+          "plc_iec": "%IW103",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_22a0f0dc-2711-5602-b089-b458b68543fe",
+          "name": "PKG.FILLER.PACKML.DEFECTIVE",
+          "label": "Fill-level inspection rejects (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_DEFECTIVE",
+          "plc_iec": "%IW104",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_1adbbaf3-5850-5e18-a9d3-4f7c6d5c340d",
+          "name": "PKG.FILLER.PACKML.STOP_REASON",
+          "label": "Filler stop reason (StopReason.ID)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_STOP_REASON",
+          "plc_iec": "%IW105",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            99.0
+          ]
+        },
+        {
+          "id": "t_3930baed-c567-5ae6-842d-bc6df35b302c",
+          "name": "PKG.FILLER.PT01.PV",
+          "label": "Filler bowl pressure (absolute)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PT01_PV",
+          "plc_iec": "%IW106",
+          "access": "read",
+          "divisor": 100,
+          "units": "psia",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_b4d9760d-8db4-5003-92ad-a29a649ee57d",
+          "name": "PKG.FILLER.YA01.PV",
+          "label": "Filler jammed",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_FILLER_YA01_PV",
+          "plc_iec": "%IX100.0",
+          "access": "read"
+        },
+        {
+          "id": "t_e64e24ff-eebe-579f-8c0c-adb2b05e3abc",
+          "name": "PKG.FILLER.YA01.ALM_STATE",
+          "label": "Filler jammed: state alarm (low)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_FILLER_YA01_ALM_STATE",
+          "plc_iec": "%QX0.2",
+          "access": "read"
+        },
+        {
+          "id": "t_ffc34dee-fa46-59a1-b12c-7e71cdd7519b",
+          "name": "PKG.FILLER.LSL01.PV",
+          "label": "Filler bowl low (product supply)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_FILLER_LSL01_PV",
+          "plc_iec": "%IX100.1",
+          "access": "read"
+        },
+        {
+          "id": "t_440458c1-375d-5be2-ba6e-1f1ff9b2a9ab",
+          "name": "PKG.FILLER.LSL01.ALM_STATE",
+          "label": "Filler bowl low (product supply): state alarm (medium)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_FILLER_LSL01_ALM_STATE",
+          "plc_iec": "%QX0.3",
+          "access": "read"
+        },
+        {
+          "id": "t_166bdf64-722a-55d9-93c7-9792cedfde34",
+          "name": "PKG.FILLER.XV01.CMD",
+          "label": "Filler product valve (from BBT-202)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_FILLER_XV01_CMD",
+          "plc_iec": "%QX100.0",
+          "access": "read"
+        },
+        {
+          "id": "t_fceff9c9-5a6f-513f-8b13-451b70e942ec",
+          "name": "PKG.FILLER.PACKML.CMD",
+          "label": "Filler PackML command (CntrlCmd)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_CMD",
+          "plc_iec": "%QW100",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
+        },
+        {
+          "id": "t_2ccca6ca-a06f-5e12-866d-633284ae295c",
+          "name": "PKG.FILLER.PACKML.MODE_CMD",
+          "label": "Filler PackML mode command (UnitMode)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_MODE_CMD",
+          "plc_iec": "%QW101",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_f1c4811b-40f0-5811-8560-510307e0ff23",
+          "name": "PKG.FILLER.PACKML.SPEED_SP",
+          "label": "Filler speed setpoint (MachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_FILLER_PACKML_SPEED_SP",
+          "plc_iec": "%QW102",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_2f756285-a3d4-582b-8f11-5c0650bfd2be",
+          "name": "PKG.RINSER.PACKML.STATE",
+          "label": "Rinser PackML state (StateCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_STATE",
+          "plc_iec": "%IW107",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            17.0
+          ]
+        },
+        {
+          "id": "t_aa58c07f-1f7e-5aa1-936c-a2c83cebb0b3",
+          "name": "PKG.RINSER.PACKML.MODE",
+          "label": "Rinser PackML mode (UnitModeCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_MODE",
+          "plc_iec": "%IW108",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_7b0a3e3a-f420-581f-a2b4-249fd63ad1cf",
+          "name": "PKG.RINSER.PACKML.SPEED",
+          "label": "Rinser current speed (CurMachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_SPEED",
+          "plc_iec": "%IW109",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_bcdeaf6a-4d6d-57b6-8c52-b6cc43efa28d",
+          "name": "PKG.RINSER.PACKML.PROCESSED",
+          "label": "Rinser ProdProcessedCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_PROCESSED",
+          "plc_iec": "%IW110",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_144dc40b-6147-5bb4-9a6d-ab541ba9adba",
+          "name": "PKG.RINSER.PACKML.DEFECTIVE",
+          "label": "Rinser ProdDefectiveCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_DEFECTIVE",
+          "plc_iec": "%IW111",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_4a104e52-51ce-55ac-a225-238d4a6f5ce2",
+          "name": "PKG.RINSER.PACKML.STOP_REASON",
+          "label": "Rinser stop reason (StopReason.ID)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_STOP_REASON",
+          "plc_iec": "%IW112",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            99.0
+          ]
+        },
+        {
+          "id": "t_1f45e3a4-38ad-5d9c-b040-70bb5a320e10",
+          "name": "PKG.RINSER.YA01.PV",
+          "label": "Rinser jammed",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_RINSER_YA01_PV",
+          "plc_iec": "%IX100.2",
+          "access": "read"
+        },
+        {
+          "id": "t_93eccceb-57ae-5d3d-be29-3fa114f7fef0",
+          "name": "PKG.RINSER.YA01.ALM_STATE",
+          "label": "Rinser jammed: state alarm (low)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_RINSER_YA01_ALM_STATE",
+          "plc_iec": "%QX0.4",
+          "access": "read"
+        },
+        {
+          "id": "t_ed4fd6b7-8aa2-594e-a689-ac5eda8e5550",
+          "name": "PKG.RINSER.PACKML.CMD",
+          "label": "Rinser PackML command (CntrlCmd)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_CMD",
+          "plc_iec": "%QW103",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
+        },
+        {
+          "id": "t_cd0e26d0-976c-571f-9101-f3cc00cb557d",
+          "name": "PKG.RINSER.PACKML.MODE_CMD",
+          "label": "Rinser PackML mode command (UnitMode)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_MODE_CMD",
+          "plc_iec": "%QW104",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_7e43d1c2-f2a6-5378-ba64-285abc1db11e",
+          "name": "PKG.RINSER.PACKML.SPEED_SP",
+          "label": "Rinser speed setpoint (MachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_RINSER_PACKML_SPEED_SP",
+          "plc_iec": "%QW105",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_6c105577-16fa-5e22-9cad-2010f7e624a4",
+          "name": "PKG.CODER.PACKML.STATE",
+          "label": "Date coder PackML state (StateCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_STATE",
+          "plc_iec": "%IW113",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            17.0
+          ]
+        },
+        {
+          "id": "t_40802fe7-4bc6-59bf-bb46-7e8151669240",
+          "name": "PKG.CODER.PACKML.MODE",
+          "label": "Date coder PackML mode (UnitModeCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_MODE",
+          "plc_iec": "%IW114",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_d24323e9-e1c2-5f25-857f-2c819ea18aa2",
+          "name": "PKG.CODER.PACKML.SPEED",
+          "label": "Date coder current speed (CurMachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_SPEED",
+          "plc_iec": "%IW115",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_8bf2a28c-91e7-5c00-a9c1-96ff702a3e1d",
+          "name": "PKG.CODER.PACKML.PROCESSED",
+          "label": "Date coder ProdProcessedCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_PROCESSED",
+          "plc_iec": "%IW116",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_c7909755-1e73-5363-b3e4-c16436771e0f",
+          "name": "PKG.CODER.PACKML.DEFECTIVE",
+          "label": "Date coder ProdDefectiveCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_DEFECTIVE",
+          "plc_iec": "%IW117",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_0503fc62-e7cd-59b0-a27d-6e91925be1fb",
+          "name": "PKG.CODER.PACKML.STOP_REASON",
+          "label": "Date coder stop reason (StopReason.ID)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_STOP_REASON",
+          "plc_iec": "%IW118",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            99.0
+          ]
+        },
+        {
+          "id": "t_d502c1e6-76ec-5704-bfce-16c216347bc3",
+          "name": "PKG.CODER.YA01.PV",
+          "label": "Date coder jammed",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CODER_YA01_PV",
+          "plc_iec": "%IX100.3",
+          "access": "read"
+        },
+        {
+          "id": "t_3114d847-e5d5-5a8a-af8e-1efd1bb15132",
+          "name": "PKG.CODER.YA01.ALM_STATE",
+          "label": "Date coder jammed: state alarm (low)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CODER_YA01_ALM_STATE",
+          "plc_iec": "%QX0.5",
+          "access": "read"
+        },
+        {
+          "id": "t_09bb9004-9345-5f26-8de8-c84a30570210",
+          "name": "PKG.CODER.PACKML.CMD",
+          "label": "Date coder PackML command (CntrlCmd)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_CMD",
+          "plc_iec": "%QW106",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
+        },
+        {
+          "id": "t_f1109525-f67a-5ff8-9ad0-ceb935f0002c",
+          "name": "PKG.CODER.PACKML.MODE_CMD",
+          "label": "Date coder PackML mode command (UnitMode)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_MODE_CMD",
+          "plc_iec": "%QW107",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_27cfc48d-2080-5eba-b442-a304953e24d9",
+          "name": "PKG.CODER.PACKML.SPEED_SP",
+          "label": "Date coder speed setpoint (MachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_CODER_PACKML_SPEED_SP",
+          "plc_iec": "%QW108",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_0c4fa94b-b782-51a3-a6e3-d5a23c940b7d",
+          "name": "PKG.LABELER.PACKML.STATE",
+          "label": "Labeler PackML state (StateCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_STATE",
+          "plc_iec": "%IW119",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            17.0
+          ]
+        },
+        {
+          "id": "t_dc217578-3006-5bee-9249-9b4aa7ed88dd",
+          "name": "PKG.LABELER.PACKML.MODE",
+          "label": "Labeler PackML mode (UnitModeCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_MODE",
+          "plc_iec": "%IW120",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_dafc95c3-b8aa-5e12-b185-afdc97159ee9",
+          "name": "PKG.LABELER.PACKML.SPEED",
+          "label": "Labeler current speed (CurMachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_SPEED",
+          "plc_iec": "%IW121",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_439e5d77-b586-5fd1-9450-4c13cb24bf66",
+          "name": "PKG.LABELER.PACKML.PROCESSED",
+          "label": "Labeler ProdProcessedCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_PROCESSED",
+          "plc_iec": "%IW122",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_c7ad2f74-9ead-5cd5-9b87-55eb9895b76a",
+          "name": "PKG.LABELER.PACKML.DEFECTIVE",
+          "label": "Labeler ProdDefectiveCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_DEFECTIVE",
+          "plc_iec": "%IW123",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_04028a38-8508-53c8-9e31-0d8b7ab7b932",
+          "name": "PKG.LABELER.PACKML.STOP_REASON",
+          "label": "Labeler stop reason (StopReason.ID)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_STOP_REASON",
+          "plc_iec": "%IW124",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            99.0
+          ]
+        },
+        {
+          "id": "t_c54e1dba-2e87-52da-8c62-f4d4d2ecd7b7",
+          "name": "PKG.LABELER.YA01.PV",
+          "label": "Labeler jammed",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_LABELER_YA01_PV",
+          "plc_iec": "%IX100.4",
+          "access": "read"
+        },
+        {
+          "id": "t_62860d4d-1fa7-5fe8-8fdc-1988d47a266d",
+          "name": "PKG.LABELER.YA01.ALM_STATE",
+          "label": "Labeler jammed: state alarm (low)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_LABELER_YA01_ALM_STATE",
+          "plc_iec": "%QX0.6",
+          "access": "read"
+        },
+        {
+          "id": "t_80f181e7-040e-5319-8e5b-fdd91e5ed5af",
+          "name": "PKG.LABELER.PACKML.CMD",
+          "label": "Labeler PackML command (CntrlCmd)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_CMD",
+          "plc_iec": "%QW109",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
+        },
+        {
+          "id": "t_488be5be-ea7e-5598-b328-52250a7175d9",
+          "name": "PKG.LABELER.PACKML.MODE_CMD",
+          "label": "Labeler PackML mode command (UnitMode)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_MODE_CMD",
+          "plc_iec": "%QW110",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_0096fb56-3f81-5434-9420-c3cd836e6642",
+          "name": "PKG.LABELER.PACKML.SPEED_SP",
+          "label": "Labeler speed setpoint (MachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_LABELER_PACKML_SPEED_SP",
+          "plc_iec": "%QW111",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_364549ae-62bc-5f6c-b535-17cbc4722a64",
+          "name": "PKG.PACKER.PACKML.STATE",
+          "label": "Case packer PackML state (StateCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_STATE",
+          "plc_iec": "%IW125",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            17.0
+          ]
+        },
+        {
+          "id": "t_3c70e99f-ac3b-5ca9-8860-c85285dde993",
+          "name": "PKG.PACKER.PACKML.MODE",
+          "label": "Case packer PackML mode (UnitModeCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_MODE",
+          "plc_iec": "%IW126",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_c88e9428-e447-5bac-9203-c47e54132673",
+          "name": "PKG.PACKER.PACKML.SPEED",
+          "label": "Case packer current speed (CurMachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_SPEED",
+          "plc_iec": "%IW127",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_47357b0b-af8d-53e0-8ff0-9fb552e1f227",
+          "name": "PKG.PACKER.PACKML.PROCESSED",
+          "label": "Case packer ProdProcessedCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_PROCESSED",
+          "plc_iec": "%IW128",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_08e55189-33e1-559f-8d42-8e859ea6975c",
+          "name": "PKG.PACKER.PACKML.DEFECTIVE",
+          "label": "Case packer ProdDefectiveCount (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_DEFECTIVE",
+          "plc_iec": "%IW129",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_eaef1c25-db26-5533-9624-625cff2d0103",
+          "name": "PKG.PACKER.PACKML.STOP_REASON",
+          "label": "Case packer stop reason (StopReason.ID)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_STOP_REASON",
+          "plc_iec": "%IW130",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            99.0
+          ]
+        },
+        {
+          "id": "t_0f65257d-9693-5ef0-b4f5-1cf28ea3df2c",
+          "name": "PKG.PACKER.YA01.PV",
+          "label": "Case packer jammed",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_PACKER_YA01_PV",
+          "plc_iec": "%IX100.5",
+          "access": "read"
+        },
+        {
+          "id": "t_afdec35b-3eb8-5ac0-b4c4-591d9cd2db3c",
+          "name": "PKG.PACKER.YA01.ALM_STATE",
+          "label": "Case packer jammed: state alarm (low)",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_PACKER_YA01_ALM_STATE",
+          "plc_iec": "%QX0.7",
+          "access": "read"
+        },
+        {
+          "id": "t_fbe13cd5-1db4-504e-ac62-927c9bf782e3",
+          "name": "PKG.PACKER.PACKML.CMD",
+          "label": "Case packer PackML command (CntrlCmd)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_CMD",
+          "plc_iec": "%QW112",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
+        },
+        {
+          "id": "t_8fd03adb-eba1-5d70-9e3b-f799b842c7c5",
+          "name": "PKG.PACKER.PACKML.MODE_CMD",
+          "label": "Case packer PackML mode command (UnitMode)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_MODE_CMD",
+          "plc_iec": "%QW113",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_632d9abd-c9ac-5684-9482-5bd05b590b09",
+          "name": "PKG.PACKER.PACKML.SPEED_SP",
+          "label": "Case packer speed setpoint (MachSpeed)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PACKER_PACKML_SPEED_SP",
+          "plc_iec": "%QW114",
+          "access": "read",
+          "divisor": 10,
+          "units": "bottles/min",
+          "range": [
+            0.0,
+            60.0
+          ]
+        },
+        {
+          "id": "t_07f3aae9-2d88-501b-a5f7-291837777885",
+          "name": "PKG.KEG.PACKML.STATE",
+          "label": "Keg washer/filler PackML state (StateCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_KEG_PACKML_STATE",
+          "plc_iec": "%IW131",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            17.0
+          ]
+        },
+        {
+          "id": "t_384628a1-23e2-5826-b642-426ab5a454bd",
+          "name": "PKG.KEG.PACKML.MODE",
+          "label": "Keg washer/filler PackML mode (UnitModeCurrent)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_KEG_PACKML_MODE",
+          "plc_iec": "%IW132",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_bec7dfdd-0aec-536e-a33e-07a2db5910e0",
+          "name": "PKG.KEG.PACKML.PROCESSED",
+          "label": "Kegs filled (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_KEG_PACKML_PROCESSED",
+          "plc_iec": "%IW133",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_cb61e026-2e39-5c65-991c-c2e46ee174e9",
+          "name": "PKG.KEG.PACKML.DEFECTIVE",
+          "label": "Kegs rejected (wraps at 65535)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_KEG_PACKML_DEFECTIVE",
+          "plc_iec": "%IW134",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_1e81f676-9cd5-5724-98d5-56c0bfdeec2d",
+          "name": "PKG.KEG.PACKML.STOP_REASON",
+          "label": "Keg washer/filler stop reason",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_KEG_PACKML_STOP_REASON",
+          "plc_iec": "%IW135",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            99.0
+          ]
+        },
+        {
+          "id": "t_3a6d0c41-37ab-55d4-accb-a60da0f60ab3",
+          "name": "PKG.KEG.TT01.PV",
+          "label": "Keg wash water temperature",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_KEG_TT01_PV",
+          "plc_iec": "%IW136",
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            212.0
+          ]
+        },
+        {
+          "id": "t_54eb804e-5f00-5eab-a237-0f24e25e7362",
+          "name": "PKG.KEG.YA01.PV",
+          "label": "Keg washer/filler jammed",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_KEG_YA01_PV",
+          "plc_iec": "%IX100.6",
+          "access": "read"
+        },
+        {
+          "id": "t_480d2e8f-e285-5500-9d54-ad14a04dd9f2",
+          "name": "PKG.KEG.HS01.CMD",
+          "label": "Keg wash heater command",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_KEG_HS01_CMD",
+          "plc_iec": "%QX100.1",
+          "access": "read"
+        },
+        {
+          "id": "t_3ee6cfe4-7844-584b-a37b-d4af925da7c2",
+          "name": "PKG.KEG.PACKML.CMD",
+          "label": "Keg washer/filler PackML command (CntrlCmd)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_KEG_PACKML_CMD",
+          "plc_iec": "%QW115",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
+        },
+        {
+          "id": "t_6079c9cf-1dbd-5961-a68a-65f21f4f438a",
+          "name": "PKG.KEG.PACKML.MODE_CMD",
+          "label": "Keg washer/filler mode command",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_KEG_PACKML_MODE_CMD",
+          "plc_iec": "%QW116",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_614c8e7e-178b-54a2-8776-bf4b5ec74552",
+          "name": "PKG.CONV.LS01.PV",
+          "label": "Conveyor 1 (depalletizer to rinser) accumulation eye",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_LS01_PV",
+          "plc_iec": "%IX100.7",
+          "access": "read"
+        },
+        {
+          "id": "t_507d02e8-5a4f-52d9-9eb1-40617fdb1010",
+          "name": "PKG.CONV.YA01.PV",
+          "label": "Conveyor 1 jam eye",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_YA01_PV",
+          "plc_iec": "%IX101.0",
+          "access": "read"
+        },
+        {
+          "id": "t_ed4abcb3-6e02-5cbe-b581-a286b16b7486",
+          "name": "PKG.CONV.HS01.CMD",
+          "label": "Conveyor 1 run command",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_HS01_CMD",
+          "plc_iec": "%QX100.2",
+          "access": "read"
+        },
+        {
+          "id": "t_5b30a51d-0514-5796-947c-6176adda5685",
+          "name": "PKG.CONV.LS02.PV",
+          "label": "Conveyor 2 (filler to coder) accumulation eye",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_LS02_PV",
+          "plc_iec": "%IX101.1",
+          "access": "read"
+        },
+        {
+          "id": "t_2244e501-c568-59cd-9aa0-69db500da447",
+          "name": "PKG.CONV.YA02.PV",
+          "label": "Conveyor 2 jam eye",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_YA02_PV",
+          "plc_iec": "%IX101.2",
+          "access": "read"
+        },
+        {
+          "id": "t_2e46e03c-16f2-5b75-8864-6ba2b5a637d1",
+          "name": "PKG.CONV.HS02.CMD",
+          "label": "Conveyor 2 run command",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_HS02_CMD",
+          "plc_iec": "%QX100.3",
+          "access": "read"
+        },
+        {
+          "id": "t_89db08ee-787e-574b-87cb-68e9fa85ec2f",
+          "name": "PKG.CONV.LS03.PV",
+          "label": "Conveyor 3 (labeler to packer) accumulation eye",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_LS03_PV",
+          "plc_iec": "%IX101.3",
+          "access": "read"
+        },
+        {
+          "id": "t_9400985f-c1a5-5e24-8428-38adf5657f35",
+          "name": "PKG.CONV.YA03.PV",
+          "label": "Conveyor 3 jam eye",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_YA03_PV",
+          "plc_iec": "%IX101.4",
+          "access": "read"
+        },
+        {
+          "id": "t_1c3ad4ac-b319-5df9-bbf7-e36f5a3f6334",
+          "name": "PKG.CONV.HS03.CMD",
+          "label": "Conveyor 3 run command",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_HS03_CMD",
+          "plc_iec": "%QX100.4",
+          "access": "read"
+        },
+        {
+          "id": "t_658ebc06-8e5b-54df-869d-30391cce64a1",
+          "name": "PKG.CONV.LS04.PV",
+          "label": "Conveyor 4 (packer to palletizing) accumulation eye",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_LS04_PV",
+          "plc_iec": "%IX101.5",
+          "access": "read"
+        },
+        {
+          "id": "t_9f927176-753c-5af1-bc5b-15f6dfa60929",
+          "name": "PKG.CONV.YA04.PV",
+          "label": "Conveyor 4 jam eye",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_YA04_PV",
+          "plc_iec": "%IX101.6",
+          "access": "read"
+        },
+        {
+          "id": "t_c87eee97-ac4d-5447-9309-460a68181637",
+          "name": "PKG.CONV.HS04.CMD",
+          "label": "Conveyor 4 run command",
+          "type": "Bool",
+          "address": null,
+          "variable": "PKG_CONV_HS04_CMD",
+          "plc_iec": "%QX100.5",
+          "access": "read"
+        },
+        {
+          "id": "t_50a1b20a-b308-52b9-bd28-c77286bd9903",
+          "name": "PKG.PANEL.HS01.PV",
+          "label": "Line command at the operator panel (CntrlCmd while a button is pressed, else 0)",
+          "type": "UInt16",
+          "address": null,
+          "variable": "PKG_PANEL_HS01_PV",
+          "plc_iec": "%IW137",
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            9.0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "plc-utilities",
+      "type": "ModbusTCP",
+      "property": {
+        "address": "10.20.10.14",
+        "port": 502,
+        "slaveid": 1
+      },
+      "polling": 1000,
+      "tags": [
+        {
+          "id": "t_9d84e0ed-fb34-5885-a670-0a2a9484d925",
+          "name": "UTL.CHL.TT01.PV",
+          "label": "Glycol supply temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 101,
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_4b7d8d93-41af-5289-a61d-cd3d94dbfd65",
+          "name": "UTL.CHL.TT01.ALM_HIGH",
+          "label": "Glycol supply temperature: high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 1,
+          "access": "read"
+        },
+        {
+          "id": "t_3279ba22-705c-508c-8bec-c2f74961a0d0",
+          "name": "UTL.CHL.TT02.PV",
+          "label": "Glycol return temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 102,
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_4279cee6-0f2f-5e7e-9226-68df2e707e40",
+          "name": "UTL.CHL.JT01.PV",
+          "label": "Chiller electrical input",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 103,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_c0380b15-249b-5901-8c26-c53ad2fa0847",
+          "name": "UTL.CHL.YS01.PV",
+          "label": "Compressor stage 1 running",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 801,
+          "access": "read"
+        },
+        {
+          "id": "t_0944bb26-dd30-5701-b8d7-ebf9c9613df2",
+          "name": "UTL.CHL.YS02.PV",
+          "label": "Compressor stage 2 running",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 802,
+          "access": "read"
+        },
+        {
+          "id": "t_4adbe070-1067-5ffe-adb6-d4bae62e35e8",
+          "name": "UTL.CHL.YA01.PV",
+          "label": "Chiller compressor fault",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 803,
+          "access": "read"
+        },
+        {
+          "id": "t_dd4a7852-4f53-56e3-b53a-0a80185c9a38",
+          "name": "UTL.CHL.YA01.ALM_STATE",
+          "label": "Chiller compressor fault: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 2,
+          "access": "read"
+        },
+        {
+          "id": "t_48d76fc7-2ae4-5e33-9400-c4b33afb191f",
+          "name": "UTL.CHL.HS01.CMD",
+          "label": "Chiller enable",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 801,
+          "access": "read"
+        },
+        {
+          "id": "t_13d80360-ecda-50dd-9c14-bc8ca63fdf4b",
+          "name": "UTL.CHL.TIC01.SP",
+          "label": "Chiller supply setpoint (written to the OEM controller)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 101,
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_0c09b6ad-7b8c-5dfc-b987-b20c9ff62506",
+          "name": "UTL.CHL.AT01.PV",
+          "label": "Refrigerant detector at the chiller (R-410A, 45 lb charge; ASHRAE 15)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 104,
+          "access": "read",
+          "divisor": 1,
+          "units": "ppm",
+          "range": [
+            0.0,
+            10000.0
+          ]
+        },
+        {
+          "id": "t_95454ac1-fb25-5fc0-b1be-d6cb599f6113",
+          "name": "UTL.CHL.AT01.ALM_HIGH",
+          "label": "Refrigerant detector at the chiller (R-410A, 45 lb charge; ASHRAE 15): high alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 3,
+          "access": "read"
+        },
+        {
+          "id": "t_4222456a-7495-50e2-9816-d7d7e62fae3a",
+          "name": "UTL.CHL.TT01.SP",
+          "label": "Glycol supply setpoint (operator)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 105,
+          "access": "read-write",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_1a04135d-67b3-5f82-8993-27626f1cba11",
+          "name": "UTL.GLY.LT01.PV",
+          "label": "Glycol reservoir level",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 105,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_22b54154-d32e-5fb7-b00e-ef87204196c7",
+          "name": "UTL.GLY.LT01.ALM_LOW",
+          "label": "Glycol reservoir level: low alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 4,
+          "access": "read"
+        },
+        {
+          "id": "t_cd17fcc8-a2fa-5d96-ba52-791695baf673",
+          "name": "UTL.GLY.PT01.PV",
+          "label": "Glycol supply pressure",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 106,
+          "access": "read",
+          "divisor": 10,
+          "units": "psig",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_d2723d80-6c5f-51af-b19b-e2a9a26c797c",
+          "name": "UTL.GLY.YS01.PV",
+          "label": "Glycol pump running",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 804,
+          "access": "read"
+        },
+        {
+          "id": "t_3dd78848-2428-50a1-a97e-e5058f7c9793",
+          "name": "UTL.GLY.HS01.CMD",
+          "label": "Glycol pump run command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 802,
+          "access": "read"
+        },
+        {
+          "id": "t_3cc119c3-81e4-5013-8116-64c098d71692",
+          "name": "UTL.GLY.SC01.OUT",
+          "label": "Glycol pump VFD speed reference (pressure control)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 102,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_71587227-36da-5ad3-b276-c6a411047774",
+          "name": "UTL.GLY.PT01.SP",
+          "label": "Glycol supply pressure setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 106,
+          "access": "read-write",
+          "divisor": 10,
+          "units": "psig",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_342312eb-3d07-5457-81fe-3d18b7b5200e",
+          "name": "UTL.STM.PT01.PV",
+          "label": "Steam header pressure",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 107,
+          "access": "read",
+          "divisor": 10,
+          "units": "psig",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_41066c62-2f99-5335-989a-c10d071750c7",
+          "name": "UTL.STM.PT01.ALM_LOW",
+          "label": "Steam header pressure: low alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 5,
+          "access": "read"
+        },
+        {
+          "id": "t_63300b5b-dc07-51a4-ae6f-28866558c6a2",
+          "name": "UTL.STM.JT01.PV",
+          "label": "Boiler electrical input",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 108,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            0.0,
+            250.0
+          ]
+        },
+        {
+          "id": "t_ff78d541-513f-5213-aca3-e8273e079970",
+          "name": "UTL.STM.YS01.PV",
+          "label": "Boiler firing",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 805,
+          "access": "read"
+        },
+        {
+          "id": "t_eb805b6d-9a84-50b2-8b7e-bc5ac607da0b",
+          "name": "UTL.STM.LSL01.PV",
+          "label": "Boiler low-water cutoff tripped (hardwired)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 806,
+          "access": "read"
+        },
+        {
+          "id": "t_9220c205-6523-5795-9fc1-5b91491ea7b2",
+          "name": "UTL.STM.LSL01.ALM_STATE",
+          "label": "Boiler low-water cutoff tripped (hardwired): state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 6,
+          "access": "read"
+        },
+        {
+          "id": "t_b13ec3b6-2dc5-5fa4-b2e6-02e9f9064a12",
+          "name": "UTL.STM.HS01.CMD",
+          "label": "Boiler enable",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 803,
+          "access": "read"
+        },
+        {
+          "id": "t_92bc31b9-a3ce-54cd-bb0c-1b374e875476",
+          "name": "UTL.STM.PC01.SP",
+          "label": "Boiler pressure setpoint (12 psig; below the 15 psig safety valve)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 103,
+          "access": "read",
+          "divisor": 10,
+          "units": "psig",
+          "range": [
+            0.0,
+            30.0
+          ]
+        },
+        {
+          "id": "t_d979f7af-1c92-5e88-a8bb-27b2b4148767",
+          "name": "UTL.AIR.PT01.PV",
+          "label": "Compressed-air header pressure",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 109,
+          "access": "read",
+          "divisor": 10,
+          "units": "psig",
+          "range": [
+            0.0,
+            150.0
+          ]
+        },
+        {
+          "id": "t_093b182e-f27a-5f79-b0f4-c0f1760f0f94",
+          "name": "UTL.AIR.PT01.ALM_LOW",
+          "label": "Compressed-air header pressure: low alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 7,
+          "access": "read"
+        },
+        {
+          "id": "t_bb894037-3eaa-55b1-8e0f-429750676777",
+          "name": "UTL.AIR.YS01.PV",
+          "label": "Air compressor running",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 807,
+          "access": "read"
+        },
+        {
+          "id": "t_ecbd4784-0fee-5ac7-b555-d20fb5cdf61f",
+          "name": "UTL.AIR.YA01.PV",
+          "label": "Air dryer fault",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 808,
+          "access": "read"
+        },
+        {
+          "id": "t_c31e74f7-de3d-5882-a889-8cfb4ec3e5e3",
+          "name": "UTL.AIR.HS01.CMD",
+          "label": "Air compressor enable",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 804,
+          "access": "read"
+        },
+        {
+          "id": "t_7dba9d9e-c663-5690-aec5-9601d6ef253a",
+          "name": "UTL.CO2.PT01.PV",
+          "label": "Bulk CO2 tank pressure",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 110,
+          "access": "read",
+          "divisor": 10,
+          "units": "psig",
+          "range": [
+            0.0,
+            400.0
+          ]
+        },
+        {
+          "id": "t_99b402ea-091b-595c-ae96-e9803c6bbd38",
+          "name": "UTL.CO2.LT01.PV",
+          "label": "Bulk CO2 tank level",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 111,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_80d9e2b6-5704-591f-984f-a5b6b6eb0f21",
+          "name": "UTL.CO2.LT01.ALM_LOW",
+          "label": "Bulk CO2 tank level: low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 8,
+          "access": "read"
+        },
+        {
+          "id": "t_2f9164e7-b9b1-5920-9bab-d26809d89d91",
+          "name": "UTL.CO2.PT02.PV",
+          "label": "CO2 supply header pressure",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 112,
+          "access": "read",
+          "divisor": 10,
+          "units": "psig",
+          "range": [
+            0.0,
+            150.0
+          ]
+        },
+        {
+          "id": "t_8bf01d20-26fb-596b-a368-3a767e90d6ca",
+          "name": "UTL.CO2.PT02.ALM_LOW",
+          "label": "CO2 supply header pressure: low alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 9,
+          "access": "read"
+        },
+        {
+          "id": "t_eb08d792-cea0-549e-992e-1c7d09aeea12",
+          "name": "UTL.CO2.XV01.CMD",
+          "label": "CO2 main supply valve (fail closed; its solenoid is wired through the shutoff relay)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 805,
+          "access": "read"
+        },
+        {
+          "id": "t_0d1e66d1-99d8-5ab9-bc6a-970b6c28eb39",
+          "name": "UTL.CO2.ZSO01.PV",
+          "label": "CO2 main supply valve open (limit switch)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 809,
+          "access": "read"
+        },
+        {
+          "id": "t_754b6337-7b22-5025-8f89-e2014971c1e3",
+          "name": "UTL.CO2.XS01.CO2_OK",
+          "label": "CO2 shutoff relay healthy (every area below 30,000 ppm, detection powered)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 810,
+          "access": "read"
+        },
+        {
+          "id": "t_d75b95f9-8afa-550d-a879-62bb20b51c79",
+          "name": "UTL.CO2.XS02.SHUTOFF",
+          "label": "CO2 supply shut off (tier 3 or loss of detection; latched until reset)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 10,
+          "access": "read"
+        },
+        {
+          "id": "t_a761623e-a723-5bc0-b241-1803e4fc8b2e",
+          "name": "UTL.CO2.XS02.ALM_STATE",
+          "label": "CO2 supply shut off (tier 3 or loss of detection; latched until reset): state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 11,
+          "access": "read"
+        },
+        {
+          "id": "t_9249921f-63b8-5c41-b8bc-e6f7fd05cd02",
+          "name": "UTL.CO2.XC01.RESET",
+          "label": "CO2 supply shutoff reset (operator; accepted once the relay has been healthy for 60 s)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 12,
+          "access": "read-write"
+        },
+        {
+          "id": "t_fa0362fb-1ec4-5e97-8080-2411b59bfbad",
+          "name": "UTL.RO.FT01.PV",
+          "label": "RO permeate flow",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 113,
+          "access": "read",
+          "divisor": 10,
+          "units": "gal/min",
+          "range": [
+            0.0,
+            50.0
+          ]
+        },
+        {
+          "id": "t_eb4ceb5d-8eb8-52dc-b448-07a4b6f4d8a0",
+          "name": "UTL.RO.AT01.PV",
+          "label": "RO permeate conductivity",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 114,
+          "access": "read",
+          "divisor": 1,
+          "units": "uS/cm",
+          "range": [
+            0.0,
+            1000.0
+          ]
+        },
+        {
+          "id": "t_cf4e1278-dacf-5295-ae54-73f656fa2e69",
+          "name": "UTL.RO.AT01.ALM_HIGH",
+          "label": "RO permeate conductivity: high alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 13,
+          "access": "read"
+        },
+        {
+          "id": "t_db548bb5-0556-5488-af0e-de39480d71b1",
+          "name": "UTL.RO.YS01.PV",
+          "label": "RO skid running",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 811,
+          "access": "read"
+        },
+        {
+          "id": "t_9a8fc555-378a-5c74-91ae-61d34781289f",
+          "name": "UTL.RO.HS01.CMD",
+          "label": "RO skid run command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 806,
+          "access": "read"
+        },
+        {
+          "id": "t_7ce11691-f479-5698-9ee3-e3ef85a31ebb",
+          "name": "UTL.WWN.LT01.PV",
+          "label": "Neutralization tank level",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 115,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_2eaf6b7b-8152-5ce7-9a4b-c2384bc6f161",
+          "name": "UTL.WWN.LT01.ALM_HIGH",
+          "label": "Neutralization tank level: high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 14,
+          "access": "read"
+        },
+        {
+          "id": "t_0bfb1e64-97e3-530b-9707-51ed84d47d40",
+          "name": "UTL.WWN.AT01.PV",
+          "label": "Neutralization tank pH",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 116,
+          "access": "read",
+          "divisor": 100,
+          "units": "pH",
+          "range": [
+            0.0,
+            14.0
+          ]
+        },
+        {
+          "id": "t_f233e1f2-fe2a-541a-9e30-8e9857614eb6",
+          "name": "UTL.WWN.AT01.ALM_HIGH",
+          "label": "Neutralization tank pH: high alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 15,
+          "access": "read"
+        },
+        {
+          "id": "t_af05f208-9251-5abe-8a64-417743f30664",
+          "name": "UTL.WWN.AT01.ALM_LOW",
+          "label": "Neutralization tank pH: low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 16,
+          "access": "read"
+        },
+        {
+          "id": "t_1f9b3bc4-e237-5415-a3cd-d018993fd464",
+          "name": "UTL.WWN.LSH01.PV",
+          "label": "Neutralization tank high-level switch",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 812,
+          "access": "read"
+        },
+        {
+          "id": "t_4c0d0e10-ef43-501c-b5c3-7234a06b364f",
+          "name": "UTL.WWN.XV01.CMD",
+          "label": "Caustic dosing pump",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 807,
+          "access": "read"
+        },
+        {
+          "id": "t_31adea41-89ca-540d-bfff-d07d7ce2b814",
+          "name": "UTL.WWN.XV02.CMD",
+          "label": "Acid dosing pump",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 808,
+          "access": "read"
+        },
+        {
+          "id": "t_b1be851e-5321-502f-a04e-886e242852b6",
+          "name": "UTL.WWN.XV03.CMD",
+          "label": "Discharge valve to the sewer (permitted at pH 6.0-9.0)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 809,
+          "access": "read"
+        },
+        {
+          "id": "t_c280a632-cc44-57bb-bdcc-3b1a9344f01b",
+          "name": "UTL.WWN.XS01.INHIBIT",
+          "label": "Discharge inhibited (pH outside 6.0-9.0)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 17,
+          "access": "read"
+        },
+        {
+          "id": "t_51579eb3-78c4-523c-a88e-97a32810b7ca",
+          "name": "UTL.WWN.XS01.ALM_STATE",
+          "label": "Discharge inhibited (pH outside 6.0-9.0): state alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 18,
+          "access": "read"
+        },
+        {
+          "id": "t_0c21433a-3887-55ca-bc47-8911b8a9562b",
+          "name": "UTL.CIP.TT01.PV",
+          "label": "CIP supply temperature",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 117,
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            212.0
+          ]
+        },
+        {
+          "id": "t_720084a7-e398-57b5-a0da-2cd793e2321e",
+          "name": "UTL.CIP.TT01.ALM_DEVIATION",
+          "label": "CIP supply temperature: deviation alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 19,
+          "access": "read"
+        },
+        {
+          "id": "t_2ed139c0-5414-53eb-bdff-736d24bb3e6a",
+          "name": "UTL.CIP.AT01.PV",
+          "label": "CIP return conductivity",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 118,
+          "access": "read",
+          "divisor": 100,
+          "units": "mS/cm",
+          "range": [
+            0.0,
+            200.0
+          ]
+        },
+        {
+          "id": "t_eee5adfa-2187-5d5c-a11b-567c1b85a92c",
+          "name": "UTL.CIP.FT01.PV",
+          "label": "CIP return flow",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 119,
+          "access": "read",
+          "divisor": 10,
+          "units": "gal/min",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_5ad31c41-b0c4-58e9-80c6-d7c4192f38c7",
+          "name": "UTL.CIP.LT01.PV",
+          "label": "Caustic tank level",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 120,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_62f92571-148b-54ce-b149-a3e4fabd96c7",
+          "name": "UTL.CIP.LT02.PV",
+          "label": "Acid/sanitizer tank level",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 121,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_c5f419b1-0ccb-5b9a-8326-51ac9a2953f8",
+          "name": "UTL.CIP.FS01.PV",
+          "label": "CIP return flow proven (flow switch)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 813,
+          "access": "read"
+        },
+        {
+          "id": "t_129b553c-c4bb-5397-a6f0-43c78a8d45b6",
+          "name": "UTL.CIP.HS01.CMD",
+          "label": "CIP supply pump run command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 810,
+          "access": "read"
+        },
+        {
+          "id": "t_350e4db0-832f-56ba-992d-1cae4af5fb9d",
+          "name": "UTL.CIP.HS02.CMD",
+          "label": "CIP return pump run command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 811,
+          "access": "read"
+        },
+        {
+          "id": "t_550bbd95-7ae2-5d19-913f-b216c0875a71",
+          "name": "UTL.CIP.XV01.CMD",
+          "label": "Caustic dosing",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 812,
+          "access": "read"
+        },
+        {
+          "id": "t_a6c720ef-20d0-5a14-a06d-668c96a379ed",
+          "name": "UTL.CIP.XV02.CMD",
+          "label": "Acid/sanitizer dosing",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 813,
+          "access": "read"
+        },
+        {
+          "id": "t_a34c201b-bea6-5682-aea8-c913e0c82a8f",
+          "name": "UTL.CIP.TV01.OUT",
+          "label": "CIP heater steam valve position",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 104,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_a50013e1-904f-54b0-8859-3497eb6f1be4",
+          "name": "UTL.CIP.ZS01.PV",
+          "label": "Swing panel on the brewhouse circuit",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 814,
+          "access": "read"
+        },
+        {
+          "id": "t_632de5e8-faad-54db-aca8-57550d03d67c",
+          "name": "UTL.CIP.ZS02.PV",
+          "label": "Swing panel on FV-101",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 815,
+          "access": "read"
+        },
+        {
+          "id": "t_df268c47-d4ce-5828-ab0f-f8e628d580f5",
+          "name": "UTL.CIP.ZS03.PV",
+          "label": "Swing panel on FV-102",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 816,
+          "access": "read"
+        },
+        {
+          "id": "t_7a706db5-bf5b-5d4a-a4a9-a6bd780fa995",
+          "name": "UTL.CIP.ZS04.PV",
+          "label": "Swing panel on FV-103",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 817,
+          "access": "read"
+        },
+        {
+          "id": "t_b9390b73-5866-5ce3-9099-396e99683fab",
+          "name": "UTL.CIP.ZS05.PV",
+          "label": "Swing panel on FV-104",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 818,
+          "access": "read"
+        },
+        {
+          "id": "t_f73f4c89-7a89-50ac-85e9-e12a01190338",
+          "name": "UTL.CIP.ZS06.PV",
+          "label": "Swing panel on BBT-201",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 819,
+          "access": "read"
+        },
+        {
+          "id": "t_40783c16-17fc-5906-a18a-339ddd4e9aa8",
+          "name": "UTL.CIP.ZS07.PV",
+          "label": "Swing panel on BBT-202",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 820,
+          "access": "read"
+        },
+        {
+          "id": "t_995639a5-5192-57be-859c-e4f389d56c5f",
+          "name": "UTL.CIP.TT01.SP",
+          "label": "CIP supply temperature setpoint",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 107,
+          "access": "read-write",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            32.0,
+            212.0
+          ]
+        },
+        {
+          "id": "t_617ba051-b57e-5513-8570-171aa15f54ad",
+          "name": "UTL.CIP.XC01.CIRCUIT",
+          "label": "CIP circuit selected (1 to 7; 0 none)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 108,
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            7.0
+          ]
+        },
+        {
+          "id": "t_7a2d03da-466f-585b-ba9f-30d569073ccd",
+          "name": "UTL.CIP.XC01.CMD",
+          "label": "CIP sequence command (1 start, 2 hold, 3 abort)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 109,
+          "access": "read-write",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            3.0
+          ]
+        },
+        {
+          "id": "t_d05011c5-e304-5ce6-b694-861eb3bab7b2",
+          "name": "UTL.CIP.XS01.STEP",
+          "label": "CIP sequence step",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 110,
+          "access": "read",
+          "divisor": 1,
+          "units": null,
+          "range": [
+            0.0,
+            7.0
+          ]
+        },
+        {
+          "id": "t_bb66ed69-9d1c-5bd1-af34-cb1ec46d7825",
+          "name": "UTL.CIP.XS02.ROUTE_OK",
+          "label": "CIP route verified (the swing panel is on the circuit and the cellar permits it)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 20,
+          "access": "read"
+        },
+        {
+          "id": "t_89955187-1391-5624-bbdf-22b8e022b7d5",
+          "name": "UTL.CIP.XS03.PV",
+          "label": "Cellar transfer in progress (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 961,
+          "access": "read"
+        },
+        {
+          "id": "t_961fff91-c2f8-54d5-963c-089659c2e6b8",
+          "name": "UTL.CIP.XS04.PV",
+          "label": "Cellar circuits permit CIP (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 962,
+          "access": "read"
+        },
+        {
+          "id": "t_b81a52be-1bac-5032-a2b8-252a34532fea",
+          "name": "UTL.CIP.XS05.PV",
+          "label": "FV-101 not in entry (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 963,
+          "access": "read"
+        },
+        {
+          "id": "t_a39f9670-06bf-57d7-9687-f6295cec828a",
+          "name": "UTL.CIP.XS06.PV",
+          "label": "FV-102 not in entry (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 964,
+          "access": "read"
+        },
+        {
+          "id": "t_c83c5da5-ad10-513b-a007-81a457cd8d15",
+          "name": "UTL.CIP.XS07.PV",
+          "label": "FV-103 not in entry (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 965,
+          "access": "read"
+        },
+        {
+          "id": "t_e6a41d07-a59d-5fb9-8f68-299f25feba68",
+          "name": "UTL.CIP.XS08.PV",
+          "label": "FV-104 not in entry (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 966,
+          "access": "read"
+        },
+        {
+          "id": "t_7a456c04-27f9-5574-922d-ce606076b02d",
+          "name": "UTL.CIP.XS09.PV",
+          "label": "BBT-201 not in entry (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 967,
+          "access": "read"
+        },
+        {
+          "id": "t_61e2bde0-1082-57d3-b255-ca98285daecf",
+          "name": "UTL.CIP.XS10.PV",
+          "label": "BBT-202 not in entry (peer read from plc-cellar)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 968,
+          "access": "read"
+        },
+        {
+          "id": "t_6ca897f1-d234-533c-a96b-e27db0f6459f",
+          "name": "UTL.CIP.XA01.PV",
+          "label": "CIP held: return flow lost (the pumps stay off until Hold and Resume, or Abort)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 21,
+          "access": "read"
+        },
+        {
+          "id": "t_2dfca9ce-40d7-525b-a67a-6d4bdaad2f01",
+          "name": "UTL.CIP.XA01.ALM_STATE",
+          "label": "CIP held: return flow lost (the pumps stay off until Hold and Resume, or Abort): state alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 22,
+          "access": "read"
+        }
+      ]
+    },
+    {
+      "name": "plc-power",
+      "type": "ModbusTCP",
+      "property": {
+        "address": "10.20.10.15",
+        "port": 502,
+        "slaveid": 1
+      },
+      "polling": 1000,
+      "tags": [
+        {
+          "id": "t_e50cf472-9e60-5a26-a0f1-f45e09fb826e",
+          "name": "PWR.MAIN.JT01.PV",
+          "label": "Service real power (import positive)",
+          "type": "Int16",
+          "memaddress": "300000",
+          "address": 101,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            -500.0,
+            1000.0
+          ]
+        },
+        {
+          "id": "t_082abb82-8370-56c9-bb49-a011466b2777",
+          "name": "PWR.MAIN.JT01.ALM_HIGH",
+          "label": "Service real power (import positive): high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 1,
+          "access": "read"
+        },
+        {
+          "id": "t_8e0c0fe3-0ad0-56aa-aabe-23450eb52329",
+          "name": "PWR.MAIN.JT02.PV",
+          "label": "Service reactive power",
+          "type": "Int16",
+          "memaddress": "300000",
+          "address": 102,
+          "access": "read",
+          "divisor": 10,
+          "units": "kvar",
+          "range": [
+            -500.0,
+            500.0
+          ]
+        },
+        {
+          "id": "t_69c6f006-a333-51fd-bcea-af10f0ed594b",
+          "name": "PWR.MAIN.ET01.PV",
+          "label": "Service voltage, line to line",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 103,
+          "access": "read",
+          "divisor": 10,
+          "units": "V",
+          "range": [
+            0.0,
+            600.0
+          ]
+        },
+        {
+          "id": "t_ac3a3805-67e4-58e2-b5ae-4655a884988b",
+          "name": "PWR.MAIN.ET01.ALM_LOW",
+          "label": "Service voltage, line to line: low alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 2,
+          "access": "read"
+        },
+        {
+          "id": "t_2e2dc0fb-bf4b-5a20-8214-a6980ce8edde",
+          "name": "PWR.MAIN.IT01.PV",
+          "label": "Service current, phase A",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 104,
+          "access": "read",
+          "divisor": 10,
+          "units": "A",
+          "range": [
+            0.0,
+            1200.0
+          ]
+        },
+        {
+          "id": "t_d5bfed1c-0d04-5924-9712-365f99e191d6",
+          "name": "PWR.MAIN.ST01.PV",
+          "label": "Service frequency",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 105,
+          "access": "read",
+          "divisor": 100,
+          "units": "Hz",
+          "range": [
+            0.0,
+            70.0
+          ]
+        },
+        {
+          "id": "t_edd60f62-3c93-5e74-aa0f-880fc116e191",
+          "name": "PWR.MAIN.JQ01.PV",
+          "label": "15-minute demand (meter)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 106,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            0.0,
+            1000.0
+          ]
+        },
+        {
+          "id": "t_45b2fbe7-718c-5a8d-83ca-da22cf4f53f5",
+          "name": "PWR.MAIN.ZS01.PV",
+          "label": "52-M main breaker closed",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 801,
+          "access": "read"
+        },
+        {
+          "id": "t_4d8a0178-f03d-5d28-b738-f450522b2e71",
+          "name": "PWR.MAIN.YA01.PV",
+          "label": "52-M tripped on overcurrent",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 802,
+          "access": "read"
+        },
+        {
+          "id": "t_e547831e-a61c-5918-b876-b8aec4036ba4",
+          "name": "PWR.MAIN.YA01.ALM_STATE",
+          "label": "52-M tripped on overcurrent: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 3,
+          "access": "read"
+        },
+        {
+          "id": "t_c18611c2-e06c-5494-9e52-0ef7bee1817a",
+          "name": "PWR.MAIN.HS01.CMD",
+          "label": "52-M close command (0 opens)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 801,
+          "access": "read"
+        },
+        {
+          "id": "t_9fba3f52-5f6a-5718-8af2-2f6bac0eaa88",
+          "name": "PWR.MAIN.ZS02.PV",
+          "label": "Boiler feeder closed",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 803,
+          "access": "read"
+        },
+        {
+          "id": "t_1615e7ee-2454-5581-a869-d69e061e1610",
+          "name": "PWR.MAIN.ZS03.PV",
+          "label": "Packaging feeder (PP-PKG) closed",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 804,
+          "access": "read"
+        },
+        {
+          "id": "t_d119b173-d228-5077-a006-515aac70e8f3",
+          "name": "PWR.MAIN.ZS04.PV",
+          "label": "RTU-1 feeder closed",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 805,
+          "access": "read"
+        },
+        {
+          "id": "t_2d9dbdf3-8d3c-5d93-9ba7-2b31016977a2",
+          "name": "PWR.MAIN.HS02.CMD",
+          "label": "Boiler feeder close command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 802,
+          "access": "read"
+        },
+        {
+          "id": "t_3d440bbc-7940-5b16-b247-33c6c4d286c3",
+          "name": "PWR.MAIN.HS03.CMD",
+          "label": "Packaging feeder close command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 803,
+          "access": "read"
+        },
+        {
+          "id": "t_26fe8a1d-ae62-51a2-82fc-1e656bff0eee",
+          "name": "PWR.MAIN.HS04.CMD",
+          "label": "RTU-1 feeder close command",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 804,
+          "access": "read"
+        },
+        {
+          "id": "t_aa382a72-e450-564d-b16e-abf9d3cc1ef4",
+          "name": "PWR.PV.JT01.PV",
+          "label": "PV inverter output",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 107,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            0.0,
+            150.0
+          ]
+        },
+        {
+          "id": "t_98f34348-db5d-57df-b660-b7dc8fc54ab8",
+          "name": "PWR.PV.JY01.PV",
+          "label": "PV active power limit in effect (min of site and utility)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 108,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_ebba67e5-2bed-5d9a-bd1b-c5e64dcfbd83",
+          "name": "PWR.PV.ZS01.PV",
+          "label": "PV inverter connected (IEEE 1547)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 806,
+          "access": "read"
+        },
+        {
+          "id": "t_06113762-d71f-5b5b-a059-6dde1dd54246",
+          "name": "PWR.PV.HS01.CMD",
+          "label": "PV inverter enable",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 805,
+          "access": "read"
+        },
+        {
+          "id": "t_0abdc822-57ec-55ea-b3e1-ff1c06ae1d49",
+          "name": "PWR.PV.JC01.SP",
+          "label": "PV site limit (plc-power)",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 101,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_93a6aa5b-58c6-57a8-90dd-66c70d627751",
+          "name": "PWR.PV.JC02.SP",
+          "label": "PV utility limit (DERMS through rtu-der; read only here)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 109,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_ebe33ea9-7e77-5fa6-b8c9-e5901d00ff93",
+          "name": "PWR.BESS.JT01.PV",
+          "label": "BESS power (discharge positive)",
+          "type": "Int16",
+          "memaddress": "300000",
+          "address": 110,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            -150.0,
+            150.0
+          ]
+        },
+        {
+          "id": "t_bb9cf27b-7305-5062-b73d-45e1736012bb",
+          "name": "PWR.BESS.EY01.PV",
+          "label": "BESS state of charge",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 111,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_1150ce47-db0e-5881-ac03-70577aff96dc",
+          "name": "PWR.BESS.EY01.ALM_LOW",
+          "label": "BESS state of charge: low alarm (low)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 4,
+          "access": "read"
+        },
+        {
+          "id": "t_bb697c68-d2a7-5551-9a62-7e1a34fee475",
+          "name": "PWR.BESS.ZS01.PV",
+          "label": "BESS connected (IEEE 1547)",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 807,
+          "access": "read"
+        },
+        {
+          "id": "t_4cfef81a-0a13-5bb6-9e91-31e8616435fe",
+          "name": "PWR.BESS.YA01.PV",
+          "label": "BESS PCS fault",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 808,
+          "access": "read"
+        },
+        {
+          "id": "t_de3ed8bc-ba83-5473-839e-b2aea1b9eb03",
+          "name": "PWR.BESS.YA01.ALM_STATE",
+          "label": "BESS PCS fault: state alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 5,
+          "access": "read"
+        },
+        {
+          "id": "t_6b68bed1-a59a-5291-bf5a-be69f4852754",
+          "name": "PWR.BESS.HS01.CMD",
+          "label": "BESS enable",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 806,
+          "access": "read"
+        },
+        {
+          "id": "t_b808f903-ca54-5fe7-832e-f67f8b83b0c7",
+          "name": "PWR.BESS.JC01.SP",
+          "label": "BESS power setpoint (plc-power dispatch)",
+          "type": "Int16",
+          "memaddress": "400000",
+          "address": 102,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            -100.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_cdd9a12f-8c33-513a-9bac-c7a56d035d32",
+          "name": "PWR.BESS.JC02.SP",
+          "label": "BESS utility dispatch (DERMS through rtu-der; read only here)",
+          "type": "Int16",
+          "memaddress": "300000",
+          "address": 114,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            -100.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_a36e6f96-4a5b-5368-b45e-0f225803e996",
+          "name": "PWR.BESS.TT01.PV",
+          "label": "BESS hottest cell temperature (BMS)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 112,
+          "access": "read",
+          "divisor": 10,
+          "units": "degF",
+          "range": [
+            0.0,
+            400.0
+          ]
+        },
+        {
+          "id": "t_f3349e3e-7b3f-5613-89d0-e372e6e0d1a6",
+          "name": "PWR.BESS.TT01.ALM_HIGH",
+          "label": "BESS hottest cell temperature (BMS): high alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 6,
+          "access": "read"
+        },
+        {
+          "id": "t_b8cf8fcc-0088-51f5-932c-ff79ae503ff6",
+          "name": "PWR.BESS.TT01.ALM_HIGHHIGH",
+          "label": "BESS hottest cell temperature (BMS): highhigh alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 7,
+          "access": "read"
+        },
+        {
+          "id": "t_77ba2bf8-416d-5fce-b784-822947a2cf3c",
+          "name": "PWR.BESS.AT01.PV",
+          "label": "BESS enclosure off-gas detector (electrolyte vapor; NFPA 855, UL 9540A)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 113,
+          "access": "read",
+          "divisor": 1,
+          "units": "ppm",
+          "range": [
+            0.0,
+            1000.0
+          ]
+        },
+        {
+          "id": "t_18aefad4-7684-511e-9df6-8482fcb00782",
+          "name": "PWR.BESS.AT01.ALM_HIGH",
+          "label": "BESS enclosure off-gas detector (electrolyte vapor; NFPA 855, UL 9540A): high alarm (critical)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 8,
+          "access": "read"
+        },
+        {
+          "id": "t_3c2bcb85-8b81-5507-9b62-ba48b4dc50cb",
+          "name": "PWR.GEN.JT01.PV",
+          "label": "Genset output",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 115,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            0.0,
+            150.0
+          ]
+        },
+        {
+          "id": "t_8fec04c1-1774-5856-885d-7b71c6278854",
+          "name": "PWR.GEN.JT02.PV",
+          "label": "EP-1 emergency panel load",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 116,
+          "access": "read",
+          "divisor": 10,
+          "units": "kW",
+          "range": [
+            0.0,
+            150.0
+          ]
+        },
+        {
+          "id": "t_338862bb-5117-5b58-b34c-381df04d2202",
+          "name": "PWR.GEN.LT01.PV",
+          "label": "Genset fuel level",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 117,
+          "access": "read",
+          "divisor": 10,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_17c56872-93ee-5797-a120-2cee93afa52f",
+          "name": "PWR.GEN.YS01.PV",
+          "label": "Genset running",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 809,
+          "access": "read"
+        },
+        {
+          "id": "t_35ba85cf-314a-574e-b3dc-940b54ed2701",
+          "name": "PWR.GEN.ZS01.PV",
+          "label": "ATS on the emergency source",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 810,
+          "access": "read"
+        },
+        {
+          "id": "t_725e21ac-947d-58d2-9b1f-ce5a9211491f",
+          "name": "PWR.GEN.ZS01.ALM_STATE",
+          "label": "ATS on the emergency source: state alarm (high)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 9,
+          "access": "read"
+        },
+        {
+          "id": "t_7c227e4c-b4da-5e80-939a-bf49ab272f07",
+          "name": "PWR.GEN.ZS02.PV",
+          "label": "Utility source available at the ATS",
+          "type": "Bool",
+          "memaddress": "100000",
+          "address": 811,
+          "access": "read"
+        },
+        {
+          "id": "t_c6eb4620-87ba-502e-8806-9a62fde670c3",
+          "name": "PWR.GEN.HS01.CMD",
+          "label": "Genset remote start (weekly exercise)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 807,
+          "access": "read"
+        },
+        {
+          "id": "t_1057eb65-b08e-5097-9beb-292b44ae1be2",
+          "name": "PWR.GEN.KI01.PV",
+          "label": "ATS controller clock, minute of the local day",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 118,
+          "access": "read",
+          "divisor": 1,
+          "units": "min",
+          "range": [
+            0.0,
+            1439.0
+          ]
+        },
+        {
+          "id": "t_803faded-c12a-5bdb-9598-e17f2f5103af",
+          "name": "PWR.GEN.KI02.PV",
+          "label": "ATS controller clock, local date (days since 1970-01-01)",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 119,
+          "access": "read",
+          "divisor": 1,
+          "units": "d",
+          "range": [
+            0.0,
+            65535.0
+          ]
+        },
+        {
+          "id": "t_bb780728-d751-52bf-ae36-9cef28ed551b",
+          "name": "PWR.GEN.KI03.PV",
+          "label": "ATS controller clock, calendar month",
+          "type": "UInt16",
+          "memaddress": "300000",
+          "address": 120,
+          "access": "read",
+          "divisor": 1,
+          "units": "mo",
+          "range": [
+            1.0,
+            12.0
+          ]
+        },
+        {
+          "id": "t_96da4e08-4ee5-5b01-93a9-6a14ea577a68",
+          "name": "PWR.DMD.JY01.SP",
+          "label": "Monthly demand cap target",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 103,
+          "access": "read-write",
+          "divisor": 1,
+          "units": "kW",
+          "range": [
+            0.0,
+            1000.0
+          ]
+        },
+        {
+          "id": "t_6b0779e2-451d-5fa1-9042-453e53303a4b",
+          "name": "PWR.DMD.JY02.PV",
+          "label": "Month-to-date peak 15-minute demand",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 104,
+          "access": "read",
+          "divisor": 1,
+          "units": "kW",
+          "range": [
+            0.0,
+            1000.0
+          ]
+        },
+        {
+          "id": "t_7f793900-eca8-5ff0-8397-fd051c8b6ff8",
+          "name": "PWR.DMD.EY01.SP",
+          "label": "BESS minimum state of charge before 05:00 on brew days",
+          "type": "UInt16",
+          "memaddress": "400000",
+          "address": 105,
+          "access": "read-write",
+          "divisor": 1,
+          "units": "%",
+          "range": [
+            0.0,
+            100.0
+          ]
+        },
+        {
+          "id": "t_0cb02ff4-972c-50d6-8ec4-a59f74f68b7a",
+          "name": "PWR.DMD.XS01.ONPEAK",
+          "label": "SV-SGT on-peak window (weekdays 17:00-21:00)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 10,
+          "access": "read"
+        },
+        {
+          "id": "t_b967f193-cfcc-55c0-969d-0aff27884bc4",
+          "name": "PWR.DMD.XS02.SHED",
+          "label": "Load shed active (large feeders held open)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 11,
+          "access": "read"
+        },
+        {
+          "id": "t_c931c0a3-8504-5acf-8e97-6d459d9f73dd",
+          "name": "PWR.DMD.XS03.BREWDAY",
+          "label": "Brew day scheduled (the next 05:00 starts one; the batch engine or an operator sets it)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 12,
+          "access": "read-write"
+        },
+        {
+          "id": "t_1f2357ae-f3cd-5ec9-bd06-f2503592b70d",
+          "name": "PWR.DMD.XS04.EXERCISE",
+          "label": "Genset exercise in progress (ATS on the genset, utility healthy)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 13,
+          "access": "read"
+        },
+        {
+          "id": "t_e3eb3ef9-4a29-5eef-9ad0-c0f428eb76be",
+          "name": "PWR.DMD.XS05.CLKOK",
+          "label": "ATS clock trusted (in range, advancing, in step)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 14,
+          "access": "read"
+        },
+        {
+          "id": "t_72c177a6-00f2-573c-a2d0-11ebd8021a38",
+          "name": "PWR.DMD.XS05.ALM_STATE",
+          "label": "ATS clock trusted (in range, advancing, in step): state alarm (medium)",
+          "type": "Bool",
+          "memaddress": "000000",
+          "address": 15,
+          "access": "read"
+        }
+      ]
+    },
+    {
+      "name": "scada-fuxa-bacnet",
+      "type": "BACnet",
+      "property": {
+        "address": "10.20.30.10"
+      },
+      "polling": 1000,
+      "tags": [
+        {
+          "id": "t_123cf2ef-bec8-537c-acab-d6e593f6dc86",
+          "name": "FAC.VENT.AT01.PV",
+          "label": "Cellar CO2 sensor 1 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-1",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_95e21000-194b-5dbc-96c8-9c5fa5c48566",
+          "name": "FAC.VENT.AT02.PV",
+          "label": "Cellar CO2 sensor 2 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-2",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_d7f0bfba-2694-5a36-92e2-cc0b3cfb4865",
+          "name": "FAC.VENT.AT03.PV",
+          "label": "Cellar CO2 sensor 3 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-3",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_70b4581a-43d8-5578-83cc-a137de2e05a1",
+          "name": "FAC.VENT.AT04.PV",
+          "label": "Cellar CO2 sensor 4 (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-4",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_38d6ffb6-5d6c-5763-8f98-444312331a94",
+          "name": "FAC.VENT.FAN01.PV",
+          "label": "Cellar purge fan 1 running (current switch)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "3-1",
+          "access": "read",
+          "object_type": "binary-input",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_1197242d-e278-5ca9-9cab-7877448dc71e",
+          "name": "FAC.VENT.FAN02.PV",
+          "label": "Cellar purge fan 2 running (current switch)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "3-2",
+          "access": "read",
+          "object_type": "binary-input",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_deae6144-0d85-5e19-ac9f-9f758f13c6f8",
+          "name": "FAC.VENT.AY01.TIER1",
+          "label": "Cellar CO2 tier 1 (5,000 ppm, purge fans on)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-1",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_c24db5d5-0259-581a-a53e-6c5e81bc4c26",
+          "name": "FAC.VENT.AY01.TIER2",
+          "label": "Cellar CO2 tier 2 (15,000 ppm, carbonation inhibited)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-2",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_fae7bec3-4596-5031-961e-8e39c2225dd4",
+          "name": "FAC.VENT.AY01.TIER3",
+          "label": "Cellar CO2 tier 3 (30,000 ppm, evacuate)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-3",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_548fbcbb-d2f4-5e91-ac37-b4b9e7a3283b",
+          "name": "FAC.VENT.AT05.PV",
+          "label": "Bulk CO2 tank and vaporizer area CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-6",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_9c8a8424-01de-55e4-ab66-dd1c6c4ee846",
+          "name": "FAC.VENT.AT06.PV",
+          "label": "Filler (packaging) area CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-7",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_1b9b4444-c48b-5d0d-9a9d-3366e472b798",
+          "name": "FAC.VENT.AT07.PV",
+          "label": "Cold room and draft system CO2 sensor (low-mounted)",
+          "type": "Real",
+          "memaddress": "3003",
+          "address": "0-8",
+          "access": "read",
+          "object_type": "analog-input",
+          "remote_device": "bas-vent",
+          "units": "ppm",
+          "range": [
+            0.0,
+            50000.0
+          ]
+        },
+        {
+          "id": "t_637a9f69-e8ad-58bf-9c28-1cd0fce71d31",
+          "name": "FAC.VENT.AY02.TIER1",
+          "label": "CO2 tier 1 (5,000 ppm) at the bulk tank, the filler, or the cold room; area exhaust on",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-4",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_f0285b70-2c03-5312-9cb9-d0490368f1d9",
+          "name": "FAC.VENT.XS01.SHUTOFF_OK",
+          "label": "CO2 supply shutoff relay energized (every area below 30,000 ppm, detection healthy)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "5-5",
+          "access": "read",
+          "object_type": "binary-value",
+          "remote_device": "bas-vent"
+        },
+        {
+          "id": "t_9dbd8ff8-f6dc-552c-bd10-aa059249f760",
+          "name": "FAC.VENT.XA01.CMD",
+          "label": "CO2 horns and strobes (tier 3 in any area)",
+          "type": "Bool",
+          "memaddress": "3003",
+          "address": "4-4",
+          "access": "read",
+          "object_type": "binary-output",
+          "remote_device": "bas-vent"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+#!/bin/bash
+# Start Malcolm (DESIGN.md 14). Installed as /usr/local/sbin/cm-malcolm-start and
+# run as the user `malcolm` (uid 1000, in the docker group) by cm-malcolm.service,
+# after cm-malcolm-provision has configured the checkout. It starts OpenSearch,
+# waits until it answers, then the rest of the profile's services.
+#
+# Services start with --no-deps: the profile decides what runs. nginx-proxy lists
+# keycloak, netbox, and others as dependencies even where the profile leaves them
+# out, and compose would start them anyway.
+#
+# Env (from /etc/default/cm-malcolm, optional): MALCOLM_DIR, CM_START_TIMEOUT
+# (seconds to wait for OpenSearch, default 900).
+set -euo pipefail
+
+MALCOLM_DIR="${MALCOLM_DIR:-/opt/malcolm}"
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+SRC="${CM_MALCOLM_SRC:-/opt/cherrymountain/malcolm}"
+TIMEOUT="${CM_START_TIMEOUT:-900}"
+
+# shellcheck source=phenix-injects/malcolm/profiles.sh
+. "${SRC}/profiles.sh"
+
+log() { echo "cm-malcolm-start: $*"; }
+
+# cm-malcolm.service retries until the first boot's provisioning is done.
+if [ ! -f "${STATE}/provisioned" ]; then
+  log "not provisioned yet (no ${STATE}/provisioned); cm-malcolm-provision.service does it"
+  exit 1
+fi
+
+profile=$(cat "${STATE}/profile")
+read -r -a services <<< "$(cm_malcolm_services "$profile")"
+cd "${MALCOLM_DIR}"
+compose() { docker compose --profile malcolm "$@"; }
+
+log "profile ${profile}: starting opensearch"
+compose up --detach --no-deps opensearch
+
+ready=false
+deadline=$((SECONDS + TIMEOUT))
+while [ "$SECONDS" -lt "$deadline" ]; do
+  if docker exec malcolm-opensearch-1 sh -c \
+    'curl -sk -K /var/local/curlrc/.opensearch.primary.curlrc "https://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"' 2> /dev/null \
+    | grep -Eq '"status" *: *"(yellow|green)"'; then
+    ready=true
+    break
+  fi
+  sleep 10
+done
+if [ "$ready" != true ]; then
+  log "FAIL: OpenSearch did not answer within ${TIMEOUT} s"
+  exit 1
+fi
+
+log "starting ${services[*]}"
+compose up --detach --no-deps "${services[@]}"
+log "PASS: started; cm-malcolm-wait-ready waits for the pcap processors"

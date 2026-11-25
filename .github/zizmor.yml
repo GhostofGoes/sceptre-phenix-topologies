@@ -1,0 +1,9 @@
+# zizmor configuration (https://docs.zizmor.sh/configuration/).
+rules:
+  self-repository:
+    # zizmor 1.30 suggests `$/...` for `uses: ./...`. The ./ form still works
+    # and the spike workflow and its composite action are written with it, so
+    # these are ignored until the spike authors decide to move.
+    ignore:
+      - cherrymountain-spikes.yml
+      - action.yml

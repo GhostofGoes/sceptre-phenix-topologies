@@ -1,0 +1,10 @@
+#!/bin/sh
+# Wazuh integratord entry point for cm_wazuh_case.py (spikes/thehive/README.md).
+# Install as /var/ossec/integrations/custom-cm-case (root:wazuh, 0750) next to
+# custom-cm-case.py; Pydantic is installed for Wazuh's embedded Python 3.10 into
+# /var/ossec/integrations/cm-lib with
+#   /var/ossec/framework/python/bin/pip3 install --target /var/ossec/integrations/cm-lib 'pydantic==2.12.*'
+# so Wazuh's own framework packages are left alone.
+WAZUH_PATH="$(cd "$(dirname "$0")/.." && pwd)"
+PYTHONPATH="${WAZUH_PATH}/integrations/cm-lib" exec "${WAZUH_PATH}/framework/python/bin/python3" \
+  "${WAZUH_PATH}/integrations/custom-cm-case.py" "$@"

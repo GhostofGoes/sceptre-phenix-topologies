@@ -1,0 +1,19 @@
+#!/bin/bash
+# Back up InfluxDB 2 on the historian (cherrymountain app, cleanup stage).
+# Writes OUTDIR/influx-backup.tar.gz. Installed as
+# /usr/local/bin/cm-export-historian. The influx CLI reads INFLUX_HOST,
+# INFLUX_ORG, and INFLUX_TOKEN from the environment.
+set -euo pipefail
+
+out="${1:?usage: cm-export-historian OUTDIR}"
+set -a
+# shellcheck source=/dev/null
+. /etc/default/cm-historian
+set +a
+work=$(mktemp -d)
+trap 'rm -rf "${work}"' EXIT
+
+mkdir -p "${out}"
+influx backup "${work}/influx-backup"
+tar -czf "${out}/influx-backup.tar.gz" -C "${work}" influx-backup
+echo "cm-export-historian: wrote ${out}/influx-backup.tar.gz"

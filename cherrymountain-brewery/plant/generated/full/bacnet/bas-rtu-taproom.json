@@ -1,0 +1,169 @@
+{
+  "generator": "plantgen",
+  "variant": "full",
+  "host": "bas-rtu-taproom",
+  "endpoint": {
+    "interface": "IF0",
+    "address": "10.30.10.20",
+    "prefix": 24,
+    "port": 47808
+  },
+  "device": {
+    "instance": 3001,
+    "name": "BAS-RTU-1"
+  },
+  "objects": [
+    {
+      "object_type": "analog-input",
+      "instance": 1,
+      "name": "FAC.RTU1.TT01.PV",
+      "description": "Taproom zone temperature",
+      "tag": "bas-rtu-taproom.zone_temp_f",
+      "helics_key": "building/bas-rtu-taproom.zone_temp_f",
+      "commandable": false,
+      "units": "degreesFahrenheit",
+      "range": [
+        40.0,
+        100.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 2,
+      "name": "FAC.RTU1.AT01.PV",
+      "description": "Taproom zone CO2",
+      "tag": "bas-rtu-taproom.zone_co2_ppm",
+      "helics_key": "building/bas-rtu-taproom.zone_co2_ppm",
+      "commandable": false,
+      "units": "partsPerMillion",
+      "range": [
+        0.0,
+        5000.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 3,
+      "name": "FAC.RTU1.TT02.PV",
+      "description": "RTU-1 supply air temperature",
+      "tag": "bas-rtu-taproom.supply_air_f",
+      "helics_key": "building/bas-rtu-taproom.supply_air_f",
+      "commandable": false,
+      "units": "degreesFahrenheit",
+      "range": [
+        30.0,
+        150.0
+      ]
+    },
+    {
+      "object_type": "analog-input",
+      "instance": 4,
+      "name": "FAC.RTU1.JT01.PV",
+      "description": "RTU-1 electrical input",
+      "tag": "bas-rtu-taproom.power_kw",
+      "helics_key": "building/bas-rtu-taproom.power_kw",
+      "commandable": false,
+      "units": "kilowatts",
+      "range": [
+        0.0,
+        30.0
+      ]
+    },
+    {
+      "object_type": "analog-output",
+      "instance": 1,
+      "name": "FAC.RTU1.DMP01.CMD",
+      "description": "RTU-1 economizer damper",
+      "tag": "bas-rtu-taproom.econ_pct",
+      "helics_key": "building/bas-rtu-taproom.econ_pct",
+      "commandable": true,
+      "units": "percent",
+      "range": [
+        0.0,
+        100.0
+      ]
+    },
+    {
+      "object_type": "analog-value",
+      "instance": 1,
+      "name": "FAC.RTU1.TIC01.SP",
+      "description": "Occupied cooling setpoint",
+      "tag": "bas-rtu-taproom.cool_sp_f",
+      "helics_key": "building/bas-rtu-taproom.cool_sp_f",
+      "commandable": true,
+      "units": "degreesFahrenheit",
+      "range": [
+        60.0,
+        90.0
+      ]
+    },
+    {
+      "object_type": "analog-value",
+      "instance": 2,
+      "name": "FAC.RTU1.TIC02.SP",
+      "description": "Occupied heating setpoint",
+      "tag": "bas-rtu-taproom.heat_sp_f",
+      "helics_key": "building/bas-rtu-taproom.heat_sp_f",
+      "commandable": true,
+      "units": "degreesFahrenheit",
+      "range": [
+        50.0,
+        80.0
+      ]
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 1,
+      "name": "FAC.RTU1.FAN01.CMD",
+      "description": "RTU-1 supply fan",
+      "tag": "bas-rtu-taproom.supply_fan",
+      "helics_key": "building/bas-rtu-taproom.supply_fan",
+      "commandable": true
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 2,
+      "name": "FAC.RTU1.CMP01.CMD",
+      "description": "RTU-1 cooling stage 1",
+      "tag": "bas-rtu-taproom.cool_stage1",
+      "helics_key": "building/bas-rtu-taproom.cool_stage1",
+      "commandable": true
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 3,
+      "name": "FAC.RTU1.CMP02.CMD",
+      "description": "RTU-1 cooling stage 2",
+      "tag": "bas-rtu-taproom.cool_stage2",
+      "helics_key": "building/bas-rtu-taproom.cool_stage2",
+      "commandable": true
+    },
+    {
+      "object_type": "binary-output",
+      "instance": 4,
+      "name": "FAC.RTU1.HTR01.CMD",
+      "description": "RTU-1 gas heat",
+      "tag": "bas-rtu-taproom.heat",
+      "helics_key": "building/bas-rtu-taproom.heat",
+      "commandable": true
+    },
+    {
+      "object_type": "multi-state-value",
+      "instance": 1,
+      "name": "FAC.RTU1.HS01.MODE",
+      "description": "Occupancy mode (1 occupied, 2 unoccupied, 3 standby)",
+      "tag": "bas-rtu-taproom.occ_mode",
+      "helics_key": "building/bas-rtu-taproom.occ_mode",
+      "commandable": true,
+      "states": [
+        "occupied",
+        "unoccupied",
+        "standby"
+      ],
+      "range": [
+        1.0,
+        3.0
+      ]
+    }
+  ]
+}

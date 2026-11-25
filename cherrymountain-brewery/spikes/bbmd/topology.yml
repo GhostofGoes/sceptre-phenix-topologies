@@ -1,0 +1,63 @@
+# BBMD fixture (DESIGN section 10.3): a VyOS firewall between the OPS and BAS
+# subnets. ops-client stands in for scada-fuxa, bas-dev for BAS device 3003,
+# and each side has a BACpypes3 BBMD on its own address (FUXA's node-bacnet
+# owns UDP 47808 on its host, so the BBMD cannot share it).
+# Images: vyos.qc2 and cm-spike.qc2 (BACpypes3 in /opt/bacnet), built by the
+# workflow. The router's ACL is pushed by ci.py after boot.
+apiVersion: phenix.sandia.gov/v1
+kind: Topology
+metadata:
+  name: spike-bbmd
+spec:
+  nodes:
+    - type: Router
+      general: {hostname: fw-ot}
+      hardware:
+        os_type: vyos
+        drives: [{image: vyos.qc2, inject_partition: 3}]
+        memory: 2048
+        vcpus: 2
+      network:
+        interfaces:
+          - {name: eth0, vlan: OPS, address: 10.20.30.1, mask: 24, proto: static, type: ethernet}
+          - {name: eth1, vlan: BAS, address: 10.20.60.1, mask: 24, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: ops-client}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: eth0, vlan: OPS, address: 10.20.30.30, mask: 24, gateway: 10.20.30.1, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: ops-bbmd}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: eth0, vlan: OPS, address: 10.20.30.5, mask: 24, gateway: 10.20.30.1, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: bas-bbmd}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: eth0, vlan: BAS, address: 10.20.60.5, mask: 24, gateway: 10.20.60.1, proto: static, type: ethernet}
+    - type: VirtualMachine
+      general: {hostname: bas-dev}
+      hardware:
+        os_type: linux
+        drives: [{image: cm-spike.qc2, inject_partition: 1}]
+        memory: 1024
+        vcpus: 1
+      network:
+        interfaces:
+          - {name: eth0, vlan: BAS, address: 10.20.60.13, mask: 24, gateway: 10.20.60.1, proto: static, type: ethernet}

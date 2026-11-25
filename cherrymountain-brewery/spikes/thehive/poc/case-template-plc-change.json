@@ -1,0 +1,19 @@
+{
+  "name": "CM-IR-02 PLC program or mode change",
+  "displayName": "CM-IR-02 PLC program or mode change",
+  "titlePrefix": "[CM-IR-02]",
+  "description": "An OpenPLC program upload, start, or stop reached a PLC. Decide whether it was the approved vendor work or an unauthorized change, contain it without tripping the plant, and restore the known-good program. DESIGN.md 13 and 14.",
+  "severity": 3,
+  "tlp": 2,
+  "pap": 2,
+  "tags": ["cherrymountain", "ics", "plc"],
+  "tasks": [
+    {"order": 0, "group": "1 Identify", "title": "Match the change to an approved vendor window and work order", "description": "Look for Wazuh 100201/100301/100311 (tunnel, Guacamole login, RDP) in the two hours before; Zeek PLC_Change_During_Vendor_Session and Suricata sid 9000151 in Malcolm. No approval record means unauthorized."},
+    {"order": 1, "group": "1 Identify", "title": "Name the PLC and the process area it controls", "description": "plc-cellar: fermenters and the CO2 interlock inputs; plc-utilities: CO2 supply, glycol, steam; plc-power: ATS, BESS, load shed. Call the shift lead before touching anything."},
+    {"order": 2, "group": "2 Contain", "title": "Ask operations whether the process is in a safe state", "description": "Read the HMI and the historian, not the PLC. Life safety (CO2 tiers on bas-vent) outranks evidence."},
+    {"order": 3, "group": "2 Contain", "title": "Cut the vendor path if the change was not approved", "description": "Disable the WireGuard peer on dmz-vpn and the Guacamole account; keep the session recording."},
+    {"order": 4, "group": "3 Evidence", "title": "Preserve the evidence", "description": "Guacamole recording, EWS auth.log and cm-plc-tool syslog, the Malcolm sessions (Arkime pcap) of the EWS-to-PLC REST session, and the running program's checksum."},
+    {"order": 5, "group": "4 Recover", "title": "Restore the known-good program from the engineering baseline", "description": "Upload the baseline ZIP with cm_plc_tool from the EWS during a window agreed with operations; confirm STATUS:RUNNING and the interlocks."},
+    {"order": 6, "group": "5 Report", "title": "Record the timeline and the reporting decision", "description": "Detect, acknowledge, contain, and recover times; whether CISA (CIRCIA) or the insurer must be told (DESIGN.md 18A.7)."}
+  ]
+}

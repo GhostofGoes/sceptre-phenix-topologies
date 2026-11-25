@@ -1,0 +1,13 @@
+--- a/src/go/tmpl/templates/vyatta.tmpl
++++ b/src/go/tmpl/templates/vyatta.tmpl
+@@ -190,8 +190,8 @@
+ set vpn ipsec esp-group ESP-1W proposal 1 encryption aes256
+ set vpn ipsec esp-group ESP-1W proposal 1 hash sha1
+ set vpn ipsec ike-group IKE-1W lifetime 3600
+-set vpn ipsec esp-group IKE-1W proposal 1 encryption aes256
+-set vpn ipsec esp-group IKE-1W proposal 1 hash sha1
++set vpn ipsec ike-group IKE-1W proposal 1 encryption aes256
++set vpn ipsec ike-group IKE-1W proposal 1 hash sha1
+         {{- range $ipsec.Interfaces }}
+ set vpn ipsec interface {{ . }}
+         {{- end }}

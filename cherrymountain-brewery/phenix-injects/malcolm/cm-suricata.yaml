@@ -1,0 +1,23 @@
+%YAML 1.1
+---
+# Suricata settings for traffic that arrives through the phenix mirror (DESIGN.md 14).
+# cm-malcolm-provision copies this file to Malcolm's suricata/include-configs/, and
+# Malcolm lists every file there in an `include:` at the end of the suricata.yaml it
+# writes, so these settings are applied last.
+#
+# The keys are written with dots on purpose. A nested `stream:` block in an included
+# file replaces the whole stream section (Suricata logs "Configuration node 'stream'
+# redefined" and drops the memory caps, the checksum setting, and the reassembly depth
+# that Malcolm wrote); a dotted key sets one value and keeps the rest. Checked with
+# `suricata --dump-config` on 7.0.3.
+#
+# The mirror delivers a frame at the tap of the host that receives it, with that
+# host's VLAN tag, and leaves out the routers' taps. So the two directions of a routed
+# flow (scada-fuxa to a PLC through fw-ot) carry different VLAN tags, and a flow to or
+# from a host that is not on a mirrored VLAN (utility-derms to rtu-der) has one
+# direction only. Suricata's defaults keep the VLAN in the flow key and wait for both
+# directions before a TCP session counts as established, so every rule with
+# flow:established or an application-layer keyword (Modbus, DNP3) stayed silent on such
+# a flow. Zeek keys a connection on addresses and ports alone and needs neither setting.
+vlan.use-for-tracking: false
+stream.async-oneside: true

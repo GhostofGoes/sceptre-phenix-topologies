@@ -1,0 +1,421 @@
+"""The sim-ctl event API (DESIGN.md §9.5).
+
+A small HTTP API on sim-ctl through which the SCORCH ``plantevent`` component
+and the ``cherrymountain`` app inject scenario events and read plant KPIs.
+The contract is the one ``apps/cherrymountain_apps/simctl.py`` documents::
+
+    GET  /api/v1/health   -> 200 {"status": "ok" | "starting" | "stalled", ...}
+    POST /api/v1/events   {"event": <kind>, ...parameters} -> 202 JSON
+    POST /events          the same (short form)
+    GET  /api/v1/events   -> 200 {"events": [...]} (accepted events, oldest first)
+    GET  /api/v1/kpis     -> 200 plant KPIs
+    GET  /api/v1/state    -> 200 the ground-truth snapshot (read only; see State)
+
+The server runs in a thread of the weather federate (which runs on sim-ctl).
+Accepted events go into a queue; the federate drains it every step and
+forwards each event to the federate that owns it as an endpoint message
+``{"event": {"type": ..., "params": ..., "id": ...}}``. The KPIs and the state
+are snapshots the federate builds every step from its subscriptions and
+hands over whole, so a slow client never holds up the federate.
+
+The state is ground truth for the white cell's 3D view (``cm-viz``, DESIGN.md
+§15.10): every key the weather federate subscribes to, plus its own outputs.
+It must not reach trainees, which is one more reason the server binds
+``127.0.0.1``.
+
+The server binds ``127.0.0.1`` by default: phenix's autotunnel forwards the
+guest port from ``127.0.0.1`` (DESIGN.md §15.3), and MGMT is not an exercise
+network.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import math
+import queue
+import threading
+import time
+import uuid
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any, ClassVar
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+
+LOG: logging.Logger = logging.getLogger("cherrymountain_sim.simctl")
+API: str = "/api/v1"
+#: Event kind -> the federate that applies it.
+EVENT_TARGETS: dict[str, str] = {
+    "start-batch": "brewhouse",
+    "utility-breaker": "power",
+    "genset-exercise": "power",
+    "chiller-fault": "utilities",
+    "co2-release": "cellar",
+    "jam": "packaging",
+    "weather-step": "weather",
+    "cip-panel": "utilities",
+    "co2-leak": "building",
+    "gas-detection": "building",
+    "refrigerant-leak": "utilities",
+    "bess-thermal": "power",
+}
+#: The genset's nameplate, the most a load bank may add (DESIGN.md §7.1).
+GENSET_RATED_KW: float = 100.0
+#: Most events the history keeps.
+HISTORY: int = 500
+#: Largest request body accepted, bytes.
+MAX_BODY: int = 16 * 1024
+#: Longest ``duration`` an event may ask for, seconds (one simulated day at 1x).
+MAX_DURATION_S: float = 24 * 3600.0
+#: ``GET /health`` reports ``stalled`` when the federate's last step is older
+#: than this (it steps every second), wall seconds.
+STALLED_AFTER_S: float = 10.0
+
+
+def _check_duration(params: dict[str, Any], kind: str, *, zero_ok: bool = False) -> None:
+    """Reject a ``duration`` the target federate cannot use.
+
+    The federates read it with ``float()`` and default it when absent (co2-release
+    600 s, jam 300 s, weather-step 0 s, which holds the step), so a missing key is
+    fine. A present one must be a real number (not a bool, NaN, or infinity),
+    positive (zero too for weather-step), and at most :data:`MAX_DURATION_S`.
+    """
+    if "duration" not in params:
+        return
+    value = params["duration"]
+    low = "0 or more" if zero_ok else "more than 0"
+    if (
+        not isinstance(value, int | float)
+        or isinstance(value, bool)
+        or not math.isfinite(value)
+        or not (value >= 0 if zero_ok else value > 0)
+        or value > MAX_DURATION_S
+    ):
+        raise ValueError(
+            f"{kind} duration is a number of seconds, {low} and at most {MAX_DURATION_S:.0f}"
+        )
+
+
+class EventRequest(BaseModel):
+    """``POST /events`` body: the kind and its parameters (plantevent README)."""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+
+    event: str
+
+    @model_validator(mode="after")
+    def _check(self) -> EventRequest:
+        if self.event not in EVENT_TARGETS:
+            raise ValueError(
+                f"unknown event {self.event!r}; know {sorted(EVENT_TARGETS)}"
+            )
+        p = self.params
+        match self.event:
+            case "utility-breaker":
+                if p.get("action") not in ("open", "close"):
+                    raise ValueError("utility-breaker needs action: open or close")
+            case "genset-exercise":
+                if p.get("action", "start") not in ("start", "stop"):
+                    raise ValueError("genset-exercise action is start or stop")
+                bank = p.get("load_bank_kw", 0)
+                if (
+                    not isinstance(bank, int | float)
+                    or isinstance(bank, bool)
+                    or not 0 <= bank <= GENSET_RATED_KW
+                ):
+                    raise ValueError(
+                        f"genset-exercise load_bank_kw is 0 to {GENSET_RATED_KW:.0f}"
+                    )
+                _check_duration(p, "genset-exercise")
+            case "weather-step":
+                delta = p.get("delta_f")
+                if (
+                    not isinstance(delta, int | float)
+                    or isinstance(delta, bool)
+                    or not -60 <= delta <= 60
+                ):
+                    raise ValueError("weather-step needs delta_f between -60 and 60")
+                _check_duration(p, "weather-step", zero_ok=True)
+            case "co2-release":
+                if not p.get("fv"):
+                    raise ValueError("co2-release needs fv (for example FV-102)")
+                if p.get("rate", "high") not in ("low", "medium", "high"):
+                    raise ValueError("co2-release rate is low, medium, or high")
+                _check_duration(p, "co2-release")
+            case "co2-leak":
+                if p.get("zone") not in ("tank", "filler", "draft"):
+                    raise ValueError("co2-leak needs zone: tank, filler, or draft")
+                if p.get("rate", "high") not in ("low", "medium", "high"):
+                    raise ValueError("co2-leak rate is low, medium, or high")
+                _check_duration(p, "co2-leak")
+            case "gas-detection":
+                if p.get("action", "fail") not in ("fail", "restore"):
+                    raise ValueError("gas-detection action is fail or restore")
+            case "refrigerant-leak":
+                if p.get("action", "leak") not in ("leak", "repair", "recharge"):
+                    raise ValueError("refrigerant-leak action is leak, repair, or recharge")
+                if p.get("rate", "medium") not in ("low", "medium", "high"):
+                    raise ValueError("refrigerant-leak rate is low, medium, or high")
+            case "bess-thermal":
+                if p.get("action", "start") not in ("start", "clear"):
+                    raise ValueError("bess-thermal action is start or clear")
+            case "jam":
+                _check_duration(p, "jam")
+            case "chiller-fault":
+                if p.get("action", "fail") not in ("fail", "clear"):
+                    raise ValueError("chiller-fault action is fail or clear")
+                if p.get("compressor", 1) not in (1, 2):
+                    raise ValueError("chiller-fault compressor is 1 or 2 (two stages)")
+            case "start-batch":
+                if p.get("recipe", "fire-of-the-phenix") != "fire-of-the-phenix":
+                    raise ValueError("start-batch recipe must be fire-of-the-phenix")
+                brews = p.get("brews", 2)
+                if not isinstance(brews, int) or isinstance(brews, bool) or not 1 <= brews <= 4:
+                    raise ValueError("start-batch brews is an integer from 1 to 4")
+                if not isinstance(p.get("batch_id", ""), str):
+                    raise ValueError("start-batch batch_id is a string")
+            case _:
+                pass
+        return self
+
+    @property
+    def params(self) -> dict[str, Any]:
+        """Every field except ``event``."""
+        return dict(self.model_extra or {})
+
+
+class AcceptedEvent(BaseModel):
+    """An event the API accepted."""
+
+    id: str
+    event: str
+    params: dict[str, Any] = Field(default_factory=dict)
+    target: str
+    received: str  # simulated time when the API received it
+
+
+class Kpis(BaseModel):
+    """``GET /api/v1/kpis`` reply (the app's ``SimKpis``)."""
+
+    sim_time: str | None = None
+    batches_completed: int = 0
+    batches_in_progress: int = 0
+    bottles_packaged: int = 0
+    kegs_packaged: int = 0
+    energy_kwh: float = 0.0
+    demand_kw: float = 0.0
+    peak_demand_kw: float = 0.0
+    # Compliance figures (DESIGN.md §18A); the full records are in ground truth.
+    ttb_bbl_packaged: float = 0.0
+    fill_mean_floz: float = 0.0
+    fill_under_mav_rejects: int = 0
+    wastewater_inhibit_events: int = 0
+    cip_runs_verified: int = 0
+    cip_runs_unverified: int = 0
+    genset_hours_year: float = 0.0
+    genset_test_hours_year: float = 0.0
+
+
+class State(BaseModel):
+    """``GET /api/v1/state`` reply: the federation's values as the weather
+    federate holds them at the end of a step.
+
+    ``values`` maps HELICS keys (``building/cellar.co2_ppm``) to the last value
+    received. A subscription carries the publisher's value from the previous
+    step (DESIGN.md §9.2), and the building federate publishes every 10 s.
+    ``seq`` counts the steps, and ``wall_time`` is the wall clock (Unix
+    seconds) when the snapshot was taken, so a reader can tell a stalled
+    federate from a quiet plant.
+    """
+
+    seq: int = 0
+    t_s: float = 0.0
+    sim_time: str | None = None
+    wall_time: float = 0.0
+    variant: str = ""
+    values: dict[str, float | bool | str] = Field(default_factory=dict)
+
+
+class EventApi:
+    """State shared between the HTTP threads and the federate."""
+
+    variant: str
+    pending: queue.Queue[AcceptedEvent]
+    history: list[AcceptedEvent]
+    kpis: Kpis
+    state: State
+    sim_time: str | None
+    #: Wall clock (Unix seconds) of the federate's last step, None before the first.
+    stepped_wall: float | None
+    lock: threading.Lock
+    server: ThreadingHTTPServer | None
+    thread: threading.Thread | None
+
+    def __init__(self, variant: str = "") -> None:
+        self.variant = variant
+        self.pending = queue.Queue()
+        self.history = []
+        self.kpis = Kpis()
+        self.state = State(variant=variant)
+        self.sim_time = None
+        self.stepped_wall = None
+        self.lock = threading.Lock()
+        self.server = None
+        self.thread = None
+
+    # -- federate side -----------------------------------------------------------------
+
+    def drain(self) -> list[AcceptedEvent]:
+        """Events accepted since the last call."""
+        out = []
+        while True:
+            try:
+                out.append(self.pending.get_nowait())
+            except queue.Empty:
+                return out
+
+    def update(self, sim_time: str, kpis: Kpis, state: State | None = None) -> None:
+        """Refresh the clock, the KPI snapshot, and (when given) the state."""
+        with self.lock:
+            self.sim_time = sim_time
+            self.stepped_wall = time.time()
+            self.kpis = kpis
+            if state is not None:
+                self.state = state
+
+    # -- HTTP side ---------------------------------------------------------------------
+
+    def accept(self, body: dict[str, Any]) -> AcceptedEvent:
+        """Validate and queue an event; raises ValueError when invalid."""
+        try:
+            req = EventRequest.model_validate(body)
+        except ValidationError as exc:
+            raise ValueError("; ".join(e["msg"] for e in exc.errors())) from None
+        with self.lock:
+            accepted = AcceptedEvent(
+                id=uuid.uuid4().hex[:12],
+                event=req.event,
+                params=req.params,
+                target=EVENT_TARGETS[req.event],
+                received=self.sim_time or "",
+            )
+            self.history.append(accepted)
+            del self.history[:-HISTORY]
+        self.pending.put(accepted)
+        LOG.info("event %s %s -> %s", accepted.event, accepted.params, accepted.target)
+        return accepted
+
+    def health(self) -> dict[str, Any]:
+        """``GET /health`` reply. ``status`` is ``ok`` only while the federate
+        steps: ``starting`` until its first step (the HELICS federation has not
+        started, for example because the broker still waits for a federate),
+        and ``stalled`` when the last step is more than :data:`STALLED_AFTER_S`
+        old. The API itself answers in all three, so a 200 alone does not say
+        the plant is running."""
+        with self.lock:
+            stepped = self.stepped_wall
+            sim_time = self.sim_time
+        age = None if stepped is None else max(time.time() - stepped, 0.0)
+        if age is None:
+            status = "starting"
+        elif age > STALLED_AFTER_S:
+            status = "stalled"
+        else:
+            status = "ok"
+        return {
+            "status": status,
+            "variant": self.variant,
+            "sim_time": sim_time,
+            "step_age_s": None if age is None else round(age, 1),
+        }
+
+    def kpi_reply(self) -> dict[str, Any]:
+        """``GET /kpis`` reply."""
+        with self.lock:
+            return self.kpis.model_dump()
+
+    def events_reply(self) -> dict[str, Any]:
+        """``GET /events`` reply."""
+        with self.lock:
+            return {"events": [e.model_dump() for e in self.history]}
+
+    def state_reply(self) -> dict[str, Any]:
+        """``GET /state`` reply."""
+        with self.lock:
+            state = self.state
+        return state.model_dump()
+
+    def serve(self, host: str = "127.0.0.1", port: int = 8080) -> int:
+        """Start the HTTP server in a daemon thread; returns the bound port."""
+        api = self
+
+        class Handler(BaseHTTPRequestHandler):
+            server_version = "cherrymountain-simctl/1"
+
+            def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
+                LOG.debug("%s %s", self.address_string(), format % args)
+
+            def _reply(self, code: int, doc: dict[str, Any]) -> None:
+                body = json.dumps(doc).encode()
+                self.send_response(code)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_GET(self) -> None:
+                routes = {
+                    f"{API}/health": api.health,
+                    f"{API}/kpis": api.kpi_reply,
+                    f"{API}/events": api.events_reply,
+                    f"{API}/state": api.state_reply,
+                    "/events": api.events_reply,
+                }
+                handler = routes.get(self.path.split("?")[0].rstrip("/"))
+                if handler is None:
+                    self._reply(404, {"error": "not found"})
+                else:
+                    self._reply(200, handler())
+
+            def do_POST(self) -> None:
+                if self.path.split("?")[0].rstrip("/") not in (
+                    f"{API}/events",
+                    "/events",
+                ):
+                    self._reply(404, {"error": "not found"})
+                    return
+                try:
+                    length = int(self.headers.get("Content-Length") or 0)
+                except ValueError:
+                    length = -1
+                if length < 0:
+                    self._reply(400, {"error": "bad Content-Length"})
+                    return
+                if length > MAX_BODY:
+                    self._reply(413, {"error": "body too large"})
+                    return
+                try:
+                    body = json.loads(self.rfile.read(length) or b"{}")
+                    if not isinstance(body, dict):
+                        raise ValueError("the body must be a JSON object")
+                    accepted = api.accept(body)
+                except ValueError as exc:  # JSONDecodeError is a ValueError
+                    self._reply(400, {"error": str(exc)})
+                    return
+                self._reply(202, {"accepted": True, **accepted.model_dump()})
+
+        self.server = ThreadingHTTPServer((host, port), Handler)
+        self.thread = threading.Thread(
+            target=self.server.serve_forever, name="simctl-api", daemon=True
+        )
+        self.thread.start()
+        bound: int = self.server.server_address[1]
+        LOG.info("event API on %s:%d", host, bound)
+        return bound
+
+    def close(self) -> None:
+        """Stop the HTTP server."""
+        if self.server is not None:
+            self.server.shutdown()
+            self.server.server_close()
+            self.server = None

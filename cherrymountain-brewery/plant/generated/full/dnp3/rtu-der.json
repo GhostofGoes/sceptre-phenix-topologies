@@ -1,0 +1,254 @@
+{
+  "generator": "plantgen",
+  "variant": "full",
+  "host": "rtu-der",
+  "endpoint": {
+    "interface": "IF0",
+    "address": "10.20.15.10",
+    "port": 20000
+  },
+  "outstation_address": 1024,
+  "master_address": 1,
+  "points": [
+    {
+      "kind": "ai",
+      "index": 0,
+      "tag": "relay-main.p_kw",
+      "plant_tag": "PWR.MAIN.JT01.PV",
+      "upstream": "relay-main",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 1,
+      "tag": "relay-main.q_kvar",
+      "plant_tag": "PWR.MAIN.JT02.PV",
+      "upstream": "relay-main",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 2,
+      "tag": "relay-main.v_ll",
+      "plant_tag": "PWR.MAIN.ET01.PV",
+      "upstream": "relay-main",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 3,
+      "tag": "relay-main.i_a",
+      "plant_tag": "PWR.MAIN.IT01.PV",
+      "upstream": "relay-main",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 4,
+      "tag": "relay-main.freq_hz",
+      "plant_tag": "PWR.MAIN.ST01.PV",
+      "upstream": "relay-main",
+      "scaling": 2
+    },
+    {
+      "kind": "ai",
+      "index": 5,
+      "tag": "relay-main.demand_kw",
+      "plant_tag": "PWR.MAIN.JQ01.PV",
+      "upstream": "relay-main",
+      "scaling": 1
+    },
+    {
+      "kind": "bi",
+      "index": 0,
+      "tag": "relay-main.breaker_closed",
+      "plant_tag": "PWR.MAIN.ZS01.PV",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "bi",
+      "index": 1,
+      "tag": "relay-main.tripped",
+      "plant_tag": "PWR.MAIN.YA01.PV",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "bo",
+      "index": 0,
+      "tag": "relay-main.close",
+      "plant_tag": "PWR.MAIN.HS01.CMD",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "bi",
+      "index": 2,
+      "tag": "msb.boiler_closed",
+      "plant_tag": "PWR.MAIN.ZS02.PV",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "bi",
+      "index": 3,
+      "tag": "msb.pkg_closed",
+      "plant_tag": "PWR.MAIN.ZS03.PV",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "bi",
+      "index": 4,
+      "tag": "msb.rtu_closed",
+      "plant_tag": "PWR.MAIN.ZS04.PV",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "bo",
+      "index": 1,
+      "tag": "msb.boiler_close",
+      "plant_tag": "PWR.MAIN.HS02.CMD",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "bo",
+      "index": 2,
+      "tag": "msb.pkg_close",
+      "plant_tag": "PWR.MAIN.HS03.CMD",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "bo",
+      "index": 3,
+      "tag": "msb.rtu_close",
+      "plant_tag": "PWR.MAIN.HS04.CMD",
+      "upstream": "relay-main",
+      "scaling": null
+    },
+    {
+      "kind": "ai",
+      "index": 6,
+      "tag": "pv-inverter.p_kw",
+      "plant_tag": "PWR.PV.JT01.PV",
+      "upstream": "pv-inverter",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 7,
+      "tag": "pv-inverter.limit_pct",
+      "plant_tag": "PWR.PV.JY01.PV",
+      "upstream": "pv-inverter",
+      "scaling": 1
+    },
+    {
+      "kind": "bi",
+      "index": 5,
+      "tag": "pv-inverter.connected",
+      "plant_tag": "PWR.PV.ZS01.PV",
+      "upstream": "pv-inverter",
+      "scaling": null
+    },
+    {
+      "kind": "bo",
+      "index": 4,
+      "tag": "pv-inverter.enable",
+      "plant_tag": "PWR.PV.HS01.CMD",
+      "upstream": "pv-inverter",
+      "scaling": null
+    },
+    {
+      "kind": "ao",
+      "index": 0,
+      "tag": "pv-inverter.site_limit_pct",
+      "plant_tag": "PWR.PV.JC01.SP",
+      "upstream": "pv-inverter",
+      "scaling": 1
+    },
+    {
+      "kind": "ao",
+      "index": 1,
+      "tag": "pv-inverter.utility_limit_pct",
+      "plant_tag": "PWR.PV.JC02.SP",
+      "upstream": "pv-inverter",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 8,
+      "tag": "bess-pcs.p_kw",
+      "plant_tag": "PWR.BESS.JT01.PV",
+      "upstream": "bess-pcs",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 9,
+      "tag": "bess-pcs.soc_pct",
+      "plant_tag": "PWR.BESS.EY01.PV",
+      "upstream": "bess-pcs",
+      "scaling": 1
+    },
+    {
+      "kind": "bi",
+      "index": 6,
+      "tag": "bess-pcs.connected",
+      "plant_tag": "PWR.BESS.ZS01.PV",
+      "upstream": "bess-pcs",
+      "scaling": null
+    },
+    {
+      "kind": "bi",
+      "index": 7,
+      "tag": "bess-pcs.fault",
+      "plant_tag": "PWR.BESS.YA01.PV",
+      "upstream": "bess-pcs",
+      "scaling": null
+    },
+    {
+      "kind": "bo",
+      "index": 5,
+      "tag": "bess-pcs.enable",
+      "plant_tag": "PWR.BESS.HS01.CMD",
+      "upstream": "bess-pcs",
+      "scaling": null
+    },
+    {
+      "kind": "ao",
+      "index": 2,
+      "tag": "bess-pcs.p_sp_kw",
+      "plant_tag": "PWR.BESS.JC01.SP",
+      "upstream": "bess-pcs",
+      "scaling": 1
+    },
+    {
+      "kind": "ao",
+      "index": 3,
+      "tag": "bess-pcs.utility_p_sp_kw",
+      "plant_tag": "PWR.BESS.JC02.SP",
+      "upstream": "bess-pcs",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 10,
+      "tag": "bess-pcs.cell_temp_f",
+      "plant_tag": "PWR.BESS.TT01.PV",
+      "upstream": "bess-pcs",
+      "scaling": 1
+    },
+    {
+      "kind": "ai",
+      "index": 11,
+      "tag": "bess-pcs.offgas_ppm",
+      "plant_tag": "PWR.BESS.AT01.PV",
+      "upstream": "bess-pcs",
+      "scaling": 0
+    }
+  ]
+}

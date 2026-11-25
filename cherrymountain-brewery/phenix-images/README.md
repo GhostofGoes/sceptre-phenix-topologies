@@ -626,10 +626,17 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - Build: Use the commands above, with `<name>` set to `cm-ews`.
 - Used by: `ews`.
 - Pinned versions: The image pins OpenPLC Editor `4.3.4` (SHA-256
-  `27718205...124cdd2`), `BAC0==2026.7.25`, `pymodbus==3.16.2`,
-  `asyncua==2.1.0`, and the Wazuh agent `4.14.10-1`. Chromium is as in
-  `cm-desktop`. The image does not use `opcua-client`, because its current
+  `27718205...124cdd2`, see the note below), `BAC0==2026.7.25`,
+  `pymodbus==3.16.2`, `asyncua==2.1.0`, and the Wazuh agent `4.14.10-1`.
+  Chromium is as in `cm-desktop`. The image does not use `opcua-client`, because its current
   release needs Python 3.14, and noble has 3.12.
+- The OpenPLC Editor checksum: Upstream built the assets of release 4.3.4
+  again on 2026-11-23, from its branch `feature/DOPE-893-backport-v4.3.4`. The
+  tag did not move, and the old checksum stopped matching. Upstream publishes
+  no signature and no checksum file. The pin is the SHA-256 of the AppImage of
+  that build (160,476,940 bytes), read on 2026-11-24. If upstream builds the
+  assets again, the image build stops at the checksum test. Then compare the
+  new asset with the release page before you change the pin.
 
 ## cm-historian
 

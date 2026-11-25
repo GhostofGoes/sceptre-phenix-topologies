@@ -1711,6 +1711,36 @@ State on 2026-11-24:
   45 at `fc` and 65 at `cs`. That is the layout of [4.1](#41-what-each-site-is), and
   an exercise can use it.
 
+State on 2026-11-25:
+
+- The app part of stage 3 exists. It is on the branch
+  `feat-cherrymountain-fleet-app` of the apps repository, and it did not run
+  on a VM. A site's app block names the site (`site: ep`). The app then reads
+  the site's files, uses the site's host names, and starts the site's HELICS
+  broker on `<code>-sim-ctl`. The broker listens on that host's MGMT address
+  only. The app's tests configure all four sites.
+- A site's scenario has no `helics` app. That app starts one root broker for
+  an experiment, and two brokers on one host fail without a message. The
+  tool netcheck refuses a site scenario that has the app.
+- The hosts that may write BACnet are data for each site
+  (`plant/generated/fleet/<code>/bacnet-writers.json`). At `fr`, `ep`, and
+  `cs` they are `bas-fuxa` and `ews`. At `fc` the list has the pub's one SCADA
+  host only (decided on 2026-11-25). The Suricata rules and the Zeek script
+  of `fr` take their lists from that data.
+- The sensor image has a recipe, `cm-sensor`
+  ([4.6](#46-what-the-head-office-does)).
+- The image recipes have one source, which is this repository. A job in the
+  images repository fails when a copy there differs (decided on 2026-11-25).
+- One site still lacks these parts before it can boot alone:
+  - The WAN side of its edge: a peer, a default route, and NAT (stage 4).
+  - The sensor's first-boot files, and the settings of `malcolm` for sensors.
+  - A way to restart one site. Today a person restarts its broker, its
+    federates, and its field devices by hand.
+  - The first boot itself, after stage 0.
+- The BACnet alert cannot fire at `fc` alone, because a site alone has no
+  detector. In the fleet, `malcolm` at `fr` needs the writer lists of all
+  four sites (stage 4). The text of the alert still names `bas-fuxa`.
+
 Stage 1 ran on a GitHub runner, as the Phase 0 VM spikes did. Stage C needs
 the cluster and an hour. It is the first thing to run there, because every
 later stage depends on a full-size frame that crosses between nodes. Stage 2

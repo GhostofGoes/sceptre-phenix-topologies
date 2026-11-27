@@ -89,6 +89,8 @@ MALCOLM_SERVICE_IMAGE: dict[str, str] = {
     "nginx-proxy": "nginx-proxy", "suricata": "suricata", "suricata-live": "suricata",
     "strelka-backend": "strelka-backend", "strelka-frontend": "strelka-frontend",
     "strelka-manager": "strelka-manager", "freq": "freq", "netbox": "netbox", "postgres": "postgresql",
+    # Arkime's own capture, which only a sensor starts (test_sensor.py).
+    "arkime-live": "arkime",
 }
 #: Bind-mount sources of Malcolm 26.10.0's compose file that are not in its checkout
 #: (create_host_path: false, so a missing one fails `compose up`), by service.

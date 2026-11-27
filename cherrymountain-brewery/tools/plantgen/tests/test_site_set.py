@@ -52,6 +52,9 @@ KEPT: dict[str, dict[str, str]] = {
     "vrouter/cm-vyos-config.sh": {
         "10.40.10.11": "the fleet has one Wazuh, at the head office",
     },
+    injects.SENSOR_ENV: {
+        "10.40.10.10": "the fleet has one Malcolm, at the head office",
+    },
 }
 
 
@@ -283,13 +286,18 @@ def test_a_site_copies_what_its_nodes_inject(sets: dict[str, SiteSet]) -> None:
     """The brewpub has one router and no ot-svc, BBMD, or jump host."""
     assert {code: sorted(_copies(made)) for code, made in sets.items()} == {
         # The staff accounts are at `ep`: its jump host is the company's own.
-        "fr": sorted(p for p in injects.RENDERERS if p != injects.STAFF_ENV),
+        # The head office has Malcolm itself, and no sensor.
+        "fr": sorted(
+            p
+            for p in injects.RENDERERS
+            if p not in (injects.STAFF_ENV, injects.SENSOR_ENV)
+        ),
         # The detection content of the SOC is the head office's.
         "ep": sorted(p for p in injects.RENDERERS if not p.startswith("malcolm/")),
         "cs": sorted(
             p for p in injects.RENDERERS if not p.startswith(("guacamole/", "malcolm/"))
         ),
-        "fc": ["vrouter/cm-vyos-config.sh"],
+        "fc": [injects.SENSOR_ENV, "vrouter/cm-vyos-config.sh"],
     }
 
 
@@ -443,6 +451,7 @@ def test_a_hand_written_file_without_its_line_stops_the_generator(
 ) -> None:
     changed = tmp_path / "phenix-injects"
     shutil.copytree(INJECTS / "vrouter", changed / "vrouter")
+    shutil.copytree(INJECTS / "sensor", changed / "sensor")
     script = changed / "vrouter" / "cm-vyos-config.sh"
     text = script.read_text(encoding="utf-8")
     script.write_text(text.replace("OT_SVC=", "TIME_SERVER="), encoding="utf-8")
@@ -522,6 +531,9 @@ def test_the_vendors_accounts_stay_at_the_site_with_the_remote_module(
             assert found["ews"] == today["ews"]
             continue
         for name, paths in found.items():
+            if name == fleet.SENSOR_NAME:
+                # A node of plantgen's own: no node of today has its files.
+                continue
             assert not paths & vendor, (code, name)
             assert not [p for p in paths if p.startswith("wireguard/")], (code, name)
             # Nothing else is lost: only the vendor's files are gone. The files
@@ -537,6 +549,91 @@ def test_the_vendors_accounts_stay_at_the_site_with_the_remote_module(
             }
     assert "guacamole/cm-guacamole-start" in _sources(sets["ep"])["dmz-jump"]
     assert "ews/cm_plc_tool.py" in _sources(sets["cs"])["ews"]
+
+
+# --- the sensor ---
+
+
+@pytest.mark.parametrize("code", ["ep", "cs", "fc"])
+def test_the_sensor_injects_its_first_boot_files(
+    code: str, sets: dict[str, SiteSet]
+) -> None:
+    nodes = yaml.safe_load(sets[code].topology)["spec"]["nodes"]
+    sensor = next(n for n in nodes if n["general"]["hostname"] == f"{code}-sensor")
+    own = f"{injects.PREFIX}{injects.SITE_DIRECTORY.format(code=code)}/"
+    assert [(i["src"], i["dst"], i["permissions"]) for i in sensor["injections"]] == [
+        (
+            f"{own if path == injects.SENSOR_ENV else injects.PREFIX}{path}",
+            target,
+            mode,
+        )
+        for path, target, mode, _ in injects.SENSOR_FILES
+    ]
+    assert all(i["description"] for i in sensor["injections"])
+    # phenix puts the files on the partition that the image's root is on.
+    assert sensor["hardware"]["drives"] == [
+        {"image": "cm-sensor.qc2", "inject_partition": 1}
+    ]
+
+
+def test_the_files_of_the_sensor_exist_and_a_program_can_run() -> None:
+    targets = [target for _, target, _, _ in injects.SENSOR_FILES]
+    assert len(set(targets)) == len(targets)
+    for path, target, mode, _ in injects.SENSOR_FILES:
+        file = INJECTS / path
+        assert file.is_file(), path
+        program = target.startswith(("/usr/local/sbin/", "/etc/phenix/startup/"))
+        assert mode == ("0755" if program else "0644"), path
+        assert bool(file.stat().st_mode & 0o111) == program, path
+    # Every file of phenix-injects/sensor has a node that injects it.
+    assert {p.name for p in (INJECTS / "sensor").iterdir()} == {
+        path.removeprefix("sensor/")
+        for path, _, _, _ in injects.SENSOR_FILES
+        if path.startswith("sensor/")
+    }
+
+
+def test_no_sensor_gets_the_detections_that_name_front_range_hosts() -> None:
+    """A site's copy of the rules moves only the BACnet writers, so a sensor
+    with the rules would alert on each permitted Modbus write of its site."""
+    paths = {path for path, _, _, _ in injects.SENSOR_FILES}
+    assert not paths & {
+        "malcolm/cherrymountain.rules",
+        "malcolm/zeek/cherrymountain.zeek",
+        "malcolm/zeek/__load__.zeek",
+    }
+    for path in paths - {injects.SENSOR_ENV}:
+        lines = (INJECTS / path).read_text(encoding="utf-8").splitlines()
+        code_lines = [ln for ln in lines if not ln.lstrip().startswith("#")]
+        # Zeek's local networks are the private ranges as a whole.
+        read = "\n".join(code_lines).replace("172.16.0.0/12", "")
+        assert not FRONT_RANGE.findall(read), path
+
+
+@pytest.mark.parametrize("code", ["ep", "cs", "fc"])
+def test_the_sensors_settings_name_it_and_the_one_malcolm(
+    code: str, sets: dict[str, SiteSet]
+) -> None:
+    nodes = yaml.safe_load(sets[code].topology)["spec"]["nodes"]
+    sensor = next(n for n in nodes if n["general"]["hostname"] == f"{code}-sensor")
+    head_office = yaml.safe_load(sets["fr"].topology)["spec"]["nodes"]
+    malcolm = next(n for n in head_office if n["general"]["hostname"] == "fr-malcolm")
+    values = dict(
+        line.split("=", 1)
+        for line in _copies(sets[code])[injects.SENSOR_ENV].splitlines()
+        if line and not line.startswith("#")
+    )
+    assert values == {
+        "CM_SENSOR_NAME": f"{code}-sensor",
+        "CM_SENSOR_ADDRESS": sensor["network"]["interfaces"][0]["address"],
+        "CM_MALCOLM_HOST": malcolm["network"]["interfaces"][0]["address"],
+    }
+
+
+def test_the_hand_written_settings_of_the_sensor_name_no_sensor() -> None:
+    text = (INJECTS / injects.SENSOR_ENV).read_text(encoding="utf-8")
+    assert "\nCM_SENSOR_NAME=\n" in text
+    assert "\nCM_SENSOR_ADDRESS=\n" in text
 
 
 def test_the_header_names_the_staff_accounts_of_a_sites_own_jump_host(

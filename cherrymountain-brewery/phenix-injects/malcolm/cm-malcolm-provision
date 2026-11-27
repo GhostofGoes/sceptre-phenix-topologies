@@ -25,6 +25,13 @@
 # app renders it into the credentials file from secrets.json malcolm_password;
 # without one this script generates one), CM_CAPTURE_IFACE, CM_ZEEK_LOCAL_NETS.
 # The password is in /var/lib/cm-malcolm/admin-password (root only) either way.
+#
+# The sensors of other sites (docs/multisite/PLANS.md 4.6). In an experiment that has
+# a sensor, the app also writes CM_SENSOR_PASSWORD and CM_ARKIME_SECRET into the
+# credentials file and puts five certificate files in /etc/cherrymountain/sensor-tls.
+# With them this script opens Logstash (5044/tcp) and OpenSearch (9200/tcp) to the
+# sensors, creates their account, and uses their secret for Arkime. Without them it
+# opens neither port, as in the single-site range. A part of them is an error.
 # Re-running is safe: it stops early once /var/lib/cm-malcolm/provisioned exists.
 set -euo pipefail
 
@@ -41,6 +48,9 @@ OPENSEARCH_IMAGE="ghcr.io/idaholab/malcolm/opensearch:${IMAGE_TAG}"
 MALCOLM_UID=1000
 # The group that may use Docker's socket.
 DOCKER_GROUP="${CM_DOCKER_GROUP:-docker}"
+# The sensors' account in nginx, and the app's certificates for Logstash and Filebeat.
+SENSOR_USER="${CM_SENSOR_USER:-sensor}"
+SENSOR_TLS="${CM_SENSOR_TLS:-/etc/cherrymountain/sensor-tls}"
 
 # shellcheck source=phenix-injects/malcolm/profiles.sh
 . "${SRC}/profiles.sh"
@@ -98,6 +108,53 @@ cd "${MALCOLM_DIR}"
 # It runs as the user malcolm, like every Malcolm script, and needs no network.
 settings="${SRC}/malcolm-config-${profile}.yaml"
 [ -r "$settings" ] || { log "FAIL: ${settings} is missing"; exit 1; }
+
+# --- the sensors of other sites -----------------------------------------------------
+# All of what the app gives for them, or none of it.
+sensors=false
+sensor_given=()
+sensor_missing=()
+for key in CM_SENSOR_PASSWORD CM_ARKIME_SECRET; do
+  if [ -n "${!key:-}" ]; then sensor_given+=("$key"); else sensor_missing+=("$key"); fi
+done
+for file in ca.crt server.crt server.key client.crt client.key; do
+  if [ -s "${SENSOR_TLS}/${file}" ]; then sensor_given+=("${SENSOR_TLS}/${file}"); else sensor_missing+=("${SENSOR_TLS}/${file}"); fi
+done
+if [ "${#sensor_given[@]}" -gt 0 ]; then
+  if [ "${#sensor_missing[@]}" -gt 0 ]; then
+    log "FAIL: a part of what the sensors need is missing: ${sensor_missing[*]}"
+    exit 1
+  fi
+  # The same limits as on a sensor (cm-sensor-provision): the two values go into a
+  # curl config file there and into a sed command inside Arkime's container.
+  if [[ ! "$CM_SENSOR_PASSWORD" =~ ^[A-Za-z0-9]{8,72}$ ]]; then
+    log "FAIL: CM_SENSOR_PASSWORD must be 8 to 72 letters and digits"
+    exit 1
+  fi
+  if [[ ! "$CM_ARKIME_SECRET" =~ ^[A-Za-z0-9]{16,128}$ ]]; then
+    log "FAIL: CM_ARKIME_SECRET must be 16 to 128 letters and digits"
+    exit 1
+  fi
+  sensors=true
+  # The profile's settings with those of malcolm-config-sensors.yaml on top: the two
+  # ports that the sensors send to. The configurator takes one file.
+  merged="${STATE}/malcolm-config-${profile}-sensors.yaml"
+  "${VENV}/bin/python3" -I - "$settings" "${SRC}/malcolm-config-sensors.yaml" > "$merged" << 'MERGE'
+import sys
+
+import yaml
+
+with open(sys.argv[1], encoding="utf-8") as base_file, open(sys.argv[2], encoding="utf-8") as extra_file:
+    base, extra = yaml.safe_load(base_file), yaml.safe_load(extra_file)
+base["configuration"].update(extra["configuration"])
+yaml.safe_dump(base, sys.stdout, default_flow_style=False, sort_keys=False)
+MERGE
+  # The configurator runs as the user malcolm; the unit's umask would make the file root-only.
+  chmod 0644 "$merged"
+  settings="$merged"
+  log "sensors of other sites send here: Logstash (5044/tcp) and OpenSearch (9200/tcp) are open to them"
+fi
+
 chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
 as_malcolm env "PATH=${VENV}/bin:${PATH}" ./scripts/configure \
   --non-interactive --configure --skip-splash --import-malcolm-config-file "$settings"
@@ -186,16 +243,41 @@ htpasswd_hash=$(printf '%s' "$password" | htpasswd -niB malcolm | cut -d: -f2)
 mkdir -p opensearch/nodes opensearch-backup pcap/processed pcap/upload/tmp/spool pcap/upload/variants \
   zeek-logs/upload zeek-logs/processed zeek-logs/current zeek-logs/extract_files/filescan zeek-logs/live/spool \
   suricata-logs/live filescan-logs nginx/ca-trust netbox/media postgres valkey
+# The secret of Arkime's viewers. Malcolm's Arkime signs with it what it asks a
+# sensor's Arkime for (the packets of a session), so every sensor has the same one.
+# It is not the admin password there: a sensor stands at another site. With no
+# sensor it is the admin password, as before.
+arkime_secret="$password"
+if [ "$sensors" = true ]; then
+  arkime_secret="$CM_ARKIME_SECRET"
+  # The app's certificates for Logstash, and for the Filebeat of this host. They must
+  # be in place before auth_setup: it makes its own pair where server.key or
+  # client.key is missing, and the sensors hold a client certificate of the app's CA.
+  mkdir -p logstash/certs filebeat/certs
+  install -m 0600 "${SENSOR_TLS}/ca.crt" "${SENSOR_TLS}/server.crt" "${SENSOR_TLS}/server.key" logstash/certs/
+  install -m 0600 "${SENSOR_TLS}/ca.crt" "${SENSOR_TLS}/client.crt" "${SENSOR_TLS}/client.key" filebeat/certs/
+fi
 chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
 # Malcolm's scripts refuse to run as root.
 as_malcolm env "PATH=${VENV}/bin:${PATH}" ./scripts/auth_setup \
   --auth-noninteractive --auth-method basic \
   --auth-admin-username malcolm --auth-admin-password-openssl "$password_hash" --auth-admin-password-htpasswd "$htpasswd_hash" \
-  --auth-arkime-password="$password" \
+  --auth-arkime-password="$arkime_secret" \
   --auth-generate-webcerts --auth-generate-opensearch-internal-creds \
   --auth-generate-netbox-passwords --auth-generate-valkey-password \
   --auth-generate-postgres-password -f docker-compose.yml
 as_malcolm touch htadmin/metadata nginx/nginx_ldap.conf .opensearch.secondary.curlrc
+if [ "$sensors" = true ]; then
+  # The sensors' account. nginx asks for a user of this file on 9200/tcp, and a
+  # sensor's Arkime writes its sessions through that port. Malcolm's basic
+  # authentication has no roles, so the account can also sign in to the web UI.
+  # The password comes on stdin, so it is on no command line.
+  [ -s nginx/htpasswd ] || { log "FAIL: Malcolm's auth_setup did not write nginx/htpasswd"; exit 1; }
+  printf '%s' "$CM_SENSOR_PASSWORD" | htpasswd -iB nginx/htpasswd "$SENSOR_USER"
+  # auth_setup did not replace the app's certificates.
+  cmp -s "${SENSOR_TLS}/server.key" logstash/certs/server.key \
+    || { log "FAIL: Malcolm's auth_setup replaced the certificates of ${SENSOR_TLS}"; exit 1; }
+fi
 # Starting a subset of the services leaves the OpenSearch keystore uncreated.
 docker run --rm --user root --entrypoint bash -v "${MALCOLM_DIR}/opensearch:/out" "${OPENSEARCH_IMAGE}" -c \
   '/usr/share/opensearch/bin/opensearch-keystore create && cp /usr/share/opensearch/config/opensearch.keystore /out/'
@@ -203,4 +285,8 @@ chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
 chmod 600 config/*.env .opensearch.*.curlrc
 
 touch "${STATE}/provisioned"
-log "PASS: Malcolm is configured (${profile})"
+if [ "$sensors" = true ]; then
+  log "PASS: Malcolm is configured (${profile}, with the account ${SENSOR_USER} for the sensors of other sites)"
+else
+  log "PASS: Malcolm is configured (${profile})"
+fi

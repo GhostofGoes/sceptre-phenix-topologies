@@ -56,7 +56,24 @@ class Kept(NamedTuple):
 
 
 WAZUH: str = "10.40.10.11"
+MALCOLM: str = "10.40.10.10"
 KEPT: tuple[Kept, ...] = (
+    Kept(
+        "sensor/cm-sensor.env",
+        frozenset({MALCOLM}),
+        "where the sensor sends: the fleet has one Malcolm, at the head office",
+    ),
+    Kept(
+        "sensor/cm-sensor-provision",
+        frozenset({"malcolm", "172.16.0.0"}),
+        "the user that owns Malcolm's checkout in the image, not a host, and Zeek's local "
+        "networks, which are the private ranges as a whole (172.16.0.0/12)",
+    ),
+    Kept(
+        "sensor/cm-sensor.service",
+        frozenset({"malcolm"}),
+        "the user that the unit runs as, which owns Malcolm's checkout in the image",
+    ),
     Kept(
         "vrouter/cm-vyos-config.sh",
         frozenset({"fw-edge", "fw-ot"}),
@@ -277,22 +294,23 @@ def test_every_injected_file_exists(code: str) -> None:
 
 
 def test_the_sets_of_the_four_sites_differ_in_size() -> None:
-    """Injected files: the pub has five, and the head office has them all."""
+    """Injected files: the pub has the fewest, and the head office has them all.
+    A sensor has 17, and `ep` and `cs` had two of them before (the image loader)."""
     assert {code: len(injected(code)) for code in CODES} == {
-        "fr": 77,
+        "fr": 78,
         # Four of them are the staff accounts of its own jump host: the two
         # scripts, their library, and the roster.
-        "ep": 33,
-        "cs": 20,
-        "fc": 5,
+        "ep": 48,
+        "cs": 37,
+        "fc": 22,
     }
     own: dict[str, int] = {
         code: sum(1 for path in injected(code) if path.startswith(f"fleet/{code}/"))
         for code in CODES
     }
     # `fr` has the SOC: two of its copies are the detection content. `ep` has
-    # the roster of its staff accounts.
-    assert own == {"fr": 10, "ep": 9, "cs": 6, "fc": 1}
+    # the roster of its staff accounts. Each other site has its sensor's settings.
+    assert own == {"fr": 10, "ep": 10, "cs": 7, "fc": 2}
 
 
 @pytest.mark.parametrize("code", CODES)
@@ -531,5 +549,8 @@ def test_the_socs_detection_content_lists_the_writers_of_its_site() -> None:
     assert f"const bacnet_writers: set[addr] = {{ {', '.join(addresses)} }} &redef;" in zeek
     assert "fleet/fr/malcolm/cherrymountain.rules" in injected("fr")
     assert "fleet/fr/malcolm/zeek/cherrymountain.zeek" in injected("fr")
+    # A sensor of another site injects the capture scripts of `malcolm` and not
+    # the detection content, which names the hosts of `fr` by address.
     for code in OTHER_SITES:
-        assert not [path for path in injected(code) if "malcolm" in path]
+        assert not [path for path in injected(code) if "cherrymountain." in path]
+        assert "malcolm/cm-malcolm-capture" in injected(code)

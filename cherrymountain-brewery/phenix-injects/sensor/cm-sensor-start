@@ -1,0 +1,38 @@
+#!/bin/bash
+# Start a site's network sensor (docs/multisite/PLANS.md 4.6). Installed as
+# /usr/local/sbin/cm-sensor-start and run as the user `malcolm` (uid 1000, in the
+# docker group) by cm-sensor.service, after cm-sensor-provision has configured the
+# checkout.
+#
+# The services are those of Malcolm's `hedgehog` profile that a live capture
+# without file scanning uses: Arkime's capture and viewer (arkime-live), Zeek and
+# Suricata on the mirror port, Filebeat, which sends their logs, and Valkey. The
+# other ten services of the profile work on uploaded or rotated pcap files and on
+# extracted files, which this sensor does not have. --no-deps: this list decides
+# what runs.
+#
+# Env (from /etc/default/cm-sensor, optional): MALCOLM_DIR.
+set -euo pipefail
+
+MALCOLM_DIR="${MALCOLM_DIR:-/opt/malcolm}"
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+SERVICES="valkey filebeat arkime-live zeek-live suricata-live"
+
+log() { echo "cm-sensor-start: $*"; }
+
+# An experiment with no Malcolm to send to: cm-sensor-provision left the reason.
+if [ -f "${STATE}/idle" ]; then
+  log "IDLE: $(cat "${STATE}/idle")"
+  exit 0
+fi
+# cm-sensor.service retries until the first boot's provisioning is done.
+if [ ! -f "${STATE}/provisioned" ]; then
+  log "not provisioned yet (no ${STATE}/provisioned); cm-sensor-provision.service does it"
+  exit 1
+fi
+
+read -r -a services <<< "$SERVICES"
+cd "${MALCOLM_DIR}"
+log "starting ${services[*]}"
+docker compose --profile hedgehog up --detach --no-deps "${services[@]}"
+log "PASS: started. Arkime's capture waits until Malcolm's OpenSearch answers"

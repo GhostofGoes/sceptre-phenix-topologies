@@ -1,9 +1,10 @@
 """cm-sensor is cm-malcolm with a shorter image list and a smaller disk.
 
 The sensor of a site runs Malcolm in its ``hedgehog`` run profile, with the
-scripts that the topology injects into ``malcolm``. Those scripts depend on the
-paths, the packages, and the versions of cm-malcolm, so the two recipes must
-not differ in anything but the image list, the disk size, and comments.
+scripts of phenix-injects/sensor and some of those that the topology injects
+into ``malcolm``. Those scripts depend on the paths, the packages, and the
+versions of cm-malcolm, so the two recipes must not differ in anything but the
+image list, the disk size, and comments.
 """
 
 from __future__ import annotations

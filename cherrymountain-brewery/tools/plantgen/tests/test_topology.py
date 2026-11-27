@@ -209,7 +209,7 @@ def test_the_sensor_of_each_layout(nodes: dict[str, dict[str, Node]]) -> None:
         "os_type": "linux",
         "vcpus": 4,
         "memory": 16384,
-        "drives": [{"image": "cm-sensor.qc2"}],
+        "drives": [{"image": "cm-sensor.qc2", "inject_partition": 1}],
     }
     assert sensor["labels"] == {"zone": "plant", "site": "fc"}
     assert nodes["ep"]["ep-sensor"]["labels"]["zone"] == "soc"

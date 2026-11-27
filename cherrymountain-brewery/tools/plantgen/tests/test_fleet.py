@@ -850,8 +850,9 @@ def test_the_command_writes_and_checks_one_site(
     assert main(["--site", "fc", "--out", str(out)]) == 0
     printed = capsys.readouterr().out
     assert "sites.yaml fits plant.yaml and wan.yaml (4 sites)" in printed
-    # 22 plant files, one copy of an injected file, the topology, the workflow.
-    assert f"wrote 25 files to {out}" in printed
+    # 22 plant files, two copies of an injected file (the router's script and
+    # the sensor's settings), the topology, the workflow.
+    assert f"wrote 26 files to {out}" in printed
     assert (out / "topology-site-fc.yml").is_file()
     assert (out / "phenix-site-fc.yml").is_file()
     assert (out / "injects" / "vrouter" / "cm-vyos-config.sh").is_file()

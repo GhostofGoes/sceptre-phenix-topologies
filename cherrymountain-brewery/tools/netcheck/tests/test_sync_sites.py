@@ -139,7 +139,7 @@ def test_a_copy_without_a_source_is_left_over(fleet: Path) -> None:
     assert len(found) == 1 and "phenix-injects/fleet/fc/ot-svc/plant.hosts is left over" in found[0]
     assert problems(site, check=False) == []
     assert not extra.parent.exists()
-    assert sorted(p.name for p in site.injects.iterdir()) == ["vrouter"]
+    assert sorted(p.name for p in site.injects.iterdir()) == ["sensor", "vrouter"]
 
 
 def test_what_is_left_of_a_site_that_sites_yaml_lost(fleet: Path) -> None:

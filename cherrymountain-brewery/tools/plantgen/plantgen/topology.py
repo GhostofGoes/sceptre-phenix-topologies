@@ -61,13 +61,17 @@ TUNNEL_STEP: Final[int] = 100
 #: The VLAN whose hosts a site with one firewall moves to its plant network.
 #: The sensor of such a site is on that network (PLANS.md, section 4.6).
 OPS_VLAN: Final[str] = "OPS"
-#: The network sensor. No image exists yet: the name, the size (decision D19:
-#: 4 vCPUs, 16 GB), and the host number are those of the site-profiles spike.
+#: The network sensor: the image `cm-sensor` (Malcolm's sensor profile), with the
+#: files of phenix-injects/sensor (`injects.sensor_injections`). The name, the
+#: size (decision D19: 4 vCPUs, 16 GB), and the host number are those of the
+#: site-profiles spike. The injected files go to the image's first partition,
+#: as on malcolm.
 SENSOR_NAME: Final[str] = fleet.SENSOR_NAME
 SENSOR_IMAGE: Final[str] = "cm-sensor.qc2"
 SENSOR_VCPUS: Final[int] = 4
 SENSOR_MEMORY_MB: Final[int] = 16384
 SENSOR_HOST_NUMBER: Final[int] = 60
+SENSOR_INJECT_PARTITION: Final[int] = 1
 
 #: The name of a site's file under phenix-configs.
 FILE_NAME: Final[str] = "topology-site-{code}.yml"
@@ -394,10 +398,11 @@ def _tunnel(site: SiteSpec, host: str, entry: str) -> str:
 def sensor_node(site: SiteSpec, doc: PlantFile) -> dict[str, Any]:
     """The site's network sensor (PLANS.md, sections 4.1 and 4.6).
 
-    It is a stand-in until a sensor image exists. At a site with two firewalls
-    it is in the SOC zone, which has no other host there. At a site with one
-    firewall it is in the plant network, where the OPS hosts are. The mirror
-    app adds its mirror interface.
+    At a site with two firewalls it is in the SOC zone, which has no other
+    host there. At a site with one firewall it is in the plant network, where
+    the OPS hosts are. The mirror app adds its mirror interface. The injected
+    files configure Malcolm's sensor profile at the first boot
+    (`injects.sensor_injections`).
     """
     vlan = site.vlan(fleet.SENSOR_VLAN)
     if vlan not in doc.networks:
@@ -432,14 +437,19 @@ def sensor_node(site: SiteSpec, doc: PlantFile) -> dict[str, Any]:
         "type": "VirtualMachine",
         "general": {
             "hostname": name,
-            "description": "Network sensor (a stand-in: no sensor image exists yet)",
+            "description": "Network sensor: Zeek, Suricata, and Arkime on the "
+            "site's mirror, sent to Malcolm at the head office (mirror NIC added "
+            "by the mirror app)",
         },
         "hardware": {
             "os_type": "linux",
             "vcpus": SENSOR_VCPUS,
             "memory": SENSOR_MEMORY_MB,
-            "drives": [{"image": SENSOR_IMAGE}],
+            "drives": [
+                {"image": SENSOR_IMAGE, "inject_partition": SENSOR_INJECT_PARTITION}
+            ],
         },
+        "injections": injects.sensor_injections(site),
         "labels": {"zone": _zone(site, vlan), "site": site.code},
         "network": {"interfaces": [interface]},
     }

@@ -313,7 +313,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/netcheck/|tools/plantgen/plantgen/|plant/(plant|sites)\.yaml$|wan/wan\.yaml$|sync\.py$|brand/|phenix-configs/|phenix-site-[^/]*\.ya?ml$|phenix-injects/(bbmd|vrouter|guacamole|fleet)/)'
+files = '^cherrymountain-brewery/(tools/netcheck/|tools/plantgen/plantgen/|plant/(plant|sites)\.yaml$|wan/wan\.yaml$|sync\.py$|brand/|phenix-configs/|phenix-site-[^/]*\.ya?ml$|phenix-injects/(bbmd|vrouter|guacamole|fleet|sensor)/)'
 pass_filenames = false
 priority = "check"
 
@@ -353,7 +353,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-|phenix-images/cm-(malcolm|sensor)\.yml$)'
+files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|sensor|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-|phenix-images/cm-(malcolm|sensor)\.yml$)'
 pass_filenames = false
 priority = "check"
 
@@ -389,7 +389,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/plantgen/|plant/|wan/wan\.yaml$|spikes/(site-profiles/profiles|multisite-stamp/stamp)\.py$)'
+files = '^cherrymountain-brewery/(tools/plantgen/|plant/|phenix-injects/sensor/|wan/wan\.yaml$|spikes/(site-profiles/profiles|multisite-stamp/stamp)\.py$)'
 pass_filenames = false
 priority = "check"
 
@@ -532,7 +532,7 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|tools/netcheck/|wan/wan\.yaml$|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole|fleet)/)'
+files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|tools/netcheck/|wan/wan\.yaml$|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole|fleet|sensor)/)'
 pass_filenames = false
 priority = "check"
 

@@ -129,6 +129,10 @@ spec:
       dst: /opt/cherrymountain/malcolm/malcolm-config-slim.yaml
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/malcolm/malcolm-config-slim.yaml
+    - description: settings on top of a profile's when sensors of other sites send to Malcolm
+      dst: /opt/cherrymountain/malcolm/malcolm-config-sensors.yaml
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/malcolm-config-sensors.yaml
     - description: Suricata rules of the baseline detections (sids 9000110 to 9000199)
       dst: /opt/cherrymountain/malcolm/cherrymountain.rules
       permissions: '0644'

@@ -85,6 +85,12 @@ def render_all(plant: Plant, alloc: Allocation) -> dict[str, str]:
         out["phenix/wireguard.yaml"] = _yaml(plant, apps.wireguard_app(plant))
     if plant.spec.scorch:
         out["scorch/pcap.yaml"] = _yaml(plant, apps.scorch_captures(plant))
+    if plant.site is not None:
+        # The single site's detection content has its two writers by hand. A
+        # site's follows this list (plantgen/injects.py, and the fleet's SOC).
+        out[BACNET_WRITERS_FILE] = _json(
+            {"site": plant.site, "writers": bacnet_writers(plant)}
+        )
     for plc, rios in alloc.plc_rios.items():
         out[f"openplc/{plc}/modbus_master.json"] = _json(
             modbus_master(plant, alloc, plc, rios)
@@ -925,6 +931,43 @@ FUXA_BACNET_WRITABLE: frozenset[str] = frozenset(
 def is_bas_front_end(host: HostSpec) -> bool:
     """A FUXA host that operates the building (``app.role: bas``)."""
     return (host.app or {}).get("role") == "bas"
+
+
+#: The file of a site that lists who may write its BACnet objects.
+BACNET_WRITERS_FILE: str = "bacnet-writers.json"
+#: The role of the engineering workstation, which writes BACnet in maintenance.
+WORKSTATION_ROLE: str = "ews"
+WORKSTATION_WHY: str = "the engineering workstation"
+
+
+def bacnet_writers(plant: Plant) -> list[dict[str, str]]:
+    """The hosts that may write a BACnet object, each with its address and why.
+
+    A WriteProperty from any other host is unexpected, and the detection
+    content alerts on it (DESIGN.md 10.3 and 14). The writers are the FUXA
+    hosts with write access to a BACnet device (`bacnet_access`) and the
+    engineering workstation. So the list follows the hosts: where a site has a
+    building front end, it is that host. Where the one SCADA host operates the
+    building too (its source has ``write``), it is the SCADA host.
+    """
+    writers: list[dict[str, str]] = []
+    for host in plant.hosts.values():
+        why: str | None = None
+        if host.role == WORKSTATION_ROLE:
+            why = WORKSTATION_WHY
+        for source in host.fuxa or []:
+            device = plant.hosts.get(source.host)
+            if device is None or device.bacnet is None:
+                continue
+            if is_bas_front_end(host):
+                why = "the building's FUXA front end"
+            elif source.write:
+                why = "the SCADA host, which also operates the building"
+        if why is not None and host.interfaces:
+            address = host.ip(next(iter(host.interfaces)))
+            writers.append({"host": host.name, "address": address, "why": why})
+    # The FUXA hosts first, then the workstation, as the single site lists them.
+    return sorted(writers, key=lambda writer: writer["why"] == WORKSTATION_WHY)
 
 
 def bacnet_access(t: Tag, scada: Host, object_type: str, write: bool = False) -> str:

@@ -3,6 +3,7 @@ name: cherrymountain
 runPeriodically: 5m
 metadata:
   variant: fr
+  site: fr
   wazuh:
     manager: fr-wazuh
     agents:

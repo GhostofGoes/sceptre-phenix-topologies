@@ -403,14 +403,15 @@ jobs:
             cherrymountain-brewery/wan
           persist-credentials: false
 
-      # phenix's vrouter app with a `config` list of VyOS commands, which carries the BGP,
-      # BFD and tunnel configuration the app cannot render. The patch is for the fork's branch.
-      - name: Set up the lab with the vrouter config list
+      # phenix's vrouter app with a `bgp` block, which carries BGP, BFD and the routing policy,
+      # and a `config` list of VyOS commands, which carries the tunnels and what else the app
+      # cannot render. The patch is for the fork's branch.
+      - name: Set up the lab with the vrouter bgp block and config list
         uses: ./.github/actions/cm-lab
         with:
           phenix-repository: ${{ env.PHENIX_REPOSITORY }}
           phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
-          phenix-patch: cherrymountain-brewery/spikes/wan-bgp/patches/vrouter-config-passthrough.ci-e2e-minimega.patch
+          phenix-patch: cherrymountain-brewery/spikes/wan-bgp/patches/vrouter-bgp.ci-e2e-minimega.patch
           images: cm-spike|vyos
 
       - name: Run the spike

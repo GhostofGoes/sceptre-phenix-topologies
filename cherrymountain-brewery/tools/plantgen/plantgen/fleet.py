@@ -145,6 +145,11 @@ def _variant(site: SiteSpec, doc: PlantFile) -> VariantSpec:
     # fleet's scenario decides both.
     variant.wireguard = False
     variant.scorch = False
+    # The fleet has a HELICS broker for each site (PLANS.md, decision D8), and
+    # the phenix helics app has one root broker for an experiment. So a site's
+    # scenario has no helics app: the cherrymountain app renders a broker unit
+    # on the site's sim-ctl (its `site` key, `apps.cherrymountain_app`).
+    variant.helics.app_block = False
     return variant
 
 

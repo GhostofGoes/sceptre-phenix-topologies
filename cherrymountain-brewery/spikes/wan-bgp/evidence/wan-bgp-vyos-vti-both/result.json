@@ -14,17 +14,17 @@
     {
       "name": "phenix rendered the config list of fr-fw-edge after its own configuration, before the commit",
       "passed": true,
-      "detail": "240 commands; /phenix/experiments/spike-wan-bgp/vrouter/fr-fw-edge.boot"
+      "detail": "243 commands; /phenix/experiments/spike-wan-bgp/vrouter/fr-fw-edge.boot"
     },
     {
       "name": "phenix rendered the config list of fc-fw-edge after its own configuration, before the commit",
       "passed": true,
-      "detail": "188 commands; /phenix/experiments/spike-wan-bgp/vrouter/fc-fw-edge.boot"
+      "detail": "197 commands; /phenix/experiments/spike-wan-bgp/vrouter/fc-fw-edge.boot"
     },
     {
       "name": "shadecast committed the rendered configuration at first boot",
       "passed": true,
-      "detail": "20\nNov 24 08:29:13 vyos vyos-router[2671]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 24 08:29:37 shadecast commit[4739]: Successful change to active configuration by user root on unknown\n"
+      "detail": "20\nNov 24 12:54:46 vyos vyos-router[2657]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 24 12:54:59 shadecast commit[4728]: Successful change to active configuration by user root on unknown\n"
     },
     {
       "name": "shadecast holds every line of its config list after the commit",
@@ -34,7 +34,7 @@
     {
       "name": "tumbleweed committed the rendered configuration at first boot",
       "passed": true,
-      "detail": "20\nNov 24 08:29:12 vyos commit[2641]: Successful change to active configuration by user root on unknown\nNov 24 08:29:13 vyos vyos-router[2681]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\n"
+      "detail": "20\nNov 24 12:54:51 vyos vyos-router[2654]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 24 12:55:01 tumbleweed commit[4724]: Successful change to active configuration by user root on unknown\n"
     },
     {
       "name": "tumbleweed holds every line of its config list after the commit",
@@ -44,22 +44,22 @@
     {
       "name": "fr-fw-edge committed the rendered configuration at first boot",
       "passed": true,
-      "detail": "44\nNov 24 08:29:18 vyos commit[2633]: Successful change to active configuration by user root on unknown\nNov 24 08:29:18 vyos vyos-router[2673]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 24 08:29:54 fr-fw-edge commit[8807]: Successful change to active configuration by user root on unknown\n"
+      "detail": "44\nNov 24 12:54:50 vyos commit[2622]: Successful change to active configuration by user root on unknown\nNov 24 12:54:50 vyos vyos-router[2658]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 24 12:55:12 fr-fw-edge commit[8838]: Successful change to active configuration by user root on unknown\n"
     },
     {
       "name": "fr-fw-edge holds every line of its config list after the commit",
       "passed": true,
-      "detail": "all 240 lines are in `show configuration commands`"
+      "detail": "all 243 lines are in `show configuration commands`"
     },
     {
       "name": "fc-fw-edge committed the rendered configuration at first boot",
       "passed": true,
-      "detail": "21\nNov 24 08:29:22 vyos commit[2638]: Successful change to active configuration by user root on unknown\nNov 24 08:29:23 vyos vyos-router[2678]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 24 08:29:53 fc-fw-edge commit[7621]: Successful change to active configuration by user root on unknown\n"
+      "detail": "21\nNov 24 12:54:52 vyos vyos-router[2649]: /usr/lib/live/mount/persistence/boot/vyos/rw/config/scripts/custom/vyos.script\nNov 24 12:55:11 fc-fw-edge commit[7790]: Successful change to active configuration by user root on unknown\n"
     },
     {
       "name": "fc-fw-edge holds every line of its config list after the commit",
       "passed": true,
-      "detail": "all 188 lines are in `show configuration commands`"
+      "detail": "all 197 lines are in `show configuration commands`"
     },
     {
       "name": "all 2 BGP sessions of shadecast are Established",
@@ -109,7 +109,7 @@
     {
       "name": "the head office reaches the site's block through the same tunnel",
       "passed": true,
-      "detail": "10.21.0.0/16 nhid 38 via 10.255.0.1 dev vti101 proto bgp src 10.20.30.1 metric 20"
+      "detail": "10.21.0.0/16 nhid 36 via 10.255.0.1 dev vti101 proto bgp src 10.20.30.1 metric 20"
     },
     {
       "name": "each edge sends its own traffic into a tunnel from its LAN address",
@@ -119,12 +119,12 @@
     {
       "name": "a 1400-byte packet with DF set crosses each tunnel, and a larger one is refused at the edge",
       "passed": true,
-      "detail": "{\"fc-a\": [\"3 packets transmitted, 3 received, 0% packet loss, time 2003ms rtt min/avg/max/mdev = 1.123/1.265/1.354/0.101 ms\", \"PING 10.255.0.0 (10.255.0.0) 1373(1401) bytes of data. ping: local error: message too long, mtu=1400\"], \"fc-b\": [\"3 packets transmitted, 3 received, 0% packet loss, time 2003ms rtt min/avg/max/mdev = 1.218/1.382/1.529/0.127 ms\", \"PING 10.255.0.2 (10.255.0.2) 1373(1401) bytes of data. ping: local error: message too long, mtu=1400\"]}"
+      "detail": "{\"fc-a\": [\"3 packets transmitted, 3 received, 0% packet loss, time 2003ms rtt min/avg/max/mdev = 0.926/1.044/1.160/0.095 ms\", \"PING 10.255.0.0 (10.255.0.0) 1373(1401) bytes of data. ping: local error: message too long, mtu=1400\"], \"fc-b\": [\"3 packets transmitted, 3 received, 0% packet loss, time 2002ms rtt min/avg/max/mdev = 1.222/1.316/1.462/0.104 ms\", \"PING 10.255.0.2 (10.255.0.2) 1373(1401) bytes of data. ping: local error: message too long, mtu=1400\"]}"
     },
     {
       "name": "a host at the site reaches a host at the head office",
       "passed": true,
-      "detail": "--- 10.20.30.11 ping statistics ---\n10 packets transmitted, 10 received, 0% packet loss, time 1807ms\nrtt min/avg/max/mdev = 2.123/2.440/3.846/0.498 ms"
+      "detail": "--- 10.20.30.11 ping statistics ---\n10 packets transmitted, 10 received, 0% packet loss, time 1809ms\nrtt min/avg/max/mdev = 1.646/2.218/3.790/0.612 ms"
     },
     {
       "name": "no edge would send an unused private address out of an uplink",
@@ -144,12 +144,12 @@
     {
       "name": "the head office drops and logs a source that is not the site's when it comes out of the site's tunnel",
       "passed": true,
-      "detail": "forged source 10.12.0.99 (a block of ep-fw-edge); logged at the head office: 6 ipv4-FWD-filter-100-D]IN=vti101 6 ipv4-INP-filter-100-D]IN=vti101; from the site's own address: 3 packets transmitted, 3 received, 0% packet loss, time 401ms rtt min/avg/max/mdev = 1.883/2.073/2.362/0.207 ms"
+      "detail": "forged source 10.12.0.99 (a block of ep-fw-edge); logged at the head office: 6 ipv4-FWD-filter-100-D]IN=vti101 6 ipv4-INP-filter-100-D]IN=vti101; from the site's own address: 3 packets transmitted, 3 received, 0% packet loss, time 401ms rtt min/avg/max/mdev = 1.633/1.803/2.007/0.154 ms"
     },
     {
       "name": "a host at the site reaches a public address as the address of the site's first uplink",
       "passed": true,
-      "detail": "5 packets transmitted, 5 received, 0% packet loss, time 802ms rtt min/avg/max/mdev = 1.677/1.869/2.093/0.161 ms; replies go to 203.0.113.10 (the uplink is 203.0.113.10)"
+      "detail": "5 packets transmitted, 5 received, 0% packet loss, time 803ms rtt min/avg/max/mdev = 1.096/1.374/1.665/0.189 ms; replies go to 203.0.113.10 (the uplink is 203.0.113.10)"
     },
     {
       "name": "the site holds a failover default route for each uplink",
@@ -174,12 +174,12 @@
     {
       "name": "the site moves to its second tunnel when its ShadeCast uplink goes silent",
       "passed": true,
-      "detail": "outage 2.2 s (11 of 300 pings lost; BFD detects in 3 s); now on vti102; --- 10.20.30.11 ping statistics --- 300 packets transmitted, 289 received, 3.66667% packet loss, time 60118ms rtt min/avg/max/mdev = 1.952/2.410/3.222/0.232 ms"
+      "detail": "outage 2.8 s (14 of 300 pings lost; BFD detects in 3 s); now on vti102; --- 10.20.30.11 ping statistics --- 300 packets transmitted, 286 received, 4.66667% packet loss, time 60085ms rtt min/avg/max/mdev = 1.706/2.230/7.474/0.480 ms"
     },
     {
       "name": "the site's default route moves to its second uplink, and a new flow reaches a public address",
       "passed": true,
-      "detail": "default routes: default via 198.18.101.9 dev eth1 proto failover metric 20  | ; 5 packets transmitted, 5 received, 0% packet loss, time 803ms rtt min/avg/max/mdev = 1.616/1.868/2.079/0.171 ms"
+      "detail": "default routes: default via 198.18.101.9 dev eth1 proto failover metric 20  | ; 5 packets transmitted, 5 received, 0% packet loss, time 804ms rtt min/avg/max/mdev = 1.432/1.531/1.679/0.087 ms"
     },
     {
       "name": "the site's default route returns to its first uplink after the repair",
@@ -189,27 +189,27 @@
     {
       "name": "the site returns to its primary tunnel after the repair",
       "passed": true,
-      "detail": "the fault dropped 436 packets; outage on the way back 0.0 s (0 lost); now on vti101"
+      "detail": "the fault dropped 217 packets; outage on the way back 0.0 s (0 lost); now on vti101"
     },
     {
       "name": "both tunnels are as configured after the site's uplink failed and came back",
       "passed": true,
-      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 2 sas fc-b 2"
+      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 4 sas fc-b 2"
     },
     {
       "name": "the site keeps the head office when the head office loses its ShadeCast uplink",
       "passed": true,
-      "detail": "outage 2.4 s (12 of 300 lost); the site stayed on vti101; ShadeCast's best path to the head office is '64501 64505'"
+      "detail": "outage 2.8 s (14 of 300 lost); the site stayed on vti101; ShadeCast's best path to the head office is '64501 64505'"
     },
     {
       "name": "both tunnels are as configured while the head office is on one ISP",
       "passed": true,
-      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 2 sas fc-b 2"
+      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 4 sas fc-b 2"
     },
     {
       "name": "the repair costs nothing, and the site is on its primary tunnel",
       "passed": true,
-      "detail": "the fault dropped 472 packets; outage 0.0 s (0 lost); now on vti101"
+      "detail": "the fault dropped 523 packets; outage 0.0 s (0 lost); now on vti101"
     },
     {
       "name": "the head office's ShadeCast fault never ends the BGP session of the site's second tunnel",
@@ -219,7 +219,7 @@
     {
       "name": "in 6 rounds of the head office's uplink fault, every outage is shorter than the hold time",
       "passed": true,
-      "detail": "outages [2.4, 2.2, 2.2, 2.2, 2.2, 2.6] s; 0 of 6 rounds reached 4.0 s: []"
+      "detail": "outages [2.8, 2.2, 2.6, 2.6, 2.8, 2.4] s; 0 of 6 rounds reached 4.0 s: []"
     },
     {
       "name": "with its uplink's link down, a tunnel does not move to the other uplink",
@@ -234,27 +234,42 @@
     {
       "name": "after 200 s of silence on its uplink, the first tunnel comes back by itself",
       "passed": true,
-      "detail": "on vti101 23 s after the repair (the fault dropped 726 packets). The first tunnel before the repair: fc-a: #6, CONNECTING, IKEv2, 693e3bfc97bb64bd_i* 0000000000000000_r fc-a: #5, CONNECTING, IKEv2, 88a9ac6321873991_i* 0000000000000000_r fc-b: #4, ESTABLISHED, IKEv2, f3897b21369223d5_i 5501cf907f4f4076_r* fc-b-vti: #4, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128 fc-b: #2, ESTABLISHED, IKEv2, a70a35aa3f1d97a6_i* 54855297b569fb0d_r fc-b-vti: #1, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128 vti101@NONE DOWN <NOARP>. After: fc-a: #7, ESTABLISHED, IKEv2, 37a7ab0824bd0319_i fb76dc0bda7917d9_r* fc-a-vti: #5, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128 fc-a: #6, CONNECTING, IKEv2, 693e3bfc97bb64bd_i* 0000000000000000_r fc-a: #5, CONNECTING, IKEv2, 88a9ac6321873991_i* 0000000000000000_r fc-b: #4, ESTABLISHED, IKEv2, f3897b21369223d5_i 5501cf907f4f4076_r* fc-b-vti: #4, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128 fc-b: #2, ESTABLISHED, IKEv2, a70a35aa3f1d97a6_i* 54855297b569fb0d_r fc-b-"
+      "detail": "on vti101 12 s after the repair (the fault dropped 704 packets). The first tunnel before the repair: fc-a: #21, CONNECTING, IKEv2, 3a1b9508abfdd2a5_i* 0000000000000000_r fc-a: #20, CONNECTING, IKEv2, b49fb6411d993125_i* 0000000000000000_r fc-a: #19, CONNECTING, IKEv2, 98a89dea5917b4db_i* 0000000000000000_r fc-a: #18, CONNECTING, IKEv2, 0aaba6abc03dd9dc_i* 0000000000000000_r fc-a: #17, CONNECTING, IKEv2, 72f1c9315b0490fc_i* 0000000000000000_r fc-a: #12, CONNECTING, IKEv2, 96d93460ad05b79a_i* 0000000000000000_r fc-a: #11, CONNECTING, IKEv2, 9b607fd3015394d3_i* 0000000000000000_r fc-a: #10, CONNEC. After: fc-a: #26, ESTABLISHED, IKEv2, 0b7fd95fe72745b3_i d79522be7e0e688d_r* fc-a-vti: #26, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128 fc-a: #25, ESTABLISHED, IKEv2, 4ccd6f9c069d4dab_i 9d499b3d332e34dc_r* fc-a-vti: #23, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128 fc-a: #24, ESTABLISHED, IKEv2, 641285f827cd2d75_i 6ec3a052a68957fb_r* fc-a-vti: #22, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128 fc-a: #23, ESTABLISHED, IKEv2, 8f6dbb09dfa1baf6_i f82486d71"
     },
     {
       "name": "both tunnels are as configured after all the faults",
       "passed": true,
-      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 3 sas fc-b 2"
+      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 13 sas fc-b 2"
     },
     {
       "name": "the head office's edge comes back from a reboot with its configuration",
       "passed": true,
-      "detail": "seconds after the reboot command: {\"edge answers\": 63, \"its BGP sessions are up\": 78}; 0 of 240 config lines missing: []"
+      "detail": "seconds after the reboot command: {\"edge answers\": 60, \"its BGP sessions are up\": 65}; 0 of 243 config lines missing: []"
     },
     {
       "name": "after the head office's edge restarts, the site reaches the head office again by itself",
       "passed": true,
-      "detail": "outage 59.2 s (299 of 3000 pings lost); seconds after the reboot command: {\"edge answers\": 63, \"its BGP sessions are up\": 78, \"the site routes through its primary tunnel\": 87, \"traffic is back\": 61}; traffic came back -17 s after the head office's BGP sessions were up (negative: before); now on vti101; --- 10.20.30.11 ping statistics --- 3000 packets transmitted, 2701 received, 9.96667% packet loss, time 603824ms rtt min/avg/max/mdev = 1.625/2.107/9.944/0.298 ms"
+      "detail": "outage 51.2 s (280 of 3000 pings lost); seconds after the reboot command: {\"edge answers\": 60, \"its BGP sessions are up\": 65, \"the site routes through its primary tunnel\": 72, \"traffic is back\": 54}; traffic came back -11 s after the head office's BGP sessions were up (negative: before); now on vti101; --- 10.20.30.11 ping statistics --- 3000 packets transmitted, 2720 received, 9.33333% packet loss, time 603890ms rtt min/avg/max/mdev = 1.623/2.361/11.135/0.654 ms"
     },
     {
       "name": "both tunnels are as configured after the head office's restart",
       "passed": true,
-      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 5 sas fc-b 3"
+      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 14 sas fc-b 3"
+    },
+    {
+      "name": "the head office's edge comes back from a crash with its configuration",
+      "passed": true,
+      "detail": "seconds after the reboot command: {\"edge answers\": 35, \"its BGP sessions are up\": 60}; 0 of 243 config lines missing: []"
+    },
+    {
+      "name": "after the head office's edge crashes, the site reaches the head office again by itself",
+      "passed": true,
+      "detail": "outage 49.4 s (249 of 3000 pings lost); seconds after the reboot command: {\"edge answers\": 35, \"its BGP sessions are up\": 60, \"the site routes through its primary tunnel\": 67, \"traffic is back\": 50}; traffic came back -10 s after the head office's BGP sessions were up (negative: before); now on vti101; --- 10.20.30.11 ping statistics --- 3000 packets transmitted, 2751 received, 8.3% packet loss, time 603874ms rtt min/avg/max/mdev = 1.251/1.950/8.681/0.498 ms"
+    },
+    {
+      "name": "both tunnels are as configured after the head office's crash",
+      "passed": true,
+      "detail": "vti101@NONE UNKNOWN <NOARP,UP,LOWER_UP> vti102@NONE UNKNOWN <NOARP,UP,LOWER_UP> sas fc-a 15 sas fc-b 4"
     },
     {
       "name": "each ISP takes its default route back when it loses the prefix that the route depends on",
@@ -264,12 +279,12 @@
     {
       "name": "both default routes and the site's primary tunnel return when the ISPs peer again",
       "passed": true,
-      "detail": "both default routes 9 s after the repair: default nhid 26 proto bgp src 198.18.105.1 metric 20 nexthop via 198.18.101.1 dev eth1 weight 1 nexthop via 203.0.113.1 dev eth0 weight 1; the site is on vti101"
+      "detail": "both default routes 10 s after the repair: default nhid 24 proto bgp src 198.18.105.1 metric 20 nexthop via 198.18.101.1 dev eth1 weight 1 nexthop via 203.0.113.1 dev eth0 weight 1; the site is on vti101"
     }
   ],
   "versions": {
-    "phenix": "Branch afbcba7 [ghostofgoes/sceptre-phenix] (commit afbcba7) Tue Nov 24 08:24:50 UTC 2026",
-    "minimega": "ip-10-0-132-194: minimega 3.3.0 66ed1aacc8107f00cb003a512e835d6f32886dda 2026-11-24",
+    "phenix": "Branch afbcba7 [ghostofgoes/sceptre-phenix] (commit afbcba7) Tue Nov 24 12:52:22 UTC 2026",
+    "minimega": "runnervmeozm8: minimega 3.3.0 66ed1aacc8107f00cb003a512e835d6f32886dda 2026-11-24",
     "qemu": "Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers",
     "ovs": "DB Schema 8.5.1",
     "phenix-ref": "afbcba70f488e222f0236114d162bbb526051784",
@@ -278,22 +293,25 @@
   "facts": {
     "tunnels": "vti",
     "the IPsec tunnels are opened by": "both ends",
-    "commands that the generator adds to the spike's lists": "{\"shadecast\": 5, \"tumbleweed\": 5, \"fr-fw-edge\": 46, \"fc-fw-edge\": 17}",
-    "commands": "{\"shadecast\": 69, \"tumbleweed\": 69, \"fr-fw-edge\": 240, \"fc-fw-edge\": 188}",
-    "fr-fw-edge show version": "Version:          VyOS 999.202611230649\nRelease train:    rolling\nRelease flavor:   qemu\n\nBuilt by:         root@dd128df75840\nBuilt on:         Mon 23 Nov 2026 06:49 UTC\nBuild UUID:       f7839e30-aedc-4454-b410-9ea03aa8796f\nBuild commit ID:  91ccacad5e507a\n\nArchitecture:     x86_64\nBoot via:         installed image\nSystem type:      KVM guest\nSecure Boot:      n/a (BIOS)\n\nHardware vendor:  QEMU\nHardware model:   Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996)\nHardware S/N:     \nHardware UUID:    92bf2486-60d5-4dff-8a72-e136d121a0d3\n\nCopyright:        VyOS maintainers and contributors\n",
+    "commands that the generator adds to the spike's lists": "{\"shadecast\": 5, \"tumbleweed\": 5, \"fr-fw-edge\": 49, \"fc-fw-edge\": 26}",
+    "commands": "{\"shadecast\": 69, \"tumbleweed\": 69, \"fr-fw-edge\": 243, \"fc-fw-edge\": 197}",
+    "fr-fw-edge show version": "Version:          VyOS 999.202611230649\nRelease train:    rolling\nRelease flavor:   qemu\n\nBuilt by:         root@dd128df75840\nBuilt on:         Mon 23 Nov 2026 06:49 UTC\nBuild UUID:       f7839e30-aedc-4454-b410-9ea03aa8796f\nBuild commit ID:  91ccacad5e507a\n\nArchitecture:     x86_64\nBoot via:         installed image\nSystem type:      KVM guest\nSecure Boot:      n/a (BIOS)\n\nHardware vendor:  QEMU\nHardware model:   Ubuntu 24.04 PC v2 (i440FX + PIIX, arch_caps fix, 1996)\nHardware S/N:     \nHardware UUID:    293970ed-b127-4eee-8a97-a32ef79d83ac\n\nCopyright:        VyOS maintainers and contributors\n",
     "fr-fw-edge kernel, FRR, WireGuard": "6.18.64-1-vyos\nFRRouting 10.7.1 (vyos) on Linux(6.18.64-1-vyos).\nfilename:       /lib/modules/6.18.64-1-vyos/kernel/drivers/net/wireguard/wireguard.ko.xz\nversion:        1.0.0\nintree:         Y\n",
-    "shadecast's routes to the head office and to Tumbleweed": "BGP routing table entry for 198.18.105.0/24, version 3\nPaths: (2 available, best #1, table default)\n  Advertised to peers:\n  198.18.0.18 203.0.113.2\n  64505\n    203.0.113.2 from 203.0.113.2 (198.18.105.1)\n      Origin IGP, metric 0, localpref 200, valid, external, best (Local Pref)\n      Community: 64500:1\n      Last update: Tue Nov 24 08:29:58 2026\n  64501 64505\n    198.18.0.18 from 198.18.0.18 (198.18.101.254)\n      Origin IGP, localpref 150, valid, external\n      Community: 64500:2\n      Last update: Tue Nov 24 08:29:58 2026\nBGP routing table entry for 198.18.101.0/24, version 2\nPaths: (1 available, best #1, table default)\n  Advertised to peers:\n  203.0.113.2\n  64501\n    198.18.0.18 from 198.18.0.18 (198.18.101.254)\n      Origin IGP, metric 0, localpref 150, valid, external, best (First path received)\n      Community: 64500:2\n      Last update: Tue Nov 24 08:29:41 2026\n",
-    "fc-fw-edge ip rule": "0:\tfrom all lookup local\n101:\tfrom 203.0.113.10 lookup 101\n102:\tfrom 198.18.101.10 lookup 102\n220:\tfrom all lookup 220\n32766:\tfrom all lookup main\n32767:\tfrom all lookup default\n",
-    "fr-fw-edge show vpn ipsec sa": "Connection    State    Uptime    Bytes In/Out    Packets In/Out    Remote address    Remote ID      Proposal\n------------  -------  --------  --------------  ----------------  ----------------  -------------  -----------------------------\nfc-a-vti      up       48s       5K/6K           102/112           203.0.113.10      203.0.113.10   AES_CBC_256/HMAC_SHA2_256_128\nfc-a-vti      up       50s       0B/104B         0/2               203.0.113.10      203.0.113.10   AES_CBC_256/HMAC_SHA2_256_128\nfc-b-vti      up       48s       4K/4K           74/88             198.18.101.10     198.18.101.10  AES_CBC_256/HMAC_SHA2_256_128\nfc-b-vti      up       50s       1K/1K           21/20             198.18.101.10     198.18.101.10  AES_CBC_256/HMAC_SHA2_256_128\n",
-    "fc-fw-edge show vpn ipsec sa": "Connection    State    Uptime    Bytes In/Out    Packets In/Out    Remote address    Remote ID     Proposal\n------------  -------  --------  --------------  ----------------  ----------------  ------------  -----------------------------\nfc-a-vti      up       51s       6K/6K           118/108           198.18.105.1      198.18.105.1  AES_CBC_256/HMAC_SHA2_256_128\nfc-a-vti      up       53s       104B/0B         2/0               198.18.105.1      198.18.105.1  AES_CBC_256/HMAC_SHA2_256_128\nfc-b-vti      up       51s       5K/4K           94/78             198.18.105.1      198.18.105.1  AES_CBC_256/HMAC_SHA2_256_128\nfc-b-vti      up       53s       1K/1K           19/21             198.18.105.1      198.18.105.1  AES_CBC_256/HMAC_SHA2_256_128\n",
-    "fc-fw-edge bfd": "Session count: 2\nSessionId  LocalAddress                             PeerAddress                             Status          Profile             \n=========  ============                             ===========                             ======          =======             \n1870930759 10.255.0.1                               10.255.0.0                              up              WAN                 \n2937208538 10.255.0.3                               10.255.0.2                              up              WAN                 \n",
+    "shadecast's routes to the head office and to Tumbleweed": "BGP routing table entry for 198.18.105.0/24, version 3\nPaths: (2 available, best #1, table default)\n  Advertised to peers:\n  198.18.0.18 203.0.113.2\n  64505\n    203.0.113.2 from 203.0.113.2 (198.18.105.1)\n      Origin IGP, metric 0, localpref 200, valid, external, best (Local Pref)\n      Community: 64500:1\n      Last update: Tue Nov 24 12:55:17 2026\n  64501 64505\n    198.18.0.18 from 198.18.0.18 (198.18.101.254)\n      Origin IGP, localpref 150, valid, external\n      Community: 64500:2\n      Last update: Tue Nov 24 12:55:17 2026\nBGP routing table entry for 198.18.101.0/24, version 2\nPaths: (1 available, best #1, table default)\n  Advertised to peers:\n  203.0.113.2\n  64501\n    198.18.0.18 from 198.18.0.18 (198.18.101.254)\n      Origin IGP, metric 0, localpref 150, valid, external, best (First path received)\n      Community: 64500:2\n      Last update: Tue Nov 24 12:55:06 2026\n",
+    "fc-fw-edge ip rule": "0:\tfrom all lookup local\n101:\tfrom 203.0.113.10 lookup 101\n102:\tfrom 198.18.101.10 lookup 102\n151:\tfrom 203.0.113.10 lookup 151\n152:\tfrom 198.18.101.10 lookup 152\n220:\tfrom all lookup 220\n32766:\tfrom all lookup main\n32767:\tfrom all lookup default\n",
+    "fr-fw-edge show vpn ipsec sa": "Connection    State    Uptime    Bytes In/Out    Packets In/Out    Remote address    Remote ID      Proposal\n------------  -------  --------  --------------  ----------------  ----------------  -------------  -----------------------------\nfc-a-vti      up       55s       5K/6K           98/115            203.0.113.10      203.0.113.10   AES_CBC_256/HMAC_SHA2_256_128\nfc-a-vti      up       57s       1K/1K           19/19             203.0.113.10      203.0.113.10   AES_CBC_256/HMAC_SHA2_256_128\nfc-b-vti      up       55s       5K/6K           101/116           198.18.101.10     198.18.101.10  AES_CBC_256/HMAC_SHA2_256_128\nfc-b-vti      up       57s       1K/1K           21/22             198.18.101.10     198.18.101.10  AES_CBC_256/HMAC_SHA2_256_128\n",
+    "fc-fw-edge show vpn ipsec sa": "Connection    State    Uptime    Bytes In/Out    Packets In/Out    Remote address    Remote ID     Proposal\n------------  -------  --------  --------------  ----------------  ----------------  ------------  -----------------------------\nfc-a-vti      up       1m        1K/1K           19/19             198.18.105.1      198.18.105.1  AES_CBC_256/HMAC_SHA2_256_128\nfc-a-vti      up       58s       6K/5K           119/101           198.18.105.1      198.18.105.1  AES_CBC_256/HMAC_SHA2_256_128\nfc-b-vti      up       1m        1K/1K           22/21             198.18.105.1      198.18.105.1  AES_CBC_256/HMAC_SHA2_256_128\nfc-b-vti      up       58s       6K/5K           119/103           198.18.105.1      198.18.105.1  AES_CBC_256/HMAC_SHA2_256_128\n",
+    "fc-fw-edge bfd": "Session count: 2\nSessionId  LocalAddress                             PeerAddress                             Status          Profile             \n=========  ============                             ===========                             ======          =======             \n2789049776 10.255.0.1                               10.255.0.0                              up              WAN                 \n3721466223 10.255.0.3                               10.255.0.2                              up              WAN                 \n",
     "the head office's tunnel filter rules": "\tset N_VPN-FC {\n\t\tip saddr != @N_VPN-FC iifname \"vti101\" log prefix \"[ipv4-FWD-filter-100-D]\" counter packets 3 bytes 252 drop comment \"ipv4-FWD-filter-100\"\n\t\tip saddr != @N_VPN-FC iifname \"vti102\" log prefix \"[ipv4-FWD-filter-101-D]\" counter packets 0 bytes 0 drop comment \"ipv4-FWD-filter-101\"\n\t\tip saddr != @N_VPN-FC iifname \"vti101\" log prefix \"[ipv4-INP-filter-100-D]\" counter packets 3 bytes 252 drop comment \"ipv4-INP-filter-100\"\n\t\tip saddr != @N_VPN-FC iifname \"vti102\" log prefix \"[ipv4-INP-filter-101-D]\" counter packets 0 bytes 0 drop comment \"ipv4-INP-filter-101\"\n",
     "the head office's uplink for each public address": "{\"198.18.0.17\": \"eth1\", \"198.18.0.18\": \"eth0\", \"203.0.113.1\": \"eth0\", \"198.18.101.1\": \"eth1\", \"203.0.113.9\": \"eth0\", \"198.18.101.9\": \"eth1\"}",
-    "head office uplink fault, every round": "[{\"round\": 1, \"outage_s\": 2.4, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}}, {\"round\": 2, \"outage_s\": 2.2, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BGP Notification received\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}, {\"round\": 3, \"outage_s\": 2.2, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}, {\"round\": 4, \"outage_s\": 2.2, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}, {\"round\": 5, \"outage_s\": 2.2, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BGP Notification received\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}, {\"round\": 6, \"outage_s\": 2.6, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}]",
-    "first tunnel's IKE SA with its link down": "fc-a: #3, ESTABLISHED, IKEv2, 88f442c1cbdb5f0c_i a55c010799382d14_r* local '203.0.113.10' @ 203.0.113.10[500] remote '198.18.105.1' @ 198.18.105.1[500] AES_CBC-256/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/MODP_2048 established 1038s ago, rekeying in 26219s active: IKE_DPD fc-a-vti: #3, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128 installed 1038s ago, rekeying in 2160s, expires in 2562s",
-    "head office restart": "{\"outage_s\": 59.2, \"tunnels opened by\": \"both\", \"edge answers\": 63, \"its BGP sessions are up\": 78, \"the site routes through its primary tunnel\": 87, \"traffic is back\": 61}",
-    "fr-fw-edge IKE SAs for each tunnel after the head office's restart": "{\"fc-a\": 5, \"fc-b\": 3}: fc-b: #8, ESTABLISHED, IKEv2, 00d345b5235fcf4f_i 14709a47bfd84385_r*\n  fc-b-vti: #8, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-b: #7, ESTABLISHED, IKEv2, fb457a7d72dc8729_i a7740c0293709f44_r*\n  fc-b-vti: #7, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #6, ESTABLISHED, IKEv2, 593893f441c96972_i 20e990c01035c1a9_r*\n  fc-a-vti: #6, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #5, ESTABLISHED, IKEv2, f5e8ff714071c356_i 3b6391f52662a67b_r*\n  fc-a-vti: #5, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #4, ES",
-    "fc-fw-edge IKE SAs for each tunnel after the head office's restart": "{\"fc-a\": 5, \"fc-b\": 3}: fc-b: #16, ESTABLISHED, IKEv2, 72dce47ed38e0189_i c242c3c4766a2843_r*\n  fc-b-vti: #11, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #15, ESTABLISHED, IKEv2, b0e6adc8370aae04_i 3b18fd05a8535f66_r*\n  fc-a-vti: #10, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-b: #14, ESTABLISHED, IKEv2, 00d345b5235fcf4f_i* 14709a47bfd84385_r\n  fc-b-vti: #16, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-b: #13, ESTABLISHED, IKEv2, fb457a7d72dc8729_i* a7740c0293709f44_r\n  fc-b-vti: #15, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a",
-    "the ISPs without their peering": "\nNeighbor        V         AS   MsgRcvd   MsgSent   TblVer  InQ OutQ  Up/Down State/PfxRcd   PfxSnt Desc\n198.18.0.18     4      64501       674       689        0    0    0 00:00:08      Connect        0 Tumbleweed Fiber\n203.0.113.2     4      64505       539       594       19    0    0 00:09:42            1        2 Head office and\n\nTotal number of neighbors 2\nOrigin codes:  i - IGP, e - EGP, ? - incomplete\nRPKI validation codes: V valid, I invalid, N Not found\n\n     Network          Next Hop            Metric LocPrf Weight Path\n *>  198.18.105.0/24  0.0.0.0                                0 64505 i\n *>  203.0.113.0/24   0.0.0.0                  0             0 i\n\nTotal number of prefixes 2, total number of paths 2\n"
+    "head office uplink fault, every round": "[{\"round\": 1, \"outage_s\": 2.8, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}}, {\"round\": 2, \"outage_s\": 2.2, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}, {\"round\": 3, \"outage_s\": 2.6, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}, {\"round\": 4, \"outage_s\": 2.6, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}, {\"round\": 5, \"outage_s\": 2.8, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}, {\"round\": 6, \"outage_s\": 2.4, \"sessions down\": {\"fr-fw-edge\": [\"10.255.0.1: BFD down initiated\", \"203.0.113.1: BFD down initiated\"], \"fc-fw-edge\": [\"10.255.0.0: BFD down initiated\"], \"shadecast\": [\"203.0.113.2: BFD down initiated\"]}, \"sessions up before the fault\": true, \"site on\": \"vti101\"}]",
+    "first tunnel's IKE SA with its link down": "fc-a: #12, CONNECTING, IKEv2, 0fc6c164937b0a59_i* 0000000000000000_r local '%any' @ 203.0.113.10[500] remote '%any' @ 198.18.105.1[500] active: IKE_VENDOR IKE_INIT IKE_NATD IKE_CERT_PRE IKE_AUTH IKE_CERT_POST IKE_CONFIG IKE_AUTH_LIFETIME IKE_ESTABLISH CHILD_CREATE fc-a: #11, CONNECTING, IKEv2, a7f1a4e7eacccf2a_i* 0000000000000000_r local '%any' @ 203.0.113.10[500] remote '%any' @ 198.18.105.1[500]",
+    "head office restart": "{\"outage_s\": 51.2, \"tunnels opened by\": \"both\", \"edge answers\": 60, \"its BGP sessions are up\": 65, \"the site routes through its primary tunnel\": 72, \"traffic is back\": 54}",
+    "fr-fw-edge IKE SAs for each tunnel after the head office's restart": "{\"fc-a\": 14, \"fc-b\": 3}: fc-a: #17, ESTABLISHED, IKEv2, 192f9af818fbdde6_i 1fa768ead57e50be_r*\n  fc-a-vti: #17, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #16, ESTABLISHED, IKEv2, b420d02ab88b4873_i d6374058514345df_r*\n  fc-a-vti: #16, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #15, ESTABLISHED, IKEv2, 2f0685f21dba09e6_i e52e41fa17bef133_r*\n  fc-a-vti: #14, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #14, ESTABLISHED, IKEv2, 5135839a0b720ac8_i 5efa1e60bd485bbc_r*\n  fc-a-vti: #12, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a",
+    "fc-fw-edge IKE SAs for each tunnel after the head office's restart": "{\"fc-a\": 14, \"fc-b\": 3}: fc-b: #44, ESTABLISHED, IKEv2, 53127a92e5d6eba9_i 76e4d3068dd53372_r*\n  fc-b-vti: #42, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #43, ESTABLISHED, IKEv2, 967ff24f6b787d1a_i 7de9b5ec792e47ec_r*\n  fc-a-vti: #43, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-b: #42, ESTABLISHED, IKEv2, 13af5c29e219d659_i* 3f5309d8675d6c4a_r\n  fc-b-vti: #31, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-b: #41, ESTABLISHED, IKEv2, 397f51757ccc048a_i* ce8ecf4ec14f0b97_r\n  fc-b-vti: #30, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a",
+    "head office crash": "{\"outage_s\": 49.4, \"tunnels opened by\": \"both\", \"edge answers\": 35, \"its BGP sessions are up\": 60, \"the site routes through its primary tunnel\": 67, \"traffic is back\": 50}",
+    "fr-fw-edge IKE SAs for each tunnel after the head office's crash": "{\"fc-a\": 15, \"fc-b\": 4}: fc-a: #19, ESTABLISHED, IKEv2, df8d02642c20dfa4_i 8336a2c11e2c8ebd_r*\n  fc-a-vti: #19, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #18, ESTABLISHED, IKEv2, ba570dc7de59d304_i 541aed6047d3162e_r*\n  fc-a-vti: #18, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-b: #17, ESTABLISHED, IKEv2, f2575cbef9293f9b_i e1eecf7af743d2a6_r*\n  fc-b-vti: #17, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #16, ESTABLISHED, IKEv2, 16ac00d904c5bca6_i 9ae632517117e793_r*\n  fc-a-vti: #14, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a",
+    "fc-fw-edge IKE SAs for each tunnel after the head office's crash": "{\"fc-a\": 15, \"fc-b\": 4}: fc-b: #63, ESTABLISHED, IKEv2, 13f09e2044580ccc_i 30bf531bb23f4a32_r*\n  fc-b-vti: #60, reqid 1, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #62, ESTABLISHED, IKEv2, c77e7b45ed5ceb46_i 8228c52df2537f87_r*\n  fc-a-vti: #59, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #61, ESTABLISHED, IKEv2, df8d02642c20dfa4_i* 8336a2c11e2c8ebd_r\n  fc-a-vti: #63, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-a: #60, ESTABLISHED, IKEv2, ba570dc7de59d304_i* 541aed6047d3162e_r\n  fc-a-vti: #62, reqid 2, INSTALLED, TUNNEL, ESP:AES_CBC-256/HMAC_SHA2_256_128\nfc-b",
+    "the ISPs without their peering": "\nNeighbor        V         AS   MsgRcvd   MsgSent   TblVer  InQ OutQ  Up/Down State/PfxRcd   PfxSnt Desc\n198.18.0.18     4      64501       907       924        0    0    0 00:00:08      Connect        0 Tumbleweed Fiber\n203.0.113.2     4      64505       754       814       23    0    0 00:09:55            1        2 Head office and\n\nTotal number of neighbors 2\nOrigin codes:  i - IGP, e - EGP, ? - incomplete\nRPKI validation codes: V valid, I invalid, N Not found\n\n     Network          Next Hop            Metric LocPrf Weight Path\n *>  198.18.105.0/24  0.0.0.0                                0 64505 i\n *>  203.0.113.0/24   0.0.0.0                  0             0 i\n\nTotal number of prefixes 2, total number of paths 2\n"
   }
 }

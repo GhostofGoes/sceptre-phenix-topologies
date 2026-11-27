@@ -139,6 +139,9 @@ set policy local-route rule 101 fwmark 101
 set policy local-route rule 101 set table 101
 set protocols static table 101 route 0.0.0.0/0 next-hop 203.0.113.9
 set protocols static table 101 route 0.0.0.0/0 blackhole distance 250
+set policy local-route rule 151 fwmark 101
+set policy local-route rule 151 set table 151
+set protocols static table 151 route 0.0.0.0/0 blackhole
 set protocols bgp neighbor 10.255.0.0 remote-as 64505
 set protocols bgp neighbor 10.255.0.0 description 'overlay fc-a'
 set protocols bgp neighbor 10.255.0.0 timers keepalive 3
@@ -160,6 +163,9 @@ set policy local-route rule 102 fwmark 102
 set policy local-route rule 102 set table 102
 set protocols static table 102 route 0.0.0.0/0 next-hop 198.18.101.9
 set protocols static table 102 route 0.0.0.0/0 blackhole distance 250
+set policy local-route rule 152 fwmark 102
+set policy local-route rule 152 set table 152
+set protocols static table 152 route 0.0.0.0/0 blackhole
 set protocols bgp neighbor 10.255.0.2 remote-as 64505
 set protocols bgp neighbor 10.255.0.2 description 'overlay fc-b'
 set protocols bgp neighbor 10.255.0.2 timers keepalive 3

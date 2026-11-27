@@ -37,7 +37,7 @@ Paths are relative to `cherrymountain-brewery/`.
 | `lans` | One LAN with one host behind each edge, and one host on the internet. The VLAN of a site LAN is a zone of that site in the plan of the fleet |
 | `tunnels` | One tunnel from an uplink of a site to the head office. A site with two ISPs has two tunnels |
 | `site_blocks` | The private address blocks of each site |
-| `vpn` | The type of tunnel (`vti` for route-based IPsec, or `wireguard`), the public endpoint of the head office, and which end opens the IPsec tunnels |
+| `vpn` | The type of tunnel (`vti` for route-based IPsec, or `wireguard`), the public endpoint of the head office, and which end opens the IPsec tunnels. Also how long IKE sends a request again before it gives a silent peer up |
 | `head_office` | The edge router of the head office, its public prefix, and the address that its private addresses get on the internet |
 | `timers` | The BGP keepalive and hold times, and the BFD interval |
 
@@ -60,7 +60,7 @@ hold what the `vrouter` app does not write itself:
   not in the blocks of that site. Its private addresses go to the internet as
   one address of its own prefix, through either ISP.
 - A site: a tunnel for each uplink, tied to that uplink, with BGP and BFD
-  inside. The default route of each uplink stays only while the gateway of the
+  inside. A second rule drops a packet of a tunnel that cannot use its uplink. The default route of each uplink stays only while the gateway of the
   uplink answers a ping. The private addresses of the site go to the internet
   as the address of the uplink.
 - Each edge: discard routes, so that a private address never leaves an uplink

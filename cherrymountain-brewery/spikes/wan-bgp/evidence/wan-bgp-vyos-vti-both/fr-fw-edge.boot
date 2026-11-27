@@ -181,6 +181,9 @@ set vpn ipsec esp-group WAN lifetime 3600
 set vpn ipsec esp-group WAN pfs dh-group14
 set vpn ipsec esp-group WAN proposal 10 encryption aes256
 set vpn ipsec esp-group WAN proposal 10 hash sha256
+set vpn ipsec options retransmission attempts 3
+set vpn ipsec options retransmission timeout 2
+set vpn ipsec options retransmission base 1.8
 set interfaces vti vti101 description 'fc-a over ShadeCast Cable'
 set interfaces vti vti101 address 10.255.0.0/31
 set interfaces vti vti101 mtu 1400

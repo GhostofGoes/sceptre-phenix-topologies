@@ -1,0 +1,15 @@
+{
+  "site": "ep",
+  "writers": [
+    {
+      "host": "ep-bas-fuxa",
+      "address": "10.32.10.10",
+      "why": "the building's FUXA front end"
+    },
+    {
+      "host": "ep-ews",
+      "address": "10.22.30.12",
+      "why": "the engineering workstation"
+    }
+  ]
+}

@@ -67,13 +67,35 @@ files, `variant` holds the code of the site.
 
 | Site | Hosts | PLCs | Tags | Files | Copies of injected files |
 |---|---:|---:|---:|---:|---:|
-| `fr` | 39 | 5 | 516 | 29 | 8 |
+| `fr` | 39 | 5 | 516 | 29 | 10 |
 | `ep` | 34 | 5 | 516 | 29 | 8 |
 | `cs` | 25 | 4 | 458 | 25 | 6 |
 | `fc` | 18 | 3 | 365 | 22 | 1 |
 
 The copies are under `injects/` in the directory of the site
 ([The injected files of a site](#the-injected-files-of-a-site)).
+
+Two things differ from the files of a variant:
+
+- A site has no `phenix/helics.yaml`. The fleet has a HELICS broker for each
+  site, and the `helics` app of phenix has one root broker for an experiment.
+  The `cherrymountain` app starts the broker of a site. For this,
+  `phenix/cherrymountain.yaml` of a site has `site`, the code of the site,
+  next to `variant`.
+- A site has `bacnet-writers.json`. The file lists the hosts that can write a
+  BACnet object at the site, each with its address and the reason. A write
+  from a different host is not expected, and the detection content gives an
+  alert for it.
+
+Who can write BACnet follows the hosts of the site, not its code:
+
+| Site | Writers |
+|---|---|
+| `fr`, `ep`, `cs` | The FUXA host of the building (`bas-fuxa`) and the engineering workstation |
+| `fc` | `fc-scada-fuxa`. The site has no `bas-fuxa`, so its one SCADA host operates the building and has `write: true` on those sources |
+
+The same rule on the `full` variant gives the two addresses in the
+hand-written Suricata rules and Zeek script. A test compares them.
 
 `plantgen/fleet.py` builds a plant description of the site from `plant.yaml`
 and the entry of the site. The description has one variant, and the name of
@@ -251,6 +273,7 @@ stops and names the line.
 | `ot-svc/plant.hosts` | The whole file: each address of each node of the site |
 | `ot-svc/60-ot-svc.sh` | The networks of the hosts that take their time from `ot-svc`, and the network of the sensor |
 | `guacamole/cm-guacamole-start`, `guacamole/nginx.conf` | The name and the address of the jump host in its certificate, and the name that its web server answers to |
+| `malcolm/cherrymountain.rules`, `malcolm/zeek/cherrymountain.zeek` | The addresses that can write BACnet, from `bacnet-writers.json`. Only a site with the SOC injects these files, which is `fr` |
 
 - plantgen writes a copy only when a node of the site injects the file. `fc`
   has one router and no `ot-svc`, so it has one copy.

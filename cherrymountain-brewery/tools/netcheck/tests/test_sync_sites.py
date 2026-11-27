@@ -97,8 +97,8 @@ def test_a_missing_or_unknown_block_is_named(fleet: Path) -> None:
     with pytest.raises(ValueError, match=r"a site's scenario has no place for \['wireguard'\]"):
         sync.site_scenario(site)
     (site.phenix_dir / "wireguard.yaml").unlink()
-    (site.phenix_dir / "helics.yaml").unlink()
-    with pytest.raises(ValueError, match=r"has no block for \['helics'\]; run plantgen"):
+    (site.phenix_dir / "ntp.yaml").unlink()
+    with pytest.raises(ValueError, match=r"has no block for \['ntp'\]; run plantgen"):
         sync.site_scenario(site)
 
 

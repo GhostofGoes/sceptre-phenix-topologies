@@ -843,17 +843,29 @@ office opened new SAs as soon as it was up, and its INITIAL_CONTACT made the
 site drop the old ones. Each tunnel then had one IKE SA again. WireGuard lost
 57.8 s.
 
-There are three choices now:
+There were three choices:
 
-1. Only the site opens the tunnels, as today. Each tunnel has one IKE SA at
-   each point. A crash of the head office costs each site 168 s.
+1. Only the site opens the tunnels, with the retry schedule of strongSwan.
+   Each tunnel has one IKE SA at each point. A crash of the head office costs
+   each site 168 s.
 2. Both ends open the tunnels. A crash costs 63 s. Each tunnel has two IKE SAs
    from the start and up to five after some faults. No check failed because of
-   them in three runs, and a crash of the head office removed them.
+   them, and a crash of the head office removed them.
 3. Only the site opens the tunnels, with a shorter retry schedule for IKE.
    With three tries from 2 s, IKE gives a silent peer up after about 24 s.
-   `wan.yaml` now has this schedule, and it is the recommendation if its run
-   passes. A crash is then expected to cost about a minute plus 24 s at most.
+
+Decided (D21, on 2026-11-25): the third choice. Run 41 tested it, and
+`wan.yaml` has it. A crash cost 57.8 s and a clean restart 60.2 s, which is the boot of
+the router. The return after 200 s of silence took 10 s, where it took 27 to
+62 s. Each tunnel had one IKE SA at each point. With the same schedule, the
+second choice got worse: one tunnel had 13 IKE SAs after the crash.
+
+The shorter schedule also showed a gap. With the link of an uplink down, one
+packet of a tunnel left through the other uplink. It left in the moment before
+FRR installed the blackhole of the tunnel's table. A second rule to a table that
+always holds a blackhole closes the gap (finding V12 of
+[spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos)). Run 42
+had that rule, and all three jobs passed 56 of 56 checks.
 
 Does the head office need its own AS? The other choice is that it takes
 ISP-assigned addresses on two uplinks, like `fc` and `ep`, with one hub
@@ -928,6 +940,35 @@ What crosses the VPN, by site:
 | Sensor to `malcolm` | From its security zone | From the plant VLAN | From the plant VLAN |
 | Time and names | `ot-svc` asks `fr`'s | The same | The firewall and the SCADA server ask `fr`'s |
 | Engineering, from the head office | `eng-jump` over HTTPS to the site's jump host, then RDP to its `ews` | `eng-jump` by RDP to its `ews` | `fr`'s `ews` to the PLCs, in a maintenance window |
+
+The sensor image is `cm-sensor` (decided on 2026-11-25). It is Malcolm in its
+`hedgehog` run profile, on the base of `cm-malcolm`. Hedgehog Linux, the sensor
+distribution of Malcolm, runs that same profile since Malcolm v25.12.0. The
+installer of Hedgehog Linux asks questions and has no documented unattended
+mode, so the range does not use its ISO. The profile has Zeek, Suricata,
+Arkime capture, and the forwarders. It has no OpenSearch of its own.
+
+A sensor needs three conduits through the VPN and both firewalls:
+
+- From the sensor to `malcolm` on 5044/tcp. Filebeat sends the logs to
+  Logstash, with a client certificate.
+- From the sensor to `malcolm` on 9200/tcp. Arkime writes its sessions to
+  OpenSearch.
+- From `malcolm` to the sensor on 8005/tcp. An analyst who opens a session in
+  Arkime gets its packets from the sensor, which keeps the pcap files.
+
+The image built in CI on 2026-11-25, and it is 3.8 GiB as a compressed qcow2.
+It booted there, and miniccc registered after 52 s. Malcolm did not run in
+that test. These parts do not exist yet:
+
+- The injected files that configure the `hedgehog` profile at the first boot.
+- The configuration that lets `malcolm` accept the sensors: the two open ports, the
+  certificates, a service account, and the shared Arkime secret.
+- The three conduits in the matrix.
+- More index space at `malcolm`, which has 24 GB for one site today.
+
+The memory that the profile needs is not measured. The estimate is 5 to 7 GB
+without file scanning, so the 16 GB of D19 is enough.
 
 At `fr`, `ep`, and `cs` no conduit reaches a PLC from outside its site. A
 conduit is a permitted path between two zones. At `fc` one conduit does, on
@@ -1671,6 +1712,36 @@ State on 2026-11-24:
   45 at `fc` and 65 at `cs`. That is the layout of [4.1](#41-what-each-site-is), and
   an exercise can use it.
 
+State on 2026-11-25:
+
+- The app part of stage 3 exists. It is on the branch
+  `feat-cherrymountain-fleet-app` of the apps repository, and it did not run
+  on a VM. A site's app block names the site (`site: ep`). The app then reads
+  the site's files, uses the site's host names, and starts the site's HELICS
+  broker on `<code>-sim-ctl`. The broker listens on that host's MGMT address
+  only. The app's tests configure all four sites.
+- A site's scenario has no `helics` app. That app starts one root broker for
+  an experiment, and two brokers on one host fail without a message. The
+  tool netcheck refuses a site scenario that has the app.
+- The hosts that have permission to write BACnet are data for each site
+  (`plant/generated/fleet/<code>/bacnet-writers.json`). At `fr`, `ep`, and
+  `cs` they are `bas-fuxa` and `ews`. At `fc` the list has the pub's one SCADA
+  host only (decided on 2026-11-25). The Suricata rules and the Zeek script
+  of `fr` take their lists from that data.
+- The sensor image has a recipe, `cm-sensor`
+  ([4.6](#46-what-the-head-office-does)).
+- The image recipes have one source, which is this repository. A job in the
+  images repository fails when a copy there differs (decided on 2026-11-25).
+- One site still lacks these parts before it can boot alone:
+  - The WAN side of its edge: a peer, a default route, and NAT (stage 4).
+  - The sensor's first-boot files, and the configuration of `malcolm` for sensors.
+  - A way to restart one site. Today a person restarts its broker, its
+    federates, and its field devices by hand.
+  - The first boot itself, after stage 0.
+- The BACnet alert cannot fire at `fc` alone, because a site alone has no
+  detector. In the fleet, `malcolm` at `fr` needs the writer lists of all
+  four sites (stage 4). The text of the alert still names `bas-fuxa`.
+
 Stage 1 ran on a GitHub runner, as the Phase 0 VM spikes did. Stage C needs
 the cluster and an hour. It is the first thing to run there, because every
 later stage depends on a full-size frame that crosses between nodes. Stage 2
@@ -1706,7 +1777,7 @@ another day. A row that says "not answered" still stands as recommended.
 | D18 | Engineering and history at `fc` | Neither on site, an `ews`, a historian, or both ([4.6](#46-what-the-head-office-does)). The question on 2026-11-23 was: what does a company regulated as breweries and a pub do? | A small historian and no `ews`. A brewpub is a brewery to TTB and the state. A brewery makes and keeps its records at the brewery, so the pub keeps its own store and sends a copy to the head office. No rule asks for an `ews`, and nobody at a pub will use one. The head office programs the PLCs through its own jump host, with multifactor sign-in and a recorded session. It uses a rule that the pub's edge keeps closed outside a maintenance window. The pub keeps a copy of each program ([REGIONS.md §7](REGIONS.md#7-breweries-and-a-pub-licences-and-records)) | Answered (2026-11-23) as recommended. This document now plans it |
 | D19 | The sensors at `cs` and `fc` | The same sensor as `ep` (4 vCPUs, 16 GB), a lighter one, or none at the pub | The same, until a sensor image exists to measure | The same (2026-11-23) |
 | D20 | How the company is licensed, which decides what `fc` is in law. Researched in depth on 2026-11-23 ([REGIONS.md §7](REGIONS.md#7-breweries-and-a-pub-licences-and-records)) | P2: every site is a brewery with a wholesaler's beer license, and each taproom is that license's sales room. With this option, `fc` adds a kitchen under a food license. P3: every site is a brew pub. P1: the pub belongs to an unrelated company, which holds a brew pub license. P4: a CherryMountain brewery with another company's restaurant next door. Colorado bars the same owners and shareholders from holding a brewery or wholesaler's license together with a brew pub, restaurant, or tavern license ([§7.1](REGIONS.md#71-one-owner-cannot-hold-both-colorado-licences)) | P2, on firmer ground. The state's data show companies with a taproom at each of several breweries. Food changes nothing, because the Code neither requires nor forbids it there. The limit is the drink: a brewery's taproom pours beer only. A full bar at the pub needs P3, P1, or P4. With P3, `ep` gains a pub and a kitchen. With P1 or P4, the VPN joins two companies, whose contract must keep them apart | Open |
-| D21 | Who opens the IPsec tunnels | The site only (the head office answers). That gives one SA for each tunnel, and about 175 s of outage at every site after a head office restart. Both ends. Then the site drops its stale SA at once, and a tunnel can have two SAs after a long outage ([4.5](#45-the-vpn)) | The site only, with a shorter retry schedule for IKE, if its run passes. All of it ran on 2026-11-24 ([4.5](#45-the-vpn)). No tunnel stuck in either mode. A clean restart cost 88 s when only the site opens the tunnels, and 59 to 66 s when both ends open them. A crash cost 168 s and 63 s. The site-only mode kept one IKE SA for each tunnel, and the other mode collected up to five. It was "test both, and the expected winner is both ends" | Tested (2026-11-24), with a crash of the head office too. The choice is open among three ([4.5](#45-the-vpn)). The configuration is the site only, with a shorter IKE retry schedule that a run still tests |
+| D21 | Who opens the IPsec tunnels | The site only (the head office answers). That gives one SA for each tunnel, and about 175 s of outage at every site after a head office restart. Both ends. Then the site drops its stale SA at once, and a tunnel can have two SAs after a long outage ([4.5](#45-the-vpn)) | The site only, with a shorter retry schedule for IKE (three tries from 2 s). All of it ran on 2026-11-24 ([4.5](#45-the-vpn)). With the schedule of strongSwan, a crash of the head office cost 168 s when only the site opens the tunnels. It cost 63 s when both ends open them. With the shorter schedule, it cost 58 s in the site-only mode, and each tunnel kept one IKE SA. The both-ends mode collected up to 13 IKE SAs for a tunnel. It was "test both, and the expected winner is both ends" | The site only, with the shorter schedule (2026-11-25). The tests ran on 2026-11-24, and `wan.yaml` has this configuration |
 | D22 | The rooftop unit at `ep`, which has no taproom ([4.1](#41-what-each-site-is)) | Keep it, for the office and a tasting room. Or drop it, and then the building federate, the power PLC's load shedding, and the building SCADA's screen must work without it | Keep it: no site then drops a unit inside an area (C11) | Keep it (2026-11-23) |
 | D23 | How the company's engineers reach the other sites ([4.6](#46-what-the-head-office-does)) | The vendor's `dmz-jump`, or a jump host of the company's own in `fr`'s DMZ (one more VM) | The company's own, `eng-jump`: named accounts, multifactor sign-in, recorded sessions. The vendor's host reaches no other site | The company's own (2026-11-23) |
 | D24 | The utility's peak-hour signal at `fc` ([REGIONS.md §6.2](REGIONS.md#62-electricity)) | An OpenADR client that holds the boiler off in the hour that sets the bill. That is a new flow from the internet into the pub. Or the tariff as documentation only | Later: `fc` has no power area and no revenue meter in the first build, so nothing uses the signal | Later (2026-11-23) |

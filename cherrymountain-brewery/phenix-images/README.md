@@ -317,7 +317,8 @@ runtime (a PLC's own), and the web interface of InfluxDB.
 ## Wazuh agent
 
 These images carry the Wazuh agent: `cm-svc`, `cm-fuxa`, `cm-wireguard`,
-`cm-guacamole`, `cm-malcolm`, `cm-desktop`, `cm-ews`, and `cm-historian`.
+`cm-guacamole`, `cm-malcolm`, `cm-sensor`, `cm-desktop`, `cm-ews`, and
+`cm-historian`.
 DESIGN.md 14 lists the Linux hosts in OPS, HMI, BAS, the DMZ, and the SOC. All
 of the images install the agent the same way, and none enables it:
 
@@ -492,6 +493,36 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
   `python-dotenv==1.2.4`, `pyyaml==6.0.3`, `requests==2.34.2`, and
   `ruamel.yaml==0.19.1`.
 
+## cm-sensor
+
+- Purpose: This image is the network sensor of a site (`<code>-sensor`) in
+  the multi-site range ([docs/multisite/PLANS.md](../docs/multisite/PLANS.md),
+  section 4.6). It is Malcolm in its `hedgehog` run profile. Hedgehog Linux,
+  the sensor distribution of Malcolm, runs that same profile since Malcolm
+  v25.12.0. The profile has Zeek with the ICSNPP parsers, Suricata, Arkime
+  capture, and the forwarders. It has no OpenSearch, no Logstash, and no
+  dashboards. The sensor sends what it records to `malcolm` at the head
+  office.
+- Base: The base is that of `cm-malcolm`. The disk is 32 GB. The disk holds
+  the pcap files that the sensor keeps.
+- Contents: The recipe is `cm-malcolm.yml` with a shorter image list and a
+  smaller disk. `tests/soc/test_sensor_image.py` makes sure that the two files
+  differ in nothing else.
+  - The image has the 11 Malcolm images of the `hedgehog` profile as
+    compressed copies on disk under `/var/lib/cm-malcolm/images` (2.6 GB).
+    Each of them is also in `cm-malcolm`.
+  - The paths are those of `cm-malcolm`, so that the same injected scripts
+    load the images and start the capture.
+- Build: Use the commands above, with `<name>` set to `cm-sensor`. The build
+  downloads 2.6 GB from `ghcr.io`.
+- Used by: `ep-sensor`, `cs-sensor`, and `fc-sensor`.
+- Pinned versions: The versions are those of `cm-malcolm`.
+- Limits: The image built in CI on 2026-11-25 (3.8 GiB as a compressed
+  qcow2). It booted there, and miniccc registered after 52 s. Malcolm did not
+  run in that test. The injected files that configure the `hedgehog` profile
+  at the first boot do not exist yet. The same is true for the files that let
+  `malcolm` accept the sensors.
+
 ## cm-wazuh
 
 - Purpose: This image is the SIEM (`wazuh`): the Wazuh manager, indexer, and
@@ -626,10 +657,17 @@ The PLCs, the ot-sim devices, the simulation nodes, and the routers have no agen
 - Build: Use the commands above, with `<name>` set to `cm-ews`.
 - Used by: `ews`.
 - Pinned versions: The image pins OpenPLC Editor `4.3.4` (SHA-256
-  `b8186372...ec75fa0`), `BAC0==2026.7.25`, `pymodbus==3.16.2`,
-  `asyncua==2.1.0`, and the Wazuh agent `4.14.10-1`. Chromium is as in
-  `cm-desktop`. The image does not use `opcua-client`, because its current
+  `27718205...124cdd2`, see the note below), `BAC0==2026.7.25`,
+  `pymodbus==3.16.2`, `asyncua==2.1.0`, and the Wazuh agent `4.14.10-1`.
+  Chromium is as in `cm-desktop`. The image does not use `opcua-client`, because its current
   release needs Python 3.14, and noble has 3.12.
+- The OpenPLC Editor checksum: Upstream built the assets of release 4.3.4
+  again on 2026-11-23, from its branch `feature/DOPE-893-backport-v4.3.4`. The
+  tag did not move, and the old checksum stopped matching. Upstream publishes
+  no signature and no checksum file. The pin is the SHA-256 of the AppImage of
+  that build (160,476,940 bytes), read on 2026-11-24. If upstream builds the
+  assets again, the image build stops at the checksum test. Then compare the
+  new asset with the release page before you change the pin.
 
 ## cm-historian
 

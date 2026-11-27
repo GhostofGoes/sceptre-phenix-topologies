@@ -3,6 +3,7 @@ name: cherrymountain
 runPeriodically: 5m
 metadata:
   variant: ep
+  site: ep
 hosts:
 - hostname: ep-sim-ctl
   metadata:

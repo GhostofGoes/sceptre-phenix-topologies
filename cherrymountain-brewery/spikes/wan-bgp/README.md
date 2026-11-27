@@ -492,6 +492,8 @@ times a second:
     the head office.
   - Each ISP takes its default route back when the ISPs stop peering, and
     gives it again after the repair.
+- [x] Since run 40, a run also crashes the edge of the head office: a reboot
+      with no shutdown.
 
 ### Result on VyOS
 
@@ -540,7 +542,7 @@ times a second:
   [evidence/wan-bgp-vyos-vti](evidence/wan-bgp-vyos-vti), and
   [evidence/wan-bgp-vyos-vti-both](evidence/wan-bgp-vyos-vti-both) have the
   summary, the result, and the script that phenix rendered for each router.
-  The files are from run 38, with the keys removed.
+  The files are from run 42, with the keys removed.
 
 | Run | Commit | WireGuard job | IPsec job |
 |---|---|---|---|
@@ -557,6 +559,8 @@ times a second:
 | [38](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45354270513) | `d7733e7`: the lists of the generator, the fix of finding V9, and ten more checks | 53 of 53 | 53 of 53 in each of the two IPsec jobs |
 | [39](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45366344077) | `177b3da`: the same lists, and the IKE log of the site from the reboot on | 53 of 53 | 53 of 53 in each of the two IPsec jobs |
 | [40](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45376693022) | `f50385c`: a crash of the edge of the head office after the clean restart | 56 of 56 | 56 of 56 in each of the two IPsec jobs |
+| [41](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45386896279) | `e80b323`: a shorter retry schedule for IKE | 56 of 56 | 55 of 56 when only the site opens the tunnels. One packet of the first tunnel left through the other uplink (finding V12). 56 of 56 when both ends open them |
+| [42](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45397506760) | `36e39eb`: the backstop rule of finding V12 | 56 of 56 | 56 of 56 in each of the two IPsec jobs |
 
 Runs 35 and 37 stopped before a router booted. The job did not check out the
 generator, so the test failed at its first line. Run 36 was canceled to make
@@ -581,6 +585,7 @@ runs 27 to 33.
 | The same fault, six rounds in run 38, with the fix of finding V9 | 2.2, 2.4, 2.6, 2.8, 2.8, and 2.2 s | Only the site opens the tunnels: 2.4, 2.2, 2.8, 2.6, 2.2, and 2.4 s. Both ends open them: 2.4, 2.2, 2.2, 2.2, 2.2, and 2.6 s |
 | The edge of the head office restarts (run 38) | 60.2 s | 88.2 s when only the site opens the tunnels. 59.2 s when both ends open them |
 | The edge of the head office crashes, with no shutdown (run 40) | 57.8 s | 168.4 s when only the site opens the tunnels. 63.4 s when both ends open them |
+| The same crash with the shorter retry schedule for IKE (run 41) | 57.0 s | 57.8 s when only the site opens the tunnels. 50.6 s when both ends open them |
 | The link between the ISPs goes silent (run 38) | The head office had no default route 15 s later, and both routes 10 s after the repair | The same, with both routes 9 s after the repair |
 | The repair | None | None |
 | The ShadeCast uplink of the site is down for 20 s and more | No packet of `fc-a` left through the other uplink. The traffic was back on `fc-a` when the link was back | The same |
@@ -817,7 +822,49 @@ runs 27 to 33.
     The site-only mode has a third choice. VyOS can shorten the retry schedule
     of strongSwan (`vpn ipsec options retransmission`). With three tries from
     2 s, IKE gives a silent peer up after about 24 s, not 165 s. `wan.yaml`
-    now sets that schedule, and the next run tests it.
+    now sets that schedule.
+
+    [Run 41](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45386896279)
+    tested the shorter schedule:
+
+    | Run 41, with the shorter schedule | WireGuard | IPsec, only the site opens | IPsec, both ends open |
+    |---|---|---|---|
+    | Loss at the clean restart | 58.4 s | 60.2 s | 50.6 s |
+    | Loss at the crash | 57.0 s | 57.8 s | 50.6 s |
+    | Return after 200 s of silence | 7 s | 10 s | 8 s |
+    | IKE SAs after the crash, for `fc-a` and for `fc-b` | Not applicable | 1 and 1 | 13 and 4 |
+
+    When only the site opens the tunnels, the crash now costs what the boot of
+    the router costs. Each tunnel had one IKE SA at each point of the run.
+    The site gave its dead SA up after three retries, 22 s after the first
+    one. When both ends open the tunnels, the shorter schedule made the extra
+    SAs worse: `fc-a` had 11 after the faults and 13 after the crash.
+
+    One check of the site-only job failed in run 41, so that job passed 55 of
+    56. The other two jobs passed 56 of 56. Finding V12 has the cause.
+12. V12: For a moment, a packet of a tunnel was able to leave through the other uplink.
+
+    The check sets the link of the first uplink of the site down. Then it
+    counts what the first tunnel sends through the other uplink in 20 s. In run 41,
+    it counted one packet in the site-only IPsec job. In each earlier run, it
+    counted none.
+
+    A rule sends the packets of a tunnel to a table of their own. That table
+    has the route of the uplink and, behind it, a blackhole. FRR installs the
+    blackhole only after the route of the uplink is gone. Between the two, the
+    table is empty. The kernel then goes on to the main table, and the packet
+    leaves through the other uplink with the address of the first one. The gap
+    was there in every run. The shorter retry schedule of finding V10 sent an
+    IKE packet into it.
+
+    The fix is a second rule for the same packets, to a table that holds only
+    a blackhole from the start (`pin_backstop` in
+    `tools/wangen/wangen/vyos.py`).
+    [Run 42](https://github.com/GhostofGoes/sceptre-phenix-topologies/actions/runs/45397506760)
+    had the fix. The check counted no packet in each of the three jobs, and
+    all three passed 56 of 56 checks. With only the site opening the tunnels,
+    the site lost 59.6 s at the clean restart and 58.4 s at the crash. Each
+    tunnel had one IKE SA at each point.
 11. V11: A VyOS router takes what the generator adds to the lists.
 
     Since run 38, the job takes its lists from `tools/wangen`. The generator

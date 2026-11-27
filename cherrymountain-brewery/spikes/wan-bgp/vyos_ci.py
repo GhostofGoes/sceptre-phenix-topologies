@@ -2,23 +2,26 @@
 """CI driver for the wan-bgp spike on VyOS: the lab's WAN on four real routers.
 
 Run as root on a runner prepared by .github/actions/cm-lab, with phenix
-patched by patches/vrouter-config-passthrough.ci-e2e-minimega.patch:
+patched by patches/vrouter-bgp.ci-e2e-minimega.patch:
   sudo -E /opt/cm-spike-venv/bin/python vyos_ci.py
 
 Four VyOS routers and two hosts boot under phenix and minimega: two ISPs that
 peer (shadecast, tumbleweed), the head office's edge on both (fr-fw-edge), and
 the Fort Collins edge on both (fc-fw-edge). Every router gets the commands of
-the range's generator (tools/wangen) as the `config` list of the vrouter app,
-so phenix writes them into the script the image runs at first boot. The lists
+the range's generator (tools/wangen) as the metadata of the vrouter app: BGP,
+its BFD profile, and its lists and route maps as the `bgp` block, and the rest
+as the `config` list. phenix writes the block as VyOS commands, and then the
+list, into the script the image runs at first boot. The commands
 are those of vyos_sketch.py and what the generator adds: a source filter on
 each tunnel, NAT at both edges, the site's failover default routes, and the
 ISPs' conditional default route. Here each ISP's default route depends on the
 other ISP's prefix, because the reduced lab has no transit carrier.
 
 Checked, in order:
-  1. phenix renders the list after its own configuration, before the commit;
-  2. every router commits it at first boot (when one does not,
-     vyos_commit_check.sh names the lines it refuses);
+  1. phenix renders the block as the generator's routing commands, and then
+     the list, after its own configuration and before the commit;
+  2. every router commits both at first boot and then holds every command
+     (when one does not commit, vyos_commit_check.sh names the lines it refuses);
   3. BGP between the ISPs and to the head office, the head office's two
      default routes and their preferred source;
   4. the two WireGuard tunnels, the mark that ties each to an uplink, and BGP
@@ -213,7 +216,7 @@ def topology() -> dict[str, Any]:
     }
 
 
-def scenario(configs: dict[str, list[str]]) -> dict[str, Any]:
+def scenario(metadata: dict[str, dict[str, Any]]) -> dict[str, Any]:
     return {
         "apiVersion": "phenix.sandia.gov/v2",
         "kind": "Scenario",
@@ -222,11 +225,18 @@ def scenario(configs: dict[str, list[str]]) -> dict[str, Any]:
             "apps": [
                 {
                     "name": "vrouter",
-                    "hosts": [{"hostname": name, "metadata": {"config": lines}} for name, lines in configs.items()],
+                    "hosts": [{"hostname": name, "metadata": data} for name, data in metadata.items()],
                 }
             ]
         },
     }
+
+
+def rendered(text: str) -> tuple[set[str], set[str]]:
+    """(The lines phenix wrote for the `bgp` block, the lines it wrote for the `config` list) of a boot script."""
+    head, _, extra = text.partition(" Extra config -")
+    _, _, block = head.partition(" BGP -")
+    return {line.strip() for line in block.splitlines()}, {line.strip() for line in extra.splitlines()}
 
 
 def vyos_op(lab: Lab, vm: str, command: str) -> str:
@@ -1185,6 +1195,10 @@ def run() -> int:
     routers = [router.name for router in model.ROUTERS]
     hosts = [lan.host for lan in model.LANS]
     configs = {router.name: generator.commands(router, keys, KIND, psk) for router in generator_model.ROUTERS}
+    # The same commands as the vrouter app takes them: the `bgp` block, and the `config` list of the rest.
+    metadata = {router.name: generator.metadata(router, keys, KIND, psk) for router in generator_model.ROUTERS}
+    in_config = {name: data.get("config", []) for name, data in metadata.items()}
+    in_block = {name: [line for line in lines if line not in in_config[name]] for name, lines in configs.items()}
     spike_only = {router.name: vyos_sketch.commands(router, keys, KIND, psk) for router in model.ROUTERS}
     lab.fact(
         "commands that the generator adds to the spike's lists",
@@ -1195,10 +1209,14 @@ def run() -> int:
     WORK.mkdir(parents=True, exist_ok=True)
     topology_file, scenario_file = WORK / "topology.yml", WORK / "scenario.yml"
     topology_file.write_text(emit(topology()) + "\n")
-    scenario_file.write_text(emit(scenario(configs)) + "\n")
+    scenario_file.write_text(emit(scenario(metadata)) + "\n")
     lab.save("topology.yml", topology_file.read_text())
     lab.save("scenario.yml", SECRET.sub(r"\1 'REDACTED'", scenario_file.read_text()))
     lab.fact("commands", json.dumps({name: len(lines) for name, lines in configs.items()}))
+    lab.fact(
+        "commands that the bgp block carries, and commands in the config list",
+        json.dumps({name: [len(in_block[name]), len(in_config[name])] for name in configs}),
+    )
 
     try:
         lab.create_experiment(topology_file, scenario_file)
@@ -1213,11 +1231,17 @@ def run() -> int:
             boot = BOOT_DIR / f"{vm}.boot"
             text = boot.read_text() if boot.exists() else ""
             lab.save(f"{vm}.boot", SECRET.sub(r"\1 'REDACTED'", text))
-            extra = text.split("Extra config", 1)[1] if "Extra config" in text else ""
+            block, extra = rendered(text)
+            lost = [line for line in in_block[vm] if line not in block] + [
+                line for line in in_config[vm] if line not in extra
+            ]
             lab.check(
-                f"phenix rendered the config list of {vm} after its own configuration, before the commit",
-                all(line in extra for line in configs[vm]) and extra.rstrip().endswith("commit\nsave\nexit"),
-                f"{len(configs[vm])} commands; {boot}",
+                f"phenix rendered the bgp block of {vm} as the generator's routing commands, "
+                "and then its config list, before the commit",
+                not lost and text.rstrip().endswith("commit\nsave\nexit"),
+                f"{len(lost)} of {len(configs[vm])} commands are not in the script: {redact(json.dumps(lost[:6]))}"
+                if lost
+                else f"{len(in_block[vm])} commands from the block, {len(in_config[vm])} from the list; {boot}",
             )
 
         version = vyos_op(lab, "fr-fw-edge", "show version")
@@ -1253,7 +1277,7 @@ def run() -> int:
             if committed[vm]:
                 missing = config_missing(lab, vm, configs[vm])
                 lab.check(
-                    f"{vm} holds every line of its config list after the commit",
+                    f"{vm} holds every command of the generator after the commit",
                     not missing,
                     f"{len(missing)} of {len(configs[vm])} lines missing: {redact(json.dumps(missing[:8]))}"
                     if missing

@@ -34,7 +34,9 @@ from __future__ import annotations
 
 import ipaddress
 from collections.abc import Callable
+from typing import Any
 
+from wangen import bgp
 from wangen import model as lab
 
 # (tunnel, "hub" or "site") -> (this side's private key, the other side's public key)
@@ -630,6 +632,25 @@ def commands(
         if why := refused(line):
             raise ValueError(f"{router.name}: `{line}` {why}")
     return lines
+
+
+def metadata(
+    router: lab.Router,
+    keys: Keys = placeholder_keys,
+    kind: str = "",
+    psk: PreSharedKey = placeholder_psk,
+) -> dict[str, Any]:
+    """The `vrouter` metadata of one router: its `bgp` block, and the `config` list of the rest.
+
+    The block holds the routing commands of `commands`: BGP, the BFD profile,
+    and the lists and route maps (wangen/bgp.py). phenix writes the block as
+    the same commands, before the lines of `config`, and the router commits
+    both at once. `config` keeps the tunnels, the static and failover routes,
+    the firewall, NAT, and the line that applies `SET-SOURCE` to the routes
+    that BGP installs. A router with no line left has no `config` key.
+    """
+    block, rest = bgp.split(commands(router, keys, kind, psk))
+    return {"bgp": block, **({"config": rest} if rest else {})}
 
 
 def refused(line: str) -> str:

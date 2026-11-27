@@ -363,7 +363,8 @@ def _executable(path: Path) -> bool:
 # --- the sites of the fleet ---------------------------------------------------
 
 #: The apps of a site's scenario that plantgen writes, in the scenario's order.
-SITE_PLANT_APPS: tuple[str, ...] = ("ot-sim", "cherrymountain", "helics", "ntp")
+#: A site has no helics app: the cherrymountain app starts the site's own broker.
+SITE_PLANT_APPS: tuple[str, ...] = ("ot-sim", "cherrymountain", "ntp")
 #: Where the sites' own copies of injected files go, under phenix-injects/.
 SITE_INJECTS: str = "fleet"
 SITE_SCENARIO: str = "scenario-site-{code}.yml"
@@ -373,8 +374,10 @@ SITE_HEADER: str = """\
 # Do not edit: change the sources and run `python sync.py`.
 #
 # Where each app comes from:
-# - ot-sim, cherrymountain, helics, ntp: the blocks that plantgen writes to
-#   plant/generated/fleet/{code}/phenix/.
+# - ot-sim, cherrymountain, ntp: the blocks that plantgen writes to
+#   plant/generated/fleet/{code}/phenix/. A site has no helics app: the
+#   cherrymountain app starts the HELICS broker of the site on {code}-sim-ctl
+#   (its `site` key).
 # - vrouter: the rulesets that netcheck computes from the conduit matrix
 #   (tools/netcheck, netcheck.sitegen) and plant/sites.yaml. They carry the
 #   conduits whose two ends are hosts of this site, and nothing else:

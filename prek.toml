@@ -53,6 +53,9 @@ exclude = { glob = [
     "**/*.DSS",
     "**/*.dss",
     "cherrymountain-brewery/viz/cherrymountain_viz/web/vendor/**",
+    # A spike's recorded result is program output: it holds router output that
+    # the harness cuts at a fixed length, so a cut word is not a misspelling.
+    "cherrymountain-brewery/spikes/**/evidence/**/result.json",
     "renewables/wind/plant/phenix-images/workstation/drivers/**",
     "renewables/wind/plant/phenix-injects/wind-test-harness/**",
     "renewables/wind/plant/simulation-replay/docs/**",
@@ -350,7 +353,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-)'
+files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-|phenix-images/cm-(malcolm|sensor)\.yml$)'
 pass_filenames = false
 priority = "check"
 
@@ -531,6 +534,22 @@ additional_dependencies = [
 ]
 files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|tools/netcheck/|wan/wan\.yaml$|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole|fleet)/)'
 pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# Mermaid blocks in Markdown parse (mermaid.parse() under jsdom, no browser).
+# This is a syntax check. It does not render, so it does not find a diagram
+# that parses and then draws badly on GitHub. prek installs the two packages
+# in the hook's own Node environment.
+id = "cm-mermaid"
+name = "mermaid (syntax of the blocks in Markdown)"
+language = "node"
+entry = "node cherrymountain-brewery/tools/lint/check_mermaid.mjs"
+additional_dependencies = [
+    "jsdom@25.0.1",
+    "mermaid@11.17.2",
+]
+files = '\.md$'
 priority = "check"
 
 [[repos.hooks]]

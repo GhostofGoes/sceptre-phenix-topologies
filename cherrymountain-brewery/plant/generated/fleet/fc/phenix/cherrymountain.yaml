@@ -3,6 +3,7 @@ name: cherrymountain
 runPeriodically: 5m
 metadata:
   variant: fc
+  site: fc
 hosts:
 - hostname: fc-sim-ctl
   metadata:

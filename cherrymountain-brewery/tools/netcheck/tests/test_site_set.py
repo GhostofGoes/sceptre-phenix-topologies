@@ -59,6 +59,12 @@ WAZUH: str = "10.40.10.11"
 MALCOLM: str = "10.40.10.10"
 KEPT: tuple[Kept, ...] = (
     Kept(
+        "scenario",
+        frozenset({MALCOLM}),
+        "the far end of the firewall rules between the site's sensor and Malcolm "
+        "(netcheck.fleet): the fleet has one Malcolm, at the head office",
+    ),
+    Kept(
         "sensor/cm-sensor.env",
         frozenset({MALCOLM}),
         "where the sensor sends: the fleet has one Malcolm, at the head office",

@@ -194,12 +194,17 @@ def test_the_counts_of_each_site(derived: dict[str, site.Site]) -> None:
     # `ep` has four more than its hosts of the Front Range: the sensor's time,
     # names (UDP and TCP), and syslog at ep-ot-svc.
     assert flows == {"fr": 143, "ep": 109, "cs": 38, "fc": 0}
+    # The rules of the conduits between two sites are among them
+    # (test_fleet_conduits.py): a sensor's two uploads at each firewall on the
+    # way out, and Malcolm's request for packets at each firewall behind an edge.
     assert rules == {
-        "fr": {"fr-fw-edge": 0, "fr-fw-ot": 87},
-        "ep": {"ep-fw-edge": 0, "ep-fw-ot": 86},
-        "cs": {"cs-fw-edge": 22},
-        "fc": {"fc-fw-edge": 0},
+        "fr": {"fr-fw-edge": 3, "fr-fw-ot": 96},
+        "ep": {"ep-fw-edge": 2, "ep-fw-ot": 89},
+        "cs": {"cs-fw-edge": 24},
+        "fc": {"fc-fw-edge": 2},
     }
+    between: dict[str, int] = {c: len(sitegen.fleet_rules(s)) for c, s in derived.items()}
+    assert between == {"fr": 12, "ep": 5, "cs": 2, "fc": 2}
 
 
 def test_every_site_flow_is_traced_both_ways() -> None:
@@ -433,11 +438,12 @@ def test_a_removed_rule_is_a_conduit_that_is_not_delivered(
 
 
 def test_the_pub_has_no_rule_to_remove_and_an_open_firewall_is_found(site_tree: Path) -> None:
-    """No conduit inside fc crosses its firewall, so its rulesets accept
-    nothing new. What the check must find there is a firewall that lets the
-    office through to the plant network."""
-    doc_rules: int = sum(sitegen.rule_counts(site.load("fc")).values())
-    assert doc_rules == 0
+    """No conduit inside fc crosses its firewall, so its rulesets accept only
+    what its sensor sends to Malcolm (`fleet`). What the check must find there
+    is a firewall that lets the office through to the plant network."""
+    derived: site.Site = site.load("fc")
+    doc_rules: int = sum(sitegen.rule_counts(derived).values())
+    assert doc_rules == len(sitegen.fleet_rules(derived)) == 2
 
     def edit(doc: dict[str, Any]) -> None:
         ruleset(doc, "fc-fw-edge", "FROM-FC-OFFICE")["default"] = "accept"

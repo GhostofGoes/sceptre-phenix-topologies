@@ -8,6 +8,10 @@ app renders it and as the ``rulesets`` check demands. A firewall that no
 conduit crosses still gets a ruleset for each interface, with no rule to
 accept anything new.
 
+A conduit between two sites (``netcheck.fleet``) has one end here. Its rules
+stand after those of the site's own conduits, at the firewalls of
+``site.FleetPair.hops``, with the far host's address as it is at its own site.
+
 This module computes the two apps and writes no file. ``sync.py`` writes
 ``phenix-configs/scenario-site-<code>.yml``: these two apps and the app blocks
 that plantgen writes for the site. The site's run fails when the ``vrouter``
@@ -19,7 +23,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from netcheck import conduits
+from netcheck import conduits, fleet
 from netcheck.site import Site
 
 #: SoH timing, as in the full scenario.
@@ -57,6 +61,17 @@ def rulesets(site: Site) -> dict[str, dict[str, Any]]:
     A row whose sources are a whole zone gets one rule with the zone's subnet,
     when every host of that network at this site is a source. Any other
     source gets a rule of its own, with its address."""
+    return _rulesets(site)[0]
+
+
+def fleet_rules(site: Site) -> frozenset[str]:
+    """The rules of the conduits between two sites, each as
+    ``<router>:<ruleset>:<id>``. No flow inside the site's topology uses one:
+    its other end is at another site (``checks.check_rule_coverage``)."""
+    return _rulesets(site)[1]
+
+
+def _rulesets(site: Site) -> tuple[dict[str, dict[str, Any]], frozenset[str]]:
     services: dict[str, tuple[conduits.Service, ...]] = {
         cd.id: cd.services for cd in conduits.CONDUITS
     }
@@ -69,6 +84,10 @@ def rulesets(site: Site) -> dict[str, dict[str, Any]]:
                 wanted.setdefault((router, vlan), {}).setdefault(key, []).append(
                     (pair.src, pair.zone_src)
                 )
+    between_sites: dict[str, tuple[conduits.Service, ...]] = {
+        row.id: row.services for row in fleet.FLEET_CONDUITS
+    }
+    far: set[str] = set()
     out: dict[str, dict[str, Any]] = {}
     for router in site.routers:
         egress: dict[str, str] = {}
@@ -106,6 +125,22 @@ def rulesets(site: Site) -> dict[str, dict[str, Any]]:
                             "destination": {"address": _first_address(site, dst), "port": port},
                         }
                     )
+            for pair in site.fleet:
+                if (router, vlan) not in pair.hops:
+                    continue
+                for svc in between_sites[pair.conduit]:
+                    far.add(f"{router}:{ruleset_name(vlan)}:{len(rules) * RULE_STEP}")
+                    rules.append(
+                        {
+                            "id": len(rules) * RULE_STEP,
+                            "action": "accept",
+                            "description": f"{pair.conduit}: {pair.src} to {pair.dst} "
+                            f"{svc.proto}/{svc.port}",
+                            "protocol": svc.proto,
+                            "source": {"address": pair.src_address},
+                            "destination": {"address": pair.dst_address, "port": svc.port},
+                        }
+                    )
             egress[f"eth{number}"] = ruleset_name(vlan)
             sets.append(
                 {
@@ -116,7 +151,7 @@ def rulesets(site: Site) -> dict[str, dict[str, Any]]:
                 }
             )
         out[router] = {"egress": egress, "rulesets": sets}
-    return out
+    return out, frozenset(far)
 
 
 def _source_address(site: Site, host: str, vlan: str) -> str:

@@ -12,6 +12,9 @@ description (plant/sites.yaml, through plantgen's ``fleet.site_plant``).
 - Which firewalls a pair crosses comes from the site's networks and routers
   (``Site.route``). A pair on one network crosses none: its part of the row is
   not enforced at this site. So one row of the matrix can have parts here.
+- A row of ``fleet.FLEET_CONDUITS`` has its two ends at two sites. The site
+  has the part between its own end and the far side of its edge
+  (``Site.fleet``).
 
 The one fact that the Front Range matrix needed for this is the row
 ``plc-peer``: there the two PLCs share a network, and at a site with a control
@@ -28,7 +31,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from netcheck import conduits, plan
+from netcheck import conduits, fleet, plan
 from netcheck.model import ROOT
 from netcheck.reference import Reference
 
@@ -81,6 +84,35 @@ class Pair(BaseModel):
     zone_src: bool
 
 
+class RoleHost(BaseModel):
+    """The host that has a role of the fleet's conduits at one site."""
+
+    model_config = ConfigDict(frozen=True)
+
+    site: str
+    name: str
+    address: str
+
+
+class FleetPair(BaseModel):
+    """One (source host, destination host) of a row of ``fleet.FLEET_CONDUITS``
+    with one end at this site and the other end at another site."""
+
+    model_config = ConfigDict(frozen=True)
+
+    conduit: str
+    src: str
+    dst: str
+    src_address: str
+    dst_address: str
+    #: This site's firewalls that rule the pair, in the order of the path, each
+    #: with the VLAN that the packet arrives on. Out of the site: every
+    #: firewall from the host to the edge, and the edge. Into the site: the
+    #: firewalls behind the edge. The edge takes such a packet from a tunnel,
+    #: which is no interface of the topology and has no ruleset.
+    hops: tuple[tuple[str, str], ...]
+
+
 class Site(BaseModel):
     """A site's reference and what the derivation found on the way."""
 
@@ -90,6 +122,8 @@ class Site(BaseModel):
     reference: Reference
     #: Every pair of an enforced or unenforced row, with its path.
     pairs: tuple[Pair, ...]
+    #: The pairs of the fleet's conduits that have an end here.
+    fleet: tuple[FleetPair, ...] = ()
     #: Rows of the matrix with no pair at the site, by why: an end is on the
     #: internet, at the vendor, or at the utility (``outside``), or the site
     #: does not have the host (``absent``).
@@ -129,7 +163,8 @@ def codes(root: Path = ROOT) -> list[str]:
 def load(code: str, root: Path = ROOT) -> Site:
     """Derive the reference of the site ``code``."""
     _plantgen()
-    from plantgen import fleet, sites, topology, workflow  # noqa: PLC0415
+    from plantgen import fleet as plant_fleet  # noqa: PLC0415
+    from plantgen import sites, topology, workflow  # noqa: PLC0415
     from plantgen.model import PlantError, load_file  # noqa: PLC0415
 
     try:
@@ -139,16 +174,49 @@ def load(code: str, root: Path = ROOT) -> Site:
         spec = next((site for site in found if site.code == code), None)
         if spec is None:
             raise SiteError(f"sites.yaml has no site {code!r}; it has {[s.code for s in found]}")
-        doc = fleet.site_plant(spec, plant_file, wan)
+        doc = plant_fleet.site_plant(spec, plant_file, wan)
         # The fleet's ID rule is plantgen's. The single-site IDs that it starts
         # from are this tool's own plan, not the workflow file that plantgen reads.
         single: dict[str, int] = {name: vlan.vid for name, vlan in plan.VLANS.items()}
         bridge: str = workflow.bridge(spec)
+        docs: dict[str, Any] = {
+            other.code: doc if other.code == code else plant_fleet.site_plant(other, plant_file, wan)
+            for other in found
+        }
         return _derive(
-            spec, doc, topology, lambda used: workflow.vlan_ids(spec, used, single, wan), bridge
+            spec,
+            doc,
+            topology,
+            lambda used: workflow.vlan_ids(spec, used, single, wan),
+            bridge,
+            roles(found, docs, topology),
         )
     except (PlantError, OSError) as exc:
         raise SiteError(str(exc)) from exc
+
+
+def roles(specs: list[Any], docs: dict[str, Any], topology: Any) -> dict[str, tuple[RoleHost, ...]]:
+    """Role of ``fleet`` -> the hosts of the fleet that have it, in the order
+    of sites.yaml. ``docs`` holds each site's plant description by its code."""
+    found: dict[str, list[RoleHost]] = {"sensor": [], "malcolm": []}
+    for spec in specs:
+        doc: Any = docs[spec.code]
+        if spec.sensor:
+            node: dict[str, Any] = topology.sensor_node(spec, doc)
+            found["sensor"].append(
+                RoleHost(
+                    site=spec.code,
+                    name=node["general"]["hostname"],
+                    address=node["network"]["interfaces"][0]["address"],
+                )
+            )
+        malcolm: str = spec.host("malcolm")
+        if malcolm in doc.hosts:
+            leg = next(iter(doc.hosts[malcolm].interfaces.values()))
+            found["malcolm"].append(
+                RoleHost(site=spec.code, name=malcolm, address=leg.ip.split("/")[0])
+            )
+    return {role: tuple(hosts) for role, hosts in found.items()}
 
 
 def _derive(
@@ -157,6 +225,7 @@ def _derive(
     topology: Any,
     vlan_ids: Callable[[set[str]], dict[str, int]],
     bridge: str,
+    role_hosts: dict[str, tuple[RoleHost, ...]] | None = None,
 ) -> Site:
     code: str = spec.code
     here: dict[str, str] = {
@@ -181,24 +250,20 @@ def _derive(
             for vlan in legs:
                 members.setdefault(vlan, []).append(name)
 
-    def route(src: str, dst: str) -> tuple[tuple[str, str], ...] | None:
-        """The routers between two hosts, each with its inbound VLAN.
-
-        Empty when the two share a network. None when no router joins them.
-        A router forwards between the networks that it has a leg on, and a
-        host with two networks does not.
-        """
-        if set(addresses[src]) & set(addresses[dst]):
-            return ()
-        goal: set[str] = set(addresses[dst]) if dst in routers else {next(iter(addresses[dst]))}
-        start: list[str] = list(addresses[src]) if src in routers else [next(iter(addresses[src]))]
+    def walk(
+        start: list[str], goal: set[str], skip: str
+    ) -> tuple[tuple[tuple[str, str], ...], str] | None:
+        """The routers from the networks ``start`` to the first network of
+        ``goal``, each with its inbound VLAN, and that network. A router
+        forwards between the networks that it has a leg on, and ``skip`` does
+        not forward."""
         paths: dict[str, tuple[tuple[str, str], ...]] = dict.fromkeys(start, ())
         queue: list[str] = list(start)
         while queue:
             vlan: str = queue.pop(0)
             if vlan in goal:
-                return paths[vlan]
-            for router in sorted(routers - {src}):
+                return paths[vlan], vlan
+            for router in sorted(routers - {skip}):
                 if vlan not in addresses[router]:
                     continue
                 for onward in addresses[router]:
@@ -206,6 +271,37 @@ def _derive(
                         paths[onward] = (*paths[vlan], (router, vlan))
                         queue.append(onward)
         return None
+
+    def route(src: str, dst: str) -> tuple[tuple[str, str], ...] | None:
+        """The routers between two hosts, each with its inbound VLAN.
+
+        Empty when the two share a network. None when no router joins them.
+        A host with two networks does not forward.
+        """
+        if set(addresses[src]) & set(addresses[dst]):
+            return ()
+        goal: set[str] = set(addresses[dst]) if dst in routers else {next(iter(addresses[dst]))}
+        start: list[str] = list(addresses[src]) if src in routers else [next(iter(addresses[src]))]
+        found = walk(start, goal, src)
+        return None if found is None else found[0]
+
+    edge: str = spec.host("fw-edge")
+
+    def out_of_site(host: str) -> tuple[tuple[str, str], ...]:
+        """The firewalls from a host to the far side of the edge: those up to
+        the edge, and the edge with the network that it takes the packet from."""
+        found = walk([next(iter(addresses[host]))], set(addresses[edge]), edge)
+        if found is None:
+            raise SiteError(f"site {code}: no router joins {host} and {edge}")
+        return (*found[0], (edge, found[1]))
+
+    def into_site(host: str) -> tuple[tuple[str, str], ...]:
+        """The firewalls behind the edge on the way to a host. The edge takes
+        the packet from a tunnel, which has no ruleset of the topology."""
+        hops = route(edge, host)
+        if hops is None:
+            raise SiteError(f"site {code}: no router joins {edge} and {host}")
+        return hops
 
     def members_here(selector: str) -> list[str]:
         """The hosts of the site that a selector of the matrix stands for."""
@@ -256,6 +352,32 @@ def _derive(
             outside: bool = bool(cd.dst_ip) or any(e in full and _shared(spec, e) for e in ends)
             left_out["outside" if outside else "absent"].append(cd.id)
         pairs += found
+
+    fleet_pairs: list[FleetPair] = []
+    for row in fleet.FLEET_CONDUITS:
+        for far_src in (role_hosts or {}).get(row.src, ()):
+            for far_dst in (role_hosts or {}).get(row.dst, ()):
+                if code not in (far_src.site, far_dst.site):
+                    continue
+                if far_src.site == far_dst.site:
+                    # Both ends in one topology: that is a row of the matrix,
+                    # with its probes and its place in the sweep of flows.
+                    raise SiteError(
+                        f"site {code}: {row.id}: {far_src.name} and {far_dst.name} are at one "
+                        "site, and the conduit matrix has no row for them"
+                    )
+                fleet_pairs.append(
+                    FleetPair(
+                        conduit=row.id,
+                        src=far_src.name,
+                        dst=far_dst.name,
+                        src_address=far_src.address,
+                        dst_address=far_dst.address,
+                        hops=out_of_site(far_src.name)
+                        if far_src.site == code
+                        else into_site(far_dst.name),
+                    )
+                )
 
     site_conduits: list[conduits.Conduit] = []
     for cd in conduits.CONDUITS:
@@ -341,6 +463,7 @@ def _derive(
             totals=TOTALS.get(code),
         ),
         pairs=tuple(pairs),
+        fleet=tuple(fleet_pairs),
         left_out={why: tuple(ids) for why, ids in left_out.items()},
         open_paths=tuple(open_paths),
         same_network_pairs=same,
@@ -453,7 +576,7 @@ def _node(
 
 def _sensor(node: dict[str, Any]) -> plan.Node:
     """The site's sensor, which the Front Range plan does not have: plantgen's
-    stand-in (its image does not exist yet)."""
+    node (``topology.sensor_node``)."""
     leg: dict[str, Any] = node["network"]["interfaces"][0]
     return plan.Node(
         name=node["general"]["hostname"],

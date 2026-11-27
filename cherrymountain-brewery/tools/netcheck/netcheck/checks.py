@@ -17,7 +17,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-from netcheck import conduits, plan
+from netcheck import conduits, fleet, plan
 from netcheck import model as m
 from netcheck.reference import Reference, for_variant
 from netcheck.sim import Net, Verdict, flow, trace
@@ -391,7 +391,8 @@ def _service_set() -> list[conduits.Service]:
     for c in conduits.CONDUITS:
         for s in c.services:
             seen[(s.proto, s.port)] = s
-    for s in EXTRA_SERVICES:
+    # The ports of the conduits between two sites: no two hosts of one site use them.
+    for s in (*EXTRA_SERVICES, *fleet.SERVICES):
         seen[(s.proto, s.port)] = s
     return list(seen.values())
 
@@ -528,8 +529,15 @@ def _check_expected(
     return out
 
 
-def check_rule_coverage(v: m.Variant, ref: Reference | None = None) -> list[Finding]:
-    """Every explicit accept rule is used by at least one conduit flow."""
+def check_rule_coverage(
+    v: m.Variant, ref: Reference | None = None, between_sites: frozenset[str] = frozenset()
+) -> list[Finding]:
+    """Every explicit accept rule is used by at least one conduit flow.
+
+    ``between_sites`` names the rules of a site's conduits to another site
+    (``sitegen.fleet_rules``), each as ``<router>:<ruleset>:<id>``. No flow of
+    the topology uses such a rule. It must have exactly one end outside the
+    topology, so that it cannot carry a flow between two hosts of the site."""
     out: list[Finding] = []
     c: str = f"{v.name}/rule-coverage"
     ref = reference(v, ref)
@@ -548,6 +556,21 @@ def check_rule_coverage(v: m.Variant, ref: Reference | None = None) -> list[Find
         for name, rs in fw.router.rulesets.items():
             for r in rs.rules:
                 if r.stateful:
+                    continue
+                if f"{fw.hostname}:{name}:{r.id}" in between_sites:
+                    ends: list[Any] = [
+                        (r.source or {}).get("address"),
+                        (r.destination or {}).get("address"),
+                    ]
+                    if sum(1 for end in ends if end in net.owner) != 1:
+                        out.append(
+                            _err(
+                                c,
+                                f"{fw.hostname} {name} rule {r.id} ({r.description}) is a rule "
+                                f"between two sites, and its ends {ends} are not one host of "
+                                "this site and one address outside it",
+                            )
+                        )
                     continue
                 if f"{fw.hostname}:{name}:{r.id}" not in used:
                     out.append(
@@ -1440,7 +1463,7 @@ def run_site(code: str, root: Path = m.ROOT) -> list[Finding]:
     out += check_router_commands(v)
     out += check_rulesets(v)
     out += check_flows(v, ref)
-    out += check_rule_coverage(v, ref)
+    out += check_rule_coverage(v, ref, sitegen.fleet_rules(derived))
     out += check_soh(v, ref)
     out += check_apps(v, ref, root)
     out += check_services(root, v, ref)
@@ -1525,6 +1548,18 @@ def site_notes(derived: Any) -> list[Finding]:
         paths: str = ", ".join(f"{p.src} -> {p.dst} tcp/{p.port}" for p in derived.open_paths)
         out.append(
             _note(c, f"paths that the Front Range layout blocks and this site leaves open: {paths}")
+        )
+    if derived.fleet:
+        rows: list[str] = list(dict.fromkeys(pair.conduit for pair in derived.fleet))
+        ruled: int = sum(1 for pair in derived.fleet if pair.hops)
+        out.append(
+            _note(
+                f"{derived.code}/between-sites",
+                f"{len(derived.fleet)} pairs of {len(rows)} conduits have their other end at "
+                f"another site ({', '.join(rows)}); {ruled} of them cross a firewall of this "
+                "site that has a ruleset for them. What comes out of a tunnel of the edge "
+                "meets no ruleset of the topology: the WAN side filters it (stage 4)",
+            )
         )
     for why, text in (
         ("outside", "an end on the internet, at the vendor, or at the utility"),

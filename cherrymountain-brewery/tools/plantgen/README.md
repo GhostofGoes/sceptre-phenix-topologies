@@ -188,9 +188,12 @@ host or an address follow the plant description of the site.
 - The uplinks of the edge are its first interfaces. They have the VLAN alias,
   the address, and the mask that `topology-wan.yml` gives the same router. A
   test compares the two files.
-- The sensor is a stand-in. It has the image name `cm-sensor.qc2`, 4 vCPUs,
-  16 GB, and host number 60, as in the site-profiles spike. No such image
-  exists.
+- The sensor has the image `cm-sensor.qc2`, 4 vCPUs, 16 GB, and host number
+  60, as in the site-profiles spike. It injects the first-boot files of
+  `phenix-injects/sensor/`, the capture files of `malcolm` that a sensor also
+  uses, and its own `cm-sensor.env`. It does not inject the
+  Suricata rules and the Zeek script of `malcolm`, because they name Front
+  Range hosts by address. The files go into the first partition of the image.
 - `fr` gets the interfaces, the labels, and the routes that the three modules
   have today. A test compares them, apart from the WAN side of the edge.
 - Across the four files, no hostname and no address occurs twice. Each VLAN
@@ -295,6 +298,7 @@ stops and names the line.
 | `ot-svc/dnsmasq-plant.conf` | The address that the name server listens on |
 | `ot-svc/plant.hosts` | The whole file: each address of each node of the site |
 | `ot-svc/60-ot-svc.sh` | The networks of the hosts that take their time from `ot-svc`, and the network of the sensor |
+| `sensor/cm-sensor.env` | The name and the address of the sensor. The address of `malcolm` stays: the fleet has one Malcolm, at the head office. Only a site with a sensor has this copy |
 | `guacamole/cm-guacamole-start`, `guacamole/nginx.conf` | The name and the address of the jump host in its certificate, and the name that its web server answers to |
 | `guacamole/staff.env` | The number of staff accounts, and the lines of each account. Only a site with `staff` has this copy, which is `ep`. The hand-written file lists no account, and no node injects it |
 | `malcolm/cherrymountain.rules`, `malcolm/zeek/cherrymountain.zeek` | The addresses that can write BACnet, from `bacnet-writers.json`. Only a site with the SOC injects these files, which is `fr` |

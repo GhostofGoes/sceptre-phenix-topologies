@@ -25,7 +25,7 @@ Paths are relative to `cherrymountain-brewery/`.
 | File | What it holds |
 |---|---|
 | `phenix-configs/topology-wan.yml` | Ten VyOS routers and five hosts: 15 VMs, 25 vCPUs, and 25 GB. The interfaces of a router are in the order of its links in `wan.yaml` |
-| `phenix-configs/scenario-wan.yml` | The `config` list of each router for the phenix `vrouter` app. Also the SoH (state of health) pings of each host, and one SCORCH run for each fault |
+| `phenix-configs/scenario-wan.yml` | The `bgp` block and the `config` list of each router for the phenix `vrouter` app. Also the SoH (state of health) pings of each host, and one SCORCH run for each fault |
 | `phenix-wan.yml` | The workflow, with a VLAN ID for each of the 18 aliases |
 
 ## What wan.yaml holds
@@ -47,9 +47,15 @@ link to the site.
 
 ## What a configuration list holds
 
-`wangen/vyos.py` writes one list of VyOS `set` commands for each router. phenix
-puts the list into the script that the router runs at first boot. The lists
-hold what the `vrouter` app does not write itself:
+`wangen/vyos.py` writes one list of VyOS `set` commands for each router.
+`wangen/bgp.py` splits the list for the `vrouter` app. BGP, the BFD profile,
+the prefix lists, the community lists, and the route maps become the `bgp`
+block of the router. The other commands stay a `config` list. phenix writes
+the block as the same commands before the lines of the list, in the script
+that the router runs at first boot. The router commits both at once. Both
+keys need the `vrouter` app of
+[GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27).
+The commands hold what the `vrouter` app does not write from the topology:
 
 - An ISP or a transit router: BGP with the customer, peer, and provider rules.
   An ISP sends the head office a default route only while the ISP holds a
@@ -72,6 +78,7 @@ hold what the `vrouter` app does not write itself:
 |---|---|
 | The lists without the last four items (the source filter, NAT, the failover routes, and the conditional default route) | On four VyOS routers in CI, for both types of tunnel. A test makes sure that the generator writes the same lists as that spike ([spikes/wan-bgp](../../spikes/wan-bgp/README.md#the-same-wan-on-vyos-routers)) |
 | The lists with those four items, and with the routes of each ISP at the head office | On the same four routers in CI. In run 38, each of the three jobs passed 53 of 53 checks ([spikes/wan-bgp](../../spikes/wan-bgp/README.md#findings-on-vyos), findings V9 to V11) |
+| The same commands as a `bgp` block and a shorter `config` list | On the same four routers in CI. In run 43, the jobs compared what phenix rendered from the block with the generator's commands, and each router had each command after the commit ([PLANS.md 7.3.1](../../docs/multisite/PLANS.md#731-a-bgp-block-for-the-vrouter-app)) |
 | The ten routers of the `wan` variant | Not run. The variant needs a phenix host or the cluster ([USER_GUIDE.md](../../USER_GUIDE.md#d-the-whole-wan-as-a-phenix-variant-wan)) |
 
 The pre-shared keys in `scenario-wan.yml` come from a fixed text. They are

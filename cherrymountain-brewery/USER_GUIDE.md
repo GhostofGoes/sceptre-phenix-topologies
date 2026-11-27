@@ -893,8 +893,9 @@ same WAN as VyOS commands in `vyos-sketch/`, one file for each router.
 
 Four VyOS routers and two hosts boot under phenix and minimega. The routers are
 two ISPs, the edge of the head office, and the Fort Collins edge. At first
-boot, each router takes its BGP, BFD, and tunnels from the `config` list of the
-phenix `vrouter` app. That list needs a change to phenix that is still a draft
+boot, each router takes its BGP and BFD from the `bgp` block of the phenix
+`vrouter` app, and its tunnels from the `config` list of that app. Both keys
+need a change to phenix that is still a draft
 ([GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27)).
 One job builds the tunnels with WireGuard, and two jobs build them with
 route-based IPsec.
@@ -955,7 +956,9 @@ are missing:
 
 - The `cherrymountain` app does not know the sites. It needs a change in the
   apps repository before it can read a site's files.
-- The sensor image `cm-sensor.qc2` does not exist.
+- The sensor did not boot with its first-boot files. The image
+  `cm-sensor.qc2` is published, and the files are in `phenix-injects/sensor/`.
+  A site alone has no Malcolm, so its sensor stays idle.
 - The edge of a site has no WAN side in these files: no ISP, no default
   route, no NAT, and no VPN. Part D has that side.
 
@@ -985,8 +988,8 @@ variant from `wan/wan.yaml`: `phenix-wan.yml`,
 
 Before you start, make sure that the phenix host has these items:
 
-- A phenix that accepts the `config` list of the `vrouter` app. That change is
-  a draft
+- A phenix that accepts the `bgp` block and the `config` list of the `vrouter`
+  app for VyOS. That change is a draft
   ([GhostofGoes/sceptre-phenix#27](https://github.com/GhostofGoes/sceptre-phenix/pull/27)).
   Without it, the routers boot with addresses only, and no SoH test passes.
 - The images `vyos.qc2` and `cm-svc.qc2` in `/phenix/images`
@@ -1061,7 +1064,7 @@ None of this works yet. This section tells you what a start will need.
 |---|---|
 | The first run of the single site on a phenix host (stage 0) | Not done. Start with `ci`, as [step 6](#6-start-the-range) says |
 | A cluster of three minimega nodes. A full-size packet must go between two nodes on the bridge of the fleet (stage C) | Not run. The test is a ping of 1472 bytes with fragmentation not permitted. Do the test after `phenix doctor` passes its bridge-trunk check on each node |
-| A phenix that accepts the `vrouter` `config` list | A draft pull request |
+| A phenix that accepts the `bgp` block and the `config` list of the `vrouter` app | A draft pull request |
 | A `wan` variant: the mock internet and the four site edges, 15 VMs (stage 2) | Built and not run on VMs. Part D shows how to start it |
 | The site files (stage 3) | Built and checked offline. Part C lists them. No site started |
 | The app's change for the sites, a sensor image, and the cross-site firewall rules (stages 3 and 4) | Not built |

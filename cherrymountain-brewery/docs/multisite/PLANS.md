@@ -959,13 +959,53 @@ A sensor needs three conduits through the VPN and both firewalls:
 
 The image built in CI on 2026-11-25, and it is 3.8 GiB as a compressed qcow2.
 It booted there, and miniccc registered after 52 s. Malcolm did not run in
-that test. These parts do not exist yet:
+that test. The image is published since 2026-11-27.
 
-- The injected files that configure the `hedgehog` profile at the first boot.
-- The configuration that lets `malcolm` accept the sensors: the two open ports, the
-  certificates, a service account, and the shared Arkime secret.
-- The three conduits in the matrix.
+These parts exist since 2026-11-27 (decision S1). Tests ran each script
+against stand-ins for Malcolm's programs. No part ran on a VM, and no part
+ran against Malcolm's own configurator:
+
+- The first-boot files of a sensor, in `phenix-injects/sensor/`. plantgen
+  gives them to the sensor of each site, with a `cm-sensor.env` that holds the
+  name and the address of the sensor and the address of `malcolm`.
+  `cm-sensor-provision` gives Malcolm's configurator the settings of the
+  `hedgehog` profile. Then it writes the account for OpenSearch and the client
+  certificate of Filebeat in the format of Malcolm's `auth_setup`, because
+  that script asks for both at a prompt. `cm-sensor-acl` is a host firewall:
+  only `malcolm` reaches Arkime's viewer on 8005/tcp, and the sensor forwards
+  nothing from or to its mirror interface.
+- The settings of `malcolm` for sensors. `cm-malcolm-provision` opens
+  Logstash (5044/tcp) and OpenSearch (9200/tcp), creates the account `sensor`,
+  installs the certificates, and uses the shared Arkime secret. It does so
+  only when the app gave it the sensors' credentials. Without them it opens
+  no port, as in the single-site range.
+- The credentials. The `cherrymountain` app makes them for an experiment that
+  has `malcolm` and a sensor: the password of the account, the Arkime secret,
+  a certificate authority, a server certificate for Logstash, and one client
+  certificate for the Filebeat of each sensor. Each experiment today is one
+  site. A site has `malcolm` or a sensor, not both. Thus the sensor of `ep`,
+  `cs`, or `fc` stays idle, and `malcolm` at `fr` opens no port.
+- The three conduits, as rows with an end at each of two sites
+  (`tools/netcheck/netcheck/fleet.py`). Each site rules its own part of a
+  row. A sensor's two rows leave its site through each firewall on the way,
+  and the edge is the last. At `fr`, the rows cross `fr-fw-ot` between the
+  DMZ and the SOC zone. The scenarios of the four sites have 21 such rules:
+  12 at `fr`, 5 at `ep`, and 2 each at `cs` and `fc`. No SoH test probes
+  them, because the far end is not in a site's experiment.
+
+These parts do not exist yet:
+
+- The rules for what comes out of a tunnel at an edge. A tunnel is no
+  interface of the topology, so phenix has no ruleset for it. The WAN
+  generator has to write that filter (stage 4). Today it filters a tunnel at
+  the head office by source address only. Until then, `fr-fw-ot` is the one
+  firewall that rules the sensors' traffic by port at the head office.
+- The detection content for a sensor's site. The Suricata rules and the Zeek
+  script of `malcolm` name Front Range hosts by address. A sensor with a copy
+  would raise an alert for each permitted Modbus write of its site. Thus a
+  sensor has Malcolm's stock detections only.
 - More index space at `malcolm`, which has 24 GB for one site today.
+- The first boot of a sensor on a VM, and a sensor that sends to `malcolm`.
 
 The memory that the profile needs is not measured. The estimate is 5 to 7 GB
 without file scanning, so the 16 GB of D19 is enough.
@@ -1482,6 +1522,43 @@ against sceptre-phenix at `86fd732` (the head of `main` on 2026-11-22).
   runs (`golangci-lint`). The patches are files in this repository, not a
   branch of phenix.
 
+### 7.3.1 A `bgp` block for the `vrouter` app
+
+The same pull request (#27) fills the `bgp` block of the `vrouter` app for
+VyOS: the speaker, its networks, its neighbors with timers and BFD, the BFD
+profiles, and the prefix lists, community lists, and route maps. phenix
+writes the block as VyOS commands before the lines of `config`, and the
+router commits both at once. For `ci-e2e-minimega`, the change is the file
+[vrouter-bgp.ci-e2e-minimega.patch](../../spikes/wan-bgp/patches/vrouter-bgp.ci-e2e-minimega.patch).
+
+```yaml
+- name: vrouter
+  hosts:
+    - hostname: fc-fw-edge
+      metadata:
+        bgp:
+          localAS: 65020
+          routerID: 10.255.2.1
+          neighbors:
+            - address: 10.255.0.0
+              remoteAS: 64505
+              bfdProfile: WAN
+        config:
+          - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 interface eth0
+```
+
+- On VyOS (decision M1a, 2026-11-27): In run 43 of the spikes workflow, the
+  three `wan-bgp-vyos` jobs gave each of the four routers its routing as a
+  `bgp` block and the rest as a `config` list. The run compares what phenix
+  rendered with the generator's commands, and then asks each router for each
+  command after the commit. The run passed.
+- The WAN generator: `tools/wangen` splits the commands of each router with
+  `wangen/bgp.py`. Since that run, `scenario-wan.yml` gives each of the ten
+  routers a `bgp` block, and a `config` list for the rest. A test makes sure
+  that the two together are the commands of the router, and that no routing
+  command stays in a list.
+- Not tested: the ten routers of the `wan` variant, which did not run.
+
 ### 7.4 `wan-bgp` on VyOS routers
 
 Kit:
@@ -1492,7 +1569,9 @@ are ShadeCast and Tumbleweed, which peer, the head office's edge on both, and
 the Fort Collins edge on both. For the Fort Collins edge, Tumbleweed takes
 Marmot's place.
 
-Every router gets its BGP, BFD, policy, and tunnels as R1's `config` list. One
+Until run 42, every router got its BGP, BFD, policy, and tunnels as R1's
+`config` list. Since run 43, BGP, BFD, and the policy are a `bgp` block
+([7.3.1](#731-a-bgp-block-for-the-vrouter-app)), and the list has the rest. One
 job builds the tunnels with WireGuard and one with route-based IPsec. It is
 Plan B with E1 and I2, without the transit carrier.
 
@@ -1743,7 +1822,9 @@ State on 2026-11-25:
   images repository fails when a copy there differs (decided on 2026-11-25).
 - One site still lacks these parts before it can boot alone:
   - The WAN side of its edge: a peer, a default route, and NAT (stage 4).
-  - The sensor's first-boot files, and the configuration of `malcolm` for sensors.
+  - The first boot of its sensor. The files exist
+    ([4.6](#46-what-the-head-office-does)), and a site alone leaves its sensor
+    idle.
   - A way to restart one site. Today a person restarts its broker, its
     federates, and its field devices by hand.
   - The first boot itself, after stage 0.

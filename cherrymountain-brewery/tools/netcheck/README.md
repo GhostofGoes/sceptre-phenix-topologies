@@ -147,9 +147,39 @@ has a table that a person wrote, `EXPECTED_RULES`. For some destinations at
 `ep` and `cs`, it lists each rule that opens the destination: the firewall,
 the ruleset, and the source.
 
-The rules cover only the conduits inside one site. A row with an end on the
-internet, at the vendor, at the utility, or at a different site has no rule
-yet. The run prints those rows in a `stage-4` note.
+The rules of the matrix cover only the conduits inside one site. A row with
+an end on the internet, at the vendor, at the utility, or at a different site
+has no rule yet. The run prints those rows in a `stage-4` note.
+
+`netcheck/fleet.py` has the first rows with an end at each of two sites: the
+three conduits between a site's sensor and the one Malcolm (PLANS.md 4.6).
+
+| Row | From | To | Port |
+|---|---|---|---|
+| `fleet-sensor-logs` | A sensor | `malcolm` | 5044/tcp |
+| `fleet-sensor-sessions` | A sensor | `malcolm` | 9200/tcp |
+| `fleet-sensor-pcap` | `malcolm` | A sensor | 8005/tcp |
+
+An end is a role, and the plant description of a site says which host has it.
+A site rules its own part of a row:
+
+- Out of a site: each firewall between the host and the edge, and the edge.
+  The rule is in the ruleset of the VLAN that the packet comes in from.
+- Into a site: each firewall behind the edge. The edge takes the packet out
+  of a tunnel. A tunnel is no interface of the topology, so phenix has no
+  ruleset for it. That filter is the WAN generator's (stage 4).
+
+| Site | Rules | Where |
+|---|---|---|
+| `fr` | 12 | For each of the three sensors: two in `fr-fw-ot` from the DMZ, and to the sensor one in `fr-fw-ot` from the SOC zone and one in `fr-fw-edge` from the DMZ |
+| `ep` | 5 | Two in `ep-fw-ot` from the SOC zone, two in `ep-fw-edge` from the DMZ, and one in `ep-fw-ot` from the DMZ |
+| `cs`, `fc` | 2 each | In the edge, from the plant network. The sensor is behind no other firewall, so no rule lets `malcolm` in |
+
+`rule-coverage` accepts exactly these rules as rules that no conduit of the
+site covers. Each must have one end outside the site. The `flows` sweep has
+the three ports, so a rule that opens one of them inside a site is an error.
+The run prints the rules in a `between-sites` note. No SoH test probes them,
+because the far end is not in the experiment of a site.
 
 A flat network has no firewall inside it. At `cs` and `fc`, the SCADA host,
 the HMIs, and the PLCs share one plant network. Hosts on one network reach

@@ -348,7 +348,7 @@ name = "pytest (SOC and remote access)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/soc"
 additional_dependencies = [
-    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@7823fa4a675d176d822eec7e8c7a13f88596c751#subdirectory=src/python",
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@1d56742f85000894c08fec5e5b2c9d6ac201a6c8#subdirectory=src/python",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "pytest==9.2.0",
@@ -384,7 +384,7 @@ name = "pytest (plantgen)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/plantgen"
 additional_dependencies = [
-    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@7823fa4a675d176d822eec7e8c7a13f88596c751#subdirectory=src/python",
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@1d56742f85000894c08fec5e5b2c9d6ac201a6c8#subdirectory=src/python",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "pytest==9.2.0",
@@ -471,7 +471,7 @@ name = "pytest (cherrymountain app, plantevent)"
 language = "python"
 entry = "python cherrymountain-brewery/tools/lint/run_app_tests.py"
 additional_dependencies = [
-    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@7823fa4a675d176d822eec7e8c7a13f88596c751#subdirectory=src/python",
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@1d56742f85000894c08fec5e5b2c9d6ac201a6c8#subdirectory=src/python",
     "Mako==1.3.10",
     "pydantic==2.14.3",
     "python-box==7.2.0",

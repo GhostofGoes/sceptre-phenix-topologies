@@ -1,0 +1,405 @@
+{
+  "sites": [
+    {
+      "code": "fr",
+      "title": "Front Range: flagship brewery, taproom, head office",
+      "steps": [
+        {
+          "name": "The site's hosts, areas, and federates as a variant; nothing else changed",
+          "passed": false,
+          "said": "  ntp: util-rtr is not a variant host /   ntp: fr-corp-ws source inet-traffic is not a server /   ntp: fr-fw-edge source inet-traffic is not a server"
+        },
+        {
+          "name": "Every clock follows a server of the site",
+          "passed": false,
+          "said": "plantgen: site: consistency checks failed: /   HELICS: no publisher for cellar/co2.draw_slpm /   HELICS: no publisher for cellar/beer.supply_psia"
+        },
+        {
+          "name": "The ground-truth snapshot asks only for federates the site runs",
+          "passed": false,
+          "said": "plantgen: site: consistency checks failed: /   HELICS: no publisher for cellar/co2.draw_slpm /   HELICS: no publisher for cellar/beer.supply_psia"
+        },
+        {
+          "name": "The site's variant added to the federate keys that name `full` and `lite`",
+          "passed": true,
+          "said": "29 files generated"
+        },
+        {
+          "name": "Take out what names a host the site does not have",
+          "passed": true,
+          "said": "29 files generated; 0 differ from the step before"
+        },
+        {
+          "name": "An access link to each ISP in place of the INET VLAN",
+          "passed": true,
+          "said": "29 files generated; 0 differ from the step before"
+        },
+        {
+          "name": "The site's own zones: VLANs merged, split, renamed, or renumbered",
+          "passed": true,
+          "said": "29 files generated; 0 differ from the step before"
+        }
+      ],
+      "generated": "",
+      "hosts": 39,
+      "plcs": 5,
+      "tags": 516,
+      "vlans": [
+        "FR-BAS",
+        "FR-CORP",
+        "FR-CTRL",
+        "FR-DERLINK",
+        "FR-DMZ",
+        "FR-FIELD-BH",
+        "FR-FIELD-CEL",
+        "FR-FIELD-PKG",
+        "FR-FIELD-PWR",
+        "FR-FIELD-UTL",
+        "FR-HMI",
+        "FR-MGMT",
+        "FR-OPS",
+        "FR-SOC",
+        "FR-WAN-A",
+        "FR-WAN-B"
+      ],
+      "budget": {
+        "vms": 39,
+        "vcpus": 62,
+        "memory_mb": 154624
+      },
+      "with_sensor": {
+        "vms": 39,
+        "vcpus": 62,
+        "memory_mb": 154624
+      }
+    },
+    {
+      "code": "ep",
+      "title": "Eastern Plains: production brewery",
+      "steps": [
+        {
+          "name": "The site's hosts, areas, and federates as a variant; nothing else changed",
+          "passed": false,
+          "said": "  ntp: util-rtr is not a variant host /   ntp: ep-corp-ws source inet-traffic is not a server /   ntp: ep-fw-edge source inet-traffic is not a server"
+        },
+        {
+          "name": "Every clock follows a server of the site",
+          "passed": false,
+          "said": "plantgen: site: consistency checks failed: /   HELICS: no publisher for cellar/co2.draw_slpm /   HELICS: no publisher for cellar/beer.supply_psia"
+        },
+        {
+          "name": "The ground-truth snapshot asks only for federates the site runs",
+          "passed": false,
+          "said": "plantgen: site: consistency checks failed: /   HELICS: no publisher for cellar/co2.draw_slpm /   HELICS: no publisher for cellar/beer.supply_psia"
+        },
+        {
+          "name": "The site's variant added to the federate keys that name `full` and `lite`",
+          "passed": true,
+          "said": "29 files generated"
+        },
+        {
+          "name": "Take out what names a host the site does not have",
+          "passed": true,
+          "said": "29 files generated; 0 differ from the step before"
+        },
+        {
+          "name": "An access link to each ISP in place of the INET VLAN",
+          "passed": true,
+          "said": "29 files generated; 0 differ from the step before"
+        },
+        {
+          "name": "The site's own zones: VLANs merged, split, renamed, or renumbered",
+          "passed": true,
+          "said": "29 files generated; 2 differ from the step before (fuxa/ep-scada-fuxa-tags.json, openplc/ep-plc-utilities/modbus_master.json); no first-site hostname or address in the configuration of 29 files; 82 mentions in descriptions and comments only"
+        }
+      ],
+      "generated": "",
+      "hosts": 34,
+      "plcs": 5,
+      "tags": 516,
+      "vlans": [
+        "EP-BAS",
+        "EP-CORP",
+        "EP-CTRL-BH",
+        "EP-CTRL-CEL",
+        "EP-CTRL-PKG",
+        "EP-CTRL-PWR",
+        "EP-CTRL-UTL",
+        "EP-DERLINK",
+        "EP-DMZ",
+        "EP-FIELD-BH",
+        "EP-FIELD-CEL",
+        "EP-FIELD-PKG",
+        "EP-FIELD-PWR",
+        "EP-FIELD-UTL",
+        "EP-HMI",
+        "EP-MGMT",
+        "EP-OPS",
+        "EP-SOC",
+        "EP-WAN-A",
+        "EP-WAN-B"
+      ],
+      "budget": {
+        "vms": 34,
+        "vcpus": 43,
+        "memory_mb": 67584
+      },
+      "with_sensor": {
+        "vms": 35,
+        "vcpus": 47,
+        "memory_mb": 83968
+      }
+    },
+    {
+      "code": "cs",
+      "title": "Colorado Springs: brewery and taproom, bought from another company",
+      "steps": [
+        {
+          "name": "The site's hosts, areas, and federates as a variant; nothing else changed",
+          "passed": false,
+          "said": "  ntp: cs-fw-ot is not a variant host /   ntp: cs-corp-ws source inet-traffic is not a server /   ntp: cs-fw-edge source inet-traffic is not a server"
+        },
+        {
+          "name": "Every clock follows a server of the site",
+          "passed": false,
+          "said": "plantgen: site: snapshot: key pattern(s) ['power/*'] match no publication of another federate in variant site"
+        },
+        {
+          "name": "The ground-truth snapshot asks only for federates the site runs",
+          "passed": false,
+          "said": "plantgen: site: consistency checks failed: /   HELICS: no publisher for cellar/co2.draw_slpm /   HELICS: no publisher for cellar/beer.supply_psia"
+        },
+        {
+          "name": "The site's variant added to the federate keys that name `full` and `lite`",
+          "passed": true,
+          "said": "25 files generated"
+        },
+        {
+          "name": "Take out what names a host the site does not have",
+          "passed": true,
+          "said": "25 files generated; 0 differ from the step before"
+        },
+        {
+          "name": "An access link to each ISP in place of the INET VLAN",
+          "passed": true,
+          "said": "25 files generated; 0 differ from the step before"
+        },
+        {
+          "name": "The site's own zones: VLANs merged, split, renamed, or renumbered",
+          "passed": true,
+          "said": "25 files generated; 9 differ from the step before (bacnet/cs-bas-coldroom.json, bacnet/cs-bas-rtu-taproom.json, bacnet/cs-bas-vent.json, fuxa/cs-bas-fuxa-tags.json, fuxa/cs-scada-fuxa-tags.json, openplc/cs-plc-brewhouse/modbus_master.json, openplc/cs-plc-cellar/modbus_master.json, openplc/cs-plc-packaging/modbus_master.json, openplc/cs-plc-utilities/modbus_master.json); no first-site hostname or address in the configuration of 25 files; 70 mentions in descriptions and comments only"
+        }
+      ],
+      "generated": "",
+      "hosts": 25,
+      "plcs": 4,
+      "tags": 458,
+      "vlans": [
+        "CS-BAS",
+        "CS-FIELD-BH",
+        "CS-FIELD-CEL",
+        "CS-FIELD-PKG",
+        "CS-FIELD-UTL",
+        "CS-MGMT",
+        "CS-OFFICE",
+        "CS-PLANT",
+        "CS-WAN-A"
+      ],
+      "budget": {
+        "vms": 25,
+        "vcpus": 33,
+        "memory_mb": 54272
+      },
+      "with_sensor": {
+        "vms": 26,
+        "vcpus": 37,
+        "memory_mb": 70656
+      }
+    },
+    {
+      "code": "fc",
+      "title": "Fort Collins: brewpub",
+      "steps": [
+        {
+          "name": "The site's hosts, areas, and federates as a variant; nothing else changed",
+          "passed": false,
+          "said": "  ntp: fc-hmi-brewhouse source fc-ot-svc is not a server /   ntp: fc-plc-brewhouse source fc-ot-svc is not a server /   ntp: fc-plc-utilities source fc-ot-svc is not a server"
+        },
+        {
+          "name": "Every clock follows a server of the site",
+          "passed": false,
+          "said": "plantgen: site: snapshot: key pattern(s) ['power/*', 'packaging/bottles.total', 'packaging/kegs.total', 'packaging/ttb.bbl', 'packaging/fill.*'] match no publication of another federate in variant site"
+        },
+        {
+          "name": "The ground-truth snapshot asks only for federates the site runs",
+          "passed": false,
+          "said": "plantgen: site: consistency checks failed: /   HELICS: no publisher for cellar/co2.draw_slpm"
+        },
+        {
+          "name": "The site's variant added to the federate keys that name `full` and `lite`",
+          "passed": true,
+          "said": "22 files generated"
+        },
+        {
+          "name": "Take out what names a host the site does not have",
+          "passed": true,
+          "said": "22 files generated; 0 differ from the step before"
+        },
+        {
+          "name": "An access link to each ISP in place of the INET VLAN",
+          "passed": true,
+          "said": "22 files generated; 0 differ from the step before"
+        },
+        {
+          "name": "The site's own zones: VLANs merged, split, renamed, or renumbered",
+          "passed": true,
+          "said": "22 files generated; 4 differ from the step before (bacnet/fc-bas-coldroom.json, bacnet/fc-bas-rtu-taproom.json, bacnet/fc-bas-vent.json, fuxa/fc-scada-fuxa-tags.json); no first-site hostname or address in the configuration of 22 files; 70 mentions in descriptions and comments only"
+        }
+      ],
+      "generated": "",
+      "hosts": 18,
+      "plcs": 3,
+      "tags": 365,
+      "vlans": [
+        "FC-FIELD-BH",
+        "FC-FIELD-CEL",
+        "FC-FIELD-UTL",
+        "FC-MGMT",
+        "FC-OFFICE",
+        "FC-PLANT",
+        "FC-WAN-A",
+        "FC-WAN-B"
+      ],
+      "budget": {
+        "vms": 18,
+        "vcpus": 23,
+        "memory_mb": 39936
+      },
+      "with_sensor": {
+        "vms": 19,
+        "vcpus": 27,
+        "memory_mb": 56320
+      }
+    }
+  ],
+  "merge": {
+    "site topology files": 4,
+    "nodes in the four sites": 119,
+    "duplicate hostnames": [],
+    "duplicate addresses": [],
+    "VLAN aliases in the four sites": 53,
+    "subnets of fr": "10.10.10.0/24, 10.10.20.0/24, 10.20.10.0/24, 10.20.11.0/24, 10.20.12.0/24, 10.20.13.0/24, 10.20.14.0/24, 10.20.15.0/24, 10.20.16.0/24, 10.20.20.0/24, 10.20.30.0/24, 10.30.10.0/24, 10.40.10.0/24, 172.16.0.0/16, 198.18.101.0/30, 203.0.113.0/29",
+    "subnets of ep": "10.12.10.0/24, 10.12.20.0/24, 10.22.11.0/24, 10.22.12.0/24, 10.22.13.0/24, 10.22.14.0/24, 10.22.15.0/24, 10.22.16.0/24, 10.22.20.0/24, 10.22.30.0/24, 10.22.41.0/24, 10.22.42.0/24, 10.22.43.0/24, 10.22.44.0/24, 10.22.46.0/24, 10.32.10.0/24, 10.42.10.0/24, 172.18.0.0/16, 198.18.101.8/30, 203.0.113.16/30",
+    "subnets of cs": "172.19.0.0/16, 192.168.10.0/24, 192.168.20.0/24, 192.168.21.0/24, 192.168.22.0/24, 192.168.23.0/24, 192.168.24.0/24, 192.168.30.0/24, 198.18.103.0/30",
+    "subnets of fc": "10.11.10.0/24, 10.21.10.0/24, 10.21.11.0/24, 10.21.12.0/24, 10.21.14.0/24, 172.17.0.0/16, 198.18.102.0/30, 203.0.113.8/30",
+    "phenix Topology schema": "ok (4 files)"
+  },
+  "shared": {
+    "mock internet, VyOS routers (6 routers, 6 small hosts)": {
+      "vms": 12,
+      "vcpus": 12,
+      "memory_mb": 18432
+    },
+    "the vendor's workstation, on the internet": {
+      "vms": 1,
+      "vcpus": 2,
+      "memory_mb": 3072
+    },
+    "head office additions (fleet historian, corporate server, second office desktop, engineering jump host)": {
+      "vms": 4,
+      "vcpus": 8,
+      "memory_mb": 16384
+    }
+  },
+  "total": {
+    "vms": 136,
+    "vcpus": 195,
+    "memory_mb": 403456
+  },
+  "placements": [
+    {
+      "title": "L1: the head office apart",
+      "nodes": {
+        "head node": "site ep",
+        "node 2": "internet, vendor, head office additions; site fr",
+        "node 3": "site cs; site fc"
+      },
+      "cost": {
+        "head node": {
+          "vms": 35,
+          "vcpus": 47,
+          "memory_mb": 83968
+        },
+        "node 2": {
+          "vms": 56,
+          "vcpus": 84,
+          "memory_mb": 192512
+        },
+        "node 3": {
+          "vms": 45,
+          "vcpus": 64,
+          "memory_mb": 126976
+        }
+      }
+    },
+    {
+      "title": "L2: the two small sites on the head node",
+      "nodes": {
+        "head node": "site cs; site fc",
+        "node 2": "internet, vendor, head office additions; site fr",
+        "node 3": "site ep"
+      },
+      "cost": {
+        "head node": {
+          "vms": 45,
+          "vcpus": 64,
+          "memory_mb": 126976
+        },
+        "node 2": {
+          "vms": 56,
+          "vcpus": 84,
+          "memory_mb": 192512
+        },
+        "node 3": {
+          "vms": 35,
+          "vcpus": 47,
+          "memory_mb": 83968
+        }
+      }
+    },
+    {
+      "title": "L3: the head office alone on a node",
+      "nodes": {
+        "head node": "internet, vendor, head office additions; site cs",
+        "node 2": "site fr",
+        "node 3": "site ep; site fc"
+      },
+      "cost": {
+        "head node": {
+          "vms": 43,
+          "vcpus": 59,
+          "memory_mb": 108544
+        },
+        "node 2": {
+          "vms": 39,
+          "vcpus": 62,
+          "memory_mb": 154624
+        },
+        "node 3": {
+          "vms": 54,
+          "vcpus": 74,
+          "memory_mb": 140288
+        }
+      }
+    }
+  ],
+  "cluster": {
+    "layout": "L1: the head office apart",
+    "VMs with a node in `schedules`": 119,
+    "VMs for each node": "{\"head-node\": 35, \"node-2\": 39, \"node-3\": 45}",
+    "VLAN aliases with an ID": 54,
+    "VLAN IDs given twice": [],
+    "aliases of the site topologies without an ID": [],
+    "phenix Workflow schema": "ok"
+  }
+}

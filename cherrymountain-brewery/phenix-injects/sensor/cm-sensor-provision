@@ -1,0 +1,219 @@
+#!/bin/bash
+# First-boot configuration of a site's network sensor (docs/multisite/PLANS.md 4.6).
+# Installed as /usr/local/sbin/cm-sensor-provision and run as root by
+# cm-sensor-provision.service after cm-load-images.service has loaded the images.
+# It turns the stock Malcolm checkout in /opt/malcolm into a sensor of the
+# Malcolm at the head office: Malcolm's own configurator applies
+# malcolm-config-sensor.yaml (the `hedgehog` run profile), then this script adds
+# the range's Suricata settings, the credentials, and the client certificate. The
+# image is cm-sensor, which has the paths of cm-malcolm, so the state is in
+# /var/lib/cm-malcolm here too.
+#
+# What the sensor needs from outside:
+#   /etc/default/cm-sensor              the site's copy (plantgen): CM_SENSOR_NAME,
+#                                       CM_SENSOR_ADDRESS, CM_MALCOLM_HOST.
+#   /etc/default/cm-sensor-credentials  from the cherrymountain app, root only:
+#                                       CM_SENSOR_PASSWORD (the password of the
+#                                       account `sensor` at Malcolm, for OpenSearch
+#                                       on 9200/tcp) and CM_ARKIME_SECRET (the
+#                                       secret that Malcolm's Arkime and every
+#                                       sensor share).
+#   /etc/cherrymountain/sensor-tls/     from the app: ca.crt, client.crt, and
+#                                       client.key, for Filebeat to Logstash on
+#                                       5044/tcp.
+# The app makes the last two for an experiment that has both `malcolm` and a
+# sensor. An experiment of one site alone has no Malcolm to send to: the sensor
+# then stays idle, says so in /var/lib/cm-malcolm/idle, and starts nothing. With
+# only a part of the credentials, this script fails.
+#
+# Malcolm's auth_setup has no unattended way to store the OpenSearch account of
+# a sensor or to take the client certificate (scripts/control.py: both are asked
+# for at a prompt, and the certificate comes over a `croc` transfer). So this
+# script writes .opensearch.primary.curlrc and filebeat/certs itself, in the
+# format of that script.
+#
+# Re-running is safe: it stops early once /var/lib/cm-malcolm/provisioned exists.
+set -euo pipefail
+
+MALCOLM_DIR="${MALCOLM_DIR:-/opt/malcolm}"
+SRC="${CM_MALCOLM_SRC:-/opt/cherrymountain/malcolm}"
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+# The Python that Malcolm's scripts run with (the image's virtual environment).
+VENV="${CM_MALCOLM_VENV:-/opt/malcolm-venv}"
+TLS="${CM_SENSOR_TLS:-/etc/cherrymountain/sensor-tls}"
+# The networks of malcolm, and 192.168.0.0/16: the plant network of `cs` is there.
+ZEEK_LOCAL_NETS="${CM_ZEEK_LOCAL_NETS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,192.0.2.0/24,198.51.100.0/24,203.0.113.0/24}"
+# The account of the sensors in Malcolm's nginx (cm-malcolm-provision creates it).
+SENSOR_USER="${CM_SENSOR_USER:-sensor}"
+# The uid and gid the containers run as (PUID and PGID in config/process.env).
+MALCOLM_UID=1000
+# The group that may use Docker's socket.
+DOCKER_GROUP="${CM_DOCKER_GROUP:-docker}"
+IPV4='^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])$'
+
+log() { echo "cm-sensor-provision: $*"; }
+fail() {
+  log "FAIL: $*"
+  exit 1
+}
+
+# set_env FILE KEY VALUE: replace KEY=... or append it. A config file may lack a
+# trailing newline, so an appended line starts with one. VALUE must not hold |, &,
+# or a backslash.
+set_env() {
+  local file="$1" key="$2" value="$3"
+  if grep -q "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    printf '\n%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+# as_malcolm CMD...: run a command as the unprivileged user Malcolm's scripts need
+# (see cm-malcolm-provision: the docker group, a HOME that the unit does not hide,
+# and no root login name).
+as_malcolm() {
+  setpriv --reuid="${MALCOLM_UID}" --regid="${MALCOLM_UID}" --groups="${DOCKER_GROUP}" \
+    env HOME=/tmp USER=malcolm LOGNAME=malcolm "$@"
+}
+
+if [ -f "${STATE}/provisioned" ]; then
+  log "already provisioned"
+  exit 0
+fi
+[ -d "${MALCOLM_DIR}" ] || fail "${MALCOLM_DIR} is missing; this is not a cm-sensor image"
+
+# --- what the site's settings file must name ----------------------------------------
+name="${CM_SENSOR_NAME:-}"
+own="${CM_SENSOR_ADDRESS:-}"
+malcolm_host="${CM_MALCOLM_HOST:-}"
+[[ "$name" =~ ^[a-z][a-z0-9-]{0,62}$ ]] || fail "CM_SENSOR_NAME in /etc/default/cm-sensor must be a host name"
+[[ "$own" =~ $IPV4 ]] || fail "CM_SENSOR_ADDRESS in /etc/default/cm-sensor must be an IPv4 address"
+[[ "$malcolm_host" =~ $IPV4 ]] || fail "CM_MALCOLM_HOST in /etc/default/cm-sensor must be an IPv4 address"
+
+# --- what the app gives, or nothing -------------------------------------------------
+rm -f "${STATE}/idle"
+given=()
+missing=()
+for key in CM_SENSOR_PASSWORD CM_ARKIME_SECRET; do
+  if [ -n "${!key:-}" ]; then given+=("$key"); else missing+=("$key"); fi
+done
+for file in ca.crt client.crt client.key; do
+  if [ -s "${TLS}/${file}" ]; then given+=("${TLS}/${file}"); else missing+=("${TLS}/${file}"); fi
+done
+if [ "${#given[@]}" -eq 0 ]; then
+  # cm-sensor-start and cm-sensor-health read the reason, and both run as other users.
+  echo "this experiment has no Malcolm that takes the sensor's records (no credentials from the cherrymountain app)" > "${STATE}/idle"
+  chmod 0644 "${STATE}/idle"
+  log "IDLE: $(cat "${STATE}/idle"). Nothing is configured and nothing starts"
+  exit 0
+fi
+[ "${#missing[@]}" -eq 0 ] || fail "a part of the sensor's credentials is missing: ${missing[*]}"
+password="$CM_SENSOR_PASSWORD"
+secret="$CM_ARKIME_SECRET"
+# Both go into files that other programs read with their own quoting rules (a curl
+# config file, and a sed command inside Arkime's container), so letters and digits
+# only. htpasswd -B at Malcolm takes 72 characters at most.
+[[ "$password" =~ ^[A-Za-z0-9]{8,72}$ ]] || fail "CM_SENSOR_PASSWORD must be 8 to 72 letters and digits"
+[[ "$secret" =~ ^[A-Za-z0-9]{16,128}$ ]] || fail "CM_ARKIME_SECRET must be 16 to 128 letters and digits"
+
+cd "${MALCOLM_DIR}"
+
+# --- Malcolm's settings -------------------------------------------------------------
+# The settings file with the sensor's name, its address, and Malcolm's address.
+# The three values passed the checks above, so sed gets no character with a meaning.
+template="${SRC}/malcolm-config-sensor.yaml"
+[ -r "$template" ] || fail "${template} is missing"
+settings="${STATE}/malcolm-config-sensor.yaml"
+sed -e "s/@CM_SENSOR_NAME@/${name}/" -e "s/@CM_SENSOR_ADDRESS@/${own}/" -e "s/@CM_MALCOLM_HOST@/${malcolm_host}/" \
+  "$template" > "$settings"
+if grep -q '@CM_' "$settings"; then
+  fail "${template} has a word that this script does not know: $(grep -o '@CM_[A-Z_]*@' "$settings" | sort -u | tr '\n' ' ')"
+fi
+# The configurator runs as the user malcolm; the unit's umask would make the file root-only.
+chmod 0644 "$settings"
+chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
+as_malcolm env "PATH=${VENV}/bin:${PATH}" ./scripts/configure \
+  --non-interactive --configure --skip-splash --import-malcolm-config-file "$settings"
+# The configurator must have written the files the rest of this script edits.
+for file in config/process.env config/opensearch.env config/beats-common.env config/upload-common.env \
+  config/arkime-live.env config/pcap-capture.env config/zeek.env config/suricata.env; do
+  [ -f "$file" ] || fail "Malcolm's configurator did not write ${file}"
+done
+# Every Malcolm script and every container reads the run profile from here. With
+# another profile, auth_setup below would set up a whole Malcolm.
+grep -Eq '^MALCOLM_PROFILE=hedgehog[[:space:]]*$' config/process.env \
+  || fail "config/process.env does not have MALCOLM_PROFILE=hedgehog after Malcolm's configurator ran"
+
+# --- what the range sets on top -----------------------------------------------------
+# The first block repeats what the configurator derives from the settings file.
+# This script was written from Malcolm's source and did not run on a VM, and a
+# sensor that sends to the wrong place fails without a word. So the values that
+# decide where it sends are set here once more.
+set_env config/beats-common.env LOGSTASH_HOST "${malcolm_host}:5044"
+set_env config/beats-common.env BEATS_SSL true
+set_env config/opensearch.env OPENSEARCH_PRIMARY opensearch-remote
+set_env config/opensearch.env OPENSEARCH_URL "https://${malcolm_host}:9200"
+set_env config/opensearch.env OPENSEARCH_SSL_CERTIFICATE_VERIFICATION false
+set_env config/upload-common.env PCAP_NODE_NAME "${name}"
+set_env config/arkime-live.env ARKIME_LIVE_CAPTURE true
+set_env config/arkime-live.env ARKIME_LIVE_NODE_HOST "${own}"
+set_env config/process.env PYTHONUNBUFFERED 1
+# The capture port, Zeek's own networks, one Zeek worker, and no rule sources: as
+# on malcolm, for the reasons that cm-malcolm-provision gives.
+set_env config/pcap-capture.env PCAP_IFACE phenix
+set_env config/zeek.env ZEEK_LOCAL_NETS "${ZEEK_LOCAL_NETS}"
+set_env config/zeek-live.env ZEEK_LB_PROCS_WORKER_DEFAULT 1
+set_env config/suricata.env SURICATA_UPDATE_SOURCES false
+
+# --- Zeek scripts and Suricata rules ------------------------------------------------
+# Suricata's flow settings for mirrored traffic are the same at every site.
+#
+# The baseline detections of malcolm (cherrymountain.rules and
+# zeek/cherrymountain.zeek) name the hosts of the Front Range site by address, and
+# plantgen moves only the BACnet writers to another site's addresses. With them, a
+# permitted Modbus write at another site would raise an alert. So no topology gives
+# them to a sensor yet, and the sensor runs the detections that Malcolm brings. When
+# a topology does inject them, this script installs them as cm-malcolm-provision does.
+mkdir -p zeek/custom suricata/rules suricata/include-configs
+cp "${SRC}/cm-suricata.yaml" suricata/include-configs/cm-suricata.yaml
+if compgen -G "${SRC}/zeek/*.zeek" > /dev/null; then
+  cp "${SRC}"/zeek/*.zeek zeek/custom/
+fi
+# The compose file binds zeek/custom over the image's, and Zeek stops without this file.
+[ -f zeek/custom/__load__.zeek ] || touch zeek/custom/__load__.zeek
+if [ -f "${SRC}/cherrymountain.rules" ]; then
+  cp "${SRC}/cherrymountain.rules" suricata/rules/cherrymountain.rules
+  # Malcolm's own OT rules use the sids from 1000001 on, and Suricata drops a
+  # duplicate sid. (`|| true`: see cm-malcolm-provision.)
+  sids=$(grep -hEo 'sid: *[0-9]+' suricata/rules/cherrymountain.rules | awk -F'[: ]+' '{ print $2 }' | sort -u || true)
+  [ -n "$sids" ] || fail "suricata/rules/cherrymountain.rules holds no sid"
+  bad=$(awk '$1 < 9000101' <<< "$sids" | tr '\n' ' ')
+  [ -z "$bad" ] || fail "custom Suricata rules use sids below 9000101: ${bad}"
+fi
+
+# --- credentials and the client certificate -----------------------------------------
+# The directories that Malcolm's own `scripts/start` creates before `compose up`
+# (boundPathsToCreate in scripts/control.py), for the services of this profile.
+# The compose file binds them with create_host_path: false.
+mkdir -p pcap/arkime-live pcap/processed pcap/upload zeek-logs/upload zeek-logs/processed zeek-logs/current \
+  zeek-logs/live/spool zeek-logs/extract_files suricata-logs/live filescan-logs nginx/ca-trust valkey filebeat/certs
+# Filebeat's client certificate, which Malcolm's Logstash asks for.
+install -m 0600 "${TLS}/ca.crt" "${TLS}/client.crt" "${TLS}/client.key" filebeat/certs/
+chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
+# In this profile auth_setup stores Arkime's secret and makes Valkey's password,
+# and no more. It also creates arkime/etc/wise.ini, which the compose file binds.
+as_malcolm env "PATH=${VENV}/bin:${PATH}" ./scripts/auth_setup \
+  --auth-noninteractive --auth-arkime-password="$secret" --auth-generate-valkey-password -f docker-compose.yml
+[ -f config/arkime-secret.env ] || fail "Malcolm's auth_setup did not write config/arkime-secret.env"
+# The range has no conduit to Malcolm's WISE service (443/tcp), and Arkime's
+# capture runs without it.
+set_env config/arkime-secret.env ARKIME_WISE_SERVICE_URL disabled
+# The account at Malcolm's OpenSearch, in the format of auth_setup. `insecure`:
+# Malcolm's certificate is self-signed.
+(umask 077 && printf 'user: "%s:%s"\ninsecure\n' "$SENSOR_USER" "$password" > .opensearch.primary.curlrc)
+chown -R "${MALCOLM_UID}:${MALCOLM_UID}" "${MALCOLM_DIR}"
+chmod 600 config/*.env .opensearch.primary.curlrc filebeat/certs/*
+
+touch "${STATE}/provisioned"
+log "PASS: the sensor ${name} is configured and sends to ${malcolm_host}"

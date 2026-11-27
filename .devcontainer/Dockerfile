@@ -15,13 +15,14 @@ ARG DOCKER_APT_FINGERPRINT=9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # systemd provides systemd-analyze and desktop-file-utils provides
-# desktop-file-validate. The Docker CLI lets the hadolint-docker hook start its
-# container on the host's Docker daemon.
+# desktop-file-validate. nodejs (18 in noble) runs the FUXA batch engine in the
+# cm-fuxa-batch-tests hook. The Docker CLI lets the hadolint-docker hook start
+# its container on the host's Docker daemon.
 # hadolint ignore=DL3008
 RUN export DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
-        ca-certificates curl desktop-file-utils git git-lfs gnupg \
+        ca-certificates curl desktop-file-utils git git-lfs gnupg nodejs \
         python3 python3-pip python3-venv systemd \
     && install -d -m 0755 /etc/apt/keyrings \
     && curl -fsSL -o /etc/apt/keyrings/docker.asc https://download.docker.com/linux/ubuntu/gpg \

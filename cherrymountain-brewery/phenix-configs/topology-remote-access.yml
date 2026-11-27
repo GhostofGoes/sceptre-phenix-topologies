@@ -86,6 +86,10 @@ spec:
       dst: /opt/cherrymountain/guacamole/nginx.conf
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/guacamole/nginx.conf
+    - description: SQL of a named Guacamole account, for the roster scripts
+      dst: /usr/local/lib/cm-guacamole/cm_guac_accounts.py
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/guacamole/cm_guac_accounts.py
     - description: SQL for the vendor account with TOTP
       dst: /usr/local/lib/cm-guacamole/cm_vendor_sql.py
       permissions: '0644'

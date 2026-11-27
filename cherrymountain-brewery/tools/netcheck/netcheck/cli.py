@@ -11,6 +11,16 @@ from netcheck import checks
 from netcheck.model import ROOT
 
 
+def _site_codes(root: Path) -> list[str]:
+    """The sites of plant/sites.yaml, or none where the tree has no such file."""
+    if not (root / "plant" / "sites.yaml").is_file():
+        return []
+    # Imported here: only a site needs plantgen on the import path.
+    from netcheck import site  # noqa: PLC0415
+
+    return site.codes(root)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     ap: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Check the topology, scenario, and workflow against the "
@@ -20,19 +30,53 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument(
         "--variant",
         choices=["full", "lite", "ci", "all"],
-        default="all",
-        help="variant to check (default: all)",
+        default=None,
+        help="variant to check (default: all, and then every site)",
+    )
+    ap.add_argument(
+        "--site",
+        default=None,
+        help="a site code of plant/sites.yaml, or `all`: check that site alone "
+        "(its workflow, its topology file, and its scenario)",
     )
     ap.add_argument("-q", "--quiet", action="store_true", help="hide notes")
     args: argparse.Namespace = ap.parse_args(argv)
 
-    findings: list[checks.Finding]
-    if args.variant == "all":
-        findings = checks.run_all(args.root)
-    elif args.variant == "ci":
-        findings = checks.run_ci(args.root)
-    else:
-        findings = checks.run_variant(args.variant, args.root)
+    variant: str | None = args.variant
+    findings: list[checks.Finding] = []
+    # A run for one variant does not read plant/sites.yaml. A run that needs
+    # the sites reports a bad file as one error.
+    known: list[str] = []
+    if args.site is not None or variant is None:
+        from netcheck.site import SiteError  # noqa: PLC0415
+
+        try:
+            known = _site_codes(args.root)
+        except SiteError as exc:
+            findings.append(
+                checks.Finding(check="sites/load", severity="error", message=str(exc))
+            )
+            args.site = None if args.site is None else "all"
+    sites: list[str] = []
+    if args.site is not None:
+        sites = known if args.site in (None, "all") else [args.site]
+        if args.site not in (None, "all", *known):
+            print(f"netcheck: no site {args.site!r}; the sites are {known}", file=sys.stderr)
+            return 2
+    elif variant is None:
+        variant, sites = "all", known
+
+    if variant == "all":
+        findings += checks.run_all(args.root)
+    elif variant == "ci":
+        findings += checks.run_ci(args.root)
+    elif variant is not None:
+        findings += checks.run_variant(variant, args.root)
+    for code in sites:
+        findings += checks.run_site(code, args.root)
+    if sites:
+        # The sites and the WAN share one set of VLAN IDs.
+        findings += checks.check_fleet_vlans(args.root, known)
 
     errors: list[checks.Finding] = [f for f in findings if f.severity == "error"]
     for f in findings:

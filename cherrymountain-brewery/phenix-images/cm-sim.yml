@@ -75,8 +75,8 @@ spec:
       # tree, and federates of an older sim/ stop at their first step on names they do
       # not know (cellar and packaging did, with the commit before this). Move CM_REF
       # after a change to a pyproject.toml too; the READMEs and tests need no move.
-      CM_REF=fc1295a7569e504eed8e2fa831f3b414422d9a53
-      CM_SIM_TREE=bbb82bd3a8d1952bdea6982d1b3428bb40ac1965
+      CM_REF=1103a3845272b688e981526e67b393bc77819b66
+      CM_SIM_TREE=dfbc75f8961144ab27a8fba43ee8197f22359e5d
       CM_VIZ_TREE=73ff5b5f28906d27d4cfaf7a04b9385158b8c4aa
       HELICS_VERSION=3.6.1
       WEBSOCKETS_VERSION=15.0.1

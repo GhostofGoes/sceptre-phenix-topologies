@@ -1,0 +1,16 @@
+# Malcolm settings for an experiment with a sensor at another site
+# (docs/multisite/PLANS.md 4.6). cm-malcolm-provision puts them on top of the
+# profile's settings when the cherrymountain app gave the sensors' credentials.
+# The single-site range does not use this file, and its Malcolm opens no port
+# but 443.
+#
+# A sensor sends its Zeek and Suricata logs to Logstash (5044/tcp, Filebeat with a
+# client certificate) and its Arkime sessions to OpenSearch (9200/tcp, through
+# nginx with the password of the account `sensor`). `customize` leaves every
+# other port as it is: with `yes`, the configurator also opens Filebeat's TCP
+# listener.
+---
+configuration:
+  openPortsSelection: customize
+  exposeLogstash: true
+  exposeOpenSearch: true

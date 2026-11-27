@@ -1,0 +1,290 @@
+{
+  "probes": [
+    {
+      "name": "ci: plant.yaml as it is (control)",
+      "passed": true,
+      "detail": "12 files generated"
+    },
+    {
+      "name": "ci: site fc subnets and VLAN aliases, same hostnames",
+      "passed": true,
+      "detail": "12 files generated"
+    },
+    {
+      "name": "ci: site fc subnets, VLAN aliases, and hostnames",
+      "passed": true,
+      "detail": "12 files generated; no first-site hostname or address in the configuration of 12 files"
+    },
+    {
+      "name": "lite: plant.yaml as it is (control)",
+      "passed": true,
+      "detail": "30 files generated"
+    },
+    {
+      "name": "lite: site fc subnets and VLAN aliases, same hostnames",
+      "passed": true,
+      "detail": "30 files generated"
+    },
+    {
+      "name": "lite: site fc subnets, VLAN aliases, and hostnames",
+      "passed": false,
+      "detail": "plantgen/render.py, line 348, in helics_doc: KeyError: 'sim-ctl'"
+    },
+    {
+      "name": "lite: the same, with plantgen's one `sim-ctl` lookup taken from the broker host",
+      "passed": true,
+      "detail": "30 files generated; no first-site hostname or address in the configuration of 30 files; 82 mentions in descriptions and comments only"
+    },
+    {
+      "name": "full: plant.yaml as it is (control)",
+      "passed": true,
+      "detail": "31 files generated"
+    },
+    {
+      "name": "full: site fc subnets and VLAN aliases, same hostnames",
+      "passed": true,
+      "detail": "31 files generated"
+    },
+    {
+      "name": "full: site fc subnets, VLAN aliases, and hostnames",
+      "passed": false,
+      "detail": "plantgen/render.py, line 348, in helics_doc: KeyError: 'sim-ctl'"
+    },
+    {
+      "name": "full: the same, with plantgen's one `sim-ctl` lookup taken from the broker host",
+      "passed": true,
+      "detail": "31 files generated; no first-site hostname or address in the configuration of 31 files; 82 mentions in descriptions and comments only"
+    }
+  ],
+  "merge": {
+    "site topology files": 4,
+    "nodes in the four sites": 132,
+    "duplicate hostnames": [],
+    "duplicate addresses": [
+      "203.0.113.2"
+    ],
+    "VLAN aliases in the four sites": 57,
+    "longest hostname": "fr-bas-rtu-taproom (18 characters; phenix allows 63)",
+    "subnets of fr": "10.10.10.0/24, 10.10.20.0/24, 10.20.10.0/24, 10.20.11.0/24, 10.20.12.0/24, 10.20.13.0/24, 10.20.14.0/24, 10.20.15.0/24, 10.20.16.0/24, 10.20.20.0/24, 10.20.30.0/24, 10.30.10.0/24, 10.40.10.0/24, 172.16.0.0/16, 203.0.113.0/24",
+    "subnets of fc": "10.11.10.0/24, 10.11.20.0/24, 10.21.10.0/24, 10.21.11.0/24, 10.21.12.0/24, 10.21.13.0/24, 10.21.14.0/24, 10.21.15.0/24, 10.21.16.0/24, 10.21.20.0/24, 10.21.30.0/24, 10.31.10.0/24, 10.41.10.0/24, 172.17.0.0/16, 203.0.113.0/24",
+    "subnets of ep": "10.12.10.0/24, 10.12.20.0/24, 10.22.10.0/24, 10.22.11.0/24, 10.22.12.0/24, 10.22.13.0/24, 10.22.14.0/24, 10.22.15.0/24, 10.22.16.0/24, 10.22.20.0/24, 10.22.30.0/24, 10.32.10.0/24, 10.42.10.0/24, 172.18.0.0/16, 203.0.113.0/24",
+    "subnets of cs": "10.13.10.0/24, 10.13.20.0/24, 10.23.10.0/24, 10.23.11.0/24, 10.23.12.0/24, 10.23.13.0/24, 10.23.14.0/24, 10.23.15.0/24, 10.23.16.0/24, 10.23.20.0/24, 10.23.30.0/24, 10.33.10.0/24, 10.43.10.0/24, 172.19.0.0/16, 203.0.113.0/24",
+    "phenix Topology schema": "ok (4 files)"
+  },
+  "budgets": {
+    "site, full plant (core without the shared internet nodes)": {
+      "vms": 33,
+      "vcpus": 41,
+      "memory_mb": 64512
+    },
+    "shared internet nodes of the single-site core": {
+      "vms": 4,
+      "vcpus": 4,
+      "memory_mb": 6144
+    },
+    "SOC module (malcolm, wazuh, soc-analyst, soc-purple)": {
+      "vms": 4,
+      "vcpus": 18,
+      "memory_mb": 86016
+    },
+    "remote-access module (vendor-ws, dmz-vpn, dmz-jump)": {
+      "vms": 3,
+      "vcpus": 5,
+      "memory_mb": 7168
+    },
+    "site, brewpub (brewhouse, cellar, utilities, BAS)": {
+      "vms": 23,
+      "vcpus": 30,
+      "memory_mb": 51200
+    },
+    "site, cellar slice (the ci variant behind the firewalls, with a historian and an EWS)": {
+      "vms": 10,
+      "vcpus": 14,
+      "memory_mb": 29696
+    },
+    "mock internet, VyOS routers (6 routers, 6 small hosts)": {
+      "vms": 12,
+      "vcpus": 12,
+      "memory_mb": 18432
+    },
+    "mock internet, FRR routers (6 routers, 6 small hosts)": {
+      "vms": 12,
+      "vcpus": 12,
+      "memory_mb": 9216
+    },
+    "head office additions (fleet historian, corporate server, second office desktop)": {
+      "vms": 3,
+      "vcpus": 6,
+      "memory_mb": 12288
+    },
+    "network sensor at a site (Hedgehog-style, 4 vCPU, 16 GB)": {
+      "vms": 1,
+      "vcpus": 4,
+      "memory_mb": 16384
+    }
+  },
+  "plans": {
+    "M1: four full plants, central SOC": {
+      "vms": 154,
+      "vcpus": 205,
+      "memory_mb": 381952
+    },
+    "M2: four full plants, central SOC, a network sensor at each of the other three sites": {
+      "vms": 157,
+      "vcpus": 217,
+      "memory_mb": 431104
+    },
+    "M3: two full plants and two brewpubs, central SOC": {
+      "vms": 134,
+      "vcpus": 183,
+      "memory_mb": 355328
+    },
+    "M4: one full plant and three cellar slices, central SOC": {
+      "vms": 85,
+      "vcpus": 124,
+      "memory_mb": 277504
+    },
+    "M5: four full plants, no SOC and no vendor access": {
+      "vms": 147,
+      "vcpus": 182,
+      "memory_mb": 288768
+    }
+  },
+  "placements": [
+    {
+      "title": "one node",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access; site fr; site fc; site ep; site cs"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 157,
+          "vcpus": 217,
+          "memory_mb": 431104
+        }
+      }
+    },
+    {
+      "title": "two nodes",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access; site fr; site fc",
+        "node 2": "site ep; site cs"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 89,
+          "vcpus": 127,
+          "memory_mb": 269312
+        },
+        "node 2": {
+          "vms": 68,
+          "vcpus": 90,
+          "memory_mb": 161792
+        }
+      }
+    },
+    {
+      "title": "three nodes, with the head node",
+      "nodes": {
+        "head node": "site ep",
+        "node 2": "internet, head office, SOC, vendor access; site fr",
+        "node 3": "site fc; site cs"
+      },
+      "cost": {
+        "head node": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 2": {
+          "vms": 55,
+          "vcpus": 82,
+          "memory_mb": 188416
+        },
+        "node 3": {
+          "vms": 68,
+          "vcpus": 90,
+          "memory_mb": 161792
+        }
+      }
+    },
+    {
+      "title": "four nodes, one for each site",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access; site fr",
+        "node 2": "site fc",
+        "node 3": "site ep",
+        "node 4": "site cs"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 55,
+          "vcpus": 82,
+          "memory_mb": 188416
+        },
+        "node 2": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 3": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 4": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        }
+      }
+    },
+    {
+      "title": "five nodes, one for each site and one for what the range has once",
+      "nodes": {
+        "node 1": "internet, head office, SOC, vendor access",
+        "node 2": "site fr",
+        "node 3": "site fc",
+        "node 4": "site ep",
+        "node 5": "site cs"
+      },
+      "cost": {
+        "node 1": {
+          "vms": 22,
+          "vcpus": 41,
+          "memory_mb": 123904
+        },
+        "node 2": {
+          "vms": 33,
+          "vcpus": 41,
+          "memory_mb": 64512
+        },
+        "node 3": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 4": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        },
+        "node 5": {
+          "vms": 34,
+          "vcpus": 45,
+          "memory_mb": 80896
+        }
+      }
+    }
+  ],
+  "cluster": {
+    "VMs with a node in `schedules`": "132 of 132 (the four sites; the shared nodes are not stamped)",
+    "VMs for each node": "{\"head-node\": 33, \"node-2\": 33, \"node-3\": 66}",
+    "VLAN aliases with an ID": 60,
+    "VLAN IDs given twice": [],
+    "aliases of the site topologies without an ID": [],
+    "VLAN range": "100 to 599",
+    "default bridge": "cherrymtn-fleet (15 characters; OVS allows 15)",
+    "phenix Workflow schema": "ok"
+  }
+}

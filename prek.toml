@@ -53,6 +53,9 @@ exclude = { glob = [
     "**/*.DSS",
     "**/*.dss",
     "cherrymountain-brewery/viz/cherrymountain_viz/web/vendor/**",
+    # A spike's recorded result is program output: it holds router output that
+    # the harness cuts at a fixed length, so a cut word is not a misspelling.
+    "cherrymountain-brewery/spikes/**/evidence/**/result.json",
     "renewables/wind/plant/phenix-images/workstation/drivers/**",
     "renewables/wind/plant/phenix-injects/wind-test-harness/**",
     "renewables/wind/plant/simulation-replay/docs/**",
@@ -114,7 +117,7 @@ args = [
     "--strict",
     "--config-file=cherrymountain-brewery/.yamllint-block-style.yml",
 ]
-files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/.+\.ya?ml|phenix-images/.+\.ya?ml|plant/generated/[^/]+/phenix/.+\.ya?ml)$'
+files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/.+\.ya?ml|phenix-images/.+\.ya?ml|plant/generated/(fleet/)?[^/]+/phenix/.+\.ya?ml)$'
 priority = "check"
 
 # Enforce conventional commit messages.
@@ -293,7 +296,7 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/|phenix-injects/|tools/netcheck/)'
+files = '^cherrymountain-brewery/(phenix[^/]*\.ya?ml|phenix-configs/|phenix-injects/|tools/netcheck/|tools/plantgen/plantgen/|plant/(plant|sites)\.yaml$|wan/wan\.yaml$)'
 pass_filenames = false
 priority = "check"
 
@@ -310,7 +313,7 @@ additional_dependencies = [
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/netcheck/|sync\.py$|brand/|phenix-injects/(bbmd|vrouter|guacamole)/)'
+files = '^cherrymountain-brewery/(tools/netcheck/|tools/plantgen/plantgen/|plant/(plant|sites)\.yaml$|wan/wan\.yaml$|sync\.py$|brand/|phenix-configs/|phenix-site-[^/]*\.ya?ml$|phenix-injects/(bbmd|vrouter|guacamole|fleet|sensor)/)'
 pass_filenames = false
 priority = "check"
 
@@ -337,17 +340,20 @@ priority = "check"
 # The SOC and remote-access checks: the Wazuh decoders and rules against sample log
 # lines, the Suricata rules and the Zeek script against the topology's addresses (and
 # against Suricata itself where it is installed), and the scripts of the vendor path
-# (WireGuard watcher, Guacamole SQL, scripted session, EWS tool).
+# (WireGuard watcher, Guacamole SQL, scripted session, EWS tool). Two tests read
+# files of the cherrymountain app (its renderer and its Wazuh boot scripts) from
+# the phenix-apps package, pinned like cm-app-tests.
 id = "cm-soc-tests"
 name = "pytest (SOC and remote access)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/soc"
 additional_dependencies = [
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@f3cbbd46b1bc1c026ec3361ad9c1170442b28edd#subdirectory=src/python",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-)'
+files = '^cherrymountain-brewery/(tests/soc/|phenix-injects/(wazuh|malcolm|sensor|wireguard|guacamole|desktop|ews)/|phenix-configs/topology-|phenix-images/cm-(malcolm|sensor)\.yml$)'
 pass_filenames = false
 priority = "check"
 
@@ -370,17 +376,38 @@ priority = "check"
 
 [[repos.hooks]]
 # plantgen's tests: register gaps, the three address conventions, owners,
-# rationalized alarms (and their deadbands), and the generated app blocks.
+# rationalized alarms (and their deadbands), and the generated app blocks. One
+# test compares the cherrymountain block with the app's own fixtures, which ship
+# with the phenix-apps package, pinned like cm-app-tests.
 id = "cm-plantgen-tests"
 name = "pytest (plantgen)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/plantgen"
 additional_dependencies = [
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@f3cbbd46b1bc1c026ec3361ad9c1170442b28edd#subdirectory=src/python",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "pytest==9.2.0",
 ]
-files = '^cherrymountain-brewery/(tools/plantgen/|plant/)'
+files = '^cherrymountain-brewery/(tools/plantgen/|plant/|phenix-injects/sensor/|wan/wan\.yaml$|spikes/(site-profiles/profiles|multisite-stamp/stamp)\.py$)'
+pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# wangen: the wan variant's phenix files from wan/wan.yaml. The tests fail when
+# a committed file (topology-wan.yml, scenario-wan.yml, phenix-wan.yml) is not
+# what wan.yaml gives, and when wan.yaml or a router's configuration list
+# differs from the model and the lists that the wan-bgp spike ran on VyOS.
+id = "cm-wangen-tests"
+name = "pytest (wangen, and its generated files are current)"
+language = "python"
+entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/wangen"
+additional_dependencies = [
+    "pydantic==2.14.3",
+    "pyyaml==6.0.3",
+    "pytest==9.2.0",
+]
+files = '^cherrymountain-brewery/(tools/wangen/|wan/|phenix-configs/(topology|scenario)-wan\.yml$|phenix-wan\.yml$|spikes/wan-bgp/(netns_lab|vyos_sketch)\.py$)'
 pass_filenames = false
 priority = "check"
 
@@ -429,16 +456,22 @@ pass_filenames = false
 priority = "check"
 
 [[repos.hooks]]
-# The cherrymountain phenix app and the plantevent SCORCH component. They need
-# phenix-apps, which is not on PyPI: it comes from the fork the range runs on
-# (DESIGN.md 16), pinned by commit. The tests read plant.yaml, plantgen, the
-# FUXA builder, and the program ZIPs (Git LFS) from this repository.
+# The cherrymountain phenix app and the plantevent SCORCH component, on this
+# checkout. Both are in phenix-apps, which is not on PyPI: it comes from the
+# fork the range runs on (DESIGN.md 16), pinned by commit, and its tests ship
+# with the package. run_app_tests.py points them at this directory, where they
+# read plant.yaml, plantgen, the FUXA builder, and the program ZIPs (Git LFS).
+# The experiment fixtures they run on are recorded in the apps repository:
+# after a change here that makes them stale (a ci or full topology, scenario,
+# or workflow file), record them again there (the app's README, Tests) and
+# move this pin, and the same pin of cm-soc-tests and cm-plantgen-tests, to that
+# commit.
 id = "cm-app-tests"
 name = "pytest (cherrymountain app, plantevent)"
 language = "python"
-entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/apps"
+entry = "python cherrymountain-brewery/tools/lint/run_app_tests.py"
 additional_dependencies = [
-    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@771e8d87a64770265862468664a1368dcfcbb99d#subdirectory=src/python",
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@f3cbbd46b1bc1c026ec3361ad9c1170442b28edd#subdirectory=src/python",
     "Mako==1.3.10",
     "pydantic==2.14.3",
     "python-box==7.2.0",
@@ -446,8 +479,13 @@ additional_dependencies = [
     "requests==2.32.5",
     "pytest==9.2.0",
     "pytest-mock==3.15.1",
+    # The app's test_sensors.py reads the certificates that the app makes.
+    "cryptography==50.0.2",
+    # The app's test_template_lint.py runs shellcheck on the app's script
+    # templates, and fails in CI when the program is missing.
+    "shellcheck-py==0.11.0.1",
 ]
-files = '^cherrymountain-brewery/(apps/|plant/|tools/plantgen/|fuxa/|recipes/|plc/|brand/|phenix-images/cm-sim\.yml|phenix-injects/(openplc|otsim|fuxa|brand|grafana)/|phenix-configs/)'
+files = '^cherrymountain-brewery/(tools/lint/run_app_tests\.py$|plant/|tools/plantgen/|fuxa/|recipes/|plc/|brand/|phenix-images/cm-sim\.yml|phenix-injects/(openplc|otsim|fuxa|brand|grafana|malcolm|sensor)/|phenix-configs/)'
 pass_filenames = false
 priority = "check"
 
@@ -471,7 +509,7 @@ priority = "check"
 # projects), run under Node against a stub of FUXA's script API and a simulator
 # of plc-brewhouse's handshake and the cellar's status, plus the builder's tests
 # for the Batch view, its tags, and its alarms. Node 18 or newer must be on PATH:
-# the CI runners have it, and with CI set a missing Node fails the tests instead of
+# the dev container has it, and with CI set a missing Node fails the tests instead of
 # skipping them. The check that the simulator follows the compiled program also
 # needs strucpp and g++, and skips without them.
 id = "cm-fuxa-batch-tests"
@@ -499,8 +537,24 @@ additional_dependencies = [
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
 ]
-files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole)/)'
+files = '^cherrymountain-brewery/(sync\.py|phenix-configs/scenario-[^/]*\.ya?ml|plant/|tools/plantgen/|tools/netcheck/|wan/wan\.yaml$|plc/|fuxa/|recipes/|brand/|viz/cherrymountain_viz/web/brand/|phenix-injects/(openplc|fuxa|brand|guacamole|fleet|sensor)/)'
 pass_filenames = false
+priority = "check"
+
+[[repos.hooks]]
+# Mermaid blocks in Markdown parse (mermaid.parse() under jsdom, no browser).
+# This is a syntax check. It does not render, so it does not find a diagram
+# that parses and then draws badly on GitHub. prek installs the two packages
+# in the hook's own Node environment.
+id = "cm-mermaid"
+name = "mermaid (syntax of the blocks in Markdown)"
+language = "node"
+entry = "node cherrymountain-brewery/tools/lint/check_mermaid.mjs"
+additional_dependencies = [
+    "jsdom@25.0.1",
+    "mermaid@11.17.2",
+]
+files = '\.md$'
 priority = "check"
 
 [[repos.hooks]]
@@ -588,7 +642,9 @@ priority = "check"
 
 [[repos.hooks]]
 id = "check-shebang-scripts-are-executable"
-exclude = '(?:^renewables/wind/plant/phenix-injects/wind-test-harness/|\.mako$)'
+# The .boot files under a spike's evidence are VyOS boot scripts that a CI run
+# recorded. They are records, and nothing runs them from this repository.
+exclude = '(?:^renewables/wind/plant/phenix-injects/wind-test-harness/|^cherrymountain-brewery/spikes/.*/evidence/.*\.boot$|\.mako$)'
 priority = "check"
 
 [[repos.hooks]]

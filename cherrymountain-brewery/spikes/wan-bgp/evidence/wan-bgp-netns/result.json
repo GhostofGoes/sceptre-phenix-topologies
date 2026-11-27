@@ -1,0 +1,180 @@
+{
+  "spike": "wan-bgp-netns",
+  "checks": [
+    {
+      "name": "every BGP session is Established",
+      "passed": true,
+      "detail": "13 sessions in 8 s"
+    },
+    {
+      "name": "ShadeCast reaches Tumbleweed and its customer Marmot over the peering link, not through transit",
+      "passed": true,
+      "detail": "'64501' at local preference 150, '64501 64502'"
+    },
+    {
+      "name": "a route learned from a peer is not given to the provider (no valley)",
+      "passed": true,
+      "detail": "cb-west holds Marmot's prefix from 198.18.0.10 (Tumbleweed is 198.18.0.10; a path from ShadeCast, 198.18.0.6, would be a leak)"
+    },
+    {
+      "name": "an ISP refuses a private prefix and one longer than a /24 from a customer, and carries no private route",
+      "passed": true,
+      "detail": "Marmot offered 10.99.0.0/24, 198.18.102.0/25; Tumbleweed holds {\"10.99.0.0/24\": [], \"198.18.102.0/25\": []}; private routes at the ISPs: {}"
+    },
+    {
+      "name": "the head office installs a default route through each of its two ISPs",
+      "passed": true,
+      "detail": "default via fr-sc, fr-tw"
+    },
+    {
+      "name": "neither default route of the head office is marked stale",
+      "passed": true,
+      "detail": "2 paths; stale from no ISP"
+    },
+    {
+      "name": "a site learns only site prefixes over the tunnels (no default, no public route)",
+      "passed": true,
+      "detail": "{\"fc-fw-edge\": [\"10.20.30.0/24\", \"10.22.30.0/24\", \"192.168.20.0/24\"], \"ep-fw-edge\": [\"10.20.30.0/24\", \"10.21.10.0/24\", \"192.168.20.0/24\"], \"cs-fw-edge\": [\"10.20.30.0/24\", \"10.21.10.0/24\", \"10.22.30.0/24\"]}"
+    },
+    {
+      "name": "every site reaches the head office and every other site",
+      "passed": true,
+      "detail": "{\"fc-historian to fr-historian\": true, \"fc-historian to ep-historian\": true, \"fc-historian to cs-historian\": true, \"ep-historian to fr-historian\": true, \"ep-historian to fc-historian\": true, \"ep-historian to cs-historian\": true, \"cs-historian to fr-historian\": true, \"cs-historian to fc-historian\": true, \"cs-historian to ep-historian\": true}"
+    },
+    {
+      "name": "site traffic rides the primary tunnel",
+      "passed": true,
+      "detail": "fc-fw-edge via wgs-fc-a, fr-fw-edge back via wgh-fc-a"
+    },
+    {
+      "name": "no edge would send an unused private address out of an uplink",
+      "passed": true,
+      "detail": "25 probes at 4 edges; 10.0.0.0/8 is a blackhole at 4 of them"
+    },
+    {
+      "name": "a private address is not reachable from the internet side",
+      "passed": true,
+      "detail": "inet cannot ping fr-historian"
+    },
+    {
+      "name": "the head office's public endpoint answers from the internet",
+      "passed": true,
+      "detail": "inet pings 198.18.105.1"
+    },
+    {
+      "name": "the Fort Collins site fails over to its second ISP when its ShadeCast uplink goes silent",
+      "passed": true,
+      "detail": "outage 0.9 s, now via wgs-fc-b"
+    },
+    {
+      "name": "the other sites do not notice",
+      "passed": true,
+      "detail": "ep-historian to fr-historian: 0 lost, cs-historian to fr-historian: 0 lost"
+    },
+    {
+      "name": "the Fort Collins site returns to the primary tunnel after the repair",
+      "passed": true,
+      "detail": "via wgs-fc-a, outage on the way back 0.0 s"
+    },
+    {
+      "name": "every site keeps the head office when it loses one of its two ISPs",
+      "passed": true,
+      "detail": "started converged on fc-a: True; Fort Collins lost 0.6 s, the longest outage was 0.6 s; ShadeCast now reaches the head office over '64501 64505'"
+    },
+    {
+      "name": "the fault was real: Fort Collins's tunnel crossed the failed link, and ShadeCast rerouted through its peer",
+      "passed": true,
+      "detail": "Fort Collins underlay 203.0.113.9 > 198.18.105.1 -> 203.0.113.9 > 198.18.0.18 > 198.18.105.1; 110 packets dropped"
+    },
+    {
+      "name": "every site keeps the head office through the loss of a whole ISP",
+      "passed": true,
+      "detail": "longest outage 1.0 s; Fort Collins via wgs-fc-b, Eastern Plains via wgs-ep-a"
+    },
+    {
+      "name": "the outage is bounded by the BGP hold time of the ISP core",
+      "passed": true,
+      "detail": "1.0 s against a 9 s hold time"
+    },
+    {
+      "name": "a site whose path crosses the dead ISP in the core waits for the BGP hold timer",
+      "passed": true,
+      "detail": "cb-west reached the head office over '64500 64505'; Colorado Springs lost 9.0 s against a 9 s hold time; underlay 198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.6 > 198.18.105.1 -> 198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1"
+    },
+    {
+      "name": "with its uplink's link down, a tunnel does not move to the other uplink",
+      "passed": true,
+      "detail": "lookup for fc-a: RTNETLINK answers: Invalid argument; table 101: blackhole default proto static metric 20; traffic via wgs-fc-b"
+    },
+    {
+      "name": "the tunnel returns when the link does",
+      "passed": true,
+      "detail": "after 2 s"
+    },
+    {
+      "name": "no tunnel endpoint has moved off the address its site was given",
+      "passed": true,
+      "detail": "all 5 as configured"
+    },
+    {
+      "name": "every tunnel still leaves through its own uplink",
+      "passed": true,
+      "detail": "{\"fc-a\": \"fc-sc\", \"fc-b\": \"fc-mm\", \"ep-a\": \"ep-tw\", \"ep-b\": \"ep-sc\", \"cs-a\": \"cs-bc\"}"
+    },
+    {
+      "name": "the lab converges again after the repairs",
+      "passed": true,
+      "detail": "0 s"
+    },
+    {
+      "name": "the head office refuses another site's network when a site announces it",
+      "passed": true,
+      "detail": "fc-fw-edge offered 192.168.20.0/24, 10.20.99.0/24; the head office holds 192.168.20.0/24 from 10.255.0.9 (the Colorado Springs tunnel is 10.255.0.9), next hop wgh-cs-a; ep-historian still reaches cs-historian"
+    },
+    {
+      "name": "the head office refuses a site's more-specific of the head office's own block",
+      "passed": true,
+      "detail": "fc-fw-edge offered 10.20.99.0/24: True; the head office holds it from no neighbor"
+    },
+    {
+      "name": "an origin hijack by Bristlecone takes the transit carrier's traffic and cuts off the site behind Bristlecone",
+      "passed": true,
+      "detail": "paths {\"cb-west\": \"64503\", \"cb-south\": \"64503\", \"shadecast\": \"64505\", \"tumbleweed\": \"64505\"}; reach {\"fc-historian\": true, \"ep-historian\": true, \"cs-historian\": false}"
+    },
+    {
+      "name": "the head office's own ISPs still prefer their customer route, so their sites stay up",
+      "passed": true,
+      "detail": "shadecast '64505', tumbleweed '64505'"
+    },
+    {
+      "name": "the site behind Bristlecone comes back when the announcement is withdrawn",
+      "passed": true,
+      "detail": "after 2 s; cb-south path '64501 64505'"
+    }
+  ],
+  "versions": {},
+  "facts": {
+    "wireguard": "userspace",
+    "AS path, cb-south to the head office's prefix": "64501 64505",
+    "AS path, bristlecone to the head office's prefix": "64496 64501 64505",
+    "AS path, marmot to ShadeCast's prefix": "64501 64500",
+    "AS path, shadecast to Tumbleweed's prefix": "64501",
+    "AS path, shadecast to Marmot's prefix": "64501 64502",
+    "AS path, tumbleweed to Bristlecone's prefix": "64496 64503",
+    "path, fc-historian to fr-historian": "10.21.10.1 > 10.255.0.0 > 10.20.30.11",
+    "path, ep-historian to fr-historian": "10.22.30.1 > 10.255.0.4 > 10.20.30.11",
+    "path, cs-historian to fr-historian": "192.168.20.1 > 10.255.0.8 > 10.20.30.11",
+    "path, fc-historian to cs-historian": "10.21.10.1 > 10.255.0.0 > 10.255.0.9 > 192.168.20.11",
+    "pin": "mark",
+    "tunnel endpoints at the start": "{\"fc-a\": \"198.18.105.1:51821\", \"fc-b\": \"198.18.105.1:51822\", \"ep-a\": \"198.18.105.1:51823\", \"ep-b\": \"198.18.105.1:51824\", \"cs-a\": \"198.18.105.1:51825\"}",
+    "routing daemons, proportional (PSS) MiB": "{\"bfdd\": 29.7, \"bgpd\": 122.2, \"staticd\": 26.6, \"wireguard-go\": 26.7, \"zebra\": 91.3}",
+    "routing daemons, total MiB": "296.5",
+    "path, fc-historian to fr-historian, head office on one ISP": "10.21.10.1 > 10.255.0.0 > 10.20.30.11",
+    "tunnel endpoints after the faults and repairs": "{\"fc-a\": \"198.18.105.1:51821\", \"fc-b\": \"198.18.105.1:51822\", \"ep-a\": \"198.18.105.1:51823\", \"ep-b\": \"198.18.105.1:51824\", \"cs-a\": \"198.18.105.1:51825\"}",
+    "foreign prefix, the head office's paths before": "[\"10.255.0.9\"]",
+    "foreign prefix, the head office's paths after": "[\"10.255.0.9\"]",
+    "hijack, AS path to the head office's prefix before": "{\"cb-west\": \"64500 64505\", \"cb-south\": \"64500 64505\", \"shadecast\": \"64505\", \"tumbleweed\": \"64505\"}",
+    "hijack, AS path to the head office's prefix after": "{\"cb-west\": \"64503\", \"cb-south\": \"64503\", \"shadecast\": \"64505\", \"tumbleweed\": \"64505\"}",
+    "outages": "[{\"name\": \"Fort Collins uplink to ShadeCast, silent\", \"stream\": \"fc-historian to fr-historian\", \"sent\": 250, \"lost\": 9, \"longest_gap_s\": 0.9, \"path_before\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"path_after\": \"10.21.10.1 > 10.255.0.2 > 10.20.30.11\", \"underlay_before\": \"203.0.113.9 > 198.18.105.1\", \"underlay_after\": \"* > * > * > * > * > * > * > * > * > * > * > *\", \"fault_drops\": 107}, {\"name\": \"Fort Collins uplink to ShadeCast, silent\", \"stream\": \"ep-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"path_after\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"underlay_before\": \"198.18.101.9 > 198.18.105.1\", \"underlay_after\": \"198.18.101.9 > 198.18.105.1\", \"fault_drops\": 107}, {\"name\": \"Fort Collins uplink to ShadeCast, silent\", \"stream\": \"cs-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"path_after\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"underlay_before\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"underlay_after\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"fault_drops\": 107}, {\"name\": \"Fort Collins uplink to ShadeCast, restored\", \"stream\": \"fc-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.21.10.1 > 10.255.0.2 > 10.20.30.11\", \"path_after\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"underlay_before\": \"* > * > * > * > * > * > * > * > * > * > * > *\", \"underlay_after\": \"203.0.113.9 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"Fort Collins uplink to ShadeCast, restored\", \"stream\": \"ep-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"path_after\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"underlay_before\": \"198.18.101.9 > 198.18.105.1\", \"underlay_after\": \"198.18.101.9 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"Fort Collins uplink to ShadeCast, restored\", \"stream\": \"cs-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"path_after\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"underlay_before\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"underlay_after\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"head office uplink to ShadeCast, silent\", \"stream\": \"fc-historian to fr-historian\", \"sent\": 250, \"lost\": 6, \"longest_gap_s\": 0.6, \"path_before\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"path_after\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"underlay_before\": \"203.0.113.9 > 198.18.105.1\", \"underlay_after\": \"203.0.113.9 > 198.18.0.18 > 198.18.105.1\", \"fault_drops\": 110}, {\"name\": \"head office uplink to ShadeCast, silent\", \"stream\": \"ep-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"path_after\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"underlay_before\": \"198.18.101.9 > 198.18.105.1\", \"underlay_after\": \"198.18.101.9 > 198.18.105.1\", \"fault_drops\": 110}, {\"name\": \"head office uplink to ShadeCast, silent\", \"stream\": \"cs-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"path_after\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"underlay_before\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"underlay_after\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"fault_drops\": 110}, {\"name\": \"head office uplink to ShadeCast, restored\", \"stream\": \"fc-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"path_after\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"underlay_before\": \"203.0.113.9 > 198.18.0.18 > 198.18.105.1\", \"underlay_after\": \"203.0.113.9 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"head office uplink to ShadeCast, restored\", \"stream\": \"ep-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"path_after\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"underlay_before\": \"198.18.101.9 > 198.18.105.1\", \"underlay_after\": \"198.18.101.9 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"head office uplink to ShadeCast, restored\", \"stream\": \"cs-historian to fr-historian\", \"sent\": 250, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"path_after\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"underlay_before\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"underlay_after\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"ShadeCast outage, silent\", \"stream\": \"fc-historian to fr-historian\", \"sent\": 350, \"lost\": 10, \"longest_gap_s\": 1.0, \"path_before\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"path_after\": \"10.21.10.1 > 10.255.0.2 > 10.20.30.11\", \"underlay_before\": \"203.0.113.9 > 198.18.105.1\", \"underlay_after\": \"* > * > * > * > * > * > * > * > * > * > * > *\", \"fault_drops\": 355}, {\"name\": \"ShadeCast outage, silent\", \"stream\": \"ep-historian to fr-historian\", \"sent\": 350, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"path_after\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"underlay_before\": \"198.18.101.9 > 198.18.105.1\", \"underlay_after\": \"198.18.101.9 > 198.18.105.1\", \"fault_drops\": 355}, {\"name\": \"ShadeCast outage, silent\", \"stream\": \"cs-historian to fr-historian\", \"sent\": 350, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"path_after\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"underlay_before\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"underlay_after\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"fault_drops\": 355}, {\"name\": \"ShadeCast outage, restored\", \"stream\": \"fc-historian to fr-historian\", \"sent\": 350, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.21.10.1 > 10.255.0.2 > 10.20.30.11\", \"path_after\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"underlay_before\": \"* > * > * > * > * > * > * > * > * > * > * > *\", \"underlay_after\": \"203.0.113.9 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"ShadeCast outage, restored\", \"stream\": \"ep-historian to fr-historian\", \"sent\": 350, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"path_after\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"underlay_before\": \"198.18.101.9 > 198.18.105.1\", \"underlay_after\": \"198.18.101.9 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"ShadeCast outage, restored\", \"stream\": \"cs-historian to fr-historian\", \"sent\": 350, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"path_after\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"underlay_before\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"underlay_after\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"ShadeCast outage, the transit carrier routing through it\", \"stream\": \"fc-historian to fr-historian\", \"sent\": 450, \"lost\": 10, \"longest_gap_s\": 1.0, \"path_before\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"path_after\": \"10.21.10.1 > 10.255.0.2 > 10.20.30.11\", \"underlay_before\": \"203.0.113.9 > 198.18.105.1\", \"underlay_after\": \"* > * > * > * > * > * > * > * > * > * > * > *\", \"fault_drops\": 520}, {\"name\": \"ShadeCast outage, the transit carrier routing through it\", \"stream\": \"ep-historian to fr-historian\", \"sent\": 450, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"path_after\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"underlay_before\": \"198.18.101.9 > 198.18.105.1\", \"underlay_after\": \"198.18.101.9 > 198.18.105.1\", \"fault_drops\": 520}, {\"name\": \"ShadeCast outage, the transit carrier routing through it\", \"stream\": \"cs-historian to fr-historian\", \"sent\": 450, \"lost\": 90, \"longest_gap_s\": 9.0, \"path_before\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"path_after\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"underlay_before\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.6 > 198.18.105.1\", \"underlay_after\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"fault_drops\": 520}, {\"name\": \"ShadeCast outage, restored again\", \"stream\": \"fc-historian to fr-historian\", \"sent\": 350, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.21.10.1 > 10.255.0.2 > 10.20.30.11\", \"path_after\": \"10.21.10.1 > 10.255.0.0 > 10.20.30.11\", \"underlay_before\": \"* > * > * > * > * > * > * > * > * > * > * > *\", \"underlay_after\": \"203.0.113.9 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"ShadeCast outage, restored again\", \"stream\": \"ep-historian to fr-historian\", \"sent\": 350, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"path_after\": \"10.22.30.1 > 10.255.0.4 > 10.20.30.11\", \"underlay_before\": \"198.18.101.9 > 198.18.105.1\", \"underlay_after\": \"198.18.101.9 > 198.18.105.1\", \"fault_drops\": 0}, {\"name\": \"ShadeCast outage, restored again\", \"stream\": \"cs-historian to fr-historian\", \"sent\": 350, \"lost\": 0, \"longest_gap_s\": 0.0, \"path_before\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"path_after\": \"192.168.20.1 > 10.255.0.8 > 10.20.30.11\", \"underlay_before\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.10 > 198.18.105.1\", \"underlay_after\": \"198.18.103.1 > 198.18.0.13 > 198.18.0.1 > 198.18.0.6 > 198.18.105.1\", \"fault_drops\": 0}]"
+  }
+}

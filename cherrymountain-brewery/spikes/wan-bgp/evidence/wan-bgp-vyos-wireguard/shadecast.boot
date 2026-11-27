@@ -1,0 +1,94 @@
+#!/bin/vbash
+source /opt/vyatta/etc/functions/script-template
+configure
+# ------------------------------ Interfaces -------------------------------
+set interface ethernet eth0 address 198.18.0.17/30
+set interface ethernet eth1 address 203.0.113.1/30
+set interface ethernet eth2 address 203.0.113.9/30
+# ---------------------------------- SNAT ---------------------------------
+# ---------------------------------- DNAT ---------------------------------
+# ----------------------------- Traffic-Policy ----------------------------
+# -------------------------------- Firewall -------------------------------
+# --------------------------------- Routes --------------------------------
+# ---------------------------------- OSPF ---------------------------------
+# --------------------------------- IPsec ---------------------------------
+# -------------------------------- Services -------------------------------
+# SSH
+# NTP
+delete service ntp
+# SNMP
+# --------------------------------- System --------------------------------
+set system host-name shadecast
+# ------------------------------ Extra config -----------------------------
+set protocols bfd profile WAN interval transmit 1000
+set protocols bfd profile WAN interval receive 1000
+set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list PUBLIC rule 1 action deny
+set policy prefix-list PUBLIC rule 1 prefix 10.0.0.0/8
+set policy prefix-list PUBLIC rule 1 le 32
+set policy prefix-list PUBLIC rule 2 action deny
+set policy prefix-list PUBLIC rule 2 prefix 172.16.0.0/12
+set policy prefix-list PUBLIC rule 2 le 32
+set policy prefix-list PUBLIC rule 3 action deny
+set policy prefix-list PUBLIC rule 3 prefix 192.168.0.0/16
+set policy prefix-list PUBLIC rule 3 le 32
+set policy prefix-list PUBLIC rule 10 action deny
+set policy prefix-list PUBLIC rule 10 prefix 0.0.0.0/0
+set policy prefix-list PUBLIC rule 15 action permit
+set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
+set policy prefix-list PUBLIC rule 15 le 24
+set policy community-list FROM-CUSTOMERS rule 10 action permit
+set policy community-list FROM-CUSTOMERS rule 10 regex '_64500:1_'
+set policy route-map TO-UPSTREAM rule 10 action permit
+set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
+set policy route-map TO-UPSTREAM rule 20 action permit
+set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
+set policy route-map TO-CUSTOMER rule 10 action permit
+set protocols bgp system-as 64500
+set protocols bgp parameters router-id 203.0.113.254
+set protocols bgp parameters log-neighbor-changes
+set policy prefix-list OWN rule 10 action permit
+set policy prefix-list OWN rule 10 prefix 203.0.113.0/24
+set policy route-map FROM-CUSTOMER rule 10 action permit
+set policy route-map FROM-CUSTOMER rule 10 match ip address prefix-list PUBLIC
+set policy route-map FROM-CUSTOMER rule 10 set local-preference 200
+set policy route-map FROM-CUSTOMER rule 10 set community replace 64500:1
+set policy route-map FROM-PEER rule 10 action permit
+set policy route-map FROM-PEER rule 10 match ip address prefix-list PUBLIC
+set policy route-map FROM-PEER rule 10 set local-preference 150
+set policy route-map FROM-PEER rule 10 set community replace 64500:2
+set policy route-map FROM-PROVIDER rule 10 action permit
+set policy route-map FROM-PROVIDER rule 10 match ip address prefix-list PUBLIC
+set policy route-map FROM-PROVIDER rule 10 set local-preference 100
+set policy route-map FROM-PROVIDER rule 10 set community replace 64500:3
+set protocols bgp address-family ipv4-unicast network 203.0.113.0/24
+set protocols static route 203.0.113.0/24 blackhole distance 250
+set protocols bgp neighbor 198.18.0.18 remote-as 64501
+set protocols bgp neighbor 198.18.0.18 description 'Tumbleweed Fiber'
+set protocols bgp neighbor 198.18.0.18 timers keepalive 3
+set protocols bgp neighbor 198.18.0.18 timers holdtime 9
+set protocols bgp neighbor 198.18.0.18 timers connect 5
+set protocols bgp neighbor 198.18.0.18 address-family ipv4-unicast route-map import FROM-PEER
+set protocols bgp neighbor 198.18.0.18 address-family ipv4-unicast route-map export TO-UPSTREAM
+set policy prefix-list CUST-FR-FW-EDGE rule 10 action permit
+set policy prefix-list CUST-FR-FW-EDGE rule 10 prefix 198.18.105.0/24
+set policy route-map FROM-CUST-FR-FW-EDGE rule 10 action permit
+set policy route-map FROM-CUST-FR-FW-EDGE rule 10 match ip address prefix-list CUST-FR-FW-EDGE
+set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set local-preference 200
+set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set community replace 64500:1
+set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast default-originate route-map DEFAULT-IF-TRANSIT
+set protocols bgp neighbor 203.0.113.2 remote-as 64505
+set protocols bgp neighbor 203.0.113.2 description 'Head office and Front Range brewery edge'
+set protocols bgp neighbor 203.0.113.2 timers keepalive 3
+set protocols bgp neighbor 203.0.113.2 timers holdtime 9
+set protocols bgp neighbor 203.0.113.2 timers connect 5
+set protocols bgp neighbor 203.0.113.2 bfd profile WAN
+set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast route-map import FROM-CUST-FR-FW-EDGE
+set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast route-map export TO-CUSTOMER
+set policy prefix-list TRANSIT rule 10 action permit
+set policy prefix-list TRANSIT rule 10 prefix 198.18.101.0/24
+set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
+set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
+commit
+save
+exit

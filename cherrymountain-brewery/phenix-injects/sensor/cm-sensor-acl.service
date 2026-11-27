@@ -1,0 +1,46 @@
+[Unit]
+Description=CherryMountain sensor host firewall (Arkime viewer for Malcolm only, GRE only on the mirror interface)
+# phenix.service sets the sensor's address. Until it is there the script exits 1
+# and the unit tries again.
+Before=cm-sensor.service
+ConditionPathExists=/etc/default/cm-sensor
+# Never give up: Restart=on-failure below is the only retry loop.
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/default/cm-sensor
+ExecStart=/usr/local/sbin/cm-sensor-acl
+Restart=on-failure
+RestartSec=5
+
+# Hardening. nft and `ip addr` talk to the kernel through netlink, and loading a
+# ruleset needs CAP_NET_ADMIN. Nothing else.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictAddressFamilies=AF_NETLINK AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=CAP_NET_ADMIN
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

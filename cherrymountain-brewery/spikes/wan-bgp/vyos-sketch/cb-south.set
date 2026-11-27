@@ -1,0 +1,54 @@
+set protocols bfd profile WAN interval transmit 1000
+set protocols bfd profile WAN interval receive 1000
+set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list PUBLIC rule 1 action deny
+set policy prefix-list PUBLIC rule 1 prefix 10.0.0.0/8
+set policy prefix-list PUBLIC rule 1 le 32
+set policy prefix-list PUBLIC rule 2 action deny
+set policy prefix-list PUBLIC rule 2 prefix 172.16.0.0/12
+set policy prefix-list PUBLIC rule 2 le 32
+set policy prefix-list PUBLIC rule 3 action deny
+set policy prefix-list PUBLIC rule 3 prefix 192.168.0.0/16
+set policy prefix-list PUBLIC rule 3 le 32
+set policy prefix-list PUBLIC rule 10 action deny
+set policy prefix-list PUBLIC rule 10 prefix 0.0.0.0/0
+set policy prefix-list PUBLIC rule 15 action permit
+set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
+set policy prefix-list PUBLIC rule 15 le 24
+set policy community-list FROM-CUSTOMERS rule 10 action permit
+set policy community-list FROM-CUSTOMERS rule 10 regex '_64496:1_'
+set policy route-map TO-UPSTREAM rule 10 action permit
+set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
+set policy route-map TO-UPSTREAM rule 20 action permit
+set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
+set policy route-map TO-CUSTOMER rule 10 action permit
+set protocols bgp system-as 64496
+set protocols bgp parameters router-id 198.18.0.252
+set protocols bgp parameters log-neighbor-changes
+set policy prefix-list OWN rule 10 action deny
+set policy prefix-list OWN rule 10 prefix 0.0.0.0/32
+set policy route-map FROM-CUSTOMER rule 10 action permit
+set policy route-map FROM-CUSTOMER rule 10 match ip address prefix-list PUBLIC
+set policy route-map FROM-CUSTOMER rule 10 set local-preference 200
+set policy route-map FROM-CUSTOMER rule 10 set community replace 64496:1
+set policy route-map FROM-PEER rule 10 action permit
+set policy route-map FROM-PEER rule 10 match ip address prefix-list PUBLIC
+set policy route-map FROM-PEER rule 10 set local-preference 150
+set policy route-map FROM-PEER rule 10 set community replace 64496:2
+set policy route-map FROM-PROVIDER rule 10 action permit
+set policy route-map FROM-PROVIDER rule 10 match ip address prefix-list PUBLIC
+set policy route-map FROM-PROVIDER rule 10 set local-preference 100
+set policy route-map FROM-PROVIDER rule 10 set community replace 64496:3
+set protocols bgp neighbor 198.18.0.1 remote-as 64496
+set protocols bgp neighbor 198.18.0.1 description 'Continental Backbone, Denver'
+set protocols bgp neighbor 198.18.0.1 timers keepalive 3
+set protocols bgp neighbor 198.18.0.1 timers holdtime 9
+set protocols bgp neighbor 198.18.0.1 timers connect 5
+set protocols bgp neighbor 198.18.0.1 address-family ipv4-unicast nexthop-self
+set protocols bgp neighbor 198.18.0.14 remote-as 64503
+set protocols bgp neighbor 198.18.0.14 description 'Bristlecone Broadband'
+set protocols bgp neighbor 198.18.0.14 timers keepalive 3
+set protocols bgp neighbor 198.18.0.14 timers holdtime 9
+set protocols bgp neighbor 198.18.0.14 timers connect 5
+set protocols bgp neighbor 198.18.0.14 address-family ipv4-unicast route-map import FROM-CUSTOMER
+set protocols bgp neighbor 198.18.0.14 address-family ipv4-unicast route-map export TO-CUSTOMER

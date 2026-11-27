@@ -149,27 +149,29 @@ class Site(Strict):
 class FederateOutput(Strict):
     """A federate publication that is not a remote I/O point.
 
-    ``variants`` limits the output to those variants (default: all).
+    ``in_slice: false`` leaves the output out of a variant that is a slice
+    (``VariantSpec.slice``).
     """
 
     key: str
     type: Literal["double", "boolean", "string"]
     units: str | None = None
     desc: str = ""
-    variants: list[str] | None = None
+    in_slice: bool = True
 
 
 class FederateInput(Strict):
     """A subscription to another federate, with a default when it is absent.
 
-    ``variants`` limits the input to those variants (default: all).
+    ``in_slice: false`` leaves the input out of a variant that is a slice
+    (``VariantSpec.slice``).
     """
 
     key: str
     type: Literal["double", "boolean", "string"]
     units: str | None = None
     default: float
-    variants: list[str] | None = None
+    in_slice: bool = True
 
 
 class UnitOutput(Strict):
@@ -288,10 +290,17 @@ class Dnp3Endpoint(Strict):
 
 
 class FuxaSource(Strict):
-    """A device a FUXA instance polls, and which of its tags (fnmatch)."""
+    """A device a FUXA instance polls, and which of its tags (fnmatch).
+
+    ``write`` lets the instance write the BACnet objects of the device. The
+    BAS front end (``app.role: bas``) writes all of its devices without it. A
+    process SCADA needs it where a site has no BAS front end and the one SCADA
+    host operates the building, too.
+    """
 
     host: str
     tags: list[str] = Field(default_factory=lambda: ["*"])
+    write: bool = False
 
 
 class HostSpec(Strict):
@@ -459,10 +468,17 @@ class SimSpec(Strict):
 
 
 class NtpSource(Strict):
-    """An NTP source host and interface."""
+    """An NTP source host and interface.
+
+    ``address`` is for a server that is not a host of the variant. phenix's
+    ntp app looks a source up by its hostname, and gives the client the
+    default source when the topology has no such node. With an address, it
+    takes the address as it is (sceptre-phenix, src/go/app/ntp.go).
+    """
 
     hostname: str
     interface: str
+    address: str | None = None
 
 
 class NtpHost(Strict):
@@ -477,11 +493,18 @@ class NtpSpec(Strict):
     """ntp app (app mode) for a variant.
 
     A host's entry is ``hosts[name]`` if present, else ``roles[role]``.
+    ``external`` names the time servers that are not hosts of the variant. A
+    site of the fleet has one: its edge follows a server of the internet. A
+    client can name such a server as its ``source``. ``other_nodes`` are the
+    nodes of the topology that the plant does not describe (a site's sensor):
+    the app runs in app mode, so its block must list every node.
     """
 
     default_source: NtpSource
     hosts: dict[str, NtpHost] = Field(default_factory=dict)
     roles: dict[str, NtpHost] = Field(default_factory=dict)
+    external: list[str] = Field(default_factory=list)
+    other_nodes: dict[str, NtpHost] = Field(default_factory=dict)
 
 
 class ClockSpec(Strict):
@@ -499,10 +522,13 @@ class VariantSpec(Strict):
     an area that is not listed keeps all its units. ``federate_sim`` passes
     per-federate model settings through to helics.json (the cellar uses
     ``sim``). ``soh``, ``wireguard``, and ``scorch`` turn on the app blocks
-    and lists of the same names.
+    and lists of the same names. ``slice`` marks a variant that keeps only a
+    part of the plant (ci keeps the fermentation cell): it does not get the
+    federate inputs and outputs that say ``in_slice: false``.
     """
 
     description: str = ""
+    slice: bool = False
     areas: list[str]
     units: dict[str, list[str]] = Field(default_factory=dict)
     federates: list[str]
@@ -775,6 +801,9 @@ class Plant(BaseModel):
     federates: dict[str, FederateSpec]
     #: (area id, unit) of every unit in the variant, in plant.yaml order.
     units: list[tuple[str, UnitSpec]] = Field(default_factory=list)
+    #: The code of the site when the plant is a site of the fleet
+    #: (plantgen.fleet), else None.
+    site: str | None = None
 
     @property
     def alarms(self) -> list[Alarm]:
@@ -1039,7 +1068,7 @@ def _deadband(tag: Tag, spec: AlarmSpec) -> float:
         if spec.deadband:
             raise PlantError(f"{tag.name}: a state alarm has no deadband")
         return 0.0
-    step: float = 10.0 ** -tag.scaling
+    step: float = 10.0**-tag.scaling
     if spec.deadband is not None:
         if spec.deadband < 0:
             raise PlantError(f"{tag.name}: alarm deadband must not be negative")

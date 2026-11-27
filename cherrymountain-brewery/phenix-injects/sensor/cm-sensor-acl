@@ -1,0 +1,79 @@
+#!/bin/bash
+# The host firewall of a site's network sensor (docs/multisite/PLANS.md 4.6).
+# Installed as /usr/local/sbin/cm-sensor-acl and run as root by
+# cm-sensor-acl.service at every boot, before the sensor starts.
+#
+# The sensor has one interface of its own (the one with CM_SENSOR_ADDRESS) and
+# the interfaces of Docker. The mirror app adds one more. This script closes two
+# sides that are open without it:
+#
+#   1. Arkime's viewer (8005/tcp) trusts a header for the user's name, so every
+#      host that reaches the port reads the pcap files. Only the Malcolm of the
+#      head office may: its Arkime asks for the packets of a session. On Hedgehog
+#      Linux, Malcolm's own sensor image, a host firewall does the same from the
+#      "reachback ACL". The range does not use that image.
+#   2. The mirror app puts the mirror interface of every monitor host on one
+#      VLAN, which joins the four sites beneath the VPN. Until the app takes a
+#      VLAN for each monitor host, the sensor takes only GRE (the taps) on any
+#      interface that is not its own and not Docker's, and forwards nothing from
+#      or to such an interface.
+#
+# The mirror interface is the rest and has no name here: phenix names it in the
+# topology, and the kernel gives it a name of its own.
+#
+# Env (from /etc/default/cm-sensor): CM_SENSOR_ADDRESS, CM_MALCOLM_HOST. For the
+# tests: CM_SENSOR_IFACE (skip the lookup of the sensor's own interface) and
+# CM_NFT (the nft command).
+set -euo pipefail
+
+OWN="${CM_SENSOR_ADDRESS:-}"
+MALCOLM="${CM_MALCOLM_HOST:-}"
+NFT="${CM_NFT:-nft}"
+VIEWER_PORT=8005
+IPV4='^((25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])$'
+
+log() { echo "cm-sensor-acl: $*"; }
+
+for pair in "CM_SENSOR_ADDRESS=${OWN}" "CM_MALCOLM_HOST=${MALCOLM}"; do
+  if [[ ! "${pair#*=}" =~ $IPV4 ]]; then
+    log "FAIL: ${pair%%=*} in /etc/default/cm-sensor must be an IPv4 address"
+    exit 1
+  fi
+done
+
+# The interface that holds the sensor's address. phenix sets the address during
+# boot, so the unit tries again until the address is there.
+iface="${CM_SENSOR_IFACE:-}"
+if [ -z "$iface" ]; then
+  iface=$(ip -o -4 addr show | awk -v own="$OWN" '{ split($4, a, "/"); if (a[1] == own) { print $2; exit } }')
+fi
+if [[ ! "$iface" =~ ^[A-Za-z0-9_.-]{1,15}$ ]]; then
+  log "FAIL: no interface has the address ${OWN} yet"
+  exit 1
+fi
+
+"$NFT" -f - << RULES
+table inet cm_sensor
+delete table inet cm_sensor
+
+table inet cm_sensor {
+  chain input {
+    type filter hook input priority filter - 10; policy accept;
+    iifname "lo" accept
+    iifname "docker0" accept
+    iifname "br-*" accept
+    iifname "${iface}" tcp dport ${VIEWER_PORT} ip saddr != ${MALCOLM} counter drop
+    iifname "${iface}" meta nfproto ipv6 tcp dport ${VIEWER_PORT} counter drop
+    iifname "${iface}" accept
+    meta l4proto gre accept
+    counter drop
+  }
+
+  chain forward {
+    type filter hook forward priority filter - 10; policy accept;
+    iifname != "${iface}" iifname != "docker0" iifname != "br-*" counter drop
+    oifname != "${iface}" oifname != "docker0" oifname != "br-*" counter drop
+  }
+}
+RULES
+log "PASS: ${VIEWER_PORT}/tcp answers ${MALCOLM} only, and only ${iface} and Docker's interfaces take more than GRE"

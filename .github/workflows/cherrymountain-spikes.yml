@@ -13,6 +13,9 @@ on:
     branches: ['feat-secret-topo']
     paths:
       - 'cherrymountain-brewery/spikes/**'
+      # The wan-bgp job on VyOS commits the lists of the WAN generator.
+      - 'cherrymountain-brewery/tools/wangen/wangen/**'
+      - 'cherrymountain-brewery/wan/**'
       - '.github/actions/cm-lab/**'
       - '.github/workflows/cherrymountain-spikes.yml'
   workflow_dispatch:
@@ -21,6 +24,7 @@ on:
         description: >-
           Spikes to run, space-separated (empty runs all): vyos-ipsec bbmd-netns
           bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror
+          wan-bgp-vyos
         type: string
         default: ''
       phenix-ref:
@@ -30,7 +34,7 @@ on:
       images-ref:
         description: Ref of GhostofGoes/sceptre-phenix-images
         type: string
-        default: ci-e2e-minimega
+        default: feat-cherrymountain-images
       apps-ref:
         description: Ref of GhostofGoes/sceptre-phenix-apps
         type: string
@@ -65,7 +69,8 @@ jobs:
         id: refs
         env:
           IN_PHENIX_REF: ${{ inputs.phenix-ref || 'ci-e2e-minimega' }}
-          IN_IMAGES_REF: ${{ inputs.images-ref || 'ci-e2e-minimega' }}
+          # The images branch that holds the range's recipes; it includes ci-e2e-minimega.
+          IN_IMAGES_REF: ${{ inputs.images-ref || 'feat-cherrymountain-images' }}
           IN_APPS_REF: ${{ inputs.apps-ref || 'ci-e2e-minimega' }}
         run: |
           set -euo pipefail
@@ -95,7 +100,7 @@ jobs:
           SPIKES: ${{ inputs.spikes }}
         run: |
           set -euo pipefail
-          all='vyos-ipsec bbmd-netns bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror'
+          all='vyos-ipsec bbmd-netns bbmd-vyos autotunnel serial serial-pr130 malcolm-docker malcolm-mirror wan-bgp-vyos'
           read -r -a want <<<"${SPIKES:-$all}"
           for n in "${want[@]}"; do
             [[ " $all " == *" $n "* ]] || { echo "::error::unknown spike '$n'"; exit 1; }
@@ -114,6 +119,7 @@ jobs:
       contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
       || contains(needs.plan.outputs.spikes, ' autotunnel ') || contains(needs.plan.outputs.spikes, ' serial ')
       || contains(needs.plan.outputs.spikes, ' serial-pr130 ') || contains(needs.plan.outputs.spikes, ' malcolm-mirror ')
+      || contains(needs.plan.outputs.spikes, ' wan-bgp-vyos ')
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -170,7 +176,9 @@ jobs:
   image-vyos:
     name: Image vyos
     needs: plan
-    if: contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
+    if: >-
+      contains(needs.plan.outputs.spikes, ' vyos-ipsec ') || contains(needs.plan.outputs.spikes, ' bbmd-vyos ')
+      || contains(needs.plan.outputs.spikes, ' wan-bgp-vyos ')
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -184,13 +192,17 @@ jobs:
             cherrymountain-brewery/spikes
           persist-credentials: false
 
+      - name: Name the month
+        id: month
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
       - name: Restore the image
         id: cache
         uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
         with:
           path: out/vyos.qc2
           # The month rebuilds the rolling release monthly.
-          key: cm-image-vyos-${{ hashFiles('cherrymountain-brewery/spikes/ci/build_image.sh') }}-${{ needs.plan.outputs.images-ref }}-${{ needs.plan.outputs.phenix-ref }}
+          key: cm-image-vyos-${{ hashFiles('cherrymountain-brewery/spikes/ci/build_image.sh') }}-${{ needs.plan.outputs.images-ref }}-${{ needs.plan.outputs.phenix-ref }}-${{ steps.month.outputs.month }}
 
       - name: Check out the image recipes
         if: steps.cache.outputs.cache-hit != 'true'
@@ -341,6 +353,76 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: evidence-bbmd-vyos
+          path: evidence
+          retention-days: 14
+          if-no-files-found: ignore
+          overwrite: true
+
+  wan-bgp-vyos:
+    name: Spike wan-bgp (VyOS routers, ${{ matrix.tunnel }}${{ matrix.open == 'both' && ', both ends open tunnels' || '' }})
+    needs: [plan, image-cm-spike, image-vyos]
+    if: ${{ !cancelled() && contains(needs.plan.outputs.spikes, ' wan-bgp-vyos ') && needs.image-cm-spike.result == 'success' && needs.image-vyos.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # The tunnels between the site and the head office: WireGuard, or route-based
+        # IPsec. IPsec runs twice: with the site only opening the tunnels, and with
+        # both ends opening them (multisite/PLANS.md, D21).
+        include:
+          - tunnel: wireguard
+            open: site
+          - tunnel: vti
+            open: site
+          - tunnel: vti
+            open: both
+    env:
+      CM_EVIDENCE_DIR: ${{ github.workspace }}/evidence
+      CM_PHENIX_REF: ${{ needs.plan.outputs.phenix-ref }}
+      CM_IMAGES_REF: ${{ needs.plan.outputs.images-ref }}
+      CM_TUNNEL: ${{ matrix.tunnel }}
+      CM_IPSEC_OPEN: ${{ matrix.open }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # tools/plantgen/plantgen has wgkeys.py, which derives the tunnels' keys.
+          sparse-checkout: |
+            .github/actions
+            cherrymountain-brewery/spikes
+            cherrymountain-brewery/tools/plantgen/plantgen
+            cherrymountain-brewery/tools/wangen/wangen
+            cherrymountain-brewery/wan
+          persist-credentials: false
+
+      # phenix's vrouter app with a `bgp` block, which carries BGP, BFD and the routing policy,
+      # and a `config` list of VyOS commands, which carries the tunnels and what else the app
+      # cannot render. The patch is for the fork's branch.
+      - name: Set up the lab with the vrouter bgp block and config list
+        uses: ./.github/actions/cm-lab
+        with:
+          phenix-repository: ${{ env.PHENIX_REPOSITORY }}
+          phenix-ref: ${{ needs.plan.outputs.phenix-ref }}
+          phenix-patch: cherrymountain-brewery/spikes/wan-bgp/patches/vrouter-bgp.ci-e2e-minimega.patch
+          images: cm-spike|vyos
+
+      - name: Run the spike
+        run: sudo -E /opt/cm-spike-venv/bin/python cherrymountain-brewery/spikes/wan-bgp/vyos_ci.py
+
+      - name: Prepare the evidence
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" evidence || true
+          find evidence -type f -size +50M -delete 2>/dev/null || true
+
+      - name: Upload the evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: evidence-wan-bgp-vyos-${{ matrix.tunnel }}${{ matrix.open == 'both' && '-both' || '' }}
           path: evidence
           retention-days: 14
           if-no-files-found: ignore

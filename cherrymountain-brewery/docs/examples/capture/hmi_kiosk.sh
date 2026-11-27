@@ -10,7 +10,11 @@
 # `import`, Python 3.12, and Node with Playwright (only to find its Chromium).
 # Environment: CM_ROOT, WORK (as in fuxa_run.sh), FUXA_PORT (default 11881),
 # OPERATOR_PW (default: the one fuxa_run.sh sets), CHROME (default: Playwright's),
-# XDISPLAY (the X display number to start Xvfb on; default 98).
+# XDISPLAY (the X display number to start Xvfb on; default 98), KIOSK (the
+# cm-kiosk script; default: the one in the phenix-apps package that PYTHON has).
+#
+# cm-kiosk is a file of the cherrymountain phenix app, which is in
+# sceptre-phenix-apps (phenix_apps/apps/cherrymountain/templates/scripts/).
 set -euo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -23,7 +27,12 @@ VIEW=$1
 OUT=$2
 DISPLAY_NUM=${XDISPLAY:-98}
 STATE="${WORK}/kiosk-state"
-KIOSK="${CM_ROOT}/apps/cherrymountain_apps/cherrymountain/templates/scripts/cm-kiosk"
+KIOSK=${KIOSK:-$("${PY}" -c 'import importlib.util, pathlib
+spec = importlib.util.find_spec("phenix_apps")
+if spec is None or not spec.submodule_search_locations:
+    raise SystemExit("phenix-apps is not installed: install it, or set KIOSK to the cm-kiosk script")
+print(pathlib.Path(spec.submodule_search_locations[0], "apps/cherrymountain/templates/scripts/cm-kiosk"))')}
+[ -f "${KIOSK}" ] || { echo "no cm-kiosk script at ${KIOSK}" >&2; exit 1; }
 CHROME=${CHROME:-$(node -e "console.log(require('playwright').chromium.executablePath())")}
 
 mkdir -p "${WORK}"

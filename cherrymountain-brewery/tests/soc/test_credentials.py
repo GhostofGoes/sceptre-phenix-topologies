@@ -122,7 +122,9 @@ def test_malcolm_passes_the_password_to_auth_setup_in_a_form_a_dash_cannot_break
     """argparse takes ``--opt -value`` for an option and then complains that the
     option has no argument; ``--opt=value`` takes any value."""
     script = malcolm_script()
-    assert '--auth-arkime-password="$password"' in script
+    # The admin password, or the sensors' secret where sensors of other sites send here.
+    assert 'arkime_secret="$password"' in script
+    assert '--auth-arkime-password="$arkime_secret"' in script
     assert not re.search(r'--auth-arkime-password\s+"', script)
 
 

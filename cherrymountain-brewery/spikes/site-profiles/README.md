@@ -1,0 +1,266 @@
+# Spike: four sites that are not copies
+
+Question: The four breweries must differ in size and in how their networks
+are cut, as the sites of a real company do. Can the generator make such sites
+from the one plant? Do they fit in one phenix experiment, and what do they
+cost?
+
+Status: This kit does not run on the current plantgen. The kit patches one
+line of plantgen, and that line moved when plantgen got the fix. Now plantgen
+writes the files of each site itself
+([tools/plantgen](../../tools/plantgen/README.md#sites)). The evidence below is
+from the last run of the kit, before that change.
+
+A spike is a small test that answers a design question. This spike decides
+three things for sections 2, 4.1, 4.8, and 6 of
+[PLANS.md](../../docs/multisite/PLANS.md). It decides what each site is and
+how to describe a site to the generator. It also decides where each site runs
+on the cluster.
+
+A kit is the set of files that runs one spike. Like the
+[stamp spike](../multisite-stamp/README.md), this kit is a probe, not a
+generator. It uses the stamp of that spike again. The stamp puts a site's
+prefix on hostnames and VLAN aliases, and the site's number in its addresses.
+
+## The four sites
+
+| | `fr` Front Range | `ep` Eastern Plains | `cs` Colorado Springs | `fc` Fort Collins |
+|---|---|---|---|---|
+| What it is | Flagship brewery, taproom, head office | Production brewery | Brewery and taproom, bought from another company | Brewpub |
+| Process areas | All six | All six. The taproom's rooftop unit cools the office and tasting room | Brewhouse, cellar, packaging, utilities, and building | Brewhouse, cellar, utilities, and building |
+| PLCs | 5 | 5 | 4 | 3 |
+| Firewalls | 2, with a DMZ between them | 2, with a DMZ and its own jump host | 1 | 1 |
+| Control network | One VLAN for the PLCs | One VLAN for each process cell: 5 | One flat plant VLAN: PLCs, HMIs, SCADA, historian, EWS | One flat plant VLAN, with the building controllers on it too |
+| Address plan | The company's | The company's | Its own, `192.168.0.0/16` | The company's |
+| Historian and EWS on site | Both | Both | Both | A historian, and no EWS |
+| Uplinks | 2 | 2 | 1 | 2 |
+
+## Prerequisites
+
+- Python 3.12 or later with `pyyaml` and `pydantic`.
+- For the schema checks: `check-jsonschema` 0.38.0 on `PATH`, and the
+  `schemas/` directory of a sceptre-phenix checkout at the commit that
+  `prek.toml` pins (`6cc94b2`).
+
+## Steps
+
+```shell
+cd cherrymountain-brewery/spikes/site-profiles
+python profiles.py --schema ~/sceptre-phenix/schemas
+```
+
+`profiles.py` writes `summary.md` and `result.json` under
+`$CM_EVIDENCE_DIR/site-profiles` (the default is `evidence/`). The script does
+three things:
+
+1. plantgen: For each site, the script edits a copy of `plant.yaml` in seven
+   steps. It stamps the copy with the site's prefix, and it runs the real
+   plantgen after each step. The record shows what plantgen said after each
+   step and which generated files the step changed.
+2. Topology: The script builds each site's phenix nodes from today's nodes and
+   the interfaces of the site's plant file. It adds a sensor where the site
+   has one. It makes sure that the merged node list obeys the rules that a
+   phenix experiment enforces. The rules are no duplicate hostname, no
+   duplicate address, and one VLAN ID for each alias. It makes sure that each
+   file agrees with phenix's Topology schema.
+3. Size: The script adds up VMs, vCPUs, and memory for each site and for the
+   range. It spreads them over the three nodes in three ways. It writes a
+   workflow that names a node for every site VM.
+
+`--out DIR` keeps the four topology files and the workflow.
+
+The steps below use these terms. A variant is one named version of the plant.
+A federate is one model in a HELICS co-simulation. Ground truth is the real
+state of the plant. A zone is a group of hosts with the same security needs.
+A conduit is an allowed path between zones.
+
+The seven steps, in order:
+
+| # | Step | What it edits |
+|---|---|---|
+| 1 | The site as a variant | A variant with the site's hosts, areas, and federates, and nothing else |
+| 2 | Clocks | The time server of every host is a host of the site |
+| 3 | Snapshot | The ground-truth snapshot asks only for federates that the site runs |
+| 4 | Variant names | The step adds the site's variant to the five federate keys that name `full` and `lite` |
+| 5 | References | The step takes out everything that names a host that the site lacks: FUXA sources, DNP3 upstreams, conduits, agents, loads |
+| 6 | Uplinks | The edge gets an access link to each ISP in place of the INET VLAN |
+| 7 | Zones | The site's own zones: the step merges, splits, renames, or renumbers VLANs, and it changes the firewalls' legs to match |
+
+## Pass / fail
+
+- [x] plantgen generates all four sites, and no generated file of a site
+      other than `fr` holds a hostname or an address of `fr`.
+- [x] The four sites have no duplicate hostname and no duplicate address, and
+      their topology files agree with the Topology schema.
+- [x] On the three-node cluster, no node carries more than one vCPU for each
+      thread. A workflow that names a node for every site VM agrees with the
+      Workflow schema.
+
+## Result
+
+- Decision: go. A site that differs is still data. plantgen generated all
+  four sites with the one changed line that the stamp spike found. It also
+  needed three kinds of edit to the plant file, and a site's description must
+  carry those edits. A different network cut (one firewall, a flat plant VLAN,
+  a VLAN for each cell, another address plan) needed no change to plantgen.
+- Run: The kit ran in a container with no VM, on
+  `feat-cherrymountain-multisite`. The versions were Python 3.13.18, pydantic
+  2.13.5, check-jsonschema 0.38.0, and the phenix schemas at `6cc94b2`.
+  [`evidence/site-profiles/summary.md`](evidence/site-profiles/summary.md)
+  has the full record.
+
+### What plantgen needed
+
+| Step | `fr` | `ep` | `cs` | `fc` |
+|---|---|---|---|---|
+| 1. The site as a variant | fail | fail | fail | fail |
+| 2. Clocks | fail | fail | fail | fail |
+| 3. Snapshot | fail | fail | fail | fail |
+| 4. Variant names | pass, 29 files | pass, 28 files | pass, 25 files | pass, 22 files |
+| 5. References | pass, no file changed | pass, no file changed | pass, no file changed | pass, no file changed |
+| 6. Uplinks | pass, no file changed | pass, no file changed | pass, no file changed | pass, no file changed |
+| 7. Zones | pass, no file changed | pass, 2 files changed | pass, 9 files changed | pass, 4 files changed |
+
+- Clocks (step 2): plantgen refuses a time source that is not a host of the
+  variant. Today, the edge firewall and the office PC follow `inet-traffic`,
+  which is a host of the internet in a fleet. The kit pointed them at the
+  site's own server to get past the check. A real edge follows a server
+  outside the site, so plantgen must learn to accept one.
+- Snapshot (step 3): The snapshot's key list names federates. A site without
+  packaging or power needs its own list. `fr` and `ep` did not need the step.
+- Variant names (step 4): Five federate keys in `plant.yaml` carry
+  `variants: [full, lite]`. A variant with another name loses them with no
+  message, and the federation check then fails ("no publisher for
+  `cellar/co2.draw_slpm`"). This is the step that made every site generate. A
+  flag on the variant is a better way to say this than a list of names.
+- References (step 5) changed nothing. plantgen already leaves out a FUXA
+  source, a DNP3 upstream, or a conduit whose host the variant lacks. A site's
+  description does not have to repeat what it dropped.
+- Uplinks (step 6) changed nothing in plantgen's output. The edge's WAN side
+  is in the topology and in the routers' configuration, not in the files that
+  plantgen writes.
+- Zones (step 7) changed only the files that hold an address. At `ep`, the
+  FUXA project and the utilities PLC's peer read moved to the cell VLANs. At
+  `cs` and `fc`, the FUXA projects, the BACnet tables, and the PLCs' Modbus
+  files moved to the new subnets. The networks are data to plantgen. No check
+  failed on one firewall, a merged VLAN, or `192.168.0.0/16`.
+
+### The four sites
+
+| Site | Hosts | PLCs | Tags | VLANs | VMs | vCPUs | Memory (GB) | With its sensor |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| `fr` | 39 | 5 | 516 | 16 | 39 | 62 | 151 | the SOC is here |
+| `ep` | 34 | 5 | 516 | 20 | 34 | 43 | 66 | 35 VMs, 47 vCPUs, 82 GB |
+| `cs` | 25 | 4 | 458 | 9 | 25 | 33 | 53 | 26 VMs, 37 vCPUs, 69 GB |
+| `fc` | 18 | 3 | 365 | 8 | 18 | 23 | 39 | 19 VMs, 27 vCPUs, 55 GB |
+
+The count for `fr` includes the SOC (4 VMs, 18 vCPUs, 84 GB) and the vendor's
+gateway and jump host. A sensor is 4 vCPUs and 16 GB, which is an estimate.
+
+| Site | Routed zones | Unrouted |
+|---|---|---|
+| `fr` | CORP, DMZ, OPS, HMI, CTRL, DERLINK, BAS, SOC | 5 field networks, MGMT |
+| `ep` | CORP, DMZ, OPS, HMI, CTRL-BH, CTRL-CEL, CTRL-PKG, CTRL-UTL, CTRL-PWR, DERLINK, BAS, SOC | 5 field networks, MGMT |
+| `cs` | OFFICE, PLANT, BAS | 4 field networks, MGMT |
+| `fc` | OFFICE, PLANT | 3 field networks, MGMT |
+
+### Four sites in one experiment
+
+| Item | Value |
+|---|---|
+| Nodes in the four site files | 119 (39, 35, 26, and 19) |
+| Duplicate hostnames | none |
+| Duplicate addresses | none. Each edge has its own address on each access link |
+| VLAN aliases | 53, and MIRROR |
+| phenix Topology schema | ok, 4 files |
+| Largest router | `ep-fw-ot`, with 11 interfaces |
+
+### The whole range
+
+| Part | VMs | vCPUs | Memory (GB) |
+|---|---:|---:|---:|
+| Mock internet, VyOS routers (6 routers, 6 small hosts) | 12 | 12 | 18 |
+| The vendor's workstation, on the internet | 1 | 2 | 3 |
+| Head-office additions (fleet historian, corporate server, second office desktop, and engineering jump host) | 4 | 8 | 16 |
+| `fr` | 39 | 62 | 151 |
+| `ep` and its sensor | 35 | 47 | 82 |
+| `cs` and its sensor | 26 | 37 | 69 |
+| `fc` and its sensor | 19 | 27 | 55 |
+| All of it | 136 | 195 | 394 |
+
+Four full plants with a sensor at three of them were 157 VMs, 217 vCPUs, and
+421 GB (mix M2 of the stamp spike). On one node, this range is 2.03 vCPUs for
+each thread and 77% of the memory.
+
+### On the three-node cluster
+
+A node has 48 cores, 96 threads, and 512 GB. The term "the shared part" means
+the mock internet, the vendor's workstation, and the head office's additions
+(17 VMs, 22 vCPUs, 37 GB).
+
+| Layout | Node | Runs | VMs | vCPUs | Memory (GB) | vCPUs per thread | Memory used |
+|---|---|---|---:|---:|---:|---:|---:|
+| L1: the head office next to the internet | head node | `ep` | 35 | 47 | 82 | 0.49 | 16% |
+| | 2 | The shared part, `fr` | 56 | 84 | 188 | 0.88 | 37% |
+| | 3 | `cs`, `fc` | 45 | 64 | 124 | 0.67 | 24% |
+| L2: the two small sites on the head node | head node | `cs`, `fc` | 45 | 64 | 124 | 0.67 | 24% |
+| | 2 | The shared part, `fr` | 56 | 84 | 188 | 0.88 | 37% |
+| | 3 | `ep` | 35 | 47 | 82 | 0.49 | 16% |
+| L3: the head office alone on a node | head node | The shared part, `cs` | 43 | 59 | 106 | 0.61 | 21% |
+| | 2 | `fr` | 39 | 62 | 151 | 0.65 | 29% |
+| | 3 | `ep`, `fc` | 54 | 74 | 137 | 0.77 | 27% |
+
+Every layout keeps each node under one vCPU for each thread. L1 gives the
+head node the smallest share, and the head node also runs phenix and serves
+the images. L3 is the most even. The kit writes the workflow for L1.
+
+### A workflow that pins each site to a node
+
+`phenix-fleet.yml` names a node for each of the 119 site VMs: 35 on
+`head-node`, 39 on `node-2`, and 45 on `node-3`. These node names stand in for
+the cluster's own names. The file gives an ID to each of the 54 VLAN aliases.
+
+- A site keeps the single-site IDs plus 100 for each site after the first. A
+  VLAN that the single-site plan does not have takes the next ID from 20 up in
+  the site's hundred. For example, `EP-CTRL-BH` is 320 and `CS-PLANT` is 421.
+- The seven access links take 500 to 506.
+- No ID occurs twice, every alias of the site topologies has one, and the file
+  agrees with phenix's Workflow schema.
+
+## What the kit did not test
+
+- No VM ran, and the kit used no cluster. The sizes are counts. Nothing here
+  measured a site.
+- Only plantgen ran. The kit ran none of these on any of the four sites:
+  `sync.py`, `netcheck`, the `cherrymountain` app, the FUXA builder, the PLC
+  ZIP builder, and the federates.
+- Firewall rules: The kit moves interfaces and addresses. The project has no
+  conduit matrix for a site with one firewall, for a flat plant VLAN, or for a
+  VLAN for each cell. At `ep`, the utilities PLC's read from the cellar PLC
+  becomes a conduit through `ep-fw-ot`.
+- Whole areas only: Every site drops whole process areas, which drops whole
+  PLCs, and no site drops a unit inside an area. An earlier version dropped
+  the taproom's rooftop unit at `ep`. The building federate, the power PLC's
+  load shedding, and the building SCADA's screen all assume that unit, so `ep`
+  keeps it. A site that drops a unit inside a PLC's area needs a PLC program
+  for that unit list. Examples are a brewpub with two fermenters, and a site
+  with a generator and no battery. Today, there is one program for each PLC.
+- The brewpub's SCADA: `fc` has no building SCADA. Its one SCADA server must
+  show the taproom's and the cold room's points too. The kit did not add them
+  to its FUXA sources.
+- The workflow does not schedule the shared part. It pins the site VMs only.
+  At start, minimega places any VM without a node, so the internet and the
+  head office's additions can land anywhere. A fleet generator pins them to
+  node 2 as well.
+- What the merge copies as it is: A site's nodes are copies of the single-site
+  nodes with new names and addresses. The merge copies the rest of each node
+  unchanged. As a result, every site's FUXA and historian ask the head node
+  for the same forwarded host port (11881 and 13000). `ot-svc` injects the
+  single-site `dnsmasq-plant.conf` and `plant.hosts`, and annotations carry
+  single-site values. The merge also drops every node's `routes` and adds none
+  back, and it leaves out the ISP side of each access link. A fleet generator
+  must rewrite these, but the kit only counts nodes and addresses.
+- The sensor is a stand-in: a node with a name, a size, and an address. No
+  image exists for it.
+- The size of a plant: Every site runs the same vessels (15 bbl brews and 30
+  bbl tanks). The simulation holds those sizes as constants.

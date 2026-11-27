@@ -1,0 +1,146 @@
+set protocols bfd profile WAN interval transmit 1000
+set protocols bfd profile WAN interval receive 1000
+set protocols bfd profile WAN interval multiplier 3
+set policy prefix-list SITE-FR rule 10 action permit
+set policy prefix-list SITE-FR rule 10 prefix 10.10.0.0/16
+set policy prefix-list SITE-FR rule 10 le 24
+set policy prefix-list SITE-NETS rule 10 action permit
+set policy prefix-list SITE-NETS rule 10 prefix 10.10.0.0/16
+set policy prefix-list SITE-NETS rule 10 le 24
+set policy prefix-list SITE-FR rule 20 action permit
+set policy prefix-list SITE-FR rule 20 prefix 10.20.0.0/16
+set policy prefix-list SITE-FR rule 20 le 24
+set policy prefix-list SITE-NETS rule 20 action permit
+set policy prefix-list SITE-NETS rule 20 prefix 10.20.0.0/16
+set policy prefix-list SITE-NETS rule 20 le 24
+set policy prefix-list SITE-FR rule 30 action permit
+set policy prefix-list SITE-FR rule 30 prefix 10.30.0.0/16
+set policy prefix-list SITE-FR rule 30 le 24
+set policy prefix-list SITE-NETS rule 30 action permit
+set policy prefix-list SITE-NETS rule 30 prefix 10.30.0.0/16
+set policy prefix-list SITE-NETS rule 30 le 24
+set policy prefix-list SITE-FR rule 40 action permit
+set policy prefix-list SITE-FR rule 40 prefix 10.40.0.0/16
+set policy prefix-list SITE-FR rule 40 le 24
+set policy prefix-list SITE-NETS rule 40 action permit
+set policy prefix-list SITE-NETS rule 40 prefix 10.40.0.0/16
+set policy prefix-list SITE-NETS rule 40 le 24
+set policy prefix-list SITE-FC rule 10 action permit
+set policy prefix-list SITE-FC rule 10 prefix 10.11.0.0/16
+set policy prefix-list SITE-FC rule 10 le 24
+set policy prefix-list SITE-NETS rule 50 action permit
+set policy prefix-list SITE-NETS rule 50 prefix 10.11.0.0/16
+set policy prefix-list SITE-NETS rule 50 le 24
+set policy prefix-list SITE-FC rule 20 action permit
+set policy prefix-list SITE-FC rule 20 prefix 10.21.0.0/16
+set policy prefix-list SITE-FC rule 20 le 24
+set policy prefix-list SITE-NETS rule 60 action permit
+set policy prefix-list SITE-NETS rule 60 prefix 10.21.0.0/16
+set policy prefix-list SITE-NETS rule 60 le 24
+set policy prefix-list SITE-EP rule 10 action permit
+set policy prefix-list SITE-EP rule 10 prefix 10.12.0.0/16
+set policy prefix-list SITE-EP rule 10 le 24
+set policy prefix-list SITE-NETS rule 70 action permit
+set policy prefix-list SITE-NETS rule 70 prefix 10.12.0.0/16
+set policy prefix-list SITE-NETS rule 70 le 24
+set policy prefix-list SITE-EP rule 20 action permit
+set policy prefix-list SITE-EP rule 20 prefix 10.22.0.0/16
+set policy prefix-list SITE-EP rule 20 le 24
+set policy prefix-list SITE-NETS rule 80 action permit
+set policy prefix-list SITE-NETS rule 80 prefix 10.22.0.0/16
+set policy prefix-list SITE-NETS rule 80 le 24
+set policy prefix-list SITE-EP rule 30 action permit
+set policy prefix-list SITE-EP rule 30 prefix 10.32.0.0/16
+set policy prefix-list SITE-EP rule 30 le 24
+set policy prefix-list SITE-NETS rule 90 action permit
+set policy prefix-list SITE-NETS rule 90 prefix 10.32.0.0/16
+set policy prefix-list SITE-NETS rule 90 le 24
+set policy prefix-list SITE-EP rule 40 action permit
+set policy prefix-list SITE-EP rule 40 prefix 10.42.0.0/16
+set policy prefix-list SITE-EP rule 40 le 24
+set policy prefix-list SITE-NETS rule 100 action permit
+set policy prefix-list SITE-NETS rule 100 prefix 10.42.0.0/16
+set policy prefix-list SITE-NETS rule 100 le 24
+set policy prefix-list SITE-CS rule 10 action permit
+set policy prefix-list SITE-CS rule 10 prefix 192.168.10.0/24
+set policy prefix-list SITE-NETS rule 110 action permit
+set policy prefix-list SITE-NETS rule 110 prefix 192.168.10.0/24
+set policy prefix-list SITE-CS rule 20 action permit
+set policy prefix-list SITE-CS rule 20 prefix 192.168.20.0/24
+set policy prefix-list SITE-NETS rule 120 action permit
+set policy prefix-list SITE-NETS rule 120 prefix 192.168.20.0/24
+set policy prefix-list SITE-CS rule 30 action permit
+set policy prefix-list SITE-CS rule 30 prefix 192.168.30.0/24
+set policy prefix-list SITE-NETS rule 130 action permit
+set policy prefix-list SITE-NETS rule 130 prefix 192.168.30.0/24
+set policy route-map OVERLAY-PRIMARY rule 10 action permit
+set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
+set policy route-map OVERLAY-BACKUP rule 10 action permit
+set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
+set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
+set policy route-map OVERLAY-OUT rule 10 action permit
+set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-EP
+set protocols bgp system-as 65030
+set protocols bgp parameters router-id 10.255.3.1
+set protocols bgp parameters log-neighbor-changes
+set protocols bgp address-family ipv4-unicast network 10.12.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.22.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.32.0.0/16
+set protocols bgp address-family ipv4-unicast network 10.42.0.0/16
+set protocols static route 0.0.0.0/0 next-hop 198.18.101.9 distance 10
+set protocols static route 0.0.0.0/0 next-hop 203.0.113.17 distance 20
+set policy route-map SET-SOURCE rule 15 action permit
+set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
+set policy route-map SET-SOURCE rule 15 set src 10.22.30.1
+set policy route-map SET-SOURCE rule 20 action permit
+set system ip protocol bgp route-map SET-SOURCE
+set protocols static route 10.12.0.0/16 blackhole distance 250
+set protocols static route 10.22.0.0/16 blackhole distance 250
+set protocols static route 10.32.0.0/16 blackhole distance 250
+set protocols static route 10.42.0.0/16 blackhole distance 250
+set protocols static route 10.0.0.0/8 blackhole distance 254
+set protocols static route 172.16.0.0/12 blackhole distance 254
+set protocols static route 192.168.0.0/16 blackhole distance 254
+set interfaces wireguard wg103 description 'ep-a over Tumbleweed Fiber'
+set interfaces wireguard wg103 address 10.255.0.5/31
+set interfaces wireguard wg103 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
+set interfaces wireguard wg103 peer ep-a public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg103 peer ep-a allowed-ips 0.0.0.0/0
+set interfaces wireguard wg103 peer ep-a address 198.18.105.1
+set interfaces wireguard wg103 peer ep-a port 51823
+set interfaces wireguard wg103 peer ep-a persistent-keepalive 5
+set interfaces wireguard wg103 fwmark 103
+set policy local-route rule 103 fwmark 103
+set policy local-route rule 103 set table 103
+set protocols static table 103 route 0.0.0.0/0 next-hop 198.18.101.9
+set protocols static table 103 route 0.0.0.0/0 blackhole distance 250
+set protocols bgp neighbor 10.255.0.4 remote-as 64505
+set protocols bgp neighbor 10.255.0.4 description 'overlay ep-a'
+set protocols bgp neighbor 10.255.0.4 timers keepalive 3
+set protocols bgp neighbor 10.255.0.4 timers holdtime 9
+set protocols bgp neighbor 10.255.0.4 timers connect 5
+set protocols bgp neighbor 10.255.0.4 bfd profile WAN
+set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
+set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map export OVERLAY-OUT
+set interfaces wireguard wg104 description 'ep-b over ShadeCast Cable'
+set interfaces wireguard wg104 address 10.255.0.7/31
+set interfaces wireguard wg104 private-key 'PRIVATE-KEY-OF-THIS-ROUTER'
+set interfaces wireguard wg104 peer ep-b public-key 'PUBLIC-KEY-OF-THE-PEER'
+set interfaces wireguard wg104 peer ep-b allowed-ips 0.0.0.0/0
+set interfaces wireguard wg104 peer ep-b address 198.18.105.1
+set interfaces wireguard wg104 peer ep-b port 51824
+set interfaces wireguard wg104 peer ep-b persistent-keepalive 5
+set interfaces wireguard wg104 fwmark 104
+set policy local-route rule 104 fwmark 104
+set policy local-route rule 104 set table 104
+set protocols static table 104 route 0.0.0.0/0 next-hop 203.0.113.17
+set protocols static table 104 route 0.0.0.0/0 blackhole distance 250
+set protocols bgp neighbor 10.255.0.6 remote-as 64505
+set protocols bgp neighbor 10.255.0.6 description 'overlay ep-b'
+set protocols bgp neighbor 10.255.0.6 timers keepalive 3
+set protocols bgp neighbor 10.255.0.6 timers holdtime 9
+set protocols bgp neighbor 10.255.0.6 timers connect 5
+set protocols bgp neighbor 10.255.0.6 bfd profile WAN
+set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map import OVERLAY-BACKUP
+set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map export OVERLAY-OUT

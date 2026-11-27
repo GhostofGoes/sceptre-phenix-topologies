@@ -15,13 +15,14 @@ from typing import Any
 
 import yaml
 
-from soc_paths import CONFIGS, INJECTS, ROOT, topology_nodes  # noqa: F401 - fixture
+from soc_paths import CONFIGS, INJECTS, ROOT, app_dir, topology_nodes  # noqa: F401 - fixture
 
 #: A cm-* executable or library file under /usr/local, as a step names it.
 SCRIPT: re.Pattern[str] = re.compile(r"/usr/local/(?:s?bin|lib/cm-[\w-]+)/cm[-_][\w.-]+")
 #: The apps whose metadata runs commands on VMs.
 APPS: frozenset[str] = frozenset({"soh", "scorch", "mirror"})
-RENDER: Path = ROOT / "apps" / "cherrymountain_apps" / "cherrymountain" / "render.py"
+#: The cherrymountain app's renderer, in the installed phenix-apps package.
+RENDER: Path = app_dir() / "render.py"
 
 
 def _steps(obj: Any, host: str | None = None) -> Iterator[tuple[str, str]]:

@@ -1,1 +1,0 @@
-"""phenix-scorch-component-plantevent."""

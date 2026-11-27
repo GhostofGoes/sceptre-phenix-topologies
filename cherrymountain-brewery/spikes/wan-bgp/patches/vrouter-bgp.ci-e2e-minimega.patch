@@ -1,0 +1,1970 @@
+diff --git a/src/go/app/vrouter.go b/src/go/app/vrouter.go
+index 4d89f2c..aa978aa 100644
+--- a/src/go/app/vrouter.go
++++ b/src/go/app/vrouter.go
+@@ -7,8 +7,10 @@ import (
+ 	"math/rand/v2"
+ 	"net"
+ 	"os"
++	"slices"
+ 	"strings"
+ 	"time"
++	"unicode"
+ 
+ 	"github.com/hashicorp/go-multierror"
+ 	"github.com/mitchellh/mapstructure"
+@@ -35,6 +37,8 @@ var (
+ 	ErrIPSecConfigNotFound = errors.New("ipsec config not found")
+ 	ErrSNMPConfigNotFound  = errors.New("snmp config not found")
+ 	ErrNTPConfigNotFound   = errors.New("ntp config not found")
++	ErrVyosConfigLine      = errors.New("vyos config line is not valid")
++	ErrBGPConfig           = errors.New("bgp config is not valid")
+ )
+ 
+ type ACLConfig struct {
+@@ -179,8 +183,70 @@ func (v Vrouter) Configure(ctx context.Context, exp *types.Experiment) error {
+ 	return nil
+ }
+ 
++// checkVrouterHosts refuses `config` or `bgp` metadata on a vrouter host
++// that PreStart does not render with it: a host with no node in the topology,
++// a node with the default apps off, a node that is not a router or firewall,
++// or a router whose os_type cannot take the key. PreStart would skip such a
++// node before it reads the host's metadata, or render it without the key, and
++// drop the metadata without a word.
++func checkVrouterHosts(exp *types.Experiment) error {
++	keys := []struct {
++		name    string
++		err     error
++		osTypes []string
++	}{
++		{name: "config", err: ErrVyosConfigLine, osTypes: []string{osTypeVyos}},
++		{name: "bgp", err: ErrBGPConfig, osTypes: bgpOSTypes()},
++	}
++
++	for _, app := range exp.Apps() {
++		if app.Name() != appNameVrouter {
++			continue
++		}
++
++		for _, host := range app.Hosts() {
++			node := exp.Spec.Topology().FindNodeByName(host.Hostname())
++
++			for _, key := range keys {
++				if _, ok := host.Metadata()[key.name]; !ok {
++					continue
++				}
++
++				if why := vrouterKeyDropped(node, key.name, key.osTypes); why != "" {
++					return fmt.Errorf("processing %s metadata for host %s: %w: %s", key.name, host.Hostname(), key.err, why)
++				}
++			}
++		}
++	}
++
++	return nil
++}
++
++// vrouterKeyDropped says why PreStart does not render the metadata key of a
++// vrouter host whose node is node, or "" if it does. osTypes holds the
++// os_types that can take the key.
++func vrouterKeyDropped(node ifaces.NodeSpec, key string, osTypes []string) string {
++	switch {
++	case node == nil:
++		return "no node of that name is in the topology"
++	case node.External() || !defaultAppsEnabled(node):
++		return "the default apps do not run on the node"
++	case !strings.EqualFold(node.Type(), "router") && !strings.EqualFold(node.Type(), "firewall"):
++		return "the node is not a router or firewall"
++	case !slices.Contains(osTypes, strings.ToLower(node.Hardware().OSType())):
++		return key + " is only supported for os_type " + strings.Join(osTypes, ", ")
++	default:
++		return ""
++	}
++}
++
+ //nolint:cyclop,funlen,gocyclo,maintidx // complex logic
+ func (v *Vrouter) PreStart(ctx context.Context, exp *types.Experiment) error {
++	err := checkVrouterHosts(exp)
++	if err != nil {
++		return err
++	}
++
+ 	var (
+ 		ntpServers = exp.Spec.Topology().FindNodesWithLabels("ntp-server")
+ 		ntpAddr    string
+@@ -347,6 +413,28 @@ func (v *Vrouter) PreStart(ctx context.Context, exp *types.Experiment) error {
+ 						data["snat"] = sources
+ 						data["dnat"] = destinations
+ 
++						config, err := vyosConfigLines(md, isVyos)
++						if err != nil {
++							return fmt.Errorf(
++								"processing config metadata for host %s: %w",
++								host.Hostname(),
++								err,
++							)
++						}
++
++						data["config"] = config
++
++						bgp, err := bgpLines(md, node.Hardware().OSType(), node.Network().Interfaces(), config)
++						if err != nil {
++							return fmt.Errorf(
++								"processing bgp metadata for host %s: %w",
++								host.Hostname(),
++								err,
++							)
++						}
++
++						data["bgp"] = bgp
++
+ 						break
+ 					}
+ 				}
+@@ -967,6 +1055,97 @@ func (v *Vrouter) processIPSec(
+ 	return &ipsec, nil
+ }
+ 
++// singleQuotable reports whether a script can hold text between single
++// quotes: text with no single quote and no control character.
++func singleQuotable(text string) bool {
++	return !strings.ContainsFunc(text, func(r rune) bool { return r == '\'' || unicode.IsControl(r) })
++}
++
++// vyosConfigUnsafe holds the characters that vbash, which runs the rendered
++// script, acts on outside single quotes: expansions, quoting, redirections,
++// control operators, comments, and file name patterns.
++const vyosConfigUnsafe = "\"`$;|&<>(){}[]\\#!*?~"
++
++// vyosConfigLines returns the `config` metadata of a router: VyOS
++// configuration commands that the template writes after everything it
++// generates itself, before the commit. Every error wraps ErrVyosConfigLine.
++func vyosConfigLines(md map[string]any, isVyos bool) ([]string, error) {
++	raw, ok := md["config"]
++	if !ok {
++		return nil, nil
++	}
++
++	if !isVyos {
++		return nil, fmt.Errorf("%w: config is only supported for os_type vyos", ErrVyosConfigLine)
++	}
++
++	var lines []string
++
++	err := mapstructure.Decode(raw, &lines)
++	if err != nil {
++		return nil, fmt.Errorf("%w: config is not a list of strings: %w", ErrVyosConfigLine, err)
++	}
++
++	for idx, line := range lines {
++		err := checkVyosConfigLine(line)
++		if err != nil {
++			return nil, fmt.Errorf("line %d: %w", idx, err)
++		}
++	}
++
++	return lines, nil
++}
++
++// checkVyosConfigLine refuses a line that vbash would not run as one `set` or
++// `delete` command whose words are exactly the words of the line. The line
++// goes into a script as it is, so nothing in it may be special to the shell
++// outside single quotes. The first word after the verb must start with a
++// lowercase letter, as every VyOS configuration node does: VyOS's `set` hands
++// `set -...` and `set +...` to the shell's own `set` builtin (vyatta-cfg,
++// VyOS T1604), which would change the options of the script that commits the
++// configuration.
++//
++// The check guards against a line the shell would misread, not against the
++// line's author: `config` has full control of the router. VyOS's own
++// `system task-scheduler` runs commands, and while it completes a line VyOS
++// evaluates the output of completion scripts, some of which print values that
++// earlier lines stored.
++func checkVyosConfigLine(line string) error {
++	var rest string
++
++	switch {
++	case strings.HasPrefix(line, "set "):
++		rest = line[len("set "):]
++	case strings.HasPrefix(line, "delete "):
++		rest = line[len("delete "):]
++	default:
++		return fmt.Errorf("%w: it does not start with set or delete", ErrVyosConfigLine)
++	}
++
++	if rest == "" || rest[0] < 'a' || rest[0] > 'z' {
++		return fmt.Errorf("%w: the word after set or delete does not start with a lowercase letter", ErrVyosConfigLine)
++	}
++
++	quoted := false
++
++	for _, r := range line {
++		switch {
++		case unicode.IsControl(r):
++			return fmt.Errorf("%w: it has a control character", ErrVyosConfigLine)
++		case r == '\'':
++			quoted = !quoted
++		case !quoted && strings.ContainsRune(vyosConfigUnsafe, r):
++			return fmt.Errorf("%w: it has %q outside single quotes", ErrVyosConfigLine, r)
++		}
++	}
++
++	if quoted {
++		return fmt.Errorf("%w: it has an unclosed single quote", ErrVyosConfigLine)
++	}
++
++	return nil
++}
++
+ func (Vrouter) processSNMP(md map[string]any) (*SNMPConfig, error) {
+ 	raw, ok := md["snmp"]
+ 	if !ok {
+diff --git a/src/go/app/vrouter_bgp.go b/src/go/app/vrouter_bgp.go
+new file mode 100644
+index 0000000..9d173b2
+--- /dev/null
++++ b/src/go/app/vrouter_bgp.go
+@@ -0,0 +1,1222 @@
++package app
++
++import (
++	"errors"
++	"fmt"
++	"maps"
++	"math"
++	"net/netip"
++	"reflect"
++	"regexp"
++	"slices"
++	"strconv"
++	"strings"
++	"unicode/utf8"
++
++	"github.com/mitchellh/mapstructure"
++
++	ifaces "phenix/types/interfaces"
++)
++
++// The `bgp` metadata of a vrouter host has three parts, so that a new kind of
++// router needs only the third:
++//
++//  1. The model ([BGPConfig] and the types it holds) has no word of any
++//     router's configuration language. decodeBGPConfig reads it and refuses a
++//     key that it does not know.
++//  2. [BGPConfig.check] refuses a block that no router could run: a value out
++//     of range, an address that is not IPv4, a name that nothing defines.
++//  3. A renderer turns a checked block into the configuration of one os_type.
++//     bgpRenderers holds one for each os_type that has one. It may refuse
++//     what its own router cannot take.
++//
++// bgpLines runs the three for one router. Every error it returns wraps
++// [ErrBGPConfig].
++
++// Limits of the model. The VyOS interface definitions (vyos-1x, branch
++// current) and FRR agree on them.
++const (
++	bgpMaxAS            = math.MaxUint32 - 1 // 4294967295 is reserved (RFC 7300)
++	bgpMaxPaths         = 256
++	bgpMaxMultihop      = 255
++	bgpMinHoldtime      = 3 // seconds; 0 turns the hold timer off (RFC 4271)
++	bgpMinBFDInterval   = 10
++	bgpMaxBFDInterval   = 60000
++	bgpMinBFDMultiplier = 2
++	bgpMaxBFDMultiplier = 255
++	bgpMaxPrefixLen     = 32
++	bgpMaxPasswordLen   = 80 // bytes of a TCP MD5 key on Linux (TCP_MD5SIG_MAXKEYLEN)
++	bgpMaxWholeFloat    = 1 << 53
++)
++
++// Limits of VyOS only (vyos-1x, branch current).
++const (
++	vyosMaxBFDProfileName = 32  // interface-definitions/protocols_bfd.xml.in
++	vyosMaxDescription    = 255 // interface-definitions/include/generic-description.xml.i
++)
++
++// The kinds of name that one part of a `bgp` block defines and another uses.
++const (
++	bgpKindRouteMap      = "route map"
++	bgpKindPrefixList    = "prefix list"
++	bgpKindCommunityList = "community list"
++	bgpKindBFDProfile    = "BFD profile"
++)
++
++const (
++	bgpPermit = "permit"
++	bgpDeny   = "deny"
++)
++
++// bgpNamePattern matches the name of a BFD profile, a prefix list, a community
++// list, or a route map. Every router this app configures takes such a name
++// unquoted.
++var bgpNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
++
++// bgpRenderers holds, for each os_type that can take `bgp` metadata, the
++// function that writes a checked block as that router's configuration. To
++// support another router (Vyatta, minirouter, FRR on Linux), add its function
++// here and print the lines it returns in the router's template or commands.
++var bgpRenderers = map[string]func(BGPConfig) ([]string, error){ //nolint:gochecknoglobals // registry of renderers
++	osTypeVyos: vyosBGPLines,
++}
++
++// BGPConfig is the `bgp` metadata of a vrouter host: one BGP speaker for IPv4
++// unicast, with the lists and route maps that its neighbors use.
++type BGPConfig struct {
++	LocalAS            int64              `mapstructure:"localAS"`
++	RouterID           string             `mapstructure:"routerID"`
++	LogNeighborChanges bool               `mapstructure:"logNeighborChanges"`
++	Multipath          BGPMultipath       `mapstructure:"multipath"`
++	Networks           []string           `mapstructure:"networks"`
++	Redistribute       []BGPRedistribute  `mapstructure:"redistribute"`
++	Neighbors          []BGPNeighbor      `mapstructure:"neighbors"`
++	BFDProfiles        []BFDProfile       `mapstructure:"bfdProfiles"`
++	PrefixLists        []BGPPrefixList    `mapstructure:"prefixLists"`
++	CommunityLists     []BGPCommunityList `mapstructure:"communityLists"`
++	RouteMaps          []BGPRouteMap      `mapstructure:"routeMaps"`
++}
++
++// BGPMultipath holds how many equal paths BGP installs for one prefix.
++type BGPMultipath struct {
++	EBGP        *int64 `mapstructure:"ebgp"`
++	IBGP        *int64 `mapstructure:"ibgp"`
++	ASPathRelax bool   `mapstructure:"asPathRelax"`
++}
++
++// BGPRedistribute brings the routes of another protocol into BGP.
++type BGPRedistribute struct {
++	Protocol string `mapstructure:"protocol"`
++	RouteMap string `mapstructure:"routeMap"`
++	Metric   *int64 `mapstructure:"metric"`
++}
++
++// BGPNeighbor is one BGP session. A pointer says whether the key is set,
++// where that differs from the zero value.
++type BGPNeighbor struct {
++	Address                    string            `mapstructure:"address"`
++	RemoteAS                   int64             `mapstructure:"remoteAS"`
++	Description                string            `mapstructure:"description"`
++	UpdateSource               string            `mapstructure:"updateSource"`
++	EBGPMultihop               *int64            `mapstructure:"ebgpMultihop"`
++	Password                   *string           `mapstructure:"password"` //nolint:gosec // G117: no error or log holds the value
++	Shutdown                   bool              `mapstructure:"shutdown"`
++	Timers                     BGPTimers         `mapstructure:"timers"`
++	BFD                        *bool             `mapstructure:"bfd"`
++	BFDProfile                 string            `mapstructure:"bfdProfile"`
++	NexthopSelf                bool              `mapstructure:"nexthopSelf"`
++	SoftReconfigurationInbound bool              `mapstructure:"softReconfigurationInbound"`
++	DefaultOriginate           *bool             `mapstructure:"defaultOriginate"`
++	DefaultOriginateRouteMap   string            `mapstructure:"defaultOriginateRouteMap"`
++	Import                     BGPNeighborPolicy `mapstructure:"import"`
++	Export                     BGPNeighborPolicy `mapstructure:"export"`
++}
++
++// BGPTimers holds the timers of a neighbor, in seconds.
++type BGPTimers struct {
++	Keepalive    *int64 `mapstructure:"keepalive"`
++	Holdtime     *int64 `mapstructure:"holdtime"`
++	ConnectRetry *int64 `mapstructure:"connectRetry"`
++}
++
++// BGPNeighborPolicy names what filters the routes of a neighbor in one direction.
++type BGPNeighborPolicy struct {
++	RouteMap   string `mapstructure:"routeMap"`
++	PrefixList string `mapstructure:"prefixList"`
++}
++
++// BFDProfile holds BFD timers under a name. The intervals are in milliseconds.
++type BFDProfile struct {
++	Name             string `mapstructure:"name"`
++	TransmitInterval *int64 `mapstructure:"transmitInterval"`
++	ReceiveInterval  *int64 `mapstructure:"receiveInterval"`
++	Multiplier       *int64 `mapstructure:"multiplier"`
++}
++
++// BGPPrefixList is a list of rules that match IPv4 prefixes.
++type BGPPrefixList struct {
++	Name  string          `mapstructure:"name"`
++	Rules []BGPPrefixRule `mapstructure:"rules"`
++}
++
++// BGPPrefixRule matches Prefix, or the prefixes inside it whose length is
++// from GE to LE.
++type BGPPrefixRule struct {
++	Rule   int64  `mapstructure:"rule"`
++	Action string `mapstructure:"action"`
++	Prefix string `mapstructure:"prefix"`
++	GE     *int64 `mapstructure:"ge"`
++	LE     *int64 `mapstructure:"le"`
++}
++
++// BGPCommunityList is a list of rules that match the communities of a route.
++type BGPCommunityList struct {
++	Name  string             `mapstructure:"name"`
++	Rules []BGPCommunityRule `mapstructure:"rules"`
++}
++
++// BGPCommunityRule matches the communities of a route with a regular expression.
++type BGPCommunityRule struct {
++	Rule   int64  `mapstructure:"rule"`
++	Action string `mapstructure:"action"`
++	Regex  string `mapstructure:"regex"`
++}
++
++// BGPRouteMap is a list of rules that accept, refuse, or change routes.
++type BGPRouteMap struct {
++	Name  string            `mapstructure:"name"`
++	Rules []BGPRouteMapRule `mapstructure:"rules"`
++}
++
++// BGPRouteMapRule is one rule of a route map.
++type BGPRouteMapRule struct {
++	Rule   int64            `mapstructure:"rule"`
++	Action string           `mapstructure:"action"`
++	Match  BGPRouteMapMatch `mapstructure:"match"`
++	Set    BGPRouteMapSet   `mapstructure:"set"`
++}
++
++// BGPRouteMapMatch names the lists that a route must match.
++type BGPRouteMapMatch struct {
++	PrefixList    string `mapstructure:"prefixList"`
++	CommunityList string `mapstructure:"communityList"`
++}
++
++// BGPRouteMapSet holds what a route map rule changes in a route it permits.
++type BGPRouteMapSet struct {
++	LocalPreference *int64  `mapstructure:"localPreference"`
++	Community       string  `mapstructure:"community"`
++	Src             string  `mapstructure:"src"`
++	Metric          *int64  `mapstructure:"metric"`
++	ASPathPrepend   []int64 `mapstructure:"asPathPrepend"`
++}
++
++// bgpNames holds the names, by kind, that a `bgp` block can use.
++type bgpNames struct {
++	routeMaps, prefixLists, communityLists, bfdProfiles map[string]bool
++}
++
++// bgpLines returns the `bgp` metadata of a router as lines of its
++// configuration, or nil if md has none. osType is the os_type of the router,
++// nets are its topology interfaces, and config holds the lines of the `config`
++// metadata of the same host, which can define names that the block uses. Every
++// error wraps [ErrBGPConfig]. No error holds the password of a neighbor: the
++// lines do.
++func bgpLines(md map[string]any, osType string, nets []ifaces.NodeNetworkInterface, config []string) ([]string, error) {
++	raw, ok := md["bgp"]
++	if !ok {
++		return nil, nil
++	}
++
++	render, ok := bgpRenderers[strings.ToLower(osType)]
++	if !ok {
++		return nil, fmt.Errorf(
++			"%w: bgp is only supported for os_type %s, and the os_type is %q",
++			ErrBGPConfig, strings.Join(bgpOSTypes(), ", "), osType,
++		)
++	}
++
++	cfg, err := decodeBGPConfig(raw)
++	if err != nil {
++		return nil, fmt.Errorf("%w: %w", ErrBGPConfig, err)
++	}
++
++	// The lines of `config` are VyOS commands, and only a VyOS router has them.
++	err = cfg.check(nets, vyosConfigNames(config))
++	if err != nil {
++		return nil, fmt.Errorf("%w: %w", ErrBGPConfig, err)
++	}
++
++	lines, err := render(cfg)
++	if err != nil {
++		return nil, fmt.Errorf("%w: %w", ErrBGPConfig, err)
++	}
++
++	return lines, nil
++}
++
++// bgpOSTypes returns the os_types that have a BGP renderer, in order.
++func bgpOSTypes() []string {
++	return slices.Sorted(maps.Keys(bgpRenderers))
++}
++
++// decodeBGPConfig reads the value of the `bgp` key. A key that the model does
++// not have is an error, so that a misspelled key is not dropped without a word.
++func decodeBGPConfig(raw any) (BGPConfig, error) {
++	// The wrapper gives the errors of mapstructure the name of the key.
++	var doc struct {
++		BGP BGPConfig `mapstructure:"bgp"`
++	}
++
++	decoder, err := mapstructure.NewDecoder(&mapstructure.DecoderConfig{
++		DecodeHook:  mapstructure.DecodeHookFuncKind(wholeNumber),
++		ErrorUnused: true,
++		Result:      &doc,
++	})
++	if err != nil {
++		return doc.BGP, fmt.Errorf("making the decoder: %w", err)
++	}
++
++	err = decoder.Decode(map[string]any{"bgp": raw})
++	if err != nil {
++		var list *mapstructure.Error
++		if errors.As(err, &list) {
++			// Its own text spreads the errors over several lines.
++			return doc.BGP, errors.New(strings.Join(list.Errors, "; "))
++		}
++
++		return doc.BGP, fmt.Errorf("decoding: %w", err)
++	}
++
++	return doc.BGP, nil
++}
++
++// wholeNumber is a mapstructure hook that refuses a number with a fraction for
++// a field that holds a whole number. Every number of a config that came
++// through JSON is a float64, and mapstructure would cut the fraction off.
++func wholeNumber(from, to reflect.Kind, data any) (any, error) {
++	if (from != reflect.Float32 && from != reflect.Float64) || to < reflect.Int || to > reflect.Uint64 {
++		return data, nil
++	}
++
++	if f := reflect.ValueOf(data).Float(); f != math.Trunc(f) || math.Abs(f) > bgpMaxWholeFloat {
++		return nil, fmt.Errorf("%v is not a whole number", data)
++	}
++
++	return data, nil
++}
++
++// vyosConfigNames returns the names that the lines of a `config` list define:
++// a line that starts with `set policy route-map NAME `, and the same for
++// `policy prefix-list`, `policy community-list`, and `protocols bfd profile`.
++func vyosConfigNames(lines []string) bgpNames {
++	names := bgpNames{
++		routeMaps:      map[string]bool{},
++		prefixLists:    map[string]bool{},
++		communityLists: map[string]bool{},
++		bfdProfiles:    map[string]bool{},
++	}
++
++	kinds := []struct {
++		prefix string
++		names  map[string]bool
++	}{
++		{prefix: "set policy route-map ", names: names.routeMaps},
++		{prefix: "set policy prefix-list ", names: names.prefixLists},
++		{prefix: "set policy community-list ", names: names.communityLists},
++		{prefix: "set protocols bfd profile ", names: names.bfdProfiles},
++	}
++
++	for _, line := range lines {
++		for _, kind := range kinds {
++			rest, ok := strings.CutPrefix(line, kind.prefix)
++			if !ok {
++				continue
++			}
++
++			if name, _, more := strings.Cut(rest, " "); more && bgpNamePattern.MatchString(name) {
++				kind.names[name] = true
++			}
++		}
++	}
++
++	return names
++}
++
++// check refuses a block that no router could run, and replaces each
++// updateSource that names an interface in nets with the address of that
++// interface. known holds the names that something outside the block defines.
++// check adds the names of the block to it.
++func (c *BGPConfig) check(nets []ifaces.NodeNetworkInterface, known bgpNames) error {
++	for _, names := range []*map[string]bool{&known.routeMaps, &known.prefixLists, &known.communityLists, &known.bfdProfiles} {
++		if *names == nil {
++			*names = map[string]bool{}
++		}
++	}
++
++	err := c.checkSpeaker()
++	if err != nil {
++		return err
++	}
++
++	err = c.checkLists(known)
++	if err != nil {
++		return err
++	}
++
++	seen := map[string]bool{}
++
++	for i := range c.Redistribute {
++		r := &c.Redistribute[i]
++
++		err := r.check(known)
++		if err != nil {
++			return fmt.Errorf("redistribute %s: %w", r.Protocol, err)
++		}
++
++		if seen[r.Protocol] {
++			return fmt.Errorf("redistribute has the protocol %s more than once", r.Protocol)
++		}
++
++		seen[r.Protocol] = true
++	}
++
++	clear(seen)
++
++	for i := range c.Neighbors {
++		n := &c.Neighbors[i]
++
++		_, err := bgpAddr("address", n.Address)
++		if err != nil {
++			return fmt.Errorf("neighbor %d: %w", i+1, err)
++		}
++
++		if seen[n.Address] {
++			return fmt.Errorf("neighbor %s is in the list more than once", n.Address)
++		}
++
++		seen[n.Address] = true
++
++		err = n.check(nets, known)
++		if err != nil {
++			return fmt.Errorf("neighbor %s: %w", n.Address, err)
++		}
++	}
++
++	return nil
++}
++
++// checkSpeaker checks what the block says of the router itself.
++func (c *BGPConfig) checkSpeaker() error {
++	err := bgpRange("localAS", &c.LocalAS, 1, bgpMaxAS)
++	if err != nil {
++		return err
++	}
++
++	if c.RouterID != "" {
++		_, err := bgpAddr("routerID", c.RouterID)
++		if err != nil {
++			return err
++		}
++	}
++
++	err = bgpRange("multipath ebgp", c.Multipath.EBGP, 1, bgpMaxPaths)
++	if err != nil {
++		return err
++	}
++
++	err = bgpRange("multipath ibgp", c.Multipath.IBGP, 1, bgpMaxPaths)
++	if err != nil {
++		return err
++	}
++
++	for _, network := range c.Networks {
++		_, err := bgpPrefix("network", network)
++		if err != nil {
++			return err
++		}
++	}
++
++	return nil
++}
++
++// checkLists checks the BFD profiles, the lists and the route maps, and adds
++// their names to known. The route maps come last, because their rules name
++// the lists.
++func (c *BGPConfig) checkLists(known bgpNames) error {
++	err := bgpDefine(bgpKindBFDProfile, known.bfdProfiles, c.BFDProfiles,
++		func(p BFDProfile) string { return p.Name }, BFDProfile.check)
++	if err != nil {
++		return err
++	}
++
++	err = bgpDefine(bgpKindPrefixList, known.prefixLists, c.PrefixLists,
++		func(l BGPPrefixList) string { return l.Name }, BGPPrefixList.check)
++	if err != nil {
++		return err
++	}
++
++	err = bgpDefine(bgpKindCommunityList, known.communityLists, c.CommunityLists,
++		func(l BGPCommunityList) string { return l.Name }, BGPCommunityList.check)
++	if err != nil {
++		return err
++	}
++
++	return bgpDefine(bgpKindRouteMap, known.routeMaps, c.RouteMaps,
++		func(m BGPRouteMap) string { return m.Name },
++		func(m BGPRouteMap) error { return m.check(known) })
++}
++
++// bgpDefine checks the name of each item, that no two items have one name,
++// and each item with check. It adds the names to known.
++func bgpDefine[T any](kind string, known map[string]bool, items []T, nameOf func(T) string, check func(T) error) error {
++	defined := map[string]bool{}
++
++	for _, item := range items {
++		name := nameOf(item)
++
++		switch {
++		case !bgpNamePattern.MatchString(name):
++			return fmt.Errorf("%s name %q is not a letter and then letters, digits, - or _", kind, name)
++		case defined[name]:
++			return fmt.Errorf("%s %s is defined more than once", kind, name)
++		}
++
++		defined[name] = true
++		known[name] = true
++
++		err := check(item)
++		if err != nil {
++			return fmt.Errorf("%s %s: %w", kind, name, err)
++		}
++	}
++
++	return nil
++}
++
++func (p BFDProfile) check() error {
++	err := bgpRange("transmitInterval", p.TransmitInterval, bgpMinBFDInterval, bgpMaxBFDInterval)
++	if err != nil {
++		return err
++	}
++
++	err = bgpRange("receiveInterval", p.ReceiveInterval, bgpMinBFDInterval, bgpMaxBFDInterval)
++	if err != nil {
++		return err
++	}
++
++	return bgpRange("multiplier", p.Multiplier, bgpMinBFDMultiplier, bgpMaxBFDMultiplier)
++}
++
++func (l BGPPrefixList) check() error {
++	var (
++		numbers []int64
++		matches = map[string]int64{}
++	)
++
++	for _, r := range l.Rules {
++		err := r.check()
++		if err != nil {
++			return fmt.Errorf("rule %d: %w", r.Rule, err)
++		}
++
++		numbers = append(numbers, r.Rule)
++
++		// VyOS refuses the commit when two rules of one list say the same.
++		match := fmt.Sprint(r.Action, " ", r.Prefix, " ", bgpOptional(r.GE), " ", bgpOptional(r.LE))
++		if other, ok := matches[match]; ok && other != r.Rule {
++			return fmt.Errorf("rule %d is the same as rule %d", r.Rule, other)
++		}
++
++		matches[match] = r.Rule
++	}
++
++	return bgpRuleNumbers(numbers)
++}
++
++func (r BGPPrefixRule) check() error {
++	err := bgpAction(r.Action)
++	if err != nil {
++		return err
++	}
++
++	prefix, err := bgpPrefix("prefix", r.Prefix)
++	if err != nil {
++		return err
++	}
++
++	// prefix length <= ge <= le <= 32, as FRR has it
++	low := int64(prefix.Bits())
++
++	if r.GE != nil {
++		err := bgpRange("ge", r.GE, low, bgpMaxPrefixLen)
++		if err != nil {
++			return fmt.Errorf("%w (from the length of the prefix to %d)", err, bgpMaxPrefixLen)
++		}
++
++		low = *r.GE
++	}
++
++	err = bgpRange("le", r.LE, low, bgpMaxPrefixLen)
++	if err != nil {
++		return fmt.Errorf("%w (from ge, or the length of the prefix, to %d)", err, bgpMaxPrefixLen)
++	}
++
++	return nil
++}
++
++func (l BGPCommunityList) check() error {
++	numbers := make([]int64, 0, len(l.Rules))
++
++	for _, r := range l.Rules {
++		err := bgpAction(r.Action)
++		if err == nil {
++			err = bgpText("regex", r.Regex, false)
++		}
++
++		if err != nil {
++			return fmt.Errorf("rule %d: %w", r.Rule, err)
++		}
++
++		numbers = append(numbers, r.Rule)
++	}
++
++	return bgpRuleNumbers(numbers)
++}
++
++func (m BGPRouteMap) check(known bgpNames) error {
++	numbers := make([]int64, 0, len(m.Rules))
++
++	for _, r := range m.Rules {
++		err := r.check(known)
++		if err != nil {
++			return fmt.Errorf("rule %d: %w", r.Rule, err)
++		}
++
++		numbers = append(numbers, r.Rule)
++	}
++
++	return bgpRuleNumbers(numbers)
++}
++
++func (r BGPRouteMapRule) check(known bgpNames) error {
++	err := bgpAction(r.Action)
++	if err != nil {
++		return err
++	}
++
++	err = bgpReference(bgpKindPrefixList, known.prefixLists, r.Match.PrefixList)
++	if err != nil {
++		return err
++	}
++
++	err = bgpReference(bgpKindCommunityList, known.communityLists, r.Match.CommunityList)
++	if err != nil {
++		return err
++	}
++
++	return r.Set.check()
++}
++
++func (s BGPRouteMapSet) check() error {
++	err := bgpRange("localPreference", s.LocalPreference, 0, math.MaxUint32)
++	if err != nil {
++		return err
++	}
++
++	err = bgpRange("metric", s.Metric, 0, math.MaxUint32)
++	if err != nil {
++		return err
++	}
++
++	if s.Community != "" {
++		err := bgpCommunity(s.Community)
++		if err != nil {
++			return err
++		}
++	}
++
++	if s.Src != "" {
++		_, err := bgpAddr("src", s.Src)
++		if err != nil {
++			return err
++		}
++	}
++
++	for _, as := range s.ASPathPrepend {
++		err := bgpRange("asPathPrepend", &as, 1, bgpMaxAS)
++		if err != nil {
++			return err
++		}
++	}
++
++	return nil
++}
++
++func (r BGPRedistribute) check(known bgpNames) error {
++	if !slices.Contains([]string{"connected", "static", "ospf", "kernel", "rip"}, r.Protocol) {
++		return fmt.Errorf("protocol %q is not connected, static, ospf, kernel or rip", r.Protocol)
++	}
++
++	err := bgpReference(bgpKindRouteMap, known.routeMaps, r.RouteMap)
++	if err != nil {
++		return err
++	}
++
++	return bgpRange("metric", r.Metric, 0, math.MaxUint32)
++}
++
++// check checks a neighbor whose address is valid. It replaces an updateSource
++// that names an interface in nets with the address of the interface.
++func (n *BGPNeighbor) check(nets []ifaces.NodeNetworkInterface, known bgpNames) error {
++	// VyOS refuses the commit when a neighbor has an address of the router.
++	for _, iface := range nets {
++		if iface.Address() == n.Address {
++			return fmt.Errorf("the address is the address of the router's own interface %s", iface.Name())
++		}
++	}
++
++	err := n.checkSession(nets)
++	if err != nil {
++		return err
++	}
++
++	if n.BFD != nil && !*n.BFD && n.BFDProfile != "" {
++		return errors.New("bfd is false, and bfdProfile turns BFD on: remove one of the two")
++	}
++
++	if n.DefaultOriginate != nil && !*n.DefaultOriginate && n.DefaultOriginateRouteMap != "" {
++		return errors.New("defaultOriginate is false, and defaultOriginateRouteMap turns it on: remove one of the two")
++	}
++
++	references := []struct {
++		kind  string
++		known map[string]bool
++		name  string
++	}{
++		{kind: bgpKindBFDProfile, known: known.bfdProfiles, name: n.BFDProfile},
++		{kind: bgpKindRouteMap, known: known.routeMaps, name: n.DefaultOriginateRouteMap},
++		{kind: bgpKindRouteMap, known: known.routeMaps, name: n.Import.RouteMap},
++		{kind: bgpKindRouteMap, known: known.routeMaps, name: n.Export.RouteMap},
++		{kind: bgpKindPrefixList, known: known.prefixLists, name: n.Import.PrefixList},
++		{kind: bgpKindPrefixList, known: known.prefixLists, name: n.Export.PrefixList},
++	}
++
++	for _, reference := range references {
++		err := bgpReference(reference.kind, reference.known, reference.name)
++		if err != nil {
++			return err
++		}
++	}
++
++	return nil
++}
++
++// checkSession checks what a neighbor says of the session itself.
++func (n *BGPNeighbor) checkSession(nets []ifaces.NodeNetworkInterface) error {
++	err := bgpRange("remoteAS", &n.RemoteAS, 1, bgpMaxAS)
++	if err != nil {
++		return err
++	}
++
++	err = bgpText("description", n.Description, true)
++	if err != nil {
++		return err
++	}
++
++	err = n.resolveUpdateSource(nets)
++	if err != nil {
++		return err
++	}
++
++	err = bgpRange("ebgpMultihop", n.EBGPMultihop, 1, bgpMaxMultihop)
++	if err != nil {
++		return err
++	}
++
++	if n.Password != nil {
++		// The same rule as vyosPassword, and what a TCP MD5 key can hold.
++		err := bgpText("password", *n.Password, false)
++		if err != nil {
++			return err
++		}
++
++		if len(*n.Password) > bgpMaxPasswordLen {
++			return fmt.Errorf("password is longer than %d bytes", bgpMaxPasswordLen)
++		}
++	}
++
++	return n.Timers.check()
++}
++
++// resolveUpdateSource checks that UpdateSource is an IPv4 address, or replaces
++// the name of an interface in nets with the address of that interface.
++func (n *BGPNeighbor) resolveUpdateSource(nets []ifaces.NodeNetworkInterface) error {
++	if n.UpdateSource == "" {
++		return nil
++	}
++
++	if _, err := netip.ParseAddr(n.UpdateSource); err == nil {
++		_, err := bgpAddr("updateSource", n.UpdateSource)
++
++		return err
++	}
++
++	names := make([]string, 0, len(nets))
++
++	for _, iface := range nets {
++		names = append(names, iface.Name())
++
++		if iface.Name() != n.UpdateSource {
++			continue
++		}
++
++		addr, err := bgpAddr("address", iface.Address())
++		if err != nil {
++			return fmt.Errorf("updateSource names the interface %s: %w", iface.Name(), err)
++		}
++
++		n.UpdateSource = addr.String()
++
++		return nil
++	}
++
++	return fmt.Errorf(
++		"updateSource %q is not an IPv4 address or an interface of the router (%s)",
++		n.UpdateSource, strings.Join(names, ", "),
++	)
++}
++
++func (t BGPTimers) check() error {
++	if (t.Keepalive == nil) != (t.Holdtime == nil) {
++		return errors.New("timers need keepalive and holdtime together: a router ignores one without the other")
++	}
++
++	if t.Keepalive != nil {
++		keepalive, holdtime := *t.Keepalive, *t.Holdtime
++
++		switch {
++		case holdtime != 0 && (holdtime < bgpMinHoldtime || holdtime > math.MaxUint16):
++			return fmt.Errorf("timers holdtime is %d, want 0 or %d to %d", holdtime, bgpMinHoldtime, math.MaxUint16)
++		case keepalive < 1 || keepalive > math.MaxUint16:
++			return fmt.Errorf("timers keepalive is %d, want 1 to %d", keepalive, math.MaxUint16)
++		case holdtime != 0 && keepalive >= holdtime:
++			return fmt.Errorf("timers keepalive %d is not below holdtime %d", keepalive, holdtime)
++		}
++	}
++
++	return bgpRange("timers connectRetry", t.ConnectRetry, 1, math.MaxUint16)
++}
++
++// bgpRange refuses a value that is set and is not from low to high.
++func bgpRange(what string, value *int64, low, high int64) error {
++	if value != nil && (*value < low || *value > high) {
++		return fmt.Errorf("%s is %d, want %d to %d", what, *value, low, high)
++	}
++
++	return nil
++}
++
++// bgpOptional returns a value that is set as text, and "" for one that is not.
++func bgpOptional(value *int64) string {
++	if value == nil {
++		return ""
++	}
++
++	return strconv.FormatInt(*value, 10)
++}
++
++// bgpAddr returns the IPv4 address in text.
++func bgpAddr(what, text string) (netip.Addr, error) {
++	addr, err := netip.ParseAddr(text)
++
++	switch {
++	case err != nil:
++		return addr, fmt.Errorf("%s %q is not an IPv4 address", what, text)
++	case !addr.Is4():
++		return addr, fmt.Errorf("%s %s is not an IPv4 address: only IPv4 unicast is supported", what, text)
++	default:
++		return addr, nil
++	}
++}
++
++// bgpPrefix returns the IPv4 prefix in text, which must have no bit set after
++// its length.
++func bgpPrefix(what, text string) (netip.Prefix, error) {
++	prefix, err := netip.ParsePrefix(text)
++
++	switch {
++	case err != nil:
++		return prefix, fmt.Errorf("%s %q is not an IPv4 prefix, such as 10.0.0.0/8", what, text)
++	case !prefix.Addr().Is4():
++		return prefix, fmt.Errorf("%s %s is not an IPv4 prefix: only IPv4 unicast is supported", what, text)
++	case prefix != prefix.Masked():
++		return prefix, fmt.Errorf("%s %s has bits set after its length: write %s", what, text, prefix.Masked())
++	default:
++		return prefix, nil
++	}
++}
++
++// bgpText refuses a text that a script cannot hold in single quotes, and an
++// empty one unless empty is true. The error does not hold the text, which can
++// be a password.
++func bgpText(what, text string, empty bool) error {
++	switch {
++	case text == "" && !empty:
++		return fmt.Errorf("%s is empty", what)
++	case !singleQuotable(text):
++		return fmt.Errorf("%s has a single quote or a control character", what)
++	default:
++		return nil
++	}
++}
++
++func bgpAction(action string) error {
++	if action != bgpPermit && action != bgpDeny {
++		return fmt.Errorf("action %q is not %s or %s", action, bgpPermit, bgpDeny)
++	}
++
++	return nil
++}
++
++// bgpRuleNumbers refuses a list with no rule, a number that is not from 1 to
++// 65535, and a number that two rules have.
++func bgpRuleNumbers(numbers []int64) error {
++	if len(numbers) == 0 {
++		return errors.New("it has no rules")
++	}
++
++	seen := map[int64]bool{}
++
++	for _, number := range numbers {
++		switch {
++		case number < 1 || number > math.MaxUint16:
++			return fmt.Errorf("rule %d: the number of a rule is from 1 to %d", number, math.MaxUint16)
++		case seen[number]:
++			return fmt.Errorf("rule %d is in the list more than once", number)
++		}
++
++		seen[number] = true
++	}
++
++	return nil
++}
++
++// bgpReference refuses a name that nothing defines. VyOS refuses the whole
++// commit when a route map, a prefix list, or a community list that BGP or a
++// route map names does not exist, and the router then boots with no
++// configuration at all. So phenix must catch it here. (VyOS does not check the
++// BFD profile of a neighbor. FRR then runs the session with its default
++// timers, which is not what the author asked for.) The empty name is no
++// reference.
++func bgpReference(kind string, known map[string]bool, name string) error {
++	switch {
++	case name == "":
++		return nil
++	case !bgpNamePattern.MatchString(name):
++		return fmt.Errorf("%s name %q is not a letter and then letters, digits, - or _", kind, name)
++	case !known[name]:
++		return fmt.Errorf("%s %s is not defined in bgp or by a line of config", kind, name)
++	default:
++		return nil
++	}
++}
++
++// bgpWellKnownCommunities returns the names that stand for a community. They
++// are the names that VyOS takes (include/policy/community-value-list.xml.i),
++// which has `local-as` and no `internet`.
++func bgpWellKnownCommunities() []string {
++	return []string{
++		"local-as", "no-advertise", "no-export", "graceful-shutdown", "accept-own", "route-filter-translated-v4",
++		"route-filter-v4", "route-filter-translated-v6", "route-filter-v6", "llgr-stale", "no-llgr",
++		"accept-own-nexthop", "blackhole", "no-peer",
++	}
++}
++
++// bgpCommunity refuses a text that is not one community: AA:NN in decimal with
++// each number from 0 to 65535, or a well-known name.
++func bgpCommunity(text string) error {
++	names := bgpWellKnownCommunities()
++	if slices.Contains(names, text) {
++		return nil
++	}
++
++	part := func(digits string) bool {
++		number, err := strconv.ParseUint(digits, 10, 16)
++
++		return err == nil && strconv.FormatUint(number, 10) == digits
++	}
++
++	if high, low, ok := strings.Cut(text, ":"); ok && part(high) && part(low) {
++		return nil
++	}
++
++	return fmt.Errorf(
++		"community %q is not AA:NN, with each number from 0 to %d, or one of %s",
++		text, math.MaxUint16, strings.Join(names, ", "),
++	)
++}
++
++// vyosLines collects VyOS `set` commands.
++type vyosLines []string
++
++// set adds the command `set` with the given words.
++func (l *vyosLines) set(words ...any) {
++	*l = append(*l, "set "+strings.TrimSuffix(fmt.Sprintln(words...), "\n"))
++}
++
++// optional adds a command that ends with a value, if the value is set.
++func (l *vyosLines) optional(value *int64, words ...any) {
++	if value != nil {
++		l.set(append(words, *value)...)
++	}
++}
++
++// vyosQuote returns text as one word of a VyOS script. The text must have
++// passed bgpText.
++func vyosQuote(text string) string {
++	return "'" + text + "'"
++}
++
++// vyosBGPLines writes a checked block as `set` commands of VyOS 1.4 and later,
++// in an order that reads well: the BFD profiles, the lists, the route maps,
++// and then BGP with its neighbors in the order of the block. VyOS itself takes
++// the lines in any order, because it checks nothing before the commit. The
++// function refuses what the model allows and VyOS does not take. Every node
++// and value range was read in the interface definitions of vyos-1x (branch
++// current).
++//
++// A value that is free text is in single quotes. The other values are
++// numbers, addresses, names that match bgpNamePattern, or words from a fixed
++// list. As a second guard, every line must pass checkVyosConfigLine, as a line
++// of `config` must.
++func vyosBGPLines(cfg BGPConfig) ([]string, error) {
++	var lines vyosLines
++
++	for _, p := range cfg.BFDProfiles {
++		if len(p.Name) > vyosMaxBFDProfileName {
++			return nil, fmt.Errorf("%s %s: VyOS takes a name of at most %d characters", bgpKindBFDProfile, p.Name, vyosMaxBFDProfileName)
++		}
++
++		lines.bfdProfile(p)
++	}
++
++	for _, l := range cfg.PrefixLists {
++		for _, r := range l.Rules {
++			base := fmt.Sprintf("policy prefix-list %s rule %d", l.Name, r.Rule)
++
++			lines.set(base, "action", r.Action)
++			lines.set(base, "prefix", r.Prefix)
++			lines.optional(r.GE, base, "ge")
++			lines.optional(r.LE, base, "le")
++		}
++	}
++
++	for _, l := range cfg.CommunityLists {
++		for _, r := range l.Rules {
++			base := fmt.Sprintf("policy community-list %s rule %d", l.Name, r.Rule)
++
++			lines.set(base, "action", r.Action)
++			lines.set(base, "regex", vyosQuote(r.Regex))
++		}
++	}
++
++	for _, m := range cfg.RouteMaps {
++		for _, r := range m.Rules {
++			lines.routeMapRule(m.Name, r)
++		}
++	}
++
++	lines.speaker(cfg)
++
++	for _, n := range cfg.Neighbors {
++		err := lines.neighbor(n)
++		if err != nil {
++			return nil, fmt.Errorf("neighbor %s: %w", n.Address, err)
++		}
++	}
++
++	for i, line := range lines {
++		err := checkVyosConfigLine(line)
++		if err != nil {
++			// The line is not in the error: it can hold a password.
++			return nil, fmt.Errorf("line %d of the rendered bgp: %w", i, err)
++		}
++	}
++
++	return lines, nil
++}
++
++func (l *vyosLines) bfdProfile(p BFDProfile) {
++	base := "protocols bfd profile " + p.Name
++
++	if p.TransmitInterval == nil && p.ReceiveInterval == nil && p.Multiplier == nil {
++		l.set(base)
++	}
++
++	l.optional(p.TransmitInterval, base, "interval transmit")
++	l.optional(p.ReceiveInterval, base, "interval receive")
++	l.optional(p.Multiplier, base, "interval multiplier")
++}
++
++func (l *vyosLines) routeMapRule(name string, r BGPRouteMapRule) {
++	base := fmt.Sprintf("policy route-map %s rule %d", name, r.Rule)
++
++	l.set(base, "action", r.Action)
++
++	if r.Match.PrefixList != "" {
++		l.set(base, "match ip address prefix-list", r.Match.PrefixList)
++	}
++
++	if r.Match.CommunityList != "" {
++		l.set(base, "match community community-list", r.Match.CommunityList)
++	}
++
++	l.optional(r.Set.LocalPreference, base, "set local-preference")
++
++	if r.Set.Community != "" {
++		l.set(base, "set community replace", r.Set.Community)
++	}
++
++	if r.Set.Src != "" {
++		l.set(base, "set src", r.Set.Src)
++	}
++
++	l.optional(r.Set.Metric, base, "set metric")
++
++	if len(r.Set.ASPathPrepend) != 0 {
++		l.set(base, "set as-path prepend", vyosQuote(strings.Trim(fmt.Sprint(r.Set.ASPathPrepend), "[]")))
++	}
++}
++
++// speaker adds the BGP instance without its neighbors.
++func (l *vyosLines) speaker(cfg BGPConfig) {
++	const (
++		parameters = "protocols bgp parameters"
++		afi        = "protocols bgp address-family ipv4-unicast"
++	)
++
++	l.set("protocols bgp system-as", cfg.LocalAS)
++
++	if cfg.RouterID != "" {
++		l.set(parameters, "router-id", cfg.RouterID)
++	}
++
++	if cfg.LogNeighborChanges {
++		l.set(parameters, "log-neighbor-changes")
++	}
++
++	if cfg.Multipath.ASPathRelax {
++		l.set(parameters, "bestpath as-path multipath-relax")
++	}
++
++	for _, network := range cfg.Networks {
++		l.set(afi, "network", network)
++	}
++
++	for _, r := range cfg.Redistribute {
++		// A command with an option also turns the redistribution on.
++		if r.RouteMap == "" && r.Metric == nil {
++			l.set(afi, "redistribute", r.Protocol)
++		}
++
++		if r.RouteMap != "" {
++			l.set(afi, "redistribute", r.Protocol, "route-map", r.RouteMap)
++		}
++
++		l.optional(r.Metric, afi, "redistribute", r.Protocol, "metric")
++	}
++
++	l.optional(cfg.Multipath.EBGP, afi, "maximum-paths ebgp")
++	l.optional(cfg.Multipath.IBGP, afi, "maximum-paths ibgp")
++}
++
++// neighbor adds one neighbor. It refuses what VyOS does not take: a
++// description of more than 255 characters, and a password with a space, for
++// which VyOS refuses the whole commit.
++func (l *vyosLines) neighbor(n BGPNeighbor) error {
++	base := "protocols bgp neighbor " + n.Address
++
++	l.set(base, "remote-as", n.RemoteAS)
++
++	if n.Description != "" {
++		if utf8.RuneCountInString(n.Description) > vyosMaxDescription {
++			return fmt.Errorf("VyOS takes a description of at most %d characters", vyosMaxDescription)
++		}
++
++		l.set(base, "description", vyosQuote(n.Description))
++	}
++
++	l.optional(n.Timers.Keepalive, base, "timers keepalive")
++	l.optional(n.Timers.Holdtime, base, "timers holdtime")
++	l.optional(n.Timers.ConnectRetry, base, "timers connect")
++
++	// A command that names a profile also turns BFD on.
++	switch {
++	case n.BFDProfile != "":
++		l.set(base, "bfd profile", n.BFDProfile)
++	case n.BFD != nil && *n.BFD:
++		l.set(base, "bfd")
++	}
++
++	if n.UpdateSource != "" {
++		l.set(base, "update-source", n.UpdateSource)
++	}
++
++	l.optional(n.EBGPMultihop, base, "ebgp-multihop")
++
++	if n.Password != nil {
++		if strings.Contains(*n.Password, " ") {
++			return errors.New("VyOS takes no password with a space")
++		}
++
++		l.set(base, "password", vyosQuote(*n.Password))
++	}
++
++	if n.Shutdown {
++		l.set(base, "shutdown")
++	}
++
++	l.neighborAFI(base+" address-family ipv4-unicast", n)
++
++	return nil
++}
++
++// neighborAFI adds what a neighbor does with IPv4 unicast routes. VyOS turns
++// the address family on for a neighbor only when the neighbor has the node
++// (it writes `no bgp default ipv4-unicast`), so a neighbor with no option gets
++// the bare node.
++func (l *vyosLines) neighborAFI(base string, n BGPNeighbor) {
++	before := len(*l)
++
++	if n.NexthopSelf {
++		l.set(base, "nexthop-self")
++	}
++
++	if n.SoftReconfigurationInbound {
++		l.set(base, "soft-reconfiguration inbound")
++	}
++
++	// A command that names a route map also turns the default route on.
++	switch {
++	case n.DefaultOriginateRouteMap != "":
++		l.set(base, "default-originate route-map", n.DefaultOriginateRouteMap)
++	case n.DefaultOriginate != nil && *n.DefaultOriginate:
++		l.set(base, "default-originate")
++	}
++
++	for _, option := range []struct{ node, name string }{
++		{node: "route-map import", name: n.Import.RouteMap},
++		{node: "route-map export", name: n.Export.RouteMap},
++		{node: "prefix-list import", name: n.Import.PrefixList},
++		{node: "prefix-list export", name: n.Export.PrefixList},
++	} {
++		if option.name != "" {
++			l.set(base, option.node, option.name)
++		}
++	}
++
++	if len(*l) == before {
++		l.set(base)
++	}
++}
+diff --git a/src/go/app/vrouter_config_fuzz_test.go b/src/go/app/vrouter_config_fuzz_test.go
+new file mode 100644
+index 0000000..09f9188
+--- /dev/null
++++ b/src/go/app/vrouter_config_fuzz_test.go
+@@ -0,0 +1,67 @@
++package app
++
++import (
++	"errors"
++	"regexp"
++	"strings"
++	"testing"
++	"unicode"
++)
++
++// vrouterConfigQuoted matches a single-quoted part of a line.
++var vrouterConfigQuoted = regexp.MustCompile(`'[^']*'`)
++
++// vrouterConfigShellChars is the model's own list of the characters the shell
++// acts on outside single quotes, kept apart from vyosConfigUnsafe so that the
++// fuzz test does not check the list against itself.
++const vrouterConfigShellChars = "\"`$;|&<>(){}[]\\#!*?~"
++
++// FuzzCheckVyosConfigLine checks checkVyosConfigLine against a model of a safe
++// line: it starts with set or delete and a space, the next character is a
++// lowercase letter, it has no control character, and what is left when the
++// single-quoted parts are taken out has no quote and nothing the shell acts
++// on. A refused line gives ErrVyosConfigLine.
++func FuzzCheckVyosConfigLine(f *testing.F) {
++	for _, seed := range []string{
++		"set protocols bgp system-as 64505",
++		"delete service ntp",
++		"set policy as-path-list T rule 10 regex '^64500_(64501|64502)$'",
++		"set system login banner pre-login ''",
++		"",
++		"commit",
++		"set system host-name a; reboot",
++		"set system host-name $(hostname)",
++		"set system host-name `hostname`",
++		"set system host-name [ab]",
++		"set system host-name a\nreboot",
++		"set system login banner pre-login 'hello",
++		"set system host-name a'; reboot",
++		"set system host-name \xff",
++		"set -xk",
++		"set '-n'",
++		"delete -x",
++	} {
++		f.Add(seed)
++	}
++
++	f.Fuzz(func(t *testing.T, line string) {
++		bare := vrouterConfigQuoted.ReplaceAllString(line, "")
++		rest, verb := strings.CutPrefix(line, "set ")
++		if !verb {
++			rest, verb = strings.CutPrefix(line, "delete ")
++		}
++
++		safe := verb && rest != "" && rest[0] >= 'a' && rest[0] <= 'z' &&
++			!strings.ContainsFunc(line, unicode.IsControl) &&
++			!strings.ContainsAny(bare, "'"+vrouterConfigShellChars)
++
++		err := checkVyosConfigLine(line)
++		if safe && err != nil {
++			t.Fatalf("checkVyosConfigLine(%q) = %v, want nil", line, err)
++		}
++
++		if !safe && !errors.Is(err, ErrVyosConfigLine) {
++			t.Fatalf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", line, err)
++		}
++	})
++}
+diff --git a/src/go/app/vrouter_config_test.go b/src/go/app/vrouter_config_test.go
+new file mode 100644
+index 0000000..51c1b3d
+--- /dev/null
++++ b/src/go/app/vrouter_config_test.go
+@@ -0,0 +1,299 @@
++package app
++
++import (
++	"errors"
++	"fmt"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"strings"
++	"testing"
++
++	"github.com/google/go-cmp/cmp"
++	"pgregory.net/rapid"
++)
++
++// vrouterConfigWords splits a line the way a shell does when nothing in it is
++// special: on spaces, with single quotes removed.
++func vrouterConfigWords(line string) []string {
++	var (
++		words  []string
++		word   strings.Builder
++		open   bool
++		quoted bool
++	)
++
++	for _, r := range line {
++		switch {
++		case r == '\'':
++			quoted = !quoted
++			open = true
++		case r == ' ' && !quoted:
++			if open {
++				words = append(words, word.String())
++				word.Reset()
++
++				open = false
++			}
++		default:
++			word.WriteRune(r)
++
++			open = true
++		}
++	}
++
++	if open {
++		words = append(words, word.String())
++	}
++
++	return words
++}
++
++// vrouterConfigSpecial holds words a shell acts on: file name patterns,
++// expansions, second commands, redirections, comments, and quoting.
++func vrouterConfigSpecial() []string {
++	return []string{
++		"[ab]", "[!x]", "a*", "?", "{a,b}", "~", "$HOME", "$(echo a)", "`echo a`",
++		"a;b", "a|b", "a&b", ">x", "<a", "#a", "!!", "a(b", "a)", "(", `\a`, `"a"`, "'", "\n", "\t",
++	}
++}
++
++// genVrouterConfigLine draws lines that mostly start as a VyOS command. Their
++// words are plain, single-quoted, or one of vrouterConfigSpecial. Some plain
++// words are options of the shell's own `set`, which VyOS's `set` hands on
++// when they come first.
++func genVrouterConfigLine() *rapid.Generator[string] {
++	plain := []string{"a", "b1", "ab1", "10.0.0.1/24", "a=b", "x-y_z", "é", "", "", " ", "-x", "+o", "--", "-n", "''-e"}
++	special := vrouterConfigSpecial()
++
++	return rapid.Custom(func(t *rapid.T) string {
++		count := rapid.IntRange(0, 5).Draw(t, "words")
++		words := make([]string, 0, count+1)
++		words = append(words, rapid.SampledFrom([]string{"set", "set", "delete", "commit", ""}).Draw(t, "verb"))
++
++		for range count {
++			word := rapid.SampledFrom(plain).Draw(t, "plain")
++
++			switch rapid.IntRange(0, 5).Draw(t, "kind") {
++			case 0:
++				word = rapid.SampledFrom(special).Draw(t, "special")
++			case 1:
++				word = "'" + rapid.SampledFrom(special[:len(special)-3]).Draw(t, "quoted") + "'"
++			case 2:
++				word += rapid.SampledFrom(special).Draw(t, "suffix")
++			}
++
++			words = append(words, word)
++		}
++
++		return strings.Join(words, " ")
++	})
++}
++
++// vrouterConfigBashDir makes a directory with files that a file name pattern
++// in a test line would match.
++func vrouterConfigBashDir(t *testing.T) string {
++	t.Helper()
++
++	dir := t.TempDir()
++
++	for _, name := range []string{"a", "b", "1", "ab1"} {
++		err := os.WriteFile(filepath.Join(dir, name), nil, 0o600)
++		if err != nil {
++			t.Fatal(err)
++		}
++	}
++
++	return dir
++}
++
++// vrouterConfigVyos stands in for how a VyOS script runs `set` and `delete`:
++// each is an alias of vyatta_cfg_run, which hands `set -...` and `set +...`
++// to the shell's own `set` (vyatta-cfg, VyOS T1604) and otherwise passes the
++// words on. The stand-in prints the words instead, and reports any change to
++// the shell's options after the line.
++const vrouterConfigVyos = `vyatta_cfg_run() {
++  if [[ "$1" == "set" && "$2" =~ ^(-|\+).* ]]; then set "${@:2}"; return; fi
++  printf '%s\0' "$@"
++}
++shopt -s expand_aliases
++alias set='vyatta_cfg_run set' delete='vyatta_cfg_run delete'
++before=$-
++`
++
++// vrouterConfigBashDiff runs a line in bash as source text, which is what it
++// is in the rendered script, after vrouterConfigVyos, and compares the words
++// the command receives with the words of the line. It returns the difference
++// as (-want +got); a change to the shell's options shows as an extra word.
++func vrouterConfigBashDiff(dir, line string) (string, error) {
++	script := vrouterConfigVyos + line + "\n" + `[[ $- == "$before" ]] || printf 'shell options now %s\0' "$-"` + "\n"
++	cmd := exec.Command("bash", "--noprofile", "--norc", "-c", script)
++	cmd.Dir = dir
++
++	out, err := cmd.Output()
++	if err != nil {
++		return "", fmt.Errorf("bash on line %q: %w", line, err)
++	}
++
++	got := strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00")
++
++	return cmp.Diff(vrouterConfigWords(line), got), nil
++}
++
++// TestCheckVyosConfigLineSpecialWords puts each word a shell acts on into a
++// line, alone, between words, joined to a word, and in single quotes. bash
++// must read every line checkVyosConfigLine accepts as one command whose words
++// are the words of the line.
++func TestCheckVyosConfigLineSpecialWords(t *testing.T) {
++	t.Parallel()
++
++	if _, err := exec.LookPath("bash"); err != nil {
++		t.Skip("bash is not on PATH")
++	}
++
++	dir := vrouterConfigBashDir(t)
++
++	for _, word := range vrouterConfigSpecial() {
++		lines := []string{"set " + word, "set a " + word + " b", "set a" + word, "delete " + word + "b"}
++		if !strings.Contains(word, "'") {
++			lines = append(lines, "set '"+word+"'", "set a'"+word+"'b")
++		}
++
++		for _, line := range lines {
++			err := checkVyosConfigLine(line)
++			if err != nil {
++				if !errors.Is(err, ErrVyosConfigLine) {
++					t.Errorf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", line, err)
++				}
++
++				continue
++			}
++
++			diff, err := vrouterConfigBashDiff(dir, line)
++			if err != nil {
++				t.Errorf("accepted line: %v", err)
++			} else if diff != "" {
++				t.Errorf("bash words of accepted line %q (-want +got):\n%s", line, diff)
++			}
++		}
++	}
++}
++
++// TestCheckVyosConfigLineMatchesBash checks the same for lines that mix
++// several such words.
++func TestCheckVyosConfigLineMatchesBash(t *testing.T) {
++	t.Parallel()
++
++	if _, err := exec.LookPath("bash"); err != nil {
++		t.Skip("bash is not on PATH")
++	}
++
++	dir := vrouterConfigBashDir(t)
++
++	rapid.Check(t, func(t *rapid.T) {
++		line := genVrouterConfigLine().Draw(t, "line")
++
++		err := checkVyosConfigLine(line)
++		if err != nil {
++			if !errors.Is(err, ErrVyosConfigLine) {
++				t.Fatalf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", line, err)
++			}
++
++			return
++		}
++
++		diff, err := vrouterConfigBashDiff(dir, line)
++		if err != nil {
++			t.Fatalf("accepted line: %v", err)
++		}
++
++		if diff != "" {
++			t.Fatalf("bash words of accepted line %q (-want +got):\n%s", line, diff)
++		}
++	})
++}
++
++// TestCheckVyosConfigLineRefusesEach puts each character the shell acts on
++// between two letters. The list is written out here, not taken from
++// vyosConfigUnsafe, so that dropping a character from that list fails.
++func TestCheckVyosConfigLineRefusesEach(t *testing.T) {
++	t.Parallel()
++
++	for _, r := range "\"`$;|&<>(){}[]\\#!*?~" {
++		line := "set system host-name a" + string(r) + "b"
++
++		err := checkVyosConfigLine(line)
++		if !errors.Is(err, ErrVyosConfigLine) {
++			t.Errorf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", line, err)
++		}
++	}
++}
++
++// TestCheckVyosConfigLine checks lines a router configuration needs, and
++// lines that would run something else.
++func TestCheckVyosConfigLine(t *testing.T) {
++	t.Parallel()
++
++	tests := []struct {
++		name string
++		line string
++		ok   bool
++	}{
++		{name: "set", line: "set protocols bgp system-as 64505", ok: true},
++		{name: "delete", line: "delete service ntp", ok: true},
++		{name: "quoted regex", line: "set policy as-path-list T rule 10 regex '^64500_(64501|64502)$'", ok: true},
++		{name: "quoted text", line: "set interfaces dummy dum0 description 'a; b & c'", ok: true},
++		{name: "empty quoted word", line: "set system login banner pre-login ''", ok: true},
++		{name: "address and prefix", line: "set interfaces vti vti101 address 10.255.0.1/31", ok: true},
++		{name: "empty", line: ""},
++		{name: "verb alone", line: "set"},
++		{name: "leading space", line: " set system host-name a"},
++		{name: "other command", line: "commit"},
++		{name: "second command", line: "set system host-name a; reboot"},
++		{name: "background", line: "set system host-name a & reboot"},
++		{name: "pipe", line: "set system host-name a | tee /tmp/x"},
++		{name: "redirect", line: "set system host-name a > /etc/passwd"},
++		{name: "variable", line: "set system host-name $HOSTNAME"},
++		{name: "command substitution", line: "set system host-name $(hostname)"},
++		{name: "backtick", line: "set system host-name `hostname`"},
++		{name: "backslash", line: `set system host-name a\ b`},
++		{name: "double quote", line: `set system host-name "a"`},
++		{name: "comment", line: "set system host-name a #b"},
++		{name: "star", line: "set system host-name *"},
++		{name: "question mark", line: "set system host-name ?"},
++		{name: "bracket pattern", line: "set system host-name [ab]"},
++		{name: "brace", line: "set system host-name {a,b}"},
++		{name: "tilde", line: "set system host-name ~root"},
++		{name: "history", line: "set system host-name !!"},
++		{name: "newline", line: "set system host-name a\nreboot"},
++		{name: "carriage return", line: "set system host-name a\rreboot"},
++		{name: "tab", line: "set system host-name\ta"},
++		{name: "unclosed quote", line: "set system login banner pre-login 'hello"},
++		{name: "quote opens after text", line: "set system host-name a'; reboot"},
++		{name: "shell option", line: "set -xk"},
++		{name: "noexec", line: "set -n"},
++		{name: "quoted shell option", line: "set '-n'"},
++		{name: "empty quote before option", line: "set ''-e"},
++		{name: "plus option", line: "set +o posix"},
++		{name: "end of options", line: "set -- a"},
++		{name: "option after two spaces", line: "set  -x"},
++		{name: "delete option", line: "delete -x"},
++		{name: "quoted first word", line: "set 'system' host-name a"},
++		{name: "upper-case first word", line: "set System host-name a"},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			t.Parallel()
++
++			err := checkVyosConfigLine(tt.line)
++			if tt.ok && err != nil {
++				t.Errorf("checkVyosConfigLine(%q) = %v, want nil", tt.line, err)
++			}
++
++			if !tt.ok && !errors.Is(err, ErrVyosConfigLine) {
++				t.Errorf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", tt.line, err)
++			}
++		})
++	}
++}
+diff --git a/src/go/app/vrouter_prestart_test.go b/src/go/app/vrouter_prestart_test.go
+index 3427bed..9b19155 100644
+--- a/src/go/app/vrouter_prestart_test.go
++++ b/src/go/app/vrouter_prestart_test.go
+@@ -2,6 +2,7 @@ package app
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"os"
+ 	"path/filepath"
+ 	"strings"
+@@ -107,3 +108,97 @@ func TestVrouterPreStartNATPrecedence(t *testing.T) {
+ 		})
+ 	}
+ }
++
++// renderVyosConfig runs PreStart for a VyOS router named v1 whose vrouter
++// metadata has the given `config` value, and returns the rendered script.
++func renderVyosConfig(t *testing.T, osType string, config any) (string, error) {
++	t.Helper()
++
++	node := newVyattaTestNode()
++	node.HardwareF.OSTypeF = osType
++
++	scenario := &v2.ScenarioSpec{AppsF: []*v2.ScenarioApp{{
++		NameF:  appNameVrouter,
++		HostsF: []*v2.ScenarioAppHost{{HostnameF: "v1", MetadataF: map[string]any{"config": config}}},
++	}}}
++
++	exp, _ := newStartupTestExperiment(t, node, scenario)
++
++	if err := new(Vrouter).PreStart(context.Background(), exp); err != nil {
++		return "", err
++	}
++
++	data, err := os.ReadFile(filepath.Join(exp.Spec.BaseDir(), "vrouter", "v1.boot"))
++	if err != nil {
++		t.Fatalf("reading rendered config: %v", err)
++	}
++
++	return string(data), nil
++}
++
++// TestVrouterPreStartVyosConfig verifies that the `config` metadata of a VyOS
++// router is written verbatim after the generated configuration and before the
++// commit, so that it can add what the template cannot render (BGP, tunnel
++// interfaces) and can override what it does render.
++func TestVrouterPreStartVyosConfig(t *testing.T) {
++	got, err := renderVyosConfig(t, osTypeVyos, []any{
++		"set protocols bgp system-as 64505",
++		"set protocols bgp neighbor 203.0.113.1 remote-as 64500",
++		"set policy as-path-list TRANSIT rule 10 regex '^64500_'",
++		"delete service ntp",
++	})
++	if err != nil {
++		t.Fatalf("running vrouter PreStart: %v", err)
++	}
++
++	want := "# ------------------------------ Extra config -----------------------------\n" +
++		"set protocols bgp system-as 64505\n" +
++		"set protocols bgp neighbor 203.0.113.1 remote-as 64500\n" +
++		"set policy as-path-list TRANSIT rule 10 regex '^64500_'\n" +
++		"delete service ntp\n" +
++		"commit\n" +
++		"save\n" +
++		"exit"
++	if !strings.HasSuffix(strings.TrimRight(got, "\n"), want) {
++		t.Errorf("rendered config does not end with the extra config and the commit:\n%s", got)
++	}
++
++	if hostname := strings.Index(got, "set system host-name v1"); hostname < 0 ||
++		hostname > strings.Index(got, "set protocols bgp system-as") {
++		t.Errorf("extra config is not after the generated configuration:\n%s", got)
++	}
++}
++
++// TestVrouterPreStartVyosConfigErrors verifies that PreStart refuses a config
++// line the vbash script would not run as one VyOS command, and config on a
++// router that is not VyOS.
++func TestVrouterPreStartVyosConfigErrors(t *testing.T) {
++	tests := []struct {
++		name   string
++		osType string
++		lines  any
++	}{
++		{name: "not set or delete", osType: osTypeVyos, lines: []any{"commit"}},
++		{name: "second command", osType: osTypeVyos, lines: []any{"set system host-name a; reboot"}},
++		{name: "command substitution", osType: osTypeVyos, lines: []any{"set system host-name $(hostname)"}},
++		{name: "backtick", osType: osTypeVyos, lines: []any{"set system host-name `hostname`"}},
++		{name: "newline", osType: osTypeVyos, lines: []any{"set system host-name a\nreboot"}},
++		{name: "file name pattern", osType: osTypeVyos, lines: []any{"set system host-name [ab]"}},
++		{name: "unclosed quote", osType: osTypeVyos, lines: []any{"set system login banner pre-login 'hello"}},
++		{name: "double quote", osType: osTypeVyos, lines: []any{"set system host-name \"a\""}},
++		{name: "not a list", osType: osTypeVyos, lines: "set system host-name a"},
++		{name: "vyatta", osType: "vyatta", lines: []any{"set system host-name a"}},
++		{name: "minirouter", osType: "minirouter", lines: []any{"set system host-name a"}},
++		{name: "shell option", osType: osTypeVyos, lines: []any{"set -xk"}},
++		{name: "quoted shell option", osType: osTypeVyos, lines: []any{"set '-n'"}},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			_, err := renderVyosConfig(t, tt.osType, tt.lines)
++			if !errors.Is(err, ErrVyosConfigLine) {
++				t.Errorf("PreStart() with config %v error = %v, want ErrVyosConfigLine", tt.lines, err)
++			}
++		})
++	}
++}
+diff --git a/src/go/tmpl/templates/vyatta.tmpl b/src/go/tmpl/templates/vyatta.tmpl
+index 59102c8..3fab839 100644
+--- a/src/go/tmpl/templates/vyatta.tmpl
++++ b/src/go/tmpl/templates/vyatta.tmpl
+@@ -8,6 +8,8 @@
+ {{- $emulators := index . "emulators" -}}
+ {{- $snat := index . "snat" -}}
+ {{- $dnat := index . "dnat" -}}
++{{- $bgp := index . "bgp" -}}
++{{- $config := index . "config" -}}
+ {{- if $vyos -}}
+ #!/bin/vbash
+ source /opt/vyatta/etc/functions/script-template
+@@ -263,6 +265,18 @@ set system host-name {{ $node.General.Hostname }}
+ set system name-server {{ $dnsServer }}
+     {{- end }}
+ {{- end }}
++{{- if $bgp }}
++# ---------------------------------- BGP ----------------------------------
++    {{- range $line := $bgp }}
++{{ $line }}
++    {{- end }}
++{{- end }}
++{{- if $config }}
++# ------------------------------ Extra config -----------------------------
++    {{- range $line := $config }}
++{{ $line }}
++    {{- end }}
++{{- end }}
+ commit
+ save
+ exit

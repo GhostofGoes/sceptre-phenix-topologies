@@ -1,0 +1,70 @@
+#!/bin/bash
+# Health of a site's network sensor, for SoH custom tests and SCORCH `cc` checks.
+# Installed as /usr/local/sbin/cm-sensor-health. Run as root.
+#
+# Prints one line, `HEALTHY` or `UNHEALTHY: <reason>`, and exits 0 or 1:
+#   - the sensor is not idle (an experiment with no Malcolm to send to),
+#   - every container that cm-sensor-start starts is running, and none reports
+#     its Docker healthcheck unhealthy,
+#   - the capture port is up for capture: the in-guest OVS port (`phenix`) is in
+#     promiscuous mode and its rx packet count grows over a short interval, and
+#   - Malcolm's OpenSearch holds Arkime sessions of this sensor from the last 15
+#     minutes. That one answer shows the capture, the upload on 9200/tcp, and the
+#     account. It does not show Filebeat's path (5044/tcp).
+# CM_HEALTH_WINDOW (minutes, default 15) changes the window, and CM_CAPTURE_SAMPLE
+# (seconds, default 3) the rx sample. CM_SYSFS_NET (default /sys/class/net) and
+# CM_CURL (default curl) are for the tests.
+set -uo pipefail
+
+MALCOLM_DIR="${MALCOLM_DIR:-/opt/malcolm}"
+STATE="${CM_MALCOLM_STATE:-/var/lib/cm-malcolm}"
+WINDOW="${CM_HEALTH_WINDOW:-15}"
+IFACE=phenix
+SAMPLE="${CM_CAPTURE_SAMPLE:-3}"
+SYSFS="${CM_SYSFS_NET:-/sys/class/net}"
+CURL="${CM_CURL:-curl}"
+SERVICES="valkey filebeat arkime-live zeek-live suricata-live"
+
+fail() {
+  echo "UNHEALTHY: $*"
+  exit 1
+}
+
+# shellcheck source=/dev/null
+[ -r /etc/default/cm-sensor ] && . /etc/default/cm-sensor
+name="${CM_SENSOR_NAME:-}"
+malcolm_host="${CM_MALCOLM_HOST:-}"
+
+[ ! -f "${STATE}/idle" ] || fail "the sensor is idle: $(cat "${STATE}/idle")"
+[ -f "${STATE}/provisioned" ] || fail "the sensor is not provisioned (no ${STATE}/provisioned)"
+[ -n "$name" ] && [ -n "$malcolm_host" ] || fail "/etc/default/cm-sensor does not name the sensor and Malcolm"
+
+# Running containers only, with their status ("Up 3 hours (unhealthy)").
+running=$(docker ps --filter status=running --format '{{.Names}}|{{.Status}}' 2> /dev/null) || fail "docker does not answer"
+read -r -a services <<< "$SERVICES"
+for service in "${services[@]}"; do
+  line=$(grep -m1 "^malcolm-${service}-1|" <<< "$running") || fail "container malcolm-${service}-1 is not running"
+  case "$line" in
+    *"(unhealthy)"*) fail "container malcolm-${service}-1 is unhealthy" ;;
+  esac
+done
+
+# The capture port: promiscuous (IFF_PROMISC, 0x100, set while a capture
+# process holds it) and receiving the mirrored frames.
+[ -r "${SYSFS}/${IFACE}/flags" ] || fail "capture port ${IFACE} does not exist"
+flags=$(cat "${SYSFS}/${IFACE}/flags")
+(( flags & 0x100 )) || fail "capture port ${IFACE} is not in promiscuous mode"
+rx1=$(cat "${SYSFS}/${IFACE}/statistics/rx_packets")
+sleep "$SAMPLE"
+rx2=$(cat "${SYSFS}/${IFACE}/statistics/rx_packets")
+[ "$rx2" -gt "$rx1" ] || fail "capture port ${IFACE} received no packets in ${SAMPLE} s (mirror down?)"
+
+# Arkime sessions of this sensor at Malcolm. Arkime puts the sensor's name in `node`.
+query=$(printf '{"query":{"bool":{"filter":[{"term":{"node":"%s"}},{"range":{"@timestamp":{"gte":"now-%sm"}}}]}}}' "$name" "$WINDOW")
+answer=$("$CURL" -sk --max-time 20 -K "${MALCOLM_DIR}/.opensearch.primary.curlrc" -H 'Content-Type: application/json' \
+  "https://${malcolm_host}:9200/arkime_sessions3-*/_count" -d "$query" 2> /dev/null) \
+  || fail "Malcolm's OpenSearch (${malcolm_host}:9200) did not answer"
+sessions=$(python3 -c 'import json, sys; print(json.load(sys.stdin).get("count", 0))' <<< "$answer" 2> /dev/null) \
+  || fail "Malcolm's OpenSearch (${malcolm_host}:9200) refused the count query"
+[ "${sessions:-0}" -gt 0 ] || fail "Malcolm has no Arkime sessions of ${name} from the last ${WINDOW} minutes"
+echo "HEALTHY: $(( rx2 - rx1 )) packets on ${IFACE} in ${SAMPLE} s, and ${sessions} Arkime sessions of ${name} at Malcolm in the last ${WINDOW} minutes"

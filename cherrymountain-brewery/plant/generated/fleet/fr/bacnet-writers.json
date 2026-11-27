@@ -1,0 +1,15 @@
+{
+  "site": "fr",
+  "writers": [
+    {
+      "host": "fr-bas-fuxa",
+      "address": "10.30.10.10",
+      "why": "the building's FUXA front end"
+    },
+    {
+      "host": "fr-ews",
+      "address": "10.20.30.12",
+      "why": "the engineering workstation"
+    }
+  ]
+}

@@ -365,12 +365,25 @@ WORKFLOW_FILES: dict[str, str] = {
 }
 
 
-def load_variant(variant: str, root: Path = ROOT) -> Variant:
-    configs: dict[tuple[str, str], tuple[Path, dict[str, Any]]] = _configs(root)
-    wf_path: Path = root / WORKFLOW_FILES[variant]
+def site_name(code: str) -> str:
+    """The name of a site's topology and of its scenario."""
+    return f"cherrymountain-site-{code}"
+
+
+def site_workflow_file(code: str) -> str:
+    """The workflow file of one site of the fleet alone."""
+    return f"phenix-site-{code}.yml"
+
+
+def load_site(code: str, root: Path = ROOT) -> Variant:
+    """One site of the fleet alone: its workflow, its topology file, and its scenario."""
+    return _load(code, root / site_workflow_file(code), root)
+
+
+def _load_workflow(wf_path: Path, root: Path) -> Workflow:
     raw: dict[str, Any] = read_yaml(wf_path)
     spec: dict[str, Any] = raw.get("spec") or {}
-    workflow: Workflow = Workflow(
+    return Workflow(
         topology=spec["topology"],
         scenario=spec.get("scenario"),
         vlans=spec.get("vlans") or {},
@@ -379,6 +392,15 @@ def load_variant(variant: str, root: Path = ROOT) -> Variant:
         auto=spec.get("auto") or {},
         source_file=wf_path.relative_to(root).as_posix(),
     )
+
+
+def load_variant(variant: str, root: Path = ROOT) -> Variant:
+    return _load(variant, root / WORKFLOW_FILES[variant], root)
+
+
+def _load(variant: str, wf_path: Path, root: Path) -> Variant:
+    configs: dict[tuple[str, str], tuple[Path, dict[str, Any]]] = _configs(root)
+    workflow: Workflow = _load_workflow(wf_path, root)
     topology: Topology = _load_topology(configs, workflow.topology, root)
     scenario: Scenario | None = (
         _load_scenario(configs, workflow.scenario, root) if workflow.scenario else None

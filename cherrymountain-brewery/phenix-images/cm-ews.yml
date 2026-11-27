@@ -83,6 +83,10 @@ spec:
       # asyncua, and xrdp for the vendor's Guacamole session. The topology injects the
       # vendor account setup (phenix-injects/ews/).
       export DEBIAN_FRONTEND=noninteractive
+      # Upstream built the assets of release 4.3.4 again on 2026-11-23, from its
+      # branch feature/DOPE-893-backport-v4.3.4. The tag did not move. Upstream
+      # publishes no signature and no checksum file. This value is the SHA-256 of
+      # the AppImage of that build (160,476,940 bytes), read on 2026-11-24.
       OPENPLC_EDITOR_VERSION=4.3.4
       OPENPLC_EDITOR_SHA256=27718205309d7fe91a01d7b6d6a075768b13bb76fbaf236b6275a59dc124cdd2
       apt-get update

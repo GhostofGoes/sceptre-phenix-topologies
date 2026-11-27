@@ -61,7 +61,8 @@ def test_only_ews_gets_it_and_gets_all_of_it() -> None:
     }
     for hostname, node in topology_nodes().items():
         injects = {i["dst"]: i for i in node.get("injections") or []}
-        if hostname != "ews":  # the one host that runs xrdp
+        # The one host that runs xrdp: `ews`, and a site's own (`ep-ews`) in the fleet's site files.
+        if hostname != "ews" and not hostname.endswith("-ews"):
             assert not set(want) & set(injects), hostname
             continue
         for dst, (src, mode) in want.items():

@@ -71,6 +71,7 @@ def file_checks(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[
     errors += master_agrees(plant, alloc, files)
     errors += slave_agrees(plant, alloc, files)
     errors += fuxa_agrees(plant, alloc, files)
+    errors += fuxa_evaluates(plant, files)
     errors += helics_closed(plant, files)
     return errors
 
@@ -236,6 +237,12 @@ def no_gaps(plant: Plant, alloc: Allocation) -> list[str]:
     return errs
 
 
+def routed(plant: Plant, vlan: str) -> bool:
+    """A VLAN is routed when its network has a gateway."""
+    net = plant.network(vlan)
+    return net is not None and net.gateway is not None
+
+
 def reachable(plant: Plant, client: str, vlan: str) -> bool:
     """A client reaches an address on ``vlan``: it shares the VLAN, or both
     are on routed networks (every routed network has static routes to every
@@ -243,21 +250,30 @@ def reachable(plant: Plant, client: str, vlan: str) -> bool:
     vlans = plant.hosts[client].vlans()
     if vlan in vlans:
         return True
-
-    def routed(v: str) -> bool:
-        net = plant.network(v)
-        return net is not None and net.gateway is not None
-
-    return routed(vlan) and any(routed(v) for v in vlans)
+    return routed(plant, vlan) and any(routed(plant, v) for v in vlans)
 
 
 def ntp_hosts(plant: Plant, alloc: Allocation) -> list[str]:
-    """Every variant host has an entry; client sources are reachable servers."""
+    """Every variant host has an entry; client sources are reachable servers.
+
+    A source is a server of the variant, or a server outside it that the
+    variant names under ``external`` (a site's edge follows a server of the
+    internet). Routers carry the way to an outside server, so its client must
+    be on a routed network.
+    """
     errs = []
     ntp = plant.spec.ntp
     for h in ntp.hosts:
         if h not in plant.hosts:
             errs.append(f"ntp: {h} is not a variant host")
+    for h in ntp.external:
+        if h in plant.hosts:
+            errs.append(f"ntp: external server {h} is a variant host")
+    for h, other in ntp.other_nodes.items():
+        if h in plant.hosts:
+            errs.append(f"ntp: other node {h} is a variant host")
+        if not other.client or other.server or other.source:
+            errs.append(f"ntp: other node {h} must be a client of the default source")
     for h in plant.hosts:
         md = plant.ntp_entry(h)
         if md is None:
@@ -271,6 +287,18 @@ def ntp_hosts(plant: Plant, alloc: Allocation) -> list[str]:
             errs.append(f"ntp: {h} is neither server nor client")
             continue
         src = md.source or ntp.default_source
+        if src.hostname in ntp.external and src.hostname not in plant.hosts:
+            if src.address is None:
+                errs.append(
+                    f"ntp: {h} names {src.hostname}, which is outside the variant, "
+                    "with no address: phenix would give the host the default source"
+                )
+            if not any(routed(plant, v) for v in plant.hosts[h].vlans()):
+                errs.append(
+                    f"ntp: {h} cannot reach {src.hostname}, which is outside the "
+                    "variant: no network of the host is routed"
+                )
+            continue
         server = plant.hosts.get(src.hostname)
         entry = plant.ntp_entry(src.hostname) if server else None
         if server is None or entry is None or not entry.server:
@@ -338,7 +366,14 @@ def otsim_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list
 #: The most coils or registers one Modbus request may carry, per function
 #: code (Modbus Application Protocol 1.1b3, section 6). The modbus_master
 #: plugin sends each io_point as one request and does not split it.
-MODBUS_REQUEST_LIMIT: dict[int, int] = {1: 2000, 2: 2000, 3: 125, 4: 125, 15: 1968, 16: 123}
+MODBUS_REQUEST_LIMIT: dict[int, int] = {
+    1: 2000,
+    2: 2000,
+    3: 125,
+    4: 125,
+    15: 1968,
+    16: 123,
+}
 
 
 def master_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[str]:
@@ -366,15 +401,22 @@ def master_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> lis
             (r.source_plc, r.coil): r for r in alloc.peer_reads.get(plc, [])
         }
         for dev in cfg:
-            if dev["name"] in plant.hosts and plant.hosts[dev["name"]].name in alloc.plc_rios:
+            if (
+                dev["name"] in plant.hosts
+                and plant.hosts[dev["name"]].name in alloc.plc_rios
+            ):
                 # A peer PLC: every coil read must land where the peer read says.
                 for p in dev["config"]["io_points"]:
                     start = IecAddress.parse(p["iec_location"])
                     for i in range(p["len"]):
-                        read = peers.pop((dev["name"], int(p["offset"]) + i), None)
+                        coil = int(p["offset"]) + i
+                        read = peers.pop((dev["name"], coil), None)
                         iec = start.model_copy(update={"index": start.index + i})
                         if p["fc"] != 1 or read is None or read.iec != iec:
-                            errs.append(f"modbus_master {plc} peer {dev['name']} coil {int(p['offset']) + i}: not a planned peer read")
+                            errs.append(
+                                f"modbus_master {plc} peer {dev['name']} coil "
+                                f"{coil}: not a planned peer read"
+                            )
                 continue
             for p in dev["config"]["io_points"]:
                 space = FC_SPACE[p["fc"]]
@@ -394,7 +436,9 @@ def master_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> lis
                         )
         missing = {k for k, a in by_rio.items() if a.tag.plc == plc} - covered
         errs += [f"modbus_master: {k} not polled" for k in sorted(missing)]
-        errs += [f"modbus_master {plc}: peer read {r.tag} not polled" for r in peers.values()]
+        errs += [
+            f"modbus_master {plc}: peer read {r.tag} not polled" for r in peers.values()
+        ]
     return errs
 
 
@@ -517,6 +561,26 @@ def fuxa_agrees(plant: Plant, alloc: Allocation, files: dict[str, str]) -> list[
                         f"but the tag is {a.plc_iec}"
                     )
     return errs
+
+
+def fuxa_evaluates(plant: Plant, files: dict[str, str]) -> list[str]:
+    """An alarm without a PLC bit has a FUXA instance that reads its tag.
+
+    FUXA evaluates such an alarm from the tag's value (the building's alarms),
+    so a tag in no FUXA tag list is an alarm that nobody raises.
+    """
+    read: set[str] = set()
+    for name, text in files.items():
+        if name.startswith("fuxa/"):
+            for dev in json.loads(text)["devices"]:
+                read |= {tag["name"] for tag in dev["tags"]}
+    if not read:
+        return []  # no FUXA host in the variant
+    return [
+        f"alarm {a.name}: FUXA evaluates it, and no FUXA instance reads {a.source}"
+        for a in plant.alarms
+        if not a.has_bit and a.source not in read
+    ]
 
 
 def _fuxa_bacnet(

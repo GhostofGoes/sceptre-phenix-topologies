@@ -1,0 +1,697 @@
+diff --git a/src/go/app/vrouter.go b/src/go/app/vrouter.go
+index 4d89f2c..66c862e 100644
+--- a/src/go/app/vrouter.go
++++ b/src/go/app/vrouter.go
+@@ -9,6 +9,7 @@ import (
+ 	"os"
+ 	"strings"
+ 	"time"
++	"unicode"
+ 
+ 	"github.com/hashicorp/go-multierror"
+ 	"github.com/mitchellh/mapstructure"
+@@ -35,6 +36,7 @@ var (
+ 	ErrIPSecConfigNotFound = errors.New("ipsec config not found")
+ 	ErrSNMPConfigNotFound  = errors.New("snmp config not found")
+ 	ErrNTPConfigNotFound   = errors.New("ntp config not found")
++	ErrVyosConfigLine      = errors.New("vyos config line is not valid")
+ )
+ 
+ type ACLConfig struct {
+@@ -179,8 +181,53 @@ func (v Vrouter) Configure(ctx context.Context, exp *types.Experiment) error {
+ 	return nil
+ }
+ 
++// checkVyosConfigHosts refuses a `config` list on a vrouter host whose router
++// PreStart does not render as VyOS: a host with no node in the topology, a
++// node with the default apps off, a node that is not a router or firewall, or
++// a router whose os_type is not vyos. PreStart would skip such a node before
++// it reads the host's metadata, and drop the lines without a word.
++func checkVyosConfigHosts(exp *types.Experiment) error {
++	for _, app := range exp.Apps() {
++		if app.Name() != appNameVrouter {
++			continue
++		}
++
++		for _, host := range app.Hosts() {
++			if _, ok := host.Metadata()["config"]; !ok {
++				continue
++			}
++
++			node := exp.Spec.Topology().FindNodeByName(host.Hostname())
++
++			var why string
++
++			switch {
++			case node == nil:
++				why = "no node of that name is in the topology"
++			case node.External() || !defaultAppsEnabled(node):
++				why = "the default apps do not run on the node"
++			case !strings.EqualFold(node.Type(), "router") && !strings.EqualFold(node.Type(), "firewall"):
++				why = "the node is not a router or firewall"
++			case !strings.EqualFold(node.Hardware().OSType(), osTypeVyos):
++				why = "config is only supported for os_type vyos"
++			default:
++				continue
++			}
++
++			return fmt.Errorf("processing config metadata for host %s: %w: %s", host.Hostname(), ErrVyosConfigLine, why)
++		}
++	}
++
++	return nil
++}
++
+ //nolint:cyclop,funlen,gocyclo,maintidx // complex logic
+ func (v *Vrouter) PreStart(ctx context.Context, exp *types.Experiment) error {
++	err := checkVyosConfigHosts(exp)
++	if err != nil {
++		return err
++	}
++
+ 	var (
+ 		ntpServers = exp.Spec.Topology().FindNodesWithLabels("ntp-server")
+ 		ntpAddr    string
+@@ -347,6 +394,17 @@ func (v *Vrouter) PreStart(ctx context.Context, exp *types.Experiment) error {
+ 						data["snat"] = sources
+ 						data["dnat"] = destinations
+ 
++						config, err := vyosConfigLines(md, isVyos)
++						if err != nil {
++							return fmt.Errorf(
++								"processing config metadata for host %s: %w",
++								host.Hostname(),
++								err,
++							)
++						}
++
++						data["config"] = config
++
+ 						break
+ 					}
+ 				}
+@@ -967,6 +1025,91 @@ func (v *Vrouter) processIPSec(
+ 	return &ipsec, nil
+ }
+ 
++// vyosConfigUnsafe holds the characters that vbash, which runs the rendered
++// script, acts on outside single quotes: expansions, quoting, redirections,
++// control operators, comments, and file name patterns.
++const vyosConfigUnsafe = "\"`$;|&<>(){}[]\\#!*?~"
++
++// vyosConfigLines returns the `config` metadata of a router: VyOS
++// configuration commands that the template writes after everything it
++// generates itself, before the commit. Every error wraps ErrVyosConfigLine.
++func vyosConfigLines(md map[string]any, isVyos bool) ([]string, error) {
++	raw, ok := md["config"]
++	if !ok {
++		return nil, nil
++	}
++
++	if !isVyos {
++		return nil, fmt.Errorf("%w: config is only supported for os_type vyos", ErrVyosConfigLine)
++	}
++
++	var lines []string
++
++	err := mapstructure.Decode(raw, &lines)
++	if err != nil {
++		return nil, fmt.Errorf("%w: config is not a list of strings: %w", ErrVyosConfigLine, err)
++	}
++
++	for idx, line := range lines {
++		err := checkVyosConfigLine(line)
++		if err != nil {
++			return nil, fmt.Errorf("line %d: %w", idx, err)
++		}
++	}
++
++	return lines, nil
++}
++
++// checkVyosConfigLine refuses a line that vbash would not run as one `set` or
++// `delete` command whose words are exactly the words of the line. The line
++// goes into a script as it is, so nothing in it may be special to the shell
++// outside single quotes. The first word after the verb must start with a
++// lowercase letter, as every VyOS configuration node does: VyOS's `set` hands
++// `set -...` and `set +...` to the shell's own `set` builtin (vyatta-cfg,
++// VyOS T1604), which would change the options of the script that commits the
++// configuration.
++//
++// The check guards against a line the shell would misread, not against the
++// line's author: `config` has full control of the router. VyOS's own
++// `system task-scheduler` runs commands, and while it completes a line VyOS
++// evaluates the output of completion scripts, some of which print values that
++// earlier lines stored.
++func checkVyosConfigLine(line string) error {
++	var rest string
++
++	switch {
++	case strings.HasPrefix(line, "set "):
++		rest = line[len("set "):]
++	case strings.HasPrefix(line, "delete "):
++		rest = line[len("delete "):]
++	default:
++		return fmt.Errorf("%w: it does not start with set or delete", ErrVyosConfigLine)
++	}
++
++	if rest == "" || rest[0] < 'a' || rest[0] > 'z' {
++		return fmt.Errorf("%w: the word after set or delete does not start with a lowercase letter", ErrVyosConfigLine)
++	}
++
++	quoted := false
++
++	for _, r := range line {
++		switch {
++		case unicode.IsControl(r):
++			return fmt.Errorf("%w: it has a control character", ErrVyosConfigLine)
++		case r == '\'':
++			quoted = !quoted
++		case !quoted && strings.ContainsRune(vyosConfigUnsafe, r):
++			return fmt.Errorf("%w: it has %q outside single quotes", ErrVyosConfigLine, r)
++		}
++	}
++
++	if quoted {
++		return fmt.Errorf("%w: it has an unclosed single quote", ErrVyosConfigLine)
++	}
++
++	return nil
++}
++
+ func (Vrouter) processSNMP(md map[string]any) (*SNMPConfig, error) {
+ 	raw, ok := md["snmp"]
+ 	if !ok {
+diff --git a/src/go/app/vrouter_config_fuzz_test.go b/src/go/app/vrouter_config_fuzz_test.go
+new file mode 100644
+index 0000000..09f9188
+--- /dev/null
++++ b/src/go/app/vrouter_config_fuzz_test.go
+@@ -0,0 +1,67 @@
++package app
++
++import (
++	"errors"
++	"regexp"
++	"strings"
++	"testing"
++	"unicode"
++)
++
++// vrouterConfigQuoted matches a single-quoted part of a line.
++var vrouterConfigQuoted = regexp.MustCompile(`'[^']*'`)
++
++// vrouterConfigShellChars is the model's own list of the characters the shell
++// acts on outside single quotes, kept apart from vyosConfigUnsafe so that the
++// fuzz test does not check the list against itself.
++const vrouterConfigShellChars = "\"`$;|&<>(){}[]\\#!*?~"
++
++// FuzzCheckVyosConfigLine checks checkVyosConfigLine against a model of a safe
++// line: it starts with set or delete and a space, the next character is a
++// lowercase letter, it has no control character, and what is left when the
++// single-quoted parts are taken out has no quote and nothing the shell acts
++// on. A refused line gives ErrVyosConfigLine.
++func FuzzCheckVyosConfigLine(f *testing.F) {
++	for _, seed := range []string{
++		"set protocols bgp system-as 64505",
++		"delete service ntp",
++		"set policy as-path-list T rule 10 regex '^64500_(64501|64502)$'",
++		"set system login banner pre-login ''",
++		"",
++		"commit",
++		"set system host-name a; reboot",
++		"set system host-name $(hostname)",
++		"set system host-name `hostname`",
++		"set system host-name [ab]",
++		"set system host-name a\nreboot",
++		"set system login banner pre-login 'hello",
++		"set system host-name a'; reboot",
++		"set system host-name \xff",
++		"set -xk",
++		"set '-n'",
++		"delete -x",
++	} {
++		f.Add(seed)
++	}
++
++	f.Fuzz(func(t *testing.T, line string) {
++		bare := vrouterConfigQuoted.ReplaceAllString(line, "")
++		rest, verb := strings.CutPrefix(line, "set ")
++		if !verb {
++			rest, verb = strings.CutPrefix(line, "delete ")
++		}
++
++		safe := verb && rest != "" && rest[0] >= 'a' && rest[0] <= 'z' &&
++			!strings.ContainsFunc(line, unicode.IsControl) &&
++			!strings.ContainsAny(bare, "'"+vrouterConfigShellChars)
++
++		err := checkVyosConfigLine(line)
++		if safe && err != nil {
++			t.Fatalf("checkVyosConfigLine(%q) = %v, want nil", line, err)
++		}
++
++		if !safe && !errors.Is(err, ErrVyosConfigLine) {
++			t.Fatalf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", line, err)
++		}
++	})
++}
+diff --git a/src/go/app/vrouter_config_test.go b/src/go/app/vrouter_config_test.go
+new file mode 100644
+index 0000000..51c1b3d
+--- /dev/null
++++ b/src/go/app/vrouter_config_test.go
+@@ -0,0 +1,299 @@
++package app
++
++import (
++	"errors"
++	"fmt"
++	"os"
++	"os/exec"
++	"path/filepath"
++	"strings"
++	"testing"
++
++	"github.com/google/go-cmp/cmp"
++	"pgregory.net/rapid"
++)
++
++// vrouterConfigWords splits a line the way a shell does when nothing in it is
++// special: on spaces, with single quotes removed.
++func vrouterConfigWords(line string) []string {
++	var (
++		words  []string
++		word   strings.Builder
++		open   bool
++		quoted bool
++	)
++
++	for _, r := range line {
++		switch {
++		case r == '\'':
++			quoted = !quoted
++			open = true
++		case r == ' ' && !quoted:
++			if open {
++				words = append(words, word.String())
++				word.Reset()
++
++				open = false
++			}
++		default:
++			word.WriteRune(r)
++
++			open = true
++		}
++	}
++
++	if open {
++		words = append(words, word.String())
++	}
++
++	return words
++}
++
++// vrouterConfigSpecial holds words a shell acts on: file name patterns,
++// expansions, second commands, redirections, comments, and quoting.
++func vrouterConfigSpecial() []string {
++	return []string{
++		"[ab]", "[!x]", "a*", "?", "{a,b}", "~", "$HOME", "$(echo a)", "`echo a`",
++		"a;b", "a|b", "a&b", ">x", "<a", "#a", "!!", "a(b", "a)", "(", `\a`, `"a"`, "'", "\n", "\t",
++	}
++}
++
++// genVrouterConfigLine draws lines that mostly start as a VyOS command. Their
++// words are plain, single-quoted, or one of vrouterConfigSpecial. Some plain
++// words are options of the shell's own `set`, which VyOS's `set` hands on
++// when they come first.
++func genVrouterConfigLine() *rapid.Generator[string] {
++	plain := []string{"a", "b1", "ab1", "10.0.0.1/24", "a=b", "x-y_z", "é", "", "", " ", "-x", "+o", "--", "-n", "''-e"}
++	special := vrouterConfigSpecial()
++
++	return rapid.Custom(func(t *rapid.T) string {
++		count := rapid.IntRange(0, 5).Draw(t, "words")
++		words := make([]string, 0, count+1)
++		words = append(words, rapid.SampledFrom([]string{"set", "set", "delete", "commit", ""}).Draw(t, "verb"))
++
++		for range count {
++			word := rapid.SampledFrom(plain).Draw(t, "plain")
++
++			switch rapid.IntRange(0, 5).Draw(t, "kind") {
++			case 0:
++				word = rapid.SampledFrom(special).Draw(t, "special")
++			case 1:
++				word = "'" + rapid.SampledFrom(special[:len(special)-3]).Draw(t, "quoted") + "'"
++			case 2:
++				word += rapid.SampledFrom(special).Draw(t, "suffix")
++			}
++
++			words = append(words, word)
++		}
++
++		return strings.Join(words, " ")
++	})
++}
++
++// vrouterConfigBashDir makes a directory with files that a file name pattern
++// in a test line would match.
++func vrouterConfigBashDir(t *testing.T) string {
++	t.Helper()
++
++	dir := t.TempDir()
++
++	for _, name := range []string{"a", "b", "1", "ab1"} {
++		err := os.WriteFile(filepath.Join(dir, name), nil, 0o600)
++		if err != nil {
++			t.Fatal(err)
++		}
++	}
++
++	return dir
++}
++
++// vrouterConfigVyos stands in for how a VyOS script runs `set` and `delete`:
++// each is an alias of vyatta_cfg_run, which hands `set -...` and `set +...`
++// to the shell's own `set` (vyatta-cfg, VyOS T1604) and otherwise passes the
++// words on. The stand-in prints the words instead, and reports any change to
++// the shell's options after the line.
++const vrouterConfigVyos = `vyatta_cfg_run() {
++  if [[ "$1" == "set" && "$2" =~ ^(-|\+).* ]]; then set "${@:2}"; return; fi
++  printf '%s\0' "$@"
++}
++shopt -s expand_aliases
++alias set='vyatta_cfg_run set' delete='vyatta_cfg_run delete'
++before=$-
++`
++
++// vrouterConfigBashDiff runs a line in bash as source text, which is what it
++// is in the rendered script, after vrouterConfigVyos, and compares the words
++// the command receives with the words of the line. It returns the difference
++// as (-want +got); a change to the shell's options shows as an extra word.
++func vrouterConfigBashDiff(dir, line string) (string, error) {
++	script := vrouterConfigVyos + line + "\n" + `[[ $- == "$before" ]] || printf 'shell options now %s\0' "$-"` + "\n"
++	cmd := exec.Command("bash", "--noprofile", "--norc", "-c", script)
++	cmd.Dir = dir
++
++	out, err := cmd.Output()
++	if err != nil {
++		return "", fmt.Errorf("bash on line %q: %w", line, err)
++	}
++
++	got := strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00")
++
++	return cmp.Diff(vrouterConfigWords(line), got), nil
++}
++
++// TestCheckVyosConfigLineSpecialWords puts each word a shell acts on into a
++// line, alone, between words, joined to a word, and in single quotes. bash
++// must read every line checkVyosConfigLine accepts as one command whose words
++// are the words of the line.
++func TestCheckVyosConfigLineSpecialWords(t *testing.T) {
++	t.Parallel()
++
++	if _, err := exec.LookPath("bash"); err != nil {
++		t.Skip("bash is not on PATH")
++	}
++
++	dir := vrouterConfigBashDir(t)
++
++	for _, word := range vrouterConfigSpecial() {
++		lines := []string{"set " + word, "set a " + word + " b", "set a" + word, "delete " + word + "b"}
++		if !strings.Contains(word, "'") {
++			lines = append(lines, "set '"+word+"'", "set a'"+word+"'b")
++		}
++
++		for _, line := range lines {
++			err := checkVyosConfigLine(line)
++			if err != nil {
++				if !errors.Is(err, ErrVyosConfigLine) {
++					t.Errorf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", line, err)
++				}
++
++				continue
++			}
++
++			diff, err := vrouterConfigBashDiff(dir, line)
++			if err != nil {
++				t.Errorf("accepted line: %v", err)
++			} else if diff != "" {
++				t.Errorf("bash words of accepted line %q (-want +got):\n%s", line, diff)
++			}
++		}
++	}
++}
++
++// TestCheckVyosConfigLineMatchesBash checks the same for lines that mix
++// several such words.
++func TestCheckVyosConfigLineMatchesBash(t *testing.T) {
++	t.Parallel()
++
++	if _, err := exec.LookPath("bash"); err != nil {
++		t.Skip("bash is not on PATH")
++	}
++
++	dir := vrouterConfigBashDir(t)
++
++	rapid.Check(t, func(t *rapid.T) {
++		line := genVrouterConfigLine().Draw(t, "line")
++
++		err := checkVyosConfigLine(line)
++		if err != nil {
++			if !errors.Is(err, ErrVyosConfigLine) {
++				t.Fatalf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", line, err)
++			}
++
++			return
++		}
++
++		diff, err := vrouterConfigBashDiff(dir, line)
++		if err != nil {
++			t.Fatalf("accepted line: %v", err)
++		}
++
++		if diff != "" {
++			t.Fatalf("bash words of accepted line %q (-want +got):\n%s", line, diff)
++		}
++	})
++}
++
++// TestCheckVyosConfigLineRefusesEach puts each character the shell acts on
++// between two letters. The list is written out here, not taken from
++// vyosConfigUnsafe, so that dropping a character from that list fails.
++func TestCheckVyosConfigLineRefusesEach(t *testing.T) {
++	t.Parallel()
++
++	for _, r := range "\"`$;|&<>(){}[]\\#!*?~" {
++		line := "set system host-name a" + string(r) + "b"
++
++		err := checkVyosConfigLine(line)
++		if !errors.Is(err, ErrVyosConfigLine) {
++			t.Errorf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", line, err)
++		}
++	}
++}
++
++// TestCheckVyosConfigLine checks lines a router configuration needs, and
++// lines that would run something else.
++func TestCheckVyosConfigLine(t *testing.T) {
++	t.Parallel()
++
++	tests := []struct {
++		name string
++		line string
++		ok   bool
++	}{
++		{name: "set", line: "set protocols bgp system-as 64505", ok: true},
++		{name: "delete", line: "delete service ntp", ok: true},
++		{name: "quoted regex", line: "set policy as-path-list T rule 10 regex '^64500_(64501|64502)$'", ok: true},
++		{name: "quoted text", line: "set interfaces dummy dum0 description 'a; b & c'", ok: true},
++		{name: "empty quoted word", line: "set system login banner pre-login ''", ok: true},
++		{name: "address and prefix", line: "set interfaces vti vti101 address 10.255.0.1/31", ok: true},
++		{name: "empty", line: ""},
++		{name: "verb alone", line: "set"},
++		{name: "leading space", line: " set system host-name a"},
++		{name: "other command", line: "commit"},
++		{name: "second command", line: "set system host-name a; reboot"},
++		{name: "background", line: "set system host-name a & reboot"},
++		{name: "pipe", line: "set system host-name a | tee /tmp/x"},
++		{name: "redirect", line: "set system host-name a > /etc/passwd"},
++		{name: "variable", line: "set system host-name $HOSTNAME"},
++		{name: "command substitution", line: "set system host-name $(hostname)"},
++		{name: "backtick", line: "set system host-name `hostname`"},
++		{name: "backslash", line: `set system host-name a\ b`},
++		{name: "double quote", line: `set system host-name "a"`},
++		{name: "comment", line: "set system host-name a #b"},
++		{name: "star", line: "set system host-name *"},
++		{name: "question mark", line: "set system host-name ?"},
++		{name: "bracket pattern", line: "set system host-name [ab]"},
++		{name: "brace", line: "set system host-name {a,b}"},
++		{name: "tilde", line: "set system host-name ~root"},
++		{name: "history", line: "set system host-name !!"},
++		{name: "newline", line: "set system host-name a\nreboot"},
++		{name: "carriage return", line: "set system host-name a\rreboot"},
++		{name: "tab", line: "set system host-name\ta"},
++		{name: "unclosed quote", line: "set system login banner pre-login 'hello"},
++		{name: "quote opens after text", line: "set system host-name a'; reboot"},
++		{name: "shell option", line: "set -xk"},
++		{name: "noexec", line: "set -n"},
++		{name: "quoted shell option", line: "set '-n'"},
++		{name: "empty quote before option", line: "set ''-e"},
++		{name: "plus option", line: "set +o posix"},
++		{name: "end of options", line: "set -- a"},
++		{name: "option after two spaces", line: "set  -x"},
++		{name: "delete option", line: "delete -x"},
++		{name: "quoted first word", line: "set 'system' host-name a"},
++		{name: "upper-case first word", line: "set System host-name a"},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			t.Parallel()
++
++			err := checkVyosConfigLine(tt.line)
++			if tt.ok && err != nil {
++				t.Errorf("checkVyosConfigLine(%q) = %v, want nil", tt.line, err)
++			}
++
++			if !tt.ok && !errors.Is(err, ErrVyosConfigLine) {
++				t.Errorf("checkVyosConfigLine(%q) = %v, want ErrVyosConfigLine", tt.line, err)
++			}
++		})
++	}
++}
+diff --git a/src/go/app/vrouter_prestart_test.go b/src/go/app/vrouter_prestart_test.go
+index 3427bed..9b19155 100644
+--- a/src/go/app/vrouter_prestart_test.go
++++ b/src/go/app/vrouter_prestart_test.go
+@@ -2,6 +2,7 @@ package app
+ 
+ import (
+ 	"context"
++	"errors"
+ 	"os"
+ 	"path/filepath"
+ 	"strings"
+@@ -107,3 +108,97 @@ func TestVrouterPreStartNATPrecedence(t *testing.T) {
+ 		})
+ 	}
+ }
++
++// renderVyosConfig runs PreStart for a VyOS router named v1 whose vrouter
++// metadata has the given `config` value, and returns the rendered script.
++func renderVyosConfig(t *testing.T, osType string, config any) (string, error) {
++	t.Helper()
++
++	node := newVyattaTestNode()
++	node.HardwareF.OSTypeF = osType
++
++	scenario := &v2.ScenarioSpec{AppsF: []*v2.ScenarioApp{{
++		NameF:  appNameVrouter,
++		HostsF: []*v2.ScenarioAppHost{{HostnameF: "v1", MetadataF: map[string]any{"config": config}}},
++	}}}
++
++	exp, _ := newStartupTestExperiment(t, node, scenario)
++
++	if err := new(Vrouter).PreStart(context.Background(), exp); err != nil {
++		return "", err
++	}
++
++	data, err := os.ReadFile(filepath.Join(exp.Spec.BaseDir(), "vrouter", "v1.boot"))
++	if err != nil {
++		t.Fatalf("reading rendered config: %v", err)
++	}
++
++	return string(data), nil
++}
++
++// TestVrouterPreStartVyosConfig verifies that the `config` metadata of a VyOS
++// router is written verbatim after the generated configuration and before the
++// commit, so that it can add what the template cannot render (BGP, tunnel
++// interfaces) and can override what it does render.
++func TestVrouterPreStartVyosConfig(t *testing.T) {
++	got, err := renderVyosConfig(t, osTypeVyos, []any{
++		"set protocols bgp system-as 64505",
++		"set protocols bgp neighbor 203.0.113.1 remote-as 64500",
++		"set policy as-path-list TRANSIT rule 10 regex '^64500_'",
++		"delete service ntp",
++	})
++	if err != nil {
++		t.Fatalf("running vrouter PreStart: %v", err)
++	}
++
++	want := "# ------------------------------ Extra config -----------------------------\n" +
++		"set protocols bgp system-as 64505\n" +
++		"set protocols bgp neighbor 203.0.113.1 remote-as 64500\n" +
++		"set policy as-path-list TRANSIT rule 10 regex '^64500_'\n" +
++		"delete service ntp\n" +
++		"commit\n" +
++		"save\n" +
++		"exit"
++	if !strings.HasSuffix(strings.TrimRight(got, "\n"), want) {
++		t.Errorf("rendered config does not end with the extra config and the commit:\n%s", got)
++	}
++
++	if hostname := strings.Index(got, "set system host-name v1"); hostname < 0 ||
++		hostname > strings.Index(got, "set protocols bgp system-as") {
++		t.Errorf("extra config is not after the generated configuration:\n%s", got)
++	}
++}
++
++// TestVrouterPreStartVyosConfigErrors verifies that PreStart refuses a config
++// line the vbash script would not run as one VyOS command, and config on a
++// router that is not VyOS.
++func TestVrouterPreStartVyosConfigErrors(t *testing.T) {
++	tests := []struct {
++		name   string
++		osType string
++		lines  any
++	}{
++		{name: "not set or delete", osType: osTypeVyos, lines: []any{"commit"}},
++		{name: "second command", osType: osTypeVyos, lines: []any{"set system host-name a; reboot"}},
++		{name: "command substitution", osType: osTypeVyos, lines: []any{"set system host-name $(hostname)"}},
++		{name: "backtick", osType: osTypeVyos, lines: []any{"set system host-name `hostname`"}},
++		{name: "newline", osType: osTypeVyos, lines: []any{"set system host-name a\nreboot"}},
++		{name: "file name pattern", osType: osTypeVyos, lines: []any{"set system host-name [ab]"}},
++		{name: "unclosed quote", osType: osTypeVyos, lines: []any{"set system login banner pre-login 'hello"}},
++		{name: "double quote", osType: osTypeVyos, lines: []any{"set system host-name \"a\""}},
++		{name: "not a list", osType: osTypeVyos, lines: "set system host-name a"},
++		{name: "vyatta", osType: "vyatta", lines: []any{"set system host-name a"}},
++		{name: "minirouter", osType: "minirouter", lines: []any{"set system host-name a"}},
++		{name: "shell option", osType: osTypeVyos, lines: []any{"set -xk"}},
++		{name: "quoted shell option", osType: osTypeVyos, lines: []any{"set '-n'"}},
++	}
++
++	for _, tt := range tests {
++		t.Run(tt.name, func(t *testing.T) {
++			_, err := renderVyosConfig(t, tt.osType, tt.lines)
++			if !errors.Is(err, ErrVyosConfigLine) {
++				t.Errorf("PreStart() with config %v error = %v, want ErrVyosConfigLine", tt.lines, err)
++			}
++		})
++	}
++}
+diff --git a/src/go/tmpl/templates/vyatta.tmpl b/src/go/tmpl/templates/vyatta.tmpl
+index 59102c8..4b192ef 100644
+--- a/src/go/tmpl/templates/vyatta.tmpl
++++ b/src/go/tmpl/templates/vyatta.tmpl
+@@ -8,6 +8,7 @@
+ {{- $emulators := index . "emulators" -}}
+ {{- $snat := index . "snat" -}}
+ {{- $dnat := index . "dnat" -}}
++{{- $config := index . "config" -}}
+ {{- if $vyos -}}
+ #!/bin/vbash
+ source /opt/vyatta/etc/functions/script-template
+@@ -263,6 +264,12 @@ set system host-name {{ $node.General.Hostname }}
+ set system name-server {{ $dnsServer }}
+     {{- end }}
+ {{- end }}
++{{- if $config }}
++# ------------------------------ Extra config -----------------------------
++    {{- range $line := $config }}
++{{ $line }}
++    {{- end }}
++{{- end }}
+ commit
+ save
+ exit

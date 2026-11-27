@@ -1,0 +1,7 @@
+#!/bin/bash
+# Stop the sensor's containers (cm-sensor.service, ExecStop). Installed as
+# /usr/local/sbin/cm-sensor-stop. The pcap files stay.
+set -euo pipefail
+
+cd "${MALCOLM_DIR:-/opt/malcolm}"
+docker compose --profile hedgehog stop --timeout 60

@@ -10,7 +10,7 @@
 - SCORCH ``pcap`` capture lists per run (DESIGN.md §15.6).
 - ``cherrymountain``: the app block listing every host the app provisions or
   checks, with its type (DESIGN.md §16; the app's metadata models are in
-  ``apps/cherrymountain_apps/cherrymountain/metadata.py``).
+  ``phenix_apps/apps/cherrymountain/metadata.py`` of sceptre-phenix-apps).
 """
 
 from __future__ import annotations
@@ -333,7 +333,9 @@ def cherrymountain_app(plant: Plant) -> dict[str, Any]:
     The HELICS broker host is ``sim-ctl``; other sim hosts run federates.
     Host metadata comes from ``hosts.<name>.app`` in plant.yaml, else from
     the role (:data:`APP_TYPES`). App-level metadata is the variant's
-    ``app`` block plus its name.
+    ``app`` block plus its name. For a site of the fleet it also has ``site``,
+    the site's code: the app then reads the site's files, uses the site's
+    names of hosts, and starts the site's own HELICS broker.
     """
     broker = plant.spec.helics.broker.hostname
     entries: list[tuple[int, int, dict[str, Any]]] = []
@@ -357,6 +359,10 @@ def cherrymountain_app(plant: Plant) -> dict[str, Any]:
     return {
         "name": "cherrymountain",
         "runPeriodically": APP_RUN_PERIOD,
-        "metadata": {"variant": plant.variant, **plant.spec.app},
+        "metadata": {
+            "variant": plant.variant,
+            **({} if plant.site is None else {"site": plant.site}),
+            **plant.spec.app,
+        },
         "hosts": hosts,
     }

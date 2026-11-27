@@ -1,0 +1,64 @@
+# Malcolm settings of a site's network sensor (docs/multisite/PLANS.md 4.6), in the
+# format of Malcolm's own configurator. This is Malcolm's `hedgehog` run profile:
+# Zeek, Suricata, and Arkime capture the mirror port, and the forwarders send what
+# they record to the Malcolm of the head office. The sensor has no OpenSearch, no
+# Logstash, and no web interface. See ../malcolm/malcolm-config-full.yaml for the
+# format and for the reasons behind the settings that the two share.
+#
+# cm-sensor-provision puts the values of /etc/default/cm-sensor in the place of
+# the three `@...@` words and hands the result to
+# `scripts/configure --non-interactive --import-malcolm-config-file`.
+#
+# Checked against the source of Malcolm 26.10.0 and not on a VM. The configurator
+# derives these from `remoteMalcolmHost` (scripts/installer/core/dependencies.py):
+# the Logstash host (port 5044), the OpenSearch URL (https, port 9200), and the
+# URL of Arkime's WISE service. The range has no conduit for WISE, so
+# cm-sensor-provision turns WISE off afterwards.
+---
+configuration:
+  malcolmProfile: hedgehog
+  runtimeBin: docker
+  processUserId: 1000
+  processGroupId: 1000
+  malcolmRestartPolicy: unless-stopped
+  # Arkime's name for this sensor. Malcolm lists the sessions of each sensor by it.
+  pcapNodeName: "@CM_SENSOR_NAME@"
+
+  # Where the sensor sends: the Malcolm of the head office. Its certificate is
+  # self-signed, so the sensor does not verify it.
+  remoteMalcolmHost: "@CM_MALCOLM_HOST@"
+  opensearchPrimaryMode: opensearch-remote
+  opensearchPrimarySslVerify: false
+
+  # Live capture on the in-guest OVS port. Arkime captures the port itself
+  # (arkime-live, on the host network): it writes the pcap files, keeps them
+  # here, and sends only the session records. Its viewer answers Malcolm on
+  # 8005/tcp at the address below, with the packets of a session that an
+  # analyst opens. So neither tcpdump nor netsniff-ng writes pcap files here.
+  captureLiveNetworkTraffic: true
+  pcapIface:
+    - phenix
+  pcapTcpDump: false
+  pcapNetSniff: false
+  liveArkime: true
+  liveArkimeNodeHost: "@CM_SENSOR_ADDRESS@"
+  liveZeek: true
+  liveSuricata: true
+
+  # No internet: the Suricata rules in the image are all there is.
+  suricataRuleUpdate: false
+
+  # Nothing is extracted and nothing is scanned: the sensor has 16 GB (decision
+  # D19), and the scanners need a third of that. With no extracted files, nothing
+  # listens on 8006/tcp, the port that serves them to Malcolm.
+  fileCarveMode: none
+  pipelineEnabled: false
+
+  # Malcolm's Logstash puts the sensor's records in the one NetBox site.
+  netboxSiteName: CherryMountain
+
+  # The 32 GB disk holds the pcap files. Arkime deletes the oldest once free
+  # space falls under 10 %.
+  cleanUpOldArtifacts: true
+  arkimeManagePCAP: true
+  arkimeFreeSpaceG: 10%

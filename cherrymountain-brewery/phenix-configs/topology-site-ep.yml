@@ -15,9 +15,12 @@
 # - The edge's WAN side: its default route, NAT, and the VPN, which the WAN
 #   generator writes (tools/wangen).
 # - The conduits between sites, with their rules.
-# - The accounts of the site's own jump host. The vendor's accounts are not
-#   injected here: the vendor reaches the head office and no other site. The
-#   company's own accounts are still to be designed.
+#
+# The site's own jump host has a named account for each of the company's staff
+# in plant/sites.yaml (`staff`):
+#   corp-controls, ep-maint
+# The vendor's accounts are not injected here: the vendor reaches the head
+# office and no other site.
 apiVersion: phenix.sandia.gov/v1
 kind: Topology
 metadata:
@@ -1120,6 +1123,14 @@ spec:
       dst: /opt/cherrymountain/ews/programs/plc-cellar.zip
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/openplc/full/plc-cellar.zip
+    - description: create the local accounts of the company's staff
+      dst: /etc/phenix/startup/71-ews-staff.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/ews/71-ews-staff.sh
+    - description: range-only staff accounts (Guacamole account, TOTP seed, EWS account)
+      dst: /etc/cherrymountain/staff.env
+      permissions: '0600'
+      src: /phenix/injects/${BRANCH_NAME}/fleet/ep/guacamole/staff.env
     labels:
       site: ep
       zone: ops
@@ -1326,6 +1337,10 @@ spec:
       dst: /opt/cherrymountain/guacamole/nginx.conf
       permissions: '0644'
       src: /phenix/injects/${BRANCH_NAME}/fleet/ep/guacamole/nginx.conf
+    - description: SQL of a named Guacamole account, for the roster scripts
+      dst: /usr/local/lib/cm-guacamole/cm_guac_accounts.py
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/guacamole/cm_guac_accounts.py
     - description: start the Guacamole stack
       dst: /usr/local/sbin/cm-guacamole-start
       permissions: '0755'
@@ -1350,6 +1365,14 @@ spec:
       dst: /etc/phenix/startup/70-guacamole.sh
       permissions: '0755'
       src: /phenix/injects/${BRANCH_NAME}/guacamole/70-guacamole.sh
+    - description: SQL for the named accounts of the company's staff
+      dst: /usr/local/lib/cm-guacamole/cm_staff_sql.py
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/guacamole/cm_staff_sql.py
+    - description: range-only staff accounts (Guacamole account, TOTP seed, EWS account)
+      dst: /etc/cherrymountain/staff.env
+      permissions: '0600'
+      src: /phenix/injects/${BRANCH_NAME}/fleet/ep/guacamole/staff.env
     labels:
       site: ep
       zone: dmz

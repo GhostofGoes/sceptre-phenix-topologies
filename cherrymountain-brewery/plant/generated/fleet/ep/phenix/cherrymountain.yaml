@@ -4,6 +4,9 @@ runPeriodically: 5m
 metadata:
   variant: ep
   site: ep
+  staffAccounts:
+  - corp-controls
+  - ep-maint
 hosts:
 - hostname: ep-sim-ctl
   metadata:

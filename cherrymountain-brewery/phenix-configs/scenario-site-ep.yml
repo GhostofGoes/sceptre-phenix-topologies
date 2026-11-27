@@ -9,7 +9,7 @@
 # - vrouter: the rulesets that netcheck computes from the conduit matrix
 #   (tools/netcheck, netcheck.sitegen) and plant/sites.yaml. They carry the
 #   conduits whose two ends are hosts of this site, and nothing else:
-#   86 rules on ep-fw-edge (0) and ep-fw-ot (86).
+#   91 rules on ep-fw-edge (2) and ep-fw-ot (89).
 # - soh: the network tests that netcheck computes from the same conduits, and
 #   plantgen's soh block merged into them.
 #
@@ -1610,6 +1610,24 @@ spec:
               description: Established and related connections
               protocol: all
               stateful: true
+            - id: 10
+              action: accept
+              description: 'fleet-sensor-logs: ep-sensor to fr-malcolm tcp/5044'
+              protocol: tcp
+              source:
+                address: 10.42.10.60
+              destination:
+                address: 10.40.10.10
+                port: 5044
+            - id: 20
+              action: accept
+              description: 'fleet-sensor-sessions: ep-sensor to fr-malcolm tcp/9200'
+              protocol: tcp
+              source:
+                address: 10.42.10.60
+              destination:
+                address: 10.40.10.10
+                port: 9200
     - hostname: ep-fw-ot
       metadata:
         acl:
@@ -1680,6 +1698,15 @@ spec:
               destination:
                 address: 10.22.30.12
                 port: 22
+            - id: 60
+              action: accept
+              description: 'fleet-sensor-pcap: fr-malcolm to ep-sensor tcp/8005'
+              protocol: tcp
+              source:
+                address: 10.40.10.10
+              destination:
+                address: 10.42.10.60
+                port: 8005
           - name: FROM-EP-OPS
             default: drop
             description: 'Traffic entering ep-fw-ot from EP-OPS: stateful, default deny'
@@ -2265,6 +2292,24 @@ spec:
               destination:
                 address: 10.22.30.13
                 port: 53
+            - id: 50
+              action: accept
+              description: 'fleet-sensor-logs: ep-sensor to fr-malcolm tcp/5044'
+              protocol: tcp
+              source:
+                address: 10.42.10.60
+              destination:
+                address: 10.40.10.10
+                port: 5044
+            - id: 60
+              action: accept
+              description: 'fleet-sensor-sessions: ep-sensor to fr-malcolm tcp/9200'
+              protocol: tcp
+              source:
+                address: 10.42.10.60
+              destination:
+                address: 10.40.10.10
+                port: 9200
           - name: FROM-EP-CTRL-BH
             default: drop
             description: 'Traffic entering ep-fw-ot from EP-CTRL-BH: stateful, default deny'

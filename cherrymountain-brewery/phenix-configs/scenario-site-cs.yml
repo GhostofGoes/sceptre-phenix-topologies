@@ -9,7 +9,7 @@
 # - vrouter: the rulesets that netcheck computes from the conduit matrix
 #   (tools/netcheck, netcheck.sitegen) and plant/sites.yaml. They carry the
 #   conduits whose two ends are hosts of this site, and nothing else:
-#   22 rules on cs-fw-edge (22).
+#   24 rules on cs-fw-edge (24).
 # - soh: the network tests that netcheck computes from the same conduits, and
 #   plantgen's soh block merged into them.
 #
@@ -1419,6 +1419,24 @@ spec:
               destination:
                 address: 192.168.30.22
                 port: 47808
+            - id: 110
+              action: accept
+              description: 'fleet-sensor-logs: cs-sensor to fr-malcolm tcp/5044'
+              protocol: tcp
+              source:
+                address: 192.168.20.60
+              destination:
+                address: 10.40.10.10
+                port: 5044
+            - id: 120
+              action: accept
+              description: 'fleet-sensor-sessions: cs-sensor to fr-malcolm tcp/9200'
+              protocol: tcp
+              source:
+                address: 192.168.20.60
+              destination:
+                address: 10.40.10.10
+                port: 9200
           - name: FROM-CS-BAS
             default: drop
             description: 'Traffic entering cs-fw-edge from CS-BAS: stateful, default deny'

@@ -9,7 +9,7 @@
 # - vrouter: the rulesets that netcheck computes from the conduit matrix
 #   (tools/netcheck, netcheck.sitegen) and plant/sites.yaml. They carry the
 #   conduits whose two ends are hosts of this site, and nothing else:
-#   87 rules on fr-fw-edge (0) and fr-fw-ot (87).
+#   99 rules on fr-fw-edge (3) and fr-fw-ot (96).
 # - soh: the network tests that netcheck computes from the same conduits, and
 #   plantgen's soh block merged into them.
 #
@@ -1636,6 +1636,33 @@ spec:
               description: Established and related connections
               protocol: all
               stateful: true
+            - id: 10
+              action: accept
+              description: 'fleet-sensor-pcap: fr-malcolm to ep-sensor tcp/8005'
+              protocol: tcp
+              source:
+                address: 10.40.10.10
+              destination:
+                address: 10.42.10.60
+                port: 8005
+            - id: 20
+              action: accept
+              description: 'fleet-sensor-pcap: fr-malcolm to cs-sensor tcp/8005'
+              protocol: tcp
+              source:
+                address: 10.40.10.10
+              destination:
+                address: 192.168.20.60
+                port: 8005
+            - id: 30
+              action: accept
+              description: 'fleet-sensor-pcap: fr-malcolm to fc-sensor tcp/8005'
+              protocol: tcp
+              source:
+                address: 10.40.10.10
+              destination:
+                address: 10.21.10.60
+                port: 8005
     - hostname: fr-fw-ot
       metadata:
         acl:
@@ -1729,6 +1756,60 @@ spec:
               destination:
                 address: 10.40.10.11
                 port: 1515
+            - id: 90
+              action: accept
+              description: 'fleet-sensor-logs: ep-sensor to fr-malcolm tcp/5044'
+              protocol: tcp
+              source:
+                address: 10.42.10.60
+              destination:
+                address: 10.40.10.10
+                port: 5044
+            - id: 100
+              action: accept
+              description: 'fleet-sensor-logs: cs-sensor to fr-malcolm tcp/5044'
+              protocol: tcp
+              source:
+                address: 192.168.20.60
+              destination:
+                address: 10.40.10.10
+                port: 5044
+            - id: 110
+              action: accept
+              description: 'fleet-sensor-logs: fc-sensor to fr-malcolm tcp/5044'
+              protocol: tcp
+              source:
+                address: 10.21.10.60
+              destination:
+                address: 10.40.10.10
+                port: 5044
+            - id: 120
+              action: accept
+              description: 'fleet-sensor-sessions: ep-sensor to fr-malcolm tcp/9200'
+              protocol: tcp
+              source:
+                address: 10.42.10.60
+              destination:
+                address: 10.40.10.10
+                port: 9200
+            - id: 130
+              action: accept
+              description: 'fleet-sensor-sessions: cs-sensor to fr-malcolm tcp/9200'
+              protocol: tcp
+              source:
+                address: 192.168.20.60
+              destination:
+                address: 10.40.10.10
+                port: 9200
+            - id: 140
+              action: accept
+              description: 'fleet-sensor-sessions: fc-sensor to fr-malcolm tcp/9200'
+              protocol: tcp
+              source:
+                address: 10.21.10.60
+              destination:
+                address: 10.40.10.10
+                port: 9200
           - name: FROM-FR-OPS
             default: drop
             description: 'Traffic entering fr-fw-ot from FR-OPS: stateful, default deny'
@@ -2494,6 +2575,33 @@ spec:
               destination:
                 address: 10.20.30.13
                 port: 53
+            - id: 50
+              action: accept
+              description: 'fleet-sensor-pcap: fr-malcolm to ep-sensor tcp/8005'
+              protocol: tcp
+              source:
+                address: 10.40.10.10
+              destination:
+                address: 10.42.10.60
+                port: 8005
+            - id: 60
+              action: accept
+              description: 'fleet-sensor-pcap: fr-malcolm to cs-sensor tcp/8005'
+              protocol: tcp
+              source:
+                address: 10.40.10.10
+              destination:
+                address: 192.168.20.60
+                port: 8005
+            - id: 70
+              action: accept
+              description: 'fleet-sensor-pcap: fr-malcolm to fc-sensor tcp/8005'
+              protocol: tcp
+              source:
+                address: 10.40.10.10
+              destination:
+                address: 10.21.10.60
+                port: 8005
   # netcheck's network tests, with plantgen's plant/generated/fleet/fr/phenix/soh.yaml merged into them. Do not edit.
   - name: soh
     metadata:

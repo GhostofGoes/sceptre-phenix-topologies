@@ -9,7 +9,7 @@
 # - vrouter: the rulesets that netcheck computes from the conduit matrix
 #   (tools/netcheck, netcheck.sitegen) and plant/sites.yaml. They carry the
 #   conduits whose two ends are hosts of this site, and nothing else:
-#   0 rules on fc-fw-edge (0).
+#   2 rules on fc-fw-edge (2).
 # - soh: the network tests that netcheck computes from the same conduits, and
 #   plantgen's soh block merged into them.
 #
@@ -1089,6 +1089,24 @@ spec:
               description: Established and related connections
               protocol: all
               stateful: true
+            - id: 10
+              action: accept
+              description: 'fleet-sensor-logs: fc-sensor to fr-malcolm tcp/5044'
+              protocol: tcp
+              source:
+                address: 10.21.10.60
+              destination:
+                address: 10.40.10.10
+                port: 5044
+            - id: 20
+              action: accept
+              description: 'fleet-sensor-sessions: fc-sensor to fr-malcolm tcp/9200'
+              protocol: tcp
+              source:
+                address: 10.21.10.60
+              destination:
+                address: 10.40.10.10
+                port: 9200
   # netcheck's network tests, with plantgen's plant/generated/fleet/fc/phenix/soh.yaml merged into them. Do not edit.
   - name: soh
     metadata:

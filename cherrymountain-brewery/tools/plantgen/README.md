@@ -44,8 +44,8 @@ keeps only a part of the plant, as `ci` does.
 ([PLANS.md §4.1](../../docs/multisite/PLANS.md#41-what-each-site-is)). A site
 is the plant of `plant.yaml` with parts left out and with its networks moved.
 For each site, the file gives the areas and the hosts that the site does not
-have. It also gives where the hosts of each VLAN go, the uplinks, and the time
-source.
+have. It also gives where the hosts of each VLAN go, the uplinks, the time
+source, and the staff accounts of the site's own jump host (`staff`).
 
 plantgen reads the file on each run (`plantgen/sites.py`) and stops when an
 entry does not fit.
@@ -54,6 +54,7 @@ entry does not fit.
 |---|---|
 | Names | An area, a host, a VLAN, or a PLC that `plant.yaml` does not have. A time source or a gateway that the site left out. A site code that is the name of a variant |
 | Addresses | Two hosts with one address after two VLANs merge. The message tells you to give a move a `shift` |
+| Staff accounts | An account that the site has two times. Staff accounts at a site without `dmz-jump` or `ews`, or at a site with the `remote` module, where the jump host is the vendor's |
 | `wan/wan.yaml` | Uplinks that are not the links of the site's edge there, in the same order. A routed network outside the blocks of the site. A different subnet for the LAN that `wan.yaml` puts a host on |
 
 A test makes sure that the file equals the profiles that the
@@ -256,8 +257,30 @@ reason. plantgen stops at an injection that has no decision.
 | All other files | Each site whose node injects them today | They hold no account and no part of the head office |
 
 `ep` has its own jump host. That host runs the same Guacamole and gets no
-account of the vendor. The accounts of the company for that host are not
-designed yet, and the header of `topology-site-ep.yml` says so.
+account of the vendor. It has a named account for each entry of `staff` in
+`plant/sites.yaml`: `corp-controls`, the controls engineer of the head office,
+and `ep-maint`, the maintenance lead of the site. The header of
+`topology-site-ep.yml` names them.
+
+The files of the staff accounts are not in the hand-written modules, so
+`SCOPES` has no entry for them. plantgen adds them to the two nodes of a site
+that has `staff` (`injects.staff_injections`):
+
+| Node | File | What it does |
+|---|---|---|
+| `dmz-jump` | `guacamole/cm_staff_sql.py` | `cm-guacamole-start` runs it. Each account gets a Guacamole user with its own TOTP key, and its own copies of the `ews-rdp` and `ews-ssh` connections, with the recording |
+| `ews` | `ews/71-ews-staff.sh` | Each account gets a local account in the group `cm-engineers` |
+| Both | `fleet/<code>/guacamole/staff.env`, mode 0600 | The roster: the accounts, their passwords, and their TOTP keys |
+
+- The vendor's script and the staff's script use one library,
+  `guacamole/cm_guac_accounts.py`, which each jump host gets. Thus a person of
+  the staff gets what a technician of the vendor gets.
+- The passwords and the keys of the committed roster are placeholders.
+  plantgen makes them from the site's code and the account's name, so they do
+  not change between runs. The `cherrymountain` app makes new ones for each
+  experiment (`staffAccounts` in the app block of the site).
+- An account name is a role and not a person. It does not start with
+  `ridgeline-`, which is the prefix that the Wazuh rules for the vendor match.
 
 `plantgen/injects.py` also renders the copies. A copy is the hand-written file
 with a small number of lines set again from the plant description of the
@@ -273,6 +296,7 @@ stops and names the line.
 | `ot-svc/plant.hosts` | The whole file: each address of each node of the site |
 | `ot-svc/60-ot-svc.sh` | The networks of the hosts that take their time from `ot-svc`, and the network of the sensor |
 | `guacamole/cm-guacamole-start`, `guacamole/nginx.conf` | The name and the address of the jump host in its certificate, and the name that its web server answers to |
+| `guacamole/staff.env` | The number of staff accounts, and the lines of each account. Only a site with `staff` has this copy, which is `ep`. The hand-written file lists no account, and no node injects it |
 | `malcolm/cherrymountain.rules`, `malcolm/zeek/cherrymountain.zeek` | The addresses that can write BACnet, from `bacnet-writers.json`. Only a site with the SOC injects these files, which is `fr` |
 
 - plantgen writes a copy only when a node of the site injects the file. `fc`

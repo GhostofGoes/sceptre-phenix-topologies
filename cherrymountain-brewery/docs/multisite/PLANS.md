@@ -1728,6 +1728,15 @@ State on 2026-11-25:
   `cs` they are `bas-fuxa` and `ews`. At `fc` the list has the pub's one SCADA
   host only (decided on 2026-11-25). The Suricata rules and the Zeek script
   of `fr` take their lists from that data.
+- The jump host of `ep` has two named accounts of the company's own staff
+  (decided on 2026-11-27): `corp-controls`, the controls engineer of the head
+  office, and `ep-maint`, the maintenance lead of the site. `plant/sites.yaml`
+  lists them (`staff`). Each account is a Guacamole user with its own TOTP
+  key. Each has its own copies of the RDP and SSH connections to `ep-ews`,
+  with recorded sessions, and a local account on that workstation. The
+  vendor's technicians at `fr` get the same from the same library. The app
+  makes the passwords and the keys for each experiment. The accounts did not
+  run on a VM.
 - The sensor image has a recipe, `cm-sensor`
   ([4.6](#46-what-the-head-office-does)).
 - The image recipes have one source, which is this repository. A job in the

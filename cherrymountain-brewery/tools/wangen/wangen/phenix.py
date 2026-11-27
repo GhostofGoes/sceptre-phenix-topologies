@@ -2,8 +2,8 @@
 
 The variant is the mock internet, the head office's edge, the three other site
 edges, and one host on each site's LAN (docs/multisite/PLANS.md, stage 2). It
-has no plant. The topology and the `config` lists follow what the wan-bgp spike
-ran on VyOS in CI with four routers; this is all ten.
+has no plant. The topology, the `bgp` blocks, and the `config` lists follow what
+the wan-bgp spike ran on VyOS in CI with four routers; this is all ten.
 """
 
 from __future__ import annotations
@@ -329,7 +329,7 @@ def scorch() -> dict[str, Any]:
 
 
 def scenario() -> dict[str, Any]:
-    configs = {router.name: vyos.commands(router, psk=psk) for router in model.ROUTERS}
+    routers = {router.name: vyos.metadata(router, psk=psk) for router in model.ROUTERS}
     return {
         "apiVersion": "phenix.sandia.gov/v2",
         "kind": "Scenario",
@@ -339,7 +339,7 @@ def scenario() -> dict[str, Any]:
                 {"name": "startup"},
                 {
                     "name": "vrouter",
-                    "hosts": [{"hostname": name, "metadata": {"config": lines}} for name, lines in configs.items()],
+                    "hosts": [{"hostname": name, "metadata": metadata} for name, metadata in routers.items()],
                 },
                 {
                     "name": "soh",
@@ -390,11 +390,13 @@ HEADERS: Final[dict[str, str]] = {
 """,
     "scenario": """\
 # cherrymountain-wan scenario (docs/multisite/PLANS.md, stage 2). The `vrouter`
-# app gets a `config` list for each router: BGP and its policies, BFD, the
-# tunnels to the head office, each tunnel's tie to its uplink, the discard
-# routes, NAT, a site's failover default routes, and the head office's source
-# filter on each tunnel. The list needs the `config` option of the vrouter app
-# (GhostofGoes/sceptre-phenix#27). The soh app pings from each site's host:
+# app gets two keys for each router. The `bgp` block holds BGP, its policies,
+# and the BFD profile. The `config` list holds the rest: the tunnels to the
+# head office, each tunnel's tie to its uplink, the discard routes, NAT, a
+# site's failover default routes, and the head office's source filter on each
+# tunnel. phenix writes the block as VyOS commands before the lines of the
+# list, and the router commits both at once. Both keys need the vrouter app
+# of GhostofGoes/sceptre-phenix#27. The soh app pings from each site's host:
 # through the VPN, and to the host on the internet. The scorch app has one run
 # for each fault. Nobody ran the runs on VMs yet.
 #

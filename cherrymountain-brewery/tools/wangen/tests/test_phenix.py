@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import ipaddress
+import shlex
 from typing import Any
 
 import pytest
 
-from wangen import cli, model, phenix, vyos
+from wangen import bgp, cli, model, phenix, vyos
 
 
 @pytest.fixture(autouse=True)
@@ -67,16 +68,27 @@ def test_the_vlan_ids_follow_the_fleets_plan() -> None:
     assert phenix.workflow()["spec"]["vlans"] == plan
 
 
-def test_every_router_gets_its_list_and_every_line_is_one_the_app_takes() -> None:
+def test_every_router_gets_its_block_and_its_list_and_every_line_is_one_the_app_takes() -> None:
+    """The block and the list together are the router's commands, and no command is in both."""
     apps = {app["name"]: app for app in phenix.scenario()["spec"]["apps"]}
-    hosts = {host["hostname"]: host["metadata"]["config"] for host in apps["vrouter"]["hosts"]}
+    hosts = {host["hostname"]: host["metadata"] for host in apps["vrouter"]["hosts"]}
     assert list(hosts) == [router.name for router in model.ROUTERS]
-    for name, lines in hosts.items():
-        assert lines == vyos.commands(model.BY_NAME[name], psk=phenix.psk)
+    for name, metadata in hosts.items():
+        commands = vyos.commands(model.BY_NAME[name], psk=phenix.psk)
+        block, rest = bgp.split(commands)
+        assert set(metadata) <= {"bgp", "config"}
+        assert metadata["bgp"] == block
+        assert metadata["bgp"]["localAS"] == model.BY_NAME[name].asn
+        lines = metadata.get("config", [])
+        assert lines == rest
         assert all(vyos.refused(line) == "" for line in lines)
-    edge = "\n".join(hosts["fc-fw-edge"])
+        # The list keeps the order of the commands, and has no routing command left.
+        assert lines == [line for line in commands if line in set(lines)]
+        assert not [line for line in lines if bgp.owned(shlex.split(line)[1:])]
+    edge = "\n".join(hosts["fc-fw-edge"]["config"])
     assert "PRE-SHARED-KEY-OF-THIS-TUNNEL" not in edge
     assert f"secret '{phenix.psk(model.TUNNELS[0])}'" in edge
+    assert "protocols bgp" not in edge
 
 
 def test_soh_pings_through_the_vpn_in_both_directions() -> None:

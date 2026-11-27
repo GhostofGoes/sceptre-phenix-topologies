@@ -348,7 +348,7 @@ name = "pytest (SOC and remote access)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tests/soc"
 additional_dependencies = [
-    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@1d56742f85000894c08fec5e5b2c9d6ac201a6c8#subdirectory=src/python",
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@f3cbbd46b1bc1c026ec3361ad9c1170442b28edd#subdirectory=src/python",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "pytest==9.2.0",
@@ -384,7 +384,7 @@ name = "pytest (plantgen)"
 language = "python"
 entry = "python -m pytest -q -p no:cacheprovider cherrymountain-brewery/tools/plantgen"
 additional_dependencies = [
-    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@1d56742f85000894c08fec5e5b2c9d6ac201a6c8#subdirectory=src/python",
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@f3cbbd46b1bc1c026ec3361ad9c1170442b28edd#subdirectory=src/python",
     "pydantic==2.14.3",
     "pyyaml==6.0.3",
     "pytest==9.2.0",
@@ -471,7 +471,7 @@ name = "pytest (cherrymountain app, plantevent)"
 language = "python"
 entry = "python cherrymountain-brewery/tools/lint/run_app_tests.py"
 additional_dependencies = [
-    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@1d56742f85000894c08fec5e5b2c9d6ac201a6c8#subdirectory=src/python",
+    "phenix-apps @ git+https://github.com/GhostofGoes/sceptre-phenix-apps@f3cbbd46b1bc1c026ec3361ad9c1170442b28edd#subdirectory=src/python",
     "Mako==1.3.10",
     "pydantic==2.14.3",
     "python-box==7.2.0",
@@ -479,11 +479,13 @@ additional_dependencies = [
     "requests==2.32.5",
     "pytest==9.2.0",
     "pytest-mock==3.15.1",
+    # The app's test_sensors.py reads the certificates that the app makes.
+    "cryptography==50.0.2",
     # The app's test_template_lint.py runs shellcheck on the app's script
     # templates, and fails in CI when the program is missing.
     "shellcheck-py==0.11.0.1",
 ]
-files = '^cherrymountain-brewery/(tools/lint/run_app_tests\.py$|plant/|tools/plantgen/|fuxa/|recipes/|plc/|brand/|phenix-images/cm-sim\.yml|phenix-injects/(openplc|otsim|fuxa|brand|grafana)/|phenix-configs/)'
+files = '^cherrymountain-brewery/(tools/lint/run_app_tests\.py$|plant/|tools/plantgen/|fuxa/|recipes/|plc/|brand/|phenix-images/cm-sim\.yml|phenix-injects/(openplc|otsim|fuxa|brand|grafana|malcolm|sensor)/|phenix-configs/)'
 pass_filenames = false
 priority = "check"
 

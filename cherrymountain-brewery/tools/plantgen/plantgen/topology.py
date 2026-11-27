@@ -29,6 +29,9 @@ What each field of a node becomes:
   injection: as they are.
 - `injections`: the injections that the site may have (`injects.SCOPES`).
   The files of the vendor's access and of the SOC stay at the head office.
+  The jump host and the workstation of a site with staff accounts
+  (plant/sites.yaml, `staff`) get the files of those accounts
+  (`injects.staff_injections`).
 - The `src` of an injection: the site's own copy of the file, when the file
   holds a name or an address of the plant (`injects.site_source`). Any other
   file is the one that every site injects.
@@ -88,11 +91,21 @@ HEADER: Final[str] = """\
 #   generator writes (tools/wangen).
 # - The conduits between sites, with their rules.
 """
-#: Added to the header of a site that has a jump host and not the vendor's access.
+#: Added to the header of a site that has a jump host, and neither the vendor's
+#: access nor staff accounts.
 JUMP_HOST_NOTE: Final[str] = """\
 # - The accounts of the site's own jump host. The vendor's accounts are not
 #   injected here: the vendor reaches the head office and no other site. The
-#   company's own accounts are still to be designed.
+#   site has no staff accounts (plant/sites.yaml, `staff`).
+"""
+#: Added to the header of a site with staff accounts.
+STAFF_NOTE: Final[str] = """\
+#
+# The site's own jump host has a named account for each of the company's staff
+# in plant/sites.yaml (`staff`):
+#   {accounts}
+# The vendor's accounts are not injected here: the vendor reaches the head
+# office and no other site.
 """
 JUMP_HOST: Final[str] = "dmz-jump"
 
@@ -131,7 +144,10 @@ def dump(site: SiteSpec, config: dict[str, Any]) -> str:
     body = yaml.safe_dump(config, sort_keys=True, default_flow_style=False, width=1000)
     header = HEADER.format(code=site.code, title=site.title)
     names = {node["general"]["hostname"] for node in config["spec"]["nodes"]}
-    if site.host(JUMP_HOST) in names and injects.REMOTE not in site.modules:
+    if site.staff:
+        accounts = ", ".join(person.account for person in site.staff)
+        header += STAFF_NOTE.format(accounts=accounts)
+    elif site.host(JUMP_HOST) in names and injects.REMOTE not in site.modules:
         header += JUMP_HOST_NOTE
     return header + body
 
@@ -183,11 +199,12 @@ def _node(
         for injection in node.get("injections", [])
         if injects.at_site(site, injection["src"])
     ]
+    for injection in kept:
+        injection["src"] = injects.site_source(site, injection["src"])
+    kept += injects.staff_injections(site, plain)
     node.pop("injections", None)
     if kept:
         node["injections"] = kept
-    for injection in kept:
-        injection["src"] = injects.site_source(site, injection["src"])
     waits = [
         {**wait, "hostname": site.host(wait["hostname"])}
         for wait in node.get("delay", {}).get("c2", [])

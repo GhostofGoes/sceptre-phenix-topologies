@@ -279,8 +279,10 @@ def test_every_injected_file_exists(code: str) -> None:
 def test_the_sets_of_the_four_sites_differ_in_size() -> None:
     """Injected files: the pub has five, and the head office has them all."""
     assert {code: len(injected(code)) for code in CODES} == {
-        "fr": 76,
-        "ep": 29,
+        "fr": 77,
+        # Four of them are the staff accounts of its own jump host: the two
+        # scripts, their library, and the roster.
+        "ep": 33,
         "cs": 20,
         "fc": 5,
     }
@@ -288,8 +290,9 @@ def test_the_sets_of_the_four_sites_differ_in_size() -> None:
         code: sum(1 for path in injected(code) if path.startswith(f"fleet/{code}/"))
         for code in CODES
     }
-    # `fr` has the SOC: two of its copies are the detection content.
-    assert own == {"fr": 10, "ep": 8, "cs": 6, "fc": 1}
+    # `fr` has the SOC: two of its copies are the detection content. `ep` has
+    # the roster of its staff accounts.
+    assert own == {"fr": 10, "ep": 9, "cs": 6, "fc": 1}
 
 
 @pytest.mark.parametrize("code", CODES)
@@ -425,6 +428,24 @@ def test_no_vendor_file_account_or_secret_reaches_a_site_without_the_vendors_acc
     for name, path in site_files(code).items():
         for text in texts(path).values():
             assert not [value for value in values if value in text], name
+
+
+def test_the_staff_accounts_are_at_the_site_with_a_jump_host_of_its_own() -> None:
+    """PLANS.md 4.6, decision K5a: `ep` has a jump host that the vendor does not
+    reach, and the company's staff have named accounts there."""
+    sources: dict[str, list[str]] = injected("ep")
+    assert sources["fleet/ep/guacamole/staff.env"] == ["ep-ews", "ep-dmz-jump"]
+    assert sources["guacamole/cm_staff_sql.py"] == ["ep-dmz-jump"]
+    assert sources["guacamole/cm_guac_accounts.py"] == ["ep-dmz-jump"]
+    assert sources["ews/71-ews-staff.sh"] == ["ep-ews"]
+    roster: str = (ROOT / "phenix-injects/fleet/ep/guacamole/staff.env").read_text(encoding="utf-8")
+    assert "STAFF1_USER=corp-controls\n" in roster and "STAFF2_USER=ep-maint\n" in roster
+    for code in CODES:
+        if code != "ep":
+            assert not [path for path in injected(code) if "staff" in path], code
+    # The head office's jump host is the vendor's: it gets the library of the
+    # roster scripts, and no roster of the staff.
+    assert injected("fr")["guacamole/cm_guac_accounts.py"] == ["fr-dmz-jump"]
 
 
 def test_the_head_office_keeps_the_vendors_access() -> None:

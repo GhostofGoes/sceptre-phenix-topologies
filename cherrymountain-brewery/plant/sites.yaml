@@ -32,6 +32,12 @@
 # uplinks:     the ISP and the edge's address on each access link, the primary
 #              first. wan/wan.yaml has the same links.
 # sensor:      whether the site has a network sensor of its own.
+# staff:       the company's own staff with a named account on the site's jump
+#              host (PLANS.md 4.6). `account` is a role and not a person. Each
+#              account gets a Guacamole user with a TOTP key, its own recorded
+#              RDP and SSH connections to the site's workstation, and a local
+#              account there. The app makes new passwords and keys for each
+#              experiment. The site needs `dmz-jump` and `ews`.
 sites:
 - code: fr
   index: 0
@@ -50,6 +56,9 @@ sites:
   network: Two firewalls and a DMZ with its own jump host; a control network for each process cell
   # The site's own jump host, with the company's accounts and not the vendor's.
   extra_hosts: [dmz-jump]
+  staff:
+  - {account: corp-controls, title: Head office controls engineer}
+  - {account: ep-maint, title: Site maintenance lead}
   # No unit is dropped inside an area (PLANS.md 4.1): the rooftop unit that
   # cools the taproom at `fr` cools the office and tasting room here.
   cells:

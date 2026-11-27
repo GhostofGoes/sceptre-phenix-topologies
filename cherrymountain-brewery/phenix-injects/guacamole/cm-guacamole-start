@@ -12,7 +12,8 @@
 # 4. The app's 50-cherrymountain.sql again, at every start (it can be applied any
 #    number of times): an init that was cut off would otherwise leave no accounts.
 # 5. The vendor technicians' named accounts and TOTP keys (cm_vendor_sql.py, idempotent, so
-#    it runs at every start), once the database accepts connections.
+#    it runs at every start), once the database accepts connections. Then the named
+#    accounts of the company's own staff (cm_staff_sql.py), on a jump host that has staff.env.
 # 6. Everything else.
 #
 # Env (from /etc/default/cm-guacamole, rendered by the cherrymountain app, optional):
@@ -27,6 +28,7 @@ TLS="${ETC}/guacamole-tls"
 DB_ENV="${ETC}/guacamole-db.env"
 WEB_ENV="${ETC}/guacamole-web.env"
 RIDGELINE="${ETC}/ridgeline.env"
+STAFF="${ETC}/staff.env"
 
 log() { echo "cm-guacamole-start: $*"; }
 compose() { docker compose --project-directory "$DIR" -f "${DIR}/docker-compose.yml" "$@"; }
@@ -78,6 +80,12 @@ if [ -f "$RIDGELINE" ]; then
     | docker exec -i postgres psql -v ON_ERROR_STOP=1 --quiet -U guacamole_user -d guacamole_db
 else
   log "no ${RIDGELINE}: no vendor account (only the app's cmadmin can sign in)"
+fi
+
+if [ -f "$STAFF" ]; then
+  log "creating the named accounts of the company's staff"
+  python3 -I "${LIB}/cm_staff_sql.py" --env "$STAFF" \
+    | docker exec -i postgres psql -v ON_ERROR_STOP=1 --quiet -U guacamole_user -d guacamole_db
 fi
 
 log "starting guacd, the web application, and the proxy"

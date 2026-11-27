@@ -150,6 +150,13 @@ def _variant(site: SiteSpec, doc: PlantFile) -> VariantSpec:
     # scenario has no helics app: the cherrymountain app renders a broker unit
     # on the site's sim-ctl (its `site` key, `apps.cherrymountain_app`).
     variant.helics.app_block = False
+    # The app makes the passwords and the TOTP keys of the staff accounts for
+    # each experiment, and it needs their names for that (`injects.STAFF_ENV`).
+    if site.staff:
+        variant.app = {
+            **variant.app,
+            "staffAccounts": [person.account for person in site.staff],
+        }
     return variant
 
 

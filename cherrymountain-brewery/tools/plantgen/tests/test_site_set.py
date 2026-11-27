@@ -282,7 +282,8 @@ def test_the_committed_copies_are_current(code: str, sets: dict[str, SiteSet]) -
 def test_a_site_copies_what_its_nodes_inject(sets: dict[str, SiteSet]) -> None:
     """The brewpub has one router and no ot-svc, BBMD, or jump host."""
     assert {code: sorted(_copies(made)) for code, made in sets.items()} == {
-        "fr": sorted(injects.RENDERERS),
+        # The staff accounts are at `ep`: its jump host is the company's own.
+        "fr": sorted(p for p in injects.RENDERERS if p != injects.STAFF_ENV),
         # The detection content of the SOC is the head office's.
         "ep": sorted(p for p in injects.RENDERERS if not p.startswith("malcolm/")),
         "cs": sorted(
@@ -523,21 +524,132 @@ def test_the_vendors_accounts_stay_at_the_site_with_the_remote_module(
         for name, paths in found.items():
             assert not paths & vendor, (code, name)
             assert not [p for p in paths if p.startswith("wireguard/")], (code, name)
-            # Nothing else is lost: only the vendor's files are gone.
-            assert paths == {p for p in today.get(name, set()) if p not in vendor}
+            # Nothing else is lost: only the vendor's files are gone. The files
+            # of the site's staff accounts are new.
+            staff = {
+                injection["src"].removeprefix(injects.PREFIX).split("/", 2)[-1]
+                if injection["dst"] == injects.STAFF_TARGET
+                else injection["src"].removeprefix(injects.PREFIX)
+                for injection in injects.staff_injections(specs[code], name)
+            }
+            assert paths == staff | {
+                p for p in today.get(name, set()) if p not in vendor
+            }
     assert "guacamole/cm-guacamole-start" in _sources(sets["ep"])["dmz-jump"]
     assert "ews/cm_plc_tool.py" in _sources(sets["cs"])["ews"]
 
 
-def test_the_header_says_that_the_jump_hosts_accounts_are_not_designed(
-    sets: dict[str, SiteSet],
+def test_the_header_names_the_staff_accounts_of_a_sites_own_jump_host(
+    sets: dict[str, SiteSet], specs: dict[str, sites.SiteSpec]
 ) -> None:
-    said = "company's own accounts are still to be designed."
+    said = "#   corp-controls, ep-maint\n"
     assert {code: said in made.topology for code, made in sets.items()} == {
         "fr": False,
         "ep": True,
         "cs": False,
         "fc": False,
+    }
+    # A jump host of the company's own with no staff account: the header says so.
+    bare = specs["ep"].model_copy(update={"staff": []})
+    config = yaml.safe_load(sets["ep"].topology)
+    text = topology.dump(bare, config)
+    assert "The\n#   site has no staff accounts (plant/sites.yaml, `staff`)." in text
+    assert "corp-controls" not in text.split("apiVersion:")[0]
+
+
+# --- the accounts of the company's own staff (decision K5a) ---
+
+#: The two hosts that get files for the staff accounts, with the script of each.
+STAFF_SCRIPTS: dict[str, tuple[str, str, str]] = {
+    "dmz-jump": (
+        "guacamole/cm_staff_sql.py",
+        "/usr/local/lib/cm-guacamole/cm_staff_sql.py",
+        "0644",
+    ),
+    "ews": ("ews/71-ews-staff.sh", "/etc/phenix/startup/71-ews-staff.sh", "0755"),
+}
+
+
+def test_only_the_jump_host_and_the_workstation_of_a_site_with_staff_get_its_files(
+    sets: dict[str, SiteSet], specs: dict[str, sites.SiteSpec]
+) -> None:
+    assert {code: [p.account for p in spec.staff] for code, spec in specs.items()} == {
+        "fr": [],
+        "ep": ["corp-controls", "ep-maint"],
+        "cs": [],
+        "fc": [],
+    }
+    roster = f"{injects.PREFIX}fleet/ep/{injects.STAFF_ENV}"
+    for code, made in sets.items():
+        for node in yaml.safe_load(made.topology)["spec"]["nodes"]:
+            name = node["general"]["hostname"].removeprefix(f"{code}-")
+            found = {
+                injection["src"]: (injection["dst"], injection["permissions"])
+                for injection in node.get("injections", [])
+                if "staff" in injection["src"]
+            }
+            if code != "ep" or name not in STAFF_SCRIPTS:
+                assert not found, (code, name)
+                continue
+            script, target, mode = STAFF_SCRIPTS[name]
+            assert found == {
+                f"{injects.PREFIX}{script}": (target, mode),
+                # The roster holds passwords: only root reads it.
+                roster: (injects.STAFF_TARGET, "0600"),
+            }
+            assert (INJECTS / script).is_file()
+
+
+def test_the_roster_of_a_site_lists_its_staff_with_placeholders_that_do_not_change(
+    sets: dict[str, SiteSet], specs: dict[str, sites.SiteSpec]
+) -> None:
+    text = _copies(sets["ep"])[injects.STAFF_ENV]
+    values = dict(
+        line.split("=", 1) for line in text.splitlines() if not line.startswith("#")
+    )
+    assert values["STAFF_COUNT"] == "2"
+    assert [values[f"STAFF{n}_USER"] for n in (1, 2)] == ["corp-controls", "ep-maint"]
+    assert len(values) == 1 + 4 * 2
+    secret = [value for key, value in values.items() if key.endswith(("WORD", "SECRET"))]
+    # What the two scripts accept (phenix-injects/guacamole/cm_guac_accounts.py).
+    for n in (1, 2):
+        assert re.fullmatch(r"[A-Za-z0-9]{20}", values[f"STAFF{n}_GUAC_PASSWORD"])
+        assert re.fullmatch(r"[A-Za-z0-9]{20}", values[f"STAFF{n}_EWS_PASSWORD"])
+        assert re.fullmatch(r"[A-Z2-7]{32}", values[f"STAFF{n}_TOTP_SECRET"])
+    assert len(set(secret)) == len(secret) == 6
+    # Each person's title is a comment above the account.
+    for person in specs["ep"].staff:
+        assert f"# {person.title}\nSTAFF" in text
+    # Another site with the same account gets other placeholders.
+    other = injects.Context(
+        site=specs["ep"].model_copy(update={"code": "cs"}),
+        plant=None,  # type: ignore[arg-type]
+        nodes=[],
+        path=injects.STAFF_ENV,
+        targets=[],
+        text=(INJECTS / injects.STAFF_ENV).read_text(encoding="utf-8"),
+    )
+    theirs = injects.RENDERERS[injects.STAFF_ENV](other)
+    assert "STAFF1_USER=corp-controls\n" in theirs
+    assert not [value for value in secret if value in theirs]
+
+
+def test_the_app_block_of_a_site_with_staff_names_the_accounts(
+    sets: dict[str, SiteSet],
+) -> None:
+    """The cherrymountain app makes each account's passwords and TOTP key for
+    an experiment, and it takes the names from its metadata."""
+    found = {
+        code: yaml.safe_load(made.files["phenix/cherrymountain.yaml"])["metadata"].get(
+            "staffAccounts"
+        )
+        for code, made in sets.items()
+    }
+    assert found == {
+        "fr": None,
+        "ep": ["corp-controls", "ep-maint"],
+        "cs": None,
+        "fc": None,
     }
 
 

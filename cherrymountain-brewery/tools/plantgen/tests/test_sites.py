@@ -62,6 +62,8 @@ def test_sites_yaml_equals_the_spikes_profiles(
             {"isp": isp, "address": address} for isp, address in theirs["uplinks"]
         ]
         assert theirs.pop("drop_units") == {}
+        # The spike ran no account of the company's staff (decision K5a).
+        ours.pop("staff")
         for key in ("modules", "extra_hosts", "drop_areas", "drop_hosts"):
             theirs[key] = list(theirs[key])
         assert ours == theirs
@@ -185,6 +187,28 @@ def _cell_of_absent_plc(doc: dict[str, Any]) -> None:
         (_outside_block, "is in no block that wan.yaml gives ep-fw-edge"),
         (_wrong_lan, "wan.yaml puts its host on FC-PLANT"),
         (lambda doc: _site(doc, "cs").update(color="red"), "sites.yaml"),
+        (
+            lambda doc: _site(doc, "ep")["staff"].append(
+                {"account": "ep-maint", "title": "Again"}
+            ),
+            "staff has an account twice",
+        ),
+        (
+            lambda doc: _site(doc, "cs").update(
+                staff=[{"account": "cs-maint", "title": "Site maintenance lead"}]
+            ),
+            r"staff accounts need the hosts \['dmz-jump'\]",
+        ),
+        (
+            lambda doc: _site(doc, "fr").update(
+                staff=[{"account": "fr-maint", "title": "Site maintenance lead"}]
+            ),
+            "its jump host is the vendor's",
+        ),
+        (
+            lambda doc: _site(doc, "ep")["staff"][0].update(account="Corp Controls"),
+            "sites.yaml",
+        ),
     ],
 )
 def test_a_wrong_entry_is_refused_by_name(

@@ -49,6 +49,13 @@ MAX_INDEX: Final[int] = 3
 WAN_HOST_INDEX: Final[int] = 10
 #: The name of a site's edge router without the site's prefix.
 EDGE: Final[str] = "fw-edge"
+#: The jump host and the workstation of a site, without the site's prefix. The
+#: company's staff sign in at the first and work on the second.
+JUMP: Final[str] = "dmz-jump"
+EWS: Final[str] = "ews"
+#: Most staff accounts at one jump host: what a roster file holds
+#: (phenix-injects/guacamole/cm_guac_accounts.py, MAX_ACCOUNTS).
+MAX_STAFF: Final[int] = 8
 #: The routers of plant.yaml. A network that only routers are on is not a network
 #: of the site.
 ROUTERS: Final[frozenset[str]] = frozenset({"fw-edge", "fw-ot", "isp-rtr", "util-rtr"})
@@ -85,6 +92,16 @@ class Uplink(_Entry):
     address: str
 
 
+class Staff(_Entry):
+    """One of the company's own staff with an account on a site's jump host."""
+
+    #: The name of the account on the jump host and on the workstation. It is a
+    #: role, not a person: `corp-controls`.
+    account: str = Field(pattern=r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$", max_length=31)
+    #: Who has the account.
+    title: str = Field(min_length=1)
+
+
 class SiteSpec(_Entry):
     """One brewery site: what it runs, and how its network is cut."""
 
@@ -102,6 +119,7 @@ class SiteSpec(_Entry):
     time_server: str = "ot-svc"
     uplinks: list[Uplink] = Field(min_length=1)
     sensor: bool = True
+    staff: list[Staff] = Field(default_factory=list, max_length=MAX_STAFF)
 
     @property
     def one_firewall(self) -> bool:
@@ -230,6 +248,8 @@ def check(
             raise PlantError(
                 f"{where}: time_server {site.time_server!r} is not a host of the site"
             )
+        if site.staff:
+            _staff(where, site, present)
         gone = sorted(set(site.cells) - present)
         if gone:
             raise PlantError(
@@ -250,6 +270,24 @@ def check(
         _no_address_twice(site, plant)
         if wan is not None:
             _fits_wan(site, plant, wan)
+
+
+def _staff(where: str, site: SiteSpec, present: set[str]) -> None:
+    """Staff accounts need a jump host of the company's own and a workstation."""
+    accounts = [person.account for person in site.staff]
+    if len(set(accounts)) != len(accounts):
+        raise PlantError(f"{where}: staff has an account twice: {accounts}")
+    missing = sorted({JUMP, EWS} - present)
+    if missing:
+        raise PlantError(
+            f"{where}: staff accounts need the hosts {missing}, which the site "
+            "does not have"
+        )
+    if "remote" in site.modules:
+        raise PlantError(
+            f"{where}: its jump host is the vendor's (module `remote`), and staff "
+            "accounts go on a jump host of the company's own"
+        )
 
 
 def _known(where: str, field: str, names: list[str], known: set[str]) -> None:

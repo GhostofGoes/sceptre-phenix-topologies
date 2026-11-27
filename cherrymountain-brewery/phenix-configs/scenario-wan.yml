@@ -1,9 +1,11 @@
 # cherrymountain-wan scenario (docs/multisite/PLANS.md, stage 2). The `vrouter`
-# app gets a `config` list for each router: BGP and its policies, BFD, the
-# tunnels to the head office, each tunnel's tie to its uplink, the discard
-# routes, NAT, a site's failover default routes, and the head office's source
-# filter on each tunnel. The list needs the `config` option of the vrouter app
-# (GhostofGoes/sceptre-phenix#27). The soh app pings from each site's host:
+# app gets two keys for each router. The `bgp` block holds BGP, its policies,
+# and the BFD profile. The `config` list holds the rest: the tunnels to the
+# head office, each tunnel's tie to its uplink, the discard routes, NAT, a
+# site's failover default routes, and the head office's source filter on each
+# tunnel. phenix writes the block as VyOS commands before the lines of the
+# list, and the router commits both at once. Both keys need the vrouter app
+# of GhostofGoes/sceptre-phenix#27. The soh app pings from each site's host:
 # through the VPN, and to the host on the internet. The scorch app has one run
 # for each fault. Nobody ran the runs on VMs yet.
 #
@@ -25,569 +27,1109 @@ spec:
     hosts:
     - hostname: cb-west
       metadata:
+        bgp:
+          localAS: 64496
+          routerID: 198.18.0.251
+          logNeighborChanges: true
+          networks:
+          - 198.18.0.0/24
+          - 198.18.110.0/24
+          neighbors:
+          - address: 198.18.0.2
+            remoteAS: 64496
+            description: Continental Backbone, Colorado Springs
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            nexthopSelf: true
+          - address: 198.18.0.6
+            remoteAS: 64500
+            description: ShadeCast Cable
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-CUSTOMER
+            export:
+              routeMap: TO-CUSTOMER
+          - address: 198.18.0.10
+            remoteAS: 64501
+            description: Tumbleweed Fiber
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-CUSTOMER
+            export:
+              routeMap: TO-CUSTOMER
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: PUBLIC
+            rules:
+            - rule: 1
+              action: deny
+              prefix: 10.0.0.0/8
+              le: 32
+            - rule: 2
+              action: deny
+              prefix: 172.16.0.0/12
+              le: 32
+            - rule: 3
+              action: deny
+              prefix: 192.168.0.0/16
+              le: 32
+            - rule: 10
+              action: deny
+              prefix: 0.0.0.0/0
+            - rule: 15
+              action: permit
+              prefix: 0.0.0.0/0
+              le: 24
+          - name: OWN
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.0.0/24
+            - rule: 20
+              action: permit
+              prefix: 198.18.110.0/24
+          communityLists:
+          - name: FROM-CUSTOMERS
+            rules:
+            - rule: 10
+              action: permit
+              regex: _64496:1_
+          routeMaps:
+          - name: TO-UPSTREAM
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                communityList: FROM-CUSTOMERS
+            - rule: 20
+              action: permit
+              match:
+                prefixList: OWN
+          - name: TO-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+          - name: FROM-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 200
+                community: '64496:1'
+          - name: FROM-PEER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 150
+                community: '64496:2'
+          - name: FROM-PROVIDER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 100
+                community: '64496:3'
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list PUBLIC rule 1 action deny
-        - set policy prefix-list PUBLIC rule 1 prefix 10.0.0.0/8
-        - set policy prefix-list PUBLIC rule 1 le 32
-        - set policy prefix-list PUBLIC rule 2 action deny
-        - set policy prefix-list PUBLIC rule 2 prefix 172.16.0.0/12
-        - set policy prefix-list PUBLIC rule 2 le 32
-        - set policy prefix-list PUBLIC rule 3 action deny
-        - set policy prefix-list PUBLIC rule 3 prefix 192.168.0.0/16
-        - set policy prefix-list PUBLIC rule 3 le 32
-        - set policy prefix-list PUBLIC rule 10 action deny
-        - set policy prefix-list PUBLIC rule 10 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 action permit
-        - set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 le 24
-        - set policy community-list FROM-CUSTOMERS rule 10 action permit
-        - set policy community-list FROM-CUSTOMERS rule 10 regex '_64496:1_'
-        - set policy route-map TO-UPSTREAM rule 10 action permit
-        - set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
-        - set policy route-map TO-UPSTREAM rule 20 action permit
-        - set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
-        - set policy route-map TO-CUSTOMER rule 10 action permit
-        - set protocols bgp system-as 64496
-        - set protocols bgp parameters router-id 198.18.0.251
-        - set protocols bgp parameters log-neighbor-changes
-        - set policy prefix-list OWN rule 10 action permit
-        - set policy prefix-list OWN rule 10 prefix 198.18.0.0/24
-        - set policy prefix-list OWN rule 20 action permit
-        - set policy prefix-list OWN rule 20 prefix 198.18.110.0/24
-        - set policy route-map FROM-CUSTOMER rule 10 action permit
-        - set policy route-map FROM-CUSTOMER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-CUSTOMER rule 10 set local-preference 200
-        - set policy route-map FROM-CUSTOMER rule 10 set community replace 64496:1
-        - set policy route-map FROM-PEER rule 10 action permit
-        - set policy route-map FROM-PEER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PEER rule 10 set local-preference 150
-        - set policy route-map FROM-PEER rule 10 set community replace 64496:2
-        - set policy route-map FROM-PROVIDER rule 10 action permit
-        - set policy route-map FROM-PROVIDER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PROVIDER rule 10 set local-preference 100
-        - set policy route-map FROM-PROVIDER rule 10 set community replace 64496:3
-        - set protocols bgp address-family ipv4-unicast network 198.18.0.0/24
         - set protocols static route 198.18.0.0/24 blackhole distance 250
-        - set protocols bgp address-family ipv4-unicast network 198.18.110.0/24
         - set protocols static route 198.18.110.0/24 blackhole distance 250
-        - set protocols bgp neighbor 198.18.0.2 remote-as 64496
-        - set protocols bgp neighbor 198.18.0.2 description 'Continental Backbone, Colorado Springs'
-        - set protocols bgp neighbor 198.18.0.2 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.2 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.2 timers connect 5
-        - set protocols bgp neighbor 198.18.0.2 address-family ipv4-unicast nexthop-self
-        - set protocols bgp neighbor 198.18.0.6 remote-as 64500
-        - set protocols bgp neighbor 198.18.0.6 description 'ShadeCast Cable'
-        - set protocols bgp neighbor 198.18.0.6 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.6 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.6 timers connect 5
-        - set protocols bgp neighbor 198.18.0.6 address-family ipv4-unicast route-map import FROM-CUSTOMER
-        - set protocols bgp neighbor 198.18.0.6 address-family ipv4-unicast route-map export TO-CUSTOMER
-        - set protocols bgp neighbor 198.18.0.10 remote-as 64501
-        - set protocols bgp neighbor 198.18.0.10 description 'Tumbleweed Fiber'
-        - set protocols bgp neighbor 198.18.0.10 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.10 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.10 timers connect 5
-        - set protocols bgp neighbor 198.18.0.10 address-family ipv4-unicast route-map import FROM-CUSTOMER
-        - set protocols bgp neighbor 198.18.0.10 address-family ipv4-unicast route-map export TO-CUSTOMER
     - hostname: cb-south
       metadata:
-        config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list PUBLIC rule 1 action deny
-        - set policy prefix-list PUBLIC rule 1 prefix 10.0.0.0/8
-        - set policy prefix-list PUBLIC rule 1 le 32
-        - set policy prefix-list PUBLIC rule 2 action deny
-        - set policy prefix-list PUBLIC rule 2 prefix 172.16.0.0/12
-        - set policy prefix-list PUBLIC rule 2 le 32
-        - set policy prefix-list PUBLIC rule 3 action deny
-        - set policy prefix-list PUBLIC rule 3 prefix 192.168.0.0/16
-        - set policy prefix-list PUBLIC rule 3 le 32
-        - set policy prefix-list PUBLIC rule 10 action deny
-        - set policy prefix-list PUBLIC rule 10 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 action permit
-        - set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 le 24
-        - set policy community-list FROM-CUSTOMERS rule 10 action permit
-        - set policy community-list FROM-CUSTOMERS rule 10 regex '_64496:1_'
-        - set policy route-map TO-UPSTREAM rule 10 action permit
-        - set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
-        - set policy route-map TO-UPSTREAM rule 20 action permit
-        - set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
-        - set policy route-map TO-CUSTOMER rule 10 action permit
-        - set protocols bgp system-as 64496
-        - set protocols bgp parameters router-id 198.18.0.252
-        - set protocols bgp parameters log-neighbor-changes
-        - set policy prefix-list OWN rule 10 action deny
-        - set policy prefix-list OWN rule 10 prefix 0.0.0.0/32
-        - set policy route-map FROM-CUSTOMER rule 10 action permit
-        - set policy route-map FROM-CUSTOMER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-CUSTOMER rule 10 set local-preference 200
-        - set policy route-map FROM-CUSTOMER rule 10 set community replace 64496:1
-        - set policy route-map FROM-PEER rule 10 action permit
-        - set policy route-map FROM-PEER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PEER rule 10 set local-preference 150
-        - set policy route-map FROM-PEER rule 10 set community replace 64496:2
-        - set policy route-map FROM-PROVIDER rule 10 action permit
-        - set policy route-map FROM-PROVIDER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PROVIDER rule 10 set local-preference 100
-        - set policy route-map FROM-PROVIDER rule 10 set community replace 64496:3
-        - set protocols bgp neighbor 198.18.0.1 remote-as 64496
-        - set protocols bgp neighbor 198.18.0.1 description 'Continental Backbone, Denver'
-        - set protocols bgp neighbor 198.18.0.1 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.1 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.1 timers connect 5
-        - set protocols bgp neighbor 198.18.0.1 address-family ipv4-unicast nexthop-self
-        - set protocols bgp neighbor 198.18.0.14 remote-as 64503
-        - set protocols bgp neighbor 198.18.0.14 description 'Bristlecone Broadband'
-        - set protocols bgp neighbor 198.18.0.14 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.14 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.14 timers connect 5
-        - set protocols bgp neighbor 198.18.0.14 address-family ipv4-unicast route-map import FROM-CUSTOMER
-        - set protocols bgp neighbor 198.18.0.14 address-family ipv4-unicast route-map export TO-CUSTOMER
+        bgp:
+          localAS: 64496
+          routerID: 198.18.0.252
+          logNeighborChanges: true
+          neighbors:
+          - address: 198.18.0.1
+            remoteAS: 64496
+            description: Continental Backbone, Denver
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            nexthopSelf: true
+          - address: 198.18.0.14
+            remoteAS: 64503
+            description: Bristlecone Broadband
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-CUSTOMER
+            export:
+              routeMap: TO-CUSTOMER
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: PUBLIC
+            rules:
+            - rule: 1
+              action: deny
+              prefix: 10.0.0.0/8
+              le: 32
+            - rule: 2
+              action: deny
+              prefix: 172.16.0.0/12
+              le: 32
+            - rule: 3
+              action: deny
+              prefix: 192.168.0.0/16
+              le: 32
+            - rule: 10
+              action: deny
+              prefix: 0.0.0.0/0
+            - rule: 15
+              action: permit
+              prefix: 0.0.0.0/0
+              le: 24
+          - name: OWN
+            rules:
+            - rule: 10
+              action: deny
+              prefix: 0.0.0.0/32
+          communityLists:
+          - name: FROM-CUSTOMERS
+            rules:
+            - rule: 10
+              action: permit
+              regex: _64496:1_
+          routeMaps:
+          - name: TO-UPSTREAM
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                communityList: FROM-CUSTOMERS
+            - rule: 20
+              action: permit
+              match:
+                prefixList: OWN
+          - name: TO-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+          - name: FROM-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 200
+                community: '64496:1'
+          - name: FROM-PEER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 150
+                community: '64496:2'
+          - name: FROM-PROVIDER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 100
+                community: '64496:3'
     - hostname: shadecast
       metadata:
+        bgp:
+          localAS: 64500
+          routerID: 203.0.113.254
+          logNeighborChanges: true
+          networks:
+          - 203.0.113.0/24
+          neighbors:
+          - address: 198.18.0.5
+            remoteAS: 64496
+            description: Continental Backbone, Denver
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-PROVIDER
+            export:
+              routeMap: TO-UPSTREAM
+          - address: 198.18.0.18
+            remoteAS: 64501
+            description: Tumbleweed Fiber
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-PEER
+            export:
+              routeMap: TO-UPSTREAM
+          - address: 203.0.113.2
+            defaultOriginateRouteMap: DEFAULT-IF-TRANSIT
+            remoteAS: 64505
+            description: Head office and Front Range brewery edge
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: FROM-CUST-FR-FW-EDGE
+            export:
+              routeMap: TO-CUSTOMER
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: PUBLIC
+            rules:
+            - rule: 1
+              action: deny
+              prefix: 10.0.0.0/8
+              le: 32
+            - rule: 2
+              action: deny
+              prefix: 172.16.0.0/12
+              le: 32
+            - rule: 3
+              action: deny
+              prefix: 192.168.0.0/16
+              le: 32
+            - rule: 10
+              action: deny
+              prefix: 0.0.0.0/0
+            - rule: 15
+              action: permit
+              prefix: 0.0.0.0/0
+              le: 24
+          - name: OWN
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 203.0.113.0/24
+          - name: CUST-FR-FW-EDGE
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.105.0/24
+          - name: TRANSIT
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.0.0/24
+            - rule: 20
+              action: permit
+              prefix: 198.18.110.0/24
+          communityLists:
+          - name: FROM-CUSTOMERS
+            rules:
+            - rule: 10
+              action: permit
+              regex: _64500:1_
+          routeMaps:
+          - name: TO-UPSTREAM
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                communityList: FROM-CUSTOMERS
+            - rule: 20
+              action: permit
+              match:
+                prefixList: OWN
+          - name: TO-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+          - name: FROM-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 200
+                community: '64500:1'
+          - name: FROM-PEER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 150
+                community: '64500:2'
+          - name: FROM-PROVIDER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 100
+                community: '64500:3'
+          - name: FROM-CUST-FR-FW-EDGE
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: CUST-FR-FW-EDGE
+              set:
+                localPreference: 200
+                community: '64500:1'
+          - name: DEFAULT-IF-TRANSIT
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: TRANSIT
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list PUBLIC rule 1 action deny
-        - set policy prefix-list PUBLIC rule 1 prefix 10.0.0.0/8
-        - set policy prefix-list PUBLIC rule 1 le 32
-        - set policy prefix-list PUBLIC rule 2 action deny
-        - set policy prefix-list PUBLIC rule 2 prefix 172.16.0.0/12
-        - set policy prefix-list PUBLIC rule 2 le 32
-        - set policy prefix-list PUBLIC rule 3 action deny
-        - set policy prefix-list PUBLIC rule 3 prefix 192.168.0.0/16
-        - set policy prefix-list PUBLIC rule 3 le 32
-        - set policy prefix-list PUBLIC rule 10 action deny
-        - set policy prefix-list PUBLIC rule 10 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 action permit
-        - set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 le 24
-        - set policy community-list FROM-CUSTOMERS rule 10 action permit
-        - set policy community-list FROM-CUSTOMERS rule 10 regex '_64500:1_'
-        - set policy route-map TO-UPSTREAM rule 10 action permit
-        - set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
-        - set policy route-map TO-UPSTREAM rule 20 action permit
-        - set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
-        - set policy route-map TO-CUSTOMER rule 10 action permit
-        - set protocols bgp system-as 64500
-        - set protocols bgp parameters router-id 203.0.113.254
-        - set protocols bgp parameters log-neighbor-changes
-        - set policy prefix-list OWN rule 10 action permit
-        - set policy prefix-list OWN rule 10 prefix 203.0.113.0/24
-        - set policy route-map FROM-CUSTOMER rule 10 action permit
-        - set policy route-map FROM-CUSTOMER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-CUSTOMER rule 10 set local-preference 200
-        - set policy route-map FROM-CUSTOMER rule 10 set community replace 64500:1
-        - set policy route-map FROM-PEER rule 10 action permit
-        - set policy route-map FROM-PEER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PEER rule 10 set local-preference 150
-        - set policy route-map FROM-PEER rule 10 set community replace 64500:2
-        - set policy route-map FROM-PROVIDER rule 10 action permit
-        - set policy route-map FROM-PROVIDER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PROVIDER rule 10 set local-preference 100
-        - set policy route-map FROM-PROVIDER rule 10 set community replace 64500:3
-        - set protocols bgp address-family ipv4-unicast network 203.0.113.0/24
         - set protocols static route 203.0.113.0/24 blackhole distance 250
-        - set protocols bgp neighbor 198.18.0.5 remote-as 64496
-        - set protocols bgp neighbor 198.18.0.5 description 'Continental Backbone, Denver'
-        - set protocols bgp neighbor 198.18.0.5 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.5 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.5 timers connect 5
-        - set protocols bgp neighbor 198.18.0.5 address-family ipv4-unicast route-map import FROM-PROVIDER
-        - set protocols bgp neighbor 198.18.0.5 address-family ipv4-unicast route-map export TO-UPSTREAM
-        - set protocols bgp neighbor 198.18.0.18 remote-as 64501
-        - set protocols bgp neighbor 198.18.0.18 description 'Tumbleweed Fiber'
-        - set protocols bgp neighbor 198.18.0.18 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.18 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.18 timers connect 5
-        - set protocols bgp neighbor 198.18.0.18 address-family ipv4-unicast route-map import FROM-PEER
-        - set protocols bgp neighbor 198.18.0.18 address-family ipv4-unicast route-map export TO-UPSTREAM
-        - set policy prefix-list CUST-FR-FW-EDGE rule 10 action permit
-        - set policy prefix-list CUST-FR-FW-EDGE rule 10 prefix 198.18.105.0/24
-        - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 action permit
-        - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 match ip address prefix-list CUST-FR-FW-EDGE
-        - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set local-preference 200
-        - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set community replace 64500:1
-        - set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast default-originate route-map DEFAULT-IF-TRANSIT
-        - set protocols bgp neighbor 203.0.113.2 remote-as 64505
-        - set protocols bgp neighbor 203.0.113.2 description 'Head office and Front Range brewery edge'
-        - set protocols bgp neighbor 203.0.113.2 timers keepalive 3
-        - set protocols bgp neighbor 203.0.113.2 timers holdtime 9
-        - set protocols bgp neighbor 203.0.113.2 timers connect 5
-        - set protocols bgp neighbor 203.0.113.2 bfd profile WAN
-        - set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast route-map import FROM-CUST-FR-FW-EDGE
-        - set protocols bgp neighbor 203.0.113.2 address-family ipv4-unicast route-map export TO-CUSTOMER
-        - set policy prefix-list TRANSIT rule 10 action permit
-        - set policy prefix-list TRANSIT rule 10 prefix 198.18.0.0/24
-        - set policy prefix-list TRANSIT rule 20 action permit
-        - set policy prefix-list TRANSIT rule 20 prefix 198.18.110.0/24
-        - set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
-        - set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
     - hostname: tumbleweed
       metadata:
+        bgp:
+          localAS: 64501
+          routerID: 198.18.101.254
+          logNeighborChanges: true
+          networks:
+          - 198.18.101.0/24
+          neighbors:
+          - address: 198.18.0.9
+            remoteAS: 64496
+            description: Continental Backbone, Denver
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-PROVIDER
+            export:
+              routeMap: TO-UPSTREAM
+          - address: 198.18.0.17
+            remoteAS: 64500
+            description: ShadeCast Cable
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-PEER
+            export:
+              routeMap: TO-UPSTREAM
+          - address: 198.18.0.22
+            remoteAS: 64502
+            description: Marmot Wireless
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-CUSTOMER
+            export:
+              routeMap: TO-CUSTOMER
+          - address: 198.18.101.2
+            defaultOriginateRouteMap: DEFAULT-IF-TRANSIT
+            remoteAS: 64505
+            description: Head office and Front Range brewery edge
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: FROM-CUST-FR-FW-EDGE
+            export:
+              routeMap: TO-CUSTOMER
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: PUBLIC
+            rules:
+            - rule: 1
+              action: deny
+              prefix: 10.0.0.0/8
+              le: 32
+            - rule: 2
+              action: deny
+              prefix: 172.16.0.0/12
+              le: 32
+            - rule: 3
+              action: deny
+              prefix: 192.168.0.0/16
+              le: 32
+            - rule: 10
+              action: deny
+              prefix: 0.0.0.0/0
+            - rule: 15
+              action: permit
+              prefix: 0.0.0.0/0
+              le: 24
+          - name: OWN
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.101.0/24
+          - name: CUST-FR-FW-EDGE
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.105.0/24
+          - name: TRANSIT
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.0.0/24
+            - rule: 20
+              action: permit
+              prefix: 198.18.110.0/24
+          communityLists:
+          - name: FROM-CUSTOMERS
+            rules:
+            - rule: 10
+              action: permit
+              regex: _64501:1_
+          routeMaps:
+          - name: TO-UPSTREAM
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                communityList: FROM-CUSTOMERS
+            - rule: 20
+              action: permit
+              match:
+                prefixList: OWN
+          - name: TO-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+          - name: FROM-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 200
+                community: '64501:1'
+          - name: FROM-PEER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 150
+                community: '64501:2'
+          - name: FROM-PROVIDER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 100
+                community: '64501:3'
+          - name: FROM-CUST-FR-FW-EDGE
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: CUST-FR-FW-EDGE
+              set:
+                localPreference: 200
+                community: '64501:1'
+          - name: DEFAULT-IF-TRANSIT
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: TRANSIT
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list PUBLIC rule 1 action deny
-        - set policy prefix-list PUBLIC rule 1 prefix 10.0.0.0/8
-        - set policy prefix-list PUBLIC rule 1 le 32
-        - set policy prefix-list PUBLIC rule 2 action deny
-        - set policy prefix-list PUBLIC rule 2 prefix 172.16.0.0/12
-        - set policy prefix-list PUBLIC rule 2 le 32
-        - set policy prefix-list PUBLIC rule 3 action deny
-        - set policy prefix-list PUBLIC rule 3 prefix 192.168.0.0/16
-        - set policy prefix-list PUBLIC rule 3 le 32
-        - set policy prefix-list PUBLIC rule 10 action deny
-        - set policy prefix-list PUBLIC rule 10 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 action permit
-        - set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 le 24
-        - set policy community-list FROM-CUSTOMERS rule 10 action permit
-        - set policy community-list FROM-CUSTOMERS rule 10 regex '_64501:1_'
-        - set policy route-map TO-UPSTREAM rule 10 action permit
-        - set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
-        - set policy route-map TO-UPSTREAM rule 20 action permit
-        - set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
-        - set policy route-map TO-CUSTOMER rule 10 action permit
-        - set protocols bgp system-as 64501
-        - set protocols bgp parameters router-id 198.18.101.254
-        - set protocols bgp parameters log-neighbor-changes
-        - set policy prefix-list OWN rule 10 action permit
-        - set policy prefix-list OWN rule 10 prefix 198.18.101.0/24
-        - set policy route-map FROM-CUSTOMER rule 10 action permit
-        - set policy route-map FROM-CUSTOMER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-CUSTOMER rule 10 set local-preference 200
-        - set policy route-map FROM-CUSTOMER rule 10 set community replace 64501:1
-        - set policy route-map FROM-PEER rule 10 action permit
-        - set policy route-map FROM-PEER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PEER rule 10 set local-preference 150
-        - set policy route-map FROM-PEER rule 10 set community replace 64501:2
-        - set policy route-map FROM-PROVIDER rule 10 action permit
-        - set policy route-map FROM-PROVIDER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PROVIDER rule 10 set local-preference 100
-        - set policy route-map FROM-PROVIDER rule 10 set community replace 64501:3
-        - set protocols bgp address-family ipv4-unicast network 198.18.101.0/24
         - set protocols static route 198.18.101.0/24 blackhole distance 250
-        - set protocols bgp neighbor 198.18.0.9 remote-as 64496
-        - set protocols bgp neighbor 198.18.0.9 description 'Continental Backbone, Denver'
-        - set protocols bgp neighbor 198.18.0.9 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.9 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.9 timers connect 5
-        - set protocols bgp neighbor 198.18.0.9 address-family ipv4-unicast route-map import FROM-PROVIDER
-        - set protocols bgp neighbor 198.18.0.9 address-family ipv4-unicast route-map export TO-UPSTREAM
-        - set protocols bgp neighbor 198.18.0.17 remote-as 64500
-        - set protocols bgp neighbor 198.18.0.17 description 'ShadeCast Cable'
-        - set protocols bgp neighbor 198.18.0.17 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.17 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.17 timers connect 5
-        - set protocols bgp neighbor 198.18.0.17 address-family ipv4-unicast route-map import FROM-PEER
-        - set protocols bgp neighbor 198.18.0.17 address-family ipv4-unicast route-map export TO-UPSTREAM
-        - set protocols bgp neighbor 198.18.0.22 remote-as 64502
-        - set protocols bgp neighbor 198.18.0.22 description 'Marmot Wireless'
-        - set protocols bgp neighbor 198.18.0.22 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.22 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.22 timers connect 5
-        - set protocols bgp neighbor 198.18.0.22 address-family ipv4-unicast route-map import FROM-CUSTOMER
-        - set protocols bgp neighbor 198.18.0.22 address-family ipv4-unicast route-map export TO-CUSTOMER
-        - set policy prefix-list CUST-FR-FW-EDGE rule 10 action permit
-        - set policy prefix-list CUST-FR-FW-EDGE rule 10 prefix 198.18.105.0/24
-        - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 action permit
-        - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 match ip address prefix-list CUST-FR-FW-EDGE
-        - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set local-preference 200
-        - set policy route-map FROM-CUST-FR-FW-EDGE rule 10 set community replace 64501:1
-        - set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast default-originate route-map DEFAULT-IF-TRANSIT
-        - set protocols bgp neighbor 198.18.101.2 remote-as 64505
-        - set protocols bgp neighbor 198.18.101.2 description 'Head office and Front Range brewery edge'
-        - set protocols bgp neighbor 198.18.101.2 timers keepalive 3
-        - set protocols bgp neighbor 198.18.101.2 timers holdtime 9
-        - set protocols bgp neighbor 198.18.101.2 timers connect 5
-        - set protocols bgp neighbor 198.18.101.2 bfd profile WAN
-        - set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast route-map import FROM-CUST-FR-FW-EDGE
-        - set protocols bgp neighbor 198.18.101.2 address-family ipv4-unicast route-map export TO-CUSTOMER
-        - set policy prefix-list TRANSIT rule 10 action permit
-        - set policy prefix-list TRANSIT rule 10 prefix 198.18.0.0/24
-        - set policy prefix-list TRANSIT rule 20 action permit
-        - set policy prefix-list TRANSIT rule 20 prefix 198.18.110.0/24
-        - set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
-        - set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
     - hostname: marmot
       metadata:
+        bgp:
+          localAS: 64502
+          routerID: 198.18.102.254
+          logNeighborChanges: true
+          networks:
+          - 198.18.102.0/24
+          neighbors:
+          - address: 198.18.0.21
+            remoteAS: 64501
+            description: Tumbleweed Fiber
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-PROVIDER
+            export:
+              routeMap: TO-UPSTREAM
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: PUBLIC
+            rules:
+            - rule: 1
+              action: deny
+              prefix: 10.0.0.0/8
+              le: 32
+            - rule: 2
+              action: deny
+              prefix: 172.16.0.0/12
+              le: 32
+            - rule: 3
+              action: deny
+              prefix: 192.168.0.0/16
+              le: 32
+            - rule: 10
+              action: deny
+              prefix: 0.0.0.0/0
+            - rule: 15
+              action: permit
+              prefix: 0.0.0.0/0
+              le: 24
+          - name: OWN
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.102.0/24
+          - name: TRANSIT
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.101.0/24
+          communityLists:
+          - name: FROM-CUSTOMERS
+            rules:
+            - rule: 10
+              action: permit
+              regex: _64502:1_
+          routeMaps:
+          - name: TO-UPSTREAM
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                communityList: FROM-CUSTOMERS
+            - rule: 20
+              action: permit
+              match:
+                prefixList: OWN
+          - name: TO-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+          - name: FROM-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 200
+                community: '64502:1'
+          - name: FROM-PEER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 150
+                community: '64502:2'
+          - name: FROM-PROVIDER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 100
+                community: '64502:3'
+          - name: DEFAULT-IF-TRANSIT
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: TRANSIT
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list PUBLIC rule 1 action deny
-        - set policy prefix-list PUBLIC rule 1 prefix 10.0.0.0/8
-        - set policy prefix-list PUBLIC rule 1 le 32
-        - set policy prefix-list PUBLIC rule 2 action deny
-        - set policy prefix-list PUBLIC rule 2 prefix 172.16.0.0/12
-        - set policy prefix-list PUBLIC rule 2 le 32
-        - set policy prefix-list PUBLIC rule 3 action deny
-        - set policy prefix-list PUBLIC rule 3 prefix 192.168.0.0/16
-        - set policy prefix-list PUBLIC rule 3 le 32
-        - set policy prefix-list PUBLIC rule 10 action deny
-        - set policy prefix-list PUBLIC rule 10 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 action permit
-        - set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 le 24
-        - set policy community-list FROM-CUSTOMERS rule 10 action permit
-        - set policy community-list FROM-CUSTOMERS rule 10 regex '_64502:1_'
-        - set policy route-map TO-UPSTREAM rule 10 action permit
-        - set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
-        - set policy route-map TO-UPSTREAM rule 20 action permit
-        - set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
-        - set policy route-map TO-CUSTOMER rule 10 action permit
-        - set protocols bgp system-as 64502
-        - set protocols bgp parameters router-id 198.18.102.254
-        - set protocols bgp parameters log-neighbor-changes
-        - set policy prefix-list OWN rule 10 action permit
-        - set policy prefix-list OWN rule 10 prefix 198.18.102.0/24
-        - set policy route-map FROM-CUSTOMER rule 10 action permit
-        - set policy route-map FROM-CUSTOMER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-CUSTOMER rule 10 set local-preference 200
-        - set policy route-map FROM-CUSTOMER rule 10 set community replace 64502:1
-        - set policy route-map FROM-PEER rule 10 action permit
-        - set policy route-map FROM-PEER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PEER rule 10 set local-preference 150
-        - set policy route-map FROM-PEER rule 10 set community replace 64502:2
-        - set policy route-map FROM-PROVIDER rule 10 action permit
-        - set policy route-map FROM-PROVIDER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PROVIDER rule 10 set local-preference 100
-        - set policy route-map FROM-PROVIDER rule 10 set community replace 64502:3
-        - set protocols bgp address-family ipv4-unicast network 198.18.102.0/24
         - set protocols static route 198.18.102.0/24 blackhole distance 250
-        - set protocols bgp neighbor 198.18.0.21 remote-as 64501
-        - set protocols bgp neighbor 198.18.0.21 description 'Tumbleweed Fiber'
-        - set protocols bgp neighbor 198.18.0.21 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.21 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.21 timers connect 5
-        - set protocols bgp neighbor 198.18.0.21 address-family ipv4-unicast route-map import FROM-PROVIDER
-        - set protocols bgp neighbor 198.18.0.21 address-family ipv4-unicast route-map export TO-UPSTREAM
-        - set policy prefix-list TRANSIT rule 10 action permit
-        - set policy prefix-list TRANSIT rule 10 prefix 198.18.101.0/24
-        - set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
-        - set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
     - hostname: bristlecone
       metadata:
+        bgp:
+          localAS: 64503
+          routerID: 198.18.103.254
+          logNeighborChanges: true
+          networks:
+          - 198.18.103.0/24
+          neighbors:
+          - address: 198.18.0.13
+            remoteAS: 64496
+            description: Continental Backbone, Colorado Springs
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            import:
+              routeMap: FROM-PROVIDER
+            export:
+              routeMap: TO-UPSTREAM
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: PUBLIC
+            rules:
+            - rule: 1
+              action: deny
+              prefix: 10.0.0.0/8
+              le: 32
+            - rule: 2
+              action: deny
+              prefix: 172.16.0.0/12
+              le: 32
+            - rule: 3
+              action: deny
+              prefix: 192.168.0.0/16
+              le: 32
+            - rule: 10
+              action: deny
+              prefix: 0.0.0.0/0
+            - rule: 15
+              action: permit
+              prefix: 0.0.0.0/0
+              le: 24
+          - name: OWN
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.103.0/24
+          - name: TRANSIT
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.0.0/24
+            - rule: 20
+              action: permit
+              prefix: 198.18.110.0/24
+          communityLists:
+          - name: FROM-CUSTOMERS
+            rules:
+            - rule: 10
+              action: permit
+              regex: _64503:1_
+          routeMaps:
+          - name: TO-UPSTREAM
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                communityList: FROM-CUSTOMERS
+            - rule: 20
+              action: permit
+              match:
+                prefixList: OWN
+          - name: TO-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+          - name: FROM-CUSTOMER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 200
+                community: '64503:1'
+          - name: FROM-PEER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 150
+                community: '64503:2'
+          - name: FROM-PROVIDER
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: PUBLIC
+              set:
+                localPreference: 100
+                community: '64503:3'
+          - name: DEFAULT-IF-TRANSIT
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: TRANSIT
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list PUBLIC rule 1 action deny
-        - set policy prefix-list PUBLIC rule 1 prefix 10.0.0.0/8
-        - set policy prefix-list PUBLIC rule 1 le 32
-        - set policy prefix-list PUBLIC rule 2 action deny
-        - set policy prefix-list PUBLIC rule 2 prefix 172.16.0.0/12
-        - set policy prefix-list PUBLIC rule 2 le 32
-        - set policy prefix-list PUBLIC rule 3 action deny
-        - set policy prefix-list PUBLIC rule 3 prefix 192.168.0.0/16
-        - set policy prefix-list PUBLIC rule 3 le 32
-        - set policy prefix-list PUBLIC rule 10 action deny
-        - set policy prefix-list PUBLIC rule 10 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 action permit
-        - set policy prefix-list PUBLIC rule 15 prefix 0.0.0.0/0
-        - set policy prefix-list PUBLIC rule 15 le 24
-        - set policy community-list FROM-CUSTOMERS rule 10 action permit
-        - set policy community-list FROM-CUSTOMERS rule 10 regex '_64503:1_'
-        - set policy route-map TO-UPSTREAM rule 10 action permit
-        - set policy route-map TO-UPSTREAM rule 10 match community community-list FROM-CUSTOMERS
-        - set policy route-map TO-UPSTREAM rule 20 action permit
-        - set policy route-map TO-UPSTREAM rule 20 match ip address prefix-list OWN
-        - set policy route-map TO-CUSTOMER rule 10 action permit
-        - set protocols bgp system-as 64503
-        - set protocols bgp parameters router-id 198.18.103.254
-        - set protocols bgp parameters log-neighbor-changes
-        - set policy prefix-list OWN rule 10 action permit
-        - set policy prefix-list OWN rule 10 prefix 198.18.103.0/24
-        - set policy route-map FROM-CUSTOMER rule 10 action permit
-        - set policy route-map FROM-CUSTOMER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-CUSTOMER rule 10 set local-preference 200
-        - set policy route-map FROM-CUSTOMER rule 10 set community replace 64503:1
-        - set policy route-map FROM-PEER rule 10 action permit
-        - set policy route-map FROM-PEER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PEER rule 10 set local-preference 150
-        - set policy route-map FROM-PEER rule 10 set community replace 64503:2
-        - set policy route-map FROM-PROVIDER rule 10 action permit
-        - set policy route-map FROM-PROVIDER rule 10 match ip address prefix-list PUBLIC
-        - set policy route-map FROM-PROVIDER rule 10 set local-preference 100
-        - set policy route-map FROM-PROVIDER rule 10 set community replace 64503:3
-        - set protocols bgp address-family ipv4-unicast network 198.18.103.0/24
         - set protocols static route 198.18.103.0/24 blackhole distance 250
-        - set protocols bgp neighbor 198.18.0.13 remote-as 64496
-        - set protocols bgp neighbor 198.18.0.13 description 'Continental Backbone, Colorado Springs'
-        - set protocols bgp neighbor 198.18.0.13 timers keepalive 3
-        - set protocols bgp neighbor 198.18.0.13 timers holdtime 9
-        - set protocols bgp neighbor 198.18.0.13 timers connect 5
-        - set protocols bgp neighbor 198.18.0.13 address-family ipv4-unicast route-map import FROM-PROVIDER
-        - set protocols bgp neighbor 198.18.0.13 address-family ipv4-unicast route-map export TO-UPSTREAM
-        - set policy prefix-list TRANSIT rule 10 action permit
-        - set policy prefix-list TRANSIT rule 10 prefix 198.18.0.0/24
-        - set policy prefix-list TRANSIT rule 20 action permit
-        - set policy prefix-list TRANSIT rule 20 prefix 198.18.110.0/24
-        - set policy route-map DEFAULT-IF-TRANSIT rule 10 action permit
-        - set policy route-map DEFAULT-IF-TRANSIT rule 10 match ip address prefix-list TRANSIT
     - hostname: fr-fw-edge
       metadata:
+        bgp:
+          localAS: 64505
+          routerID: 198.18.105.1
+          logNeighborChanges: true
+          multipath:
+            asPathRelax: true
+            ebgp: 2
+          networks:
+          - 10.10.0.0/16
+          - 10.20.0.0/16
+          - 10.30.0.0/16
+          - 10.40.0.0/16
+          - 198.18.105.0/24
+          neighbors:
+          - address: 203.0.113.1
+            remoteAS: 64500
+            description: ShadeCast Cable
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: FROM-ISP
+            export:
+              routeMap: OWN-ONLY
+            softReconfigurationInbound: true
+          - address: 198.18.101.1
+            remoteAS: 64501
+            description: Tumbleweed Fiber
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: FROM-ISP
+            export:
+              routeMap: OWN-ONLY
+            softReconfigurationInbound: true
+          - address: 10.255.0.1
+            remoteAS: 65020
+            description: overlay fc-a
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-PRIMARY-FC
+            export:
+              routeMap: OVERLAY-OUT
+          - address: 10.255.0.3
+            remoteAS: 65020
+            description: overlay fc-b
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-BACKUP-FC
+            export:
+              routeMap: OVERLAY-OUT
+          - address: 10.255.0.5
+            remoteAS: 65030
+            description: overlay ep-a
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-PRIMARY-EP
+            export:
+              routeMap: OVERLAY-OUT
+          - address: 10.255.0.7
+            remoteAS: 65030
+            description: overlay ep-b
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-BACKUP-EP
+            export:
+              routeMap: OVERLAY-OUT
+          - address: 10.255.0.9
+            remoteAS: 65040
+            description: overlay cs-a
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-PRIMARY-CS
+            export:
+              routeMap: OVERLAY-OUT
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: SITE-FR
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.10.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.20.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.30.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.40.0.0/16
+              le: 24
+          - name: SITE-NETS
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.10.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.20.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.30.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.40.0.0/16
+              le: 24
+            - rule: 50
+              action: permit
+              prefix: 10.11.0.0/16
+              le: 24
+            - rule: 60
+              action: permit
+              prefix: 10.21.0.0/16
+              le: 24
+            - rule: 70
+              action: permit
+              prefix: 10.12.0.0/16
+              le: 24
+            - rule: 80
+              action: permit
+              prefix: 10.22.0.0/16
+              le: 24
+            - rule: 90
+              action: permit
+              prefix: 10.32.0.0/16
+              le: 24
+            - rule: 100
+              action: permit
+              prefix: 10.42.0.0/16
+              le: 24
+            - rule: 110
+              action: permit
+              prefix: 192.168.10.0/24
+            - rule: 120
+              action: permit
+              prefix: 192.168.20.0/24
+            - rule: 130
+              action: permit
+              prefix: 192.168.30.0/24
+          - name: SITE-FC
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.11.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.21.0.0/16
+              le: 24
+          - name: SITE-EP
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.12.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.22.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.32.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.42.0.0/16
+              le: 24
+          - name: SITE-CS
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 192.168.10.0/24
+            - rule: 20
+              action: permit
+              prefix: 192.168.20.0/24
+            - rule: 30
+              action: permit
+              prefix: 192.168.30.0/24
+          - name: INTERNET
+            rules:
+            - rule: 1
+              action: deny
+              prefix: 10.0.0.0/8
+              le: 32
+            - rule: 2
+              action: deny
+              prefix: 172.16.0.0/12
+              le: 32
+            - rule: 3
+              action: deny
+              prefix: 192.168.0.0/16
+              le: 32
+            - rule: 10
+              action: permit
+              prefix: 0.0.0.0/0
+              le: 24
+          - name: OWN
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 198.18.105.0/24
+          routeMaps:
+          - name: OVERLAY-PRIMARY-CS
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-CS
+              set:
+                localPreference: 200
+          - name: OVERLAY-BACKUP-CS
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-CS
+              set:
+                localPreference: 100
+          - name: OVERLAY-PRIMARY-EP
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-EP
+              set:
+                localPreference: 200
+          - name: OVERLAY-BACKUP-EP
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-EP
+              set:
+                localPreference: 100
+          - name: OVERLAY-PRIMARY-FC
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-FC
+              set:
+                localPreference: 200
+          - name: OVERLAY-BACKUP-FC
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-FC
+              set:
+                localPreference: 100
+          - name: OVERLAY-OUT
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-NETS
+          - name: FROM-ISP
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: INTERNET
+          - name: OWN-ONLY
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: OWN
+          - name: SET-SOURCE
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: INTERNET
+              set:
+                src: 198.18.105.1
+            - rule: 15
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                src: 10.20.30.1
+            - rule: 20
+              action: permit
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list SITE-FR rule 10 action permit
-        - set policy prefix-list SITE-FR rule 10 prefix 10.10.0.0/16
-        - set policy prefix-list SITE-FR rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 10 action permit
-        - set policy prefix-list SITE-NETS rule 10 prefix 10.10.0.0/16
-        - set policy prefix-list SITE-NETS rule 10 le 24
-        - set policy prefix-list SITE-FR rule 20 action permit
-        - set policy prefix-list SITE-FR rule 20 prefix 10.20.0.0/16
-        - set policy prefix-list SITE-FR rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 20 action permit
-        - set policy prefix-list SITE-NETS rule 20 prefix 10.20.0.0/16
-        - set policy prefix-list SITE-NETS rule 20 le 24
-        - set policy prefix-list SITE-FR rule 30 action permit
-        - set policy prefix-list SITE-FR rule 30 prefix 10.30.0.0/16
-        - set policy prefix-list SITE-FR rule 30 le 24
-        - set policy prefix-list SITE-NETS rule 30 action permit
-        - set policy prefix-list SITE-NETS rule 30 prefix 10.30.0.0/16
-        - set policy prefix-list SITE-NETS rule 30 le 24
-        - set policy prefix-list SITE-FR rule 40 action permit
-        - set policy prefix-list SITE-FR rule 40 prefix 10.40.0.0/16
-        - set policy prefix-list SITE-FR rule 40 le 24
-        - set policy prefix-list SITE-NETS rule 40 action permit
-        - set policy prefix-list SITE-NETS rule 40 prefix 10.40.0.0/16
-        - set policy prefix-list SITE-NETS rule 40 le 24
-        - set policy prefix-list SITE-FC rule 10 action permit
-        - set policy prefix-list SITE-FC rule 10 prefix 10.11.0.0/16
-        - set policy prefix-list SITE-FC rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 50 action permit
-        - set policy prefix-list SITE-NETS rule 50 prefix 10.11.0.0/16
-        - set policy prefix-list SITE-NETS rule 50 le 24
-        - set policy prefix-list SITE-FC rule 20 action permit
-        - set policy prefix-list SITE-FC rule 20 prefix 10.21.0.0/16
-        - set policy prefix-list SITE-FC rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 60 action permit
-        - set policy prefix-list SITE-NETS rule 60 prefix 10.21.0.0/16
-        - set policy prefix-list SITE-NETS rule 60 le 24
-        - set policy prefix-list SITE-EP rule 10 action permit
-        - set policy prefix-list SITE-EP rule 10 prefix 10.12.0.0/16
-        - set policy prefix-list SITE-EP rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 70 action permit
-        - set policy prefix-list SITE-NETS rule 70 prefix 10.12.0.0/16
-        - set policy prefix-list SITE-NETS rule 70 le 24
-        - set policy prefix-list SITE-EP rule 20 action permit
-        - set policy prefix-list SITE-EP rule 20 prefix 10.22.0.0/16
-        - set policy prefix-list SITE-EP rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 80 action permit
-        - set policy prefix-list SITE-NETS rule 80 prefix 10.22.0.0/16
-        - set policy prefix-list SITE-NETS rule 80 le 24
-        - set policy prefix-list SITE-EP rule 30 action permit
-        - set policy prefix-list SITE-EP rule 30 prefix 10.32.0.0/16
-        - set policy prefix-list SITE-EP rule 30 le 24
-        - set policy prefix-list SITE-NETS rule 90 action permit
-        - set policy prefix-list SITE-NETS rule 90 prefix 10.32.0.0/16
-        - set policy prefix-list SITE-NETS rule 90 le 24
-        - set policy prefix-list SITE-EP rule 40 action permit
-        - set policy prefix-list SITE-EP rule 40 prefix 10.42.0.0/16
-        - set policy prefix-list SITE-EP rule 40 le 24
-        - set policy prefix-list SITE-NETS rule 100 action permit
-        - set policy prefix-list SITE-NETS rule 100 prefix 10.42.0.0/16
-        - set policy prefix-list SITE-NETS rule 100 le 24
-        - set policy prefix-list SITE-CS rule 10 action permit
-        - set policy prefix-list SITE-CS rule 10 prefix 192.168.10.0/24
-        - set policy prefix-list SITE-NETS rule 110 action permit
-        - set policy prefix-list SITE-NETS rule 110 prefix 192.168.10.0/24
-        - set policy prefix-list SITE-CS rule 20 action permit
-        - set policy prefix-list SITE-CS rule 20 prefix 192.168.20.0/24
-        - set policy prefix-list SITE-NETS rule 120 action permit
-        - set policy prefix-list SITE-NETS rule 120 prefix 192.168.20.0/24
-        - set policy prefix-list SITE-CS rule 30 action permit
-        - set policy prefix-list SITE-CS rule 30 prefix 192.168.30.0/24
-        - set policy prefix-list SITE-NETS rule 130 action permit
-        - set policy prefix-list SITE-NETS rule 130 prefix 192.168.30.0/24
-        - set policy route-map OVERLAY-PRIMARY-CS rule 10 action permit
-        - set policy route-map OVERLAY-PRIMARY-CS rule 10 match ip address prefix-list SITE-CS
-        - set policy route-map OVERLAY-PRIMARY-CS rule 10 set local-preference 200
-        - set policy route-map OVERLAY-BACKUP-CS rule 10 action permit
-        - set policy route-map OVERLAY-BACKUP-CS rule 10 match ip address prefix-list SITE-CS
-        - set policy route-map OVERLAY-BACKUP-CS rule 10 set local-preference 100
-        - set policy route-map OVERLAY-PRIMARY-EP rule 10 action permit
-        - set policy route-map OVERLAY-PRIMARY-EP rule 10 match ip address prefix-list SITE-EP
-        - set policy route-map OVERLAY-PRIMARY-EP rule 10 set local-preference 200
-        - set policy route-map OVERLAY-BACKUP-EP rule 10 action permit
-        - set policy route-map OVERLAY-BACKUP-EP rule 10 match ip address prefix-list SITE-EP
-        - set policy route-map OVERLAY-BACKUP-EP rule 10 set local-preference 100
-        - set policy route-map OVERLAY-PRIMARY-FC rule 10 action permit
-        - set policy route-map OVERLAY-PRIMARY-FC rule 10 match ip address prefix-list SITE-FC
-        - set policy route-map OVERLAY-PRIMARY-FC rule 10 set local-preference 200
-        - set policy route-map OVERLAY-BACKUP-FC rule 10 action permit
-        - set policy route-map OVERLAY-BACKUP-FC rule 10 match ip address prefix-list SITE-FC
-        - set policy route-map OVERLAY-BACKUP-FC rule 10 set local-preference 100
-        - set policy route-map OVERLAY-OUT rule 10 action permit
-        - set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-NETS
-        - set protocols bgp system-as 64505
-        - set protocols bgp parameters router-id 198.18.105.1
-        - set protocols bgp parameters log-neighbor-changes
-        - set protocols bgp address-family ipv4-unicast network 10.10.0.0/16
-        - set protocols bgp address-family ipv4-unicast network 10.20.0.0/16
-        - set protocols bgp address-family ipv4-unicast network 10.30.0.0/16
-        - set protocols bgp address-family ipv4-unicast network 10.40.0.0/16
         - set interfaces dummy dum0 address 198.18.105.1/32
-        - set policy prefix-list INTERNET rule 1 action deny
-        - set policy prefix-list INTERNET rule 1 prefix 10.0.0.0/8
-        - set policy prefix-list INTERNET rule 1 le 32
-        - set policy prefix-list INTERNET rule 2 action deny
-        - set policy prefix-list INTERNET rule 2 prefix 172.16.0.0/12
-        - set policy prefix-list INTERNET rule 2 le 32
-        - set policy prefix-list INTERNET rule 3 action deny
-        - set policy prefix-list INTERNET rule 3 prefix 192.168.0.0/16
-        - set policy prefix-list INTERNET rule 3 le 32
-        - set policy prefix-list INTERNET rule 10 action permit
-        - set policy prefix-list INTERNET rule 10 prefix 0.0.0.0/0
-        - set policy prefix-list INTERNET rule 10 le 24
-        - set policy prefix-list OWN rule 10 action permit
-        - set policy prefix-list OWN rule 10 prefix 198.18.105.0/24
-        - set policy route-map FROM-ISP rule 10 action permit
-        - set policy route-map FROM-ISP rule 10 match ip address prefix-list INTERNET
-        - set policy route-map OWN-ONLY rule 10 action permit
-        - set policy route-map OWN-ONLY rule 10 match ip address prefix-list OWN
-        - set policy route-map SET-SOURCE rule 10 action permit
-        - set policy route-map SET-SOURCE rule 10 match ip address prefix-list INTERNET
-        - set policy route-map SET-SOURCE rule 10 set src 198.18.105.1
-        - set protocols bgp parameters bestpath as-path multipath-relax
-        - set protocols bgp address-family ipv4-unicast maximum-paths ebgp 2
-        - set protocols bgp address-family ipv4-unicast network 198.18.105.0/24
         - set protocols static route 198.18.105.0/24 blackhole distance 250
-        - set protocols bgp neighbor 203.0.113.1 remote-as 64500
-        - set protocols bgp neighbor 203.0.113.1 description 'ShadeCast Cable'
-        - set protocols bgp neighbor 203.0.113.1 timers keepalive 3
-        - set protocols bgp neighbor 203.0.113.1 timers holdtime 9
-        - set protocols bgp neighbor 203.0.113.1 timers connect 5
-        - set protocols bgp neighbor 203.0.113.1 bfd profile WAN
-        - set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map import FROM-ISP
-        - set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast route-map export OWN-ONLY
-        - set protocols bgp neighbor 203.0.113.1 address-family ipv4-unicast soft-reconfiguration inbound
-        - set protocols bgp neighbor 198.18.101.1 remote-as 64501
-        - set protocols bgp neighbor 198.18.101.1 description 'Tumbleweed Fiber'
-        - set protocols bgp neighbor 198.18.101.1 timers keepalive 3
-        - set protocols bgp neighbor 198.18.101.1 timers holdtime 9
-        - set protocols bgp neighbor 198.18.101.1 timers connect 5
-        - set protocols bgp neighbor 198.18.101.1 bfd profile WAN
-        - set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map import FROM-ISP
-        - set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast route-map export OWN-ONLY
-        - set protocols bgp neighbor 198.18.101.1 address-family ipv4-unicast soft-reconfiguration inbound
-        - set policy route-map SET-SOURCE rule 15 action permit
-        - set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
-        - set policy route-map SET-SOURCE rule 15 set src 10.20.30.1
-        - set policy route-map SET-SOURCE rule 20 action permit
         - set system ip protocol bgp route-map SET-SOURCE
         - set protocols static route 10.10.0.0/16 blackhole distance 250
         - set protocols static route 10.20.0.0/16 blackhole distance 250
@@ -631,14 +1173,6 @@ spec:
         - set vpn ipsec site-to-site peer fc-a remote-address 203.0.113.10
         - set vpn ipsec site-to-site peer fc-a vti bind vti101
         - set vpn ipsec site-to-site peer fc-a vti esp-group WAN
-        - set protocols bgp neighbor 10.255.0.1 remote-as 65020
-        - set protocols bgp neighbor 10.255.0.1 description 'overlay fc-a'
-        - set protocols bgp neighbor 10.255.0.1 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.1 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.1 timers connect 5
-        - set protocols bgp neighbor 10.255.0.1 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-FC
-        - set protocols bgp neighbor 10.255.0.1 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set interfaces vti vti102 description 'fc-b over Marmot Wireless'
         - set interfaces vti vti102 address 10.255.0.2/31
         - set interfaces vti vti102 mtu 1400
@@ -656,14 +1190,6 @@ spec:
         - set vpn ipsec site-to-site peer fc-b remote-address 198.18.102.2
         - set vpn ipsec site-to-site peer fc-b vti bind vti102
         - set vpn ipsec site-to-site peer fc-b vti esp-group WAN
-        - set protocols bgp neighbor 10.255.0.3 remote-as 65020
-        - set protocols bgp neighbor 10.255.0.3 description 'overlay fc-b'
-        - set protocols bgp neighbor 10.255.0.3 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.3 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.3 timers connect 5
-        - set protocols bgp neighbor 10.255.0.3 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map import OVERLAY-BACKUP-FC
-        - set protocols bgp neighbor 10.255.0.3 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set interfaces vti vti103 description 'ep-a over Tumbleweed Fiber'
         - set interfaces vti vti103 address 10.255.0.4/31
         - set interfaces vti vti103 mtu 1400
@@ -681,14 +1207,6 @@ spec:
         - set vpn ipsec site-to-site peer ep-a remote-address 198.18.101.10
         - set vpn ipsec site-to-site peer ep-a vti bind vti103
         - set vpn ipsec site-to-site peer ep-a vti esp-group WAN
-        - set protocols bgp neighbor 10.255.0.5 remote-as 65030
-        - set protocols bgp neighbor 10.255.0.5 description 'overlay ep-a'
-        - set protocols bgp neighbor 10.255.0.5 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.5 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.5 timers connect 5
-        - set protocols bgp neighbor 10.255.0.5 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.5 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-EP
-        - set protocols bgp neighbor 10.255.0.5 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set interfaces vti vti104 description 'ep-b over ShadeCast Cable'
         - set interfaces vti vti104 address 10.255.0.6/31
         - set interfaces vti vti104 mtu 1400
@@ -706,14 +1224,6 @@ spec:
         - set vpn ipsec site-to-site peer ep-b remote-address 203.0.113.18
         - set vpn ipsec site-to-site peer ep-b vti bind vti104
         - set vpn ipsec site-to-site peer ep-b vti esp-group WAN
-        - set protocols bgp neighbor 10.255.0.7 remote-as 65030
-        - set protocols bgp neighbor 10.255.0.7 description 'overlay ep-b'
-        - set protocols bgp neighbor 10.255.0.7 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.7 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.7 timers connect 5
-        - set protocols bgp neighbor 10.255.0.7 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.7 address-family ipv4-unicast route-map import OVERLAY-BACKUP-EP
-        - set protocols bgp neighbor 10.255.0.7 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set interfaces vti vti105 description 'cs-a over Bristlecone Broadband'
         - set interfaces vti vti105 address 10.255.0.8/31
         - set interfaces vti vti105 mtu 1400
@@ -731,14 +1241,6 @@ spec:
         - set vpn ipsec site-to-site peer cs-a remote-address 198.18.103.2
         - set vpn ipsec site-to-site peer cs-a vti bind vti105
         - set vpn ipsec site-to-site peer cs-a vti esp-group WAN
-        - set protocols bgp neighbor 10.255.0.9 remote-as 65040
-        - set protocols bgp neighbor 10.255.0.9 description 'overlay cs-a'
-        - set protocols bgp neighbor 10.255.0.9 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.9 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.9 timers connect 5
-        - set protocols bgp neighbor 10.255.0.9 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.9 address-family ipv4-unicast route-map import OVERLAY-PRIMARY-CS
-        - set protocols bgp neighbor 10.255.0.9 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set firewall group network-group PRIVATE network 10.0.0.0/8
         - set firewall group network-group PRIVATE network 172.16.0.0/12
         - set firewall group network-group PRIVATE network 192.168.0.0/16
@@ -804,95 +1306,186 @@ spec:
         - set firewall ipv4 input filter rule 104 log
     - hostname: fc-fw-edge
       metadata:
+        bgp:
+          localAS: 65020
+          routerID: 10.255.2.1
+          logNeighborChanges: true
+          networks:
+          - 10.11.0.0/16
+          - 10.21.0.0/16
+          neighbors:
+          - address: 10.255.0.0
+            remoteAS: 64505
+            description: overlay fc-a
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-PRIMARY
+            export:
+              routeMap: OVERLAY-OUT
+          - address: 10.255.0.2
+            remoteAS: 64505
+            description: overlay fc-b
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-BACKUP
+            export:
+              routeMap: OVERLAY-OUT
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: SITE-FR
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.10.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.20.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.30.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.40.0.0/16
+              le: 24
+          - name: SITE-NETS
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.10.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.20.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.30.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.40.0.0/16
+              le: 24
+            - rule: 50
+              action: permit
+              prefix: 10.11.0.0/16
+              le: 24
+            - rule: 60
+              action: permit
+              prefix: 10.21.0.0/16
+              le: 24
+            - rule: 70
+              action: permit
+              prefix: 10.12.0.0/16
+              le: 24
+            - rule: 80
+              action: permit
+              prefix: 10.22.0.0/16
+              le: 24
+            - rule: 90
+              action: permit
+              prefix: 10.32.0.0/16
+              le: 24
+            - rule: 100
+              action: permit
+              prefix: 10.42.0.0/16
+              le: 24
+            - rule: 110
+              action: permit
+              prefix: 192.168.10.0/24
+            - rule: 120
+              action: permit
+              prefix: 192.168.20.0/24
+            - rule: 130
+              action: permit
+              prefix: 192.168.30.0/24
+          - name: SITE-FC
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.11.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.21.0.0/16
+              le: 24
+          - name: SITE-EP
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.12.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.22.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.32.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.42.0.0/16
+              le: 24
+          - name: SITE-CS
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 192.168.10.0/24
+            - rule: 20
+              action: permit
+              prefix: 192.168.20.0/24
+            - rule: 30
+              action: permit
+              prefix: 192.168.30.0/24
+          routeMaps:
+          - name: OVERLAY-PRIMARY
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                localPreference: 200
+          - name: OVERLAY-BACKUP
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                localPreference: 100
+          - name: OVERLAY-OUT
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-FC
+          - name: SET-SOURCE
+            rules:
+            - rule: 15
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                src: 10.21.10.1
+            - rule: 20
+              action: permit
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list SITE-FR rule 10 action permit
-        - set policy prefix-list SITE-FR rule 10 prefix 10.10.0.0/16
-        - set policy prefix-list SITE-FR rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 10 action permit
-        - set policy prefix-list SITE-NETS rule 10 prefix 10.10.0.0/16
-        - set policy prefix-list SITE-NETS rule 10 le 24
-        - set policy prefix-list SITE-FR rule 20 action permit
-        - set policy prefix-list SITE-FR rule 20 prefix 10.20.0.0/16
-        - set policy prefix-list SITE-FR rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 20 action permit
-        - set policy prefix-list SITE-NETS rule 20 prefix 10.20.0.0/16
-        - set policy prefix-list SITE-NETS rule 20 le 24
-        - set policy prefix-list SITE-FR rule 30 action permit
-        - set policy prefix-list SITE-FR rule 30 prefix 10.30.0.0/16
-        - set policy prefix-list SITE-FR rule 30 le 24
-        - set policy prefix-list SITE-NETS rule 30 action permit
-        - set policy prefix-list SITE-NETS rule 30 prefix 10.30.0.0/16
-        - set policy prefix-list SITE-NETS rule 30 le 24
-        - set policy prefix-list SITE-FR rule 40 action permit
-        - set policy prefix-list SITE-FR rule 40 prefix 10.40.0.0/16
-        - set policy prefix-list SITE-FR rule 40 le 24
-        - set policy prefix-list SITE-NETS rule 40 action permit
-        - set policy prefix-list SITE-NETS rule 40 prefix 10.40.0.0/16
-        - set policy prefix-list SITE-NETS rule 40 le 24
-        - set policy prefix-list SITE-FC rule 10 action permit
-        - set policy prefix-list SITE-FC rule 10 prefix 10.11.0.0/16
-        - set policy prefix-list SITE-FC rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 50 action permit
-        - set policy prefix-list SITE-NETS rule 50 prefix 10.11.0.0/16
-        - set policy prefix-list SITE-NETS rule 50 le 24
-        - set policy prefix-list SITE-FC rule 20 action permit
-        - set policy prefix-list SITE-FC rule 20 prefix 10.21.0.0/16
-        - set policy prefix-list SITE-FC rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 60 action permit
-        - set policy prefix-list SITE-NETS rule 60 prefix 10.21.0.0/16
-        - set policy prefix-list SITE-NETS rule 60 le 24
-        - set policy prefix-list SITE-EP rule 10 action permit
-        - set policy prefix-list SITE-EP rule 10 prefix 10.12.0.0/16
-        - set policy prefix-list SITE-EP rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 70 action permit
-        - set policy prefix-list SITE-NETS rule 70 prefix 10.12.0.0/16
-        - set policy prefix-list SITE-NETS rule 70 le 24
-        - set policy prefix-list SITE-EP rule 20 action permit
-        - set policy prefix-list SITE-EP rule 20 prefix 10.22.0.0/16
-        - set policy prefix-list SITE-EP rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 80 action permit
-        - set policy prefix-list SITE-NETS rule 80 prefix 10.22.0.0/16
-        - set policy prefix-list SITE-NETS rule 80 le 24
-        - set policy prefix-list SITE-EP rule 30 action permit
-        - set policy prefix-list SITE-EP rule 30 prefix 10.32.0.0/16
-        - set policy prefix-list SITE-EP rule 30 le 24
-        - set policy prefix-list SITE-NETS rule 90 action permit
-        - set policy prefix-list SITE-NETS rule 90 prefix 10.32.0.0/16
-        - set policy prefix-list SITE-NETS rule 90 le 24
-        - set policy prefix-list SITE-EP rule 40 action permit
-        - set policy prefix-list SITE-EP rule 40 prefix 10.42.0.0/16
-        - set policy prefix-list SITE-EP rule 40 le 24
-        - set policy prefix-list SITE-NETS rule 100 action permit
-        - set policy prefix-list SITE-NETS rule 100 prefix 10.42.0.0/16
-        - set policy prefix-list SITE-NETS rule 100 le 24
-        - set policy prefix-list SITE-CS rule 10 action permit
-        - set policy prefix-list SITE-CS rule 10 prefix 192.168.10.0/24
-        - set policy prefix-list SITE-NETS rule 110 action permit
-        - set policy prefix-list SITE-NETS rule 110 prefix 192.168.10.0/24
-        - set policy prefix-list SITE-CS rule 20 action permit
-        - set policy prefix-list SITE-CS rule 20 prefix 192.168.20.0/24
-        - set policy prefix-list SITE-NETS rule 120 action permit
-        - set policy prefix-list SITE-NETS rule 120 prefix 192.168.20.0/24
-        - set policy prefix-list SITE-CS rule 30 action permit
-        - set policy prefix-list SITE-CS rule 30 prefix 192.168.30.0/24
-        - set policy prefix-list SITE-NETS rule 130 action permit
-        - set policy prefix-list SITE-NETS rule 130 prefix 192.168.30.0/24
-        - set policy route-map OVERLAY-PRIMARY rule 10 action permit
-        - set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
-        - set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
-        - set policy route-map OVERLAY-BACKUP rule 10 action permit
-        - set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
-        - set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
-        - set policy route-map OVERLAY-OUT rule 10 action permit
-        - set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-FC
-        - set protocols bgp system-as 65020
-        - set protocols bgp parameters router-id 10.255.2.1
-        - set protocols bgp parameters log-neighbor-changes
-        - set protocols bgp address-family ipv4-unicast network 10.11.0.0/16
-        - set protocols bgp address-family ipv4-unicast network 10.21.0.0/16
         - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 interface eth0
         - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 metric 10
         - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.9 check target 203.0.113.9 interface eth0
@@ -901,10 +1494,6 @@ spec:
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.102.1 metric 20
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.102.1 check target 198.18.102.1 interface eth1
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.102.1 check timeout 2
-        - set policy route-map SET-SOURCE rule 15 action permit
-        - set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
-        - set policy route-map SET-SOURCE rule 15 set src 10.21.10.1
-        - set policy route-map SET-SOURCE rule 20 action permit
         - set system ip protocol bgp route-map SET-SOURCE
         - set protocols static route 10.11.0.0/16 blackhole distance 250
         - set protocols static route 10.21.0.0/16 blackhole distance 250
@@ -953,14 +1542,6 @@ spec:
         - set policy local-route rule 151 source address 203.0.113.10
         - set policy local-route rule 151 set table 151
         - set protocols static table 151 route 0.0.0.0/0 blackhole
-        - set protocols bgp neighbor 10.255.0.0 remote-as 64505
-        - set protocols bgp neighbor 10.255.0.0 description 'overlay fc-a'
-        - set protocols bgp neighbor 10.255.0.0 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.0 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.0 timers connect 5
-        - set protocols bgp neighbor 10.255.0.0 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.0 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
-        - set protocols bgp neighbor 10.255.0.0 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set interfaces vti vti102 description 'fc-b over Marmot Wireless'
         - set interfaces vti vti102 address 10.255.0.3/31
         - set interfaces vti vti102 mtu 1400
@@ -985,14 +1566,6 @@ spec:
         - set policy local-route rule 152 source address 198.18.102.2
         - set policy local-route rule 152 set table 152
         - set protocols static table 152 route 0.0.0.0/0 blackhole
-        - set protocols bgp neighbor 10.255.0.2 remote-as 64505
-        - set protocols bgp neighbor 10.255.0.2 description 'overlay fc-b'
-        - set protocols bgp neighbor 10.255.0.2 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.2 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.2 timers connect 5
-        - set protocols bgp neighbor 10.255.0.2 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.2 address-family ipv4-unicast route-map import OVERLAY-BACKUP
-        - set protocols bgp neighbor 10.255.0.2 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set firewall group network-group PRIVATE network 10.0.0.0/8
         - set firewall group network-group PRIVATE network 172.16.0.0/12
         - set firewall group network-group PRIVATE network 192.168.0.0/16
@@ -1004,97 +1577,188 @@ spec:
         - set nat source rule 110 translation address masquerade
     - hostname: ep-fw-edge
       metadata:
+        bgp:
+          localAS: 65030
+          routerID: 10.255.3.1
+          logNeighborChanges: true
+          networks:
+          - 10.12.0.0/16
+          - 10.22.0.0/16
+          - 10.32.0.0/16
+          - 10.42.0.0/16
+          neighbors:
+          - address: 10.255.0.4
+            remoteAS: 64505
+            description: overlay ep-a
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-PRIMARY
+            export:
+              routeMap: OVERLAY-OUT
+          - address: 10.255.0.6
+            remoteAS: 64505
+            description: overlay ep-b
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-BACKUP
+            export:
+              routeMap: OVERLAY-OUT
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: SITE-FR
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.10.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.20.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.30.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.40.0.0/16
+              le: 24
+          - name: SITE-NETS
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.10.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.20.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.30.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.40.0.0/16
+              le: 24
+            - rule: 50
+              action: permit
+              prefix: 10.11.0.0/16
+              le: 24
+            - rule: 60
+              action: permit
+              prefix: 10.21.0.0/16
+              le: 24
+            - rule: 70
+              action: permit
+              prefix: 10.12.0.0/16
+              le: 24
+            - rule: 80
+              action: permit
+              prefix: 10.22.0.0/16
+              le: 24
+            - rule: 90
+              action: permit
+              prefix: 10.32.0.0/16
+              le: 24
+            - rule: 100
+              action: permit
+              prefix: 10.42.0.0/16
+              le: 24
+            - rule: 110
+              action: permit
+              prefix: 192.168.10.0/24
+            - rule: 120
+              action: permit
+              prefix: 192.168.20.0/24
+            - rule: 130
+              action: permit
+              prefix: 192.168.30.0/24
+          - name: SITE-FC
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.11.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.21.0.0/16
+              le: 24
+          - name: SITE-EP
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.12.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.22.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.32.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.42.0.0/16
+              le: 24
+          - name: SITE-CS
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 192.168.10.0/24
+            - rule: 20
+              action: permit
+              prefix: 192.168.20.0/24
+            - rule: 30
+              action: permit
+              prefix: 192.168.30.0/24
+          routeMaps:
+          - name: OVERLAY-PRIMARY
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                localPreference: 200
+          - name: OVERLAY-BACKUP
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                localPreference: 100
+          - name: OVERLAY-OUT
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-EP
+          - name: SET-SOURCE
+            rules:
+            - rule: 15
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                src: 10.22.30.1
+            - rule: 20
+              action: permit
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list SITE-FR rule 10 action permit
-        - set policy prefix-list SITE-FR rule 10 prefix 10.10.0.0/16
-        - set policy prefix-list SITE-FR rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 10 action permit
-        - set policy prefix-list SITE-NETS rule 10 prefix 10.10.0.0/16
-        - set policy prefix-list SITE-NETS rule 10 le 24
-        - set policy prefix-list SITE-FR rule 20 action permit
-        - set policy prefix-list SITE-FR rule 20 prefix 10.20.0.0/16
-        - set policy prefix-list SITE-FR rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 20 action permit
-        - set policy prefix-list SITE-NETS rule 20 prefix 10.20.0.0/16
-        - set policy prefix-list SITE-NETS rule 20 le 24
-        - set policy prefix-list SITE-FR rule 30 action permit
-        - set policy prefix-list SITE-FR rule 30 prefix 10.30.0.0/16
-        - set policy prefix-list SITE-FR rule 30 le 24
-        - set policy prefix-list SITE-NETS rule 30 action permit
-        - set policy prefix-list SITE-NETS rule 30 prefix 10.30.0.0/16
-        - set policy prefix-list SITE-NETS rule 30 le 24
-        - set policy prefix-list SITE-FR rule 40 action permit
-        - set policy prefix-list SITE-FR rule 40 prefix 10.40.0.0/16
-        - set policy prefix-list SITE-FR rule 40 le 24
-        - set policy prefix-list SITE-NETS rule 40 action permit
-        - set policy prefix-list SITE-NETS rule 40 prefix 10.40.0.0/16
-        - set policy prefix-list SITE-NETS rule 40 le 24
-        - set policy prefix-list SITE-FC rule 10 action permit
-        - set policy prefix-list SITE-FC rule 10 prefix 10.11.0.0/16
-        - set policy prefix-list SITE-FC rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 50 action permit
-        - set policy prefix-list SITE-NETS rule 50 prefix 10.11.0.0/16
-        - set policy prefix-list SITE-NETS rule 50 le 24
-        - set policy prefix-list SITE-FC rule 20 action permit
-        - set policy prefix-list SITE-FC rule 20 prefix 10.21.0.0/16
-        - set policy prefix-list SITE-FC rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 60 action permit
-        - set policy prefix-list SITE-NETS rule 60 prefix 10.21.0.0/16
-        - set policy prefix-list SITE-NETS rule 60 le 24
-        - set policy prefix-list SITE-EP rule 10 action permit
-        - set policy prefix-list SITE-EP rule 10 prefix 10.12.0.0/16
-        - set policy prefix-list SITE-EP rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 70 action permit
-        - set policy prefix-list SITE-NETS rule 70 prefix 10.12.0.0/16
-        - set policy prefix-list SITE-NETS rule 70 le 24
-        - set policy prefix-list SITE-EP rule 20 action permit
-        - set policy prefix-list SITE-EP rule 20 prefix 10.22.0.0/16
-        - set policy prefix-list SITE-EP rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 80 action permit
-        - set policy prefix-list SITE-NETS rule 80 prefix 10.22.0.0/16
-        - set policy prefix-list SITE-NETS rule 80 le 24
-        - set policy prefix-list SITE-EP rule 30 action permit
-        - set policy prefix-list SITE-EP rule 30 prefix 10.32.0.0/16
-        - set policy prefix-list SITE-EP rule 30 le 24
-        - set policy prefix-list SITE-NETS rule 90 action permit
-        - set policy prefix-list SITE-NETS rule 90 prefix 10.32.0.0/16
-        - set policy prefix-list SITE-NETS rule 90 le 24
-        - set policy prefix-list SITE-EP rule 40 action permit
-        - set policy prefix-list SITE-EP rule 40 prefix 10.42.0.0/16
-        - set policy prefix-list SITE-EP rule 40 le 24
-        - set policy prefix-list SITE-NETS rule 100 action permit
-        - set policy prefix-list SITE-NETS rule 100 prefix 10.42.0.0/16
-        - set policy prefix-list SITE-NETS rule 100 le 24
-        - set policy prefix-list SITE-CS rule 10 action permit
-        - set policy prefix-list SITE-CS rule 10 prefix 192.168.10.0/24
-        - set policy prefix-list SITE-NETS rule 110 action permit
-        - set policy prefix-list SITE-NETS rule 110 prefix 192.168.10.0/24
-        - set policy prefix-list SITE-CS rule 20 action permit
-        - set policy prefix-list SITE-CS rule 20 prefix 192.168.20.0/24
-        - set policy prefix-list SITE-NETS rule 120 action permit
-        - set policy prefix-list SITE-NETS rule 120 prefix 192.168.20.0/24
-        - set policy prefix-list SITE-CS rule 30 action permit
-        - set policy prefix-list SITE-CS rule 30 prefix 192.168.30.0/24
-        - set policy prefix-list SITE-NETS rule 130 action permit
-        - set policy prefix-list SITE-NETS rule 130 prefix 192.168.30.0/24
-        - set policy route-map OVERLAY-PRIMARY rule 10 action permit
-        - set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
-        - set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
-        - set policy route-map OVERLAY-BACKUP rule 10 action permit
-        - set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
-        - set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
-        - set policy route-map OVERLAY-OUT rule 10 action permit
-        - set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-EP
-        - set protocols bgp system-as 65030
-        - set protocols bgp parameters router-id 10.255.3.1
-        - set protocols bgp parameters log-neighbor-changes
-        - set protocols bgp address-family ipv4-unicast network 10.12.0.0/16
-        - set protocols bgp address-family ipv4-unicast network 10.22.0.0/16
-        - set protocols bgp address-family ipv4-unicast network 10.32.0.0/16
-        - set protocols bgp address-family ipv4-unicast network 10.42.0.0/16
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 interface eth0
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 metric 10
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.101.9 check target 198.18.101.9 interface eth0
@@ -1103,10 +1767,6 @@ spec:
         - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.17 metric 20
         - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.17 check target 203.0.113.17 interface eth1
         - set protocols failover route 0.0.0.0/0 next-hop 203.0.113.17 check timeout 2
-        - set policy route-map SET-SOURCE rule 15 action permit
-        - set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
-        - set policy route-map SET-SOURCE rule 15 set src 10.22.30.1
-        - set policy route-map SET-SOURCE rule 20 action permit
         - set system ip protocol bgp route-map SET-SOURCE
         - set protocols static route 10.12.0.0/16 blackhole distance 250
         - set protocols static route 10.22.0.0/16 blackhole distance 250
@@ -1157,14 +1817,6 @@ spec:
         - set policy local-route rule 153 source address 198.18.101.10
         - set policy local-route rule 153 set table 153
         - set protocols static table 153 route 0.0.0.0/0 blackhole
-        - set protocols bgp neighbor 10.255.0.4 remote-as 64505
-        - set protocols bgp neighbor 10.255.0.4 description 'overlay ep-a'
-        - set protocols bgp neighbor 10.255.0.4 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.4 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.4 timers connect 5
-        - set protocols bgp neighbor 10.255.0.4 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
-        - set protocols bgp neighbor 10.255.0.4 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set interfaces vti vti104 description 'ep-b over ShadeCast Cable'
         - set interfaces vti vti104 address 10.255.0.7/31
         - set interfaces vti vti104 mtu 1400
@@ -1189,14 +1841,6 @@ spec:
         - set policy local-route rule 154 source address 203.0.113.18
         - set policy local-route rule 154 set table 154
         - set protocols static table 154 route 0.0.0.0/0 blackhole
-        - set protocols bgp neighbor 10.255.0.6 remote-as 64505
-        - set protocols bgp neighbor 10.255.0.6 description 'overlay ep-b'
-        - set protocols bgp neighbor 10.255.0.6 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.6 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.6 timers connect 5
-        - set protocols bgp neighbor 10.255.0.6 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map import OVERLAY-BACKUP
-        - set protocols bgp neighbor 10.255.0.6 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set firewall group network-group PRIVATE network 10.0.0.0/8
         - set firewall group network-group PRIVATE network 172.16.0.0/12
         - set firewall group network-group PRIVATE network 192.168.0.0/16
@@ -1208,104 +1852,179 @@ spec:
         - set nat source rule 110 translation address masquerade
     - hostname: cs-fw-edge
       metadata:
+        bgp:
+          localAS: 65040
+          routerID: 10.255.4.1
+          logNeighborChanges: true
+          networks:
+          - 192.168.10.0/24
+          - 192.168.20.0/24
+          - 192.168.30.0/24
+          neighbors:
+          - address: 10.255.0.8
+            remoteAS: 64505
+            description: overlay cs-a
+            timers:
+              keepalive: 3
+              holdtime: 9
+              connectRetry: 5
+            bfdProfile: WAN
+            import:
+              routeMap: OVERLAY-PRIMARY
+            export:
+              routeMap: OVERLAY-OUT
+          bfdProfiles:
+          - name: WAN
+            transmitInterval: 1000
+            receiveInterval: 1000
+            multiplier: 3
+          prefixLists:
+          - name: SITE-FR
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.10.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.20.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.30.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.40.0.0/16
+              le: 24
+          - name: SITE-NETS
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.10.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.20.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.30.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.40.0.0/16
+              le: 24
+            - rule: 50
+              action: permit
+              prefix: 10.11.0.0/16
+              le: 24
+            - rule: 60
+              action: permit
+              prefix: 10.21.0.0/16
+              le: 24
+            - rule: 70
+              action: permit
+              prefix: 10.12.0.0/16
+              le: 24
+            - rule: 80
+              action: permit
+              prefix: 10.22.0.0/16
+              le: 24
+            - rule: 90
+              action: permit
+              prefix: 10.32.0.0/16
+              le: 24
+            - rule: 100
+              action: permit
+              prefix: 10.42.0.0/16
+              le: 24
+            - rule: 110
+              action: permit
+              prefix: 192.168.10.0/24
+            - rule: 120
+              action: permit
+              prefix: 192.168.20.0/24
+            - rule: 130
+              action: permit
+              prefix: 192.168.30.0/24
+          - name: SITE-FC
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.11.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.21.0.0/16
+              le: 24
+          - name: SITE-EP
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 10.12.0.0/16
+              le: 24
+            - rule: 20
+              action: permit
+              prefix: 10.22.0.0/16
+              le: 24
+            - rule: 30
+              action: permit
+              prefix: 10.32.0.0/16
+              le: 24
+            - rule: 40
+              action: permit
+              prefix: 10.42.0.0/16
+              le: 24
+          - name: SITE-CS
+            rules:
+            - rule: 10
+              action: permit
+              prefix: 192.168.10.0/24
+            - rule: 20
+              action: permit
+              prefix: 192.168.20.0/24
+            - rule: 30
+              action: permit
+              prefix: 192.168.30.0/24
+          routeMaps:
+          - name: OVERLAY-PRIMARY
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                localPreference: 200
+          - name: OVERLAY-BACKUP
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                localPreference: 100
+          - name: OVERLAY-OUT
+            rules:
+            - rule: 10
+              action: permit
+              match:
+                prefixList: SITE-CS
+          - name: SET-SOURCE
+            rules:
+            - rule: 15
+              action: permit
+              match:
+                prefixList: SITE-NETS
+              set:
+                src: 192.168.20.1
+            - rule: 20
+              action: permit
         config:
-        - set protocols bfd profile WAN interval transmit 1000
-        - set protocols bfd profile WAN interval receive 1000
-        - set protocols bfd profile WAN interval multiplier 3
-        - set policy prefix-list SITE-FR rule 10 action permit
-        - set policy prefix-list SITE-FR rule 10 prefix 10.10.0.0/16
-        - set policy prefix-list SITE-FR rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 10 action permit
-        - set policy prefix-list SITE-NETS rule 10 prefix 10.10.0.0/16
-        - set policy prefix-list SITE-NETS rule 10 le 24
-        - set policy prefix-list SITE-FR rule 20 action permit
-        - set policy prefix-list SITE-FR rule 20 prefix 10.20.0.0/16
-        - set policy prefix-list SITE-FR rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 20 action permit
-        - set policy prefix-list SITE-NETS rule 20 prefix 10.20.0.0/16
-        - set policy prefix-list SITE-NETS rule 20 le 24
-        - set policy prefix-list SITE-FR rule 30 action permit
-        - set policy prefix-list SITE-FR rule 30 prefix 10.30.0.0/16
-        - set policy prefix-list SITE-FR rule 30 le 24
-        - set policy prefix-list SITE-NETS rule 30 action permit
-        - set policy prefix-list SITE-NETS rule 30 prefix 10.30.0.0/16
-        - set policy prefix-list SITE-NETS rule 30 le 24
-        - set policy prefix-list SITE-FR rule 40 action permit
-        - set policy prefix-list SITE-FR rule 40 prefix 10.40.0.0/16
-        - set policy prefix-list SITE-FR rule 40 le 24
-        - set policy prefix-list SITE-NETS rule 40 action permit
-        - set policy prefix-list SITE-NETS rule 40 prefix 10.40.0.0/16
-        - set policy prefix-list SITE-NETS rule 40 le 24
-        - set policy prefix-list SITE-FC rule 10 action permit
-        - set policy prefix-list SITE-FC rule 10 prefix 10.11.0.0/16
-        - set policy prefix-list SITE-FC rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 50 action permit
-        - set policy prefix-list SITE-NETS rule 50 prefix 10.11.0.0/16
-        - set policy prefix-list SITE-NETS rule 50 le 24
-        - set policy prefix-list SITE-FC rule 20 action permit
-        - set policy prefix-list SITE-FC rule 20 prefix 10.21.0.0/16
-        - set policy prefix-list SITE-FC rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 60 action permit
-        - set policy prefix-list SITE-NETS rule 60 prefix 10.21.0.0/16
-        - set policy prefix-list SITE-NETS rule 60 le 24
-        - set policy prefix-list SITE-EP rule 10 action permit
-        - set policy prefix-list SITE-EP rule 10 prefix 10.12.0.0/16
-        - set policy prefix-list SITE-EP rule 10 le 24
-        - set policy prefix-list SITE-NETS rule 70 action permit
-        - set policy prefix-list SITE-NETS rule 70 prefix 10.12.0.0/16
-        - set policy prefix-list SITE-NETS rule 70 le 24
-        - set policy prefix-list SITE-EP rule 20 action permit
-        - set policy prefix-list SITE-EP rule 20 prefix 10.22.0.0/16
-        - set policy prefix-list SITE-EP rule 20 le 24
-        - set policy prefix-list SITE-NETS rule 80 action permit
-        - set policy prefix-list SITE-NETS rule 80 prefix 10.22.0.0/16
-        - set policy prefix-list SITE-NETS rule 80 le 24
-        - set policy prefix-list SITE-EP rule 30 action permit
-        - set policy prefix-list SITE-EP rule 30 prefix 10.32.0.0/16
-        - set policy prefix-list SITE-EP rule 30 le 24
-        - set policy prefix-list SITE-NETS rule 90 action permit
-        - set policy prefix-list SITE-NETS rule 90 prefix 10.32.0.0/16
-        - set policy prefix-list SITE-NETS rule 90 le 24
-        - set policy prefix-list SITE-EP rule 40 action permit
-        - set policy prefix-list SITE-EP rule 40 prefix 10.42.0.0/16
-        - set policy prefix-list SITE-EP rule 40 le 24
-        - set policy prefix-list SITE-NETS rule 100 action permit
-        - set policy prefix-list SITE-NETS rule 100 prefix 10.42.0.0/16
-        - set policy prefix-list SITE-NETS rule 100 le 24
-        - set policy prefix-list SITE-CS rule 10 action permit
-        - set policy prefix-list SITE-CS rule 10 prefix 192.168.10.0/24
-        - set policy prefix-list SITE-NETS rule 110 action permit
-        - set policy prefix-list SITE-NETS rule 110 prefix 192.168.10.0/24
-        - set policy prefix-list SITE-CS rule 20 action permit
-        - set policy prefix-list SITE-CS rule 20 prefix 192.168.20.0/24
-        - set policy prefix-list SITE-NETS rule 120 action permit
-        - set policy prefix-list SITE-NETS rule 120 prefix 192.168.20.0/24
-        - set policy prefix-list SITE-CS rule 30 action permit
-        - set policy prefix-list SITE-CS rule 30 prefix 192.168.30.0/24
-        - set policy prefix-list SITE-NETS rule 130 action permit
-        - set policy prefix-list SITE-NETS rule 130 prefix 192.168.30.0/24
-        - set policy route-map OVERLAY-PRIMARY rule 10 action permit
-        - set policy route-map OVERLAY-PRIMARY rule 10 match ip address prefix-list SITE-NETS
-        - set policy route-map OVERLAY-PRIMARY rule 10 set local-preference 200
-        - set policy route-map OVERLAY-BACKUP rule 10 action permit
-        - set policy route-map OVERLAY-BACKUP rule 10 match ip address prefix-list SITE-NETS
-        - set policy route-map OVERLAY-BACKUP rule 10 set local-preference 100
-        - set policy route-map OVERLAY-OUT rule 10 action permit
-        - set policy route-map OVERLAY-OUT rule 10 match ip address prefix-list SITE-CS
-        - set protocols bgp system-as 65040
-        - set protocols bgp parameters router-id 10.255.4.1
-        - set protocols bgp parameters log-neighbor-changes
-        - set protocols bgp address-family ipv4-unicast network 192.168.10.0/24
-        - set protocols bgp address-family ipv4-unicast network 192.168.20.0/24
-        - set protocols bgp address-family ipv4-unicast network 192.168.30.0/24
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.103.1 interface eth0
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.103.1 metric 10
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.103.1 check target 198.18.103.1 interface eth0
         - set protocols failover route 0.0.0.0/0 next-hop 198.18.103.1 check timeout 2
-        - set policy route-map SET-SOURCE rule 15 action permit
-        - set policy route-map SET-SOURCE rule 15 match ip address prefix-list SITE-NETS
-        - set policy route-map SET-SOURCE rule 15 set src 192.168.20.1
-        - set policy route-map SET-SOURCE rule 20 action permit
         - set system ip protocol bgp route-map SET-SOURCE
         - set protocols static route 192.168.10.0/24 blackhole distance 250
         - set protocols static route 192.168.20.0/24 blackhole distance 250
@@ -1355,14 +2074,6 @@ spec:
         - set policy local-route rule 155 source address 198.18.103.2
         - set policy local-route rule 155 set table 155
         - set protocols static table 155 route 0.0.0.0/0 blackhole
-        - set protocols bgp neighbor 10.255.0.8 remote-as 64505
-        - set protocols bgp neighbor 10.255.0.8 description 'overlay cs-a'
-        - set protocols bgp neighbor 10.255.0.8 timers keepalive 3
-        - set protocols bgp neighbor 10.255.0.8 timers holdtime 9
-        - set protocols bgp neighbor 10.255.0.8 timers connect 5
-        - set protocols bgp neighbor 10.255.0.8 bfd profile WAN
-        - set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map import OVERLAY-PRIMARY
-        - set protocols bgp neighbor 10.255.0.8 address-family ipv4-unicast route-map export OVERLAY-OUT
         - set firewall group network-group PRIVATE network 10.0.0.0/8
         - set firewall group network-group PRIVATE network 172.16.0.0/12
         - set firewall group network-group PRIVATE network 192.168.0.0/16

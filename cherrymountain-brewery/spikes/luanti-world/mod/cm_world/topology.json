@@ -1,0 +1,870 @@
+{
+ "platforms": [
+  {
+   "vlan": "INET",
+   "level": 0,
+   "x0": -29,
+   "x1": -8,
+   "z0": -150,
+   "z1": -142,
+   "y": 30
+  },
+  {
+   "vlan": "VENDOR",
+   "level": 0,
+   "x0": -1,
+   "x1": 10,
+   "z0": -150,
+   "z1": -142,
+   "y": 30
+  },
+  {
+   "vlan": "UTIL",
+   "level": 0,
+   "x0": 17,
+   "x1": 28,
+   "z0": -150,
+   "z1": -142,
+   "y": 30
+  },
+  {
+   "vlan": "CORP",
+   "level": 1,
+   "x0": -17,
+   "x1": -6,
+   "z0": -136,
+   "z1": -128,
+   "y": 24
+  },
+  {
+   "vlan": "DMZ",
+   "level": 1,
+   "x0": 1,
+   "x1": 17,
+   "z0": -136,
+   "z1": -128,
+   "y": 24
+  },
+  {
+   "vlan": "OPS",
+   "level": 2,
+   "x0": -25,
+   "x1": -4,
+   "z0": -122,
+   "z1": -114,
+   "y": 18
+  },
+  {
+   "vlan": "SOC",
+   "level": 2,
+   "x0": 3,
+   "x1": 24,
+   "z0": -122,
+   "z1": -114,
+   "y": 18
+  },
+  {
+   "vlan": "HMI",
+   "level": 3,
+   "x0": -31,
+   "x1": -20,
+   "z0": -108,
+   "z1": -100,
+   "y": 12
+  },
+  {
+   "vlan": "BAS",
+   "level": 3,
+   "x0": -13,
+   "x1": 13,
+   "z0": -108,
+   "z1": -100,
+   "y": 12
+  },
+  {
+   "vlan": "DERLINK",
+   "level": 3,
+   "x0": 20,
+   "x1": 31,
+   "z0": -108,
+   "z1": -100,
+   "y": 12
+  },
+  {
+   "vlan": "CTRL",
+   "level": 4,
+   "x0": -13,
+   "x1": 13,
+   "z0": -94,
+   "z1": -86,
+   "y": 6
+  },
+  {
+   "vlan": "FIELD-BH",
+   "level": 5,
+   "x0": -47,
+   "x1": -36,
+   "z0": -80,
+   "z1": -72,
+   "y": 0
+  },
+  {
+   "vlan": "FIELD-CEL",
+   "level": 5,
+   "x0": -29,
+   "x1": -18,
+   "z0": -80,
+   "z1": -72,
+   "y": 0
+  },
+  {
+   "vlan": "FIELD-PKG",
+   "level": 5,
+   "x0": -11,
+   "x1": 0,
+   "z0": -80,
+   "z1": -72,
+   "y": 0
+  },
+  {
+   "vlan": "FIELD-UTL",
+   "level": 5,
+   "x0": 7,
+   "x1": 18,
+   "z0": -80,
+   "z1": -72,
+   "y": 0
+  },
+  {
+   "vlan": "FIELD-PWR",
+   "level": 5,
+   "x0": 25,
+   "x1": 46,
+   "z0": -80,
+   "z1": -72,
+   "y": 0
+  }
+ ],
+ "towers": [
+  {
+   "host": "fw-edge",
+   "role": "firewall",
+   "x": -26,
+   "z": -146,
+   "y": 31,
+   "h": 9,
+   "vlans": [
+    "INET",
+    "CORP",
+    "DMZ"
+   ]
+  },
+  {
+   "host": "inet-traffic",
+   "role": "server",
+   "x": -21,
+   "z": -146,
+   "y": 31,
+   "h": 4,
+   "vlans": [
+    "INET"
+   ]
+  },
+  {
+   "host": "isp-rtr",
+   "role": "router",
+   "x": -16,
+   "z": -146,
+   "y": 31,
+   "h": 7,
+   "vlans": [
+    "INET",
+    "VENDOR"
+   ]
+  },
+  {
+   "host": "util-rtr",
+   "role": "router",
+   "x": -11,
+   "z": -146,
+   "y": 31,
+   "h": 7,
+   "vlans": [
+    "INET",
+    "UTIL"
+   ]
+  },
+  {
+   "host": "vendor-ws",
+   "role": "server",
+   "x": 2,
+   "z": -146,
+   "y": 31,
+   "h": 6,
+   "vlans": [
+    "VENDOR"
+   ]
+  },
+  {
+   "host": "utility-derms",
+   "role": "server",
+   "x": 20,
+   "z": -146,
+   "y": 31,
+   "h": 4,
+   "vlans": [
+    "UTIL"
+   ]
+  },
+  {
+   "host": "corp-ws",
+   "role": "server",
+   "x": -14,
+   "z": -132,
+   "y": 25,
+   "h": 6,
+   "vlans": [
+    "CORP"
+   ]
+  },
+  {
+   "host": "dmz-jump",
+   "role": "server",
+   "x": 4,
+   "z": -132,
+   "y": 25,
+   "h": 6,
+   "vlans": [
+    "DMZ"
+   ]
+  },
+  {
+   "host": "dmz-vpn",
+   "role": "server",
+   "x": 9,
+   "z": -132,
+   "y": 25,
+   "h": 4,
+   "vlans": [
+    "DMZ"
+   ]
+  },
+  {
+   "host": "fw-ot",
+   "role": "firewall",
+   "x": 14,
+   "z": -132,
+   "y": 25,
+   "h": 9,
+   "vlans": [
+    "DMZ",
+    "OPS",
+    "HMI",
+    "CTRL",
+    "DERLINK",
+    "BAS",
+    "SOC"
+   ]
+  },
+  {
+   "host": "ews",
+   "role": "server",
+   "x": -22,
+   "z": -118,
+   "y": 19,
+   "h": 6,
+   "vlans": [
+    "OPS"
+   ]
+  },
+  {
+   "host": "historian",
+   "role": "server",
+   "x": -17,
+   "z": -118,
+   "y": 19,
+   "h": 6,
+   "vlans": [
+    "OPS"
+   ]
+  },
+  {
+   "host": "ot-svc",
+   "role": "server",
+   "x": -12,
+   "z": -118,
+   "y": 19,
+   "h": 4,
+   "vlans": [
+    "OPS"
+   ]
+  },
+  {
+   "host": "scada-fuxa",
+   "role": "hmi",
+   "x": -7,
+   "z": -118,
+   "y": 19,
+   "h": 6,
+   "vlans": [
+    "OPS"
+   ]
+  },
+  {
+   "host": "malcolm",
+   "role": "soc",
+   "x": 6,
+   "z": -118,
+   "y": 19,
+   "h": 8,
+   "vlans": [
+    "SOC"
+   ]
+  },
+  {
+   "host": "soc-analyst",
+   "role": "soc",
+   "x": 11,
+   "z": -118,
+   "y": 19,
+   "h": 6,
+   "vlans": [
+    "SOC"
+   ]
+  },
+  {
+   "host": "soc-purple",
+   "role": "soc",
+   "x": 16,
+   "z": -118,
+   "y": 19,
+   "h": 8,
+   "vlans": [
+    "SOC"
+   ]
+  },
+  {
+   "host": "wazuh",
+   "role": "soc",
+   "x": 21,
+   "z": -118,
+   "y": 19,
+   "h": 8,
+   "vlans": [
+    "SOC"
+   ]
+  },
+  {
+   "host": "hmi-brewhouse",
+   "role": "hmi",
+   "x": -28,
+   "z": -104,
+   "y": 13,
+   "h": 6,
+   "vlans": [
+    "HMI"
+   ]
+  },
+  {
+   "host": "hmi-packaging",
+   "role": "hmi",
+   "x": -23,
+   "z": -104,
+   "y": 13,
+   "h": 6,
+   "vlans": [
+    "HMI"
+   ]
+  },
+  {
+   "host": "bas-bbmd",
+   "role": "hmi",
+   "x": -10,
+   "z": -104,
+   "y": 13,
+   "h": 4,
+   "vlans": [
+    "BAS"
+   ]
+  },
+  {
+   "host": "bas-coldroom",
+   "role": "hmi",
+   "x": -5,
+   "z": -104,
+   "y": 13,
+   "h": 4,
+   "vlans": [
+    "BAS"
+   ]
+  },
+  {
+   "host": "bas-fuxa",
+   "role": "hmi",
+   "x": 0,
+   "z": -104,
+   "y": 13,
+   "h": 6,
+   "vlans": [
+    "BAS"
+   ]
+  },
+  {
+   "host": "bas-rtu-taproom",
+   "role": "hmi",
+   "x": 5,
+   "z": -104,
+   "y": 13,
+   "h": 4,
+   "vlans": [
+    "BAS"
+   ]
+  },
+  {
+   "host": "bas-vent",
+   "role": "hmi",
+   "x": 10,
+   "z": -104,
+   "y": 13,
+   "h": 4,
+   "vlans": [
+    "BAS"
+   ]
+  },
+  {
+   "host": "rtu-der",
+   "role": "rio",
+   "x": 23,
+   "z": -104,
+   "y": 13,
+   "h": 4,
+   "vlans": [
+    "DERLINK",
+    "FIELD-PWR"
+   ]
+  },
+  {
+   "host": "plc-brewhouse",
+   "role": "plc",
+   "x": -10,
+   "z": -90,
+   "y": 7,
+   "h": 4,
+   "vlans": [
+    "CTRL",
+    "FIELD-BH"
+   ]
+  },
+  {
+   "host": "plc-cellar",
+   "role": "plc",
+   "x": -5,
+   "z": -90,
+   "y": 7,
+   "h": 4,
+   "vlans": [
+    "CTRL",
+    "FIELD-CEL"
+   ]
+  },
+  {
+   "host": "plc-packaging",
+   "role": "plc",
+   "x": 0,
+   "z": -90,
+   "y": 7,
+   "h": 4,
+   "vlans": [
+    "CTRL",
+    "FIELD-PKG"
+   ]
+  },
+  {
+   "host": "plc-power",
+   "role": "plc",
+   "x": 5,
+   "z": -90,
+   "y": 7,
+   "h": 4,
+   "vlans": [
+    "CTRL",
+    "FIELD-PWR"
+   ]
+  },
+  {
+   "host": "plc-utilities",
+   "role": "plc",
+   "x": 10,
+   "z": -90,
+   "y": 7,
+   "h": 4,
+   "vlans": [
+    "CTRL",
+    "FIELD-UTL"
+   ]
+  },
+  {
+   "host": "rio-brewhouse",
+   "role": "rio",
+   "x": -44,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-BH"
+   ]
+  },
+  {
+   "host": "rio-cellar",
+   "role": "rio",
+   "x": -26,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-CEL"
+   ]
+  },
+  {
+   "host": "rio-packaging",
+   "role": "rio",
+   "x": -8,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-PKG"
+   ]
+  },
+  {
+   "host": "glycol-chiller",
+   "role": "server",
+   "x": 10,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-UTL"
+   ]
+  },
+  {
+   "host": "rio-utilities",
+   "role": "rio",
+   "x": 15,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-UTL"
+   ]
+  },
+  {
+   "host": "bess-pcs",
+   "role": "server",
+   "x": 28,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-PWR"
+   ]
+  },
+  {
+   "host": "gen-ats",
+   "role": "server",
+   "x": 33,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-PWR"
+   ]
+  },
+  {
+   "host": "pv-inverter",
+   "role": "server",
+   "x": 38,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-PWR"
+   ]
+  },
+  {
+   "host": "relay-main",
+   "role": "rio",
+   "x": 43,
+   "z": -76,
+   "y": 1,
+   "h": 4,
+   "vlans": [
+    "FIELD-PWR"
+   ]
+  }
+ ],
+ "cables": [
+  {
+   "from": [
+    -26,
+    39,
+    -146
+   ],
+   "to": [
+    -12,
+    25,
+    -132
+   ],
+   "vlan": "CORP",
+   "role": "firewall"
+  },
+  {
+   "from": [
+    -26,
+    39,
+    -146
+   ],
+   "to": [
+    9,
+    25,
+    -132
+   ],
+   "vlan": "DMZ",
+   "role": "firewall"
+  },
+  {
+   "from": [
+    -16,
+    37,
+    -146
+   ],
+   "to": [
+    4,
+    31,
+    -146
+   ],
+   "vlan": "VENDOR",
+   "role": "router"
+  },
+  {
+   "from": [
+    -11,
+    37,
+    -146
+   ],
+   "to": [
+    22,
+    31,
+    -146
+   ],
+   "vlan": "UTIL",
+   "role": "router"
+  },
+  {
+   "from": [
+    14,
+    33,
+    -132
+   ],
+   "to": [
+    -15,
+    19,
+    -118
+   ],
+   "vlan": "OPS",
+   "role": "firewall"
+  },
+  {
+   "from": [
+    14,
+    33,
+    -132
+   ],
+   "to": [
+    -26,
+    13,
+    -104
+   ],
+   "vlan": "HMI",
+   "role": "firewall"
+  },
+  {
+   "from": [
+    14,
+    33,
+    -132
+   ],
+   "to": [
+    0,
+    7,
+    -90
+   ],
+   "vlan": "CTRL",
+   "role": "firewall"
+  },
+  {
+   "from": [
+    14,
+    33,
+    -132
+   ],
+   "to": [
+    25,
+    13,
+    -104
+   ],
+   "vlan": "DERLINK",
+   "role": "firewall"
+  },
+  {
+   "from": [
+    14,
+    33,
+    -132
+   ],
+   "to": [
+    0,
+    13,
+    -104
+   ],
+   "vlan": "BAS",
+   "role": "firewall"
+  },
+  {
+   "from": [
+    14,
+    33,
+    -132
+   ],
+   "to": [
+    13,
+    19,
+    -118
+   ],
+   "vlan": "SOC",
+   "role": "firewall"
+  },
+  {
+   "from": [
+    23,
+    16,
+    -104
+   ],
+   "to": [
+    35,
+    1,
+    -76
+   ],
+   "vlan": "FIELD-PWR",
+   "role": "rio"
+  },
+  {
+   "from": [
+    -10,
+    10,
+    -90
+   ],
+   "to": [
+    -42,
+    1,
+    -76
+   ],
+   "vlan": "FIELD-BH",
+   "role": "plc"
+  },
+  {
+   "from": [
+    -5,
+    10,
+    -90
+   ],
+   "to": [
+    -24,
+    1,
+    -76
+   ],
+   "vlan": "FIELD-CEL",
+   "role": "plc"
+  },
+  {
+   "from": [
+    0,
+    10,
+    -90
+   ],
+   "to": [
+    -6,
+    1,
+    -76
+   ],
+   "vlan": "FIELD-PKG",
+   "role": "plc"
+  },
+  {
+   "from": [
+    5,
+    10,
+    -90
+   ],
+   "to": [
+    35,
+    1,
+    -76
+   ],
+   "vlan": "FIELD-PWR",
+   "role": "plc"
+  },
+  {
+   "from": [
+    10,
+    10,
+    -90
+   ],
+   "to": [
+    12,
+    1,
+    -76
+   ],
+   "vlan": "FIELD-UTL",
+   "role": "plc"
+  }
+ ],
+ "levels": [
+  {
+   "title": "Internet and partners",
+   "x": -35,
+   "y": 30,
+   "z": -146
+  },
+  {
+   "title": "Enterprise and DMZ",
+   "x": -23,
+   "y": 24,
+   "z": -132
+  },
+  {
+   "title": "Operations and SOC",
+   "x": -31,
+   "y": 18,
+   "z": -118
+  },
+  {
+   "title": "Supervisory",
+   "x": -37,
+   "y": 12,
+   "z": -104
+  },
+  {
+   "title": "Control",
+   "x": -19,
+   "y": 6,
+   "z": -90
+  },
+  {
+   "title": "Field",
+   "x": -53,
+   "y": 0,
+   "z": -76
+  }
+ ]
+}

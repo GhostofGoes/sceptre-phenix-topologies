@@ -1,0 +1,1 @@
+{"actions": ["co2-release", "fans-off", "fans-on", "spunding-attack", "utility-close", "utility-open"], "log": [{"action": "fans-on", "by": "autopress", "sim_t_s": 1038.0, "wall": 1795590644.7596343}]}

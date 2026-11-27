@@ -1,0 +1,1 @@
+{"apply_ms":1.276,"cellar":{"avg_ppm":9305.8939873721738,"fans_running":false,"gas_cells":2175.0,"gas_changed":0.0,"hmi_layer_blocks":0.0,"layer_blocks":2.0,"psv_lifted":0.0,"tier":"t1"},"controls":null,"findings":3.0,"power":{"ats_on_emergency":false,"dead_buses":0.0,"ep1_live":true,"gen_running":false,"grid_kw":182.00838001905944,"msb_live":true},"seq":344.0,"sim_t_s":343.0}

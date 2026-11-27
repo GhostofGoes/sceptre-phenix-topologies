@@ -956,14 +956,84 @@ spec:
         vlan: CS-OFFICE
     type: VirtualMachine
   - general:
-      description: 'Network sensor (a stand-in: no sensor image exists yet)'
+      description: 'Network sensor: Zeek, Suricata, and Arkime on the site''s mirror, sent to Malcolm at the head office (mirror NIC added by the mirror app)'
       hostname: cs-sensor
     hardware:
       drives:
       - image: cm-sensor.qc2
+        inject_partition: 1
       memory: 16384
       os_type: linux
       vcpus: 4
+    injections:
+    - description: start the unit that adds the OpenFlow capture flow after the mirror app's OVS setup
+      dst: /etc/phenix/startup/99-zz-capture-flow.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/99-zz-capture-flow.sh
+    - description: the sensor's name, its address, and the address of Malcolm
+      dst: /etc/default/cm-sensor
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/fleet/cs/sensor/cm-sensor.env
+    - description: settings of the sensor profile for Malcolm's configurator
+      dst: /opt/cherrymountain/malcolm/malcolm-config-sensor.yaml
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/malcolm-config-sensor.yaml
+    - description: Suricata flow settings for mirrored traffic (no VLAN in the flow key, one-sided streams)
+      dst: /opt/cherrymountain/malcolm/cm-suricata.yaml
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-suricata.yaml
+    - description: 'host firewall: Arkime''s viewer for Malcolm only, GRE only on the mirror interface'
+      dst: /usr/local/sbin/cm-sensor-acl
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/cm-sensor-acl
+    - description: sensor first-boot configuration
+      dst: /usr/local/sbin/cm-sensor-provision
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/cm-sensor-provision
+    - description: start the sensor's services
+      dst: /usr/local/sbin/cm-sensor-start
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/cm-sensor-start
+    - description: stop the sensor's services
+      dst: /usr/local/sbin/cm-sensor-stop
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/cm-sensor-stop
+    - description: sensor health check for SoH and SCORCH
+      dst: /usr/local/sbin/cm-sensor-health
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/cm-sensor-health
+    - description: OpenFlow flow and port setup for the mirror feed
+      dst: /usr/local/sbin/cm-malcolm-capture
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-capture
+    - description: load the pre-pulled container images into Docker
+      dst: /usr/local/sbin/cm-load-images
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/docker/cm-load-images
+    - description: image loading unit
+      dst: /etc/systemd/system/cm-load-images.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/docker/cm-load-images.service
+    - description: host firewall unit
+      dst: /etc/systemd/system/cm-sensor-acl.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/cm-sensor-acl.service
+    - description: sensor first-boot configuration unit
+      dst: /etc/systemd/system/cm-sensor-provision.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/cm-sensor-provision.service
+    - description: sensor unit
+      dst: /etc/systemd/system/cm-sensor.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/cm-sensor.service
+    - description: capture port unit
+      dst: /etc/systemd/system/cm-malcolm-capture.service
+      permissions: '0644'
+      src: /phenix/injects/${BRANCH_NAME}/malcolm/cm-malcolm-capture.service
+    - description: load the images, close the host firewall, configure, and start the sensor
+      dst: /etc/phenix/startup/66-sensor.sh
+      permissions: '0755'
+      src: /phenix/injects/${BRANCH_NAME}/sensor/66-sensor.sh
     labels:
       site: cs
       zone: plant
